@@ -24,6 +24,10 @@ single number to be a applied to all tracers.
 function ScalarDiffusivity(FT=Float64;
                               ν=0, κ=0, direction=:ThreeDimensional, time_discretization::TD = ExplicitTimeDiscretization()) where {TD, Dir}
 
+    if direction == :Horizontal && time_discretization == VerticallyImplicitTimeDiscretization()
+        throw(ArgumentError("The Implicit discretization is supported only for vertical directions"))
+    end
+                                  
     if ν isa Number && κ isa Number
         κ = convert_diffusivity(FT, κ)
         return ScalarDiffusivity{TD, eval(direction)}(FT(ν), κ)

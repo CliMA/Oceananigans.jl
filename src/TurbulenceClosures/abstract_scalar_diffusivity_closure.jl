@@ -102,8 +102,8 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-  @inline z_viscosity(closure::Union{AID, AVD}, args...)        = viscosity(closure, args...)
-@inline z_diffusivity(closure::Union{AID, AVD}, c_idx, args...) = diffusivity(closure, c_idx, args...)
+  @inline z_viscosity(closure::AbstractScalarDiffusivity, args...)        = viscosity(closure, args...)
+@inline z_diffusivity(closure::AbstractScalarDiffusivity, c_idx, args...) = diffusivity(closure, c_idx, args...)
 
 @inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, closure.ν, ∂xᶠᶜᶠ, U.w)
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, closure.ν, ∂yᶜᶠᶠ, U.w)

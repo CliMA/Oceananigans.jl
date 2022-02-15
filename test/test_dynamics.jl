@@ -468,7 +468,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                     for closure in (ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                     ScalarDiffusivity(ν=1, κ=1, direction = :Vertical, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, direction = :Horizontal, time_discretization=time_discretization),
+                                    ScalarDiffusivity(ν=1, κ=1, direction = :Horizontal),
                                     )
 
                         fieldnames = [:c]
