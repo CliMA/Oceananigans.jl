@@ -157,14 +157,6 @@ function Base.similar(f::Field, grid=f.grid)
                  f.indices)
 end
 
-window_offset(index::UnitRange, loc, topo, halo) = interior_parent_offset(loc, topo, halo) - 1 + index[1]
-window_offset(::Colon, loc, topo, halo)          = interior_parent_offset(loc, topo, halo)
-
-parent_index(::Colon,                       loc, topo, halo) = Colon()
-parent_index(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index(index::UnitRange, loc, topo, halo)              = index .- interior_parent_offset(loc, topo, halo)
-parent_index(index::Int, loc, topo, halo)                    = index - interior_parent_offset(loc, topo, halo)
-
 """
     offset_windowed_data(data, loc, grid, indices)
 
@@ -176,14 +168,14 @@ function offset_windowed_data(data, loc, grid, indices)
     halo = halo_size(grid)
     topo = topology(grid)
 
-    if indices === (:, :, :)
+    if indices === default_indices()
         windowed_parent = parent(data)
     else
-        parent_indices = parent_index.(indices, loc, topo, halo)
+        parent_indices = parent_index_range.(indices, loc, topo, halo)
         windowed_parent = view(parent(data), parent_indices...)
     end
 
-    window_offsets = window_offset.(indices, loc, topo, halo)
+    window_offsets = offset_index_range.(indices, loc, topo, halo)
     offset_data = OffsetArray(windowed_parent, window_offsets...)
 
     return offset_data
@@ -597,7 +589,7 @@ function fill_halo_regions!(field::ViewField, args...; kwargs...)
     grid = field.grid
     data = field.data
 
-    original_data = offset_windowed_data(data, loc, grid, (:, :, :))
+    original_data = offset_windowed_data(data, loc, grid, default_indices())
 
     original_field = Field(loc,
                            grid,
@@ -605,7 +597,7 @@ function fill_halo_regions!(field::ViewField, args...; kwargs...)
                            f.boundary_conditions, # or window_bcs ?
                            f.operand,
                            f.status,
-                           (:, :, :))
+                           default_indices())
 
     return fill_halo_regions!(original_field, args...; kwargs...)
 end

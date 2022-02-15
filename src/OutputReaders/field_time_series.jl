@@ -7,8 +7,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index
-using Oceananigans.Fields: show_location, parent_index
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
+using Oceananigans.Fields: show_location
 
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
@@ -210,7 +210,7 @@ const TimeSeriesViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
 
 # Is this too surprising?
 function Base.parent(vf::TimeSeriesViewField)
-    space_indices = parent_index.(vf.data.indices[1:3])
+    space_indices = parent_index_range.(vf.data.indices[1:3])
     time_index = vf.data.indices[4]
     offset_time_series_data = parent(vf.data)
     underlying_time_series_data = parent(underlying_offset_data)
