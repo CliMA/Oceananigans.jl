@@ -49,13 +49,13 @@ end
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxzᶠᵃᶠ(i, j, k, grid, ν)
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑyzᵃᶠᶠ(i, j, k, grid, ν)
 
-# @inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
-# @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Face(),   k, grid), clock.time)
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
+# @inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
+# @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
 
 #####
 ##### Products of viscosity and stress, divergence, vorticity, vertical momentum gradients
