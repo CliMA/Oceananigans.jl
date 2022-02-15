@@ -4,7 +4,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, Prescri
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Explicit
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, Explicit, Vertical, Horizontal
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_step_hydrostatic_model_works(grid;
