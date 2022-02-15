@@ -70,12 +70,15 @@ Construct a shallow water model on `grid` with `gravitational_acceleration` cons
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-  - `gravitational_acceleration`: (required) The gravitational accelaration constant.
-  - `clock`: The `clock` for the model
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
+            architecture (CPU/GPU) that the model is solve is inferred from the architecture
+            of the grid.
+  - `gravitational_acceleration`: (required) The gravitational acceleration constant.
+  - `clock`: The `clock` for the model.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `bathymetry`: The bottom bathymetry.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.

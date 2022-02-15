@@ -57,9 +57,6 @@ end
     Hz = 1 
     grid = RectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
 
-    #coriolises = [FPlane(f=0.0) FPlane(f=0.5)
-    #              FPlane(f=1.0) FPlane(f=1.1)]
-
     coriolises = [FPlane(f=1.0) FPlane(f=1.0)
                   FPlane(f=1.0) FPlane(f=1.1)]
     

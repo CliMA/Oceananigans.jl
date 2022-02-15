@@ -13,7 +13,7 @@ using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRecti
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
@@ -72,16 +72,24 @@ Construct an hydrostatic model with a free surface on `grid`.
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-  - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
+    architecture (CPU/GPU) that the model is solve is inferred from the architecture of the grid.
+  - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
+  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `free_surface`: The free surface model.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
+  - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `velocities`: The model velocities. Default: `nothing`.
+  - `pressure`: Hydrostatic pressure field. Default: `nothing`.
+  - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(0, 0, 1),
@@ -150,6 +158,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
+
+    # Put CATKE first in the list of closures
+    closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)

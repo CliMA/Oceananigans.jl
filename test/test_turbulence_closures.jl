@@ -1,5 +1,6 @@
-using Oceananigans.Diagnostics
-using Oceananigans.TimeSteppers: Clock
+include("dependencies_for_runtests.jl")
+
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 for closure in closures
     @eval begin
@@ -131,6 +132,34 @@ function time_step_with_tupled_closure(FT, arch)
     return true
 end
 
+function run_time_step_with_catke_tests(arch, closure)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    buoyancy = BuoyancyTracer()
+
+    # These shouldn't work (need :e in tracers)
+    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=:b)
+    @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E))
+
+    # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
+    @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :e))
+
+    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :e))
+
+    # Default boundary condition is Flux, Nothing... with CATKE this has to change.
+    @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
+
+    # Can we time-step?
+    time_step!(model, 1)
+    @test true
+
+    # Once more for good measure 
+    time_step!(model, 1)
+    @test true
+
+    # Return model if we want to do more tests
+    return model
+end
+
 function compute_closure_specific_diffusive_cfl(closurename)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
@@ -178,6 +207,34 @@ end
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
+        end
+    end
+
+    @testset "Time-stepping with CATKE closure" begin
+        @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
+        for arch in archs
+            warning = false
+
+            @info "    Testing time-stepping CATKE by itself..."
+            closure = CATKEVerticalDiffusivity(; warning)
+            run_time_step_with_catke_tests(arch, closure)
+
+            @info "    Testing time-stepping CATKE in a 2-tuple with IsotropicDiffusivity..."
+            closure = (CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[1]
+
+            # Test that closure tuples with CATKE are correctly reordered
+            @info "    Testing time-stepping CATKE in a 2-tuple with AnisotropicDiffusivity..."
+            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning))
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[2]
+
+            # These are slow to compile...
+            @info "    Testing time-stepping CATKE in a 3-tuple..."
+            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[2]
         end
     end
 
