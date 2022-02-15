@@ -1,3 +1,5 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 #####
 ##### Outer functions for filling halo regions for open boundary conditions.
 #####
@@ -8,7 +10,6 @@
 # The syntax for `getbc` is also different for OpenBoundaryCondition than for others,
 # because the boundary-normal index can vary (and array boundary conditions need to be
 # 3D in general).
-
 
 @inline _fill_open_west_halo!(i, j, k, grid, u) = @inbounds u[1-i, j, k]         = 2 * u[1, j, k]         - u[1+i, j, k]
 @inline _fill_open_east_halo!(i, j, k, grid, u) = @inbounds u[grid.Nx+1+i, j, k] = 2 * u[grid.Nx+1, j, k] - u[i+grid.Nz+1-i, j, k]
