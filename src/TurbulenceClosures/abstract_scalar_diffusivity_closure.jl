@@ -58,12 +58,17 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:Vertical}
 @inline viscous_flux_uy(i, j, k, grid, closure::AHD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
 @inline viscous_flux_vy(i, j, k, grid, closure::AHD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
 
+# Shall we differentiate them if anisotropic in the vertical direction?? 
 @inline viscous_flux_wx(i, j, k, grid, closure::Union{AID, AHD}, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₁, U.u, U.v, U.w)
 @inline viscous_flux_wy(i, j, k, grid, closure::Union{AID, AHD}, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₂, U.u, U.v, U.w)
 
-@inline viscous_flux_uz(i, j, k, grid, closure::Union{AID, AVD}, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₃, U.u, U.v, U.w)
-@inline viscous_flux_vz(i, j, k, grid, closure::Union{AID, AVD}, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₃, U.u, U.v, U.w)
-@inline viscous_flux_wz(i, j, k, grid, closure::Union{AID, AVD}, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₃, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₃, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₃, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₃, U.u, U.v, U.w)
+
+@inline viscous_flux_uz(i, j, k, grid, closure::AVD, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶠᶜᶠ, U.u)
+@inline viscous_flux_vz(i, j, k, grid, closure::AVD, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶠᶜᶠ, U.v)
+@inline viscous_flux_wz(i, j, k, grid, closure::AVD, clock, U, args...) = - ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶠᶜᶠ, U.w)
 
 #####
 ##### Diffusive fluxes

@@ -56,11 +56,10 @@ float_types = (Float32, Float64)
 
 closures = (
     :ScalarDiffusivity,
-    :AnisotropicBiharmonicDiffusivity,
+    :ScalarBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
     :ConvectiveAdjustmentVerticalDiffusivity
 )
 

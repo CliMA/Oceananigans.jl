@@ -30,7 +30,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
-    # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
+    # Use halos of size 2 to accomadate time stepping with ScalarBiharmonicDiffusivity.
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid=grid,
@@ -211,7 +211,7 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
 Closures = (ScalarDiffusivity,
-            AnisotropicBiharmonicDiffusivity,
+            ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,
             SmagorinskyLilly,

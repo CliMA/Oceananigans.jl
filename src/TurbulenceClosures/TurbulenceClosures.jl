@@ -3,7 +3,7 @@ module TurbulenceClosures
 export
     AbstractEddyViscosityClosure,
     ScalarDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
+    ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,

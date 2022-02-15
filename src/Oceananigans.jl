@@ -52,7 +52,7 @@ export
 
     # Turbulence closures
     ScalarDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
+    ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,

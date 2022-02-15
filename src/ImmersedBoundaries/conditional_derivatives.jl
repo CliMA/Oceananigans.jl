@@ -39,5 +39,8 @@
 ∂zᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(f, f, i, j, k, ibg, ∂zᶠᶠᶜ, args...)
 
 # we cancel Laplacians which are evaluated on the immersed boundary
-∇²hᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(c, c, i, j, k, ibg, ∇²hᶜᶠᶜ, args...)
 ∇²hᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, c, i, j, k, ibg, ∇²hᶠᶜᶜ, args...)
+∇²hᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(c, c, i, j, k, ibg, ∇²hᶜᶠᶜ, args...)
+∇²ᶠᶜᶜ(i, j, k, ibg::IBG, args...)  = conditional_x_derivative_f(c, c, i, j, k, ibg, ∇²ᶠᶜᶜ, args...)
+∇²ᶜᶠᶜ(i, j, k, ibg::IBG, args...)  = conditional_y_derivative_f(c, c, i, j, k, ibg, ∇²ᶜᶠᶜ, args...)
+∇²ᶜᶜᶠ(i, j, k, ibg::IBG, args...)  = conditional_z_derivative_f(c, c, i, j, k, ibg, ∇²ᶜᶜᶠ, args...)

@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, Imp
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
@@ -110,7 +110,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "Halo size check in model constructor" begin
         for topo in topos_3d
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-            hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+            hcabd_closure = ScalarBiharmonicDiffusivity()
 
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
