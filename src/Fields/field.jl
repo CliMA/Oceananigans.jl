@@ -4,11 +4,12 @@ using Oceananigans.BoundaryConditions: OBC
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
+using OffsetArrays: IdOffsetRange
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
 
-struct Field{LX, LY, LZ, O, G, I, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
@@ -20,7 +21,7 @@ struct Field{LX, LY, LZ, O, G, I, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T,
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
                                indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, T, D, B, S}(grid, data, bcs, op, status, indices)
+        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, op, status, indices)
     end
 end
 
@@ -68,15 +69,20 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-validate_index(::Colon) = nothing
-validate_index(::UnitRange) = nothing
-validate_index(idx) = ArgumentError("$idx are not valid window indices for Field!")
+validate_index(idx) = throw(ArgumentError("$idx are not valid window indices for Field!"))
+validate_index(::Colon, N) = nothing
+
+function validate_index(idx::UnitRange, N)
+    (idx[1] >= 1 && idx[end] <= N) ||
+        throw(ArgumentError("The index range $(idx[1]):$(idx[end])) must lie between 1:$(N)!"))
+    return nothing
+end
 
 # Common outer constructor for all field flavors that validates data and boundary conditions
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::Tuple)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
-    validate_index.(indices)
+    validate_index.(indices, size(loc, grid))
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
 end
@@ -145,10 +151,83 @@ function Base.similar(f::Field, grid=f.grid)
     return Field(loc,
                  grid,
                  new_data(eltype(parent(f)), grid, loc, f.indices),
-                 FieldBoundaryConditions(grid, loc),
+                 FieldBoundaryConditions(grid, loc, f.indices),
                  f.operand,
                  deepcopy(f.status),
                  f.indices)
+end
+
+window_offset(index::UnitRange, loc, topo, halo) = interior_parent_offset(loc, topo, halo) - 1 + index[1]
+window_offset(::Colon, loc, topo, halo)          = interior_parent_offset(loc, topo, halo)
+
+parent_index(::Colon,                       loc, topo, halo) = Colon()
+parent_index(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index(index::UnitRange, loc, topo, halo)              = index .- interior_parent_offset(loc, topo, halo)
+parent_index(index::Int, loc, topo, halo)                    = index - interior_parent_offset(loc, topo, halo)
+
+"""
+    offset_windowed_data(data, loc, grid, indices)
+
+Return an `OffsetArray` of a `view` of `parent(data)` with `indices`.
+
+If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
+"""
+function offset_windowed_data(data, loc, grid, indices)
+    halo = halo_size(grid)
+    topo = topology(grid)
+
+    if indices === (:, :, :)
+        windowed_parent = parent(data)
+    else
+        parent_indices = parent_index.(indices, loc, topo, halo)
+        windowed_parent = view(parent(data), parent_indices...)
+    end
+
+    window_offsets = window_offset.(indices, loc, topo, halo)
+    offset_data = OffsetArray(windowed_parent, window_offsets...)
+
+    return offset_data
+end
+
+const ValidIndexRange = Union{Colon, UnitRange}
+
+Base.view(f::Field, ix::Colon, iy::Colon, iz::Colon) = f
+
+function Base.view(f::Field, ix::ValidIndexRange, iy::ValidIndexRange, iz::ValidIndexRange)
+    grid = f.grid
+    loc = location(f)
+    window_indices = (ix, iy, iz)
+
+    # Error if indices are (i) improper type or (ii) outside interior index range
+    validate_index.(window_indices, size(field))
+    
+    # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
+    #     -> the first retains a reference to the original f.data (an OffsetArray)
+    #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
+    #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
+    #
+    # OffsetArray around a view of parent with appropriate indices:
+    windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
+
+    # Should we hold onto boundary conditions? Maybe so, however we need special fill_halo_regions!
+    # that either
+    #     (i) windows boundary conditions prior to filling halos; or
+    #     (ii) rebuilds the parent field so all halos _can_ be filled.
+    #=
+    bcs = f.boundary_conditions
+    west, east   = window_boundary_conditions(window_indices[1], bcs.west, bcs.east)
+    south, north = window_boundary_conditions(window_indices[2], bcs.south, bcs.north)
+    bottom, top  = window_boundary_conditions(window_indices[3], bcs.bottom, bcs.top)
+    window_bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, bcs.immersed)
+    =#
+
+    return Field(loc,
+                 grid,
+                 windowed_data,
+                 f.boundary_conditions, # or window_bcs ?
+                 f.operand,
+                 f.status,
+                 window_indices)
 end
 
 boundary_conditions(field) = nothing
@@ -317,37 +396,14 @@ const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
                            YZReducedField, XZReducedField, XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field) = ()
-
-reduced_dimensions(field::XReducedField) = tuple(1)
-reduced_dimensions(field::YReducedField) = tuple(2)
-reduced_dimensions(field::ZReducedField) = tuple(3)
-
-reduced_dimensions(field::YZReducedField) = (2, 3)
-reduced_dimensions(field::XZReducedField) = (1, 3)
-reduced_dimensions(field::XYReducedField) = (1, 2)
-
+reduced_dimensions(field::Field)           = ()
+reduced_dimensions(field::XReducedField)   = tuple(1)
+reduced_dimensions(field::YReducedField)   = tuple(2)
+reduced_dimensions(field::ZReducedField)   = tuple(3)
+reduced_dimensions(field::YZReducedField)  = (2, 3)
+reduced_dimensions(field::XZReducedField)  = (1, 3)
+reduced_dimensions(field::XYReducedField)  = (1, 2)
 reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
-
-function fill_halo_regions!(field::Field, arch, args...; kwargs...)
-    reduced_dims = reduced_dimensions(field)
-    if reduced_dimensions === () # the field is not reduced!
-        return fill_halo_regions!(field.data,
-                                  field.boundary_conditions,
-                                  architecture(field),
-                                  field.grid,
-                                  args...;
-                                  kwargs...)
-    else
-        return fill_halo_regions!(field.data,
-                                  field.boundary_conditions,
-                                  architecture(field),
-                                  field.grid,
-                                  args...;
-                                  reduced_dimensions=reduced_dims,
-                                  kwargs...)
-    end
-end
 
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
@@ -433,7 +489,6 @@ get_neutral_mask(::ProdReduction)    =   1
 
 # If func = identity and condition = nothing, nothing happens
 @inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
-
 @inline condition_operand(operand, condition, mask) = condition_operand(identity, operand, condition, mask)
 
 @inline conditional_length(c::AbstractField)        = length(c)
@@ -508,3 +563,50 @@ function Statistics.norm(a::AbstractField; condition = nothing)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
     return CUDA.@allowscalar sqrt(r[1])
 end
+
+#####
+##### fill_halo_regions!
+#####
+
+function fill_halo_regions!(field::Field, arch, args...; kwargs...)
+    reduced_dims = reduced_dimensions(field)
+    if reduced_dimensions === () # the field is not reduced!
+        return fill_halo_regions!(field.data,
+                                  field.boundary_conditions,
+                                  architecture(field),
+                                  field.grid,
+                                  args...;
+                                  kwargs...)
+    else
+        return fill_halo_regions!(field.data,
+                                  field.boundary_conditions,
+                                  architecture(field),
+                                  field.grid,
+                                  args...;
+                                  reduced_dimensions=reduced_dims,
+                                  kwargs...)
+    end
+end
+
+const ViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                        O} where {O <: OffsetArray{<:Any, <:Any,
+                        S} where {S <: SubArray}}
+
+function fill_halo_regions!(field::ViewField, args...; kwargs...) 
+    loc = location(field)
+    grid = field.grid
+    data = field.data
+
+    original_data = offset_windowed_data(data, loc, grid, (:, :, :))
+
+    original_field = Field(loc,
+                           grid,
+                           original_data,
+                           f.boundary_conditions, # or window_bcs ?
+                           f.operand,
+                           f.status,
+                           (:, :, :))
+
+    return fill_halo_regions!(original_field, args...; kwargs...)
+end
+

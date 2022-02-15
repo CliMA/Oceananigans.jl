@@ -7,8 +7,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices
-using Oceananigans.Fields: show_location
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index
+using Oceananigans.Fields: show_location, parent_index
 
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
@@ -204,15 +204,18 @@ end
 # is there a better way?
 
 # FieldTimeSeries[i] returns ViewField
-const ViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:SubArray}
-
-using OffsetArrays: IdOffsetRange
-
-parent_indices(idx::Int) = idx
-parent_indices(idx::Base.Slice{<:IdOffsetRange}) = Colon()
+const TimeSeriesViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                                  S} where {S <: SubArray{<:Any, <:Any,
+                                  A} where {A <: AbstractArray{<:Any, 4}}}
 
 # Is this too surprising?
-Base.parent(vf::ViewField) = view(parent(parent(vf.data)), parent_indices.(vf.data.indices)...)
+function Base.parent(vf::TimeSeriesViewField)
+    space_indices = parent_index.(vf.data.indices[1:3])
+    time_index = vf.data.indices[4]
+    offset_time_series_data = parent(vf.data)
+    underlying_time_series_data = parent(underlying_offset_data)
+    return view(underlying_time_series_data, space_indices..., time_index)
+end
 
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =

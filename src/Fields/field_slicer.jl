@@ -76,11 +76,6 @@ function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
     return UnitRange(left, right)
 end
 
-function parent_slice_indices(loc, topo, N, H, rng::StepRange, with_halos)
-    left, right = parent_slice_index_endpoints(loc, topo, N, H, rng, with_halos)
-    return StepRange(left, step(rng), right)
-end
-
 """
     slice(slicer, field)
 

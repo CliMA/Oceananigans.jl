@@ -35,11 +35,11 @@ function default_dimensions(output, grid, field_slicer)
 
     return Dict(
         "xC" => parent(all_x_nodes(Center, grid))[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => parent(all_x_nodes(Face, grid))[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => parent(all_x_nodes(Face,   grid))[parent_slice_indices(Face,   TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
         "yC" => parent(all_y_nodes(Center, grid))[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => parent(all_y_nodes(Face, grid))[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => parent(all_y_nodes(Face,   grid))[parent_slice_indices(Face,   TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
         "zC" => parent(all_z_nodes(Center, grid))[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => parent(all_z_nodes(Face, grid))[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+        "zF" => parent(all_z_nodes(Face,   grid))[parent_slice_indices(Face,   TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
 default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =

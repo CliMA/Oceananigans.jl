@@ -160,7 +160,8 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 """
 function JLD2OutputWriter(model, outputs; prefix, schedule,
                                    dir = ".",
-                          field_slicer = FieldSlicer(),
+                               indices = (:, :, :),
+                            with_halos = true,
                             array_type = Array{Float32},
                           max_filesize = Inf,
                                  force = false,
@@ -169,6 +170,8 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                                verbose = false,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
+
+    outputs = construct_output.(outputs, Ref(model.grid), Ref(indices), with_halos)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
