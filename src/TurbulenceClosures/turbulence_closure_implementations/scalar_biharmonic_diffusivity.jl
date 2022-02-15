@@ -45,6 +45,9 @@ function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Dir}) where 
     return ScalarBiharmonicDiffusivity{Dir}(closure.ν, κ)
 end
 
+@inline viscosity(closure::ScalarBiharmonicDiffusivity, args...) = closure.ν
+@inline diffusivity(closure::ScalarBiharmonicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
+
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{Dir}) where {Dir} = 
