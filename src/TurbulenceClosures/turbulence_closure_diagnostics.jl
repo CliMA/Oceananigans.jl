@@ -38,44 +38,11 @@ function cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, diffusivi
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
-
-    max_νx = maximum_numeric_diffusivity(closure.νx)
-    max_νy = maximum_numeric_diffusivity(closure.νy)
-    max_νz = maximum_numeric_diffusivity(closure.νz)
-
-    max_κx = maximum_numeric_diffusivity(closure.κx)
-    max_κy = maximum_numeric_diffusivity(closure.κy)
-    max_κz = maximum_numeric_diffusivity(closure.κz)
-
-    return min(Δx^4 / max_νx,
-               Δy^4 / max_νy,
-               Δz^4 / max_νz,
-               Δx^4 / max_κx,
-               Δy^4 / max_κy,
-               Δz^4 / max_κz)
-end
-
-function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, diffusivities, grid)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
-
-    max_νh = maximum_numeric_diffusivity(closure.νh)
-    max_νz = maximum_numeric_diffusivity(closure.νz)
-
-    max_κh = maximum_numeric_diffusivity(closure.κh)
-    max_κz = maximum_numeric_diffusivity(closure.κz)
-
-    return min(Δx^4 / max_νh,
-               Δy^4 / max_νh,
-               Δz^4 / max_νz,
-               Δx^4 / max_κh,
-               Δy^4 / max_κh,
-               Δz^4 / max_κz)
+function cell_diffusion_timescale(closure::ScalarBiharmonicDiffusivity{Dir}, diffusivities, grid) where {Dir}
+    Δ = min_Δxyz(grid, Dir)
+    max_κ = maximum_numeric_diffusivity(closure.κ)
+    max_ν = maximum_numeric_diffusivity(closure.ν)
+    return min(Δ^4/ max_ν, Δ^4 / max_κ)
 end
 
 function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, TD, P, <:NamedTuple{()}},
