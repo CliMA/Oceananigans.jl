@@ -45,7 +45,7 @@ for time_stepper in (Explicit(), VerticallyImplicit())
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                        closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
+                                        closure = ScalarDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = FPlane(f=sqrt(0.5)),

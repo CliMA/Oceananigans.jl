@@ -53,4 +53,4 @@ Base.show(io::IO, closure::ScalarDiffusivity{TD, Iso})  where {TD, Iso}=
     print(io, "ScalarDiffusivity:\n",
               "ν=$(closure.ν), κ=$(closure.κ)\n",
               "time discretization: $(time_discretization(closure))\n",
-              "direction: $Iso")
+              "isotropy: $Iso")

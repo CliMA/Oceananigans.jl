@@ -219,20 +219,20 @@ end
             closure = CATKEVerticalDiffusivity(; warning)
             run_time_step_with_catke_tests(arch, closure)
 
-            @info "    Testing time-stepping CATKE in a 2-tuple with IsotropicDiffusivity..."
-            closure = (CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            @info "    Testing time-stepping CATKE in a 2-tuple with ScalarDiffusivity..."
+            closure = (CATKEVerticalDiffusivity(; warning), ScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[1]
 
             # Test that closure tuples with CATKE are correctly reordered
-            @info "    Testing time-stepping CATKE in a 2-tuple with AnisotropicDiffusivity..."
-            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning))
+            @info "    Testing time-stepping CATKE in a 2-tuple with ScalarDiffusivity..."
+            closure = (ScalarDiffusivity(), CATKEVerticalDiffusivity(; warning))
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
-            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            closure = (ScalarDiffusivity(), CATKEVerticalDiffusivity(; warning), ScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
         end

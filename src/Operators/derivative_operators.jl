@@ -42,32 +42,32 @@ end
 
 for dir in (:x, :y, :z), L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
 
-     first_order_face_der = Symbol(:∂,  dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-    second_order_face_der = Symbol(:∂², dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-     third_order_face_der = Symbol(:∂³, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-    fourth_order_face_der = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+     first_order_face = Symbol(:∂,  dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    second_order_face = Symbol(:∂², dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+     third_order_face = Symbol(:∂³, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    fourth_order_face = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
 
-     first_order_center_der = Symbol(:∂,  dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-    second_order_center_der = Symbol(:∂², dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-     third_order_center_der = Symbol(:∂³, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-    fourth_order_center_der = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+     first_order_center = Symbol(:∂,  dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    second_order_center = Symbol(:∂², dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+     third_order_center = Symbol(:∂³, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    fourth_order_center = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
 
     @eval begin
-        $second_order_face_der(i, j, k, grid, c) = $first_order_face_der(i, j, k, grid, $first_order_center_der, c)
-         $third_order_face_der(i, j, k, grid, c) = $first_order_face_der(i, j, k, grid, $second_order_center_der, c)
-        $fourth_order_face_der(i, j, k, grid, c) = $second_order_face_der(i, j, k, grid, $second_order_face_der,   c)
+        $second_order_face(i, j, k, grid, c) =  $first_order_face(i, j, k, grid, $first_order_center,  c)
+         $third_order_face(i, j, k, grid, c) =  $first_order_face(i, j, k, grid, $second_order_center, c)
+        $fourth_order_face(i, j, k, grid, c) = $second_order_face(i, j, k, grid, $second_order_face,   c)
 
-        $second_order_center_der(i, j, k, grid, c) = $first_order_center_der(i, j, k, grid, $first_order_face_der,   c)
-         $third_order_center_der(i, j, k, grid, c) = $first_order_center_der(i, j, k, grid, $second_order_face_der,   c)
-        $fourth_order_center_der(i, j, k, grid, c) = $second_order_center_der(i, j, k, grid, $second_order_center_der, c)
+        $second_order_center(i, j, k, grid, c) =  $first_order_center(i, j, k, grid, $first_order_face,    c)
+         $third_order_center(i, j, k, grid, c) =  $first_order_center(i, j, k, grid, $second_order_face,   c)
+        $fourth_order_center(i, j, k, grid, c) = $second_order_center(i, j, k, grid, $second_order_center, c)
 
-        $second_order_face_der(i, j, k, grid, f::Function, args...) = $first_order_face_der(i, j, k, grid, $first_order_center_der, f::Function, args...)
-         $third_order_face_der(i, j, k, grid, f::Function, args...) = $first_order_face_der(i, j, k, grid, $second_order_center_der, f::Function, args...)
-        $fourth_order_face_der(i, j, k, grid, f::Function, args...) = $second_order_face_der(i, j, k, grid, $second_order_face_der,   f::Function, args...)
+        $second_order_face(i, j, k, grid, f::Function, args...) =  $first_order_face(i, j, k, grid, $first_order_center,  f::Function, args...)
+         $third_order_face(i, j, k, grid, f::Function, args...) =  $first_order_face(i, j, k, grid, $second_order_center, f::Function, args...)
+        $fourth_order_face(i, j, k, grid, f::Function, args...) = $second_order_face(i, j, k, grid, $second_order_face,   f::Function, args...)
 
-        $second_order_center_der(i, j, k, grid, f::Function, args...) = $first_order_center_der(i, j, k, grid, $first_order_face_der,   f::Function, args...)
-         $third_order_center_der(i, j, k, grid, f::Function, args...) = $first_order_center_der(i, j, k, grid, $second_order_face_der,   f::Function, args...)
-        $fourth_order_center_der(i, j, k, grid, f::Function, args...) = $second_order_center_der(i, j, k, grid, $second_order_center_der, f::Function, args...)
+        $second_order_center(i, j, k, grid, f::Function, args...) =  $first_order_center(i, j, k, grid, $first_order_face,    f::Function, args...)
+         $third_order_center(i, j, k, grid, f::Function, args...) =  $first_order_center(i, j, k, grid, $second_order_face,   f::Function, args...)
+        $fourth_order_center(i, j, k, grid, f::Function, args...) = $second_order_center(i, j, k, grid, $second_order_center, f::Function, args...)
     end
 end
 

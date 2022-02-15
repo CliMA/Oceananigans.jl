@@ -8,7 +8,7 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fields
-using Oceananigans.TurbulenceClosures: VerticallyImplicit
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
 
 filename = "baroclinic_adjustment"
 
@@ -48,11 +48,16 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-diffusive_closure = AnisotropicDiffusivity(νh = νh,
-                                           νz = νz,
-                                           κh = κh,
-                                           κz = κz,
-					                       time_discretization = VerticallyImplicit())
+diffusive_closure = ScalarDiffusivity(ν = νz,
+                                      κ = κz,
+                                      isotropy = Vertical(),
+                                      time_discretization = VerticallyImplicit())
+
+horizontal_closure = ScalarDiffusivity(ν = νh,
+                                       κ = κh,
+                                       isotropy = Horizontal())
+
+
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
@@ -63,7 +68,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-closures = (diffusive_closure, convective_adjustment)
+closures = (diffusive_closure, horizontal_closure, convective_adjustment)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,

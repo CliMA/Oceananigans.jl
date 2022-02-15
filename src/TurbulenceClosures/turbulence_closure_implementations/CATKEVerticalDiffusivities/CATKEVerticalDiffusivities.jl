@@ -17,7 +17,10 @@ using Oceananigans.TurbulenceClosures:
     AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
     Explicit,
-    VerticallyImplicit
+    VerticallyImplicit,
+    ThreeDimensional, 
+    Horizontal,
+    Vertical
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
@@ -237,7 +240,7 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 # Disambiguiate
-const AID = AbstractIsotropicDiffusivity
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
 @inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)

@@ -106,7 +106,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 ```julia
 using Oceananigans
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = Field(u^2)
@@ -229,7 +229,7 @@ julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
 NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: ScalarDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 

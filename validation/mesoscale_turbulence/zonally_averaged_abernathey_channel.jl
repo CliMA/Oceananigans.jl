@@ -8,6 +8,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 #####
 ##### Grid
@@ -133,9 +134,16 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
 ν = Field(ν_op)
 
-closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
-                                 time_discretization = VerticallyImplicit())
+vertical_closure = ScalarDiffusivity(ν = νv,
+                                     κ = κv,
+                                     isotropy = Vertical())
 
+horizontal_closure = ScalarDiffusivity(ν = νh,
+                                       κ = κh,
+                                       isotropy = Horizontal())
+
+closure = (horizontal_closure, vertical_closure)
+                                       
 model = NonhydrostaticModel(architecture,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
