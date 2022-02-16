@@ -36,7 +36,7 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 
 @inline viscous_flux_uz(i, j, k, grid, closure::AVBD, clock, U, args...) = + ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_z, ∂zᶠᶜᶠ, ∂²zᶠᶜᶜ, U.u)
 @inline viscous_flux_vz(i, j, k, grid, closure::AVBD, clock, U, args...) = + ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_z, ∂zᶜᶠᶠ, ∂²zᶜᶠᶜ, U.v)
-@inline viscous_flux_wz(i, j, k, grid, closure::AVBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶜᶜᶜ, biharmonic_mask_z, ∂³zᶜᶜᶠ, U.w)
+@inline viscous_flux_wz(i, j, k, grid, closure::AVBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶜᶜᶜ, biharmonic_mask_z, ∂²zᶜᶜᶠ, U.w)
 
 #####
 ##### Diffusive fluxes
@@ -49,7 +49,6 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 @inline diffusive_flux_x(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, c)
 @inline diffusive_flux_y(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, c)
 @inline diffusive_flux_z(i, j, k, grid, closure::AVBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_z, ∂³zᶜᶜᶠ, c)
-
 
 #####
 ##### Zero out not used fluxes
@@ -103,7 +102,7 @@ end
 @inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
-##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the biharmonic operator
+##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the Laplacian operator
 ##### biharmonic_mask(∂(∇²(var))) ensures that fluxes are 0 on the boundaries
 ##### ∂(biharmonic_mask(∇²(var))) ensures that laplacians are 0 on the boundaries
 #####
