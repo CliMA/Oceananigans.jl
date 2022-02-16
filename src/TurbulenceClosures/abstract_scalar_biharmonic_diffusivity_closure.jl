@@ -44,11 +44,10 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 
 @inline diffusive_flux_x(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³xᶠᶜᶜ(i, j, k, grid, c)
 @inline diffusive_flux_y(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³yᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³zᶜᶜᶠ(i, j, k, grid, c)
-
 @inline diffusive_flux_x(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c)
 @inline diffusive_flux_y(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, closure::AVBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³zᶜᶜᶠ(i, j, k, grid, c)
+
+@inline diffusive_flux_z(i, j, k, grid, closure::Union{AIBD, AVBD}, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
 ##### Zero out not used fluxes
