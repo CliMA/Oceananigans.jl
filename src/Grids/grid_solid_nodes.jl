@@ -8,10 +8,9 @@ const ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}
 
 # Fallback for general grids
 @inline solid_node(i, j, k, grid) = false
-
-solid_node(::Center, LY, LZ, i, j, k, grid::XBoundedGrid) = ifelse((i < 1) | (i > grid.Nx), true, false)
-solid_node(LX, ::Center, LZ, i, j, k, grid::YBoundedGrid) = ifelse((j < 1) | (j > grid.Ny), true, false)
-solid_node(LX, LY, ::Center, i, j, k, grid::ZBoundedGrid) = ifelse((k < 1) | (k > grid.Nz), true, false)
+solid_node(i, j, k, grid::XBoundedGrid) = ifelse((i < 1) | (i > grid.Nx), true, false)
+solid_node(i, j, k, grid::YBoundedGrid) = ifelse((j < 1) | (j > grid.Ny), true, false)
+solid_node(i, j, k, grid::ZBoundedGrid) = ifelse((k < 1) | (k > grid.Nz), true, false)
 
 @inline solid_node(LX, LY, LZ, i, j, k, grid)      = solid_node(i, j, k, grid)
 @inline solid_interface(LX, LY, LZ, i, j, k, grid) = solid_node(i, j, k, grid)
