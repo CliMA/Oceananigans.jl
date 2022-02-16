@@ -1,5 +1,3 @@
-using Oceananigans.Grids: solid_node
-
 #####
 ##### Horizontal Laplacians
 #####
@@ -9,22 +7,17 @@ using Oceananigans.Grids: solid_node
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c))
 end
 
-# we cancel Laplacians which are evaluated on boundary faces (these are used only in the biharmonic operator)
-∇²hᶠᶜᶜ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i-1, j, k, grid), zero(eltype(grid)), _∇²hᶠᶜᶜ(i, j, k, grid, args...))
-∇²hᶜᶠᶜ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i, j-1, k, grid), zero(eltype(grid)), _∇²hᶜᶠᶜ(i, j, k, grid, args...))
-∇²hᶜᶜᶠ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i, j, k-1, grid), zero(eltype(grid)), _∇²hᶜᶜᶠ(i, j, k, grid, args...))
-
-@inline function _∇²hᶠᶜᶜ(i, j, k, grid, u)
+@inline function ∇²hᶠᶜᶜ(i, j, k, grid, u)
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_∂xᶜᶜᶜ, u) +
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶠᶠᶜ, u))
 end
 
-@inline function _∇²hᶜᶠᶜ(i, j, k, grid, v)
+@inline function ∇²hᶜᶠᶜ(i, j, k, grid, v)
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
                                     δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
 end
 
-@inline function _∇²hᶜᶜᶠ(i, j, k, grid, w)
+@inline function ∇²hᶜᶜᶠ(i, j, k, grid, w)
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
                                     δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
 end
@@ -45,11 +38,6 @@ which will end up at the location `ccc`.
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c))
 end
-
-# we cancel Laplacians which are evaluated on boundary faces (these are used only in the biharmonic operator)
-∇²ᶠᶜᶜ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i-1, j, k, grid), zero(eltype(grid)), _∇²ᶠᶜᶜ(i, j, k, grid, args...))
-∇²ᶜᶠᶜ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i, j-1, k, grid), zero(eltype(grid)), _∇²ᶜᶠᶜ(i, j, k, grid, args...))
-∇²ᶜᶜᶠ(i, j, k, grid, args...) = ifelse(solid_node(i, j, k, grid) | solid_node(i, j, k-1, grid), zero(eltype(grid)), _∇²ᶜᶜᶠ(i, j, k, grid, args...))
 
 @inline function _∇²ᶠᶜᶜ(i, j, k, grid, u)
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_∂xᶜᶜᶜ, u) +

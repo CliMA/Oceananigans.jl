@@ -517,7 +517,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 model = NonhydrostaticModel(timestepper = timestepper,
                                                    grid = grid,
-                                                closure = ScalarBiharmonicDiffusivity(ν=1, κ=1),
+                                                closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=ThreeDimensional()),
                                                coriolis = nothing,
                                                 tracers = :c,
                                                buoyancy = nothing)
