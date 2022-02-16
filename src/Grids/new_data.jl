@@ -26,6 +26,7 @@ offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
 
 offset_indices(L, T, N, H, ::Colon) = offset_indices(L, T, N, H)
 offset_indices(L, T, N, H, i::UnitRange) = i
+offset_indices(::Type{Nothing}, T, N, H, ::UnitRange) = 1:1
 
 function offset_data(underlying_data::AbstractArray{FT, 3}, loc, topo, N, H, indices) where FT
     ii, jj, kk = offset_indices.(loc, topo, N, H, indices)

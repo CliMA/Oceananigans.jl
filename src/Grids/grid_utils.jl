@@ -1,6 +1,7 @@
 using CUDA
 using Printf
 using Base.Ryu: writeshortest
+using OffsetArrays: IdOffsetRange
 
 #####
 ##### Convenience functions
@@ -81,10 +82,11 @@ total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.H
                          total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                          total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
-total_size(loc, grid, ::Nothing) = total_size(loc, grid)
 
-total_size(loc, grid, indices::Tuple) =
-    Tuple(ind isa Colon ? total_size(loc, grid)[i] : length(ind) for (i, ind) in enumerate(indices))
+function total_size(loc, grid, indices::Tuple)
+    sz = total_size(loc, grid)
+    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
+end
 
 """
     halo_size(grid)
@@ -200,11 +202,11 @@ regular_dimensions(grid) = ()
 
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange, loc, topo, halo)              = index .- interior_parent_offset(loc, topo, halo)
-parent_index_range(index::Int, loc, topo, halo)                    = index - interior_parent_offset(loc, topo, halo)
+parent_index_range(index::UnitRange, loc, topo, halo)              = index .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(index::Int, loc, topo, halo)                    = index + interior_parent_offset(loc, topo, halo)
 
-offset_index_range(index::UnitRange, loc, topo, halo) = interior_parent_offset(loc, topo, halo) - 1 + index[1]
-offset_index_range(::Colon, loc, topo, halo)          = interior_parent_offset(loc, topo, halo)
+index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
+index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
 #####
 ##### << Nodes >>

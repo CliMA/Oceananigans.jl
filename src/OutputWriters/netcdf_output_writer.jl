@@ -4,10 +4,10 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
+using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_index
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -28,21 +28,19 @@ zdim(::Type{Nothing}) = ()
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
 
-function default_dimensions(output, grid, field_slicer)
-    Nx, Ny, Nz = size(grid)
+function default_dimensions(output, grid, indices)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topology(grid)
 
-    return Dict(
-        "xC" => parent(all_x_nodes(Center, grid))[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => parent(all_x_nodes(Face,   grid))[parent_slice_indices(Face,   TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => parent(all_y_nodes(Center, grid))[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => parent(all_y_nodes(Face,   grid))[parent_slice_indices(Face,   TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => parent(all_z_nodes(Center, grid))[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => parent(all_z_nodes(Face,   grid))[parent_slice_indices(Face,   TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+    return Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices[1], Center, TX, Hx)],
+                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices[1],   Face, TX, Hx)],
+                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices[2], Center, TY, Hy)],
+                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices[2],   Face, TY, Hy)],
+                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices[3], Center, TZ, Hz)],
+                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices[3],   Face, TZ, Hz)])
 end
 
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices) =
     Dict("particle_id" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
@@ -109,17 +107,16 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
+    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
         filepath :: String
          dataset :: D
          outputs :: O
         schedule :: T
             mode :: String
-    field_slicer :: S
       array_type :: A
         previous :: Float64
          verbose :: Bool
@@ -128,7 +125,7 @@ end
 """
     NetCDFOutputWriter(model, outputs; filepath, schedule
                                    array_type = Array{Float32},
-                                 field_slicer = FieldSlicer(),
+                                      indices = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -275,7 +272,8 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 """
 function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                    array_type = Array{Float32},
-                                 field_slicer = FieldSlicer(),
+                                      indices = (:, :, :),
+                                   with_halos = true,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -294,7 +292,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     isnothing(mode) && (mode = "c")
 
     # We need to convert to a Dict with String keys if user provides a named tuple.
-    outputs = dictify(outputs)
+    outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)
@@ -311,9 +309,9 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
     # schedule::AveragedTimeInterval
-    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
+    schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, model.grid, field_slicer)
+    dims = default_dimensions(outputs, model.grid, indices)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
@@ -352,7 +350,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, array_type, 0.0, verbose)
 end
 
 #####
@@ -481,6 +479,5 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
         "├── filepath: $(ow.filepath)", '\n',
         "├── dimensions: $dims", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "└── array type: ", show_array_type(ow.array_type))
 end

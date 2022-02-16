@@ -13,11 +13,11 @@ import Oceananigans.Fields: location
 Container for parameters that configure and handle time-averaged output.
 """
 mutable struct AveragedTimeInterval <: AbstractSchedule
-                       interval :: Float64
-                         window :: Float64
-                         stride :: Int
+    interval :: Float64
+    window :: Float64
+    stride :: Int
     previous_interval_stop_time :: Float64
-                     collecting :: Bool
+    collecting :: Bool
 end
 
 """
@@ -100,18 +100,17 @@ Base.copy(schedule::AveragedTimeInterval) = AveragedTimeInterval(schedule.interv
 An object for computing 'windowed' time averages, or moving time-averages
 of a `operand` over a specified `window`, collected on `interval`.
 """
-mutable struct WindowedTimeAverage{OP, R, FS} <: AbstractDiagnostic
+mutable struct WindowedTimeAverage{OP, R} <: AbstractDiagnostic
                       result :: R
                      operand :: OP
            window_start_time :: Float64
       window_start_iteration :: Int
     previous_collection_time :: Float64
-                field_slicer :: FS
                     schedule :: AveragedTimeInterval
 end
 
 """
-    WindowedTimeAverage(operand, model=nothing; schedule, field_slicer=FieldSlicer())
+    WindowedTimeAverage(operand, model=nothing; schedule)
 
 Returns an object for computing running averages of `operand` over `schedule.window` and
 recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval`.
@@ -121,13 +120,13 @@ During the collection period, averages are computed every `schedule.stride` iter
 
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 """
-function WindowedTimeAverage(operand, model=nothing; schedule, field_slicer=FieldSlicer())
+function WindowedTimeAverage(operand, model=nothing; schedule)
 
-    output = fetch_output(operand, model, field_slicer)
+    output = fetch_output(operand, model)
     result = similar(output) # convert views to arrays
     result .= output # initialize `result` with initial output
 
-    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, field_slicer, schedule)
+    return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule)
 end
 
 # Time-averaging doesn't change spatial location
@@ -143,7 +142,7 @@ function accumulate_result!(wta, model)
     T_previous = wta.previous_collection_time - wta.window_start_time
 
     # Accumulate left Riemann sum
-    integrand = fetch_output(wta.operand, model, wta.field_slicer)
+    integrand = fetch_output(wta.operand, model)
 
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
 
@@ -226,3 +225,31 @@ show_averaging_schedule(schedule) = ""
 show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", summary(schedule))
 
 output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
+
+#####
+##### Utils for OutputWriters
+#####
+ 
+time_average_outputs(schedule, outputs, model, field_slicer) = schedule, outputs # fallback
+
+"""
+    time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)
+
+Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
+
+Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `Dict` of the wrapped
+outputs.
+"""
+function time_average_outputs(schedule::AveragedTimeInterval, outputs::Dict, model)
+    averaged_outputs = Dict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
+                            for (name, output) in outputs)
+
+    return TimeInterval(schedule), averaged_outputs
+end
+
+function time_average_outputs(schedule::AveragedTimeInterval, outputs::NamedTuple, model)
+    averaged_outputs = NamedTuple(name => WindowedTimeAverage(outputs[name], model; schedule=copy(schedule))
+                                  for name in keys(outputs))
+
+    return TimeInterval(schedule), averaged_outputs
+end

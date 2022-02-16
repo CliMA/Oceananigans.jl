@@ -14,11 +14,10 @@ default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, 
 
 An output writer for writing to JLD2 files.
 """
-mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
-    field_slicer :: FS
     array_type :: D
     init :: IF
     including :: IN
@@ -34,7 +33,8 @@ noinit(args...) = nothing
 """
     JLD2OutputWriter(model, outputs; prefix, schedule,
                               dir = ".",
-                     field_slicer = FieldSlicer(),
+                          indices = (:, :, :),
+                       with_halos = true,
                        array_type = Array{Float32},
                      max_filesize = Inf,
                             force = false,
@@ -68,10 +68,9 @@ Keyword arguments
 
   ## Slicing and type conversion prior to output
 
-  - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
-                    Has no effect on output that is not a field. `field_slicer = nothing` means
-                    no slicing occurs, so that all field data, including halo regions, is saved.
-                    Default: `FieldSlicer()`, which slices halo regions.
+  - `indices`: TODO
+
+  - `with_halos`: TODO
 
   - `array_type`: The array type to which output arrays are converted to prior to saving.
                   Default: `Array{Float32}`.
@@ -171,10 +170,10 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    outputs = construct_output.(outputs, Ref(model.grid), Ref(indices), with_halos)
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
+    schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
@@ -182,9 +181,8 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
-    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
-                            array_type, init, including, part, max_filesize,
-                            force, verbose, jld2_kw)
+    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
+                            including, part, max_filesize, force, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -323,7 +321,6 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
         "├── filepath: $(ow.filepath)", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "├── array type: ", show_array_type(ow.array_type), '\n',
         "├── including: ", ow.including, '\n',
         "└── max filesize: ", pretty_filesize(ow.max_filesize))

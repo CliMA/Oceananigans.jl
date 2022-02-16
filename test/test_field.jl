@@ -208,6 +208,21 @@ end
             @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
             @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
 
+            for f in [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+                test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
+                test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3))]
+                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))] 
+
+                for (t, indices) in enumerate(test_indices)
+                    field_sz = test_field_sizes[t]
+                    parent_sz = test_parent_sizes[t]
+                    f_view = view(f, indices...)
+                    @test size(f_view) == field_sz
+                    @test size(parent(f_view)) == parent_sz
+                end
+            end
+        
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             for side in (:east, :west, :north, :south, :top, :bottom)
                 for wrong_bc in (ValueBoundaryCondition(0), 

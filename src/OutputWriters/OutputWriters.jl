@@ -26,7 +26,6 @@ Base.close(ow::AbstractOutputWriter) = nothing
 include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("windowed_time_average.jl")
-include("time_average_outputs.jl")
 include("output_construction.jl")
 include("jld2_output_writer.jl")
 include("netcdf_output_writer.jl")

@@ -18,7 +18,8 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     simulation.output_writers[:velocities] =
         JLD2OutputWriter(model, outputs,
                          schedule = TimeInterval(1),
-                         field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                         indices = (1:2, 1:2:4, :),
+                         with_halos = false,
                          dir = ".",
                          prefix = "test",
                          force = true)
@@ -50,7 +51,7 @@ function test_jld2_file_splitting(arch)
 
     ow = JLD2OutputWriter(model, (u=model.velocities.u,); dir=".", prefix="test", schedule=IterationInterval(1),
                           init=fake_bc_init, including=[:grid],
-                          field_slicer=nothing, array_type=Array{Float64},
+                          array_type=Array{Float64},
                           max_filesize=200KiB, force=true)
 
     push!(simulation.output_writers, ow)
@@ -148,22 +149,26 @@ for arch in archs
                                                                   schedule = TimeInterval(1),
                                                                   dir = ".",
                                                                   prefix = "vanilla_jld2_test",
-                                                                  field_slicer = FieldSlicer(),
+                                                                  indices = (:, :, :),
+                                                                  with_halos = false,
                                                                   force = true)
 
         simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
                                                               schedule = TimeInterval(1),
-                                                              field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                                                              indices = (1:2, 1:2:4, :),
+                                                              with_halos = false,
                                                               dir = ".",
                                                               prefix = "sliced_jld2_test",
                                                               force = true)
 
         u, v, w = model.velocities
+
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
 
         simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
                                                                     schedule = TimeInterval(1),
-                                                                    field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                                                                    indices = (1:2, 1:2:4, :),
+                                                                    with_halos = false,
                                                                     dir = ".",
                                                                     prefix = "sliced_funcs_jld2_test",
                                                                     force = true)

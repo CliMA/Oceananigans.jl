@@ -12,18 +12,21 @@ using Oceananigans.TimeSteppers: update_state!
 ##### WindowedTimeAverage tests
 #####
 
-function instantiate_windowed_time_average(model)
+function run_instantiate_windowed_time_average_tests(model)
 
     set!(model, u = (x, y, z) -> rand())
 
     u, v, w = model.velocities
 
-    u₀ = similar(interior(u))
-    u₀ .= interior(u)
+    Nx, Ny, Nz = size(u)
 
-    wta = WindowedTimeAverage(model.velocities.u, schedule=AveragedTimeInterval(10, window=1))
+    for test_u in (u, view(u, 1:Nx, 1:Ny, 1:Nz))
+        u₀ = deepcopy(parent(test_u))
+        wta = WindowedTimeAverage(test_u, schedule=AveragedTimeInterval(10, window=1))
+        @test all(wta(model) .== u₀)
+    end
 
-    return all(wta(model) .== u₀)
+    return nothing
 end
 
 function time_step_with_windowed_time_average(model)
@@ -182,6 +185,7 @@ end
 @testset "Output writers" begin
     @info "Testing output writers..."
 
+    #=
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
@@ -191,16 +195,18 @@ end
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
-            @test instantiate_windowed_time_average(model)
+            run_instantiate_windowed_time_average_tests(model)
             @test time_step_with_windowed_time_average(model)
             @test_throws ArgumentError AveragedTimeInterval(1.0, window=1.1)
         end
     end
+    =#
 
-    include("test_netcdf_output_writer.jl")
+    #include("test_netcdf_output_writer.jl")
     include("test_jld2_output_writer.jl")
-    include("test_checkpointer.jl")
+    #include("test_checkpointer.jl")
 
+    #=
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
@@ -217,4 +223,5 @@ end
             test_windowed_time_averaging_simulation(model)
         end
     end
+    =#
 end

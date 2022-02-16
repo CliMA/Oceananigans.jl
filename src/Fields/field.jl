@@ -1,10 +1,10 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC
+using Oceananigans.Grids: parent_index_range, index_range_offset
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
-using OffsetArrays: IdOffsetRange
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
@@ -69,20 +69,24 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-validate_index(idx) = throw(ArgumentError("$idx are not valid window indices for Field!"))
-validate_index(::Colon, N) = nothing
+validate_index(idx, loc, N) = throw(ArgumentError("$idx are not valid window indices for Field!"))
+validate_index(::Colon, loc, N) = Colon()
 
-function validate_index(idx::UnitRange, N)
+validate_index(idx::UnitRange, ::Type{Nothing}, N) = UnitRange(1, 1)
+
+function validate_index(idx::UnitRange, loc, N)
     (idx[1] >= 1 && idx[end] <= N) ||
-        throw(ArgumentError("The index range $(idx[1]):$(idx[end])) must lie between 1:$(N)!"))
-    return nothing
+        throw(ArgumentError("The indices $(idx[1]):$(idx[end])) must slice between 1:$(N)!"))
+    return idx
 end
+
+validate_index(idx::Int, loc, N) = validate_index(UnitRange(idx, idx), loc, N)
 
 # Common outer constructor for all field flavors that validates data and boundary conditions
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::Tuple)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
-    validate_index.(indices, size(loc, grid))
+    indices = validate_index.(indices, loc, size(loc, grid))
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
 end
@@ -175,23 +179,20 @@ function offset_windowed_data(data, loc, grid, indices)
         windowed_parent = view(parent(data), parent_indices...)
     end
 
-    window_offsets = offset_index_range.(indices, loc, topo, halo)
-    offset_data = OffsetArray(windowed_parent, window_offsets...)
+    offset_data = OffsetArray(windowed_parent, indices...)
 
     return offset_data
 end
 
-const ValidIndexRange = Union{Colon, UnitRange}
-
 Base.view(f::Field, ix::Colon, iy::Colon, iz::Colon) = f
 
-function Base.view(f::Field, ix::ValidIndexRange, iy::ValidIndexRange, iz::ValidIndexRange)
+function Base.view(f::Field, ix, iy, iz)
     grid = f.grid
     loc = location(f)
     window_indices = (ix, iy, iz)
 
     # Error if indices are (i) improper type or (ii) outside interior index range
-    validate_index.(window_indices, size(field))
+    window_indices = validate_index.(window_indices, loc, size(f))
     
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
@@ -255,6 +256,14 @@ interior(f::Field, I...) = view(interior(f), I...)
     
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
+
+function Base.axes(f::Field)
+    if f.indices === (:, : ,:)
+        return Base.OneTo.(size(f))
+    else
+        return axes(f.data)
+    end
+end
 
 @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
@@ -447,8 +456,8 @@ initialize_reduced_field!(::ProdReduction, f, r::ReducedField, c) = Base.initarr
 initialize_reduced_field!(::AllReduction,  f, r::ReducedField, c) = Base.initarray!(interior(r), &, true, interior(c))
 initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = Base.initarray!(interior(r), |, true, interior(c))
 
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
+initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
+initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -480,8 +489,17 @@ get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
 # If func = identity and condition = nothing, nothing happens
-@inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
-@inline condition_operand(operand, condition, mask) = condition_operand(identity, operand, condition, mask)
+"""
+    condition_operand(f::Function, op::AbstractField, condition, mask)
+
+Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
+
+If `f isa identity` and `isnothing(condition)` then `op` is returned without wrapping.
+
+Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f isa identity)`.
+"""
+@inline condition_operand(op::AbstractField, condition, mask) = condition_operand(identity, op, condition, mask)
+@inline condition_operand(::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
@@ -494,28 +512,48 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     @eval begin
         
         # In-place
-        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray;
-                           condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(identity, interior(r), condition_operand(f, a, condition, mask); kwargs...)
+        function Base.$(reduction!)(f::Function,
+                                    r::ReducedField,
+                                    a::AbstractField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    kwargs...)
 
-        Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
-                           condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(identity, interior(r), condition_operand(a, condition, mask); kwargs...)
+            return Base.$(reduction!)(identity,
+                                      interior(r),
+                                      condition_operand(f, a, condition, mask);
+                                      kwargs...)
+        end
+
+        function Base.$(reduction!)(r::ReducedField,
+                                    a::AbstractField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    kwargs...)
+
+            return Base.$(reduction!)(identity,
+                                      interior(r),
+                                      condition_operand(a, condition, mask);
+                                      kwargs...)
+        end
 
         # Allocating
-        function Base.$(reduction)(f::Function, c::AbstractField;
-                                   condition = nothing, mask = get_neutral_mask(Base.$(reduction!)),
-                                   dims=:)
+        function Base.$(reduction)(f::Function,
+                                   c::AbstractField;
+                                   condition = nothing,
+                                   mask = get_neutral_mask(Base.$(reduction!)),
+                                   dims = :)
+
+            T = filltype(Base.$(reduction!), c)
+            loc = reduced_location(location(c); dims)
+            r = Field(loc, c.grid, T; indices=indices(c))
+            conditioned_c = condition_operand(f, c, condition, mask)
+            initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
+            Base.$(reduction!)(identity, r, conditioned_c, init=false)
+
             if dims isa Colon
-                r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask))
-                return CUDA.@allowscalar r[1, 1, 1]
+                return CUDA.@allowscalar first(r)
             else
-                T = filltype(Base.$(reduction!), c)
-                loc = reduced_location(location(c); dims)
-                r = Field(loc, c.grid, T)
-                initialize_reduced_field!(Base.$(reduction!), identity, r, condition_operand(f, c, condition, mask))
-                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask), init=false)
                 return r
             end
         end
@@ -530,9 +568,9 @@ function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mas
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
-    operator = condition_operand(f, c, condition, mask)
-    r = sum(operator; dims)
-    n = conditional_length(operator, dims)
+    operand = condition_operand(f, c, condition, mask)
+    r = sum(operand; dims)
+    n = conditional_length(operand, dims)
     r ./= n
     return r
 end
@@ -540,7 +578,7 @@ end
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
-function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
+function Statistics.mean!(f::Function, r::ReducedField, a::AbstractField; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     n = conditional_length(condition_operand(f, a, condition, mask), dims)

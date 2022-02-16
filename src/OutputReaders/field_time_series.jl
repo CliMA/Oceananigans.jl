@@ -201,7 +201,7 @@ function set!(time_series::FieldTimeSeries, fields_vector::AbstractVector{<:Abst
 end
 
 # TODO: this is a bit of type-piracy (with respect to the Oceananigans.Fields module)...
-# is there a better way?
+# is there a better way? (Maybe put this into Oceananigans.Fields...)
 
 # FieldTimeSeries[i] returns ViewField
 const TimeSeriesViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
