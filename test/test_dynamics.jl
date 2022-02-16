@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical
+using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical, ThreeDimensional
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
