@@ -185,7 +185,6 @@ end
 @testset "Output writers" begin
     @info "Testing output writers..."
 
-    #=
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
@@ -200,13 +199,11 @@ end
             @test_throws ArgumentError AveragedTimeInterval(1.0, window=1.1)
         end
     end
-    =#
 
     include("test_netcdf_output_writer.jl")
-    #include("test_jld2_output_writer.jl")
-    #include("test_checkpointer.jl")
+    include("test_jld2_output_writer.jl")
+    include("test_checkpointer.jl")
 
-    #=
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
@@ -223,5 +220,5 @@ end
             test_windowed_time_averaging_simulation(model)
         end
     end
-    =#
 end
+
