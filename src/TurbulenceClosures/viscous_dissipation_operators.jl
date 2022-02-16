@@ -54,10 +54,10 @@ end
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Face(),   k, grid), clock.time)
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(Center(), Center(), Center(), i, j, k, grid, clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(Face(),   Face(),   Center(), i, j, k, grid, clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(Face(),   Center(), Face(),   i, j, k, grid, clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(Center(), Face(),   Face(),   i, j, k, grid, clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, Center(), Center(), Center())
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, Face(),   Face(),   Center())
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, Face(),   Center(), Face())
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, Center(), Face(),   Face())
 
 #####
 ##### Products of viscosity and stress, divergence, vorticity, vertical momentum gradients

@@ -14,7 +14,7 @@ end
 
 convert_diffusivity(FT, κ, discrete) = κ # fallback
 convert_diffusivity(FT, κ::Number, discrete) = convert(FT, κ)
-convert_diffusivity(FT, κ::F, ::Val{true})  where F<:Function = DiscreteFunction(κ) 
+convert_diffusivity(FT, κ::F, ::Val{true})  where F<:Function = DiscreteDiffusionFunction(κ) 
 convert_diffusivity(FT, κ::F, ::Val{false}) where F<:Function = κ
 
 function convert_diffusivity(FT, κ::NamedTuple, discrete)

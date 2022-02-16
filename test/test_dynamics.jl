@@ -150,7 +150,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
     set!(full_model,     c=initial_temperature)
     set!(immersed_model, c=initial_temperature)
 
-    Δt = Δz_min^2 / closure.κz * 1e-1
+    Δt = Δz_min^2 / closure.κ * 1e-1
 
     for n = 1:100
         time_step!(full_model    , Δt)

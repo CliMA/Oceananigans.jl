@@ -3,6 +3,7 @@ const c = Center()
 const f = Face()
 
 using Oceananigans.AbstractOperations: GridMetricOperation
+import Oceananigans.Grids: solid_node, solid_interface
 
 """
     `solid_node` returns true only if a location is completely immersed
@@ -30,32 +31,7 @@ using Oceananigans.AbstractOperations: GridMetricOperation
       which is true only when `solid_node = false` and `solid_interface = true` (as the case of the face at `i` above)
 """
 
-# fallback for not-immersed grid
-@inline solid_node(i, j, k, grid)     = false
-@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
-
-@inline solid_node(LX, LY, LZ, i, j, k, ibg)      = solid_node(i, j, k, ibg)
-@inline solid_interface(LX, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg)
-
-@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j-1, k, ibg)
-@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j, k-1, ibg)
-
-@inline solid_node(::Face, ::Face, LZ, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i-1, j, k, ibg)
-@inline solid_node(::Face, LY, ::Face, i, j, k, ibg) = solid_node(c, c, f, i, j, k, ibg) & solid_node(c, c, f, i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i, j, k-1, ibg)
-
-@inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) & solid_node(c, f, f, i-1, j, k, ibg)
-
-@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i-1, j, k, ibg)
-@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j-1, k, ibg)
-@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j, k-1, ibg)
-
-@inline solid_interface(::Face, ::Face, LZ, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i-1, j, k, ibg)
-@inline solid_interface(::Face, LY, ::Face, i, j, k, ibg) = solid_interface(c, c, f, i, j, k, ibg) | solid_interface(c, c, f, i-1, j, k, ibg)
-@inline solid_interface(LX, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i, j, k-1, ibg)
-
-@inline solid_interface(::Face, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, f, i, j, k, ibg) | solid_interface(c, f, f, i-1, j, k, ibg)
+@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) | solid_node(i, j, k, ibg.grid)
 
 # Defining all the metrics for Immersed Boundaries
 

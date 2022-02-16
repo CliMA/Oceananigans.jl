@@ -15,9 +15,9 @@
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(Face(),   Center(), Center(), i, j, k, grid, clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(Center(), Face(),   Center(), i, j, k, grid, clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(Center(), Center(), Face(),   i, j, k, grid, clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Face(),   Center(), Center())
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Face(),   Center())
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Center(), Face())
 
 #####
 ##### Convenience diffusive flux function
