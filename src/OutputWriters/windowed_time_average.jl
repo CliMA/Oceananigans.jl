@@ -1,5 +1,4 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
-using Oceananigans.Fields: FieldSlicer
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
@@ -73,7 +72,6 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── filepath: ./averaged_velocity_data.jld2
 ├── 3 outputs: (:u, :v, :w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB

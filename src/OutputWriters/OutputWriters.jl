@@ -14,9 +14,10 @@ using Oceananigans.Fields
 using Oceananigans.Models
 
 using Oceananigans: AbstractOutputWriter
-using Oceananigans.Fields: OffsetArray, FieldSlicer
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
+
+using OffsetArrays
 
 import Oceananigans: write_output!
 

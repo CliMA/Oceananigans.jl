@@ -167,11 +167,9 @@ Keyword arguments
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: Array{Float32}.
 
-- `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos,
-                  which can be done with the keyword `with_halos`.
-                  Has no effect on output that is not a field. `field_slicer = nothing` means
-                  no slicing occurs, so that all field data, including halo regions, is saved.
-                  Default: `FieldSlicer()`, which slices halo regions.
+- `indices`: TODO
+
+- `with_halos`: TODO
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
@@ -210,21 +208,19 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: ["c", "u"]
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
-                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
+                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: ["c", "u"]
-├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
 
@@ -233,14 +229,13 @@ simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filepath = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
-                       field_slicer = FieldSlicer(i=1, j=1))
+                       indices = (1, 1, :))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 
@@ -285,7 +280,6 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: ["profile", "slice", "scalar"]
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 """
