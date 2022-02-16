@@ -76,7 +76,7 @@ end
 
 @inline ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂³zᶠᶜᶠ(i, j, k, grid, u)
 @inline ν_vzzzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂³zᶜᶠᶠ(i, j, k, grid, v)
-@inline ν_wzzzᶜᶜᶜ(i, j, k, grid, clock, ν, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂³zᶜᶜᶜ(i, j, k, grid, w)
+@inline ν_wzzzᶜᶜᶜ(i, j, k, grid, clock, ν, w) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂³zᶜᶜᶜ(i, j, k, grid, w)
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
