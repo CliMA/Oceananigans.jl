@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!, slice_parent
+using Oceananigans.Fields: AbstractField, compute_at!
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
