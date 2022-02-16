@@ -28,19 +28,38 @@ zdim(::Type{Nothing}) = ()
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
 
-function default_dimensions(output, grid, indices)
+function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topo = topology(grid)
 
-    return Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices[1], Center, TX, Hx)],
-                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices[1],   Face, TX, Hx)],
-                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices[2], Center, TY, Hy)],
-                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices[2],   Face, TY, Hy)],
-                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices[3], Center, TZ, Hz)],
-                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices[3],   Face, TZ, Hz)])
+    locs = Dict(
+                "xC" => (Center, Center, Center),
+                "xF" => (  Face, Center, Center),
+                "yC" => (Center, Center, Center),
+                "yF" => (Center,   Face, Center),
+                "zC" => (Center, Center, Center),
+                "zF" => (Center, Center,   Face),
+               )
+
+    indices = Dict(name => validate_index.(indices, locs[name], size(locs[name], grid))
+                   for name in keys(locs))
+
+    if !with_halos
+        indices = Dict(name => interior_restrict_index.(indices[name], locs[name], topo, size(grid))
+                       for name in keys(locs))
+    end
+
+    dims = Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
+                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
+                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
+                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
+                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
+                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
+
+    return dims
 end
 
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices) =
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, with_halos) =
     Dict("particle_id" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
@@ -273,7 +292,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                    array_type = Array{Float32},
                                       indices = (:, :, :),
-                                   with_halos = true,
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -311,7 +330,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, model.grid, indices)
+    dims = default_dimensions(outputs, model.grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
@@ -397,9 +416,9 @@ Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
-
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[name][colons..., time_index] = data
+    return nothing
 end
 
 function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
@@ -407,6 +426,8 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
     for (particle_field, vals) in pairs(data)
         ds[string(particle_field)][:, time_index] = vals
     end
+
+    return nothing
 end
 
 """

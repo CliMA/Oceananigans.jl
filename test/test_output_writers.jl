@@ -202,8 +202,8 @@ end
     end
     =#
 
-    #include("test_netcdf_output_writer.jl")
-    include("test_jld2_output_writer.jl")
+    include("test_netcdf_output_writer.jl")
+    #include("test_jld2_output_writer.jl")
     #include("test_checkpointer.jl")
 
     #=

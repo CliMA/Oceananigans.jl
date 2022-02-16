@@ -230,7 +230,7 @@ output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
 ##### Utils for OutputWriters
 #####
  
-time_average_outputs(schedule, outputs, model, field_slicer) = schedule, outputs # fallback
+time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 
 """
     time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)

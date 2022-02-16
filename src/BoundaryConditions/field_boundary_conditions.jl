@@ -32,6 +32,20 @@ mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
     immersed :: I
 end
 
+function FieldBoundaryConditions(indices::Tuple, west, east, south, north, bottom, top, immersed)
+    # Turn bcs in windowed dimensions into nothing
+    west, east   = window_boundary_conditions(indices[1], west, east)
+    south, north = window_boundary_conditions(indices[2], south, north)
+    bottom, top  = window_boundary_conditions(indices[3], bottom, top)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
+FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in fieldnames(FieldBoundaryConditions))...)
+
+window_boundary_conditions(::Colon, left, right) = left, right
+window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+
 """
     FieldBoundaryConditions(; kwargs...)
 
@@ -103,17 +117,9 @@ function FieldBoundaryConditions(grid, loc, indices=(:, :, :);
                                  bottom   = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                                  top      = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                                  immersed = NoFluxBoundaryCondition())
-
-    # Turn bcs in windowed dimensions into nothing
-    west, east   = window_boundary_conditions(indices[1], west, east)
-    south, north = window_boundary_conditions(indices[2], south, north)
-    bottom, top  = window_boundary_conditions(indices[3], bottom, top)
-
-    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    
+    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
-
-window_boundary_conditions(::Colon, left, right) = left, right
-window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
 
 #####
 ##### Boundary condition "regularization"

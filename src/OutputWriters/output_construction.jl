@@ -1,4 +1,5 @@
-construct_output(output, grid, indices, with_halos) = output
+using Oceananigans.Fields: validate_index, DefaultIndicesType
+
 
 interior_restrict_index(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 
@@ -8,7 +9,16 @@ function interior_restrict_index(index::UnitRange, loc, topo, N)
     return UnitRange(left, right)
 end
 
+function construct_output(output, grid, indices, with_halos)
+    indices isa DefaultIndicesType ||
+        @warn "Cannot slice $(typeof(output)) with $indices. We will write _unsliced_ output from $output."
+
+    return output
+end
+
 function construct_output(output::Field, grid, indices, with_halos)
+    indices = validate_index.(indices, location(output), size(output))
+
     if with_halos
         return view(output, indices...)
     else

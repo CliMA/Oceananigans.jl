@@ -9,6 +9,10 @@ using Base: @propagate_inbounds
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
 
+#####
+##### The bees knees
+#####
+
 struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
@@ -18,12 +22,18 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T,
     indices :: I
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
-                               indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S, indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
         T = eltype(data)
         return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, op, status, indices)
     end
 end
+
+#####
+##### Defaults and constructor utilities
+#####
+
+default_indices() = (:, :, :)
+const DefaultIndicesType = typeof(default_indices())
 
 function validate_field_data(loc, data, grid, indices)
     Fx, Fy, Fz = total_size(loc, grid, indices)
@@ -82,7 +92,11 @@ end
 
 validate_index(idx::Int, loc, N) = validate_index(UnitRange(idx, idx), loc, N)
 
-# Common outer constructor for all field flavors that validates data and boundary conditions
+#####
+##### Some basic constructors
+#####
+
+# Common outer constructor for all field flavors that performs input validation
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::Tuple)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
@@ -90,10 +104,6 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::T
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
 end
-
-#####
-##### Vanilla, non-computed Field
-#####
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
@@ -144,6 +154,38 @@ end
     
 Field(f::Field) = f # indeed
 Field(z::ZeroField) = z
+
+"""
+    CenterField(grid; kw...)
+
+Returns `Field{Center, Center, Center}` on `arch`itecture and `grid`.
+Additional keyword arguments are passed to the `Field` constructor.
+"""
+CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Center}(grid, T; kw...)
+
+"""
+    XFaceField(grid; kw...)
+
+Returns `Field{Face, Center, Center}` on `grid`.
+Additional keyword arguments are passed to the `Field` constructor.
+"""
+XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Center, Center}(grid, T; kw...)
+
+"""
+    YFaceField(grid; kw...)
+
+Returns `Field{Center, Face, Center}` on `grid`.
+Additional keyword arguments are passed to the `Field` constructor.
+"""
+YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Face, Center}(grid, T; kw...)
+
+"""
+    ZFaceField(grid; kw...)
+
+Returns `Field{Center, Center, Face}` on `grid`.
+Additional keyword arguments are passed to the `Field` constructor.
+"""
+ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
 
 #####
 ##### Field utils
@@ -226,8 +268,6 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-# Default
-default_indices() = (:, :, :)
 indices(field) = default_indices()
 indices(f::Field) = f.indices
 
@@ -282,41 +322,6 @@ length_indices(N, i::UnitRange) = length(i)
 total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
 Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
 
-#####
-##### Special constructors for tracers and velocity fields
-#####
-
-"""
-    CenterField(grid; kwargs...)
-
-Returns `Field{Center, Center, Center}` on `arch`itecture and `grid`.
-Additional keyword arguments are passed to the `Field` constructor.
-"""
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Center}(grid, T; kw...)
-
-"""
-    XFaceField(grid; kw...)
-
-Returns `Field{Face, Center, Center}` on `grid`.
-Additional keyword arguments are passed to the `Field` constructor.
-"""
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Center, Center}(grid, T; kw...)
-
-"""
-    YFaceField(grid; kw...)
-
-Returns `Field{Center, Face, Center}` on `grid`.
-Additional keyword arguments are passed to the `Field` constructor.
-"""
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Face, Center}(grid, T; kw...)
-
-"""
-    ZFaceField(grid; kw...)
-
-Returns `Field{Center, Center, Face}` on `grid`.
-Additional keyword arguments are passed to the `Field` constructor.
-"""
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
 
 #####
 ##### Interface for field computations
@@ -600,43 +605,19 @@ end
 
 function fill_halo_regions!(field::Field, arch, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
-    if reduced_dimensions === () # the field is not reduced!
-        return fill_halo_regions!(field.data,
-                                  field.boundary_conditions,
-                                  architecture(field),
-                                  field.grid,
-                                  args...;
-                                  kwargs...)
+
+    if !(field.indices isa DefaultIndicesType) # make sure that bcs are filtered
+        filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     else
-        return fill_halo_regions!(field.data,
-                                  field.boundary_conditions,
-                                  architecture(field),
-                                  field.grid,
-                                  args...;
-                                  reduced_dimensions=reduced_dims,
-                                  kwargs...)
+        filtered_bcs = field.boundary_conditions
     end
-end
 
-const ViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
-                        O} where {O <: OffsetArray{<:Any, <:Any,
-                        S} where {S <: SubArray}}
-
-function fill_halo_regions!(field::ViewField, args...; kwargs...) 
-    loc = location(field)
-    grid = field.grid
-    data = field.data
-
-    original_data = offset_windowed_data(data, loc, grid, default_indices())
-
-    original_field = Field(loc,
-                           grid,
-                           original_data,
-                           f.boundary_conditions, # or window_bcs ?
-                           f.operand,
-                           f.status,
-                           default_indices())
-
-    return fill_halo_regions!(original_field, args...; kwargs...)
+    return fill_halo_regions!(field.data,
+                              filtered_bcs,
+                              architecture(field),
+                              field.grid,
+                              args...;
+                              reduced_dimensions = reduced_dims,
+                              kwargs...)
 end
 

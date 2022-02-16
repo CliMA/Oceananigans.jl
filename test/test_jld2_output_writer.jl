@@ -18,7 +18,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     simulation.output_writers[:velocities] =
         JLD2OutputWriter(model, outputs,
                          schedule = TimeInterval(1),
-                         indices = (1:2, 1:2:4, :),
+                         indices = (1:2, 1:4, :),
                          with_halos = false,
                          dir = ".",
                          prefix = "test",
@@ -40,19 +40,23 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_file_splitting(arch)
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1)),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
-                                )
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2OutputWriter(model, (u=model.velocities.u,); dir=".", prefix="test", schedule=IterationInterval(1),
-                          init=fake_bc_init, including=[:grid],
-                          array_type=Array{Float64},
-                          max_filesize=200KiB, force=true)
+    ow = JLD2OutputWriter(model, (; u=model.velocities.u);
+                          dir = ".",
+                          prefix = "test",
+                          schedule = IterationInterval(1),
+                          init = fake_bc_init,
+                          including = [:grid],
+                          array_type = Array{Float64},
+                          max_filesize = 200KiB,
+                          force = true)
 
     push!(simulation.output_writers, ow)
 
@@ -155,7 +159,7 @@ for arch in archs
 
         simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
                                                               schedule = TimeInterval(1),
-                                                              indices = (1:2, 1:2:4, :),
+                                                              indices = (1:2, 1:4, :),
                                                               with_halos = false,
                                                               dir = ".",
                                                               prefix = "sliced_jld2_test",
@@ -167,7 +171,7 @@ for arch in archs
 
         simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
                                                                     schedule = TimeInterval(1),
-                                                                    indices = (1:2, 1:2:4, :),
+                                                                    indices = (1:2, 1:4, :),
                                                                     with_halos = false,
                                                                     dir = ".",
                                                                     prefix = "sliced_funcs_jld2_test",
@@ -204,7 +208,7 @@ for arch in archs
         ##### Field slicing
         #####
 
-        function test_field_slicing(test_file_name)
+        function test_field_slicing(test_file_name, sizes...)
             file = jldopen(test_file_name)
 
             u₁ = file["timeseries/u/0"]
@@ -215,13 +219,13 @@ for arch in archs
 
             rm(test_file_name)
 
-            @test size(u₁) == (2, 2, 4) 
-            @test size(v₁) == (2, 2, 4)
-            @test size(w₁) == (2, 2, 5)
+            @test size(u₁) == sizes[1]
+            @test size(v₁) == sizes[2]
+            @test size(w₁) == sizes[3]
         end
 
-        test_field_slicing("sliced_jld2_test.jld2")
-        test_field_slicing("sliced_funcs_jld2_test.jld2")
+        test_field_slicing("sliced_jld2_test.jld2", (2, 4, 4), (2, 4, 4), (2, 4, 5))
+        test_field_slicing("sliced_funcs_jld2_test.jld2", (4, 4, 4), (4, 4, 4), (4, 4, 5))
         
         #####
         ##### File splitting
