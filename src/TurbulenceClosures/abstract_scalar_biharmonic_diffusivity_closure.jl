@@ -1,4 +1,4 @@
-using Oceananigans.Grids: solid_node
+using Oceananigans.Grids: solid_interface
 
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
@@ -103,7 +103,9 @@ end
 @inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
-##### Biharmonic-specific operators that enforce boundary "no-flux" boundary conditions for the biharmonic operator
+##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the biharmonic operator
+##### biharmonic_mask(∂(∇²(var))) ensures that fluxes are 0 on the boundaries
+##### ∂(biharmonic_mask(∇²(var))) ensures that laplacians are 0 on the boundaries
 #####
 
 biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(solid_x(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
