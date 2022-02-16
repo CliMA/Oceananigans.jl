@@ -26,15 +26,17 @@ end
     return z < ib.bottom_height(x, y)
 end
 
-@inline function is_immersed(i, j, k, underlying_grid, ib::PartialCellBottom)
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return @inbounds z < ib.bottom_height[i, j]
-end
-
 const PCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
 
 bottom_cell(i, j, k, ibg::PCIBG) = !is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) & is_immersed(i, j, k-1, ibg.grid, ibg.immersed_boundary)
-@inline Δzᵃᵃᶜ(i, j, k, ibg::PCIBG) = ifelse(# something Δzᵃᵃᶜ(i, j, k, ibg.grid)
+
+@inline function Δzᵃᵃᶜ(i, j, k, ibg::PCIBG)
+    x, y, z = node(c, c, c, i, j, k, underlying_grid)
+    Δzᵃᵃᶜ = ibg.immersed_boundary.bottom_height(x, y)
+    return Δzᵃᵃᶜ
+end
+
+#height = (topography.(grid.yᵃᶠᵃ[1:grid.Ny]) + 4*topography.(grid.yᵃᶜᵃ[1:grid.Ny]) + topography.(grid.yᵃᶠᵃ[2:grid.Ny+1]))/6
 
 # FJP: Need to add a second argument???
 const ArrayPartialCellBottom = PartialCellBottom{<:Array}
