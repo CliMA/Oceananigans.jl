@@ -121,7 +121,7 @@ Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
 function WindowedTimeAverage(operand, model=nothing; schedule)
 
     output = fetch_output(operand, model)
-    result = similar(output) # convert views to arrays
+    result = similar(output) # convert views to arrays, for example
     result .= output # initialize `result` with initial output
 
     return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule)
@@ -251,3 +251,4 @@ function time_average_outputs(schedule::AveragedTimeInterval, outputs::NamedTupl
 
     return TimeInterval(schedule), averaged_outputs
 end
+

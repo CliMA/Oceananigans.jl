@@ -29,3 +29,8 @@ function construct_output(output::Field, grid, indices, with_halos)
     end
 end
 
+function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, indices, with_halos)
+    output = construct_output(averaged_output.operand, grid, indices, with_halos)
+    return WindowedTimeAverage(output; schedule=averaged_output.schedule)
+end
+

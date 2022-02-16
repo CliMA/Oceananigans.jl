@@ -72,6 +72,7 @@ function test_dependency_adding(model)
     # JLD2 dependencies test
     jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", prefix="test", force=true)
 
+    windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
 
     # NetCDF dependency test
@@ -81,6 +82,7 @@ function test_dependency_adding(model)
                                               output_attributes = attributes,
                                               dimensions = dimensions)
 
+    windowed_time_average = netcdf_output_writer.outputs["time_average"]
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
     rm("test.nc")
