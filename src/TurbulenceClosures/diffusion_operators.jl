@@ -19,6 +19,11 @@
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Face(),   Center())
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Center(), Face())
 
+
+@inline κ_σᶠᶜᶜ(i, j, k, grid, clock, κ, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, clock, κ) * σᶠᶜᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶠᶜ(i, j, k, grid, clock, κ, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, clock, κ) * σᶜᶠᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶜᶠ(i, j, k, grid, clock, κ, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, clock, κ) * σᶜᶜᶠ(i, j, k, grid, args...)
+
 #####
 ##### Convenience diffusive flux function
 #####

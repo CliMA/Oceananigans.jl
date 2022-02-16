@@ -27,10 +27,10 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 @inline viscous_flux_vz(i, j, k, grid, closure::AIBD, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_z, ∂zᶜᶠᶠ, ∇²ᶜᶠᶜ, U.v)
 @inline viscous_flux_wz(i, j, k, grid, closure::AIBD, clock, U, args...) = ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶜᶜᶜ, biharmonic_mask_z, ∇²ᶜᶜᶠ, U.w)
 
-@inline viscous_flux_ux(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
-@inline viscous_flux_vx(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
-@inline viscous_flux_uy(i, j, k, grid, closure::AHBD, clock, U, args...) = - ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
-@inline viscous_flux_vy(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
+@inline viscous_flux_ux(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, closure.ν, δ★ᶜᶜᶜ, U.u, U.v)   
+@inline viscous_flux_vx(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_σᶠᶠᶜ(i, j, k, grid, clock, closure.ν, ζ★ᶠᶠᶜ, U.u, U.v)
+@inline viscous_flux_uy(i, j, k, grid, closure::AHBD, clock, U, args...) = - ν_σᶠᶠᶜ(i, j, k, grid, clock, closure.ν, ζ★ᶠᶠᶜ, U.u, U.v)   
+@inline viscous_flux_vy(i, j, k, grid, closure::AHBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, closure.ν, δ★ᶜᶜᶜ, U.u, U.v)
 
 @inline viscous_flux_wx(i, j, k, grid, closure::AHBD, clock, U, args...) = ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_x, ∂xᶠᶜᶠ, ∇²ᶜᶜᶠ, U.w)
 @inline viscous_flux_wy(i, j, k, grid, closure::AHBD, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_y, ∂yᶜᶠᶠ, ∇²ᶜᶜᶠ, U.w)
@@ -43,13 +43,13 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂xᶠᶜᶜ(i, j, k, grid, ∇²ᶜᶜᶜ, c)
-@inline diffusive_flux_y(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂yᶜᶠᶜ(i, j, k, grid, ∇²ᶜᶜᶜ, c)
-@inline diffusive_flux_z(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂zᶜᶜᶠ(i, j, k, grid, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_x(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_y(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_z(i, j, k, grid, closure::AIBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, c)
 
-@inline diffusive_flux_x(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, closure::AVBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index]) * ∂³zᶜᶜᶠ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶠᶜᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_maks_x, ∂x_∇²h_cᶠᶜᶜ, c)
+@inline diffusive_flux_y(i, j, k, grid, closure::AHBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶠᶜ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_maks_y, ∂y_∇²h_cᶜᶠᶜ, c)
+@inline diffusive_flux_z(i, j, k, grid, closure::AVBD, c, ::Val{tracer_index}, clock, args...) where tracer_index = κ_σᶜᶜᶠ(i, j, k, grid, clock, closure.κ[tracer_index], biharmonic_maks_z, ∂³zᶜᶜᶠ, c)
 
 
 #####
@@ -96,15 +96,12 @@ end
                                        δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u))
 end
 
-@inline ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * δ★ᶜᶜᶜ(i, j, k, grid, u, v)
-@inline ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
-
 #####
 ##### Biharmonic-specific diffusion operators
 #####
 
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᶜ(i, j, k, grid) * biharmonic_mask_x(i, j, k, grid, δxᶠᵃᵃ, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * biharmonic_mask_y(i, j, k, grid, δyᵃᶠᵃ, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
 ##### Biharmonic-specific operators that enforce boundary "no-flux" boundary conditions for the biharmonic operator

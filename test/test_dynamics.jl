@@ -515,16 +515,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                model = NonhydrostaticModel(timestepper = timestepper,
-                                                   grid = grid,
-                                                closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=ThreeDimensional()),
-                                               coriolis = nothing,
-                                                tracers = :c,
-                                               buoyancy = nothing)
+                for iso in (ThreeDimensional(), Horizontal(), Vertical())
+                    model = NonhydrostaticModel(timestepper = timestepper,
+                                                       grid = grid,
+                                                    closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=iso),
+                                                   coriolis = nothing,
+                                                    tracers = :c,
+                                                   buoyancy = nothing)
 
-                for fieldname in fieldnames
-                    @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
-                    @test test_biharmonic_diffusion_budget(fieldname, model)
+                    for fieldname in fieldnames
+                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and isotropy $iso..."
+                        @test test_biharmonic_diffusion_budget(fieldname, model)
+                    end
                 end
             end
         end
