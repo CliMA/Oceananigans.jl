@@ -2,8 +2,13 @@
 const c = Center()
 const f = Face()
 
-const XBoundedGrid = AbstractGrid{<:Any, <:Bounded}
-const YBoundedGrid = AbstractGrid{<:Any, <:Any, <:Bounded}
+const XBoundedGrid = Union{AbstractGrid{<:Any, <:Bounded}, 
+                           AbstractGrid{<:Any, <:Bounded, <:Bounded}, 
+                           AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}}
+
+const YBoundedGrid = Union{AbstractGrid{<:Any, <:Any, <:Bounded},
+                           AbstractGrid{<:Any, <:Any, <:Bounded, <:Bounded}}
+
 const ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}
 
 # Fallback for general grids
