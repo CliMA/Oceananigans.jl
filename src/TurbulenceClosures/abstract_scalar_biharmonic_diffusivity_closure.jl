@@ -34,9 +34,9 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 @inline viscous_flux_vz(i, j, k, grid, closure::AIBD, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶜᶠᶠ, ∇²ᶜᶠᶜ, U.v)
 @inline viscous_flux_wz(i, j, k, grid, closure::AIBD, clock, U, args...) = ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂zᶜᶜᶜ, ∇²ᶜᶜᶠ, U.w)
 
-@inline viscous_flux_uz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.ν, U.u)
-@inline viscous_flux_vz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_vzzzᶜᶠᶠ(i, j, k, grid, clock, closure.ν, U.v)
-@inline viscous_flux_wz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_wzzzᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.w)
+@inline viscous_flux_uz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂³zᶠᶜᶠ, U.u)
+@inline viscous_flux_vz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂³zᶜᶠᶠ, U.c)
+@inline viscous_flux_wz(i, j, k, grid, closure::AVBD, clock, U, args...) = ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂³zᶜᶜᶜ, U.w)
 
 #####
 ##### Diffusive fluxes

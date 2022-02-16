@@ -60,7 +60,7 @@ end
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, Center(), Face(),   Face())
 
 #####
-##### Products of viscosity and stress, divergence, vorticity, vertical momentum gradients
+##### Products of viscosity and stress, divergence, vorticity
 #####
 
 @inline ν_σᶜᶜᶜ(i, j, k, grid, clock, ν, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * σᶜᶜᶜ(i, j, k, grid, args...)
@@ -70,13 +70,6 @@ end
 
 @inline ν_δᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 @inline ν_ζᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
-
-@inline ν_uzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)
-@inline ν_vzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)
-
-@inline ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂³zᶠᶜᶠ(i, j, k, grid, u)
-@inline ν_vzzzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂³zᶜᶠᶠ(i, j, k, grid, v)
-@inline ν_wzzzᶜᶜᶜ(i, j, k, grid, clock, ν, w) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂³zᶜᶜᶜ(i, j, k, grid, w)
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
