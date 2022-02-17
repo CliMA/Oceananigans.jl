@@ -54,7 +54,7 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-Set{Any} with 8 elements:
+Set{Any} with 9 elements:
   :sqrt
   :square_it
   :cos
@@ -63,6 +63,7 @@ Set{Any} with 8 elements:
   :-
   :tanh
   :sin
+  :abs
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
