@@ -37,7 +37,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
                          prefix = "test_3d_output_with_halos",
-                         field_slicer = FieldSlicer(with_halos=true),
+                         with_halos = true,
                          schedule = TimeInterval(30seconds),
                          force = true)
 
@@ -46,7 +46,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     simulation.output_writers[:jld2_1d_with_halos] =
         JLD2OutputWriter(model, profiles,
                          prefix = "test_1d_output_with_halos",
-                         field_slicer = FieldSlicer(with_halos=true),
+                         with_halos = true,
                          schedule = TimeInterval(30seconds),
                          force = true)
 

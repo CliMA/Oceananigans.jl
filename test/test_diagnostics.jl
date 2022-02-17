@@ -1,4 +1,3 @@
-using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
 
