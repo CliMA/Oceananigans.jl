@@ -37,7 +37,7 @@ Keyword arguments
 function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, discrete_diffusivity = false, isotropy::Iso = Horizontal()) where {Iso}
     ν = convert_diffusivity(FT, ν, Val(discrete_diffusivity))
     κ = convert_diffusivity(FT, κ, Val(discrete_diffusivity))
-    return ScalarBiharmonicDiffusivity{Iso}(FT(ν), κ)
+    return ScalarBiharmonicDiffusivity{Iso}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Iso}) where {Iso}
