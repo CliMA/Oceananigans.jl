@@ -16,7 +16,7 @@ import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
 Return an immersed boundary...
 """
 
-struct PartialCellBottom{B, E}
+struct PartialCellBottom{B, E} <: AbstractGridFittedBoundary
     bottom_height :: B
     minimum_fractional_partial_Δz :: E
 end
