@@ -45,7 +45,7 @@ function internal_wave_solution(; L, background_stratification=false)
     solution = (; u, v, w, b)
 
     # Form model keyword arguments
-    closure = IsotropicDiffusivity(ν=ν, κ=κ)
+    closure = ScalarDiffusivity(ν=ν, κ=κ)
     buoyancy = BuoyancyTracer()
     tracers = :b
     coriolis = FPlane(f=f)

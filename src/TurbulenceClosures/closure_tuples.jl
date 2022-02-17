@@ -61,12 +61,23 @@ function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple
     return nothing
 end
 
+function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, args...)
+    # So the last closure in the tuple has the say...
+    for closure in closure_tuple
+        bcs = add_closure_specific_boundary_conditions(closure, bcs, args...)
+    end
+    return bcs
+end
+
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Support for VerticallyImplicit
 #####
 
-const EC = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
-const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
+const SingleExplicitClosure = AbstractTurbulenceClosure{<:Explicit}
+const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicit}
+
+const EC = Union{SingleExplicitClosure, AbstractArray{<:SingleExplicitClosure}}
+const VIC = Union{SingleImplicitClosure, AbstractArray{<:SingleImplicitClosure}}
 
 # Filter explicitly-discretized closures.
 @inline z_diffusivity(clo::Tuple{<:EC},        iᶜ, Ks, args...) = tuple(0)
@@ -99,15 +110,15 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
     end
 end
 
-const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicitTimeDiscretization
-const ExplicitOrNothing = Union{ExplicitTimeDiscretization, Nothing}
+const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicit
+const ExplicitOrNothing = Union{Explicit, Nothing}
 
 @inline combine_time_discretizations(disc) = disc
 
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::ExplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization) = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::ExplicitTimeDiscretization)                     = ExplicitTimeDiscretization()
+@inline combine_time_discretizations(::Explicit, ::VerticallyImplicit)           = VerticallyImplicit()
+@inline combine_time_discretizations(::VerticallyImplicit, ::Explicit)           = VerticallyImplicit()
+@inline combine_time_discretizations(::VerticallyImplicit, ::VerticallyImplicit) = VerticallyImplicit()
+@inline combine_time_discretizations(::Explicit, ::Explicit)                     = Explicit()
 
 @inline combine_time_discretizations(disc1, disc2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(disc1, disc2), other_discs...)

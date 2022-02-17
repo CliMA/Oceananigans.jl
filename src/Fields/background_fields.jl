@@ -33,7 +33,7 @@ end
 """
     BackgroundField{F, P}
 
-Temporary container for storing information about BackgroundFields.
+Temporary container for storing information about `BackgroundFields`.
 """
 struct BackgroundField{F, P}
     func:: F

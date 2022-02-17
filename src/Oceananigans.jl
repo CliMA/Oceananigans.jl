@@ -51,12 +51,10 @@ export
     UniformStokesDrift,
 
     # Turbulence closures
-    IsotropicDiffusivity,
-    AnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
+    ScalarDiffusivity,
+    ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
-    HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
 

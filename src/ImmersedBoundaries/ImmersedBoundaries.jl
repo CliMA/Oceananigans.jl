@@ -1,11 +1,7 @@
 module ImmersedBoundaries
 
-export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom, 
-       solid_node, solid_interface, is_immersed_boundary,
-       is_x_immersed_boundary⁺, is_x_immersed_boundary⁻,
-       is_y_immersed_boundary⁺, is_y_immersed_boundary⁻,
-       is_z_immersed_boundary⁺, is_z_immersed_boundary⁻
-
+export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom
+       
 using Adapt
 
 using Oceananigans.Grids
@@ -87,7 +83,7 @@ import Oceananigans.TurbulenceClosures:
 export AbstractImmersedBoundary
 
 """
-AbstractImmersedBoundary
+    abstract type AbstractImmersedBoundary
 
 Abstract supertype for immersed boundary grids.
 """
@@ -174,11 +170,12 @@ end
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
+include("conditional_derivatives.jl")
 include("mask_immersed_field.jl")
 include("immersed_fields_reductions.jl")
 
 #####
-##### Diffusivities (for VerticallyImplicitTimeDiscretization)
+##### Diffusivities (for VerticallyImplicit)
 ##### (the diffusivities on the immersed boundaries are kept)
 #####
 

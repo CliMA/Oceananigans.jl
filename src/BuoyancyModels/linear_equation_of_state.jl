@@ -12,15 +12,15 @@ end
     LinearEquationOfState([FT=Float64;] α=1.67e-4, β=7.80e-4)
 
 Returns parameters for a linear equation of state for seawater with
-thermal expansion coefficient `α` [K⁻¹] and haline contraction coefficient
-`β` [psu⁻¹]. The buoyancy perturbation associated with a linear equation of state is
+thermal expansion coefficient ``α`` [K⁻¹] and haline contraction coefficient
+``β`` [psu⁻¹]. The buoyancy perturbation associated with a linear equation of state is
 
 ```math
-    b = g (α T - β S)
+    b = g (α T - β S).
 ```
 
 Default constants are taken from Table 1.2 (page 33) of Vallis, "Atmospheric and Oceanic Fluid
-Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
+Dynamics: Fundamentals and Large-Scale Circulation" (2nd ed, 2017).
 """
 LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfState{FT}(α, β)
 

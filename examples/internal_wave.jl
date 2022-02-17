@@ -58,7 +58,7 @@ model = NonhydrostaticModel(
                  grid = grid,
             advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,
-              closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
+              closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
              coriolis = coriolis,
               tracers = :b,
     background_fields = (b=B,), # `background_fields` is a `NamedTuple`

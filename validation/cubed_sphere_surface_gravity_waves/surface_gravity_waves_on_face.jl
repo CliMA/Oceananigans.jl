@@ -37,8 +37,8 @@ const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
-constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
+variable_horizontal_diffusivity = ScalarDiffusivity(ν=νh,  isotropy=Horizontal())
+constant_horizontal_diffusivity = ScalarDiffusivity(ν=νh₀, isotropy=Horizontal())
 
 ## Model setup
 

@@ -6,32 +6,31 @@ using Oceananigans.Grids: AbstractGrid
 abstract type AbstractTimeDiscretization end
 
 """
-    struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
+    struct Explicit <: AbstractTimeDiscretization
 
-Represents fully-explicit time discretization of a TurbulenceClosure.
+Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
-struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
+struct Explicit <: AbstractTimeDiscretization end
 
 """
-    struct VerticallyImplicitDiscretization <: AbstractTimeDiscretization end
+    struct VerticallyImplicit <: AbstractTimeDiscretization
 
-Represents "vertically-implicit" time discretization of a TurbulenceClosure.
+Represents "vertically-implicit" time-discretization of a `TurbulenceClosure`.
 
-Currently this means that a flux divergence such as `∇ ⋅ q` will be time-discretized as
+This imples that a flux divergence such as `∇ ⋅ q` at the n-th timestep is 
+time-discretized as
 
+```julia
+[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
 ```
-[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹,
-```
-
-at time step `n`.
 """
-struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
+struct VerticallyImplicit <: AbstractTimeDiscretization end
 
 @inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
-@inline time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
+@inline time_discretization(::Nothing) = Explicit() # placeholder for closure::Nothing
 
 #####
-##### ExplicitTimeDiscretization: move along, nothing to worry about here (use fallbacks).
+##### Explicit: move along, nothing to worry about here (use fallbacks).
 #####
 
 const ATD = AbstractTimeDiscretization

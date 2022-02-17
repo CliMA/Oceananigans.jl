@@ -13,8 +13,8 @@
 @inline dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs) = zero(eltype(grid))
 
 @inline function shear_production(i, j, k, grid, closure::Union{CATKEVD, CATKEVDArray}, velocities, diffusivities)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.v)
+    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     νᶻ = diffusivities.Kᵘ
     νᶻ_ijk = @inbounds νᶻ[i, j, k]
     return νᶻ_ijk * (∂z_u² + ∂z_v²)

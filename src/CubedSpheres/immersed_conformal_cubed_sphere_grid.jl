@@ -10,8 +10,8 @@ function ImmersedBoundaryGrid(grid::ConformalCubedSphereGrid, immersed_boundary)
     return cubed_sphere_immersed_grid 
 end
 
-import Oceananigans.Operators: Γᶠᶠᵃ
+import Oceananigans.Operators: Γᶠᶠᶜ
 
-@inline function Γᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid{F, TX, TY, TZ, G, I}, u, v) where {F,TX,TY,TZ,G<:ConformalCubedSphereFaceGrid,I}
-    Γᶠᶠᵃ(i, j, k, ibg.grid, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, ibg::ImmersedBoundaryGrid{F, TX, TY, TZ, G, I}, u, v) where {F,TX,TY,TZ,G<:ConformalCubedSphereFaceGrid,I}
+    Γᶠᶠᶜ(i, j, k, ibg.grid, u, v)
 end

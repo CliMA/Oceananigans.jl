@@ -1,6 +1,7 @@
 using Glob
 import Oceananigans.Fields: set!
 
+using Oceananigans: fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
@@ -68,12 +69,10 @@ function Checkpointer(model; schedule,
                          verbose = false,
                          cleanup = false,
                       properties = [:architecture, :grid, :clock, :coriolis,
-                                    :buoyancy, :closure, :velocities, :tracers,
-                                    :timestepper, :particles]
-                     )
+                                    :buoyancy, :closure, :timestepper, :particles])
 
     # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper, :particles)
+    required_properties = (:grid, :architecture, :timestepper, :particles)
 
     for rp in required_properties
         if rp ∉ properties
@@ -165,6 +164,12 @@ function write_output!(c::Checkpointer, model)
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
         serializeproperties!(file, model, c.properties)
+
+        model_fields = fields(model)
+        field_names = keys(model_fields)
+        for name in field_names
+            serializeproperty!(file, string(name), model_fields[name])
+        end
     end
 
     t2, sz = time_ns(), filesize(filepath)
@@ -209,19 +214,16 @@ function set!(model, filepath::AbstractString)
              error("The grid associated with $filepath and model.grid are not the same!")
 	end
 
-        # Set model fields and tendency fields
-        model_fields = merge(model.velocities, model.tracers)
+        model_fields = fields(model)
 
         for name in propertynames(model_fields)
-            # Load data for each model field
-            address = name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
-            parent_data = file[address * "/data"]
-
-            model_field = model_fields[name]
-            copyto!(model_field.data.parent, parent_data)
-
-            # Restore timestepper tendencies and other metadata
-            # Note: this step is unecessary for models that use RungeKutta3TimeStepper.
+            try
+                parent_data = file["$name/data"]
+                model_field = model_fields[name]
+                copyto!(model_field.data.parent, parent_data)
+            catch
+                @warn "Could not retore $name from checkpoint."
+            end
         end
 
         set_time_stepper!(model.timestepper, file, model_fields)

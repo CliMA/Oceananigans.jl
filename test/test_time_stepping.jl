@@ -4,6 +4,7 @@ using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -30,7 +31,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
-    # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
+    # Use halos of size 2 to accomadate time stepping with ScalarBiharmonicDiffusivity.
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid=grid,
@@ -153,7 +154,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
+                                closure = (ScalarDiffusivity(ν=νh, κ=κh, isotropy=Horizontal()), 
+                                           ScalarDiffusivity(ν=νz, κ=κz, isotropy=Vertical())),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -209,9 +211,8 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity,
-            AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity,
+Closures = (ScalarDiffusivity,
+            ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,
             SmagorinskyLilly,
@@ -296,6 +297,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 if Closure === TwoDimensionalLeith
                     # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
                     # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
+                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                elseif Closure === CATKEVerticalDiffusivity
+                    # CATKE isn't supported with NonhydrostaticModel yet
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
                     @test time_stepping_works_with_closure(arch, FT, Closure)

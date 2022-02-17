@@ -7,9 +7,19 @@ using Oceananigans.Fields: Field, ZReducedField
 import Oceananigans.Solvers: solve!
 import Oceananigans.Architectures: architecture
 
+"""
+    struct PCGImplicitFreeSurfaceSolver{V, S, R}
+
+The preconditioned conjugate gradient iterative implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
+    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
+    "The preconditioned conjugate gradient solver"
     preconditioned_conjugate_gradient_solver :: S
+    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
@@ -97,12 +107,12 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
 end
 
 """ Compute the divergence of fluxes Qu and Qv. """
-@inline flux_div_xyᶜᶜᵃ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
+@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az = Azᶜᶜᵃ(i, j, 1, grid)
-    δ_Q = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    Az = Azᶜᶜᶜ(i, j, 1, grid)
+    δ_Q = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 
@@ -131,14 +141,14 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
 end
 
 # Kernels that act on vertically integrated / surface quantities
-@inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᵃ(i, j, k, grid, η)
-@inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᵃ(i, j, k, grid, η)
+@inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, η)
+@inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, η)
 
 """
 Compute the horizontal divergence of vertically-uniform quantity using
 vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 """
-@inline Az_∇h²ᶜᶜᵃ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ZReducedField) =
+@inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ZReducedField) =
     (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
      δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
 
@@ -165,8 +175,8 @@ where  ̂ indicates a vertical integral, and
 """
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
-    Az = Azᶜᶜᵃ(i, j, 1, grid)
-    @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, 1] / (g * Δt^2)
+    Az = Azᶜᶜᶜ(i, j, 1, grid)
+    @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᶜ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, 1] / (g * Δt^2)
 end
 
 """
@@ -187,7 +197,6 @@ P_rᵢⱼ = rᵢⱼ / Acᵢⱼ - 1 / Acᵢⱼ ( Ax⁻ / Acᵢ₋₁ rᵢ₋₁�
 where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of 
 `ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁` and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
 """
-
 function implicit_free_surface_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_r)
@@ -206,16 +215,16 @@ function implicit_free_surface_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)
-@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)
-@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᵃ(i+1, j, 1, grid)
-@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᵃ(i, j+1, 1, grid)
+@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)
+@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)
+@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶜ(i+1, j, 1, grid)
+@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶜ(i, j+1, 1, grid)
 
 @inline Ac(i, j, grid, g, Δt, ax, ay) = - ( Ax⁻(i, j, grid, ax) 
                                           + Ax⁺(i, j, grid, ax)
                                           + Ay⁻(i, j, grid, ay)
                                           + Ay⁺(i, j, grid, ay)
-                                          + Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) )
+                                          + Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2) )
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - 
                             Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, 1] -

@@ -7,7 +7,7 @@ using Oceananigans.Units
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, is_immersed_boundary
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -112,9 +112,17 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 κh = 1e+3
 κz = 1e-4
 
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz,
-                                                                       time_discretization = VerticallyImplicitTimeDiscretization())
+vertical_closure = ScalarDiffusivity(ν = νv,
+                                     κ = κv,
+                                     isotropy = Vertical(),
+                                     time_discretization = VerticallyImplicit())
 
+horizontal_closure = ScalarDiffusivity(ν = νh,
+                                       κ = κh,
+                                       isotropy = Horizontal())
+
+background_diffusivity = (horizontal_closure, vertical_closure)
+                                       
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
 #####
@@ -203,7 +211,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
                                     tracers = (:T, :S),
-                                    closure = (background_diffusivity, convective_adjustment)) #,
+                                    closure = (background_diffusivity..., convective_adjustment)) #,
                                     # forcing = (u=Fu, v=Fv))
 
 #####

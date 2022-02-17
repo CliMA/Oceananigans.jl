@@ -26,9 +26,8 @@ end
 Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 
 Closures = [Nothing,
-            IsotropicDiffusivity,
-            AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity,
+            ScalarDiffusivity,
+            ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             SmagorinskyLilly,
             AnisotropicMinimumDissipation]

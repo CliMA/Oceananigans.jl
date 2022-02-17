@@ -41,7 +41,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     model = NonhydrostaticModel(
                        grid = grid,
-                    closure = IsotropicDiffusivity(ν=ν, κ=κ),
+                    closure = ScalarDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
                    buoyancy = Buoyancy(model=BuoyancyTracer()),
         boundary_conditions = (b=bbcs,),

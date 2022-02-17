@@ -8,8 +8,8 @@ using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity,
-                                       ExplicitTimeDiscretization, 
-                                       VerticallyImplicitTimeDiscretization
+                                       Explicit, 
+                                       VerticallyImplicit
 using Oceananigans.Units
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -73,12 +73,12 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 κz = 1e-4
 
 # Fully explicit
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=ExplicitTimeDiscretization())
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=ExplicitTimeDiscretization())
+background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=Explicit())
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=Explicit())
 
 # Vertically-implicit, horizontally-explicit
-#background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=VerticallyImplicitTimeDiscretization())
-#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=VerticallyImplicitTimeDiscretization())
+#background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=VerticallyImplicit())
+#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=VerticallyImplicit())
 
 #####
 ##### Boundary conditions / constant-in-time surface forcing

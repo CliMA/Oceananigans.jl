@@ -1,29 +1,6 @@
 using Adapt
 using Oceananigans.Operators
 
-# Define aliases for some spacings and areas at all locations.
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-
-    x_spacing_alias = Symbol(:Δx, LX, LY, LZ)
-    y_spacing_alias = Symbol(:Δy, LX, LY, LZ)
-    z_spacing_alias = Symbol(:Δz, LX, LY, LZ)
-
-    z_area_alias = Symbol(:Az, LX, LY, LZ)
-
-    x_spacing_function = Symbol(:Δx, LX, LY, :ᵃ)
-    y_spacing_function = Symbol(:Δy, LX, LY, :ᵃ)
-    z_spacing_function = Symbol(:Δz, :ᵃᵃ, LZ)
-
-    z_area_function = Symbol(:Az, LX, LY, :ᵃ)
-
-    @eval begin
-        const $x_spacing_alias = $x_spacing_function
-        const $y_spacing_alias = $y_spacing_function
-        const $z_spacing_alias = $z_spacing_function
-        const $z_area_alias = $z_area_function
-    end
-end
-
 abstract type AbstractGridMetric end
 
 struct XSpacingMetric <: AbstractGridMetric end 
@@ -75,7 +52,7 @@ BinaryOperation at (Center, Center, Center)
 └── tree:
     * at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── Δzᵃᵃᶜ at (Center, Center, Center)
+    └── Δzᶜᶜᶜ at (Center, Center, Center)
 
 julia> c .= 1;
 

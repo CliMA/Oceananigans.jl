@@ -14,14 +14,14 @@ using Oceananigans.Operators
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᵃ(i, j, 1, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᵃ(i, j, 1, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶜ(i, j, 1, grid, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶜ(i, j, 1, grid, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
     i, j = @index(Global, NTuple)
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᵃ(i, j, 1, grid, U, V)
+    @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᶜ(i, j, 1, grid, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1] +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1] +=  velocity_weight * V[i, j, 1]

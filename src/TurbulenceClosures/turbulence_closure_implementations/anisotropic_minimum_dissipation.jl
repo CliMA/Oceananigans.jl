@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD}
+struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -15,7 +15,7 @@ struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyVisco
      κ :: K
 
     function AnisotropicMinimumDissipation{TD, FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {TD, FT, PN, PK, PB}
-        κ = convert_diffusivity(FT, κ)
+        κ = convert_diffusivity(FT, κ, Val(false))
         K = typeof(κ)
         return new{TD, FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
     end
@@ -32,9 +32,14 @@ Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
-    AnisotropicMinimumDissipation([FT=Float64;] C=1/12, Cν=nothing, Cκ=nothing,
-                                                Cb=nothing, ν=0, κ=0,
-                                                time_discretization=ExplicitTimeDiscretization())
+    AnisotropicMinimumDissipation([FT = Float64;]
+                                    C = 1/12,
+                                   Cν = nothing,
+                                   Cκ = nothing,
+                                   Cb = nothing,
+                                    ν = 0,
+                                    κ = 0,
+                                   time_discretization=Explicit())
                                        
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -61,7 +66,7 @@ Keyword arguments
          diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
          specifying a background diffusivity for every tracer.
 
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
                            which integrates the terms involving only z-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -123,13 +128,13 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(FT = Float64;
-                                       C = 1/12,
+                                        C = 1/12,
                                        Cν = nothing,
                                        Cκ = nothing,
                                        Cb = nothing,
                                        ν = 0,
                                        κ = 0,
-                                       time_discretization::TD = ExplicitTimeDiscretization()) where TD
+                                       time_discretization::TD = Explicit()) where TD
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     
@@ -238,9 +243,9 @@ end
 #####
 
 # Recall that filter widths are 2x the grid spacing in AMD
-@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Δxᶜᶜᵃ(i, j, k, grid)
-@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᵃ(i, j, k, grid)
-@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Δxᶜᶜᶜ(i, j, k, grid)
+@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᶜ(i, j, k, grid)
+@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᶜᶜᶜ(i, j, k, grid)
 
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
     Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
@@ -328,13 +333,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, C))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, C))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, C))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end

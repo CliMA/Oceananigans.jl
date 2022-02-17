@@ -1,3 +1,6 @@
+using Oceananigans: TurbulenceClosures
+
+
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
                diffusive_cfl :: FT
@@ -12,15 +15,15 @@ end
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
-    TimeStepWizard(cfl=0.2, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
+    TimeStepWizard(cfl=0.2, diffusive_cfl=Inf, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
 
 Callback for adapting simulation time-steps `Δt` to maintain the advective
 Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
 `max_Δt`, `min_Δt`, and satisfying `max_change` and `min_change` criteria
 so `Δt` is not adapted "too quickly".
 
-For more information on `cfl`, see
-https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition.
+For more information on the `cfl` number, see its [wikipedia entry]
+(https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 
 Example
 =======
@@ -47,9 +50,10 @@ function TimeStepWizard(FT=Float64; cfl = 0.2,
                                     cell_advection_timescale = cell_advection_timescale,
                                     cell_diffusion_timescale = infinite_diffusion_timescale)
 
-    isfinite(diffusive_cfl) && # user wants to limit by diffusive CFL
-    !(cell_diffusion_timescale === infinite_diffusion_timescale) && # user did not provide custom timescale
-        (cell_diffusion_timescale = Oceananigans.TurbulenceClosures.cell_diffusion_timescale)
+    # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
+    if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
+       cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
+    end
 
     C = typeof(cell_advection_timescale)
     D = typeof(cell_diffusion_timescale)
