@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC
-using Oceananigans.Grids: parent_index_range, index_range_offset
+using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
@@ -29,11 +29,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T,
 end
 
 #####
-##### Defaults and constructor utilities
+##### Constructor utilities
 #####
-
-default_indices() = (:, :, :)
-const DefaultIndicesType = typeof(default_indices())
 
 function validate_field_data(loc, data, grid, indices)
     Fx, Fy, Fz = total_size(loc, grid, indices)
@@ -145,7 +142,7 @@ end
 function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
-               indices = default_indices(),
+               indices = default_indices(3),
                data = new_data(T, grid, loc, indices),
                boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
 
@@ -214,7 +211,7 @@ function offset_windowed_data(data, loc, grid, indices)
     halo = halo_size(grid)
     topo = topology(grid)
 
-    if indices === default_indices()
+    if indices isa typeof(default_indices(3))
         windowed_parent = parent(data)
     else
         parent_indices = parent_index_range.(indices, loc, topo, halo)
@@ -268,14 +265,14 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-indices(field) = default_indices()
+indices(obj) = default_indices(3)
 indices(f::Field) = f.indices
 
 """Return indices that create a `view` over the interior of a Field."""
 interior_view_indices(field_indices, interior_indices) = Colon()
 interior_view_indices(::Colon,       interior_indices) = interior_indices
 
-function interior(a::OffsetArray, (LX, LY, LZ)::Tuple, grid::AbstractGrid, indices::Tuple=default_indices())
+function interior(a::OffsetArray, (LX, LY, LZ)::Tuple, grid::AbstractGrid, indices::Tuple=default_indices(3))
     TX, TY, TZ = topology(grid)
     i_interior = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
     j_interior = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
@@ -606,7 +603,7 @@ end
 function fill_halo_regions!(field::Field, arch, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    if !(field.indices isa DefaultIndicesType) # make sure that bcs are filtered
+    if !(field.indices isa typeof(default_indices(3))) # make sure that bcs are filtered
         filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     else
         filtered_bcs = field.boundary_conditions

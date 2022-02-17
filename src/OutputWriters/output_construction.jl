@@ -1,4 +1,5 @@
-using Oceananigans.Fields: validate_index, DefaultIndicesType
+using Oceananigans.Fields: validate_index
+using Oceananigans.Grids: default_indices
 
 
 interior_restrict_index(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
@@ -10,8 +11,10 @@ function interior_restrict_index(index::UnitRange, loc, topo, N)
 end
 
 function construct_output(output, grid, indices, with_halos)
-    indices isa DefaultIndicesType ||
-        @warn "Cannot slice $(typeof(output)) with $indices. We will write _unsliced_ output from $output."
+    if !(indices isa default_indices(ndims(output)))
+        output_type = output isa Function ? "Function" : ""
+        @warn "Cannot slice $output_type $output with $indices: output will be unsliced."
+    end
 
     return output
 end

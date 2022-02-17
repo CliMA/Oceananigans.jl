@@ -15,9 +15,7 @@ using Oceananigans.TimeSteppers: update_state!
 function run_instantiate_windowed_time_average_tests(model)
 
     set!(model, u = (x, y, z) -> rand())
-
     u, v, w = model.velocities
-
     Nx, Ny, Nz = size(u)
 
     for test_u in (u, view(u, 1:Nx, 1:Ny, 1:Nz))
@@ -42,7 +40,7 @@ function time_step_with_windowed_time_average(model)
     simulation.diagnostics[:u_avg] = wta
     run!(simulation)
 
-    return all(wta(model) .== interior(model.velocities.u))
+    return all(wta(model) .== parent(model.velocities.u))
 end
 
 #####

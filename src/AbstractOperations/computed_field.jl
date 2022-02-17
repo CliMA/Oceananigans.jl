@@ -3,7 +3,8 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Fields: FieldStatus, reduced_dimensions, default_indices
+using Oceananigans.Grids: default_indices
+using Oceananigans.Fields: FieldStatus, reduced_dimensions
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -32,7 +33,7 @@ recompute_safely (Bool): whether or not to _always_ "recompute" `f` if `f` is
 """
 function Field(operand::AbstractOperation;
                data = nothing,
-               indices = default_indices(),
+               indices = default_indices(3),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
                recompute_safely = true)
 
