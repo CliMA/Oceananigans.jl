@@ -33,7 +33,6 @@ SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 Adapt = "^3"
@@ -57,7 +56,6 @@ Rotations = "1.0"
 SafeTestsets = "0.0.1"
 SeawaterPolynomials = "^0.2"
 StructArrays = "0.4, 0.5, 0.6"
-Tullio = "0.2, 0.3"
 julia = "^1.6"
 
 [extras]
