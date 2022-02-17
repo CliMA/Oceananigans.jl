@@ -38,7 +38,7 @@ function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
           advection = advection_scheme,
             tracers = :c,
            buoyancy = nothing,
-            closure = IsotropicDiffusivity(ν=0, κ=0)
+            closure = ScalarDiffusivity(ν=0, κ=0)
     )
 
     set!(model, u = U, v = (x, y, z) -> ϕₐ(x, 0; L=L, U=U), c = (x, y, z) -> ϕₐ(x, 0; L=L, U=U))

@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
      C :: FT
     Cb :: FT
     Pr :: P
@@ -11,15 +11,15 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
      κ :: K
 
     function SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ) where {TD, FT}
-        Pr = convert_diffusivity(FT, Pr)
-         κ = convert_diffusivity(FT, κ)
+        Pr = convert_diffusivity(FT, Pr, Val(false))
+         κ = convert_diffusivity(FT, κ, Val(false))
         return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
     end
 end
 
 """
     SmagorinskyLilly([FT=Float64;] C=0.16, Pr=1, ν=0, κ=0,
-                                   time_discretization=ExplicitTimeDiscretization())
+                                   time_discretization=Explicit())
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
@@ -50,7 +50,7 @@ Keyword arguments
   - `κ`: Constant background diffusivity for tracer. Can either be a single number
          applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
          tracer.
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
                            which integrates the terms involving only ``z``-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -68,7 +68,7 @@ Lilly, D. K. "The representation of small-scale turbulence in numerical simulati
     NCAR Manuscript No. 281, 0, 1966.
 """
 SmagorinskyLilly(FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0,
-                             time_discretization::TD=ExplicitTimeDiscretization()) where TD =
+                             time_discretization::TD=Explicit()) where TD =
     SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}

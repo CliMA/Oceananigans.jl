@@ -56,7 +56,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                           tracer_advection = WENO5(),
                                                       grid = grid,
                                                    tracers = :c,
-                                                   closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                                   closure = ScalarDiffusivity(ν=ν, κ=ν),
                                               free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0),
                                                   coriolis = nothing,
                                                   buoyancy = nothing)
