@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Fields: regrid!, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
 using Oceananigans.Fields: reduced_location
@@ -360,8 +359,6 @@ end
         @test has_velocities((:u,)) == false
         @test has_velocities((:u, :v)) == false
         @test has_velocities((:u, :v, :w)) == true
-
-        @test FieldSlicer() isa FieldSlicer
 
         @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
 
