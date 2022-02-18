@@ -14,13 +14,15 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions, validate_indices
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
+validate_indices(indices, loc, grid::ConformalCubedSphereGrid) = indices
+
+function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
 
     for (face_data, face_grid) in zip(data.faces, grid.faces)
-        validate_field_data(loc, face_data, face_grid)
+        validate_field_data(loc, face_data, face_grid, indices)
     end
 
     return nothing

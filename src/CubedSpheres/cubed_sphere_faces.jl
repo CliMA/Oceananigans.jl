@@ -59,27 +59,27 @@ const AbstractCubedSphereField{LX, LY, LZ} =
 ##### new data
 #####
 
-function new_data(FT, grid::ConformalCubedSphereGrid, (LX, LY, LZ))
-    faces = Tuple(new_data(FT, face_grid, (LX, LY, LZ)) for face_grid in grid.faces)
-    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+function new_data(FT::DataType, grid::ConformalCubedSphereGrid, loc, indices)
+    faces = Tuple(new_data(FT, face_grid, loc, indices) for face_grid in grid.faces)
+    return CubedSphereFaces(faces)
 end
 
 #####
 ##### FieldBoundaryConditions
 #####
 
-function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (LX, LY, LZ); user_defined_bcs...)
+function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, loc, indices; user_defined_bcs...)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
-            FieldBoundaryConditions(face_grid, (LX, LY, LZ); user_defined_bcs...),
+            FieldBoundaryConditions(face_grid, loc, indices; user_defined_bcs...),
             face_index,
             grid.face_connectivity
         )
         for (face_index, face_grid) in enumerate(grid.faces)
     )
 
-    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+    return CubedSphereFaces(faces)
 end
 
 #####
