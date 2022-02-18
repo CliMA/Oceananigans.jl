@@ -17,8 +17,8 @@ const EqualXPartition = XPartition{<:Number}
 length(p::EqualXPartition) = p.div
 length(p::XPartition)      = length(p.div)
 
-Base.summary(p::EqualXPartition) = "Equal partitioning in X with $(p.div) regions"
-Base.summary(p::XPartition)      = "partitioning in X with sizes $(["$(p.div[i]) " for i in 1:length(p)]...)"
+Base.summary(p::EqualXPartition) = "Equal partitioning in X ($(p.div) regions)"
+Base.summary(p::XPartition)      = "partitioning in X [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
 function partition_size(p::EqualXPartition, size)
     @assert mod(size[1], p.div) == 0 

@@ -7,7 +7,7 @@ grid = RectilinearGrid(CPU(), size = (12, 1), topology = (Periodic, Periodic, Fl
 
 mrg = MultiRegionGrid(grid, partition = XPartition([3, 3, 3, 3]), devices = (0, 1))
 
-field = MultiRegionField((Face, Face, Center), mrg)
+field = MultiRegionField((Center, Center, Center), mrg)
 set!(field, (x, y ,z) -> x)
 
 for i in 1:4

@@ -77,4 +77,7 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
               "├── partitioning: $(summary(mrg.partition)) \n",
               "└── architecture: $(arch_summary(mrg))")
 
-arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "on $(length(unique(mrg.devices))) devices" : "")"
+Base.summary(mrg::MultiRegionGrid) = 
+    "MultiRegionGrid with $(summary(mrg.partition)) on $(string(typeof(mrg.local_grids[1]).name.wrapper))"
+
+@inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"

@@ -43,6 +43,7 @@ struct GPU <: AbstractArchitecture end
     MultiGPU <: AbstractArchitecture
 
 Run Oceananigans on multiple NVIDIA CUDA GPUs connected to the same host.
+Can be used only in connection with `MultiRegionGrid`
 """
 struct MultiGPU <: AbstractArchitecture end
 

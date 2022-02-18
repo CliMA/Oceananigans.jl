@@ -23,8 +23,9 @@ function MultiRegionField(loc::Tuple,
 end
 
 Base.show(io::IO, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ} =  
-    print(io, "MultiRegionalField partitioned on ($LX, $LY, $LZ): \n",
+    print(io, "MultiRegionalField on ($LX, $LY, $LZ): \n",
               "├── grid: $(summary(mrf.multi_grid)) \n",
-              "└── fields: $(summary(mrf.local_fields))")
+              "└── total: $(length(fields(mrf))) fields on $(arch_summary(mrf.multi_grid))\n",
+              "     └── field: $(summary(mrf.local_fields[1]))")
 
 @inline set!(mrf::MultiRegionField, f::Function) = multi_region_function!(mrf, set!, (fields(mrf), f), (1, 0))
