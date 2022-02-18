@@ -1,7 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.OutputReaders: TimeSeriesViewField
-
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -103,7 +101,7 @@ end
 
             ArrayType = array_type(arch)
             for fts in (u3, v3, w3, T3, b3, ζ3)
-                @test fts.data.parent isa ArrayType
+                @test parent(fts) isa ArrayType
             end
 
             if arch isa CPU
@@ -136,7 +134,7 @@ end
             @test size(ζ1) == (1, 1, Nz,   Nt)
 
             for fts in (u1, v1, w1, T1, b1, ζ1)
-                @test fts.data.parent isa ArrayType
+                @test parent(fts) isa ArrayType
             end
 
             if arch isa CPU
