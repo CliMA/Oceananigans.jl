@@ -1,3 +1,4 @@
+using Oceananigans.Fields
 
 struct MultiRegionField{TX, TY, TZ, G, F, T} <: AbstractField{TX, TY, TZ, G, T, 3}
     multi_grid :: G
@@ -8,3 +9,4 @@ struct MultiRegionField{TX, TY, TZ, G, F, T} <: AbstractField{TX, TY, TZ, G, T, 
         return new{TX, TY, TZ, G, F, T}(multi_grid, local_fields)
     end
 end
+

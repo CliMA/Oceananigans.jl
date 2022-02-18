@@ -15,8 +15,8 @@ end
 function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
 
     global_grid = on_architecture(CPU(), global_grid)
-    N      = size(global_grid)
-    N      = partition_size(partition, N)
+    size   = size(global_grid)
+    size   = partition_size(partition, size)
     extent = partition_extent(partition, global_grid)
     
     arch    = infer_architecture(devices)
@@ -26,7 +26,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothi
     FT         = eltype(global_grid)
     TX, TY, TZ = topology(global_grid)
     
-    local_grids = fill_multiregion_grids(arch, devices, global_grid, (TX, TY, TZ), N, extent)
+    local_grids = fill_multiregion_grids(arch, devices, global_grid, (TX, TY, TZ), size, extent)
 
     return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, local_grids, devices)
 end
