@@ -15,5 +15,6 @@ import Base: show, length, size
 include("x_partitions.jl")
 include("multi_region_utils.jl")
 include("multi_region_grid.jl")
+include("multi_region_field.jl")
 
 end #module

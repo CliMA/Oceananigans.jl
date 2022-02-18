@@ -15,7 +15,7 @@ end
 function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
 
     global_grid = on_architecture(CPU(), global_grid)
-    N = size(global_grid)
+    N      = size(global_grid)
     N      = partition_size(partition, N)
     extent = partition_extent(partition, global_grid)
     
