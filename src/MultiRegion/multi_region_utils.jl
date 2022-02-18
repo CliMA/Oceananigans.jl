@@ -9,12 +9,13 @@ import Oceananigans.Grids: new_data
 @inline assoc_device(cu::CuContext)             = CUDA.device(cu)
 @inline assoc_device(cu::Union{CuPtr, Ptr})     = CUDA.device(cu)
 
-@inline switch_device!(dev::CPU) = nothing
+@inline switch_device!(::CPU)    = nothing
 @inline switch_device!(dev::Int) = CUDA.device!(dev)
 @inline switch_device!(dev::CuDevice) = CUDA.device!(dev)
-@inline switch_device!(dev::Tuple, i) = CUDA.device!(dev[i])
 @inline switch_device!(mrg::AbstractMultiGrid, i)  = switch_device!(assoc_device(mrg, i))
 @inline switch_device!(mrf::AbstractMultiField, i) = switch_device!(assoc_device(mrf, i))
+
+@inline switch_device!(dev::Tuple, i) = switch_device!(dev[i])
 
 @inline regions(mrg::AbstractMultiGrid) = regions(mrg.partition)
 @inline regions(arr::Tuple)                   = 1:length(arr)
