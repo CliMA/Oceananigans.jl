@@ -27,24 +27,41 @@ import Oceananigans.Grids: new_data
 
 const TupleOrGridOrField = Union{AbstractMultiGrid, AbstractMultiField, Tuple}
 
-function multi_region_object(mrg::TupleOrGridOrField, constructor, args, iter_args)
-    local_obj = []
+function MultiRegionObject(mrg::TupleOrGridOrField, constructor, args, iter_args, kwargs, iter_kwargs)
+    regional_obj = []
     for i in regions(mrg)
         switch_device!(mrg, i)
-        push!(local_obj, constructor(iterate_args(args, iter_args, i)...))
+        if isnothing(args) & isnothing(kwargs)
+            push!(regional_obj, constructor())
+        elseif isnothing(kwargs)
+            push!(regional_obj, constructor(iterate_args(args, iter_args, i)...))
+        elseif isnothing(kwargs)
+            push!(regional_obj, constructor(; iterate_args(kwargs, iter_args, i)...))
+        else
+            push!(regional_obj, constructor(iterate_args(args, iter_args, i)...; iterate_args(kwargs, iter_kwargs, i)...))
+        end
     end
-    return Tuple(local_obj)
+    return MultiRegionObject(Tuple(regional_obj))
 end
 
-function multi_region_function!(mrg::TupleOrGridOrField, func!, args, iter_args)
+function multi_region_function!(mrg::TupleOrGridOrField, func!, args, iter_args, kwargs, iter_kwargs)
     for i in regions(mrg)
         switch_device!(mrg, i)
-        func!(iterate_args(args, iter_args, i)...)
+        if isnothing(args) & isnothing(kwargs)
+            func!()
+        elseif isnothing(kwargs)
+            func!(iterate_args(args, iter_args, i)...)
+        elseif isnothing(kwargs)
+            func!(; iterate_args(kwargs, iter_args, i)...)
+        else
+            func!(iterate_args(args, iter_args, i)...; iterate_args(kwargs, iter_kwargs, i)...)
+        end
     end
 end
 
 function validate_devices(partition, devices)
     @assert length(unique(devices)) <= length(CUDA.devices())
+    @assert maximum(devices) <= length(CUDA.devices())
     @assert length(devices) <= length(partition)
     return devices
 end
@@ -95,6 +112,8 @@ function assign_devices(p::AbstractPartition, dev::Tuple)
     return Tuple(devices)
 end
 
-iterate_args(args, iterate, idx) = Tuple(to_iterate(args[i], iterate[i], idx) for i in 1:length(args))
+iterate_args(::Nothing, args...)               = (nothing, nothing)
+iterate_args(args::Tuple, iterate, idx)        = Tuple(to_iterate(args[i], iterate[i], idx) for i in 1:length(args))
+iterate_args(kwargs::NamedTuple, iterate, idx) = NamedTuple{keys(kwargs)}(to_iterate(kwargs[i], iterate[i], idx) for i in 1:length(kwargs))
 
 to_iterate(arg, iter, idx) = iter == 1 ? arg[idx] : arg

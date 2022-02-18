@@ -3,12 +3,11 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 struct XPartition{N} <: AbstractPartition
     div :: N
 
-    function XPartition(sizes::N) where{N} 
-        if  all(y -> y == sizes[1], sizes)
-            return new{Int}(length(sizes))
-        else
-            return new{N}(sizes)
+    function XPartition(sizes) 
+        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
+            sizes = length(sizes)
         end
+        return new{typeof(sizes)}(sizes)
     end
 end
 

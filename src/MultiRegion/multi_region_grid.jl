@@ -30,7 +30,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothi
     args = (global_grid, child_arch, T, N, extent)
     iter = (0, 0, 0, 1, 1)
 
-    local_grids = multi_region_object(devices, construct_grid, args, iter)
+    local_grids = multi_region_object(devices, construct_grid, args, iter, nothing, nothing)
 
     return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, local_grids, devices)
 end
@@ -39,6 +39,7 @@ end
 @inline assoc_grid(mrg::MultiRegionGrid, idx)   = mrg.local_grids[idx]
 @inline architecture(mrg::MultiRegionGrid)      = mrg.architecture
 @inline grids(mrg::MultiRegionGrid)             = mrg.local_grids
+@inline partition(mrg::MultiRegionGrid)         = mrg.partition
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent)
     halo = halo_size(grid)
