@@ -4,10 +4,10 @@ import Oceananigans.Grids: new_data
 @inline infer_architecture(dev::Tuple)  = length(dev) == 1 ? GPU() : MultiGPU()
 @inline infer_architecture(dev::Number) = dev == 1 ? GPU() : MultiGPU()
 
-@inline assoc_device(a) = CPU()
-@inline assoc_device(cu::CuArray)               = CUDA.device(cu)
-@inline assoc_device(cu::CuContext)             = CUDA.device(cu)
-@inline assoc_device(cu::Union{CuPtr, Ptr})     = CUDA.device(cu)
+@inline assoc_device(a)                     = CPU()
+@inline assoc_device(cu::CuArray)           = CUDA.device(cu)
+@inline assoc_device(cu::CuContext)         = CUDA.device(cu)
+@inline assoc_device(cu::Union{CuPtr, Ptr}) = CUDA.device(cu)
 
 @inline switch_device!(::CPU)    = nothing
 @inline switch_device!(dev::Int) = CUDA.device!(dev)
@@ -17,9 +17,9 @@ import Oceananigans.Grids: new_data
 
 @inline switch_device!(dev::Tuple, i) = switch_device!(dev[i])
 
-@inline regions(mrg::AbstractMultiGrid) = regions(mrg.partition)
-@inline regions(arr::Tuple)                   = 1:length(arr)
-@inline regions(par::AbstractPartition)       = 1:length(par)
+@inline regions(mrg::AbstractMultiGrid)  = regions(mrg.partition)
+@inline regions(arr::Tuple)              = 1:length(arr)
+@inline regions(par::AbstractPartition)  = 1:length(par)
 
 @inline underlying_arch(::MultiGPU) = GPU()
 @inline underlying_arch(::GPU) = GPU()
@@ -27,13 +27,13 @@ import Oceananigans.Grids: new_data
 
 const TupleOrGridOrField = Union{AbstractMultiGrid, AbstractMultiField, Tuple}
 
-function multi_region_object(mrg::TupleOrGridOrField, func, args, iter_args)
+function multi_region_object(mrg::TupleOrGridOrField, constructor, args, iter_args)
     local_obj = []
     for i in regions(mrg)
         switch_device!(mrg, i)
-        push!(local_obj, func(iterate_args(args, iter_args, i)...))
+        push!(local_obj, constructor(iterate_args(args, iter_args, i)...))
     end
-    return local_obj
+    return Tuple(local_obj)
 end
 
 function multi_region_function!(mrg::TupleOrGridOrField, func!, args, iter_args)
@@ -94,7 +94,6 @@ function assign_devices(p::AbstractPartition, dev::Tuple)
     end
     return Tuple(devices)
 end
-
 
 iterate_args(args, iterate, idx) = Tuple(to_iterate(args[i], iterate[i], idx) for i in 1:length(args))
 

@@ -60,7 +60,7 @@ end
 
 function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, size, extent)
     boundary = ibg.immersed_boundary
-    return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, extent, size), boundary)
+    return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, size, extent), boundary)
 end
 
 function Adapt.adapt_structure(to, mrg::MultiRegionGrid)

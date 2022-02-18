@@ -40,9 +40,9 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 struct GPU <: AbstractArchitecture end
 
 """
-    GPU <: AbstractArchitecture
+    MultiGPU <: AbstractArchitecture
 
-Run Oceananigans on a multiple NVIDIA CUDA GPU connected to the same host.
+Run Oceananigans on multiple NVIDIA CUDA GPUs connected to the same host.
 """
 struct MultiGPU <: AbstractArchitecture end
 
