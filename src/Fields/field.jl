@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC
-using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices
+using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
