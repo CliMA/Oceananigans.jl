@@ -76,18 +76,21 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-validate_index(idx, loc, N) = throw(ArgumentError("$idx are not valid window indices for Field!"))
-validate_index(::Colon, loc, N) = Colon()
+validate_index(idx, loc, topo, N, H) = throw(ArgumentError("$idx are not valid window indices for Field!"))
+validate_index(::Colon, loc, topo, N, H) = Colon()
 
-validate_index(idx::UnitRange, ::Type{Nothing}, N) = UnitRange(1, 1)
+validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
-function validate_index(idx::UnitRange, loc, N)
-    (idx[1] >= 1 && idx[end] <= N) ||
-        throw(ArgumentError("The indices $(idx[1]):$(idx[end])) must slice between 1:$(N)!"))
+function validate_index(idx::UnitRange, loc, topo, N, H)
+    all_idx = all_indices(loc, topo, N, H)
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
     return idx
 end
 
-validate_index(idx::Int, loc, N) = validate_index(UnitRange(idx, idx), loc, N)
+validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
+
+validate_indices(indices, loc, grid::AbstractGrid) =
+    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
 
 #####
 ##### Some basic constructors
@@ -97,7 +100,7 @@ validate_index(idx::Int, loc, N) = validate_index(UnitRange(idx, idx), loc, N)
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=nothing, status=nothing)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
-    indices = validate_index.(indices, loc, size(loc, grid))
+    indices = validate_indices(indices, loc, grid)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status)
 end
@@ -149,8 +152,8 @@ function Field(loc::Tuple,
     return Field(loc, grid, data, boundary_conditions, indices, nothing, nothing)
 end
     
-Field(f::Field) = f # indeed
-Field(z::ZeroField) = z
+Field(z::ZeroField; kw...) = z
+Field(f::Field) = f # hmm...
 
 """
     CenterField(grid; kw...)
@@ -264,7 +267,7 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    window_indices = validate_index.((i, j, k), loc, size(f))
+    window_indices = validate_indices((i, j, k), loc, f.grid)
     
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
