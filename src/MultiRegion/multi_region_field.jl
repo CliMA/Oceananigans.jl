@@ -19,7 +19,8 @@ getregion(f::MultiRegionField, i) =
 
 new_data(FT, mrg::MultiRegionGrid, loc) = apply_regionally(new_data, FT, mrg.region_grids, loc)
 
-set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
+set!(f::MultiRegionField, func::Function)       = apply_regionally!(set!, f, func)
+set!(f::MultiRegionField, g::MultiRegionObject) = apply_regionally!(set!, f, g)
 
 validate_field_data(loc, data, grid::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, grid.region_grids)
 
