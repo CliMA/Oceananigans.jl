@@ -42,32 +42,32 @@ end
 
 for dir in (:x, :y, :z), L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
 
-    der_face_1 = Symbol(:∂,  dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-    der_face_2 = Symbol(:∂², dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-    der_face_3 = Symbol(:∂³, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
-    der_face_4 = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+     first_order_face = Symbol(:∂,  dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    second_order_face = Symbol(:∂², dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+     third_order_face = Symbol(:∂³, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    fourth_order_face = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
 
-    der_center_1 = Symbol(:∂,  dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-    der_center_2 = Symbol(:∂², dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-    der_center_3 = Symbol(:∂³, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
-    der_center_4 = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+     first_order_center = Symbol(:∂,  dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    second_order_center = Symbol(:∂², dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+     third_order_center = Symbol(:∂³, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    fourth_order_center = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
 
     @eval begin
-        $der_face_2(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_1, c)
-        $der_face_3(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_2, c)
-        $der_face_4(i, j, k, grid, c) = $der_face_2(i, j, k, grid, $der_center_2, c)
+        $second_order_face(i, j, k, grid, c) =  $first_order_face(i, j, k, grid, $first_order_center,  c)
+         $third_order_face(i, j, k, grid, c) =  $first_order_face(i, j, k, grid, $second_order_center, c)
+        $fourth_order_face(i, j, k, grid, c) = $second_order_face(i, j, k, grid, $second_order_face,   c)
 
-        $der_center_2(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_1, c)
-        $der_center_3(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_2, c)
-        $der_center_4(i, j, k, grid, c) = $der_center_2(i, j, k, grid, $der_face_2, c)
+        $second_order_center(i, j, k, grid, c) =  $first_order_center(i, j, k, grid, $first_order_face,    c)
+         $third_order_center(i, j, k, grid, c) =  $first_order_center(i, j, k, grid, $second_order_face,   c)
+        $fourth_order_center(i, j, k, grid, c) = $second_order_center(i, j, k, grid, $second_order_center, c)
 
-        $der_face_2(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_1, f::Function, args...)
-        $der_face_3(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_2, f::Function, args...)
-        $der_face_4(i, j, k, grid, f::Function, args...) = $der_face_2(i, j, k, grid, $der_center_2, f::Function, args...)
+        $second_order_face(i, j, k, grid, f::Function, args...) =  $first_order_face(i, j, k, grid, $first_order_center,  f::Function, args...)
+         $third_order_face(i, j, k, grid, f::Function, args...) =  $first_order_face(i, j, k, grid, $second_order_center, f::Function, args...)
+        $fourth_order_face(i, j, k, grid, f::Function, args...) = $second_order_face(i, j, k, grid, $second_order_face,   f::Function, args...)
 
-        $der_center_2(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_1, f::Function, args...)
-        $der_center_3(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_2, f::Function, args...)
-        $der_center_4(i, j, k, grid, f::Function, args...) = $der_center_2(i, j, k, grid, $der_face_2, f::Function, args...)
+        $second_order_center(i, j, k, grid, f::Function, args...) =  $first_order_center(i, j, k, grid, $first_order_face,    f::Function, args...)
+         $third_order_center(i, j, k, grid, f::Function, args...) =  $first_order_center(i, j, k, grid, $second_order_face,   f::Function, args...)
+        $fourth_order_center(i, j, k, grid, f::Function, args...) = $second_order_center(i, j, k, grid, $second_order_center, f::Function, args...)
     end
 end
 

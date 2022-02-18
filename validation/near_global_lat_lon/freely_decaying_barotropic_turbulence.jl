@@ -14,9 +14,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-using Oceananigans.TurbulenceClosures:
-    HorizontallyCurvilinearAnisotropicDiffusivity,
-    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures
 
 using Oceananigans.Utils: prettytime, hours, day, days, years, year
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
@@ -62,8 +60,7 @@ diffusive_time_scale = 120days
 @show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
 @show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 
-#closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
-closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
+closure = ScalarBiharmonicDiffusivity(ν=νh₄)
 
 coriolis = HydrostaticSphericalCoriolis()
 Ω = coriolis.rotation_rate / 20

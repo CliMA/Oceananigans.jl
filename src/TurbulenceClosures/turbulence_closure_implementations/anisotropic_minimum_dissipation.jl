@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD}
+struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -15,7 +15,7 @@ struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyVisco
      κ :: K
 
     function AnisotropicMinimumDissipation{TD, FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {TD, FT, PN, PK, PB}
-        κ = convert_diffusivity(FT, κ)
+        κ = convert_diffusivity(FT, κ, Val(false))
         K = typeof(κ)
         return new{TD, FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
     end
@@ -39,7 +39,7 @@ Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
                                    Cb = nothing,
                                     ν = 0,
                                     κ = 0,
-                                   time_discretization=ExplicitTimeDiscretization())
+                                   time_discretization=Explicit())
                                        
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -66,7 +66,7 @@ Keyword arguments
          diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
          specifying a background diffusivity for every tracer.
 
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
                            which integrates the terms involving only z-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -134,7 +134,7 @@ function AnisotropicMinimumDissipation(FT = Float64;
                                        Cb = nothing,
                                        ν = 0,
                                        κ = 0,
-                                       time_discretization::TD = ExplicitTimeDiscretization()) where TD
+                                       time_discretization::TD = Explicit()) where TD
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     

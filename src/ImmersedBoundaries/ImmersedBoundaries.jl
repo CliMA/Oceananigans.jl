@@ -1,11 +1,7 @@
 module ImmersedBoundaries
 
-export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom, 
-       solid_node, solid_interface, is_immersed_boundary,
-       is_x_immersed_boundary⁺, is_x_immersed_boundary⁻,
-       is_y_immersed_boundary⁺, is_y_immersed_boundary⁻,
-       is_z_immersed_boundary⁺, is_z_immersed_boundary⁻
-
+export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom
+       
 using Adapt
 
 using Oceananigans.Grids
@@ -179,7 +175,7 @@ include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
 #####
-##### Diffusivities (for VerticallyImplicitTimeDiscretization)
+##### Diffusivities (for VerticallyImplicit)
 ##### (the diffusivities on the immersed boundaries are kept)
 #####
 

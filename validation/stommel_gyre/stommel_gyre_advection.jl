@@ -41,7 +41,7 @@ function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
           advection = advection_scheme,
             tracers = :c,
            buoyancy = nothing,
-            closure = IsotropicDiffusivity(ν=0, κ=0)
+            closure = ScalarDiffusivity(ν=0, κ=0)
     )
 
     set!(model, v=u, w=v, c=ϕₐ)

@@ -26,9 +26,8 @@ end
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 
 Closures = [Nothing,
-            IsotropicDiffusivity,
-            AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity,
+            ScalarDiffusivity,
+            ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             SmagorinskyLilly,
             AnisotropicMinimumDissipation]

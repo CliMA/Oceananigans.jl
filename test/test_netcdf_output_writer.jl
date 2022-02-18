@@ -82,7 +82,7 @@ function test_thermal_bubble_netcdf_output(arch)
 
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
@@ -253,7 +253,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 

@@ -1,7 +1,7 @@
 using Printf
 using CUDA
 using Oceananigans
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using LinearAlgebra
 
@@ -33,19 +33,19 @@ grid = RectilinearGrid(GPU(), size=(512, 256),
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
-@inline show_name(t) = t isa ExplicitTimeDiscretization ? "explicit" : "implicit"
+@inline show_name(t) = t isa Explicit ? "explicit" : "implicit"
 
 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+for time_stepper in (Explicit(), VerticallyImplicit())
     
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                        closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
+                                        closure = ScalarDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = FPlane(f=sqrt(0.5)),

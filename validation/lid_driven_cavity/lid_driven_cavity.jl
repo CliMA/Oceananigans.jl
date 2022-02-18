@@ -21,7 +21,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
                     tracers = nothing,
                    coriolis = nothing,
         boundary_conditions = (v=v_bcs, w=w_bcs),
-                    closure = IsotropicDiffusivity(ν=1/Re)
+                    closure = ScalarDiffusivity(ν=1/Re)
     )
 
     u, v, w = model.velocities
