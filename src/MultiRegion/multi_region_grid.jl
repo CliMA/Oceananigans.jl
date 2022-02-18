@@ -4,11 +4,11 @@ import Oceananigans.Grids: architecture, size, new_data
 struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     partition :: P
-    local_grids :: G
+    region_grids :: G
     devices :: D
 
-    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P, local_grids::G, devices::D) where {FT, TX, TY, TZ, P, G, D, A}
-        return new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, local_grids, devices)
+    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P, region_grids::G, devices::D) where {FT, TX, TY, TZ, P, G, D, A}
+        return new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
     end
 end
 
@@ -30,16 +30,20 @@ function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothi
     args = (global_grid, child_arch, T, N, extent)
     iter = (0, 0, 0, 1, 1)
 
-    local_grids = multi_region_object(devices, construct_grid, args, iter, nothing, nothing)
+    region_grids = MultiRegionObject(devices, construct_grid, args, iter, nothing, nothing)
 
-    return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, local_grids, devices)
+    return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, region_grids, devices)
 end
 
-@inline assoc_device(mrg::MultiRegionGrid, idx) = mrg.devices[idx]
-@inline assoc_grid(mrg::MultiRegionGrid, idx)   = mrg.local_grids[idx]
-@inline architecture(mrg::MultiRegionGrid)      = mrg.architecture
-@inline grids(mrg::MultiRegionGrid)             = mrg.local_grids
-@inline partition(mrg::MultiRegionGrid)         = mrg.partition
+architecture(mrg::MultiRegionGrid) = mrg.architecture
+partition(mrg::MultiRegionGrid)    = mrg.partition
+devices(mrg::MultiRegionGrid)      = mrg.devices
+
+getregion(mrg::MultiRegionGrid, i)      = mrg.region_grids[i]
+getdevice(mrg::MultiRegionGrid, i)      = mrg.devices[i]
+switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+
+isregional(mrg::MultiRegionGrid) = true
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent)
     halo = halo_size(grid)
@@ -68,17 +72,19 @@ function Adapt.adapt_structure(to, mrg::MultiRegionGrid)
     TX, TY, TZ = topology(mrg)
     return MultiRegionGrid{TX, TY, TZ}(nothing,
                                        Adapt.adapt(to, partition),
-                                       Adapt.adapt(to, local_grids),
+                                       Adapt.adapt(to, region_grids),
                                        Adapt.adapt(to, devices))
 end
 
+Base.size(mrg::MultiRegionGrid) = apply_regionally!(size, mrg.region_grids)
+
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     print(io, "MultiRegionGrid partitioned on $(underlying_arch(architecture(mrg))): \n",
-              "├── grids: $(summary(mrg.local_grids[1])) \n",
+              "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
               "└── architecture: $(arch_summary(mrg))")
 
 Base.summary(mrg::MultiRegionGrid) = 
-    "MultiRegionGrid with $(summary(mrg.partition)) on $(string(typeof(mrg.local_grids[1]).name.wrapper))"
+    "MultiRegionGrid with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 @inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"
