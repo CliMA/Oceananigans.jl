@@ -413,6 +413,7 @@ end
                 fine_column_stretched_c[1, 1, 2] = c₂
             end
 
+            @show typeof(fine_stretched_c[:, :, 1])
             fine_stretched_c[:, :, 1] .= c₁
             fine_stretched_c[:, :, 2] .= c₂
 

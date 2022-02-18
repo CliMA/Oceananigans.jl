@@ -46,7 +46,7 @@ function Field(operand::AbstractOperation;
 
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(location(operand), grid, data, boundary_conditions, operand, status, indices)
+    return Field(location(operand), grid, data, boundary_conditions, indices, operand, status)
 end
 
 """

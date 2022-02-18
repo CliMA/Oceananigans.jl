@@ -17,14 +17,14 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T,
     grid :: G
     data :: D
     boundary_conditions :: B
+    indices :: I
     operand :: O
     status :: S
-    indices :: I
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S, indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S, I}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, op, status, indices)
+        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, indices, op, status)
     end
 end
 
@@ -94,12 +94,12 @@ validate_index(idx::Int, loc, N) = validate_index(UnitRange(idx, idx), loc, N)
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::Tuple)
+function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=nothing, status=nothing)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
     indices = validate_index.(indices, loc, size(loc, grid))
     LX, LY, LZ = loc
-    return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
+    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status)
 end
 
 """
@@ -146,7 +146,7 @@ function Field(loc::Tuple,
                data = new_data(T, grid, loc, indices),
                boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
 
-    return Field(loc, grid, data, boundary_conditions, nothing, nothing, indices)
+    return Field(loc, grid, data, boundary_conditions, indices, nothing, nothing)
 end
     
 Field(f::Field) = f # indeed
@@ -195,9 +195,9 @@ function Base.similar(f::Field, grid=f.grid)
                  grid,
                  new_data(eltype(parent(f)), grid, loc, f.indices),
                  FieldBoundaryConditions(grid, loc, f.indices),
+                 f.indices,
                  f.operand,
-                 deepcopy(f.status),
-                 f.indices)
+                 deepcopy(f.status))
 end
 
 """
@@ -257,38 +257,42 @@ function Base.view(f::Field, ix, iy, iz)
                  grid,
                  windowed_data,
                  f.boundary_conditions, # or window_bcs ?
+                 window_indices,
                  f.operand,
-                 f.status,
-                 window_indices)
+                 f.status)
 end
 
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-indices(obj) = default_indices(3)
-indices(f::Field) = f.indices
+indices(obj, i=default_indices(3)) = i
+indices(f::Field, i=default_indices(3)) = f.indices
+indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
+indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 """Return indices that create a `view` over the interior of a Field."""
 interior_view_indices(field_indices, interior_indices) = Colon()
 interior_view_indices(::Colon,       interior_indices) = interior_indices
 
-function interior(a::OffsetArray, (LX, LY, LZ)::Tuple, grid::AbstractGrid, indices::Tuple=default_indices(3))
-    TX, TY, TZ = topology(grid)
-    i_interior = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
-    j_interior = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
-    k_interior = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
+function interior(a::OffsetArray,
+                  loc::Tuple,
+                  topo::Tuple,
+                  size::NTuple{N, Int},
+                  halo_size::NTuple{N, Int},
+                  ind::Tuple=default_indices(3)) where N
 
-    # Indices isa Colon => omit halos from view.
-    # Otherwise, `a` is already windowed, and we view with `Colon`.
-    i_view = interior_view_indices(indices[1], i_interior)
-    j_view = interior_view_indices(indices[2], j_interior)
-    k_view = interior_view_indices(indices[3], k_interior)
-
-    return view(parent(a), i_view, j_view, k_view)
+    i_interior = interior_parent_indices.(loc, topo, size, halo_size)
+    i_view = interior_view_indices.(ind, i_interior)
+    return view(parent(a), i_view...)
 end
 
-"Returns a view of `f` that excludes halo points."
+"""
+    interior(f::Field)
+
+Returns a view of `f` that excludes halo points."
+"""
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
+interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
     
 # Don't use axes(f) to checkbounds; use axes(f.data)
@@ -309,7 +313,6 @@ end
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
 Base.isapprox(ϕ::Field, ψ::Field; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)
-Base.parent(f::Field) = parent(f.data)
 Base.fill!(f::Field, val) = fill!(parent(f), val)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
@@ -319,6 +322,7 @@ length_indices(N, i::UnitRange) = length(i)
 total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
 Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
 
+Base.parent(f::Field) = parent(f.data)
 
 #####
 ##### Interface for field computations

@@ -63,7 +63,7 @@ function Field(reduction::Reduction;
     boundary_conditions = FieldBoundaryConditions(grid, loc, ind)
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(loc, grid, data, boundary_conditions, reduction, status, ind)
+    return Field(loc, grid, data, boundary_conditions, ind, reduction, status)
 end
 
 const ReducedComputedField = Field{<:Any, <:Any, <:Any, <:Reduction}

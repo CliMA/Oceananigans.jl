@@ -8,7 +8,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location
+using Oceananigans.Fields: show_location, interior_view_indices
 
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
@@ -23,7 +23,7 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY
     function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ,
                                             indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data) 
-        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, times)
+        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, indices, times)
     end
 end
 
@@ -42,9 +42,13 @@ Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices=(:, :, :),
                                      boundary_conditions=nothing) where {LX, LY, LZ}
-    location = (LX, LY, LZ)
     Nt = length(times)
-    data = offset_data(FT, grid, location, indices)
+    arch = architecture(grid)
+    loc = (LX, LY, LZ)
+    space_size = total_size(loc, grid, indices)
+    underlying_data = zeros(FT, arch, space_size..., Nt)
+    data = offset_data(underlying_data, grid, loc, indices)
+
     return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times, indices)
 end
 
@@ -123,8 +127,13 @@ end
 
 Base.parent(fts::FieldTimeSeries) = parent(fts.data)
 
-Base.getindex(fts::InMemoryFieldTimeSeries{LX, LY, LZ}, n::Int) where {LX, LY, LZ} =
-    Field{LX, LY, LZ}(fts.grid, boundary_conditions=fts.boundary_conditions, data=view(fts.data, :, :, :, n))
+function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
+    underlying_data = view(parent(fts), :, :, :, n) 
+    data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    boundary_conditions = fts.boundary_conditions
+    indices = fts.indices
+    return Field(location(fts), fts.grid; data, boundary_conditions, indices)
+end
 
 #####
 ##### set!
@@ -186,9 +195,8 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
     return nothing
 end
 
-function set!(time_series::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractField})
-    raw_data = parent(time_series.data)
-
+function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractField})
+    raw_data = parent(fts)
     file = jldopen(path)
 
     for (n, field) in enumerate(fields_vector)
@@ -200,30 +208,19 @@ function set!(time_series::FieldTimeSeries, fields_vector::AbstractVector{<:Abst
     return nothing
 end
 
-# TODO: this is a bit of type-piracy (with respect to the Oceananigans.Fields module)...
-# is there a better way? (Maybe put this into Oceananigans.Fields...)
+@inline function interior(fts::FieldTimeSeries)
+    loc = location(fts)
+    topo = topology(fts.grid)
+    sz = size(fts.grid)
+    halo_sz = halo_size(fts.grid)
 
-# FieldTimeSeries[i] returns ViewField
-const TimeSeriesViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
-                                  S} where {S <: SubArray{<:Any, <:Any,
-                                  A} where {A <: AbstractArray{<:Any, 4}}}
+    i_interior = interior_parent_indices.(loc, topo, sz, halo_sz)
 
-# Is this too surprising?
-function Base.parent(vf::TimeSeriesViewField)
-    space_indices = parent_index_range.(vf.data.indices[1:3])
-    time_index = vf.data.indices[4]
-    offset_time_series_data = parent(vf.data)
-    underlying_time_series_data = parent(underlying_offset_data)
-    return view(underlying_time_series_data, space_indices..., time_index)
+    indices = fts.indices
+    i_view = interior_view_indices.(indices, i_interior)
+
+    return view(parent(fts), i_view..., :)
 end
-
-"Returns a view of `f` that excludes halo points."
-@inline interior(f::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
-    view(parent(f.data),
-         interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
-         interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
-         interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz),
-         :)
 
 #####
 ##### OnDisk time serieses
