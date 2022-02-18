@@ -154,10 +154,36 @@ function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, veloc
 end
 
 #####
+##### compute...
+#####
+
+import Oceananigans.Fields: compute!
+using Oceananigans.AbstractOperations: _compute!
+using Oceananigans.Fields: compute_at!
+
+const CubedSphereComputedField{LX, LY, LZ} = Field{LX, LY, LZ,
+                                                   <:AbstractOperation,
+                                                   <:ConformalCubedSphereGrid} where {LX, LY, LZ}
+
+function compute!(comp::CubedSphereComputedField, time=nothing)
+    # First compute `dependencies`:
+    compute_at!(comp.operand, time)
+
+    arch = architecture(comp)
+    events = Tuple(launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+                   for c in faces(comp))
+
+    wait(device(arch), MultiEvent(events))
+
+    fill_halo_regions!(comp, arch)
+
+    return comp
+end
+
+#####
 ##### Output writing for cubed sphere fields
 #####
 
-using Oceananigans.Fields: compute!
 import Oceananigans.OutputWriters: fetch_output
 
 function fetch_output(field::AbstractCubedSphereField, model, field_slicer)

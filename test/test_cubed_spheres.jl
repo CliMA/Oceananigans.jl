@@ -7,14 +7,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
 @testset "Cubed spheres" begin
 
-    #=
     @testset "Conformal cubed sphere grid" begin
         @info "  Testing conformal cubed sphere grid..."
 
         grid = ConformalCubedSphereGrid(face_size=(10, 10, 1), z=(-1, 0))
         @test try show(grid); println(); true; catch; false; end
     end
-    =#
 
     for arch in archs
 
@@ -34,7 +32,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                                             tracers = :c,
                                             buoyancy = nothing)
 
-        #=
         @testset "Constructing a grid from file [$(typeof(arch))]" begin
             @test grid isa ConformalCubedSphereGrid
         end
@@ -70,7 +67,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
             time_step!(model, 1)
             @test try time_step!(model, 1); true; catch; false; end
         end
-        =#
 
         @testset "VerticalVorticityField on ConformalCubedSphereGrid [$(typeof(arch))]" begin
             @info "  Testing VerticalVorticityField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
@@ -84,7 +80,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 compute!(ζ)
                 true
             catch err
-                print(showerror, err)
+                println(sprint(showerror, err))
                 false
             end
             @test maximum(abs, ζ) > 0 # fingers crossed
