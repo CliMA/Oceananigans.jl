@@ -52,8 +52,22 @@ vᵢ .-= mean(vᵢ)
 
 set!(model, u=uᵢ, v=vᵢ)
 
-# ## Computing vorticity and speed
+simulation = Simulation(model, Δt=0.2, stop_time=50)
 
+# ## Logging simulation progress
+#
+# We set up a callback that logs the simulation iteration and time every 100 iterations.
+
+progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
+
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+
+# ## Output
+#
+# We set up an output writer for the simulation that saves vorticity and speed every 20 iterations.
+#
+# ### Computing vorticity and speed
+#
 # To make our equations prettier, we unpack `u`, `v`, and `w` from
 # the `NamedTuple` model.velocities:
 u, v, w = model.velocities
@@ -68,8 +82,6 @@ u, v, w = model.velocities
 
 ω = ∂x(v) - ∂y(u)
 
-ω_field = Field(ω)
-
 # We also calculate _(ii)_ the _speed_ of the flow,
 #
 # ```math
@@ -78,25 +90,9 @@ u, v, w = model.velocities
 
 s = sqrt(u^2 + v^2)
 
-s_field = Field(s)
+# We pass these operations to an output writer below to calculate and output them during the simulation.
 
-# We'll pass these `Field`s to an output writer below to calculate and output them during the simulation.
-
-simulation = Simulation(model, Δt=0.2, stop_time=50)
-
-# ## Logging simulation progress
-#
-# We set up a callback that logs the simulation iteration and time every 100 iterations.
-
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
-
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-
-# ## Output
-#
-# We set up an output writer for the simulation that saves the vorticity every 20 iterations.
-
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=ω_field, s=s_field),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
                                                       schedule = TimeInterval(2),
                                                       prefix = "two_dimensional_turbulence",
                                                       force = true)

@@ -282,16 +282,16 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Vertical vorticity [s⁻¹]
-ζ = Field(∂x(v) - ∂y(u))
+ζ = ∂x(v) - ∂y(u)
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
-δ = Field(-∂z(w))
+δ = -∂z(w)
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
 # `simulation`.
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
                                                         prefix = "eady_turbulence",
                                                          force = true)

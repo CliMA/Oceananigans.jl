@@ -29,7 +29,7 @@
 #     and grazing by zooplankton.
 #   * How to set time-dependent boundary conditions.
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
-#   * How to use `Average` and `Field` to diagnose spatial averages of model fields.
+#   * How to use `Average` to diagnose spatial averages of model fields.
 #
 # ## Install dependencies
 #
@@ -175,11 +175,9 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
-averaged_plankton = Field(Average(model.tracers.P, dims=(1, 2)))
-
 outputs = (w = model.velocities.w,
-           plankton = model.tracers.P,
-           averaged_plankton = averaged_plankton)
+           P = model.tracers.P,
+           P̄ = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
@@ -243,8 +241,8 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     t = file["timeseries/t/$iteration"]
     w = file["timeseries/w/$iteration"][:, 1, :]
-    P = file["timeseries/plankton/$iteration"][:, 1, :]
-    averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
+    P = file["timeseries/P/$iteration"][:, 1, :]
+    P̄ = file["timeseries/P̄/$iteration"][1, 1, :]
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
@@ -271,7 +269,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                           clims = P_lims,
                           kwargs...)
 
-    P_profile = plot(averaged_P, zp,
+    P_profile = plot(P̄, zp,
                      linewidth = 2,
                      label = nothing,
                      xlims = (0.9, 1.3),

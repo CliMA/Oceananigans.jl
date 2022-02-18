@@ -136,10 +136,10 @@ u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = Field(sqrt(u^2 + w^2))
+s = sqrt(u^2 + w^2)
 
 ## y-component of vorticity
-ζ = Field(∂z(u) - ∂x(w))
+ζ = ∂z(u) - ∂x(w)
 
 outputs = (s = s, b = b, ζ = ζ)
 nothing # hide
@@ -151,10 +151,10 @@ saved_output_prefix = "horizontal_convection"
 saved_output_filename = saved_output_prefix * ".jld2"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                  field_slicer = nothing,
+                                                      with_halos = true,
                                                       schedule = TimeInterval(0.5),
-                                                        prefix = saved_output_prefix,
-                                                         force = true)
+                                                      prefix = saved_output_prefix,
+                                                      force = true)
 nothing # hide
 
 # Ready to press the big red button:

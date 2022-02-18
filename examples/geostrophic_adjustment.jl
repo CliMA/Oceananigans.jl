@@ -95,7 +95,7 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = IterationInterval(10),
                                                       prefix = "geostrophic_adjustment",
-                                                      field_slicer = nothing,
+                                                      with_halos = true,
                                                       force = true)
 
 run!(simulation)

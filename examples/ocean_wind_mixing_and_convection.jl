@@ -218,7 +218,7 @@ eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
                            prefix = "ocean_wind_mixing_and_convection",
-                     field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
+                          indices = (:, grid.Ny/2, :),
                          schedule = TimeInterval(1minute),
                             force = true)
 
