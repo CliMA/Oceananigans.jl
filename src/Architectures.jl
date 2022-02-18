@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture, AbstractMultiArchitecture
-export CPU, GPU
+export CPU, GPU, MultiGPU
 export device, device_event, architecture, array_type, arch_array
 
 using CUDA
@@ -38,6 +38,13 @@ struct CPU <: AbstractArchitecture end
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
+
+"""
+    GPU <: AbstractArchitecture
+
+Run Oceananigans on a multiple NVIDIA CUDA GPU connected to the same host.
+"""
+struct MultiGPU <: AbstractArchitecture end
 
 #####
 ##### These methods are extended in Distributed.jl

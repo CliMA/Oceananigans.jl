@@ -41,9 +41,22 @@ using Oceananigans.Advection:
 
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
-import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
-import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
+
+import Oceananigans.Grids: 
+        cpu_face_constructor_x,
+        cpu_face_constructor_y,
+        cpu_face_constructor_z,
+        on_architecture,
+        architecture,
+        with_halo,
+        all_x_nodes,
+        all_y_nodes,
+        all_z_nodes,
+        xnode,
+        ynode,
+        znode
+        
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -152,6 +165,10 @@ end
 @inline xnode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = xnode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
+
+@inline cpu_face_constructor_x(ibg::ImmersedBoundaryGrid) = cpu_face_constructor_x(ibg.grid)
+@inline cpu_face_constructor_y(ibg::ImmersedBoundaryGrid) = cpu_face_constructor_y(ibg.grid)
+@inline cpu_face_constructor_z(ibg::ImmersedBoundaryGrid) = cpu_face_constructor_z(ibg.grid)
 
 all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
 all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)

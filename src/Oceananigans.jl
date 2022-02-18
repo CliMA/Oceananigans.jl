@@ -10,7 +10,7 @@ end
 
 export
     # Architectures
-    CPU, GPU,
+    CPU, GPU, 
 
     # Logging
     OceananigansLogger,
@@ -202,6 +202,7 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
+include("MultiRegion/MultiRegion.jl")
 include("CubedSpheres/CubedSpheres.jl")
 
 #####
@@ -230,6 +231,7 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
+using .MultiRegion
 using .CubedSpheres
 
 function __init__()
