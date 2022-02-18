@@ -2,45 +2,38 @@ import Base: show
 
 const DFBC = DefaultPrognosticFieldBoundaryCondition
 
-bc_str(::FBC)     = "Flux"
+bc_str(::FBC)     = "Flux    "
 bc_str(::PBC)     = "Periodic"
-bc_str(::OBC)     = "Open"
-bc_str(::VBC)     = "Value"
+bc_str(::OBC)     = "Open    "
+bc_str(::VBC)     = "Value   "
 bc_str(::GBC)     = "Gradient"
 bc_str(::ZFBC)    = "ZeroFlux"
-bc_str(::DFBC)    = "Default"
-bc_str(::Nothing) = "Nothing"
+bc_str(::DFBC)    = "Default "
+bc_str(::Nothing) = "Nothing "
 
 #####
 ##### BoundaryCondition
 #####
 
-print_condition(n::Union{Nothing, Number}) = "$n"
-print_condition(A::AbstractArray) = "$(Base.dims2string(size(A))) $(typeof(A))"
-print_condition(bf::Union{DiscreteBoundaryFunction, ContinuousBoundaryFunction}) = print_condition(bf.func)
+condition_str(n::Union{Nothing, Number}) = "$n"
+condition_str(A::AbstractArray) = "$(Base.dims2string(size(A))) $(typeof(A))"
+condition_str(bf::Union{DiscreteBoundaryFunction, ContinuousBoundaryFunction}) = condition_str(bf.func)
 
-function print_condition(f::Function)
+function condition_str(f::Function)
     ms = methods(f).ms
     length(ms) == 1 && return "$(ms[1])"
     return "$(ms)"
 end
 
 show(io::IO, bc::BoundaryCondition) =
-    print(io, "BoundaryCondition: classification=$(bc_str(bc)), condition=$(print_condition(bc.condition))")
+    print(io, "BoundaryCondition: classification=", rstrip(bc_str(bc)), ", condition=", condition_str(bc.condition))
 
 #####
 ##### FieldBoundaryConditions
 #####
 
-Base.summary(fbcs::FieldBoundaryConditions) =
-    string("west=$(bc_str(fbcs.west)), ",
-           "east=$(bc_str(fbcs.east)), ",
-           "south=$(bc_str(fbcs.south)), ",
-           "north=$(bc_str(fbcs.north)), ",
-           "bottom=$(bc_str(fbcs.bottom)), ",
-           "top=$(bc_str(fbcs.top)), ",
-           "immersed=$(bc_str(fbcs.immersed))")
-
+Base.summary(fbcs::FieldBoundaryConditions) = "FieldBoundaryConditions"
+    
 show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
     string("Oceananigans.FieldBoundaryConditions, with boundary conditions", '\n',
            padding, "├── west: ",     typeof(bcs.west), '\n',

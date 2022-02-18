@@ -1,5 +1,6 @@
 using Printf
 using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.BoundaryConditions: bc_str
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
@@ -28,10 +29,16 @@ data_summary(field) = string("max=", scalar_summary(maximum(field)), ", ",
 
 function Base.show(io::IO, field::Field)
 
+    bcs = field.boundary_conditions
+
     prefix =
         string("$(summary(field))\n",
                "├── grid: ", summary(field.grid), '\n',
-               "├── boundary conditions: ", summary(field.boundary_conditions), '\n')
+               "├── boundary conditions: ", summary(bcs), '\n',
+               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+                     " south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
+                     " bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
+                     " immersed: ", bc_str(bcs.immersed), '\n')
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), '\n',

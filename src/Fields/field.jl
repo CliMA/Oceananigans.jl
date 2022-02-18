@@ -218,20 +218,53 @@ function offset_windowed_data(data, loc, grid, indices)
         windowed_parent = view(parent(data), parent_indices...)
     end
 
-    offset_data = OffsetArray(windowed_parent, indices...)
-
-    return offset_data
+    sz = size(grid)
+    return offset_data(windowed_parent, loc, topo, sz, halo, indices)
 end
 
-Base.view(f::Field, ix::Colon, iy::Colon, iz::Colon) = f
+"""
+    view(f::Field, indices...)
 
-function Base.view(f::Field, ix, iy, iz)
+Returns a `Field` with `indices`, whose `data` is
+a view into `f`, offset to preserve index meaning.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
+
+julia> c = CenterField(grid)
+2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+└── data: 4×5×6 OffsetArray(::Array{Float64, 3}, 0:3, 0:4, 0:5) with eltype Float64 with indices 0:3×0:4×0:5
+    └── max=0.0, min=0.0, mean=0.0
+
+julia> c .= rand(size(c)...);
+
+julia> v = view(c, :, 2:3, 1:2)
+2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+└── data: 4×2×2 OffsetArray(view(::Array{Float64, 3}, :, 3:4, 2:3), 0:3, 2:3, 1:2) with eltype Float64 with indices 0:3×2:3×1:2
+    └── max=0.851907, min=0.0904425, mean=0.550784
+
+julia> size(v)
+(2, 2, 2)
+
+julia> v[2, 2, 2] == c[2, 2, 2]
+true
+```
+"""
+function Base.view(f::Field, i, j, k)
     grid = f.grid
     loc = location(f)
-    window_indices = (ix, iy, iz)
 
-    # Error if indices are (i) improper type or (ii) outside interior index range
-    window_indices = validate_index.(window_indices, loc, size(f))
+    # Validate indices (convert Int to UnitRange, error for invalid indices)
+    window_indices = validate_index.((i, j, k), loc, size(f))
     
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
@@ -241,26 +274,19 @@ function Base.view(f::Field, ix, iy, iz)
     # OffsetArray around a view of parent with appropriate indices:
     windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
 
-    # Should we hold onto boundary conditions? Maybe so, however we need special fill_halo_regions!
-    # that either
-    #     (i) windows boundary conditions prior to filling halos; or
-    #     (ii) rebuilds the parent field so all halos _can_ be filled.
-    #=
-    bcs = f.boundary_conditions
-    west, east   = window_boundary_conditions(window_indices[1], bcs.west, bcs.east)
-    south, north = window_boundary_conditions(window_indices[2], bcs.south, bcs.north)
-    bottom, top  = window_boundary_conditions(window_indices[3], bcs.bottom, bcs.top)
-    window_bcs = FieldBoundaryConditions(west, east, south, north, bottom, top, bcs.immersed)
-    =#
-
     return Field(loc,
                  grid,
                  windowed_data,
-                 f.boundary_conditions, # or window_bcs ?
+                 f.boundary_conditions, # keep original boundary conditions
                  window_indices,
                  f.operand,
                  f.status)
 end
+
+# Conveniences
+Base.view(f::Field, I::Vararg{Colon}) = f
+Base.view(f::Field, i) = view(f, i, :, :)
+Base.view(f::Field, i, j) = view(f, i, j, :)
 
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
@@ -302,7 +328,7 @@ function Base.axes(f::Field)
     if f.indices === (:, : ,:)
         return Base.OneTo.(size(f))
     else
-        return axes(f.data)
+        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : f.indices[i] for i = 1:3)
     end
 end
 
@@ -607,14 +633,14 @@ end
 function fill_halo_regions!(field::Field, arch, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    if !(field.indices isa typeof(default_indices(3))) # make sure that bcs are filtered
-        filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
+    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
+        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     else
-        filtered_bcs = field.boundary_conditions
+        maybe_filtered_bcs = field.boundary_conditions
     end
 
     return fill_halo_regions!(field.data,
-                              filtered_bcs,
+                              maybe_filtered_bcs,
                               architecture(field),
                               field.grid,
                               args...;

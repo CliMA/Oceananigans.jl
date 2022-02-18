@@ -208,7 +208,7 @@ function set!(fts::FieldTimeSeries, fields_vector::AbstractVector{<:AbstractFiel
     return nothing
 end
 
-@inline function interior(fts::FieldTimeSeries)
+function interior(fts::FieldTimeSeries)
     loc = location(fts)
     topo = topology(fts.grid)
     sz = size(fts.grid)
@@ -221,6 +221,8 @@ end
 
     return view(parent(fts), i_view..., :)
 end
+
+interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
 
 #####
 ##### OnDisk time serieses
