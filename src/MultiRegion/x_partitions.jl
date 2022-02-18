@@ -1,7 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 
-abstract type AbstractPartition end
-
 struct XPartition{N} <: AbstractPartition
     div :: N
 end
