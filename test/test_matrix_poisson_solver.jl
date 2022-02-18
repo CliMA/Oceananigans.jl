@@ -87,7 +87,8 @@ function run_poisson_equation_test(grid)
     
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
-    rhs = copy(interior(rhs))[:]
+    rhs = copy(interior(rhs))
+    rhs = reshape(rhs, length(rhs))
     weights = compute_poisson_weights(grid)
     solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 
