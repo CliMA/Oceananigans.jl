@@ -50,7 +50,11 @@ Base.show(io::IO, mrf::MultiRegionField{LX, LY, LZ}) where {LX, LY, LZ} =
 
 @inline set!(mrf::MultiRegionField, f::Function) = multi_region_function!(mrf, set!, (fields(mrf), f), (1, 0), nothing, nothing)
 
-function apply_regionally!(mrg, func, args...; kwargs...)
+function apply_regionally!(func, args...; kwargs...)
+    mra = findfirst(isregional, args)
+    mrk = findfirst(isregional, kwargs)
+    isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
+
     for r in regions(mrg)
         switch_device!(mrg, r)
         region_args = Tuple(getregion(arg, r) for arg in args)
@@ -59,16 +63,24 @@ function apply_regionally!(mrg, func, args...; kwargs...)
     end
 end
 
+isregional(f) = false
+isregional(f::MultiRegionGrid) = true
+isregional(f::MultiRegionObject) = true
+isregional(f::MultiRegionField) = true
+
 getregion(f, i) = i
 
-f :: MultiField = Field{<:Any, <:Any, <:Any, <:MultiRegionGrid}
+const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
 
-function getregion(f :: MultiField{LX, LY, LZ}, i) where {LX, LY, LZ} 
-    switch_device!(f.grid, i)
-    return Field((LX, LY, LZ), getregion(f.grid, i), getregion(f.boundary_conditions, i))
-end
+getregion(f::MultiRegionField, i) =
+    Field(location(f), getregion(f.grid, i), getregion(f.data, i), getregion(f.boundary_conditions, i), getregion(f.operand, i), getregion(f.status, i))
 
 new_data(FT, grid, loc) = apply_regionally!(grid, new_data, FT, grid.regional_grids, loc)
 set!(f, func) = apply_regionally!(f.grid, set!, f, func)
+
+@regionalize set!
+
+# macro regionalize(func)
+
 
 function 

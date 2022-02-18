@@ -7,7 +7,7 @@ ConnectedBoundaryCondition(neighbour) = BoundaryCondition(Connected, neighbour)
 
 @inline bc_str(bc::BoundaryCondition{<:Connected}) = "Connected"
 
-function inject_multi_bc(region, p::XPartition; bcs)
+function inject_regional_bcs(region, p::XPartition; bcs)
     
     if region == 1
         east = ConnectedBoundaryCondition(2)
@@ -25,5 +25,6 @@ function inject_multi_bc(region, p::XPartition; bcs)
                                    south = bcs.south,
                                    north = bcs.north, 
                                    top = bcs.top, 
-                                   bottom = bcs.bottom)
+                                   bottom = bcs.bottom,
+                                   immersed = bcs.immersed)
 end
