@@ -28,6 +28,7 @@ using KernelAbstractions
 import Oceananigans.Utils: with_tracers
 
 using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
