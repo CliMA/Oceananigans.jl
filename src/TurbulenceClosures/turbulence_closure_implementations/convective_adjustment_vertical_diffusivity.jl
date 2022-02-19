@@ -24,7 +24,7 @@ end
                                             convective_νz = 0,
                                             background_κz = 0,
                                             background_νz = 0,
-                                            time_discretization = VerticallyImplicitTimeDiscretization())
+                                            time_discretization = VerticallyImplicit())
 
 The one positional argument determines the floating point type of the free parameters
 of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
@@ -42,14 +42,14 @@ Keyword arguments
 
 * `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
-* `time_discretization`: Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+* `time_discretization`: Either `Explicit` or `VerticallyImplicit`.
 """
 function ConvectiveAdjustmentVerticalDiffusivity(FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
                                                  background_νz = zero(FT),
-                                                 time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
+                                                 time_discretization::TD = VerticallyImplicit()) where TD
 
     return ConvectiveAdjustmentVerticalDiffusivity{TD}(convective_κz, convective_νz,
                                                        background_κz, background_νz)
@@ -135,7 +135,7 @@ end
 ##### Fluxes
 #####
 
-const VITD = VerticallyImplicitTimeDiscretization
+const VITD = VerticallyImplicit
 const ATD = AbstractTimeDiscretization
 
 @inline viscous_flux_ux(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
@@ -162,7 +162,7 @@ const ATD = AbstractTimeDiscretization
 ##### Diffusivity
 #####
 
-const etd = ExplicitTimeDiscretization()
+const etd = Explicit()
 
 @inline z_boundary_adj(k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}) = k == 1 | k == grid.Nz+1
 @inline z_boundary_adj(k, grid) = false

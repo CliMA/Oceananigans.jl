@@ -35,7 +35,7 @@ function setup_simulation(N, advection_scheme)
                grid = grid,
         timestepper = :RungeKutta3,
           advection = advection_scheme,
-            closure = IsotropicDiffusivity(ν=0, κ=0)
+            closure = ScalarDiffusivity(ν=0, κ=0)
     )
 
     x₀, z₀ = L/2, -L/2

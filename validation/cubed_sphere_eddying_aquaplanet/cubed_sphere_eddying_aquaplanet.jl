@@ -13,6 +13,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 using Oceananigans.CubedSpheres: CubedSphereFaces, inject_cubed_sphere_exchange_boundary_conditions
 
+using Oceananigans.TurbulenceClosures: Horizontal
+
 Logging.global_logger(OceananigansLogger())
 
 #####
@@ -195,7 +197,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
          momentum_advection = VectorInvariant(),
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
                    coriolis = nothing,
-                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=200),
+                    closure = ScalarDiffusivity(νh=200),
         boundary_conditions = (u=u_bcs, v=v_bcs),
                   # forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,

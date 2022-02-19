@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, CATKEVerticalDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 using CUDA

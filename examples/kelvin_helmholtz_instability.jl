@@ -135,7 +135,7 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
                                    grid = grid,
                                coriolis = nothing,
                       background_fields = (u=U, b=B),
-                                closure = IsotropicDiffusivity(ν=2e-4, κ=2e-4),
+                                closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
                                buoyancy = BuoyancyTracer(),
                                 tracers = :b)
 

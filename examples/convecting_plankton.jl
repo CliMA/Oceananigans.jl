@@ -125,7 +125,7 @@ model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,
-                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
+                closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :P), # P for Plankton
                buoyancy = BuoyancyTracer(),
