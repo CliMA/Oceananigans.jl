@@ -40,10 +40,18 @@ function with_tracers(tracers, closure::ISSD)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
+# For ensembles of closures
 function with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
+
+    if arch isa GPU
+        closure_vector = Vector(closure_vector)
+    end
+
     Ex = length(closure_vector)
-    return arch_array(arch, [with_tracers(tracers, closure_vector[i]) for i=1:Ex])
+    closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
+
+    return arch_array(arch, closure_vector)
 end
 
 #####
