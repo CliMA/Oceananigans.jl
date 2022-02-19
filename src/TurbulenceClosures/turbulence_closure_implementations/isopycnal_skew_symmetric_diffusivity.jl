@@ -44,7 +44,7 @@ end
 function with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
 
-    if arch isa GPU
+    if arch isa Architectures.GPU
         closure_vector = Vector(closure_vector)
     end
 
