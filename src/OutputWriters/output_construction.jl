@@ -41,7 +41,7 @@ end
 
 
 function construct_output(user_output::AbstractField, grid, user_indices, with_halos)
-    indices = output_indices(out, grid, user_indices, with_halos)
+    indices = output_indices(user_output, grid, user_indices, with_halos)
     return construct_output(user_output, indices)
 end
 
