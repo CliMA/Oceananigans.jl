@@ -11,12 +11,13 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
-                                    implicit_solver = nothing,
+    QuasiAdamsBashforth2TimeStepper(grid, tracers,
+                                    χ = 0.1;
+                                    implicit_solver::IT = nothing,
                                     Gⁿ = TendencyFields(grid, tracers),
-                                    G⁻ = TendencyFields(grid, tracers))
+                                    G⁻ = TendencyFields(grid, tracers)) where IT
 
-Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
+Return an QuasiAdamsBashforth2TimeStepper object with tendency fields and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
