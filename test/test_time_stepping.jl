@@ -17,7 +17,8 @@ end
 
 function euler_time_stepping_doesnt_keep_NaNs(arch)
     model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
-                                        buoyancy = BuoyancyTracer())
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
 
     CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
     time_step!(model, 1, euler=true)
