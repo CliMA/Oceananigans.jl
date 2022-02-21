@@ -15,7 +15,7 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function euler_time_stepping_doesnt_keep_NaNs(arch)
+function euler_time_stepping_doesnt_propagate_NaNs(arch)
     model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
                                         buoyancy = BuoyancyTracer())
 
