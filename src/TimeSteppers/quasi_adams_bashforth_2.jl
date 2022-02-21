@@ -63,7 +63,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         # in case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for fieldname in keys(model.timestepper.G⁻)
             field = model.timestepper.G⁻[fieldname]
-            if !isnothing(field); parent(field) .= 0; end
+            !isnothing(field) && fill!(parent(field), 0)
         end
     end
 
