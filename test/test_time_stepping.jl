@@ -16,14 +16,13 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
 end
 
 function euler_time_stepping_doesnt_keep_NaNs(arch)
-    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)),
+    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
                                         buoyancy = BuoyancyTracer())
 
     model.timestepper.G⁻.u[1, 1, 1] = NaN
-
     time_step!(model, 1, euler=true)
-
-    return !isnan.(model.velocities.u[1, 1, 1])
+    u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
+    return !isnan(u111)
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
