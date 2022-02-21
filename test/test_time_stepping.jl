@@ -300,7 +300,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
         for arch in archs
             @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
-            @test euler_time_stepping_doesnt_keep_NaNs(arch)
+            @test euler_time_stepping_doesnt_propagate_NaNs(arch)
         end
     end
 
