@@ -38,6 +38,8 @@ end
 architecture(mrg::MultiRegionGrid) = mrg.architecture
 partition(mrg::MultiRegionGrid)    = mrg.partition
 devices(mrg::MultiRegionGrid)      = mrg.devices
+regions(mrg::MultiRegionGrid)      = 1:length(partition(mrg))
+grids(mrg::MultiRegionGrid)        = mrg.region_grids
 
 getregion(mrg::MultiRegionGrid, i)      = mrg.region_grids[i]
 getdevice(mrg::MultiRegionGrid, i)      = mrg.devices[i]

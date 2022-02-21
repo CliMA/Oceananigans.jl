@@ -59,7 +59,6 @@ end
 #### Implement single periodic directions (for Distributed memory architectures)
 ####
 
-
 @kernel function fill_periodic_west_halo!(c, H::Int, N)
   j, k = @index(Global, NTuple)
   @unroll for i = 1:H

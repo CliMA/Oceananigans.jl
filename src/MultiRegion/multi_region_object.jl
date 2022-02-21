@@ -24,35 +24,6 @@ function MultiRegionObject(devices::Tuple, constructor, args, iter_args, kwargs,
     return MultiRegionObject(Tuple(regional_obj), devices)
 end
 
-# For non-returning functions
-function apply_regionally!(func!, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
-
-    for (r, dev) in enumerate(devices(mra))
-        switch_device!(dev);
-        region_args = Tuple(getregion(arg, r) for arg in args);
-        region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
-        func!(region_args...; region_kwargs...)
-    end
-end
- 
-# For functions with return statements
-function apply_regionally(func, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
-
-    res = Tuple((switch_device!(dev);
-                 region_args = Tuple(getregion(arg, r) for arg in args);
-                 region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
-                 func(region_args...; region_kwargs...))
-                 for (r, dev) in enumerate(devices(mra)))
-    
-    return MultiRegionObject(res, devices(mra))
-end
-
 Base.getindex(mo::MultiRegionObject, args...) = Base.getindex(mo.regions, args...)
 
 switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
@@ -60,7 +31,7 @@ switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 getregion(mo::MultiRegionObject, i) = mo.regions[i]
 getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
-regions(mo::MultiRegionObject) = length(mo.regions)
+regions(mo::MultiRegionObject) = 1:length(mo.regions)
 devices(mo::MultiRegionObject) = mo.devices
 
 isregional(mo::MultiRegionObject) = true
