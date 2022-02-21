@@ -40,10 +40,12 @@ partition(mrg::MultiRegionGrid)    = mrg.partition
 devices(mrg::MultiRegionGrid)      = mrg.devices
 regions(mrg::MultiRegionGrid)      = 1:length(partition(mrg))
 grids(mrg::MultiRegionGrid)        = mrg.region_grids
-
+length(mrg::MultiRegionGrid)       = length(partition(mrg))
 getregion(mrg::MultiRegionGrid, i)      = mrg.region_grids[i]
 getdevice(mrg::MultiRegionGrid, i)      = mrg.devices[i]
 switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+
+allregions(mrg::MultiRegionGrid) = MultiRegionObject(Tuple(1:length(mrg)), devices(mrg))
 
 isregional(mrg::MultiRegionGrid) = true
 
@@ -90,3 +92,4 @@ Base.summary(mrg::MultiRegionGrid) =
     "MultiRegionGrid with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 @inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"
+

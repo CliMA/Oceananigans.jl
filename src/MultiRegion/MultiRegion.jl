@@ -7,6 +7,7 @@ using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.Architectures
+using Oceananigans.BoundaryConditions
 using CUDA
 using Adapt
 using OffsetArrays
@@ -26,7 +27,7 @@ include("multi_region_transformation.jl")
 include("multi_region_object.jl")
 include("x_partitions.jl")
 include("multi_region_grid.jl")
-include("multi_region_field_bcs.jl")
 include("multi_region_field.jl")
+include("multi_region_field_bcs.jl")
 
 end #module

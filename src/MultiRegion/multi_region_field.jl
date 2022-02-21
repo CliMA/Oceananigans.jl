@@ -27,7 +27,7 @@ set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
 validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, grids(mrg))
 validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, grids(mrg), bcs)
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc) =
-  apply_regionally(inject_regional_bcs, MultiRegionObject(Tuple(1:length(partition(mrg))), devices(mrg)), mrg.partition, apply_regionally(FieldBoundaryConditions, grids(mrg), loc))
+# FieldBoundaryConditions(mrg::MultiRegionGrid, loc) =
+#   apply_regionally(inject_regional_bcs, MultiRegionObject(Tuple(1:length(partition(mrg))), devices(mrg)), mrg.partition, apply_regionally(FieldBoundaryConditions, grids(mrg), loc))
 
 Base.show(io::IO, field::MultiRegionField) = print(io, "MultiRegionField")

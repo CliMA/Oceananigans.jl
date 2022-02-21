@@ -1,11 +1,18 @@
 infer_architecture(::Nothing)   = CPU()
-infer_architecture(dev::Tuple)  = length(dev) == 1 ? GPU() : MultiGPU()
-infer_architecture(dev::Number) = dev == 1 ? GPU() : MultiGPU()
+infer_architecture(dev::Tuple)  = length(dev) == 1 ? GPU() : GPU()
+infer_architecture(dev::Number) = dev == 1 ? GPU() : GPU()
 
 getdevice(a, i)                     = CPU()
+getdevice(cu::OffsetArray, i)       = CUDA.device(cu.parent)
 getdevice(cu::CuArray, i)           = CUDA.device(cu)
 getdevice(cu::CuContext, i)         = CUDA.device(cu)
 getdevice(cu::Union{CuPtr, Ptr}, i) = CUDA.device(cu)
+
+getdevice(a)                     = CPU()
+getdevice(cu::OffsetArray)       = CUDA.device(cu.parent)
+getdevice(cu::CuArray)           = CUDA.device(cu)
+getdevice(cu::CuContext)         = CUDA.device(cu)
+getdevice(cu::Union{CuPtr, Ptr}) = CUDA.device(cu)
 
 switch_device!(::CPU)    = nothing
 switch_device!(dev::Int) = CUDA.device!(dev)

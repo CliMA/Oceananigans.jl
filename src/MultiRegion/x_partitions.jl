@@ -2,7 +2,6 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 
 struct XPartition{N} <: AbstractPartition
     div :: N
-
     function XPartition(sizes) 
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
@@ -44,4 +43,29 @@ divide_direction(x::Tuple, p::EqualXPartition) =
 function divide_direction(x::AbstractArray, p::EqualXPartition) 
     nelem = (length(x)-1)÷length(p)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
+end
+
+inject_south_boundary(region, p::XPartition, bc) = bc
+inject_north_boundary(region, p::XPartition, bc) = bc
+
+function inject_west_boundary(region, p::XPartition, global_bc) 
+    if region == 1
+        typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
+                bc = ConnectedBoundaryCondition(length(p)) : 
+                bc = global_bc
+    else
+        bc = ConnectedBoundaryCondition(region - 1)
+    end
+    return bc
+end
+
+function inject_east_boundary(region, p::XPartition, global_bc) 
+    if region == length(p)
+        typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
+                bc = ConnectedBoundaryCondition(1) : 
+                bc = global_bc
+    else
+        bc = ConnectedBoundaryCondition(region + 1)
+    end
+    return bc
 end

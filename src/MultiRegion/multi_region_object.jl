@@ -24,6 +24,8 @@ function MultiRegionObject(devices::Tuple, constructor, args, iter_args, kwargs,
     return MultiRegionObject(Tuple(regional_obj), devices)
 end
 
+allregions(mo::MultiRegionObject) = MultiRegionObject(Tuple(1:length(mo)), devices(mo))
+
 Base.getindex(mo::MultiRegionObject, args...) = Base.getindex(mo.regions, args...)
 
 switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))

@@ -1,22 +1,40 @@
+using KernelAbstractions: @kernel, @index, NoneEvent, Event
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
+using Oceananigans.Architectures: device, arch_array
+using Oceananigans.Utils: launch!
+
 using Oceananigans.BoundaryConditions: 
                 AbstractBoundaryConditionClassification, 
                 BoundaryCondition,  
-                FieldBoundaryConditions
+                default_auxiliary_field_boundary_condition,
+                NoFluxBoundaryCondition,
+                fill_bottom_and_top_halo!,
+                fill_south_and_north_halo!,
+                fill_west_and_east_halo!
 
 import Oceananigans.Fields:
             validate_boundary_condition_location
 
 import Oceananigans.BoundaryConditions: bc_str
 
+using Oceananigans.BoundaryConditions: PeriodicBoundaryCondition
+
 import Oceananigans.BoundaryConditions: 
-                                fill_west_halo!, 
-                                fill_east_halo!, 
-                                fill_north_halo!, 
-                                fill_south_halo!,
-                                fill_bottom_halo!,
-                                fill_top_halo!,
-                                fill_halo_regions!,
-                                validate_boundary_condition_topology
+            fill_west_halo!, 
+            fill_east_halo!, 
+            fill_north_halo!, 
+            fill_south_halo!,
+            fill_bottom_halo!,
+            fill_halo_regions!,
+            apply_x_bcs!,
+            apply_y_bcs!,
+            apply_x_east_bc!,
+            apply_x_west_bc!,
+            apply_y_south_bc!,
+            apply_y_north_bc!,
+            FieldBoundaryConditions,
+            validate_boundary_condition_topology
 
 struct Connected <: AbstractBoundaryConditionClassification end
 
@@ -25,46 +43,96 @@ const CBC  = BoundaryCondition{<:Connected}
 
 @inline bc_str(bc::BoundaryCondition{<:Connected}) = "Connected"
 
-function inject_regional_bcs(region, p::XPartition, bcs)
-    
-    if region == 1
-        east = ConnectedBoundaryCondition(2)
-        west = ConnectedBoundaryCondition(length(p))
-    elseif region == length(p)
-        west = ConnectedBoundaryCondition(length(p)-1)
-        east = ConnectedBoundaryCondition(1)
-    else
-        west = ConnectedBoundaryCondition(region + 1)
-        east = ConnectedBoundaryCondition(region - 1)
-    end
+function FieldBoundaryConditions(mrg::MultiRegionGrid, loc; 
+                                west = default_auxiliary_field_boundary_condition(topology(mrg, 1)(), loc[1]()),
+                                east = default_auxiliary_field_boundary_condition(topology(mrg, 1)(), loc[1]()),
+                               south = default_auxiliary_field_boundary_condition(topology(mrg, 2)(), loc[2]()),
+                               north = default_auxiliary_field_boundary_condition(topology(mrg, 2)(), loc[2]()),
+                              bottom = default_auxiliary_field_boundary_condition(topology(mrg, 3)(), loc[3]()),
+                                 top = default_auxiliary_field_boundary_condition(topology(mrg, 3)(), loc[3]()),
+                            immersed = NoFluxBoundaryCondition())
 
-    return FieldBoundaryConditions(west = west, 
-                                   east = east, 
-                                   south = bcs.south,
-                                   north = bcs.north, 
-                                   top = bcs.top, 
-                                   bottom = bcs.bottom,
-                                   immersed = bcs.immersed)
+    west  = apply_regionally(inject_west_boundary,  allregions(mrg), mrg.partition, west)
+    east  = apply_regionally(inject_east_boundary,  allregions(mrg), mrg.partition, east)
+    south = apply_regionally(inject_south_boundary, allregions(mrg), mrg.partition, south)
+    north = apply_regionally(inject_north_boundary, allregions(mrg), mrg.partition, north)
+    
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-# Everything goes for Connected
-validate_boundary_condition_location(::CBC, ::Union{Center, Face}, side) = nothing 
-validate_boundary_condition_topology(::CBC, topo::Periodic, side)  = nothing
-validate_boundary_condition_topology(::CBC, topo::Flat,     side)  = nothing
+fill_halo_regions!(f::MultiRegionField, args...; kwargs...) = fill_halo_regions!(f.data, f.boundary_conditions, architecture(f), f.grid, args...; kwargs...)
 
+function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...)
+    
+    # Apply top and bottom boundary conditions as usual
+    z_event  = apply_regionally(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
+    
+    # Find neighbour and pass it to the fill_halo functions
+    x_neighb = apply_regionally(find_neighbours, bcs.west,  bcs.east, f.regions)
+    y_neighb = apply_regionally(find_neighbours, bcs.south, bcs.north, f.regions)
+    x_event  = apply_regionally(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
+    y_event  = apply_regionally(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
+    
+    # Wait on each separate device
+    apply_regionally!(wait, device(arch), x_event)
+    apply_regionally!(wait, device(arch), y_event)
+    apply_regionally!(wait, device(arch), z_event)
+    return nothing
+end
 
-# fill_halo_regions!(f::MultiRegionField, args..., kwrags...) = apply_regionally!(fill_halo_regions!, f, args...; kwargs...)
-# fill_halo_regions!(f::MultiRegionObject, args..., kwrags...) = apply_regionally!(fill_halo_regions!, f, args...; kwargs...)
+find_neighbours(left, right, regions) = (find_neighbour(left, regions), find_neighbour(right, regions))
+find_neighbour(bc, regions) = nothing
+find_neighbour(bc::CBC, regions) = regions[bc.condition]
 
+function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
+    H = halo_size(grid)[1]
+    N = size(grid)[1]
+    w = neighb[1]
 
-# function fill_west_halo!(c, ::CBC, arch, dep, grid, args...; kw...)
+    switch_device!(getdevice(w))
+    src = deepcopy(parent(w)[N+1:N+H, :, :])
+
+    switch_device!(getdevice(c))
+    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
+
+    copyto!(dst, src)
+
+    p  = view(parent(c), 1:H, :, :)
+    p .= dst
+
+    return NoneEvent()
+end
+
+function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
+    H = halo_size(grid)[1]
+    N = size(grid)[1]
+    e = neighb[2]
+
+    switch_device!(getdevice(e))
+    src = deepcopy(parent(e)[H+1:2H, :, :])
+
+    switch_device!(getdevice(c))
+    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
+
+    copyto!(dst, src)
+
+    p  = view(parent(c), N+H+1:N+2H, :, :)
+    p .= dst
+
+    return NoneEvent()
+end
   
-#   return event
-# end
+# Everything goes for Connected
+validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 
+validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing 
+validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing
+validate_boundary_condition_topology(::MultiRegionObject, topo::Flat,     side) = nothing
 
-# function fill_east_halo!(c, ::CBC, arch, dep, grid, args...; kw...)
-#   c_parent = parent(c)
-#   yz_size = size(c_parent)[[2, 3]]
-#   event = launch!(arch, grid, yz_size, fill_periodic_east_halo!, c_parent, grid.Hx, grid.Nx; dependencies=dep, kw...)
-#   return event
-# endß
+# Don't "apply fluxes" across Connected boundaries
+@inline apply_x_east_bc!(  Gc, loc, ::CBC, args...) = nothing
+@inline apply_x_west_bc!(  Gc, loc, ::CBC, args...) = nothing
+@inline apply_y_north_bc!( Gc, loc, ::CBC, args...) = nothing
+@inline apply_y_south_bc!( Gc, loc, ::CBC, args...) = nothing
+
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::CBC, ::CBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::CBC, ::CBC, ::AbstractArchitecture, args...) = NoneEvent()
