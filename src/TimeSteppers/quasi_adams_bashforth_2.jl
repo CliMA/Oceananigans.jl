@@ -59,10 +59,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     if euler
         @debug "Taking a forward Euler step."
 
-        # make sure we zero out all previous tendency fields to avoind errors
-        # in case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
-        for fieldname in keys(model.timestepper.G⁻)
-            field = model.timestepper.G⁻[fieldname]
+        # Ensure zeroing out all previous tendency fields to avoid errors in
+        # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
+        for field in model.timestepper.G⁻
             !isnothing(field) && fill!(parent(field), 0)
         end
     end
