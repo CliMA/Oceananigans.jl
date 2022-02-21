@@ -15,6 +15,17 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
+function euler_time_stepping_doesnt_keep_NaNs(arch)
+    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)),
+                                        buoyancy = BuoyancyTracer())
+
+    model.timestepper.G⁻.u[1, 1, 1] = NaN
+
+    time_step!(model, 1, euler=true)
+
+    return !isnan.(model.velocities.u[1, 1, 1])
+end
+
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
@@ -283,6 +294,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for arch in archs
             @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
             @test time_stepping_with_background_fields(arch)
+        end
+    end
+
+    @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
+        for arch in archs
+            @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
+            @test euler_time_stepping_doesnt_keep_NaNs(arch)
         end
     end
 

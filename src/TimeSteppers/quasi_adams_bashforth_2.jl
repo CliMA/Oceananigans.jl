@@ -58,7 +58,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     if euler
         @debug "Taking a forward Euler step."
-
         # Ensure zeroing out all previous tendency fields to avoid errors in
         # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for field in model.timestepper.G⁻
@@ -144,9 +143,7 @@ Time step via
     T = eltype(u)
     one_point_five = convert(T, 1.5)
     oh_point_five = convert(T, 0.5)
-
     @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
 @kernel ab2_step_field!(::FunctionField, args...) = nothing
-
