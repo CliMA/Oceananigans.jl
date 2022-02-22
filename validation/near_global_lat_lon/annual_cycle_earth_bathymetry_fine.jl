@@ -8,7 +8,7 @@ using Oceananigans.Fields: interpolate
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
+using Oceananigans.TurbulenceClosures: VerticallyImplicit
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 

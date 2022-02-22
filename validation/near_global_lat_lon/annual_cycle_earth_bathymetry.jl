@@ -7,7 +7,7 @@ using Oceananigans.Units
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, is_immersed_boundary
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
+using Oceananigans.TurbulenceClosures: VerticallyImplicit
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -114,12 +114,12 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
 vertical_closure = ScalarDiffusivity(ν = νv,
                                      κ = κv,
-                                     isotropy = Vertical(),
+                                     isotropy = ZDirection(),
                                      time_discretization = VerticallyImplicit())
 
 horizontal_closure = ScalarDiffusivity(ν = νh,
                                        κ = κh,
-                                       isotropy = Horizontal())
+                                       isotropy = XYDirection())
 
 background_diffusivity = (horizontal_closure, vertical_closure)
                                        
