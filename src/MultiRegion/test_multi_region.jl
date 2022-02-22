@@ -7,7 +7,7 @@ using BenchmarkTools
 
 grid = RectilinearGrid(GPU(), size = (32, 32, 1), topology = (Bounded, Periodic, Bounded), x = (0, 1), y = (0, 1), z = (0, 1))
 
-mrg = MultiRegionGrid(grid, partition = XPartition([3, 3, 3, 3]), devices = (0, 1, 2, 3))
+mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = (0, 3))
 
 field = Field((Center, Center, Center), mrg);
 set!(field, (x, y ,z) -> x)
