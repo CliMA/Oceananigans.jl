@@ -61,7 +61,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         # Ensure zeroing out all previous tendency fields to avoid errors in
         # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for field in model.timestepper.G⁻
-            !isnothing(field) && (field .= 0)
+            !isnothing(field) && fill!(field, 0)
         end
     end
 
