@@ -65,18 +65,14 @@ fill_halo_regions!(f::MultiRegionField, args...; kwargs...) = fill_halo_regions!
 function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...)
     
     # Apply top and bottom boundary conditions as usual
-    z_event  = apply_regionally(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
+    apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
     
     # Find neighbour and pass it to the fill_halo functions
     x_neighb = apply_regionally(find_neighbours, bcs.west,  bcs.east, f.regions)
     y_neighb = apply_regionally(find_neighbours, bcs.south, bcs.north, f.regions)
-    x_event  = apply_regionally(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
-    y_event  = apply_regionally(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
+    apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
+    apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
     
-    # Wait on each separate device
-    apply_regionally!(wait, device(arch), x_event)
-    apply_regionally!(wait, device(arch), y_event)
-    apply_regionally!(wait, device(arch), z_event)
     return nothing
 end
 

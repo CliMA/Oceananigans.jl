@@ -83,13 +83,13 @@ end
 Base.size(mrg::MultiRegionGrid) = apply_regionally!(size, mrg.region_grids)
 
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
-    print(io, "MultiRegionGrid partitioned on $(underlying_arch(architecture(mrg))): \n",
+    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(underlying_arch(architecture(mrg))): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
               "└── architecture: $(arch_summary(mrg))")
 
-Base.summary(mrg::MultiRegionGrid) = 
-    "MultiRegionGrid with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
+Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
+    "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 @inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"
 

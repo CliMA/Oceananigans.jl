@@ -15,11 +15,14 @@ function apply_regionally!(func!, args...; kwargs...)
     isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
 
     for (r, dev) in enumerate(devices(mra))
-        switch_device!(dev);
-        region_args = Tuple(getregion(arg, r) for arg in args);
-        region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
-        func!(region_args...; region_kwargs...)
+        @async begin
+            switch_device!(dev);
+            region_args = Tuple(getregion(arg, r) for arg in args);
+            region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
+            func!(region_args...; region_kwargs...)
+        end
     end
+    
 end
  
 # For functions with return statements
@@ -36,7 +39,6 @@ function apply_regionally(func, args...; kwargs...)
     
     return MultiRegionObject(res, devices(mra))
 end
-
 
 redispatch(arg::Symbol) = arg
 
