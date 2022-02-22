@@ -35,7 +35,7 @@ import Oceananigans.BoundaryConditions:
 
 struct Connected <: AbstractBoundaryConditionClassification end
 
-ConnectedBoundaryCondition(neighbour) = BoundaryCondition(Connected, neighbour)
+ConnectedBoundaryCondition(neighbor) = BoundaryCondition(Connected, neighbor)
 const CBC  = BoundaryCondition{<:Connected}
 
 @inline bc_str(bc::BoundaryCondition{<:Connected}) = "Connected"
@@ -64,9 +64,9 @@ function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGri
     # Apply top and bottom boundary conditions as usual
     apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
     
-    # Find neighbour and pass it to the fill_halo functions
-    x_neighb = apply_regionally(find_neighbours, bcs.west,  bcs.east, f.regions)
-    y_neighb = apply_regionally(find_neighbours, bcs.south, bcs.north, f.regions)
+    # Find neighbor and pass it to the fill_halo functions
+    x_neighb = apply_regionally(find_neighbors, bcs.west,  bcs.east, f.regions)
+    y_neighb = apply_regionally(find_neighbors, bcs.south, bcs.north, f.regions)
 
     # Fill x- and y-direction halos
     apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
@@ -75,9 +75,9 @@ function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGri
     return nothing
 end
 
-find_neighbours(left, right, regions) = (find_neighbour(left, regions), find_neighbour(right, regions))
-find_neighbour(bc, regions)           = nothing
-find_neighbour(bc::CBC, regions)      = regions[bc.condition]
+find_neighbors(left, right, regions) = (find_neighbor(left, regions), find_neighbor(right, regions))
+find_neighbor(bc, regions)           = nothing
+find_neighbor(bc::CBC, regions)      = regions[bc.condition]
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
     H = halo_size(grid)[1]
