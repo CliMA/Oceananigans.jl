@@ -132,8 +132,9 @@ end
 @inline function stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, Cᵇ′, Cˢ′, e, velocities, tracers, buoyancy)
     d = wall_vertical_distanceᶜᶜᶜ(i, j, k, grid)
     ℓᵇ = (Cᵇ + Cᵇ′) * buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, tracers, buoyancy)
-    ℓˢ = (Cˢ + Cˢ′) * shear_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, velocities, tracers, buoyancy)
-    return min(d, ℓᵇ, ℓˢ)
+    # ℓˢ = (Cˢ + Cˢ′) * shear_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, velocities, tracers, buoyancy)
+    #return min(d, ℓᵇ, ℓˢ)
+    return min(d, ℓᵇ)
 end
 
 @inline function convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᴬ::Number, Cᴬˢ::Number,
@@ -161,7 +162,7 @@ end
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
 
-    return zero(FT) #ifelse(convecting, ℓʰ, zero(FT))
+    return ifelse(convecting, ℓʰ, zero(FT))
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
