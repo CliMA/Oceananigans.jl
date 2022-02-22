@@ -29,8 +29,6 @@ diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`ScalarDiffusivity(is
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> using Oceananigans.TurbulenceClosures: XYDirections, ZDirection
-
 julia> horizontal_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=XYDirections())
 ScalarDiffusivity:
 ν=0.001, κ=0.002
