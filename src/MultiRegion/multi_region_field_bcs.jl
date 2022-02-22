@@ -4,6 +4,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Architectures: device, arch_array
 using Oceananigans.Utils: launch!
 
+using Oceananigans.Operators: assumed_field_location
+
 using Oceananigans.BoundaryConditions: 
                 AbstractBoundaryConditionClassification, 
                 BoundaryCondition,  
@@ -11,7 +13,8 @@ using Oceananigans.BoundaryConditions:
                 NoFluxBoundaryCondition,
                 fill_bottom_and_top_halo!,
                 fill_south_and_north_halo!,
-                fill_west_and_east_halo!
+                fill_west_and_east_halo!,
+                regularize_boundary_condition
 
 import Oceananigans.Fields:
             validate_boundary_condition_location
@@ -31,6 +34,7 @@ import Oceananigans.BoundaryConditions:
             apply_y_south_bc!,
             apply_y_north_bc!,
             FieldBoundaryConditions,
+            regularize_field_boundary_conditions,
             validate_boundary_condition_topology
 
 struct Connected <: AbstractBoundaryConditionClassification end
@@ -38,7 +42,8 @@ struct Connected <: AbstractBoundaryConditionClassification end
 ConnectedBoundaryCondition(neighbor) = BoundaryCondition(Connected, neighbor)
 const CBC  = BoundaryCondition{<:Connected}
 
-@inline bc_str(bc::BoundaryCondition{<:Connected}) = "Connected"
+@inline bc_str(::BoundaryCondition{<:Connected}) = "Connected"
+@inline bc_str(::MultiRegionObject) = "MultiRegion BC"
 
 function FieldBoundaryConditions(mrg::MultiRegionGrid, loc; 
                                 west = default_auxiliary_field_boundary_condition(topology(mrg, 1)(), loc[1]()),
@@ -57,21 +62,35 @@ function FieldBoundaryConditions(mrg::MultiRegionGrid, loc;
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, mrg::MultiRegionGrid, field_name::Symbol, prognostic_field_names=nothing)
+    loc = assumed_field_location(field_name)
+
+    west   = apply_regionally(regularize_boundary_condition, bcs.west,   apply_regionally(topology, mrg), loc, 1, 1,                     prognostic_field_names)
+    east   = apply_regionally(regularize_boundary_condition, bcs.east,   apply_regionally(topology, mrg), loc, 1, getproperty(mrg, :Nx), prognostic_field_names)
+    south  = apply_regionally(regularize_boundary_condition, bcs.south,  apply_regionally(topology, mrg), loc, 2, 1,                     prognostic_field_names)
+    north  = apply_regionally(regularize_boundary_condition, bcs.north,  apply_regionally(topology, mrg), loc, 2, getproperty(mrg, :Ny), prognostic_field_names)
+    bottom = apply_regionally(regularize_boundary_condition, bcs.bottom, apply_regionally(topology, mrg), loc, 3, 1,                     prognostic_field_names)
+    top    = apply_regionally(regularize_boundary_condition, bcs.top,    apply_regionally(topology, mrg), loc, 3, getproperty(mrg, :Nz), prognostic_field_names)
+
+    immersed = apply_regionally(identity, bcs.immersed)
+
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
 fill_halo_regions!(f::MultiRegionField, args...; kwargs...) = fill_halo_regions!(f.data, f.boundary_conditions, architecture(f), f.grid, args...; kwargs...)
 
 function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...)
-    # Everything in apply_regionally occurs asynchronously. Therefore, synchronize
-    
+        
     # Apply top and bottom boundary conditions as usual
-    @sync apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
+    apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
     
     # Find neighbor and pass it to the fill_halo functions
     x_neighb = apply_regionally(find_neighbors, bcs.west,  bcs.east, f.regions)
     y_neighb = apply_regionally(find_neighbors, bcs.south, bcs.north, f.regions)
 
     # Fill x- and y-direction halos
-    @sync apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
-    @sync apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
+    apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
+    apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
     
     return nothing
 end

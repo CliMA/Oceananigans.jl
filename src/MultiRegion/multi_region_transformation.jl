@@ -14,7 +14,7 @@ function apply_regionally!(func!, args...; kwargs...)
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
 
-    for (r, dev) in enumerate(devices(mra))
+    @sync for (r, dev) in enumerate(devices(mra))
         @async begin
             switch_device!(dev);
             region_args = Tuple(getregion(arg, r) for arg in args);

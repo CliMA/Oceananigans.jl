@@ -1,5 +1,5 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
-import Oceananigans.Grids: architecture, size, new_data
+import Oceananigans.Grids: architecture, size, new_data, halo_size
 
 struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -80,7 +80,8 @@ function Adapt.adapt_structure(to, mrg::MultiRegionGrid)
                                        Adapt.adapt(to, devices))
 end
 
-Base.size(mrg::MultiRegionGrid) = apply_regionally!(size, mrg.region_grids)
+# Change name to this?
+# getproperty(mrg::MultiRegionGrid, property) = apply_regionally(Base.getproperty, grids(mrg), property)
 
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(underlying_arch(architecture(mrg))): \n",
@@ -90,6 +91,7 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
+
 
 @inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"
 
