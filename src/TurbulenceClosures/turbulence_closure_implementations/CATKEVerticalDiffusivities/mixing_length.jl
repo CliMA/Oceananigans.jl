@@ -161,7 +161,7 @@ end
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
 
-    return ifelse(convecting, ℓʰ, zero(FT))
+    return zero(FT) #ifelse(convecting, ℓʰ, zero(FT))
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
