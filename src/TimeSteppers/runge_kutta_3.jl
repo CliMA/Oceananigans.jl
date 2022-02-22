@@ -19,7 +19,8 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, tracers,
+    RungeKutta3TimeStepper(grid, tracers;
+                           implicit_solver = nothing,
                            Gⁿ = TendencyFields(grid, tracers),
                            G⁻ = TendencyFields(grid, tracers))
 
@@ -208,5 +209,3 @@ Time step velocity fields with a 3rd-order Runge-Kutta method.
         U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
     end
 end
-
-
