@@ -9,7 +9,6 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations
 using Oceananigans.Advection
-using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 const hydrostatic = false
 
@@ -69,11 +68,11 @@ buoyancy = BuoyancyTracer()
 
 vertical_closure = ScalarDiffusivity(ν = νv,
                                      κ = κv,
-                                     isotropy = Vertical())
+                                     isotropy = ZDirection())
 
 horizontal_closure = ScalarDiffusivity(ν = νh,
                                        κ = κh,
-                                       isotropy = Horizontal())
+                                       isotropy = XYDirections())
                                        
 parameters = (
     Ly = Ly,                   # y-domain length

@@ -12,7 +12,6 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 using Oceananigans.Grids: xnode, ynode, znode
 
 using Random
@@ -152,11 +151,11 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 vertical_closure = ScalarDiffusivity(ν = νv,
                                      κ = κv,
-                                     isotropy = Vertical())
+                                     isotropy = ZDirection())
 
 horizontal_closure = ScalarDiffusivity(ν = νh,
                                        κ = κh,
-                                       isotropy = Horizontal())
+                                       isotropy = XYDirections())
 
 diffusive_closure = (horizontal_closure, vertical_closure)
                                        

@@ -12,7 +12,6 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
@@ -128,8 +127,8 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-horizontal_closure = ScalarDiffusivity(ν = νh, κ = κh, isotropy = Horizontal())
-vertical_closure = ScalarDiffusivity(ν = νz, κ = κz, isotropy = Vertical())
+horizontal_closure = ScalarDiffusivity(ν = νh, κ = κh, isotropy = XYDirections())
+vertical_closure = ScalarDiffusivity(ν = νz, κ = κz, isotropy = ZDirection())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
     convective_νz = 0.0)

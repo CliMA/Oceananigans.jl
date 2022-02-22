@@ -13,7 +13,6 @@ using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 filename = "eddying_channel"
 
@@ -160,11 +159,11 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 vertical_closure = ScalarDiffusivity(ν = νv,
                                      κ = κv,
-                                     isotropy = Vertical())
+                                     isotropy = ZDirection())
 
 horizontal_closure = ScalarDiffusivity(ν = νh,
                                        κ = κh,
-                                       isotropy = Horizontal())
+                                       isotropy = XYDirections())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)

@@ -8,7 +8,6 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
-using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 #####
 ##### Grid
@@ -136,11 +135,11 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 
 vertical_closure = ScalarDiffusivity(ν = νv,
                                      κ = κv,
-                                     isotropy = Vertical())
+                                     isotropy = ZDirection())
 
 horizontal_closure = ScalarDiffusivity(ν = νh,
                                        κ = κh,
-                                       isotropy = Horizontal())
+                                       isotropy = XYDirections())
 
 closure = (horizontal_closure, vertical_closure)
                                        
