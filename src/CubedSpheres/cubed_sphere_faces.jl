@@ -110,6 +110,13 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
     
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
+function Base.fill!(csf::CubedSphereField, val)
+    for field in faces(csf)
+        fill!(field, val)
+    end
+    return csf
+end
+
 #####
 ##### set!
 #####

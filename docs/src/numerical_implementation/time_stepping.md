@@ -40,8 +40,8 @@ where, e.g., for the non-hydrostatic model,
                        + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
                        + \boldsymbol{F}_{\boldsymbol{v}}
 ```
-collects all terms on the right side of the time-integral of the momentum equation except the 
-contribution of non-hydrostatic pressure ``\boldsymbol{\nabla} p_n``. The integral on the right 
+collects all terms on the right side of the time-integral of the momentum equation, *except* the 
+contribution of non-hydrostatic pressure ``\boldsymbol{\nabla} p_{\rm{non}}``. The integral on the right 
 of the equation for ``\boldsymbol{v}^\star`` may be approximated by a variety of  explicit methods: 
 for example, a forward Euler method uses
 ```math
