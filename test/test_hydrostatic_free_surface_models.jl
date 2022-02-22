@@ -4,7 +4,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, Prescri
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Explicit, Vertical, Horizontal
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, Explicit, 
+using Oceananigans.Grids: ZDirection, XYDirections
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_step_hydrostatic_model_works(grid;
@@ -230,9 +231,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for closure in (ScalarDiffusivity(),
-                        ScalarDiffusivity(isotropy = Horizontal()),
-                        ScalarDiffusivity(isotropy = Vertical()),
-                        ScalarDiffusivity(isotropy = Vertical(), time_discretization=VerticallyImplicit()),
+                        ScalarDiffusivity(isotropy = XYDirections()),
+                        ScalarDiffusivity(isotropy = ZDirection()),
+                        ScalarDiffusivity(isotropy = ZDirection(), time_discretization=VerticallyImplicit()),
                         CATKEVerticalDiffusivity(),
                         CATKEVerticalDiffusivity(time_discretization=Explicit()))
 

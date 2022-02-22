@@ -1,5 +1,6 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 using Oceananigans.TurbulenceClosures: VerticallyImplicit
+using Oceananigans.Grids: ZDirection
 
 @inline surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
@@ -91,7 +92,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicit
             v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
             νh₀ = 5e3 * (60 / grid.Nx)^2
-            constant_horizontal_diffusivity = ScalarDiffusivity(ν=νh₀, isotropy=Horizontal())
+            constant_horizontal_diffusivity = ScalarDiffusivity(ν=νh₀, isotropy=XYDirections())
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 momentum_advection = VectorInvariant(),

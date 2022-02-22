@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical, ThreeDimensional
+using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, 
+using Oceananigans.Grids: XYZDirections, XYDirections, ZDirection
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -123,7 +124,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(ν = κ, κ = κ, isotropy = Vertical(), time_discretization = time_discretization)
+    closure = ScalarDiffusivity(ν = κ, κ = κ, isotropy = ZDirection(), time_discretization = time_discretization)
 
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
@@ -467,8 +468,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 for time_discretization in time_discretizations
 
                     for closure in (ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Vertical(), time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Horizontal()),
+                                    ScalarDiffusivity(ν=1, κ=1, isotropy = ZDirection(), time_discretization=time_discretization),
+                                    ScalarDiffusivity(ν=1, κ=1, isotropy = XYDirections()),
                                     )
 
                         fieldnames = [:c]
@@ -515,7 +516,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                for iso in (ThreeDimensional(), Horizontal(), Vertical())
+                for iso in (XYZDirections(), XYDirections(), ZDirection())
                     model = NonhydrostaticModel(timestepper = timestepper,
                                                        grid = grid,
                                                     closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=iso),
