@@ -352,10 +352,14 @@ function pop_flat_elements(tup, topo)
 end
 
 #####
-##### Directions (for tilted domains)
+##### Directions (for tilted domains and scalar diffusivity turbulence closures)
 #####
 
 struct ZDirection end
+
+struct XYDirections end
+
+struct XYZDirections end
 
 #####
 ##### Show utils

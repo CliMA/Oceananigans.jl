@@ -13,9 +13,9 @@ abstract type AbstractScalarBiharmonicDiffusivity{Iso} <: AbstractTurbulenceClos
 ##### Stress divergences
 #####
 
-const AIBD = AbstractScalarBiharmonicDiffusivity{<:ThreeDimensional}
-const AHBD = AbstractScalarBiharmonicDiffusivity{<:Horizontal}
-const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
+const AIBD = AbstractScalarBiharmonicDiffusivity{<:XYZDirections}
+const AHBD = AbstractScalarBiharmonicDiffusivity{<:XYDirections}
+const AVBD = AbstractScalarBiharmonicDiffusivity{<:ZDirection}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AIBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶜᶜᶜ, biharmonic_mask_x, ∇²ᶠᶜᶜ, U.u)
 @inline viscous_flux_vx(i, j, k, grid, closure::AIBD, clock, U, args...) = + ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_x, ∂xᶠᶠᶜ, ∇²ᶜᶠᶜ, U.v)

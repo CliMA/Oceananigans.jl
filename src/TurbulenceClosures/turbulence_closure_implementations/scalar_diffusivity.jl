@@ -13,7 +13,7 @@ end
     ScalarDiffusivity([FT=Float64;]
                          ν=0, κ=0,
                          discrete_diffusivity = false,
-                         isotropy = ThreeDimensional() 
+                         isotropy = XYZDirections() 
                          time_discretization = Explicit())
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
@@ -29,11 +29,11 @@ single number to be a applied to all tracers.
 function ScalarDiffusivity(FT=Float64;
                               ν=0, κ=0,
                               discrete_diffusivity = false,
-                              isotropy::Iso=ThreeDimensional(),
+                              isotropy::Iso=XYZDirections(),
                               time_discretization::TD = Explicit()) where {TD, Iso}
 
-    if isotropy == Horizontal() && time_discretization == VerticallyImplicit()
-        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
+    if isotropy == XYDirections() && time_discretization == VerticallyImplicit()
+        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = XYDirections()` or `isotropy = XYZDirections()`"))
     end
     κ = convert_diffusivity(FT, κ, Val(discrete_diffusivity))
     ν = convert_diffusivity(FT, ν, Val(discrete_diffusivity))

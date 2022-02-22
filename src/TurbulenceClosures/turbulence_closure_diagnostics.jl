@@ -4,20 +4,20 @@
 
 using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
 
-function min_Δxyz(grid, ::ThreeDimensional)
+function min_Δxyz(grid, ::XYZDirections)
     Δx = min_Δx(grid)
     Δy = min_Δy(grid)
     Δz = min_Δz(grid)
     return min(Δx, Δy, Δz)
 end
 
-function min_Δxyz(grid, ::Horizontal)
+function min_Δxyz(grid, ::XYDirections)
     Δx = min_Δx(grid)
     Δy = min_Δy(grid)
     return min(Δx, Δy)
 end
 
-min_Δxyz(grid, ::Vertical) = min_Δz(grid)
+min_Δxyz(grid, ::ZDirection) = min_Δz(grid)
 
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivity_fields, model.grid)
@@ -75,7 +75,7 @@ function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffus
 end
 
 function cell_diffusion_timescale(closure::TwoDimensionalLeith, diffusivities, grid)
-    Δ = min_Δxyz(grid, ThreeDimensional())
+    Δ = min_Δxyz(grid, XYZDirections())
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν
 end

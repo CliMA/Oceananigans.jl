@@ -17,24 +17,25 @@ end
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
 """
-    ScalarBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)
+    ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, discrete_diffusivity = false, isotropy::Iso = XYDirections())
 
 Returns parameters for a scalar biharmonic diffusivity model.
 
 Keyword arguments
 =================
 
-  - `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `ν`: Viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-  - `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
-
-  - `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+  - `κ`: Tracer diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
           `NamedTuple` of diffusivities with entries for each tracer.
 
-  - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-          `NamedTuple` of diffusivities with entries for each tracer.
+  - `discrete_diffusivity`: `Boolean`.
+
+  - `isotropy`: Directions over which to apply diffusivity operator. Options are 
+          `XYDirections()`, `ZDirection()` and `XYZDirections()`.
+
 """
-function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, discrete_diffusivity = false, isotropy::Iso = Horizontal()) where {Iso}
+function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, discrete_diffusivity = false, isotropy::Iso = XYDirections()) where {Iso}
     ν = convert_diffusivity(FT, ν, Val(discrete_diffusivity))
     κ = convert_diffusivity(FT, κ, Val(discrete_diffusivity))
     return ScalarBiharmonicDiffusivity{Iso}(ν, κ)

@@ -1,3 +1,4 @@
+using Oceananigans.Grids: XYZDirections, XYDirections, ZDirection
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
 
@@ -5,26 +6,6 @@ Abstract type for closures with *isotropic* diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, Iso} <: AbstractTurbulenceClosure{TD} end
 
-"""
-    struct ThreeDimensional end
-
-Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
-"""
-struct ThreeDimensional end
-
-"""
-    struct Horizontal end
-
-Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
-"""
-struct Horizontal end
-
-"""
-    struct Vertical end
-
-Specifies a `ScalarDiffusivity` acting only in the vertical direction.
-"""
-struct Vertical end
 
 """
     viscosity(closure, diffusivities)
@@ -32,6 +13,7 @@ struct Vertical end
 Returns the isotropic viscosity associated with `closure`.
 """
 function viscosity end 
+
 
 """
     diffusivity(closure, diffusivities, tracer_indedx) where tracer_index
@@ -46,9 +28,9 @@ function diffusivity end
 ##### Stress divergences
 #####
 
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
-const AHD = AbstractScalarDiffusivity{<:Any, <:Horizontal}
-const AVD = AbstractScalarDiffusivity{<:Any, <:Vertical}
+const AID = AbstractScalarDiffusivity{<:Any, <:XYZDirections}
+const AHD = AbstractScalarDiffusivity{<:Any, <:XYDirections}
+const AVD = AbstractScalarDiffusivity{<:Any, <:ZDirection}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
 @inline viscous_flux_vx(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
