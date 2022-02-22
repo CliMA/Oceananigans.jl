@@ -115,9 +115,7 @@ end
 @inline function buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, tracers, buoyancy)
     FT = eltype(grid)
     N⁺ = ℑzᵃᵃᶜ(i, j, k, grid, sqrt_∂z_b, buoyancy, tracers)
-
     @inbounds e⁺ = max(zero(FT), e[i, j, k])
-
     return @inbounds ifelse(N⁺ == 0, FT(Inf), sqrt(e⁺) / N⁺)
 end
 
@@ -149,21 +147,21 @@ end
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
     # Strictly positive TKE
-    @inbounds eijk = tracers.e[i, j, k]
-    e⁺ = max(zero(eltype(grid)), eijk)
+    FT = eltype(grid)
+    e⁺ = @inbounds max(zero(FT), tracers.e[i, j, k])
     
-    # Are we convecting?
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    convecting = (N² < 0) & (Qᵇ > 0)
-
     # "Sheared convection number"
-    α = (S * Qᵇ) / e⁺
+    α = S * Qᵇ / e⁺
 
     # Mixing length
     ℓᴬ = sqrt(e⁺^3) / Qᵇ
     ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
 
-    return ifelse(convecting, ℓʰ, zero(eltype(grid))) 
+    # Are we convecting?
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
+
+    return ifelse(convecting, ℓʰ, zero(FT))
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
