@@ -63,7 +63,7 @@ end
 fill_halo_regions!(f::MultiRegionField, args...; kwargs...) = fill_halo_regions!(f.data, f.boundary_conditions, architecture(f), f.grid, args...; kwargs...)
 
 function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...)
-    
+   
     # Apply top and bottom boundary conditions as usual
     apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
     
@@ -72,13 +72,13 @@ function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGri
     y_neighb = apply_regionally(find_neighbours, bcs.south, bcs.north, f.regions)
     apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
     apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
-    
+
     return nothing
 end
 
 find_neighbours(left, right, regions) = (find_neighbour(left, regions), find_neighbour(right, regions))
-find_neighbour(bc, regions) = nothing
-find_neighbour(bc::CBC, regions) = regions[bc.condition]
+find_neighbour(bc, regions)           = nothing
+find_neighbour(bc::CBC, regions)      = regions[bc.condition]
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
     H = halo_size(grid)[1]
