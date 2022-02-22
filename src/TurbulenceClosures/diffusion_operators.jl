@@ -6,14 +6,23 @@
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::Number) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::Number) = κ
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
-
 # Assumes that `κ` is located at cell centers
 @inline κᶠᶜᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
+
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Face(),   Center(), Center())
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Face(),   Center())
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, Center(), Center(), Face())
+
+
+@inline κ_σᶠᶜᶜ(i, j, k, grid, clock, κ, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, clock, κ) * σᶠᶜᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶠᶜ(i, j, k, grid, clock, κ, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, clock, κ) * σᶜᶠᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶜᶠ(i, j, k, grid, clock, κ, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, clock, κ) * σᶜᶜᶠ(i, j, k, grid, args...)
 
 #####
 ##### Convenience diffusive flux function
@@ -48,11 +57,3 @@ which will end up at the location `ccc`.
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, _diffusive_flux_y, disc, closure, c, tracer_index, args...) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, c, tracer_index, args...))
 end
-
-#####
-##### Gradients of Laplacians
-#####
-
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-

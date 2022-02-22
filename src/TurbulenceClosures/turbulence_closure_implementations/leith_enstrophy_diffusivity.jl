@@ -4,15 +4,15 @@ using Oceananigans.Fields: AbstractField
 ##### The turbulence closure proposed by Leith
 #####
 
-struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
+struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{Explicit}
                   C :: FT
              C_Redi :: CR
                C_GM :: GM
     isopycnal_model :: M
 
     function TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model) where FT
-        C_Redi = convert_diffusivity(FT, C_Redi)
-        C_GM = convert_diffusivity(FT, C_GM)
+        C_Redi = convert_diffusivity(FT, C_Redi, Val(false))
+        C_GM = convert_diffusivity(FT, C_GM, Val(false))
         return new{FT, typeof(C_Redi), typeof(C_GM), typeof(isopycnal_model)}(C, C_Redi, C_GM)
     end
 end

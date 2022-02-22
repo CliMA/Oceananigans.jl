@@ -32,7 +32,7 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
                                    grid = grid,
                                buoyancy = nothing,
                                 tracers = nothing,
-                                closure = IsotropicDiffusivity(ν=1e-5)
+                                closure = ScalarDiffusivity(ν=1e-5)
                            )
 
 # ## Random initial conditions

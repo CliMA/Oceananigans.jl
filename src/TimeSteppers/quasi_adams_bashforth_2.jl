@@ -11,12 +11,13 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+    QuasiAdamsBashforth2TimeStepper(grid, tracers,
+                                    χ = 0.1;
                                     implicit_solver = nothing,
                                     Gⁿ = TendencyFields(grid, tracers),
                                     G⁻ = TendencyFields(grid, tracers))
 
-Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
+Return an QuasiAdamsBashforth2TimeStepper object with tendency fields and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
@@ -52,9 +53,17 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
     euler = euler || (Δt != model.timestepper.previous_Δt)
+    
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
-    euler && @debug "Taking a forward Euler step."
+    if euler
+        @debug "Taking a forward Euler step."
+        # Ensure zeroing out all previous tendency fields to avoid errors in
+        # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
+        for field in model.timestepper.G⁻
+            !isnothing(field) && fill!(field, 0)
+        end
+    end
 
     model.timestepper.previous_Δt = Δt
 
@@ -139,4 +148,3 @@ Time step via
 end
 
 @kernel ab2_step_field!(::FunctionField, args...) = nothing
-
