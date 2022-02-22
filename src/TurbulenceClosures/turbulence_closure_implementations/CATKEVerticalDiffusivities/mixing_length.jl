@@ -129,12 +129,11 @@ end
 end
 
 # TODO: Use types to distinguish between tracer, velocity, and TKE cases?
-@inline function stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, Cᵇ′, Cˢ′, e, velocities, tracers, buoyancy)
+@inline function stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, e, velocities, tracers, buoyancy)
     d = wall_vertical_distanceᶜᶜᶜ(i, j, k, grid)
-    ℓᵇ = (Cᵇ + Cᵇ′) * buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, tracers, buoyancy)
-    # ℓˢ = (Cˢ + Cˢ′) * shear_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, velocities, tracers, buoyancy)
-    #return min(d, ℓᵇ, ℓˢ)
-    return min(d, ℓᵇ)
+    ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, tracers, buoyancy)
+    ℓˢ = Cˢ * shear_mixing_lengthᶜᶜᶜ(i, j, k, grid, e, velocities, tracers, buoyancy)
+    return min(d, ℓᵇ, ℓˢ)
 end
 
 @inline function convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᴬ::Number, Cᴬˢ::Number,
@@ -214,11 +213,9 @@ end
     Cᵟu = closure.mixing_length.Cᵟu
     ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
-    Cᵇ = closure.mixing_length.Cᵇ
-    Cˢ = closure.mixing_length.Cˢ
-    Cᵇ′ = closure.mixing_length.Cᵇu
-    Cˢ′ = closure.mixing_length.Cˢu
-    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, Cᵇ′, Cˢ′, tracers.e, velocities, tracers, buoyancy)
+    Cᵇ = min(closure.mixing_length.Cᵇ, closure.mixing_length.Cᵇu)
+    Cˢ = min(closure.mixing_length.Cˢ, closure.mixing_length.Cˢu)
+    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
     σu = momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
@@ -233,11 +230,9 @@ end
     Cᵟc = closure.mixing_length.Cᵟc
     ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
-    Cᵇ = closure.mixing_length.Cᵇ
-    Cˢ = closure.mixing_length.Cˢ
-    Cᵇ′ = closure.mixing_length.Cᵇc
-    Cˢ′ = closure.mixing_length.Cˢc
-    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, Cᵇ′, Cˢ′, tracers.e, velocities, tracers, buoyancy)
+    Cᵇ = min(closure.mixing_length.Cᵇ, closure.mixing_length.Cᵇc)
+    Cˢ = min(closure.mixing_length.Cˢ, closure.mixing_length.Cˢc)
+    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
     σc = tracer_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
@@ -252,11 +247,9 @@ end
     Cᵟe = closure.mixing_length.Cᵟe
     ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
-    Cᵇ = closure.mixing_length.Cᵇ
-    Cˢ = closure.mixing_length.Cˢ
-    Cᵇ′ = closure.mixing_length.Cᵇe
-    Cˢ′ = closure.mixing_length.Cˢe
-    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, Cᵇ′, Cˢ′, tracers.e, velocities, tracers, buoyancy)
+    Cᵇ = min(closure.mixing_length.Cᵇ, closure.mixing_length.Cᵇe)
+    Cˢ = min(closure.mixing_length.Cˢ, closure.mixing_length.Cˢe)
+    ℓ★ = stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
     σe = TKE_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
