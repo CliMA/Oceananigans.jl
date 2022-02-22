@@ -12,6 +12,7 @@ export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 export on_architecture
+export XYZDirections, XYDirections, ZDirection
 
 using CUDA
 using Adapt

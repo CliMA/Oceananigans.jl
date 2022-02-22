@@ -120,7 +120,6 @@
 using Printf
 using Oceananigans
 using Oceananigans.Units: hours, day, days
-using Oceananigans.Grids: XYDirections, ZDirection
 
 # ## The grid
 #
