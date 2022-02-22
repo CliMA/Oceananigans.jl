@@ -60,18 +60,19 @@ end
 fill_halo_regions!(f::MultiRegionField, args...; kwargs...) = fill_halo_regions!(f.data, f.boundary_conditions, architecture(f), f.grid, args...; kwargs...)
 
 function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...)
-   
-    # Apply top and bottom boundary conditions as usual
-    apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
-    
-    # Find neighbor and pass it to the fill_halo functions
-    x_neighb = apply_regionally(find_neighbors, bcs.west,  bcs.east, f.regions)
-    y_neighb = apply_regionally(find_neighbors, bcs.south, bcs.north, f.regions)
+    # Everything in apply_regionally occurs asynchronously. Therefore, syncronize
+    @sync begin
+        # Apply top and bottom boundary conditions as usual
+        apply_regionally!(fill_bottom_and_top_halo!, f, bcs.bottom, bcs.top, arch, device_event(arch), mrg, args...; kwargs...) 
+        
+        # Find neighbor and pass it to the fill_halo functions
+        x_neighb = apply_regionally(find_neighbors, bcs.west,  bcs.east, f.regions)
+        y_neighb = apply_regionally(find_neighbors, bcs.south, bcs.north, f.regions)
 
-    # Fill x- and y-direction halos
-    apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
-    apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
-
+        # Fill x- and y-direction halos
+        apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
+        apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
+    end
     return nothing
 end
 
@@ -80,36 +81,36 @@ find_neighbor(bc, regions)           = nothing
 find_neighbor(bc::CBC, regions)      = regions[bc.condition]
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
+    H, Hy, Hz = halo_size(grid)
+    N, Ny, Nz = size(grid)
     w = neighb[1]
 
     switch_device!(getdevice(w))
-    src = deepcopy(parent(w)[N+1:N+H, :, :])
+    src = deepcopy(parent(w)[N+1:N+H, Hy+1:Ny+Hy, Hz+1:Nz+Hz])
 
     switch_device!(getdevice(c))
-    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
+    dst = arch_array(arch, zeros(length(H), Ny, Nz))
     copyto!(dst, src)
 
-    p  = view(parent(c), 1:H, :, :)
+    p  = view(parent(c), 1:H, Hy+1:Ny+Hy, Hz+1:Nz+Hz)
     p .= dst
 
     return NoneEvent()
 end
 
 function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
+    H, Hy, Hz = halo_size(grid)
+    N, Ny, Nz = size(grid)
     e = neighb[2]
 
     switch_device!(getdevice(e))
-    src = deepcopy(parent(e)[H+1:2H, :, :])
+    src = deepcopy(parent(e)[H+1:2H, Hy+1:Ny+Hy, Hz+1:Nz+Hz])
 
     switch_device!(getdevice(c))
-    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
+    dst = arch_array(arch, zeros(length(H), Ny, Nz))
     copyto!(dst, src)
 
-    p  = view(parent(c), N+H+1:N+2H, :, :)
+    p  = view(parent(c), N+H+1:N+2H, Hy+1:Ny+Hy, Hz+1:Nz+Hz)
     p .= dst
 
     return NoneEvent()
