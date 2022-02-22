@@ -126,10 +126,8 @@ end
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S = sqrt(∂z_u² + ∂z_v²)
-             
     @inbounds e⁺ = max(zero(FT), e[i, j, k])
-
-    return sqrt(e⁺) / S
+    return ifelse(S == 0, FT(Inf), sqrt(e⁺) / S)
 end
 
 # TODO: Use types to distinguish between tracer, velocity, and TKE cases?
@@ -165,7 +163,7 @@ end
     ℓᴬ = sqrt(e⁺^3) / Qᵇ
     ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
 
-    return ifelse(convecting, ℓᴬ, zero(eltype(grid))) 
+    return ifelse(convecting, ℓʰ, zero(eltype(grid))) 
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
