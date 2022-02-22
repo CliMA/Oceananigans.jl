@@ -23,9 +23,6 @@ using Oceananigans.BoundaryConditions: PeriodicBoundaryCondition
 import Oceananigans.BoundaryConditions: 
             fill_west_halo!, 
             fill_east_halo!, 
-            fill_north_halo!, 
-            fill_south_halo!,
-            fill_bottom_halo!,
             fill_halo_regions!,
             apply_x_bcs!,
             apply_y_bcs!,
@@ -70,8 +67,10 @@ function fill_halo_regions!(f::MultiRegionObject, bcs, arch, mrg::MultiRegionGri
     # Find neighbour and pass it to the fill_halo functions
     x_neighb = apply_regionally(find_neighbours, bcs.west,  bcs.east, f.regions)
     y_neighb = apply_regionally(find_neighbours, bcs.south, bcs.north, f.regions)
-    apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
+
+    # Fill x- and y-direction halos
     apply_regionally!(fill_south_and_north_halo!, f, bcs.south, bcs.north, arch, device_event(arch), mrg, y_neighb, args...; kwargs...) 
+    apply_regionally!(fill_west_and_east_halo!  , f, bcs.west, bcs.east, arch, device_event(arch), mrg, x_neighb, args...; kwargs...) 
 
     return nothing
 end
@@ -90,7 +89,6 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...
 
     switch_device!(getdevice(c))
     dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
-
     copyto!(dst, src)
 
     p  = view(parent(c), 1:H, :, :)
@@ -109,7 +107,6 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...
 
     switch_device!(getdevice(c))
     dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
-
     copyto!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
