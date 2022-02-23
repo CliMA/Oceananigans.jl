@@ -50,7 +50,15 @@ end
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{Iso}) where {Iso} = 
-    print(io, "ScalarBiharmonicDiffusivity: " *
-              "(ν=$(closure.ν), κ=$(closure.κ)), " *
-              "isotropy: $Iso")
+function Base.summary(closure::ScalarBiharmonicDiffusivity)
+    Iso = summary(isotropy(closure))
+    return string("ScalarBiharmonicDiffusivity{$Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
+end
+
+function Base.show(io::IO, closure::ScalarBiharmonicDiffusivity)
+    Iso = summary(isotropy(closure))
+    return print(io, "ScalarBiharmonicDiffusivity{$Iso}}:", '\n',
+                     "├── ν: ", closure.ν, '\n',
+                     "└── κ: ", closure.κ)
+end
+
