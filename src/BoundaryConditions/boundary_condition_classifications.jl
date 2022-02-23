@@ -60,3 +60,10 @@ Open boundary conditions are used to specify the component of a velocity field n
 and can also be used to describe nested or linked simulation domains.
 """
 struct Open <: AbstractBoundaryConditionClassification end
+
+"""
+    struct Connected <: AbstractBoundaryConditionClassification
+
+A classification specifying a communicating boundary condition
+"""
+struct Connected <: AbstractBoundaryConditionClassification end

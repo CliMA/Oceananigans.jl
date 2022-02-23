@@ -3,6 +3,9 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition
 
+# To delete
+export switch_device!, getregion, getdevice
+
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Fields
@@ -28,6 +31,7 @@ include("multi_region_object.jl")
 include("x_partitions.jl")
 include("multi_region_grid.jl")
 include("multi_region_field.jl")
-include("multi_region_field_bcs.jl")
+include("multi_region_boundary_conditions.jl")
+include("delete_me.jl")
 
 end #module

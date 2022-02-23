@@ -14,38 +14,29 @@ end
 
 function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
 
-    global_grid = on_architecture(CPU(), global_grid)
-    N      = size(global_grid)
-    N      = partition_size(partition, N)
-    extent = partition_extent(partition, global_grid)
+    global_grid  = on_architecture(CPU(), global_grid)
+    local_size   = partition_size(partition, global_grid)
+    local_extent = partition_extent(partition, global_grid)
     
-    arch    = infer_architecture(devices)
+    arch    = devices isa Nothing ? CPU() : GPU()
     devices = validate_devices(partition, devices)
     devices = assign_devices(partition, devices)
 
     FT         = eltype(global_grid)
-    child_arch = underlying_arch(arch)
-    TX, TY, TZ = T = topology(global_grid)
+    TX, TY, TZ = topo = topology(global_grid)
     
-    args = (global_grid, child_arch, T, N, extent)
-    iter = (0, 0, 0, 1, 1)
+    args = (Reference(global_grid), Reference(arch), Reference(topo), MultiRegionObject(local_size, devices), Iterate(local_extent))
 
-    region_grids = MultiRegionObject(devices, construct_grid, args, iter, nothing, nothing)
+    region_grids = construct_regionally(construct_grid, args...)
 
     return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, region_grids, devices)
 end
 
-architecture(mrg::MultiRegionGrid) = mrg.architecture
-partition(mrg::MultiRegionGrid)    = mrg.partition
-devices(mrg::MultiRegionGrid)      = mrg.devices
-regions(mrg::MultiRegionGrid)      = 1:length(partition(mrg))
-grids(mrg::MultiRegionGrid)        = mrg.region_grids
-length(mrg::MultiRegionGrid)       = length(partition(mrg))
-getregion(mrg::MultiRegionGrid, i)      = mrg.region_grids[i]
-getdevice(mrg::MultiRegionGrid, i)      = mrg.devices[i]
-switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+devices(mrg::MultiRegionGrid)      = devices(mrg.region_grids)
 
-allregions(mrg::MultiRegionGrid) = MultiRegionObject(Tuple(1:length(mrg)), devices(mrg))
+getregion(mrg::MultiRegionGrid, i)      = getregion(mrg.region_grids, i)
+getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
+switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
 
 isregional(mrg::MultiRegionGrid) = true
 
@@ -72,26 +63,13 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, size, exten
     return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, size, extent), boundary)
 end
 
-function Adapt.adapt_structure(to, mrg::MultiRegionGrid)
-    TX, TY, TZ = topology(mrg)
-    return MultiRegionGrid{TX, TY, TZ}(nothing,
-                                       Adapt.adapt(to, partition),
-                                       Adapt.adapt(to, region_grids),
-                                       Adapt.adapt(to, devices))
-end
-
-# Change name to this?
-# getproperty(mrg::MultiRegionGrid, property) = apply_regionally(Base.getproperty, grids(mrg), property)
+getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = apply_regionally(Base.getproperty, grids(mrg), x)
 
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
-    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(underlying_arch(architecture(mrg))): \n",
+    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
-              "└── architecture: $(arch_summary(mrg))")
+              "└── devices: $(devices(mrg))")
 
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
-
-
-@inline arch_summary(mrg::MultiRegionGrid) = "$(architecture(mrg)) $(architecture(mrg) isa MultiGPU ? "($(length(unique(mrg.devices))) devices)" : "")"
-

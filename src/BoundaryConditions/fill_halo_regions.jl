@@ -1,5 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Architectures: device_event
+using CUDA: @allowscalar
 
 #####
 ##### General halo filling functions
@@ -50,14 +51,14 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, arg
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
    
     for task = 1:3
-        barrier = device_event(arch)
+        barrier = nothing #NoneEvent()
 
         fill_halo!  = fill_halos![task]
         bc_left     = boundary_conditions_array_left[task]
         bc_right    = boundary_conditions_array_right[task]
 
         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
-       
+
         wait(device(arch), events)
     end
 
@@ -94,6 +95,10 @@ end
 #####
 
 fill_first(bc1::PBC, bc2)      = false
+fill_first(bc1::CBC, bc2)      = false
 fill_first(bc1, bc2::PBC)      = true
 fill_first(bc1::PBC, bc2::PBC) = true
+fill_first(bc1::CBC, bc2::CBC) = true
+fill_first(bc1::CBC, bc2::PBC) = true
+fill_first(bc1::PBC, bc2::CBC) = true
 fill_first(bc1, bc2)           = true

@@ -1,3 +1,5 @@
+using CUDA: synchronize
+
 multiregion_transformations = Dict{Symbol, Symbol}()
 
 multiregion_transformations[:AbstractGrid]          = :MultiRegionGrid
@@ -8,37 +10,46 @@ multiregion_transformations[:ImmersedBoundaryGrid]  = Symbol("MultiRegionGrid{<:
 multiregion_transformations[:AbstractField] = :MultiRegionField
 multiregion_transformations[:Field]         = :MultiRegionField
 
-# For non-returning functions
+# For non-returning functions -> NON BLOCKING?
 function apply_regionally!(func!, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
+    isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
 
-    @sync for (r, dev) in enumerate(devices(mra))
-        @async begin
-            switch_device!(dev);
-            region_args = Tuple(getregion(arg, r) for arg in args);
-            region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
-            func!(region_args...; region_kwargs...)
-        end
+    for (r, dev) in enumerate(devices(mra))
+        switch_device!(dev)
+        region_args = Tuple(getregion(arg, r) for arg in args)
+        region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs)
+        func!(region_args...; region_kwargs...)
     end
-    
+    sync_all_devices!(devices(mra))
 end
  
 # For functions with return statements
-function apply_regionally(func, args...; kwargs...)
+function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
 
     res = Tuple((switch_device!(dev);
-                 region_args = Tuple(getregion(arg, r) for arg in args);
-                 region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
-                 func(region_args...; region_kwargs...))
-                 for (r, dev) in enumerate(devices(mra)))
-    
-    return MultiRegionObject(res, devices(mra))
+                region_args = Tuple(getregion(arg, r) for arg in args);
+                region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
+                constructor(region_args...; region_kwargs...))
+                for (r, dev) in enumerate(devices(mra)))
+
+    sync_all_devices!(devices(mra))
+
+    return MultiRegionObject(Tuple(res), devices(mra))
 end
+
+function sync_all_devices!(devices)
+    for dev in devices
+        switch_device!(dev)
+        synchronize()
+    end
+end
+
+sync_all_devices!(::NTuple{N, CPU}) where N = nothing
 
 redispatch(arg::Symbol) = arg
 
@@ -55,9 +66,16 @@ function redispatch(arg::Expr)
 end
 
 # @regional is not used at the moment
+# Before it is better to validate with just applying apply_regionally!
+# Remember to make sure nothing is returned!!!
 macro regional(expr)
     expr.head ∈ (:(=), :function) || error("@regional can only prefix function definitions")
     
+    last_expr = expr.args[end].args[end]
+    if last_expr.head == :return && !(last_expr.args[1] == nothing || last_expr.args[1] == :nothing)
+        error("Return statement not permitted in a regional function")
+    end
+
     original_expr  = deepcopy(expr)
     oldargs        = original_expr.args[1].args[2:end]
    
@@ -72,9 +90,8 @@ macro regional(expr)
     different_multiregion_version = newargs != oldargs
     
     if different_multiregion_version
-        last(string(fname)) == '!' ? regionalize = :apply_regionally! : regionalize = :apply_regionally
         multiregion_expr = quote
-            $(fdef) = $(regionalize)($(fname), $(newargs...))
+            $(fdef) = apply_regionally!($(fname), $(newargs...))
         end
         return quote
             $(esc(original_expr))

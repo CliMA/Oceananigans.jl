@@ -59,6 +59,10 @@ architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
 
+macro arch_sync(expr)
+    return CUDA.has_cuda_gpu() ? :($(esc(CUDA.@sync expr))) : :($(esc(Base.@sync expr)))
+end
+
 """
     child_architecture(arch)
 

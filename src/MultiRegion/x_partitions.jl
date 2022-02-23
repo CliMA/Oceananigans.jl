@@ -18,14 +18,16 @@ length(p::XPartition)      = length(p.div)
 Base.summary(p::EqualXPartition) = "Equal partitioning in X ($(p.div) regions)"
 Base.summary(p::XPartition)      = "partitioning in X [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
-function partition_size(p::EqualXPartition, size)
-    @assert mod(size[1], p.div) == 0 
-    return Tuple((size[1] ÷ p.div, size[2], size[3]) for i in 1:length(p))
+function partition_size(p::EqualXPartition, grid)
+    Nx, Ny, Nz = size(grid)
+    @assert mod(Nx, p.div) == 0 
+    return Tuple((Nx ÷ p.div, Ny, Nz) for i in 1:length(p))
 end
 
-function partition_size(p::XPartition, size)
-    @assert sum(p.div) != size[1]
-    return Tuple((p.div[i], size[2], size[3]) for i in 1:length(p))
+function partition_size(p::XPartition, grid)
+    Nx, Ny, Nz = size(grid)
+    @assert sum(p.div) != Nx
+    return Tuple((p.div[i], Ny, Nz) for i in 1:length(p))
 end
 
 function partition_extent(p::XPartition, grid)

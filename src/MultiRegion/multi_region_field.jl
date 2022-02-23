@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: default_auxiliary_field_boundary_condition
+
 import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.Grids: new_data
@@ -21,11 +23,30 @@ getregion(f::MultiRegionField, i) =
         getregion(f.operand, i),
         getregion(f.status, i))
 
-new_data(FT, mrg::MultiRegionGrid, loc) = apply_regionally(new_data, FT, mrg.region_grids, loc)
+new_data(FT, mrg::MultiRegionGrid, loc) = construct_regionally(new_data, FT, mrg.region_grids, loc)
 set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
 
-validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, grids(mrg))
-validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, grids(mrg), bcs)
+validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, mrg.region_grids)
+validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, mrg.region_grids, bcs)
 
-Base.show(io::IO, field::MultiRegionField) = print(io, "MultiRegionField")
+FieldBoundaryConditions(mrg::MultiRegionGrid, loc; kwargs...) =
+  construct_regionally(inject_regional_bcs, mrg, Iterate(regions(mrg.region_grids)), Reference(mrg.partition), Reference(loc); kwargs...)
+
+function inject_regional_bcs(grid, region, partition, loc;   
+                              west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                              east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                             south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
+                             north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
+                            bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+                               top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+                          immersed = NoFluxBoundaryCondition())
+
+  west  = inject_west_boundary(region, partition, west)
+  east  = inject_east_boundary(region, partition, east)
+  south = inject_south_boundary(region, partition, south)
+  north = inject_north_boundary(region, partition, north)
+  return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
+Base.show(io::IO, field::MultiRegionField) = print(io, "Nothing for now")
 

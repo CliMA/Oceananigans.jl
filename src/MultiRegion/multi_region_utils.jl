@@ -1,30 +1,33 @@
-infer_architecture(::Nothing)   = CPU()
-infer_architecture(dev::Tuple)  = length(dev) == 1 ? GPU() : GPU()
-infer_architecture(dev::Number) = dev == 1 ? GPU() : GPU()
-
 getdevice(a, i)                     = CPU()
-getdevice(cu::OffsetArray, i)       = CUDA.device(cu.parent)
 getdevice(cu::CuArray, i)           = CUDA.device(cu)
 getdevice(cu::CuContext, i)         = CUDA.device(cu)
 getdevice(cu::Union{CuPtr, Ptr}, i) = CUDA.device(cu)
+getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
 
 getdevice(a)                     = CPU()
-getdevice(cu::OffsetArray)       = CUDA.device(cu.parent)
 getdevice(cu::CuArray)           = CUDA.device(cu)
 getdevice(cu::CuContext)         = CUDA.device(cu)
 getdevice(cu::Union{CuPtr, Ptr}) = CUDA.device(cu)
+getdevice(cu::OffsetArray)       = getdevice(cu.parent)
 
 switch_device!(::CPU)    = nothing
 switch_device!(dev::Int) = CUDA.device!(dev)
 switch_device!(dev::CuDevice) = CUDA.device!(dev)
 switch_device!(dev::Tuple, i) = switch_device!(dev[i])
 
-underlying_arch(::MultiGPU) = GPU()
-underlying_arch(::GPU) = GPU()
-underlying_arch(::CPU) = CPU()
+struct Reference{R}
+    ref :: R
+end
+
+struct Iterate{I}
+    iter :: I
+end
 
 getregion(mo, i) = mo
-isregional(mo) = hasproperty(mo, :devices)
+getregion(ref::Reference, i) = ref.ref
+getregion(iter::Iterate, i)  = iter.iter[i]
+
+isregional(a) = false
 
 function validate_devices(partition, devices)
     @assert length(unique(devices)) <= length(CUDA.devices())
