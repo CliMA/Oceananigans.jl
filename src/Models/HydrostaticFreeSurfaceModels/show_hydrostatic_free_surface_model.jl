@@ -1,12 +1,24 @@
 using Oceananigans.Utils: prettytime, ordered_dict_show
+using Oceananigans.TurbulenceClosures: closure_summary
 
-"""Show the innards of a `Model` in the REPL."""
-function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {TS, C, A}
-    print(io, "HydrostaticFreeSurfaceModel{$A, $(eltype(model.grid))}",
-        "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
-        "├── grid: $(summary(model.grid))\n",
-        "├── tracers: $(tracernames(model.tracers))\n",
-        "├── closure: ", summary(model.closure), '\n',
+function Base.summary(model::HydrostaticFreeSurfaceModel)
+    A = nameof(typeof(architecture(model.grid)))
+    G = nameof(typeof(model.grid))
+    return string("HydrostaticFreeSurfaceModel{$A, $G}",
+                  "(time = ", prettytime(model.clock.time), ", iteration = ", model.clock.iteration, ")")
+end
+
+function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
+    TS = nameof(typeof(model.timestepper))
+
+    tracernames = keys(model.tracers)
+    length(tracernames) == 1 && (tracernames = tracernames[1])
+
+    print(io, summary(model),
+        "├── grid: ", summary(model.grid), '\n',
+        "├── timestepper: ", TS, '\n',
+        "├── tracers: ", tracernames, '\n',
+        "├── closure: ", closure_show(model.closure), '\n',
         "├── buoyancy: ", summary(model.buoyancy), '\n')
 
     if model.free_surface !== nothing
@@ -30,3 +42,4 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
     end
 end
+

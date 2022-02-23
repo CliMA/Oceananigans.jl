@@ -70,6 +70,8 @@ end
 ##### Include module code
 #####
 
+closure_summary(closure) = summary(closure)
+
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")

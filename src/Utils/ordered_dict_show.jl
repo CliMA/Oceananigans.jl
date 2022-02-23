@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-function ordered_dict_show(dict, padchar)
+function ordered_dict_show(dict::OrderedDict, padchar)
     if length(dict) == 0
         return "$(typeof(dict).name) with no entries"
     elseif length(dict) == 1
