@@ -13,5 +13,6 @@ function ordered_dict_show(dict::OrderedDict, padchar)
         return string(name, " with $N entries:\n",
                       Tuple(string(padchar, "   ├── $name => ", summary(dict[name])) for name in dict.keys[1:end-1])...,
                             string(padchar, "   └── ", dict.keys[end], " => ", summary(dict.vals[end])))
+    end
 end
 
