@@ -57,6 +57,7 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 # Fallbacks
 validate_closure(closure) = closure
+closure_summary(closure) = summary(closure)
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
@@ -69,8 +70,6 @@ end
 #####
 ##### Include module code
 #####
-
-closure_summary(closure) = summary(closure)
 
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")

@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 struct Callback{P, F, S}
     func :: F
     schedule :: S
@@ -18,3 +20,10 @@ Otherwise, `func` is called via `func(sim::Simulation, parameteres)`.
 """
 Callback(func, schedule=IterationInterval(1); parameters=nothing) =
     Callback(func, schedule, parameters)
+
+Base.summary(cb::Callback{Nothing}) = string("Callback of ", summary(cb.func), " on ", summary(cb.schedule))
+Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func), " on ", summary(cb.schedule),
+                                    " with parameters ", parameters)
+
+Base.show(io::IO, cb::Callback) = print(io, summary(cb))
+
