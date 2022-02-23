@@ -14,22 +14,22 @@ end
 
 function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
 
-    global_grid  = on_architecture(CPU(), global_grid)
-    local_size   = partition_size(partition, global_grid)
-    local_extent = partition_extent(partition, global_grid)
-    
     arch    = devices isa Nothing ? CPU() : GPU()
     devices = validate_devices(partition, devices)
     devices = assign_devices(partition, devices)
 
-    FT         = eltype(global_grid)
-    TX, TY, TZ = topo = topology(global_grid)
+    global_grid  = on_architecture(CPU(), global_grid)
+    local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)
+    local_extent = MultiRegionObject(partition_extent(partition, global_grid), devices)
     
-    args = (Reference(global_grid), Reference(arch), Reference(topo), MultiRegionObject(local_size, devices), Iterate(local_extent))
+    FT   = eltype(global_grid)
+    topo = topology(global_grid)  # Here we should make also topo a MultiRegionObject?
+    
+    args = (Reference(global_grid), Reference(arch), Reference(topo), local_size, local_extent)
 
     region_grids = construct_regionally(construct_grid, args...)
 
-    return MultiRegionGrid{FT, TX, TY, TZ}(arch, partition, region_grids, devices)
+    return MultiRegionGrid{FT, topo[1], topo[2], topo[3]}(arch, partition, region_grids, devices)
 end
 
 devices(mrg::MultiRegionGrid)      = devices(mrg.region_grids)
