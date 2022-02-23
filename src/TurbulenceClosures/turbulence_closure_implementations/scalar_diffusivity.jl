@@ -54,7 +54,11 @@ end
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
-Base.summary(closure::ScalarDiffusivity) = string("ScalarDiffusivity{$TD, $Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
+function Base.summary(closure::ScalarDiffusivity)
+    TD = summary(time_discretization(closure))
+    Iso = summary(isotropy(closure))
+    return string("ScalarDiffusivity{$TD, $Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
+end
 
 function Base.show(io::IO, closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
