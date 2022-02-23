@@ -10,33 +10,36 @@ struct ScalarDiffusivity{TD, Iso, N, K} <: AbstractScalarDiffusivity{TD, Iso}
 end
 
 """
-    ScalarDiffusivity([FT=Float64;]
-                         ν=0, κ=0,
-                         discrete_diffusivity = false,
-                         isotropy = ThreeDimensional() 
-                         time_discretization = Explicit())
+    ScalarDiffusivity([FT=Float64];
+                      ν = 0,
+                      κ = 0,
+                      discrete_form = false,
+                      isotropy = ThreeDimensional() 
+                      time_discretization = Explicit())
 
-Returns parameters for an isotropic diffusivity model with viscosity `ν`
-and thermal diffusivities `κ` for each tracer field in `tracers`
-`ν` and the fields of `κ` may be constants, arrays, fields or
-- functions of `(x, y, z, t)` if `discrete_diffusivity = false`
-- functions of `(LX, LY, LZ, i, j, k, grid, t)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
-  `discrete_diffusivity = true`.
+Return `ScalarDiffusivity` with viscosity `ν` and tracer diffusivities `κ`
+for each tracer field in `tracers`. If a single `κ` is provided, it is
+applied to all tracers. Otherwise `κ` must be a `NamedTuple` with values
+for every tracer individually. `ν` and `κ` are converted to the floating
+point type `FT` is they are Number.
 
-`κ` may be a `NamedTuple` with fields corresponding to each tracer, or a
-single number to be a applied to all tracers.
+`ν` and `κ` (or its elements) may be constants, arrays, fields or
+
+    - functions of `(x, y, z, t)` if `discrete_form = false`
+    - functions of `(LX, LY, LZ, i, j, k, grid, t)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
+      `discrete_form = true`.
 """
 function ScalarDiffusivity(FT=Float64;
-                              ν=0, κ=0,
-                              discrete_diffusivity = false,
-                              isotropy::Iso=ThreeDimensional(),
-                              time_discretization::TD = Explicit()) where {TD, Iso}
+                           ν=0, κ=0,
+                           discrete_form = false,
+                           isotropy::Iso = ThreeDimensional(),
+                           time_discretization::TD = Explicit()) where {TD, Iso}
 
     if isotropy == Horizontal() && time_discretization == VerticallyImplicit()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
     end
-    κ = convert_diffusivity(FT, κ, Val(discrete_diffusivity))
-    ν = convert_diffusivity(FT, ν, Val(discrete_diffusivity))
+    κ = convert_diffusivity(FT, κ, Val(discrete_form))
+    ν = convert_diffusivity(FT, ν, Val(discrete_form))
     return ScalarDiffusivity{TD, Iso}(ν, κ)
 end
 
@@ -49,11 +52,14 @@ end
 
 @inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
-                    
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarDiffusivity{TD, Iso})  where {TD, Iso}= 
-    print(io, "ScalarDiffusivity:\n",
-              "ν=$(closure.ν), κ=$(closure.κ)\n",
-              "time discretization: $(time_discretization(closure))\n",
-              "isotropy: $Iso")
+Base.summary(closure::ScalarDiffusivity) = string("ScalarDiffusivity{$TD, $Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
+
+function Base.show(io::IO, closure::ScalarDiffusivity)
+    TD = summary(time_discretization(closure))
+    Iso = summary(isotropy(closure))
+    return print(io, "ScalarDiffusivity{$TD, $Iso}}:", '\n',
+                     "├── ν: ", closure.ν, '\n',
+                     "└── κ: ", closure.κ)
+end
