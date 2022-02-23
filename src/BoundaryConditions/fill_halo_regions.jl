@@ -51,7 +51,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, arg
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
    
     for task = 1:3
-        barrier = nothing #NoneEvent()
+        barrier = device_event(arch)
 
         fill_halo!  = fill_halos![task]
         bc_left     = boundary_conditions_array_left[task]
