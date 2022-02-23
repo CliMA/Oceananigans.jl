@@ -116,6 +116,7 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 include("grid_utils.jl")
 include("zeros.jl")
 include("new_data.jl")
+include("grid_solid_nodes.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")

@@ -70,11 +70,11 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
 end
 
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Support for VerticallyImplicit
 #####
 
-const SingleExplicitClosure = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
-const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
+const SingleExplicitClosure = AbstractTurbulenceClosure{<:Explicit}
+const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicit}
 
 const EC = Union{SingleExplicitClosure, AbstractArray{<:SingleExplicitClosure}}
 const VIC = Union{SingleImplicitClosure, AbstractArray{<:SingleImplicitClosure}}
@@ -110,15 +110,15 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
     end
 end
 
-const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicitTimeDiscretization
-const ExplicitOrNothing = Union{ExplicitTimeDiscretization, Nothing}
+const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicit
+const ExplicitOrNothing = Union{Explicit, Nothing}
 
 @inline combine_time_discretizations(disc) = disc
 
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::ExplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization) = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::ExplicitTimeDiscretization)                     = ExplicitTimeDiscretization()
+@inline combine_time_discretizations(::Explicit, ::VerticallyImplicit)           = VerticallyImplicit()
+@inline combine_time_discretizations(::VerticallyImplicit, ::Explicit)           = VerticallyImplicit()
+@inline combine_time_discretizations(::VerticallyImplicit, ::VerticallyImplicit) = VerticallyImplicit()
+@inline combine_time_discretizations(::Explicit, ::Explicit)                     = Explicit()
 
 @inline combine_time_discretizations(disc1, disc2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(disc1, disc2), other_discs...)

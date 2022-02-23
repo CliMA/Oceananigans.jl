@@ -9,6 +9,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations
 using Oceananigans.Advection
+using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 const hydrostatic = false
 
@@ -66,9 +67,14 @@ buoyancy = BuoyancyTracer()
 κv = 0.5e-5 # [m²/s] vertical diffusivity
 νv = 3e-4   # [m²/s] vertical viscocity
 
-diffusive_closure = AnisotropicDiffusivity(νx = νh, νy = νh, νz =νv, 
-                                 κx = κh, κy = κh, κz=κv)
+vertical_closure = ScalarDiffusivity(ν = νv,
+                                     κ = κv,
+                                     isotropy = Vertical())
 
+horizontal_closure = ScalarDiffusivity(ν = νh,
+                                       κ = κh,
+                                       isotropy = Horizontal())
+                                       
 parameters = (
     Ly = Ly,                   # y-domain length
     τ = 0.2,                   # [N m⁻²] Zonal stress
@@ -138,7 +144,7 @@ if hydrostatic
             tracer_advection = WENO5(),
             buoyancy = BuoyancyTracer(),
             coriolis = coriolis,
-            closure = (diffusive_closure, convective_adjustment),
+            closure = (horizontal_closure, vertical_closure, convective_adjustment),
             tracers = (:b,),
             boundary_conditions = bcs,
             forcing = forcings,
@@ -148,7 +154,7 @@ else
                     grid = grid,
                 coriolis = coriolis,
                 buoyancy = buoyancy,
-                    closure = diffusive_closure,
+                    closure = (horizontal_closure, vertical_closure),
                     tracers = (:b,),
         boundary_conditions = bcs,
                     forcing = forcings,

@@ -10,7 +10,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(grid=grid, closure=closure, coriolis=FPlane(f=1e-4),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)

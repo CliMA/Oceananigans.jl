@@ -46,7 +46,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                         timestepper = :RungeKutta3,
                                         grid = grid,
                                         tracers = :c,
-                                        closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                        closure = ScalarDiffusivity(ν=ν, κ=ν),
                                         coriolis = nothing,
                                         buoyancy = nothing)
 
@@ -63,7 +63,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                          timestepper = :RungeKutta3,
                                          grid = immersed_grid,
                                          tracers = (:c, :mass),
-                                         closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                         closure = ScalarDiffusivity(ν=ν, κ=ν),
                                          coriolis = nothing,
                                          buoyancy = nothing)
 

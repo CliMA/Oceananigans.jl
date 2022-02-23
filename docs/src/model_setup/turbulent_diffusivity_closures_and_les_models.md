@@ -8,26 +8,45 @@ on turbulent diffusivity closures.
 
 ## Constant isotropic diffusivity
 
-To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use [`IsotropicDiffusivity`](@ref)
+To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use [`ScalarDiffusivity`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2)
-IsotropicDiffusivity: ν=0.01, κ=0.01
+julia> closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
+ScalarDiffusivity:
+ν=0.01, κ=0.01
+time discretization: Oceananigans.TurbulenceClosures.Explicit()
+isotropy: Oceananigans.TurbulenceClosures.ThreeDimensional
 ```
 
 ## Constant anisotropic diffusivity
 
 To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`AnisotropicDiffusivity`](@ref)
+diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`ScalarDiffusivity(isotropy = Horizontal())`](@ref) and
+[`ScalarDiffusivity(isotropy = Vertical())`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> closure = AnisotropicDiffusivity(νh=1e-3, νz=5e-2, κh=2e-3, κz=1e-1)
-AnisotropicDiffusivity: (νx=0.001, νy=0.001, νz=0.05), (κx=0.002, κy=0.002, κz=0.1)
+julia> using Oceananigans.TurbulenceClosures: Horizontal, Vertical
+
+julia> horizontal_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Horizontal())
+ScalarDiffusivity:
+ν=0.001, κ=0.002
+time discretization: Oceananigans.TurbulenceClosures.Explicit()
+isotropy: Oceananigans.TurbulenceClosures.Horizontal
+
+julia> vertical_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Vertical())
+ScalarDiffusivity:
+ν=0.001, κ=0.002
+time discretization: Oceananigans.TurbulenceClosures.Explicit()
+isotropy: Oceananigans.TurbulenceClosures.Vertical
+
 ```
+
+After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the model so that
+all components will be taken into account when calculating the diffusivity term.
 
 ## Smagorinsky-Lilly
 

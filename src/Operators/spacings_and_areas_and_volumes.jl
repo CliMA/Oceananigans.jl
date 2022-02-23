@@ -251,19 +251,19 @@ for LX in (:Center, :Face)
             LXe = @eval $LX
             LYe = @eval $LY
             LZe = @eval $LZ
-
-            Ax_function = Symbol(:Ax, location_code(LXe, LYe, LZe))
-            Ay_function = Symbol(:Ay, location_code(LXe, LYe, LZe))
-            Az_function = Symbol(:Az, location_code(LXe, LYe, LZe))
-
+            
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
-
             @eval begin
-                Az(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Az_function(i, j, k, grid)
-                Ax(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Ax_function(i, j, k, grid)
-                Ay(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Ay_function(i, j, k, grid)
-
                 volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+            end 
+
+            for op in (:Δ, :A), dir in (:x, :y, :z)
+                func   = Symbol(op, dir)
+                metric = Symbol(op, dir, location_code(LXe, LYe, LZe))
+
+                @eval begin
+                    $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                end
             end
         end
     end

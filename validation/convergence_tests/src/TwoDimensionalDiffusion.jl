@@ -36,7 +36,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     closure = IsotropicDiffusivity(κ=1))
+                                     closure = ScalarDiffusivity(κ=1))
 
     set!(model, c = (x, y, z) -> c(x, y, 0))
 

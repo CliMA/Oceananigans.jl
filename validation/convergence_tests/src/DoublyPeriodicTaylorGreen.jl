@@ -24,7 +24,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
                             coriolis = nothing,
                             buoyancy = nothing,
                              tracers = nothing,
-                             closure = IsotropicDiffusivity(ν=1))
+                             closure = ScalarDiffusivity(ν=1))
 
     set!(model, u = (x, y, z) -> u(x, y, 0, U),
                 v = (x, y, z) -> v(x, y, 0, U))

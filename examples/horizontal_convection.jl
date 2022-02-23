@@ -96,7 +96,7 @@ model = NonhydrostaticModel(
             timestepper = :RungeKutta3,
                 tracers = :b,
                buoyancy = BuoyancyTracer(),
-                closure = IsotropicDiffusivity(ν=ν, κ=κ),
+                closure = ScalarDiffusivity(ν=ν, κ=κ),
     boundary_conditions = (; b=b_bcs))
 
 # ## Simulation set-up

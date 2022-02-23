@@ -1,12 +1,12 @@
 using Plots
 using Printf
 using Oceananigans
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, time_discretization
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, time_discretization, Vertical
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-evd_closure = HorizontallyCurvilinearAnisotropicDiffusivity(κz = 1.0)
-ivd_closure = HorizontallyCurvilinearAnisotropicDiffusivity(κz = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())
+evd_closure = ScalarDiffusivity(κ = 1.0, isotropy = Vertical())
+ivd_closure = ScalarDiffusivity(κ = 1.0, isotropy = Vertical(), time_discretization = VerticallyImplicit())
 
 model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
@@ -25,7 +25,7 @@ c_explicit = view(interior(explicit_model.tracers.c), 1, 1, :)
 
 c_plot = plot(c_implicit, z, linewidth = 2, label = "t = 0", xlabel = "Tracer concentration", ylabel = "z")
               
-diffusion_time_scale = implicit_model.grid.Δzᵃᵃᶜ^2 / implicit_model.closure.κz.c
+diffusion_time_scale = implicit_model.grid.Δzᵃᵃᶜ^2 / implicit_model.closure.κ.c
 stop_time = 100diffusion_time_scale
 
 simulations = [Simulation(explicit_model, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time),
