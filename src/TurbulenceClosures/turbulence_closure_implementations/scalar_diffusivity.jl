@@ -25,9 +25,9 @@ point type `FT` is they are Number.
 
 `ν` and `κ` (or its elements) may be constants, arrays, fields or
 
-    - functions of `(x, y, z, t)` if `discrete_form = false`
-    - functions of `(LX, LY, LZ, i, j, k, grid, t)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
-      `discrete_form = true`.
+  - functions of `(x, y, z, t)` if `discrete_form = false`
+  - functions of `(LX, LY, LZ, i, j, k, grid, t)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
+    `discrete_form = true`.
 """
 function ScalarDiffusivity(FT=Float64;
                            ν=0, κ=0,
