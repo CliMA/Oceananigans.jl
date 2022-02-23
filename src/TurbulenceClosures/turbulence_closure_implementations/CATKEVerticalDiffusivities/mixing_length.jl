@@ -67,31 +67,31 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cᵇ    :: FT = 1.16
-    Cᵇu   :: FT = 0.0
-    Cᵇc   :: FT = 0.0
-    Cᵇe   :: FT = 0.0
-    Cˢ    :: FT = 0.0
-    Cˢu   :: FT = 0.0
-    Cˢc   :: FT = 0.0
-    Cˢe   :: FT = 0.0
+    Cᵇ    :: FT = Inf # Inf is the "inert" value for this parameter
+    Cˢ    :: FT = Inf # Inf is the "inert" value for this parameter
+    Cᵇu   :: FT = 0.596
+    Cᵇc   :: FT = 0.0723
+    Cᵇe   :: FT = 0.637
+    Cˢu   :: FT = 0.628
+    Cˢc   :: FT = 0.426
+    Cˢe   :: FT = 0.711
     Cᵟu   :: FT = 0.5
     Cᵟc   :: FT = 0.5
     Cᵟe   :: FT = 0.5
     Cᴬu   :: FT = 0.0
-    Cᴬc   :: FT = 0.0
+    Cᴬc   :: FT = 1.41
     Cᴬe   :: FT = 0.0
     Cᴬˢu  :: FT = 0.0
-    Cᴬˢc  :: FT = 0.0
+    Cᴬˢc  :: FT = 0.812
     Cᴬˢe  :: FT = 0.0
-    Cᴷu⁻  :: FT = 0.15
-    Cᴷuʳ  :: FT = 3.87
-    Cᴷc⁻  :: FT = 0.40
-    Cᴷcʳ  :: FT = 0.77
-    Cᴷe⁻  :: FT = 0.13
-    Cᴷeʳ  :: FT = 1.11
-    CᴷRiʷ :: FT = 0.72
-    CᴷRiᶜ :: FT = 0.76
+    Cᴷu⁻  :: FT = 0.343
+    Cᴷuʳ  :: FT = -0.721
+    Cᴷc⁻  :: FT = 0.343
+    Cᴷcʳ  :: FT = -0.891
+    Cᴷe⁻  :: FT = 1.42
+    Cᴷeʳ  :: FT = 1.50
+    CᴷRiʷ :: FT = 0.101
+    CᴷRiᶜ :: FT = 2.03
 end
 
 #####
