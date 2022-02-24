@@ -20,7 +20,7 @@ function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
 end
 
 function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(0.7))
-    closure = ScalarDiffusivity(κ=(T=κh, S=κh), ν=νh, isotropy=Horizontal())
+    closure = HorizontalScalarDiffusivity(κ=(T=κh, S=κh), ν=νh)
     return closure.ν == νh && closure.κ.T == κh && closure.κ.T == κh
 end
 

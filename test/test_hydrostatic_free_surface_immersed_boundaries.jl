@@ -91,7 +91,7 @@ using Oceananigans.TurbulenceClosures
             v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
             νh₀ = 5e3 * (60 / grid.Nx)^2
-            constant_horizontal_diffusivity = ScalarDiffusivity(ν=νh₀, isotropy=Horizontal())
+            constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh₀)
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 momentum_advection = VectorInvariant(),

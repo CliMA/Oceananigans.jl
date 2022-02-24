@@ -35,7 +35,7 @@ function ScalarDiffusivity(time_disc=ExplicitTimeDiscretization,
                            discrete_form = false) 
 
     if formulation == HorizontalFormulation && time_discretization == VerticallyImplicitTimeDiscretization
-        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
+        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `HorizontalFormulation` or `ThreeDimensionalFormulation`"))
     end
     κ = convert_diffusivity(FT, κ, Val(discrete_form))
     ν = convert_diffusivity(FT, ν, Val(discrete_form))
