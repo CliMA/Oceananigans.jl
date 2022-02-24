@@ -14,9 +14,14 @@ struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivi
     end
 end
 
-
   VerticalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation, args...; kwargs...)
 HorizontalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation, args...; kwargs...)
+
+# Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
+          ScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ThreeDimensionalFormulation, FT; kwargs...)
+  VerticalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(VerticalFormulation, FT; kwargs...)
+HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(HorizontalFormulation, FT; kwargs...)
+
 
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 

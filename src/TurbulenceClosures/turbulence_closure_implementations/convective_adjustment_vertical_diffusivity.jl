@@ -44,6 +44,9 @@ Keyword arguments
 
 * `time_discretization`: Either `Explicit` or `VerticallyImplicit`.
 """
+
+ConvectiveAdjustmentVerticalDiffusivity(FT::DataType; kwargs...) = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization, FT; kwargs...)
+
 function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
