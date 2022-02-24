@@ -1,18 +1,20 @@
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
-using Oceananigans.Models
+using Oceananigans.Models: AbstractModel
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!, displacement, compute_auxiliary_fields!
 using Oceananigans.TimeSteppers: AbstractTimeStepper
 
 using Oceananigans: prognostic_fields, fields
 
+import Oceananigans.Models.HydrostaticFreeSurfaceModels:
+                        validate_vertical_velocity_boundary_conditions
+
 import Oceananigans.TimeSteppers: 
                         ab2_step!,
                         update_state!,
                         calculate_tendencies!,
                         store_tendencies!
-
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
@@ -43,10 +45,9 @@ ab2_step!(mrm::MultiRegionModel, Δt, χ)      = apply_regionally!(ab2_step!, mr
 calculate_tendencies!(mrm::MultiRegionModel) = apply_regionally!(calculate_tendencies!, mrm)
 store_tendencies!(mrm::MultiRegionModel)     = apply_regionally!(store_tendencies!, mrm)
 
-getregion(mrm::MultiRegionModel, i) = getname(mrm)([getregion(getproperty(mrm, name), i) for name in propertynames(mrm)]...)
-
-# getregion(f::D, i) where D <: DataType    = getname(f)([getregion(getproperty(f, name), i) for name in propertynames(f)]...)
+getregion(mrm::AbstractModel, i)          = getname(mrm)([getregion(getproperty(mrm, name), i) for name in propertynames(mrm)]...)
 getregion(tstep::AbstractTimeStepper, i)  = getname(tstep)([getregion(getproperty(tstep, name), i) for name in propertynames(tstep)]...)
+
 getregion(t::Tuple, i)                    = Tuple(getregion(elem, i) for elem in t)
 getregion(nt::NamedTuple, i)              = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
 
@@ -56,3 +57,5 @@ isregional(mrm::MultiRegionModel)        = true
 devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 getdevice(mrm::MultiRegionModel, i)      = getdevice(mrm.grid, i)
 switch_region!(mrm::MultiRegionModel, i) = switch_region!(mrm.grid, i)
+
+validate_vertical_velocity_boundary_conditions(w::MultiRegionField) = apply_regionally!(validate_vertical_velocity_boundary_conditions, w)
