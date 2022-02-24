@@ -306,7 +306,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
     y_bc = GradientBoundaryCondition(N² * g̃[2])
     z_bc = GradientBoundaryCondition(N² * g̃[3])
@@ -351,7 +351,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), vertical_unit_vector=g̃)
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
     α  = buoyancy.model.equation_of_state.α
     g₀ = buoyancy.model.gravitational_acceleration

@@ -104,7 +104,7 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
     topo = topology(grid)
 
-    topo[3] == Periodic && error("VerticallyImplicit can only be specified on " *
+    topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
