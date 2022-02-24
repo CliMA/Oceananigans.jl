@@ -322,9 +322,13 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
+    names = collect(keys(ow.outputs))
+    lastname = last(names)
+    outputstr = string("(", Tuple(string(n, ", ") for n in names[1:end-1])..., $lastname, ")")
+
     print(io, "JLD2OutputWriter scheduled on ", summary(ow.schedule), ":", '\n',
               "├── filepath: ", ow.filepath, '\n',
-              "├── $Noutputs outputs: ", string.(keys(ow.outputs)), show_averaging_schedule(averaging_schedule), '\n',
+              "├── $Noutputs outputs: ", outputstr, show_averaging_schedule(averaging_schedule), '\n',
               "├── field slicer: ", summary(ow.field_slicer), '\n',
               "├── array type: ", show_array_type(ow.array_type), '\n',
               "├── including: ", ow.including, '\n',

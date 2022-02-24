@@ -481,10 +481,14 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
+    names = collect(keys(ow.outputs))
+    lastname = last(names)
+    outputstr = string("(", Tuple(string(n, ", ") for n in names[1:end-1])..., $lastname, ")")
+
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
               "├── filepath: ", ow.filepath, '\n',
               "├── dimensions: $dims", '\n',
-              "├── $Noutputs outputs: ", string.(keys(ow.outputs)), show_averaging_schedule(averaging_schedule), '\n',
+              "├── $Noutputs outputs: ", outputstr, show_averaging_schedule(averaging_schedule), '\n',
               "├── field slicer: ", summary(ow.field_slicer), '\n',
               "└── array type: ", show_array_type(ow.array_type))
 end
