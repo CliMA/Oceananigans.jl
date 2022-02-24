@@ -92,6 +92,8 @@ for S in (:MixingLength, :SurfaceTKEFlux)
     @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
 end
 
+CATKEVerticalDiffusivity(FT::DataType; kwargs...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
+
 """
     CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
                              Cᴰ = 2.91,
@@ -103,7 +105,7 @@ Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 """
-function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
+function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
                                   surface_TKE_flux = SurfaceTKEFlux{FT}(),
