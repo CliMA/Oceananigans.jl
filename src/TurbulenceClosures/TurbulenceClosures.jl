@@ -10,6 +10,12 @@ export
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
 
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    ThreeDimensionalFormulation,
+    HoriozontalFormulation,
+    VerticalFormulation, 
+
     DiffusivityFields,
     calculate_diffusivities!,
 

@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
+struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD, ThreeDimensionalFormulation}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -66,7 +66,7 @@ Keyword arguments
          diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
          specifying a background diffusivity for every tracer.
 
-  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
                            which integrates the terms involving only z-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -127,20 +127,20 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(FT = Float64;
+function AnisotropicMinimumDissipation(time_discretization = ExplicitTimeDiscretization, FT = Float64;
                                         C = 1/12,
                                        Cν = nothing,
                                        Cκ = nothing,
                                        Cb = nothing,
                                        ν = 0,
-                                       κ = 0,
-                                       time_discretization::TD = Explicit()) where TD
+                                       κ = 0)
+
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     
     !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
-    return AnisotropicMinimumDissipation{TD, FT}(Cν, Cκ, Cb, ν, κ)
+    return AnisotropicMinimumDissipation{time_discretization, FT}(Cν, Cκ, Cb, ν, κ)
 end
 
 function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD, FT}) where {TD, FT}

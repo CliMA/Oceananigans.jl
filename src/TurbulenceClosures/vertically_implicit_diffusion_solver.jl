@@ -83,7 +83,7 @@ end
 #####
 
 """
-    implicit_diffusion_solver(::VerticallyImplicit, grid)
+    implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
 Build tridiagonal solvers for the elliptic equations
 
@@ -100,7 +100,7 @@ and
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
 and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
 """
-function implicit_diffusion_solver(::VerticallyImplicit, grid)
+function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
     topo = topology(grid)
 

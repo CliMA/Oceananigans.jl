@@ -50,7 +50,7 @@ Keyword arguments
   - `κ`: Constant background diffusivity for tracer. Can either be a single number
          applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
          tracer.
-  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
                            which integrates the terms involving only ``z``-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -67,9 +67,8 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
     NCAR Manuscript No. 281, 0, 1966.
 """
-SmagorinskyLilly(FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0,
-                             time_discretization::TD=Explicit()) where TD =
-    SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
+SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0) =
+    SmagorinskyLilly{time_discretization, FT}(C, Cb, Pr, ν, κ)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)

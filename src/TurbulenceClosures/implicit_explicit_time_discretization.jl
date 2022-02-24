@@ -10,7 +10,7 @@ abstract type AbstractTimeDiscretization end
 
 Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
-struct Explicit <: AbstractTimeDiscretization end
+struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 
 """
     struct VerticallyImplicit <: AbstractTimeDiscretization
@@ -24,10 +24,10 @@ time-discretized as
 [∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
 ```
 """
-struct VerticallyImplicit <: AbstractTimeDiscretization end
+struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
-@inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
-@inline time_discretization(::Nothing) = Explicit() # placeholder for closure::Nothing
+@inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization
+@inline time_discretization(::Nothing) = ExplicitTimeDiscretization # placeholder for closure::Nothing
 
 #####
 ##### Explicit: move along, nothing to worry about here (use fallbacks).

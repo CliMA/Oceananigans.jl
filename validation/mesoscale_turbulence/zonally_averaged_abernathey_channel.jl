@@ -114,7 +114,7 @@ const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 
-using Oceananigans.TurbulenceClosures: VerticallyImplicit
+using Oceananigans.TurbulenceClosures
 using Oceananigans.Fields: TracerFields, FunctionField
 
 tracers = TracerFields(tuple(:b), architecture, grid)

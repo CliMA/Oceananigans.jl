@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical, ThreeDimensional
+using Oceananigans.TurbulenceClosures
+using Oceananigans.TurbulenceClosures: z_viscosity
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -444,7 +445,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :c), timestepper in timesteppers
-            for time_discretization in (Explicit(), VerticallyImplicit())
+            for time_discretization in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
                 @test test_diffusion_simple(fieldname, timestepper, time_discretization)
             end
         end
@@ -535,7 +536,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Diffusion cosine" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             for fieldname in (:u, :v, :T, :S)
-                for time_discretization in (Explicit(), VerticallyImplicit())
+                for time_discretization in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
                     Nz, Lz = 128, π/2
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
@@ -560,7 +561,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Gaussian immersed diffusion" begin
-        for time_discretization in (Explicit(), VerticallyImplicit())
+        for time_discretization in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
 
             Nz, Lz, z₀ = 128, 1, -0.5
 
@@ -642,7 +643,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Taylor-Green vortex" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (Explicit(), VerticallyImplicit())
+            for time_discretization in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
                 td = typeof(time_discretization).name.wrapper
                 @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
                 @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)

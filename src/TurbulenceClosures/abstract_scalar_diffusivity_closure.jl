@@ -102,7 +102,7 @@ end
 ##### Support for VerticallyImplicit
 #####
 
-const VITD = VerticallyImplicit
+const VITD = VerticallyImplicitTimeDiscretization
 
   @inline z_viscosity(closure::AbstractScalarDiffusivity, args...)        = viscosity(closure, args...)
 @inline z_diffusivity(closure::AbstractScalarDiffusivity, c_idx, args...) = diffusivity(closure, c_idx, args...)
