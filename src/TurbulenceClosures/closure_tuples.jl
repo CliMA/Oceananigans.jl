@@ -111,7 +111,7 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
 end
 
 const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicitTimeDiscretization
-const ExplicitOrNothing = Union{Explicit, Nothing}
+const ExplicitOrNothing = Union{ExplicitTimeDiscretization, Nothing}
 
 @inline combine_time_discretizations(disc) = disc
 
