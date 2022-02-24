@@ -57,5 +57,5 @@ calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 Base.show(io::IO, closure::ScalarDiffusivity{TD, F})  where {TD, F}= 
     print(io, "ScalarDiffusivity:\n",
               "ν=$(closure.ν), κ=$(closure.κ)\n",
-              "time discretization: $(time_discretization(closure))\n",
+              "time discretization: $TD\n",
               "formulation: $F")
