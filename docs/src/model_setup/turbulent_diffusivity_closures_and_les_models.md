@@ -16,8 +16,8 @@ julia> using Oceananigans.TurbulenceClosures
 julia> closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
 ScalarDiffusivity:
 ν=0.01, κ=0.01
-time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Oceananigans.TurbulenceClosures.ThreeDimensional
+time discretization: Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization()
+formulation: Oceananigans.TurbulenceClosures.ThreeDimensionalFormulation()
 ```
 
 ## Constant anisotropic diffusivity
@@ -34,14 +34,14 @@ julia> using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
 ScalarDiffusivity:
 ν=0.001, κ=0.002
-time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Oceananigans.TurbulenceClosures.HorizontalFormulation()
+time discretization: Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization()
+formulation: Oceananigans.TurbulenceClosures.HorizontalFormulation()
 
 julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
 ScalarDiffusivity:
 ν=0.001, κ=0.002
 time discretization: Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization()
-isotropy: Oceananigans.TurbulenceClosures.VerticalFormulation()
+formulation: Oceananigans.TurbulenceClosures.VerticalFormulation()
 
 ```
 
