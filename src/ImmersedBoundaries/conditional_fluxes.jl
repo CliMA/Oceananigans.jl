@@ -1,5 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ, Δzᵃᵃᶜ, Δxᶜᵃᵃ, Δyᵃᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ 
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ, 
+                              ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
+                              Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 using Oceananigans: fields
 
@@ -11,11 +13,11 @@ const ATD = AbstractTimeDiscretization
 ####
 
 const κVK = 0.4 # van Karman's const
-const z0 = 0.02 # roughness, user defined in future?
+const z₀ = 0.02 # roughness length (meters), user defined in future?
 
-@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κVK ./ log(0.5 .* grid.Δzᵃᵃᶜ ./ z0)).^2 
-@inline south_drag_const(i, j, k, grid) = @inbounds -(κVK ./ log(0.5 .* grid.Δyᵃᶜᵃ ./ z0)).^2 
-@inline west_drag_const(i, j, k, grid)  = @inbounds -(κVK ./ log(0.5 .* grid.Δxᶜᵃᵃ ./ z0)).^2 
+@inline west_drag_const(i, j, k, grid)   = @inbounds -(κVK / log(0.5 * Δxᶠᶜᶜ(i, j, k, grid) / z₀))^2 
+@inline south_drag_const(i, j, k, grid)  = @inbounds -(κVK / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
+@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κVK / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
 
 @inline τˣᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) .* U.u[i, j, k] .* (U.u[i, j, k].^2 .+ ℑxyᶠᶜᵃ(i, j, k, grid, U.v).^2).^(0.5)
 @inline τʸᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) .* U.v[i, j, k] .* (U.v[i, j, k].^2 .+ ℑxyᶜᶠᵃ(i, j, k, grid, U.u).^2).^(0.5)
@@ -53,19 +55,19 @@ const z0 = 0.02 # roughness, user defined in future?
 #####
 
 # ccc, ffc, fcf
- @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_ux, args...)
- @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_uy, args...)
- @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, closure, disc, clock, U, viscous_flux_uz, args...)
+ @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_ux, args...)
+ @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_uy, args...)
+ @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, closure, disc, clock, U, viscous_flux_uz, args...)
  
  # ffc, ccc, cff
- @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vx, args...)
- @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vy, args...)
- @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vz, args...)
+ @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vx, args...)
+ @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vy, args...)
+ @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, closure, disc, clock, U, viscous_flux_vz, args...)
  
  # fcf, cff, ccc
- @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wx, args...)
- @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wy, args...)
- @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, closure, ::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wz, args...)
+ @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wx, args...)
+ @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wy, args...)
+ @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, closure, disc, clock, U, viscous_flux_wz, args...)
 
 # fcc, cfc, ccf
 @inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
