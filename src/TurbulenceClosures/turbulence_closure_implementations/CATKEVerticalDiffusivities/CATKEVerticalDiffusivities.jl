@@ -238,7 +238,7 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 # Disambiguiate
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 @inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)

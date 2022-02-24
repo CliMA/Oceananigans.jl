@@ -11,10 +11,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
 
     ExplicitTimeDiscretization,
-    VerticallyImplicitTimeDiscretization,
-    ThreeDimensionalFormulation,
-    HorizontalFormulation,
-    VerticalFormulation, 
+    VerticallyImplicitTimeDiscretization
 
     DiffusivityFields,
     calculate_diffusivities!,
