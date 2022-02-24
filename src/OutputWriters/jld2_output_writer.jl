@@ -314,6 +314,9 @@ function start_next_file(model, writer::JLD2OutputWriter)
     return nothing
 end
 
+Base.summary(ow::JLD2OutputWriter) =
+    string("JLD2OutputWriter writing", keys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+
 function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)

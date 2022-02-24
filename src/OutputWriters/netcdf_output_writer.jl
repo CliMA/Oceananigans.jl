@@ -469,6 +469,9 @@ drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, di
 ##### Show
 #####
 
+Base.summary(ow::NetCDFOutputWriter) =
+    string("NetCDFOutputWriter writing ", keys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+
 function Base.show(io::IO, ow::NetCDFOutputWriter)
     dims = NCDataset(ow.filepath, "r") do ds
         join([dim * "(" * string(length(ds[dim])) * "), "
