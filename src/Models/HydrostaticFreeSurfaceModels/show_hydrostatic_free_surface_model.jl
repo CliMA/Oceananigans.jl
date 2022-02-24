@@ -18,7 +18,7 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
         "├── grid: ", summary(model.grid), '\n',
         "├── timestepper: ", TS, '\n',
         "├── tracers: ", tracernames, '\n',
-        "├── closure: ", closure_show(model.closure), '\n',
+        "├── closure: ", closure_summary(model.closure), '\n',
         "├── buoyancy: ", summary(model.buoyancy), '\n')
 
     if model.free_surface !== nothing
