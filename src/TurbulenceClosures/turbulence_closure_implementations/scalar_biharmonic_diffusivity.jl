@@ -52,7 +52,7 @@ calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, ar
 
 function Base.summary(closure::ScalarBiharmonicDiffusivity)
     Iso = summary(isotropy(closure))
-    return string("ScalarBiharmonicDiffusivity{$Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
+    return string("ScalarBiharmonicDiffusivity{$Iso}(ν=", summary(closure.ν), ", κ=", summary(closure.κ), ")")
 end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
