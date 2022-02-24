@@ -29,6 +29,11 @@ single number to be a applied to all tracers.
   VerticalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT=Float64; kwargs...) = ScalarDiffusivity(time_disc, VerticalFormulation, FT; kwargs...)
 HorizontalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT=Float64; kwargs...) = ScalarDiffusivity(time_disc, HorizontalFormulation, FT; kwargs...)
 
+# Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
+          ScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization, ThreeDimensionalFormulation, FT; kwargs...)
+  VerticalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization, VerticalFormulation, FT; kwargs...)
+HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization, HorizontalFormulation, FT; kwargs...)
+
 function ScalarDiffusivity(time_disc=ExplicitTimeDiscretization,
                            formulation=ThreeDimensionalFormulation, FT=Float64;
                            ν=0, κ=0,

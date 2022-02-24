@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
-using Oceananigans.TurbulenceClosures: Horizontal
+using Oceananigans.TurbulenceClosures
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 

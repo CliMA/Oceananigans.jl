@@ -9,7 +9,6 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations
 using Oceananigans.Advection
-using Oceananigans.TurbulenceClosures
 
 const hydrostatic = false
 
