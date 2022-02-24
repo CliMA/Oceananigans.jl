@@ -45,16 +45,16 @@ Keyword arguments
 * `time_discretization`: Either `Explicit` or `VerticallyImplicit`.
 """
 
-ConvectiveAdjustmentVerticalDiffusivity(FT::DataType; kwargs...) = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization, FT; kwargs...)
+ConvectiveAdjustmentVerticalDiffusivity(FT::DataType; kwargs...) = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
 
-function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT = Float64;
+function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
                                                  background_νz = zero(FT))
 
-    return ConvectiveAdjustmentVerticalDiffusivity{time_discretization}(convective_κz, convective_νz,
-                                                                        background_κz, background_νz)
+    return ConvectiveAdjustmentVerticalDiffusivity{typeof(time_discretization)}(convective_κz, convective_νz,
+                                                                                background_κz, background_νz)
 end
 
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
