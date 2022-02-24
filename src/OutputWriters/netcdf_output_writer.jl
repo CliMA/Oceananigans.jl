@@ -268,7 +268,7 @@ simulation.output_writers[:things] =
 NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: ["profile", "slice", "scalar"]
+├── 3 outputs: (profile, slice, scalar)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
