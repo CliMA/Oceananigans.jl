@@ -1,7 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures
-using Oceananigans.TurbulenceClosures: z_viscosity
+using Oceananigans.TurbulenceClosures: z_viscosity, ThreeDimensionalFormulation
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -14,7 +13,7 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
     model = NonhydrostaticModel(; timestepper,
                                 grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
-                                closure = ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
+                                closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
                                 coriolis = nothing,
                                 tracers = :c,
                                 buoyancy = nothing)
@@ -64,7 +63,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     model = NonhydrostaticModel(; timestepper, grid,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
@@ -90,7 +89,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(κ = κ, time_discretization = time_discretization)
+    closure = ScalarDiffusivity(time_discretization, κ = κ)
 
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
@@ -186,7 +185,7 @@ function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_disc
 
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
@@ -267,7 +266,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     model = NonhydrostaticModel(
          timestepper = timestepper,
                 grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ScalarDiffusivity(FT, ν=1, time_discretization=time_discretization),
+             closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation, FT, ν=1),
              tracers = nothing,
             buoyancy = nothing)
 

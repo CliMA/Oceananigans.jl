@@ -15,7 +15,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
 
     ExplicitTimeDiscretization,
-    VerticallyImplicitTimeDiscretization
+    VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
     calculate_diffusivities!,

@@ -120,7 +120,6 @@
 using Printf
 using Oceananigans
 using Oceananigans.Units: hours, day, days
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 # ## The grid
 #
