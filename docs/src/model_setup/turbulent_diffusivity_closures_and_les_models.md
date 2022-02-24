@@ -23,25 +23,25 @@ isotropy: Oceananigans.TurbulenceClosures.ThreeDimensional
 ## Constant anisotropic diffusivity
 
 To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`ScalarDiffusivity(isotropy = Horizontal())`](@ref) and
-[`ScalarDiffusivity(isotropy = Vertical())`](@ref)
+diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`HorizontalScalarDiffusivity()`](@ref) and
+[`VerticalScalarDiffusivity()`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
 julia> using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
-julia> horizontal_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Horizontal())
+julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
 ScalarDiffusivity:
 ν=0.001, κ=0.002
 time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Oceananigans.TurbulenceClosures.Horizontal
+isotropy: Oceananigans.TurbulenceClosures.HorizontalFormulation()
 
-julia> vertical_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Vertical())
+julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
 ScalarDiffusivity:
 ν=0.001, κ=0.002
-time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Oceananigans.TurbulenceClosures.Vertical
+time discretization: Oceananigans.TurbulenceClosures.ExplicitTimeDiscretization()
+isotropy: Oceananigans.TurbulenceClosures.VerticalFormulation()
 
 ```
 

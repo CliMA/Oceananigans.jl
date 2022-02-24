@@ -230,9 +230,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for closure in (ScalarDiffusivity(),
-                        ScalarDiffusivity(isotropy = Horizontal()),
-                        ScalarDiffusivity(isotropy = Vertical()),
-                        ScalarDiffusivity(isotropy = Vertical(), time_discretization=VerticallyImplicit()),
+                        HorizontalScalarDiffusivity(),
+                        VerticalScalarDiffusivity(),
+                        VerticalScalarDiffusivity(VerticallyImplicit),
                         CATKEVerticalDiffusivity(),
                         CATKEVerticalDiffusivity(time_discretization=Explicit()))
 

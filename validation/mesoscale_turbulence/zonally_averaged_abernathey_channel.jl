@@ -134,13 +134,9 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
 ν = Field(ν_op)
 
-vertical_closure = ScalarDiffusivity(ν = νv,
-                                     κ = κv,
-                                     isotropy = Vertical())
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
-horizontal_closure = ScalarDiffusivity(ν = νh,
-                                       κ = κh,
-                                       isotropy = Horizontal())
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 closure = (horizontal_closure, vertical_closure)
                                        

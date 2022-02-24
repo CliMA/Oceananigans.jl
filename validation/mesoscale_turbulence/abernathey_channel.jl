@@ -128,8 +128,8 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-horizontal_closure = ScalarDiffusivity(ν = νh, κ = κh, isotropy = Horizontal())
-vertical_closure = ScalarDiffusivity(ν = νz, κ = κz, isotropy = Vertical())
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
     convective_νz = 0.0)

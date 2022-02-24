@@ -123,7 +123,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(ν = κ, κ = κ, isotropy = Vertical(), time_discretization = time_discretization)
+    closure = VerticalScalarDiffusivity(time_discretization, ν = κ, κ = κ)
 
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
@@ -459,16 +459,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Bounded, Bounded, Bounded))
 
                 if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
-                    time_discretizations = (Explicit(), VerticallyImplicit())
+                    time_discretizations = (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
                 else
-                    time_discretizations = (Explicit(),)
+                    time_discretizations = (ExplicitTimeDiscretization,)
                 end
 
                 for time_discretization in time_discretizations
 
-                    for closure in (ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Vertical(), time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Horizontal()),
+                    for closure in (ScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                    VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1),
                                     )
 
                         fieldnames = [:c]
@@ -515,16 +515,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                for iso in (ThreeDimensional(), Horizontal(), Vertical())
+                for formulation in (ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation)
                     model = NonhydrostaticModel(timestepper = timestepper,
                                                        grid = grid,
-                                                    closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=iso),
+                                                    closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
                                                    coriolis = nothing,
                                                     tracers = :c,
                                                    buoyancy = nothing)
 
                     for fieldname in fieldnames
-                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and isotropy $iso..."
+                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and $formulation..."
                         @test test_biharmonic_diffusion_budget(fieldname, model)
                     end
                 end
