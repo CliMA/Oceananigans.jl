@@ -1,4 +1,5 @@
 import Oceananigans.Grids: required_halo_size
+using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, Iso, N, K} <: AbstractScalarDiffusivity{TD, Iso}
     ν :: N
