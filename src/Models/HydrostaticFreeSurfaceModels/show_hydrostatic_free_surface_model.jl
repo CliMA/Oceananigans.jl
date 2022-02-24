@@ -14,7 +14,7 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     tracernames = keys(model.tracers)
     length(tracernames) == 1 && (tracernames = tracernames[1])
 
-    print(io, summary(model),
+    print(io, summary(model), '\n',
         "├── grid: ", summary(model.grid), '\n',
         "├── timestepper: ", TS, '\n',
         "├── tracers: ", tracernames, '\n',
