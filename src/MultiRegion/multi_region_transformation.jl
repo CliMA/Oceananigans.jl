@@ -10,22 +10,27 @@ multiregion_transformations[:ImmersedBoundaryGrid]  = Symbol("MultiRegionGrid{<:
 multiregion_transformations[:AbstractField] = :MultiRegionField
 multiregion_transformations[:Field]         = :MultiRegionField
 
-# For non-returning functions -> NON BLOCKING?
+# For non-returning functions -> can we make it NON BLOCKING?
 function apply_regionally!(func!, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
 
-    for (r, dev) in enumerate(devices(mra))
-        switch_device!(dev)
-        region_args = Tuple(getregion(arg, r) for arg in args)
-        region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs)
-        func!(region_args...; region_kwargs...)
-    end
+    # @sync begin
+        for (r, dev) in enumerate(devices(mra))
+            # @async begin
+                switch_device!(dev)
+                region_args = Tuple(getregion(arg, r) for arg in args)
+                region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
+                func!(region_args...; region_kwargs...)
+                # sync_device!(dev)
+            # end
+        end
+    # end
     sync_all_devices!(devices(mra))
 end
  
-# For functions with return statements
+# For functions with return statements -> BLOCKING!
 function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
@@ -33,7 +38,7 @@ function construct_regionally(constructor, args...; kwargs...)
 
     res = Tuple((switch_device!(dev);
                 region_args = Tuple(getregion(arg, r) for arg in args);
-                region_kwargs = NamedTuple{keys(kwargs)}(getregion(kwarg, r) for kwarg in kwargs);
+                region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs);
                 constructor(region_args...; region_kwargs...))
                 for (r, dev) in enumerate(devices(mra)))
 
@@ -45,11 +50,12 @@ end
 function sync_all_devices!(devices)
     for dev in devices
         switch_device!(dev)
-        synchronize()
+        sync_device!(dev)
     end
 end
 
-sync_all_devices!(::NTuple{N, CPU}) where N = nothing
+sync_device!(::CuDevice) = synchronize()
+sync_device!(::CPU) = nothing
 
 redispatch(arg::Symbol) = arg
 
@@ -67,13 +73,14 @@ end
 
 # @regional is not used at the moment
 # Before it is better to validate with just applying apply_regionally!
-# Remember to make sure nothing is returned!!!
+
 macro regional(expr)
     expr.head ∈ (:(=), :function) || error("@regional can only prefix function definitions")
     
+    # Consistently to @kernel, also @regional does not allow returniong statements
     last_expr = expr.args[end].args[end]
-    if last_expr.head == :return && !(last_expr.args[1] == nothing || last_expr.args[1] == :nothing)
-        error("Return statement not permitted in a regional function")
+    if last_expr.head == :return && !(last_expr.args[1] ∈ (nothing,  :nothing))
+        error("Return statement not permitted in a regional function!")
     end
 
     original_expr  = deepcopy(expr)

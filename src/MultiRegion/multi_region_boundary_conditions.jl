@@ -21,10 +21,10 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 fill_halo_regions!(c::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, arch, mrg, Reference(c.regions), args...; kwargs...)
 
-function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
+function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    w = neighb[bc.condition]
+    w = neighbors[bc.condition]
 
     switch_device!(getdevice(w))
     src = deepcopy(parent(w)[N+1:N+H, :, :])
@@ -41,10 +41,10 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...
     return nothing
 end
 
-function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighb, args...; kwargs...)
+function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    e = neighb[bc.condition]
+    e = neighbors[bc.condition]
 
 
     switch_device!(getdevice(e))

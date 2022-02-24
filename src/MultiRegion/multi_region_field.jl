@@ -48,5 +48,4 @@ function inject_regional_bcs(grid, region, partition, loc;
   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-Base.show(io::IO, field::MultiRegionField) = print(io, "Nothing for now")
-
+Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
