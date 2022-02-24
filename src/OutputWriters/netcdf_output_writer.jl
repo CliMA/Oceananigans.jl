@@ -479,11 +479,12 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     end
 
     averaging_schedule = output_averaging_schedule(ow)
+    Noutputs = length(ow.outputs)
 
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-        "├── filepath: $(ow.filepath)", '\n',
-        "├── dimensions: $dims", '\n',
-        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(summary(ow.field_slicer))", '\n',
-        "└── array type: ", show_array_type(ow.array_type))
+              "├── filepath: ", ow.filepath, '\n',
+              "├── dimensions: $dims", '\n',
+              "├── $Noutputs outputs: ", string.(keys(ow.outputs)), show_averaging_schedule(averaging_schedule), '\n',
+              "├── field slicer: ", summary(ow.field_slicer), '\n',
+              "└── array type: ", show_array_type(ow.array_type))
 end

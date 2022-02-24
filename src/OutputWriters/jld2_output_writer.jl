@@ -315,17 +315,18 @@ function start_next_file(model, writer::JLD2OutputWriter)
 end
 
 Base.summary(ow::JLD2OutputWriter) =
-    string("JLD2OutputWriter writing", keys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+    string("JLD2OutputWriter writing ", string.(keys(ow.outputs)), " to ", ow.filepath, " on ", summary(ow.schedule))
 
 function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
+    Noutputs = length(ow.outputs)
 
-    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-        "├── filepath: $(ow.filepath)", '\n',
-        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(summary(ow.field_slicer))", '\n',
-        "├── array type: ", show_array_type(ow.array_type), '\n',
-        "├── including: ", ow.including, '\n',
-        "└── max filesize: ", pretty_filesize(ow.max_filesize))
+    print(io, "JLD2OutputWriter scheduled on ", summary(ow.schedule), ":", '\n',
+              "├── filepath: ", ow.filepath, '\n',
+              "├── $Noutputs outputs: ", string.(keys(ow.outputs)), show_averaging_schedule(averaging_schedule), '\n',
+              "├── field slicer: ", summary(ow.field_slicer), '\n',
+              "├── array type: ", show_array_type(ow.array_type), '\n',
+              "├── including: ", ow.including, '\n',
+              "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end
