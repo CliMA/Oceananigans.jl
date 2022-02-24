@@ -15,8 +15,8 @@ struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivi
 end
 
 
-  VerticalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity{VerticalFormulation}(args...; kwargs...)
-HorizontalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity{HorizontalFormulation}(args...; kwargs...)
+  VerticalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation, args...; kwargs...)
+HorizontalScalarBiharmonicDiffusivity(args...; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation, args...; kwargs...)
 
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 

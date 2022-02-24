@@ -21,7 +21,7 @@ Returns the "vertical" (z-direction) diffusivity associated with `closure` and `
 function z_diffusivity end
 
 implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
-implicit_diffusion_solver(::Explicit, args...; kwargs...) = nothing
+implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
