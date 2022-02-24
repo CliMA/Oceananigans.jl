@@ -30,15 +30,21 @@ function prettysummary(nt::NamedTuple, args...)
         str = "("
         for i = 1:n
             f = nt[i]
-            str = string(str, fieldname(typeof(nt), i), " = ", getfield(nt, i))
+            str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
             if n == 1
-                str = string(str, ",")
+                str = string(str, ", ")
             elseif i < n
-                str = string(str, ",")
+                str = string(str, ", ")
             end
         end
     end
 
     return string(str, ")")
+end
+
+function prettykeys(t)
+    names = collect(keys(t))
+    length(names) == 1 && return string(first(names))
+    return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")
 end
 

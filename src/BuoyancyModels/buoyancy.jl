@@ -58,7 +58,7 @@ end
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
-Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), ", with -ĝ = ", summary(model.vertical_unit_vector))
+Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with -ĝ = ", summary(buoyancy.vertical_unit_vector))
 
 Base.show(io::IO, buoyancy::Buoyancy) = summary(buoyancy)
 

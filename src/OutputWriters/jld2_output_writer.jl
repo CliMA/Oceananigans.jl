@@ -2,7 +2,7 @@ using Printf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
-using Oceananigans.Utils: TimeInterval, pretty_filesize
+using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
 
 using Oceananigans.Fields: boundary_conditions
 
@@ -315,20 +315,16 @@ function start_next_file(model, writer::JLD2OutputWriter)
 end
 
 Base.summary(ow::JLD2OutputWriter) =
-    string("JLD2OutputWriter writing ", string.(keys(ow.outputs)), " to ", ow.filepath, " on ", summary(ow.schedule))
+    string("JLD2OutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
 function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    names = collect(keys(ow.outputs))
-    lastname = last(names)
-    outputstr = string("(", Tuple(string(n, ", ") for n in names[1:end-1])..., $lastname, ")")
-
     print(io, "JLD2OutputWriter scheduled on ", summary(ow.schedule), ":", '\n',
               "├── filepath: ", ow.filepath, '\n',
-              "├── $Noutputs outputs: ", outputstr, show_averaging_schedule(averaging_schedule), '\n',
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
               "├── field slicer: ", summary(ow.field_slicer), '\n',
               "├── array type: ", show_array_type(ow.array_type), '\n',
               "├── including: ", ow.including, '\n',

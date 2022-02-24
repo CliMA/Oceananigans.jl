@@ -1,4 +1,5 @@
 using Oceananigans.Models: AbstractModel
+using Oceananigans.Utils: prettykeys
 
 mutable struct NaNChecker{F}
     fields :: F
@@ -8,7 +9,7 @@ end
 NaNChecker(fields) = NaNChecker(fields, false) # default
 
 function Base.summary(nc::NaNChecker)
-    fieldnames = string.(keys(fields))
+    fieldnames = prettykeys(nc.fields)
     if nc.erroring
         return "Erroring NaNChecker for $fieldnames"
     else

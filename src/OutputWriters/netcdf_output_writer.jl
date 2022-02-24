@@ -5,7 +5,7 @@ using Dates: AbstractTime, now
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
-using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
 
@@ -470,7 +470,7 @@ drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, di
 #####
 
 Base.summary(ow::NetCDFOutputWriter) =
-    string("NetCDFOutputWriter writing ", keys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+    string("NetCDFOutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
 function Base.show(io::IO, ow::NetCDFOutputWriter)
     dims = NCDataset(ow.filepath, "r") do ds
@@ -481,14 +481,10 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    names = collect(keys(ow.outputs))
-    lastname = last(names)
-    outputstr = string("(", Tuple(string(n, ", ") for n in names[1:end-1])..., $lastname, ")")
-
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
               "├── filepath: ", ow.filepath, '\n',
               "├── dimensions: $dims", '\n',
-              "├── $Noutputs outputs: ", outputstr, show_averaging_schedule(averaging_schedule), '\n',
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
               "├── field slicer: ", summary(ow.field_slicer), '\n',
               "└── array type: ", show_array_type(ow.array_type))
 end

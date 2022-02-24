@@ -12,12 +12,16 @@ function Base.show(io::IO, model::NonhydrostaticModel)
     TS = nameof(typeof(model.timestepper))
 
     tracernames = keys(model.tracers)
-    length(tracernames) == 1 && (tracernames = tracernames[1])
+    if length(tracernames) == 1
+        tracerstr = string(first(tracernames))
+    else
+        tracerstr = string("(", (string(n, ", ") for n in tracernames[1:end-1])..., last(tracernames), ")")
+    end
 
     print(io, summary(model), '\n',
         "├── grid: ", summary(model.grid), '\n',
         "├── timestepper: ", TS, '\n',
-        "├── tracers: ", tracernames, '\n',
+        "├── tracers: ", tracerstr, '\n',
         "├── closure: ", closure_summary(model.closure), '\n',
         "├── buoyancy: ", summary(model.buoyancy), '\n')
 
