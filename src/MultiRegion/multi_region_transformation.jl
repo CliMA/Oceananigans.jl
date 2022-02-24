@@ -19,6 +19,7 @@ function apply_regionally!(func!, args...; kwargs...)
     # @sync begin
         for (r, dev) in enumerate(devices(mra))
             # @async begin
+                CUDA.context()
                 switch_device!(dev)
                 region_args = Tuple(getregion(arg, r) for arg in args)
                 region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)

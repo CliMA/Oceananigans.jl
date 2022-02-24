@@ -24,10 +24,10 @@ for reduction in reductions
     end
 end
 
-function Statistics.mean(f::Function, c::MultiRegionField; kwargs...) 
-    mr = construct_regionally(Statistics.mean, f, c; kwargs...)
-    return Statistics.mean([r for r in mr.regions])
-end
+# function Statistics.mean(f::Function, c::MultiRegionField; kwargs...) 
+#     mr = construct_regionally(Statistics.mean, f, c; kwargs...)
+#     return Statistics.mean([r for r in mr.regions])
+# end
 
 Statistics.mean(c::MultiRegionField; kwargs...) = Statistics.mean(identity, c; kwargs...)
 
