@@ -26,8 +26,8 @@ and thermal diffusivities `κ` for each tracer field in `tracers`
 single number to be a applied to all tracers.
 """
 
-  VerticalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT=Float64; kwargs...) = ScalarDiffusivity(time_disc, VerticalFormulation, FT; kwargs...)
-HorizontalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT=Float64; kwargs...) = ScalarDiffusivity(time_disc, HorizontalFormulation, FT; kwargs...)
+  VerticalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, VerticalFormulation, FT; kwargs...)
+HorizontalScalarDiffusivity(time_disc=ExplicitTimeDiscretization, FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, HorizontalFormulation, FT; kwargs...)
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
           ScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization, ThreeDimensionalFormulation, FT; kwargs...)
