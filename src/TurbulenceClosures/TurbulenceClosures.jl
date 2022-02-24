@@ -13,7 +13,7 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     ThreeDimensionalFormulation,
-    HoriozontalFormulation,
+    HorizontalFormulation,
     VerticalFormulation, 
 
     DiffusivityFields,
