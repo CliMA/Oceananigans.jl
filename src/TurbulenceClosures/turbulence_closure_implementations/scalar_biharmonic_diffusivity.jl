@@ -55,10 +55,5 @@ function Base.summary(closure::ScalarBiharmonicDiffusivity)
     return string("ScalarBiharmonicDiffusivity{$Iso} with ν=", summary(closure.ν), " and κ=", summary(closure.κ))
 end
 
-function Base.show(io::IO, closure::ScalarBiharmonicDiffusivity)
-    Iso = summary(isotropy(closure))
-    return print(io, "ScalarBiharmonicDiffusivity{$Iso}}:", '\n',
-                     "├── ν: ", closure.ν, '\n',
-                     "└── κ: ", closure.κ)
-end
-
+Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
+    

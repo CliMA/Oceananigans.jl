@@ -57,7 +57,7 @@ calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 function Base.summary(closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
     Iso = summary(isotropy(closure))
-    return string("ScalarDiffusivity{$TD, $Iso}(ν=", summary(closure.ν), ", κ=", summary(closure.κ), ")")
+    return string("ScalarDiffusivity{$TD, $Iso}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
 end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
