@@ -1,5 +1,5 @@
 using Oceananigans: TurbulenceClosures
-
+using Oceananigans.Grids: scalar_summary
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -13,6 +13,14 @@ mutable struct TimeStepWizard{FT, C, D}
 end
 
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
+
+Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard("
+                                                "cfl=",           scalar_summary(wizard.cfl),
+                                                "diffusive_cfl=", scalar_summary(wizard.diffusive_cfl),
+                                              ", max_Δt=",        scalar_summary(wizard.max_Δt),
+                                              ", min_Δt=",        scalar_summary(wizard.min_Δt),
+                                              ", max_change=",    scalar_summary(wizard.max_change),
+                                              ", min_change=",    scalar_summary(wizard.min_change), ")")
 
 """
     TimeStepWizard(cfl=0.2, diffusive_cfl=Inf, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)

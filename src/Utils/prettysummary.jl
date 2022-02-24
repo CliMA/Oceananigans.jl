@@ -1,8 +1,8 @@
 using Oceananigans.Grids: scalar_summary
 
-prettysummary(x) = summary(x)
+prettysummary(x, args...) = summary(x)
 
-function prettysummary(f::Function)
+function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
     mt = ft.name.mt
     name = mt.name
@@ -11,13 +11,17 @@ function prettysummary(f::Function)
     sname = string(name)
     isself = isdefined(ft.name.module, name) && ft == typeof(getfield(ft.name.module, name))
     ns = (isself || '#' in sname) ? sname : string("(::", ft, ")")
-    return string(ns, " (", "generic function", " with $n $m)")
+    if showmethods
+        return string(ns, " (", "generic function", " with $n $m)")
+    else
+        return string(ns)
+    end
 end
 
-prettysummary(x::Number) = scalar_summary(x)
+prettysummary(x::Number, args...) = scalar_summary(x)
 
 # This is very important
-function prettysummary(nt::NamedTuple)
+function prettysummary(nt::NamedTuple, args...)
     n = nfields(nt)
 
     if n == 0
@@ -26,7 +30,7 @@ function prettysummary(nt::NamedTuple)
         str = "("
         for i = 1:n
             f = nt[i]
-            str = string(str, fieldname(typeof(t), i), " = ", getfield(nt, i))
+            str = string(str, fieldname(typeof(nt), i), " = ", getfield(nt, i))
             if n == 1
                 str = string(str, ",")
             elseif i < n
