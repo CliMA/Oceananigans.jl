@@ -14,7 +14,7 @@ function prettysummary(f::Function)
     return string(ns, " (", "generic function", " with $n $m)")
 end
 
-prettysummary(x::Number) = scalar_summary(σ)
+prettysummary(x::Number) = scalar_summary(x)
 
 # This is very important
 function prettysummary(nt::NamedTuple)
