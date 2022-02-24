@@ -38,11 +38,6 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
     print(io, "└── equation of state: ", summary(eos))
 end
 
-Base.summary(eos::LinearEquationOfState) = string("LinearEquationOfState(α=", scalar_summary(eos.α),
-                                                                      ", β=", scalar_summary(eos.β), ")")
-
-Base.show(io, eos::LinearEquationOfState) = print(io, summary(eos))
-
 """
     SeawaterBuoyancy([FT = Float64;]
                      gravitational_acceleration = g_Earth,
@@ -201,3 +196,4 @@ end
 
 @inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz, grid, b, args...)
 @inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
+

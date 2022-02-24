@@ -45,9 +45,9 @@ end
 include("buoyancy.jl")
 include("no_buoyancy.jl")
 include("buoyancy_tracer.jl")
+include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
-include("seawater_buoyancy.jl")
 include("g_dot_b.jl")
 include("buoyancy_field.jl")
 
