@@ -7,7 +7,7 @@ Abstract type for closures with *isotropic* diffusivities.
 """
 abstract type AbstractScalarBiharmonicDiffusivity{F} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization} end
 
-@inline formulation(::AbstractScalarBiharmonicDiffusivity{Iso}) where {F} = F()
+@inline formulation(::AbstractScalarBiharmonicDiffusivity{F}) where {F} = F()
 
 #####
 ##### Stress divergences

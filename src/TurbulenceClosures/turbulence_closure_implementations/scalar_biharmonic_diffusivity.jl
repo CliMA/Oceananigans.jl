@@ -1,7 +1,7 @@
 import Oceananigans.Grids: required_halo_size
 
 """
-    ScalarBiharmonicDiffusivity{Iso, N, K}
+    ScalarBiharmonicDiffusivity{F, N, K}
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
