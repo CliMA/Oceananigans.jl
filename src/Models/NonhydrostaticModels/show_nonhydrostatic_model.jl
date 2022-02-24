@@ -8,7 +8,7 @@ function Base.summary(model::NonhydrostaticModel)
                   "(time = ", prettytime(model.clock.time), ", iteration = ", model.clock.iteration, ")")
 end
 
-function Base.show(io::IO, model::NonhydrostaticModel{TS, C, A}) where {TS, C, A}
+function Base.show(io::IO, model::NonhydrostaticModel)
     TS = nameof(typeof(model.timestepper))
 
     tracernames = keys(model.tracers)
