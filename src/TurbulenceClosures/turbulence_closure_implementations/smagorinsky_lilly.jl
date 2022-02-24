@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensionalFormulation}
      C :: FT
     Cb :: FT
     Pr :: P
@@ -18,8 +18,7 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeD
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.16, Pr=1, ν=0, κ=0,
-                                   time_discretization=Explicit())
+    SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1, ν=0, κ=0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
