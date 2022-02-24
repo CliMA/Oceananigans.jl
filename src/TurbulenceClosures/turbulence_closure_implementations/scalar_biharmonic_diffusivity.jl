@@ -28,15 +28,17 @@ Returns parameters for a scalar biharmonic diffusivity model.
 Keyword arguments
 =================
 
-  - `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `ν`: Viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-  - `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `κ`: Diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+         `NamedTuple` of diffusivities with entries for each tracer.
 
-  - `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-          `NamedTuple` of diffusivities with entries for each tracer.
+  - `discrete_form`: `Boolean`.
 
-  - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-          `NamedTuple` of diffusivities with entries for each tracer.
+  - `formulation`: formulation used for the discretization of the diffusivity operator.
+                   Options are `VerticalFormulation`, `HorizontalFormulation` and 
+                   `ThreeDimensionalFormulation`.
+
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation, FT=Float64;
                                      ν=0, κ=0,
