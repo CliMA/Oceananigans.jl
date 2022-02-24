@@ -161,7 +161,7 @@ const ATD = AbstractTimeDiscretization
 ##### Diffusivity
 #####
 
-const etd = Explicit()
+const etd = ExplicitTimeDiscretization()
 
 @inline z_boundary_adj(k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}) = k == 1 | k == grid.Nz+1
 @inline z_boundary_adj(k, grid) = false
