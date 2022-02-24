@@ -19,14 +19,14 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 @inline south_drag_const(i, j, k, grid)  = @inbounds -(κVK / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
 @inline bottom_drag_const(i, j, k, grid) = @inbounds -(κVK / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
 
-@inline τˣᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) .* U.u[i, j, k] .* (U.u[i, j, k].^2 .+ ℑxyᶠᶜᵃ(i, j, k, grid, U.v).^2).^(0.5)
-@inline τʸᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) .* U.v[i, j, k] .* (U.v[i, j, k].^2 .+ ℑxyᶜᶠᵃ(i, j, k, grid, U.u).^2).^(0.5)
+@inline τˣᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)
+@inline τʸᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) * U.v[i, j, k] * (U.v[i, j, k]^2 + ℑxyᶜᶠᵃ(i, j, k, grid, U.u)^2)^(0.5)
 
-@inline τˣʸ_drag(i, j, k, grid, U) = @inbounds south_drag_const(i, j, k, grid) .* U.u[i, j, k] .* (U.u[i, j, k].^2 .+ ℑxzᶠᵃᶜ(i, j, k, grid, U.w).^2).^(0.5)
-@inline τᶻʸ_drag(i, j, k, grid, U) = @inbounds south_drag_const(i, j, k, grid) .* U.w[i, j, k] .* (U.w[i, j, k].^2 .+ ℑxzᶜᵃᶠ(i, j, k, grid, U.u).^2).^(0.5)
+@inline τˣʸ_drag(i, j, k, grid, U) = @inbounds south_drag_const(i, j, k, grid)  * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxzᶠᵃᶜ(i, j, k, grid, U.w)^2)^(0.5)
+@inline τᶻʸ_drag(i, j, k, grid, U) = @inbounds south_drag_const(i, j, k, grid)  * U.w[i, j, k] * (U.w[i, j, k]^2 + ℑxzᶜᵃᶠ(i, j, k, grid, U.u)^2)^(0.5)
 
-@inline τʸˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid) .* U.u[i, j, k] .* (U.u[i, j, k].^2 .+ ℑyzᵃᶠᶜ(i, j, k, grid, U.w).^2).^(0.5)
-@inline τᶻˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid) .* U.w[i, j, k] .* (U.w[i, j, k].^2 .+ ℑyzᵃᶜᶠ(i, j, k, grid, U.v).^2).^(0.5)
+@inline τʸˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid)   * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑyzᵃᶠᶜ(i, j, k, grid, U.w)^2)^(0.5)
+@inline τᶻˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid)   * U.w[i, j, k] * (U.w[i, j, k]^2 + ℑyzᵃᶜᶠ(i, j, k, grid, U.v)^2)^(0.5)
 
 # will always be within cell for grid fitted
 @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, clock, U, args...))
