@@ -3,28 +3,28 @@
 
 Abstract type for closures with *isotropic* diffusivities.
 """
-abstract type AbstractScalarDiffusivity{TD, Iso} <: AbstractTurbulenceClosure{TD} end
+abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
 """
     struct ThreeDimensional end
 
 Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
 """
-struct ThreeDimensional end
+struct ThreeDimensionalFormulation end
 
 """
     struct Horizontal end
 
 Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
-struct Horizontal end
+struct HorizontalFormulation end
 
 """
     struct Vertical end
 
 Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 """
-struct Vertical end
+struct VerticalFormulation end
 
 """
     viscosity(closure, diffusivities)
@@ -40,15 +40,15 @@ Returns the isotropic diffusivity associated with `closure` and tracer index `c_
 """
 function diffusivity end 
 
-@inline isotropy(::AbstractScalarDiffusivity{TD, Iso}) where {TD, Iso} = Iso()
+@inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
 #####
 ##### Stress divergences
 #####
 
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
-const AHD = AbstractScalarDiffusivity{<:Any, <:Horizontal}
-const AVD = AbstractScalarDiffusivity{<:Any, <:Vertical}
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
+const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
+const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
 @inline viscous_flux_vx(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
