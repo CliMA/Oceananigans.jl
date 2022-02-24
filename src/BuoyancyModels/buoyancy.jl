@@ -1,10 +1,9 @@
 using Oceananigans.Grids: ZDirection, validate_unit_vector
 
 struct Buoyancy{M, G}
-                   model :: M
+    model :: M
     vertical_unit_vector :: G
 end
-
 
 """
     Buoyancy(; model, vertical_unit_vector=ZDirection())
@@ -58,3 +57,8 @@ end
 
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
+
+Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), ", with -ĝ = ", summary(model.vertical_unit_vector))
+
+Base.show(io:: buoyancy::Buoyancy) = summary(buoyancy)
+

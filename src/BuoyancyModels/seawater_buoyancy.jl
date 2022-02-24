@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
+using Oceananigans.Grids: scalar_summary
 
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
@@ -18,12 +19,36 @@ required_tracers(::SeawaterBuoyancy) = (:T, :S)
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EOS} = (:T,) # active temperature only
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
+Base.nameof(::Type{SeawaterBuoyancy}) = "SeawaterBuoyancy"
+Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", scalar_summary(b.gravitational_acceleration), " and ", summary(b.eos))
+
+function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
+
+    print(io, nameof(typeof(b)), "{$FT}:", '\n',
+              "├── gravitational_acceleration: ", b.gravitational_acceleration, '\n')
+
+    if !isnothing(b.constant_temperature)
+        print(io, "├── constant_temperature: ", b.constant_temperature, '\n')
+    end
+
+    if !isnothing(b.constant_salinity)
+        print(io, "├── constant_salinity: ", b.constant_salinity, '\n')
+    end
+        
+    print(io, "└── equation of state: ", summary(eos))
+end
+
+Base.summary(eos::LinearEquationOfState) = string("LinearEquationOfState(α=", scalar_summary(eos.α),
+                                                                      ", β=", scalar_summary(eos.β), ")")
+
+Base.show(io, eos::LinearEquationOfState) = print(io, summary(eos))
+
 """
     SeawaterBuoyancy([FT = Float64;]
                      gravitational_acceleration = g_Earth,
-                              equation_of_state = LinearEquationOfState(FT),
-                           constant_temperature = false,
-                              constant_salinity = false)
+                     equation_of_state = LinearEquationOfState(FT),
+                     constant_temperature = false,
+                     constant_salinity = false)
 
 Returns parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called ``g``), and an
@@ -39,11 +64,11 @@ For a linear equation of state, the values of `constant_temperature` or `constan
 are irrelevant; in this case, `constant_temperature=true` (and similar for `constant_salinity`)
 is valid input.
 """
-function SeawaterBuoyancy(                        FT = Float64;
+function SeawaterBuoyancy(FT = Float64;
                           gravitational_acceleration = g_Earth,
-                                   equation_of_state = LinearEquationOfState(FT),
-                                constant_temperature = nothing,
-                                   constant_salinity = nothing)
+                          equation_of_state = LinearEquationOfState(FT),
+                          constant_temperature = nothing,
+                          constant_salinity = nothing)
 
     # Input validation: convert constant_temperature or constant_salinity = true to zero(FT).
     # This method of specifying constant temperature or salinity in a SeawaterBuoyancy model
@@ -58,6 +83,9 @@ end
 
 const TemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number} where {FT, EOS}
 const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} where {FT, EOS}
+
+Base.nameof(::Type{TemperatureSeawaterBuoyancy}) = "TemperatureSeawaterBuoyancy"
+Base.nameof(::Type{SalinitySeawaterBuoyancy}) = "SalinitySeawaterBuoyancy"
 
 @inline get_temperature_and_salinity(::SeawaterBuoyancy, C) = C.T, C.S
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
