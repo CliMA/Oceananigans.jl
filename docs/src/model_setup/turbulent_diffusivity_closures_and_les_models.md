@@ -45,8 +45,11 @@ isotropy: Oceananigans.TurbulenceClosures.VerticalFormulation()
 
 ```
 
-After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the model so that
-all components will be taken into account when calculating the diffusivity term.
+After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the
+model so that all components will be taken into account when calculating the diffusivity term. Note
+that `VerticalScalarDiffusivity` and `HorizontalScalarDiffusivity` are implemented using [different
+schemes](https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation)
+with different conservation properties.
 
 ## Smagorinsky-Lilly
 
