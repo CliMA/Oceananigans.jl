@@ -15,9 +15,9 @@ struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivi
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
-          ScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation, FT; kwargs...)
-  VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation, FT; kwargs...)
-HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation, FT; kwargs...)
+          ScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
+  VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
+HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
 
 
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
@@ -42,13 +42,13 @@ Keyword arguments
                    `ThreeDimensionalFormulation`.
 
 """
-function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation, FT=Float64;
+function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,
                                      discrete_form = false) 
 
     ν = convert_diffusivity(FT, ν, Val(discrete_form))
     κ = convert_diffusivity(FT, κ, Val(discrete_form))
-    return ScalarBiharmonicDiffusivity{formulation}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F}) where {F}

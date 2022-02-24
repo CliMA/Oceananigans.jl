@@ -127,9 +127,9 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 
-AnisotropicMinimumDissipation(FT::DataType; kwargs...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization, FT; kwargs...)
+AnisotropicMinimumDissipation(FT::DataType; kwargs...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function AnisotropicMinimumDissipation(time_discretization = ExplicitTimeDiscretization, FT = Float64;
+function AnisotropicMinimumDissipation(time_disc = ExplicitTimeDiscretization(), FT = Float64;
                                         C = 1/12,
                                        Cν = nothing,
                                        Cκ = nothing,
@@ -142,7 +142,7 @@ function AnisotropicMinimumDissipation(time_discretization = ExplicitTimeDiscret
     
     !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
-    return AnisotropicMinimumDissipation{time_discretization, FT}(Cν, Cκ, Cb, ν, κ)
+    return AnisotropicMinimumDissipation{typeof(time_disc), FT}(Cν, Cκ, Cb, ν, κ)
 end
 
 function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD, FT}) where {TD, FT}
