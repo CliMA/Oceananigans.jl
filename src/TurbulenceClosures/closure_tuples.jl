@@ -5,7 +5,7 @@
 function closure_summary(closures::Tuple, padchar="│")
     Nclosures = length(closures)
     if Nclosures == 1
-        return string("Tuple with 1 closure:" '\n',
+        return string("Tuple with 1 closure:", '\n',
                       "$padchar   └── $(dict.keys[1]) => $(typeof(dict.vals[1]).name)")
     else
         return string("Tuple with $Nclosures closures:", '\n',
