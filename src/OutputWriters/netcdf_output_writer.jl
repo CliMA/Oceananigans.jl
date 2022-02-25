@@ -7,7 +7,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_index
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -41,8 +41,7 @@ function default_dimensions(output, grid, indices, with_halos)
                 "zF" => (Center, Center,   Face),
                )
 
-    indices = Dict(name => validate_index.(indices, locs[name], size(locs[name], grid))
-                   for name in keys(locs))
+    indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
     if !with_halos
         indices = Dict(name => interior_restrict_index.(indices[name], locs[name], topo, size(grid))
