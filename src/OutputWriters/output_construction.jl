@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_index, Reduction
+using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Grids: default_indices
 
