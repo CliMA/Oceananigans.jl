@@ -4,7 +4,7 @@ using Oceananigans.Fields: AbstractField
 ##### The turbulence closure proposed by Leith
 #####
 
-struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{Explicit}
+struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
                   C :: FT
              C_Redi :: CR
                C_GM :: GM

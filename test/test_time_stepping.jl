@@ -4,7 +4,6 @@ using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -13,6 +12,18 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     model = NonhydrostaticModel(grid=grid)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
+end
+
+function euler_time_stepping_doesnt_propagate_NaNs(arch)
+    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
+
+    CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
+    time_step!(model, 1, euler=true)
+    u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
+    
+    return !isnan(u111)
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
@@ -154,8 +165,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = (ScalarDiffusivity(ν=νh, κ=κh, isotropy=Horizontal()), 
-                                           ScalarDiffusivity(ν=νz, κ=κz, isotropy=Vertical())),
+                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh), 
+                                           VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -283,6 +294,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for arch in archs
             @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
             @test time_stepping_with_background_fields(arch)
+        end
+    end
+
+    @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
+        for arch in archs
+            @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
+            @test euler_time_stepping_doesnt_propagate_NaNs(arch)
         end
     end
 
