@@ -12,7 +12,7 @@ Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
 struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 
-Base.summary(::Explicit) = "Explicit"
+Base.summary(::ExplicitExplicitTimeDiscretization) = "ExplicitExplicitTimeDiscretization"
 
 """
     struct VerticallyImplicit <: AbstractTimeDiscretization
@@ -28,7 +28,7 @@ time-discretized as
 """
 struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
-Base.summary(::VerticallyImplicit) = "VerticallyImplicit"
+Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
 
 @inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
 @inline time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
