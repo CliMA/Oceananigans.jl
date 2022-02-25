@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical, ThreeDimensional
+using Oceananigans.TurbulenceClosures: z_viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -12,11 +12,11 @@ end
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
     model = NonhydrostaticModel(; timestepper,
-                                grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
-                                closure = ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                coriolis = nothing,
-                                tracers = :c,
-                                buoyancy = nothing)
+                                  grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
+                                  closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                  coriolis = nothing,
+                                  tracers = :c,
+                                  buoyancy = nothing)
 
     value = π
     field = get_model_field(fieldname, model)
@@ -63,7 +63,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     model = NonhydrostaticModel(; timestepper, grid,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
@@ -89,7 +89,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(κ = κ, time_discretization = time_discretization)
+    closure = ScalarDiffusivity(time_discretization, κ = κ)
 
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
@@ -123,7 +123,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(ν = κ, κ = κ, isotropy = Vertical(), time_discretization = time_discretization)
+    closure = VerticalScalarDiffusivity(time_discretization, ν = κ, κ = κ)
 
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
@@ -185,7 +185,7 @@ function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_disc
 
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
@@ -266,7 +266,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     model = NonhydrostaticModel(
          timestepper = timestepper,
                 grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ScalarDiffusivity(FT, ν=1, time_discretization=time_discretization),
+             closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1),
              tracers = nothing,
             buoyancy = nothing)
 
@@ -305,7 +305,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
     y_bc = GradientBoundaryCondition(N² * g̃[2])
     z_bc = GradientBoundaryCondition(N² * g̃[3])
@@ -350,7 +350,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), vertical_unit_vector=g̃)
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
     α  = buoyancy.model.equation_of_state.α
     g₀ = buoyancy.model.gravitational_acceleration
@@ -444,7 +444,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :c), timestepper in timesteppers
-            for time_discretization in (Explicit(), VerticallyImplicit())
+            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 @test test_diffusion_simple(fieldname, timestepper, time_discretization)
             end
         end
@@ -459,16 +459,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Bounded, Bounded, Bounded))
 
                 if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
-                    time_discretizations = (Explicit(), VerticallyImplicit())
+                    time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 else
-                    time_discretizations = (Explicit(),)
+                    time_discretizations = (ExplicitTimeDiscretization(),)
                 end
 
                 for time_discretization in time_discretizations
 
-                    for closure in (ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Vertical(), time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Horizontal()),
+                    for closure in (ScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                    VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1),
                                     )
 
                         fieldnames = [:c]
@@ -515,16 +515,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                for iso in (ThreeDimensional(), Horizontal(), Vertical())
+                for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
                     model = NonhydrostaticModel(timestepper = timestepper,
                                                        grid = grid,
-                                                    closure = ScalarBiharmonicDiffusivity(ν=1, κ=1, isotropy=iso),
+                                                    closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
                                                    coriolis = nothing,
                                                     tracers = :c,
                                                    buoyancy = nothing)
 
                     for fieldname in fieldnames
-                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and isotropy $iso..."
+                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and $formulation..."
                         @test test_biharmonic_diffusion_budget(fieldname, model)
                     end
                 end
@@ -535,7 +535,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Diffusion cosine" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             for fieldname in (:u, :v, :T, :S)
-                for time_discretization in (Explicit(), VerticallyImplicit())
+                for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                     Nz, Lz = 128, π/2
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
@@ -560,7 +560,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Gaussian immersed diffusion" begin
-        for time_discretization in (Explicit(), VerticallyImplicit())
+        for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
 
             Nz, Lz, z₀ = 128, 1, -0.5
 
@@ -642,7 +642,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Taylor-Green vortex" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (Explicit(), VerticallyImplicit())
+            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 td = typeof(time_discretization).name.wrapper
                 @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
                 @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)

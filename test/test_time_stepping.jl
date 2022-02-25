@@ -4,7 +4,6 @@ using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -166,8 +165,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = (ScalarDiffusivity(ν=νh, κ=κh, isotropy=Horizontal()), 
-                                           ScalarDiffusivity(ν=νz, κ=κz, isotropy=Vertical())),
+                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh), 
+                                           VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].

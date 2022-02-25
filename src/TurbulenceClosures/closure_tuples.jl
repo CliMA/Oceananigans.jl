@@ -73,34 +73,15 @@ end
 ##### Support for VerticallyImplicit
 #####
 
-const SingleExplicitClosure = AbstractTurbulenceClosure{<:Explicit}
-const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicit}
-
-const EC = Union{SingleExplicitClosure, AbstractArray{<:SingleExplicitClosure}}
-const VIC = Union{SingleImplicitClosure, AbstractArray{<:SingleImplicitClosure}}
+const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
+const VIC = Union{AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}, AbstractArray{<:SingleImplicitClosure}}
 
 # Filter explicitly-discretized closures.
-@inline z_diffusivity(clo::Tuple{<:EC},        iᶜ, Ks, args...) = tuple(0)
-@inline z_diffusivity(clo::Tuple{<:VIC},       iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
-@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
-@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[2], iᶜ, Ks[2], args...))
+@inline z_diffusivity(closure::Tuple, iᶜ, Kstuple, args...) = 
+        Tuple((clo isa VIC ? z_diffusivity(clo, iᶜ, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
 
-@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...),
-                                                                         z_diffusivity(clo[2], iᶜ, Ks[2], args...))
-
-@inline z_diffusivity(clo::Tuple, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1:2],   iᶜ, Ks[1:2],   args...)...,
-                                                           z_diffusivity(clo[3:end], iᶜ, Ks[3:end], args...)...)
-
-@inline z_viscosity(clo::Tuple{<:EC},         Ks, args...) = tuple(0)
-@inline z_viscosity(clo::Tuple{<:VIC},        Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
-@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
-@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks, args...) = tuple(z_viscosity(clo[2], Ks[2], args...))
-
-@inline z_viscosity(clo::Tuple{<:VIC, <:VIC}, Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...),
-                                                                   z_viscosity(clo[2], Ks[2], args...))
-
-@inline z_viscosity(clo::Tuple, Ks, args...) = tuple(z_viscosity(clo[1:2],   Ks[1:2], args...)...,
-                                                     z_viscosity(clo[3:end], Ks[3:end], args...)...)
+@inline z_viscosity(closure::Tuple, Kstuple, args...) = 
+        Tuple((clo isa VIC ? z_viscosity(clo, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
 
 for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜᶠ, :κᶜᶠᶜ, :κᶠᶜᶜ)
     @eval begin
@@ -110,15 +91,12 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
     end
 end
 
-const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicit
-const ExplicitOrNothing = Union{Explicit, Nothing}
-
 @inline combine_time_discretizations(disc) = disc
 
-@inline combine_time_discretizations(::Explicit, ::VerticallyImplicit)           = VerticallyImplicit()
-@inline combine_time_discretizations(::VerticallyImplicit, ::Explicit)           = VerticallyImplicit()
-@inline combine_time_discretizations(::VerticallyImplicit, ::VerticallyImplicit) = VerticallyImplicit()
-@inline combine_time_discretizations(::Explicit, ::Explicit)                     = Explicit()
+@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::ExplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization) = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::ExplicitTimeDiscretization)                     = ExplicitTimeDiscretization()
 
 @inline combine_time_discretizations(disc1, disc2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(disc1, disc2), other_discs...)

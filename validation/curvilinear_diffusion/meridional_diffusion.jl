@@ -25,7 +25,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
                                     tracers = :c,
                                     coriolis = nothing,
-                                    closure = ScalarDiffusivity(κ=1, ν=1, isotropy=Horizontal()),
+                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1),
                                     buoyancy = nothing)
 
 # Tracer patch for visualization
