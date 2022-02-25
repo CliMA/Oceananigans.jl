@@ -264,9 +264,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── south: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── north: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
-├── bottom: BoundaryCondition{Gradient, Float64}
-├── top: BoundaryCondition{Value, Int64}
-└── immersed: BoundaryCondition{Flux, Nothing}
+├── bottom: BoundaryCondition{Oceananigans.BoundaryConditions.Gradient, Float64}
+├── top: BoundaryCondition{Oceananigans.BoundaryConditions.Value, Int64}
+└── immersed: BoundaryCondition{Oceananigans.BoundaryConditions.Flux, Nothing}
 ```
 
 If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
@@ -294,9 +294,10 @@ julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
 julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── tracers: (:c,)
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: c
 ├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
