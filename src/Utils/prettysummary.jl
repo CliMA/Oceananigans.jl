@@ -32,7 +32,7 @@ function prettysummary(nt::NamedTuple, args...)
             f = nt[i]
             str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
             if n == 1
-                str = string(str, ", ")
+                str = string(str, ",")
             elseif i < n
                 str = string(str, ", ")
             end

@@ -12,7 +12,7 @@ Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
 struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 
-Base.summary(::ExplicitExplicitTimeDiscretization) = "ExplicitExplicitTimeDiscretization"
+Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 
 """
     struct VerticallyImplicit <: AbstractTimeDiscretization
