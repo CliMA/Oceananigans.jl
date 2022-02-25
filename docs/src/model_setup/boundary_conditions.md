@@ -264,9 +264,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── south: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── north: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
-├── bottom: BoundaryCondition{Oceananigans.BoundaryConditions.Gradient, Float64}
-├── top: BoundaryCondition{Oceananigans.BoundaryConditions.Value, Int64}
-└── immersed: BoundaryCondition{Oceananigans.BoundaryConditions.Flux, Nothing}
+├── bottom: BoundaryCondition{Gradient, Float64}
+├── top: BoundaryCondition{Value, Int64}
+└── immersed: BoundaryCondition{Flux, Nothing}
 ```
 
 If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
