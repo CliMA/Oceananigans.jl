@@ -232,9 +232,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
         for closure in (ScalarDiffusivity(),
                         HorizontalScalarDiffusivity(),
                         VerticalScalarDiffusivity(),
-                        VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization),
+                        VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization()),
                         CATKEVerticalDiffusivity(),
-                        CATKEVerticalDiffusivity(ExplicitTimeDiscretization))
+                        CATKEVerticalDiffusivity(ExplicitTimeDiscretization()))
 
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."

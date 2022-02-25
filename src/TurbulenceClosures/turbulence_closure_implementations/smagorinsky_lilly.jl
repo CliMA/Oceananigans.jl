@@ -66,7 +66,7 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
     NCAR Manuscript No. 281, 0, 1966.
 """
-SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly{ExplicitTimeDiscretization, FT}(C, Cb, Pr, ν, κ)
+SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0) =
     SmagorinskyLilly{typeof(time_discretization), FT}(C, Cb, Pr, ν, κ)
