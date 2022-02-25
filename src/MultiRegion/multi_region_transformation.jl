@@ -19,12 +19,11 @@ function apply_regionally!(func!, args...; kwargs...)
     # @sync begin
         for (r, dev) in enumerate(devices(mra))
             # @async begin
-                CUDA.context()
                 switch_device!(dev)
                 region_args = Tuple(getregion(arg, r) for arg in args)
                 region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
                 func!(region_args...; region_kwargs...)
-                # sync_device!(dev)
+                sync_device!(dev)
             # end
         end
     # end
@@ -55,7 +54,7 @@ function sync_all_devices!(devices)
     end
 end
 
-sync_device!(::CuDevice) = synchronize()
+sync_device!(::CuDevice) = synchronize(CUDA.CuCurrentContext())
 sync_device!(::CPU) = nothing
 
 redispatch(arg::Symbol) = arg
