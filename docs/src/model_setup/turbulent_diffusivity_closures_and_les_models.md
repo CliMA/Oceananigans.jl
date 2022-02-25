@@ -8,7 +8,7 @@ on turbulent diffusivity closures.
 
 ## Constant isotropic diffusivity
 
-To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use [`ScalarDiffusivity`](@ref)
+To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use `ScalarDiffusivity`
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
@@ -20,8 +20,8 @@ ScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensional}(ν=0.01, κ=0.01
 ## Constant anisotropic diffusivity
 
 To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`HorizontalScalarDiffusivity()`](@ref) and
-[`VerticalScalarDiffusivity()`](@ref)
+diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use `HorizontalScalarDiffusivity()` and
+`VerticalScalarDiffusivity()`
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
