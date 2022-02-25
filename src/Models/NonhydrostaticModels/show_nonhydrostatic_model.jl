@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettytime, ordered_dict_show
+using Oceananigans.Utils: prettytime, ordered_dict_show, prettykeys
 using Oceananigans.TurbulenceClosures: closure_summary
 
 function Base.summary(model::NonhydrostaticModel)
@@ -10,18 +10,12 @@ end
 
 function Base.show(io::IO, model::NonhydrostaticModel)
     TS = nameof(typeof(model.timestepper))
-
-    tracernames = keys(model.tracers)
-    if length(tracernames) == 1
-        tracerstr = string(first(tracernames))
-    else
-        tracerstr = string("(", (string(n, ", ") for n in tracernames[1:end-1])..., last(tracernames), ")")
-    end
-
+    tracernames = prettykeys(model.tracers)
+    
     print(io, summary(model), '\n',
         "├── grid: ", summary(model.grid), '\n',
         "├── timestepper: ", TS, '\n',
-        "├── tracers: ", tracerstr, '\n',
+        "├── tracers: ", tracernames, '\n',
         "├── closure: ", closure_summary(model.closure), '\n',
         "├── buoyancy: ", summary(model.buoyancy), '\n')
 
