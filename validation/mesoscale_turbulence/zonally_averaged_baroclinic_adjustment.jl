@@ -8,7 +8,7 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans: fields
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
+using Oceananigans.TurbulenceClosures
 
 filename = "zonally_averaged_baroclinic_adjustment_withGM"
 
@@ -45,13 +45,9 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-vertical_closure = ScalarDiffusivity(ν = νv,
-                                     κ = κv,
-                                     isotropy = Vertical())
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
-horizontal_closure = ScalarDiffusivity(ν = νh,
-                                       κ = κh,
-                                       isotropy = Horizontal())
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 diffusive_closures = (vertical_closure, horizontal_closure)
 

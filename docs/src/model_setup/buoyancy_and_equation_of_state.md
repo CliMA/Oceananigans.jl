@@ -201,7 +201,7 @@ SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64},
 
 To simulate gravitational accelerations that don't align with the vertical (`z`) coordinate,
 we wrap the buoyancy model in
-`Buoyancy()` function call, which takes the keyword arguments `model` and `vertical_unit_vector`,
+`Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
 
 ```jldoctest buoyancy
 julia> θ = 45; # degrees
@@ -209,7 +209,7 @@ julia> θ = 45; # degrees
 julia> g̃ = (0, sind(θ), cosd(θ));
 
 julia> model = NonhydrostaticModel(grid=grid, 
-                                   buoyancy=Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃), 
+                                   buoyancy=Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃), 
                                    tracers=:b)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo

@@ -40,12 +40,12 @@ grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-for time_stepper in (Explicit(), VerticallyImplicit())
+for time_stepper in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
     
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                        closure = ScalarDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
+                                        closure = ScalarDiffusivity(time_stepper, ν=1e-2, κ=1e-2),
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = FPlane(f=sqrt(0.5)),
