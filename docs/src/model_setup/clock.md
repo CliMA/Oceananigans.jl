@@ -33,18 +33,9 @@ for example, pass
 
 ```jldoctest
 julia> using TimesDates
-ERROR: ArgumentError: Package TimesDates not found in current path:
-- Run `import Pkg; Pkg.add("TimesDates")` to install the TimesDates package.
-
-Stacktrace:
- [1] require(into::Module, mod::Symbol)
-   @ Base ./loading.jl:893
 
 julia> clock = Clock(time=TimeDate(2020))
-ERROR: UndefVarError: TimeDate not defined
-Stacktrace:
- [1] top-level scope
-   @ none:1
+Clock{TimesDates.TimeDate}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
 ```
 
 to `NonhydrostaticModel`.
