@@ -1,4 +1,4 @@
-struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{Explicit}
+struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M

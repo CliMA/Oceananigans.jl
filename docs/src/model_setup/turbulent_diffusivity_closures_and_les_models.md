@@ -14,30 +14,30 @@ To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\ka
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-ScalarDiffusivity{Explicit, Oceananigans.TurbulenceClosures.ThreeDimensional}(ν=0.01, κ=0.01)
+ScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensional}(ν=0.01, κ=0.01)
 ```
 
 ## Constant anisotropic diffusivity
 
 To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`ScalarDiffusivity(isotropy = Horizontal())`](@ref) and
-[`ScalarDiffusivity(isotropy = Vertical())`](@ref)
+diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`HorizontalScalarDiffusivity()`](@ref) and
+[`VerticalScalarDiffusivity()`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
-julia> using Oceananigans.TurbulenceClosures: Horizontal, Vertical
+julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
+ScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}(ν=0.001, κ=0.002)
 
-julia> horizontal_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Horizontal())
-ScalarDiffusivity{Explicit, Oceananigans.TurbulenceClosures.Horizontal}(ν=0.001, κ=0.002)
-
-julia> vertical_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Vertical())
-ScalarDiffusivity{Explicit, Oceananigans.TurbulenceClosures.Vertical}(ν=0.001, κ=0.002)
-
+julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
+ScalarDiffusivity{ExplicitTimeDiscretization, VerticalFormulation}(ν=0.001, κ=0.002)
 ```
 
-After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the model so that
-all components will be taken into account when calculating the diffusivity term.
+After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the
+model so that all components will be taken into account when calculating the diffusivity term. Note
+that `VerticalScalarDiffusivity` and `HorizontalScalarDiffusivity` are implemented using [different
+schemes](https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation)
+with different conservation properties.
 
 ## Smagorinsky-Lilly
 

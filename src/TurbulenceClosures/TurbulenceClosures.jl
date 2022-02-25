@@ -2,13 +2,20 @@ module TurbulenceClosures
 
 export
     AbstractEddyViscosityClosure,
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
     ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
     calculate_diffusivities!,

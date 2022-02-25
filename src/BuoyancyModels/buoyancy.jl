@@ -2,14 +2,14 @@ using Oceananigans.Grids: ZDirection, validate_unit_vector
 
 struct Buoyancy{M, G}
     model :: M
-    vertical_unit_vector :: G
+    gravity_unit_vector :: G
 end
 
 """
-    Buoyancy(; model, vertical_unit_vector=ZDirection())
+    Buoyancy(; model, gravity_unit_vector=ZDirection())
 
 Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument 
-`vertical_unit_vector` can be used to specify the direction opposite to the gravitational
+`gravity_unit_vector` can be used to specify the direction opposite to the gravitational
 acceleration (which we take here to mean the "vertical" direction).
 
 Example
@@ -22,20 +22,20 @@ grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
 θ = 45 # degrees
 g̃ = (0, sind(θ), cosd(θ))
 
-buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
+buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 
 model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 ```
 """
-function Buoyancy(; model, vertical_unit_vector=ZDirection())
-    vertical_unit_vector = validate_unit_vector(vertical_unit_vector)
-    return Buoyancy(model, vertical_unit_vector)
+function Buoyancy(; model, gravity_unit_vector=ZDirection())
+    gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
+    return Buoyancy(model, gravity_unit_vector)
 end
 
 
-@inline ĝ_x(buoyancy) = @inbounds buoyancy.vertical_unit_vector[1]
-@inline ĝ_y(buoyancy) = @inbounds buoyancy.vertical_unit_vector[2]
-@inline ĝ_z(buoyancy) = @inbounds buoyancy.vertical_unit_vector[3]
+@inline ĝ_x(buoyancy) = @inbounds buoyancy.gravity_unit_vector[1]
+@inline ĝ_y(buoyancy) = @inbounds buoyancy.gravity_unit_vector[2]
+@inline ĝ_z(buoyancy) = @inbounds buoyancy.gravity_unit_vector[3]
 
 @inline ĝ_x(::Buoyancy{M, ZDirection}) where M = 0
 @inline ĝ_y(::Buoyancy{M, ZDirection}) where M = 0
@@ -58,7 +58,7 @@ end
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
-Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with -ĝ = ", summary(buoyancy.vertical_unit_vector))
+Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with -ĝ = ", summary(buoyancy.gravity_unit_vector))
 
 Base.show(io::IO, buoyancy::Buoyancy) = summary(buoyancy)
 
