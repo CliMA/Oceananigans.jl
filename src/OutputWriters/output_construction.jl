@@ -30,13 +30,13 @@ end
 function output_indices(output::AbstractField, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
-    if !with_halos
+    if !with_halos # Maybe chop those indices
         loc = location(output)
         topo = topology(grid)
-        maybe_chopped_indices = restrict_to_interior.(indices, loc, topo, size(grid))
+        indices = restrict_to_interior.(indices, loc, topo, size(grid))
     end
 
-    return maybe_chopped_indices
+    return indices
 end
 
 
