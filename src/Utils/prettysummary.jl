@@ -44,6 +44,7 @@ end
 
 function prettykeys(t)
     names = collect(keys(t))
+    length(names) == 0 && return "()"
     length(names) == 1 && return string(first(names))
     return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")
 end
