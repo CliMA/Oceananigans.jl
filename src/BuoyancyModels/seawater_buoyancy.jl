@@ -20,7 +20,8 @@ required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EO
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
 Base.nameof(::Type{SeawaterBuoyancy}) = "SeawaterBuoyancy"
-Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", scalar_summary(b.gravitational_acceleration), " and ", summary(b.eos))
+Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", scalar_summary(b.gravitational_acceleration),
+                                           " and ", summary(b.equation_of_state))
 
 function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 
