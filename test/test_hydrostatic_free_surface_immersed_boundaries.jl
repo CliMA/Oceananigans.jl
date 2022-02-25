@@ -21,7 +21,7 @@ using Oceananigans.TurbulenceClosures
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
             
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
-                            ScalarDiffusivity(VerticallyImplicitTimeDiscretization, ν=1, κ=0.5))
+                            ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
 
                 model = HydrostaticFreeSurfaceModel(grid = grid, 
                                                     tracers = :b,
