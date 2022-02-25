@@ -211,7 +211,7 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
     Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
