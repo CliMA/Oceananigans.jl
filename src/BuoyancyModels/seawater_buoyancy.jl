@@ -36,7 +36,7 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
         print(io, "├── constant_salinity: ", b.constant_salinity, '\n')
     end
         
-    print(io, "└── equation of state: ", summary(eos))
+    print(io, "└── equation of state: ", summary(b.equation_of_state))
 end
 
 """
