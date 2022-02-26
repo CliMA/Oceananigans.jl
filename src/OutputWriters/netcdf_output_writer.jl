@@ -11,7 +11,6 @@ using Oceananigans.Fields: reduced_dimensions, reduced_location, location, valid
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
-dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
 
 xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
@@ -58,8 +57,6 @@ function default_dimensions(output, grid, indices, with_halos)
     return dims
 end
 
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, with_halos) =
-    Dict("particle_id" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
     "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
@@ -130,14 +127,14 @@ end
 An output writer for writing to NetCDF files.
 """
 mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
-        filepath :: String
-         dataset :: D
-         outputs :: O
-        schedule :: T
-            mode :: String
-      array_type :: A
-        previous :: Float64
-         verbose :: Bool
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    mode :: String
+    array_type :: A
+    previous :: Float64
+    verbose :: Bool
 end
 
 """
@@ -304,6 +301,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     isnothing(mode) && (mode = "c")
 
     # We need to convert to a Dict with String keys if user provides a named tuple.
+    outputs = dictify(outputs)
     outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -379,14 +377,6 @@ function define_output_variable!(dataset, output, name, array_type, compression,
     return nothing
 end
 
-""" Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
-    particle_fields = eltype(output.properties) |> fieldnames .|> string
-    for particle_field in particle_fields
-        defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), compression=compression)
-    end
-end
 
 """ Defines empty field variable. """
 define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
@@ -499,3 +489,21 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
               "└── array type: ", show_array_type(ow.array_type))
 end
+
+#####
+##### Support / hacks for Lagrangian particles output
+#####
+
+""" Defines empty variable for particle trackting. """
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+    particle_fields = eltype(output.properties) |> fieldnames .|> string
+    for particle_field in particle_fields
+        defVar(dataset, particle_field, eltype(array_type),
+               ("particle_id", "time"), compression=compression)
+    end
+end
+
+dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
+
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, with_halos) =
+    Dict("particle_id" => collect(1:length(outputs["particles"])))
