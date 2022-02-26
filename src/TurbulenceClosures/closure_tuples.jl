@@ -2,6 +2,18 @@
 ##### 'Tupled closure' implementation: 1-tuple, 2-tuple, and then n-tuple by induction
 #####
 
+function closure_summary(closures::Tuple, padchar="│")
+    Nclosures = length(closures)
+    if Nclosures == 1
+        return string("Tuple with 1 closure:", '\n',
+                      "$padchar   └── $(dict.keys[1]) => $(typeof(dict.vals[1]).name)")
+    else
+        return string("Tuple with $Nclosures closures:", '\n',
+         Tuple(string("$padchar   ├── ", summary(c), '\n') for c in closures[1:end-1])...,
+                      "$padchar   └── ", summary(closures[end]))
+    end
+end
+
 #####
 ##### Stress divergences
 #####

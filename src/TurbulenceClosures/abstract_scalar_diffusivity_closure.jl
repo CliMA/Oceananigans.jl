@@ -42,6 +42,10 @@ function diffusivity end
 
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
+Base.summary(::VerticalFormulation) = "VerticalFormulation"
+Base.summary(::HorizontalFormulation) = "HorizontalFormulation"
+Base.summary(::ThreeDimensionalFormulation) = "ThreeDimensionalFormulation"
+
 #####
 ##### Stress divergences
 #####

@@ -127,16 +127,16 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                longitude,
                                z,
                                radius = R_Earth,
+                               topology = nothing,
                                halo = (1, 1, 1))
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo)
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
+        validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
-    
-    TX, TY, TZ = topo
+    TX, TY, TZ = topology
     
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, Nλ, Hλ, longitude, architecture)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, Nφ, Hφ, latitude,  architecture)
@@ -185,7 +185,7 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo)
+function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
 
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
@@ -199,15 +199,19 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo)
     Lλ = λ₂ - λ₁
     Lφ = φ₂ - φ₁
 
-    TX = Lλ == 360 ? Periodic : Bounded
-    TY = Bounded
-    TZ = Bounded
-    topo = (TX, TY, TZ)
-    
+    if !isnothing(topology)
+        TX, TY, TZ = topology
+        TZ === Bounded || throw(ArgumentError("z topology must be Bounded"))
+    else
+        TX = Lλ == 360 ? Periodic : Bounded
+        TY = Bounded
+        TZ = Bounded
+    end
+
     Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
