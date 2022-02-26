@@ -61,6 +61,7 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
     LagrangianParticles,

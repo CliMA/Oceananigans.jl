@@ -8,6 +8,11 @@ struct LinearEquationOfState{FT} <: AbstractEquationOfState
     β :: FT
 end
 
+Base.summary(eos::LinearEquationOfState) = string("LinearEquationOfState(α=", scalar_summary(eos.α),
+                                                                      ", β=", scalar_summary(eos.β), ")")
+
+Base.show(io, eos::LinearEquationOfState) = print(io, summary(eos))
+
 """
     LinearEquationOfState([FT=Float64;] α=1.67e-4, β=7.80e-4)
 
@@ -62,3 +67,4 @@ const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfSt
 
 @inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
     @inbounds - b.gravitational_acceleration * b.equation_of_state.β * C.S[i, j, k]
+

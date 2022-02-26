@@ -1,4 +1,5 @@
 import Oceananigans.Grids: required_halo_size
+using Oceananigans.Utils: prettysummary
 
 """
     ScalarBiharmonicDiffusivity{F, N, K}
@@ -61,7 +62,10 @@ end
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{F}) where {F} = 
-    print(io, "ScalarBiharmonicDiffusivity: " *
-              "(ν=$(closure.ν), κ=$(closure.κ)), " *
-              "formulation: $F")
+function Base.summary(closure::ScalarBiharmonicDiffusivity)
+    F = summary(formulation(closure))
+    return string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+end
+
+Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
+    

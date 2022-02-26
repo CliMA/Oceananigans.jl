@@ -14,10 +14,7 @@ To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\ka
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-ScalarDiffusivity:
-ν=0.01, κ=0.01
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.ThreeDimensionalFormulation
+ScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}(ν=0.01, κ=0.01)
 ```
 
 ## Constant anisotropic diffusivity
@@ -30,17 +27,10 @@ diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use `HorizontalScalarDiffu
 julia> using Oceananigans.TurbulenceClosures
 
 julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity:
-ν=0.001, κ=0.002
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.HorizontalFormulation
+ScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}(ν=0.001, κ=0.002)
 
 julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity:
-ν=0.001, κ=0.002
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.VerticalFormulation
-
+ScalarDiffusivity{ExplicitTimeDiscretization, VerticalFormulation}(ν=0.001, κ=0.002)
 ```
 
 After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the
