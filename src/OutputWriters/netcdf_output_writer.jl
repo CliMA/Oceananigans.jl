@@ -282,7 +282,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── array type: Array{Float32}
 ```
 """
-function NetCDFOutputWriter(model, outputs...; filepath, schedule,
+function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                    array_type = Array{Float32},
                                       indices = (:, :, :),
                                    with_halos = false,
@@ -304,7 +304,6 @@ function NetCDFOutputWriter(model, outputs...; filepath, schedule,
     isnothing(mode) && (mode = "c")
 
     # We need to convert to a Dict with String keys if user provides a named tuple.
-    outputs = merge(outputs...)
     outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
