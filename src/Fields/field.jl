@@ -130,7 +130,8 @@ julia> using Oceananigans
 julia> ω = Field{Face, Face, Center}(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 1×1×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -242,7 +243,8 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 julia> c = CenterField(grid)
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 4×5×6 OffsetArray(::Array{Float64, 3}, 0:3, 0:4, 0:5) with eltype Float64 with indices 0:3×0:4×0:5
     └── max=0.0, min=0.0, mean=0.0
 
@@ -251,9 +253,10 @@ julia> c .= rand(size(c)...);
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 4×2×2 OffsetArray(view(::Array{Float64, 3}, :, 3:4, 2:3), 0:3, 2:3, 1:2) with eltype Float64 with indices 0:3×2:3×1:2
-    └── max=0.851907, min=0.0904425, mean=0.550784
+    └── max=0.854147, min=0.0109059, mean=0.520099
 
 julia> size(v)
 (2, 2, 2)

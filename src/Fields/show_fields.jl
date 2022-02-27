@@ -36,9 +36,9 @@ function Base.show(io::IO, field::Field)
                "├── grid: ", summary(field.grid), '\n',
                "├── boundary conditions: ", summary(bcs), '\n',
                "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
-                     " south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
-                     " bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
-                     " immersed: ", bc_str(bcs.immersed), '\n')
+                     ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
+                     ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
+                     ", immersed: ", bc_str(bcs.immersed), '\n')
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), '\n',
