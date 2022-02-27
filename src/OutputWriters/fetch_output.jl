@@ -14,7 +14,7 @@ function fetch_output(field::AbstractField, model)
     return parent(field)
 end
 
-function fetch_output(lagrangian_particles::LagrangianParticles, model, field_slicer)
+function fetch_output(lagrangian_particles::LagrangianParticles, model)
     particle_properties = lagrangian_particles.properties
     names = propertynames(particle_properties)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
