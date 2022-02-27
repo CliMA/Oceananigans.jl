@@ -44,9 +44,8 @@ const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
 
-Base.summary(bf::DiscreteBoundaryFunction{<:Nothing}) = string("DiscreteBoundaryFunction with ", prettysummary(bf.func))
-Base.summary(bf::DiscreteBoundaryFunction) = string("DiscreteBoundaryFunction of ", prettysummary(bf.func, false),
-                                                    " with parameters ", bf.parameters)
+Base.summary(bf::DiscreteBoundaryFunction{<:Nothing}) = string("DiscreteBoundaryFunction with ", prettysummary(bf.func, false))
+Base.summary(bf::DiscreteBoundaryFunction) = string("DiscreteBoundaryFunction ", prettysummary(bf.func, false), " with parameters ", bf.parameters)
 
 Adapt.adapt_structure(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(Adapt.adapt(to, bf.func),
                                                                                    Adapt.adapt(to, bf.parameters))
