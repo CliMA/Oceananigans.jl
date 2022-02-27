@@ -36,7 +36,7 @@ julia> using TimesDates
 
 
 julia> clock = Clock(time=TimeDate(2020))
-Clock{TimeDate}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
+Clock{TimesDates.TimeDate}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
 ```
 
 to `NonhydrostaticModel`.
