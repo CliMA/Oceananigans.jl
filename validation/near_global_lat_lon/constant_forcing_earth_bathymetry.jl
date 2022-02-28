@@ -247,7 +247,7 @@ run!(simulation)
     Time step: $(prettytime(Δt))
 
 """
-#   Simulation took $(prettytime(simulation.run_time))
+#   Simulation took $(prettytime(simulation.run_wall_time))
 #   Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
 
 #####
