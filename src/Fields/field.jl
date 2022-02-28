@@ -78,7 +78,6 @@ end
 
 validate_index(idx, loc, topo, N, H) = throw(ArgumentError("$idx are not valid window indices for Field!"))
 validate_index(::Colon, loc, topo, N, H) = Colon()
-
 validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)

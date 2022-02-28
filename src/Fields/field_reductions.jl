@@ -46,13 +46,15 @@ max_c²[1:Nx, 1:Ny]
 """
 Reduction(reduce!, operand; dims) = Reduction(reduce!, operand, dims)
 
+location(r::Reduction) = reduced_location(location(r.operand); dims=reduction.dims)
+
 function Field(reduction::Reduction;
                data = nothing,
                recompute_safely = false)
 
     operand = reduction.operand
     grid = operand.grid
-    LX, LY, LZ = loc = reduced_location(location(operand); dims=reduction.dims)
+    LX, LY, LZ = loc = location(reduction)
     ind = reduced_indices(indices(operand); dims=reduction.dims)
 
     if isnothing(data)
