@@ -1,5 +1,5 @@
 #####
-##### Operators of the form grid_metric * q, where grid_metric is a grid metric and q is some variable
+##### Operators of the form grid_metric * q
 #####
 
 for metric in (:Δ, :A), dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
