@@ -142,7 +142,7 @@ end
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
-    return ifelse(k == 1 | k == grid.Nz+1, 
+    return ifelse((k == 1) | (k == grid.Nz+1), 
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
