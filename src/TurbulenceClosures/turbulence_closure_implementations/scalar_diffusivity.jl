@@ -12,7 +12,7 @@ end
 
 """
     ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization,
-                      formulation=ThreeDimensionalFormulation, FT=Float64];
+                      formulation=ThreeDimensionalFormulation(), FT=Float64];
                       ν=0, κ=0,
                       discrete_form = false) 
 
@@ -20,6 +20,11 @@ Return `ScalarDiffusivity` with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is
 applied to all tracers. Otherwise `κ` must be a `NamedTuple` with values
 for every tracer individually.
+
+`formulation`:
+  - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+  - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+  - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
 
 `ν` and the fields of `κ` may be constants (converted to `FT`), arrays, fields or
   - functions of `(x, y, z, t)` if `discrete_form = false`

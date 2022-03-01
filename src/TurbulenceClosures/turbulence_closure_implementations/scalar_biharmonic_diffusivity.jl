@@ -41,8 +41,8 @@ Keyword arguments
   - `discrete_form`: `Boolean`.
 
   - `formulation`: formulation used for the discretization of the diffusivity operator.
-                   Options are `VerticalFormulation`, `HorizontalFormulation` and 
-                   `ThreeDimensionalFormulation`.
+                   Options are `VerticalFormulation()`, `HorizontalFormulation()` and 
+                   `ThreeDimensionalFormulation()`.
 
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
