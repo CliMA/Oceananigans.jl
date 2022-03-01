@@ -234,3 +234,4 @@ end
 
 Base.show(io::IO, closure::FlavorOfCATKE) = print(io, summary(closure))
 
+end # module
