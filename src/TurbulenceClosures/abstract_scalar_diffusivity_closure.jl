@@ -65,7 +65,8 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline viscous_flux_vx(i, j, k, grid, closure::AHD, clock, U, args...) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
 @inline viscous_flux_uy(i, j, k, grid, closure::AHD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
 @inline viscous_flux_vy(i, j, k, grid, closure::AHD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
-# are we sure about this?? This might not be consistent for AHD
+
+# TODO: are we sure about this?? This might not be consistent for AHD
 @inline viscous_flux_wx(i, j, k, grid, closure::AHD, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᶠ, U.w)
 @inline viscous_flux_wy(i, j, k, grid, closure::AHD, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᶠ, U.w)
 
@@ -129,25 +130,25 @@ const VITD = VerticallyImplicitTimeDiscretization
 # hand side of the tridiagonal system).
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
-    return ifelse(k == 1 || k == grid.Nz+1, 
+    return ifelse(k == 1 | k == grid.Nz+1, 
                   viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   ivd_viscous_flux_uz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
-    return ifelse(k == 1 || k == grid.Nz+1, 
+    return ifelse(k == 1 | k == grid.Nz+1, 
                   viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   ivd_viscous_flux_vz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
+    return ifelse(k == 1 | k == grid.Nz+1, 
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
+    return ifelse(k == 1 | k == grid.Nz+1, 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end

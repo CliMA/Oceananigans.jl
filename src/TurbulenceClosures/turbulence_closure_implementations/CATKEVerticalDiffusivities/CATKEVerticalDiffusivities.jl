@@ -19,7 +19,6 @@ using Oceananigans.TurbulenceClosures:
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     ThreeDimensionalFormulation, 
-    HorizontalFormulation,
     VerticalFormulation
 
 import Oceananigans.BoundaryConditions: getbc
@@ -29,24 +28,15 @@ import Oceananigans.TurbulenceClosures:
     add_closure_specific_boundary_conditions,
     calculate_diffusivities!,
     DiffusivityFields,
-    z_viscosity,
-    z_diffusivity,
-    viscous_flux_ux,
-    viscous_flux_uy,
-    viscous_flux_uz,
-    viscous_flux_vx,
-    viscous_flux_vy,
-    viscous_flux_vz,
-    viscous_flux_wx,
-    viscous_flux_wy,
-    viscous_flux_wz,
+    viscosity,
+    diffusivity,
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
-struct CATKEVerticalDiffusivity{TD, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
+struct CATKEVerticalDiffusivity{TD, CD, CL, CQ} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     Cᴰ :: CD
     mixing_length :: CL
     surface_TKE_flux :: CQ
@@ -207,26 +197,6 @@ struct TKETracerIndex{N} end
 
 @inline TKETracerIndex(N) = TKETracerIndex{N}()
 
-@inline function viscous_flux_uz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
-    Ku = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Ku * ∂zᶠᶜᶠ(i, j, k, grid, velocities.u)
-end
-
-@inline function viscous_flux_vz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
-    Kv = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Kv * ∂zᶜᶠᶠ(i, j, k, grid, velocities.v)
-end
-
-@inline function viscous_flux_wz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
-    @inbounds Kw = diffusivities.Kᵘ[i, j, k]
-    return - Kw * ∂zᶜᶜᶜ(i, j, k, grid, velocities.w)
-end
-
-@inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, c, tracer_index, clock, diffusivities, args...)
-    Kcᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᶜ)
-    return - Kcᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, c)
-end
-
 # Diffusive flux of TKE!
 @inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, e, ::TKETracerIndex, clock, diffusivities, args...)
     Keᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᵉ)
@@ -239,35 +209,9 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_y(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
-# Disambiguiate
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
-@inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+@inline viscosity(::FlavorOfCATKE, diffusivities, args...) = diffusivities.Kᵘ
 
-# Shortcuts --- CATKEVD incurs no horizontal transport
-@inline viscous_flux_ux(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_x(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
-
-# Disambiguate
-@inline diffusive_flux_x(i, j, k, grid, ::CATKEVD, e, ::TKETracerIndex, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, ::CATKEVD, e, ::TKETracerIndex, args...) = zero(eltype(grid))
-
-#####
-##### Support for VerticallyImplicit
-#####
-
-const VITD = VerticallyImplicitTimeDiscretization
-
-@inline z_viscosity(closure::FlavorOfCATKE, diffusivities, args...) = diffusivities.Kᵘ
-
-@inline function z_diffusivity(closure::FlavorOfCATKE, ::Val{tracer_index},
+@inline function diffusivity(::FlavorOfCATKE, ::Val{tracer_index},
                                diffusivities, tracers, args...) where tracer_index
 
     tke_index = findfirst(name -> name === :e, keys(tracers))
@@ -279,40 +223,15 @@ const VITD = VerticallyImplicitTimeDiscretization
     end
 end
 
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
-
-@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::CATKEVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::CATKEVD, args...) = zero(eltype(grid))
-
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(FT))
-end
-
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(FT))
-end
-
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(FT))
-end
-
-@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(FT))
-end
-
-
 #####
 ##### Show
 #####
+
+function Base.summary(closure::CATKE)
+    TD = nameof(typeof(time_discretization(closure)))
+    return string("CATKEVerticalDiffusivity{$TD}")
+end
+
 Base.show(io::IO, closure::CATKEVD{TD}) where TD =
     print(io, "CATKEVerticalDiffusivity with $(TD.name.name) and parameters: \n" *
               "    Cᴰ = $(closure.Cᴰ), \n" * 
