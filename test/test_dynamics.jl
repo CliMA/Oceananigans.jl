@@ -352,7 +352,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     g̃ = (0, sind(θ), cosd(θ))
     buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
-    α  = buoyancy.model.equation_of_state.α
+    α  = buoyancy.model.equation_of_state.thermal_expansion
     g₀ = buoyancy.model.gravitational_acceleration
     ∂T∂z = N² / (g₀ * α)
 
