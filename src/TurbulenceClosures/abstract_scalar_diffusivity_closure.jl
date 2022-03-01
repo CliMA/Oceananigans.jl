@@ -136,7 +136,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
-    return ifelse(k == 1 | k == grid.Nz+1, 
+    return ifelse((k == 1) | (k == grid.Nz+1), 
                   viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   ivd_viscous_flux_vz(i, j, k, grid, closure, args...))
 end
