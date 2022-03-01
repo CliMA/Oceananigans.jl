@@ -174,4 +174,3 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
     return solve!(field, implicit_solver, field, instantiate.(location)...,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
-
