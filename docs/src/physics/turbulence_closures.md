@@ -25,7 +25,7 @@ Each tracer may have a unique diffusivity ``\kappa``.
 
 ## Constant anisotropic diffusivity
 
-In Oceananigans.jl, a constant anisotropic diffusivity implies a constant tensor
+A constant anisotropic diffusivity implies a constant tensor
 diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
 components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
@@ -44,7 +44,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 
 ## Constant anisotropic biharmonic diffusivity
 
-In Oceananigans.jl, a constant anisotropic biharmonic diffusivity implies a constant tensor
+A constant anisotropic biharmonic diffusivity implies a constant tensor
 diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
 components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
@@ -108,12 +108,11 @@ Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
 
-Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by
-[Verstappen18](@cite) and described and tested by [Vreugdenhil18](@cite).
-The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
-In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms
-of eddy viscosity and diffusivity *predictors*
-``\nu_e^\dagger`` and ``\kappa_e^\dagger``, such that
+The anisotropic minimum dissipation (AMD) model proposed by [Verstappen18](@cite) and was
+described and tested by [Vreugdenhil18](@cite). The AMD model uses an eddy diffusivity hypothesis
+similar the Smagorinsky-Lilly model. In the AMD model, the eddy viscosity and diffusivity for each
+tracer are defined in terms of eddy viscosity and diffusivity *predictors* ``\nu_e^\dagger`` and ``\kappa_e^\dagger``,
+such that
 ```math
     \nu_e = \max \left ( 0, \nu_e^\dagger \right ) + \nu
     \quad \text{and} \quad
@@ -175,6 +174,6 @@ By default we use the model constants ``C=1/12`` and ``C_b=0``.
 This closure aims to model the enhanced mixing that occurs due to convection.
 At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and
 applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid
-is gravitationally neutral or stable with `∂z(b) ≥ 0`, or (ii) `convective_νz` and `convective_κz` if `∂z(b) ≥ 0`.
+is gravitationally neutral or stable with ``∂b/∂z ≥ 0``, or (ii) `convective_νz` and `convective_κz` if ``∂b/∂z < 0``.
 
 This closure is a plausible model for convection if `convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.
