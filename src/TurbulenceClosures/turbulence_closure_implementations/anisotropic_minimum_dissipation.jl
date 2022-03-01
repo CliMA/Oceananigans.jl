@@ -7,7 +7,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD, ThreeDimensionalFormulation}
+struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -22,6 +22,10 @@ struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyVisco
 end
 
 const AMD = AnisotropicMinimumDissipation
+
+@inline viscosity(::AMD, diffusivities, args...) = diffusivities.νₑ
+@inline diffusivity(::AMD, ::Val{tracer_index}, diffusivities, args...) where tracer_index =
+    diffusivities.κₑ[tracer_index]
 
 Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
     print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",

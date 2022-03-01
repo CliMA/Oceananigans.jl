@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensionalFormulation}
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
      C :: FT
     Cb :: FT
     Pr :: P
@@ -16,6 +16,10 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeD
         return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
     end
 end
+
+@inline viscosity(::SmagorinskyLilly, diffusivities, args...) = diffusivities.νₑ
+@inline diffusivity(::SmagorinskyLilly, ::Val{tracer_index}, diffusivities, args...) where tracer_index =
+    diffusivities.κₑ[tracer_index]
 
 """
     SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1, ν=0, κ=0)
