@@ -23,7 +23,7 @@ end
 @inline conditional_length(c::ImmersedField)       = conditional_length(condition_operand(identity, c, nothing, 0))
 @inline conditional_length(c::ImmersedField, dims) = conditional_length(condition_operand(identity, c, nothing, 0), dims)
 
-@inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
-    LX, LY, LZ = location(condition)
+@inline function get_condition(condition::NotImmersed, i, j, k, ibg, op::ConditionalOperation, args...)
+    LX, LY, LZ = location(op)
     return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
 end 
