@@ -54,7 +54,7 @@ function sync_all_devices!(devices)
     end
 end
 
-sync_device!(::CuDevice) = synchronize(CUDA.CuCurrentContext())
+sync_device!(::CuDevice) = synchronize(blocking=false)
 sync_device!(::CPU) = nothing
 
 redispatch(arg::Symbol) = arg

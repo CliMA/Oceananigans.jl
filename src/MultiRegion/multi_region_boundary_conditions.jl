@@ -19,7 +19,7 @@ end
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
 fill_halo_regions!(c::MultiRegionObject, bcs, arch, mrg::MultiRegionGrid, args...; kwargs...) =
-    apply_regionally!(fill_halo_regions!, c, bcs, arch, mrg, Reference(c.regions), args...; kwargs...)
+    fetch(@async apply_regionally!(fill_halo_regions!, c, bcs, arch, mrg, Reference(c.regions), args...; kwargs...))
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs...)
     H = halo_size(grid)[1]
