@@ -46,7 +46,7 @@ max_c²[1:Nx, 1:Ny]
 """
 Reduction(reduce!, operand; dims) = Reduction(reduce!, operand, dims)
 
-location(r::Reduction) = reduced_location(location(r.operand); dims=reduction.dims)
+location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 
 function Field(reduction::Reduction;
                data = nothing,
