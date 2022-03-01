@@ -648,7 +648,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
                 gravitational_acceleration = (10σ)^2 / Lx
-                free_surface = ImplicitFreeSurface(; gravitational_acceleration))
+                free_surface = ImplicitFreeSurface(; gravitational_acceleration)
                 model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
 
                 @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
