@@ -27,7 +27,7 @@ Each tracer may have a unique diffusivity ``\kappa``.
 
 A constant anisotropic diffusivity implies a constant tensor
 diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
@@ -38,15 +38,18 @@ and diffusive flux divergence
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
                                     + \kappa_{v} \partial_z^2 \right ] c \, ,
 ```
-in terms of the horizontal viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_v``.
 
-## Constant anisotropic biharmonic diffusivity
+See [ScalarDiffusivity](@ref).
 
-A constant anisotropic biharmonic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+## Scalar biharmonic diffusivity
+
+A constant biharmonic diffusivity implies a constant tensor diffusivity ``\nu_{j k}`` and
+stress``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero components
+``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
+
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
@@ -57,9 +60,11 @@ and diffusive flux divergence
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
                                     + \kappa_{v} \partial_z^4 \right ] c \, ,
 ```
-in terms of the horizontal biharmonic viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical biharmonic viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal biharmonic viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical biharmonic viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_z``.
+
+See [ScalarBiharmonicDiffusivity](@ref).
 
 ## Smagorinsky-Lilly turbulence closure
 
