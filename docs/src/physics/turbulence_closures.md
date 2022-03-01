@@ -66,7 +66,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
-\tau_{ij} = - \nu_e \Sigma_{ij} \, ,
+\tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
 ```
 where ``\Sigma_{ij} = \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the resolved
 strain rate.
