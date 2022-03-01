@@ -227,16 +227,10 @@ end
 ##### Show
 #####
 
-function Base.summary(closure::CATKE)
+function Base.summary(closure::CATKEVD)
     TD = nameof(typeof(time_discretization(closure)))
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 
-Base.show(io::IO, closure::CATKEVD{TD}) where TD =
-    print(io, "CATKEVerticalDiffusivity with $(TD.name.name) and parameters: \n" *
-              "    Cᴰ = $(closure.Cᴰ), \n" * 
-              "    $(closure.mixing_length), \n" *
-              "    $(closure.surface_TKE_flux)")
-
-end
+Base.show(io::IO, closure::FlavorOfCATKE) = print(io, summary(closure))
 
