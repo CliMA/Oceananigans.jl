@@ -6,7 +6,7 @@ using Oceananigans.Grids: AbstractGrid
 abstract type AbstractTimeDiscretization end
 
 """
-    struct Explicit <: AbstractTimeDiscretization
+    struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
 
 Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
@@ -15,11 +15,11 @@ struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 
 """
-    struct VerticallyImplicit <: AbstractTimeDiscretization
+    struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
 
-Represents "vertically-implicit" time-discretization of a `TurbulenceClosure`.
+Represents vertically-implicit time-discretization of a `TurbulenceClosure`.
 
-This imples that a flux divergence such as `∇ ⋅ q` at the n-th timestep is 
+This imples that a flux divergence such as ``∇ ⋅ q`` at the n-th timestep is 
 time-discretized as
 
 ```julia
