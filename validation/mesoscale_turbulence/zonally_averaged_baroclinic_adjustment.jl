@@ -117,7 +117,7 @@ set!(model, b=bᵢ, c=cᵢ)
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
