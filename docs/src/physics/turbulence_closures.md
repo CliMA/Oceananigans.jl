@@ -66,7 +66,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
-\tau_{ij} = \nu_e \Sigma_{ij} \, ,
+\tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
 ```
 where ``\Sigma_{ij} = \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the resolved
 strain rate.
@@ -97,7 +97,7 @@ where ``\Delta x``, ``\Delta y``, and ``\Delta z`` are the grid spacing in the
 
 The effect of subgrid turbulence on tracer mixing is also modeled diffusively via
 ```math
-\boldsymbol{q}_c = \kappa_e \boldsymbol{\nabla} c \, ,
+\boldsymbol{q}_c = - \kappa_e \boldsymbol{\nabla} c \, ,
 ```
 where the eddy diffusivity ``\kappa_e`` is
 ```math
@@ -124,7 +124,7 @@ constant isotropic background viscosity and diffusivities for each tracer. The e
 predictor is
 ```math
     \begin{equation}
-    \nu_e^\dagger = -C \Delta_f^2
+    \nu_e^\dagger = C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
@@ -136,7 +136,7 @@ while the eddy diffusivity predictor for tracer ``c`` is
 ```math
     \begin{equation}
     \label{eq:kappa-dagger}
-    \kappa_e^\dagger = -C \Delta_f^2
+    \kappa_e^\dagger = C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
         {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
