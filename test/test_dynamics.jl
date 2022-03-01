@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: z_viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
+using Oceananigans.TurbulenceClosures: viscosity, ThreeDimensionalFormulation, HorizontalFormulation, VerticalFormulation
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, mask_immersed_field!
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), u_num.grid)
@@ -10,7 +10,6 @@ function relative_error(u_num, u, time)
 end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
-
     model = NonhydrostaticModel(; timestepper,
                                   grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
                                   closure = ScalarDiffusivity(time_discretization, ν=1, κ=1),
@@ -19,7 +18,7 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
                                   buoyancy = nothing)
 
     value = π
-    field = get_model_field(fieldname, model)
+    field = fields(model)[fieldname]
     interior(field) .= value
     update_state!(model)
 
@@ -29,72 +28,63 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
     return !any(@. !isapprox(value, field_data))
 end
 
-function test_isotropic_diffusion_budget(fieldname, model)
-    set!(model; u=0, v=0, w=0, c=0)
-    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
-    field = get_model_field(fieldname, model)
-    ν = z_viscosity(model.closure, nothing) # for generalizing to isotropic diffusivity
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
-end
-
-function test_biharmonic_diffusion_budget(fieldname, model)
-    set!(model; u=0, v=0, w=0, c=0)
-    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
-    field = get_model_field(fieldname, model)
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
-end
-
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     init_mean = mean(interior(field))
     update_state!(model)
+    Δt = 1e-4 * Δ^order / κ # small to suppress non-conservative time-discretization error
 
-    # Very small time-steps required to bring error under machine precision
-    [time_step!(model, 1e-4 * Δ^order / κ) for n = 1:10]
+    for n = 1:10
+        time_step!(model, Δt)
+    end
 
     final_mean = mean(interior(field))
-
     @info @sprintf("    Initial <%s>: %.16f, final <%s>: %.16f, final - initial: %.4e",
                    fieldname, init_mean, fieldname, final_mean, final_mean - init_mean)
 
     return isapprox(init_mean, final_mean)
 end
 
-function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
+function test_ScalarDiffusivity_budget(fieldname, model)
+    set!(model; u=0, v=0, w=0, c=0)
+    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
+    field = fields(model)[fieldname]
+    ν = viscosity(model.closure, nothing)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
+end
+
+function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
+    set!(model; u=0, v=0, w=0, c=0)
+    set!(model; Dict(fieldname => (x, y, z) -> rand())...)
+    field = fields(model)[fieldname]
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
+end
+
+function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c) 
     κ, m = 1, 2 # diffusivity and cosine wavenumber
-
-    model = NonhydrostaticModel(; timestepper, grid,
-                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
-                                    tracers = (:T, :S),
-                                   buoyancy = nothing)
-
-    field = get_model_field(fieldname, model)
-
-    z = znodes(Center, grid, reshape=true)
-    interior(field) .= cos.(m * z)
+    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy=nothing)
+    field = fields(model)[fieldname]
+    field .= cos.(m * ξ)
     update_state!(model)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    [time_step!(model, Δt) for n = 1:10]
+    for n = 1:5
+        time_step!(model, Δt)
+    end
 
-    diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
+    diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
+    analytical_solution = Field(location(field), grid)
+    analytical_solution .= diffusing_cosine.(ξ, model.clock.time, κ, m)
 
-     numerical = interior(field)
-    analytical = diffusing_cosine.(κ, m, z, model.clock.time)
-
-    return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
+    return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
 end
 
 function test_immersed_diffusion(Nz, z, time_discretization)
-
-    κ = 1.0
-    
-    closure = ScalarDiffusivity(time_discretization, κ = κ)
-
+    closure = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
     
-    Δz_min = minimum(grid.grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
@@ -107,12 +97,11 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     Δt = Δz_min^2 / closure.κ * 1e-1
 
     for n = 1:100
-        time_step!(full_model    , Δt)
+        time_step!(full_model,     Δt)
         time_step!(immersed_model, Δt)
     end
 
-    half   = Int(grid.Nz/2 + 1)
-
+    half = Int(grid.Nz/2 + 1)
     c_full     = interior(full_model.tracers.c)[1, 1, half:end]
     c_immersed = interior(immersed_model.tracers.c)[1, 1, half:end]
 
@@ -121,24 +110,23 @@ end
 
 function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
-    κ = 1.0
-    
-    closure = VerticalScalarDiffusivity(time_discretization, ν = κ, κ = κ)
+    closure = VerticalScalarDiffusivity(time_discretization, ν = 1, κ = 1)
 
+    # Bathymetry
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
-    B = [b b b b b b b b b 
-         b l l l l l l l b
-         b l m m m m m l b
-         b l m u u u m l b
-         b l m u t u m l b
-         b l m u u u m l b
-         b l m m m m m l b
-         b l l l l l l l b
-         b b b b b b b b b]
+    bathymetry = [b b b b b b b b b 
+                  b l l l l l l l b
+                  b l m m m m m l b
+                  b l m u u u m l b
+                  b l m u t u m l b
+                  b l m u u u m l b
+                  b l m m m m m l b
+                  b l l l l l l l b
+                  b b b b b b b b b]
 
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
     
     Δz_min = minimum(grid.grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
@@ -178,36 +166,6 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
     assesment[4] = all(c_full .≈ c_immersed)
 
     return all(assesment)
-end
-
-function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_discretization)
-    κ, m = 1, 2 # diffusivity and cosine wavenumber
-
-    model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = grid,
-                                    closure = ScalarDiffusivity(time_discretization, ν=κ, κ=κ),
-                                    tracers = (:T, :S),
-                                   buoyancy = nothing)
-
-    field = get_model_field(field_name, model)
-
-    zC = znodes(Center, grid, reshape=true)
-    interior(field)   .= cos.(m * zC)
-
-    diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
-
-    # Step forward with small time-step relative to diff. time-scale
-    Δt = 1e-6 * grid.Lz^2 / κ
-    for n in 1:5
-        time_step!(model, Δt)
-    end
-
-    half = Int(grid.Nz/2 + 1)
-
-    numerical_half = interior(field)[1,1,half:end]
-    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half:end]
-
-    return !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
 end
 
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)
@@ -458,21 +416,20 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
 
-                if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
+                # Can't use implicit time-stepping in vertically-periodic domains right now
+                if topology !== (Periodic, Periodic, Periodic)
                     time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 else
-                    time_discretizations = (ExplicitTimeDiscretization(),)
+                    time_discretizations = tuple(ExplicitTimeDiscretization())
                 end
 
                 for time_discretization in time_discretizations
 
-                    for closure in (ScalarDiffusivity(time_discretization, ν=1, κ=1),
+                    for closure in [ScalarDiffusivity(time_discretization, ν=1, κ=1),
                                     VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    )
+                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)]
 
                         fieldnames = [:c]
-
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
                         topology[3] === Periodic && push!(fieldnames, :w)
@@ -480,18 +437,19 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                         model = NonhydrostaticModel(timestepper = timestepper,
-                                                           grid = grid,
-                                                        closure = closure,
-                                                        tracers = :c,
-                                                       coriolis = nothing,
-                                                       buoyancy = nothing)
+                                                    grid = grid,
+                                                    closure = closure,
+                                                    tracers = :c,
+                                                    coriolis = nothing,
+                                                    buoyancy = nothing)
 
                         td = typeof(time_discretization).name.wrapper
                         closurename = typeof(closure).name.wrapper
 
                         for fieldname in fieldnames
-                            @info "    [$timestepper, $td, $closurename] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
-                            @test test_isotropic_diffusion_budget(fieldname, model)
+                            @info "    [$timestepper, $td, $closurename] " *
+                                  "Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+                            @test test_ScalarDiffusivity_budget(fieldname, model)
                         end
                     end
                 end
@@ -517,44 +475,114 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 for formulation in (ThreeDimensionalFormulation(), HorizontalFormulation(), VerticalFormulation())
                     model = NonhydrostaticModel(timestepper = timestepper,
-                                                       grid = grid,
-                                                    closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
-                                                   coriolis = nothing,
-                                                    tracers = :c,
-                                                   buoyancy = nothing)
+                                                grid = grid,
+                                                closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1),
+                                                coriolis = nothing,
+                                                tracers = :c,
+                                                buoyancy = nothing)
 
                     for fieldname in fieldnames
-                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion and $formulation..."
-                        @test test_biharmonic_diffusion_budget(fieldname, model)
+                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
+                              "with biharmonic diffusion and $formulation..."
+                        @test test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
                     end
                 end
             end
         end
     end
 
-    @testset "Diffusion cosine" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for fieldname in (:u, :v, :T, :S)
-                for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                    Nz, Lz = 128, π/2
-                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+    @testset "Diffusion of a cosine" begin
+        N, L = 128, π/2
+        grid = RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
-                    @info "  Testing diffusion cosine [$fieldname, $timestepper, $time_discretization]..."
-                    @test test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
+        # Derive coordinates
+        x = xnodes(Center, grid, reshape=true)
+        y = permutedims(x, (2, 1, 3))
+        z = permutedims(x, (2, 3, 1))
 
-                    Nz, Lz = 128, π
-                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+        # Build a huge list of tests.
+        grids = []
+        coords = []
+        closures = []
+        fieldnames = []
 
-                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid Regular [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
-                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
+        scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1) 
+        implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1) 
+        vertical_scalar_diffusivity = VerticalScalarDiffusivity(ν=1, κ=1)
+        implicit_vertical_scalar_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
 
-                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered_coord(Nz, Lz, 0))
+        # Basic cases on Flat grids with the default formulation for `ScalarDiffusivity`
+        append!(coords, [x, y, z])
+        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
+        append!(closures, [scalar_diffusivity for i = 1:3])
+        append!(grids, [RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat)),
+                        RectilinearGrid(size=N, y=(0, L), topology=(Flat, Bounded, Flat)),
+                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
 
-                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
-                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
-                end
+        # Cases on Non-Flat grids with `ScalarDiffusivity`
+        append!(coords, [x, y, z])
+        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
+        append!(closures, [scalar_diffusivity for i = 1:3])
+        append!(grids, [RectilinearGrid(size=(N, 1, 1), x=(0, L), y=(0, 1), z=(0, 1), topology=(Bounded, Periodic, Periodic)),
+                        RectilinearGrid(size=(1, N, 1), x=(0, 1), y=(0, L), z=(0, 1), topology=(Periodic, Bounded, Periodic)),
+                        RectilinearGrid(size=(1, 1, N), x=(0, 1), y=(0, 1), z=(0, L), topology=(Periodic, Periodic, Bounded))])
+
+        # Basic cases on Flat grids with alternate formulations of `ScalarDiffusivity`
+        append!(coords, [x, y, z])
+        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
+        append!(closures, [HorizontalScalarDiffusivity(ν=1, κ=1),
+                           HorizontalScalarDiffusivity(ν=1, κ=1),
+                           VerticalScalarDiffusivity(ν=1, κ=1)])
+        append!(grids, [RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat)),
+                        RectilinearGrid(size=N, y=(0, L), topology=(Flat, Bounded, Flat)),
+                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+
+        # VerticallyImplicitTimeDiscretization cases
+        append!(coords, [z, z])
+        append!(fieldnames, [(:u, :v, :c) for i = 1:2])
+        append!(closures, [ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1),
+                           VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)])
+        append!(grids, [RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded)),
+                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+                           
+        # Immersed grid cases
+        immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(size=2N, z=(0, 2L), topology=(Flat, Flat, Bounded)),
+                                                      GridFittedBottom((x, y) -> L))
+
+        z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
+
+        append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
+        append!(fieldnames, [(:u, :v, :c) for i = 1:4])
+        append!(closures, [scalar_diffusivity,
+                           implicit_scalar_diffusivity,
+                           vertical_scalar_diffusivity,
+                           implicit_vertical_scalar_diffusivity])
+        append!(grids, [immersed_vertical_grid for i = 1:4])
+
+        # Stretched grid cases
+        stretched_z_grid = RectilinearGrid(size=N, z=center_clustered_coord(N, L, 0), topology=(Flat, Flat, Bounded))
+        stretched_immersed_z_grid =
+            ImmersedBoundaryGrid(RectilinearGrid(size=N, z=center_clustered_coord(2N, 2L, 0), topology=(Flat, Flat, Bounded)),
+                                 GridFittedBottom((x, y) -> L))
+
+        stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
+        append!(coords, [znodes(Center, grid, reshape=true) for grid in stretched_grids])
+        append!(fieldnames, [(:u, :v, :c) for i = 1:4])
+        append!(closures, [vertical_scalar_diffusivity,
+                           implicit_vertical_scalar_diffusivity,
+                           vertical_scalar_diffusivity,
+                           implicit_vertical_scalar_diffusivity])
+        append!(grids, stretched_grids)
+                        
+        # Run the tests
+        for case = 1:length(grids)
+            closure = closures[case]
+            grid = grids[case]
+            coord = coords[case]
+
+            for fieldname in fieldnames[case]
+                @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
+                @test test_diffusion_cosine(fieldname, grid, closure, coord)
             end
         end
     end
@@ -563,12 +591,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
 
             Nz, Lz, z₀ = 128, 1, -0.5
-
             z_regular = (z₀, Lz + z₀)
             z_stretch = center_clustered_coord(Nz, Lz, z₀)
 
             for z_coord = (z_regular, z_stretch)
-                @info "  Testing gaussian immersed diffusion for [$time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]..."
+                @info "  Testing gaussian immersed diffusion for " *
+                      "[$time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]..."
                 @test test_immersed_diffusion(Nz, z_coord, time_discretization)
                 @test test_immersed_diffusion_3D(Nz, z_coord, time_discretization)
             end
@@ -599,11 +627,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         # Vertically stretched grid with regular spacing and no flat dimension
         z_faces = collect(znodes(Face, y_periodic_regular_grid))
         y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=z_faces)
+                                                                                size=(Nx, 1, Nz),
+                                                                                x=(0, Lx), y=(0, Lx), z=z_faces)
 
         # Vertically stretched grid with regular spacing and no flat dimension
         y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                                                               size=(Nx, Nz), x=(0, Lx), z=z_faces)
+                                                                            size=(Nx, Nz), x=(0, Lx), z=z_faces)
 
         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
 
@@ -618,9 +647,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 topo = topology(grid)
 
                 # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                g = (10σ)^2 / Lx
-
-                model = HydrostaticFreeSurfaceModel(; free_surface=ImplicitFreeSurface(gravitational_acceleration=g), grid=grid, kwargs...)
+                gravitational_acceleration = (10σ)^2 / Lx
+                free_surface = ImplicitFreeSurface(; gravitational_acceleration))
+                model = HydrostaticFreeSurfaceModel(; free_surface, grid, kwargs...)
 
                 @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
@@ -685,6 +714,5 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
         end
     end
-
 end
 
