@@ -31,7 +31,7 @@ function diffusive_cfl_diagnostic_is_correct(arch, FT)
     return cfl(model) ≈ CFL_by_hand
 end
 
-function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+function advective_cfl_on_regular_grid(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
@@ -45,43 +45,7 @@ function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
     return cfl(model) ≈ CFL_by_hand
 end
 
-function advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
-    model = TestModel_VerticallyStrectedRectGrid(arch, FT)
-
-    Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δxᶜᵃᵃ)
-    u₀ = FT(1.2)
-    CFL_by_hand = Δt * u₀ / Δx
-
-    set!(model, u=u₀)
-    cfl = AdvectiveCFL(FT(Δt))
-
-    return cfl(model) ≈ CFL_by_hand
-end
-
-function accurate_advective_cfl_on_regular_grid(arch, FT)
-    model = TestModel_RegularRectGrid(arch, FT)
-
-    Δt = FT(1.7)
-
-    Δx = model.grid.Δxᶜᵃᵃ
-    Δy = model.grid.Δyᵃᶜᵃ
-    Δz = model.grid.Δzᵃᵃᶜ
-
-    u₀ = FT(1.2)
-    v₀ = FT(-2.5)
-    w₀ = FT(3.9)
-
-    set!(model, u=u₀, v=v₀, w=w₀)
-
-    CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz)
-
-    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
-
-    return cfl(model) ≈ CFL_by_hand
-end
-
-function accurate_advective_cfl_on_stretched_grid(arch, FT)
+function advective_cfl_on_stretched_grid(arch, FT)
     grid = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=[k^2 for k in 0:8])
     model = NonhydrostaticModel(grid=grid)
 
@@ -98,15 +62,13 @@ function accurate_advective_cfl_on_stretched_grid(arch, FT)
     w₀ = FT(3.9)
 
     set!(model, u=u₀, v=v₀, w=w₀, enforce_incompressibility=false)
-
-    CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz_min)
-
-    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
+    CFL_by_hand = Δt * max(abs(u₀) / Δx, abs(v₀) / Δy, abs(w₀) / Δz_min)
+    cfl = CFL(FT(Δt))
 
     return cfl(model) ≈ CFL_by_hand
 end
 
-function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+function advective_cfl_on_lat_lon_grid(arch, FT)
     grid = LatitudeLongitudeGrid(arch, size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
     model = HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=VectorInvariant())
 
@@ -131,9 +93,9 @@ function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
     set!(model.velocities.v, v₀)
     set!(model.velocities.w, w₀)
 
-    CFL_by_hand = Δt * (abs(u₀) / Δx_min + abs(v₀) / Δy_min + abs(w₀) / Δz)
+    CFL_by_hand = Δt * max(abs(u₀) / Δx_min, abs(v₀) / Δy_min, abs(w₀) / Δz)
 
-    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
+    cfl = CFL(FT(Δt))
 
     return cfl(model) ≈ CFL_by_hand
 end
@@ -171,11 +133,9 @@ end
             @info "  Testing CFL diagnostics [$(typeof(arch))]..."
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
-                @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
-                @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
-                @test accurate_advective_cfl_on_regular_grid(arch, FT)
-                @test accurate_advective_cfl_on_stretched_grid(arch, FT)
-                @test accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+                @test advective_cfl_on_regular_grid(arch, FT)
+                @test advective_cfl_on_stretched_grid(arch, FT)
+                @test advective_cfl_on_lat_lon_grid(arch, FT)
             end
         end
     end
