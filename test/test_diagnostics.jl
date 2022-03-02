@@ -62,7 +62,7 @@ function advective_cfl_on_stretched_grid(arch, FT)
     w₀ = FT(3.9)
 
     set!(model, u=u₀, v=v₀, w=w₀, enforce_incompressibility=false)
-    CFL_by_hand = Δt * max(abs(u₀) / Δx, abs(v₀) / Δy, abs(w₀) / Δz_min)
+    CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz_min)
     cfl = CFL(FT(Δt))
 
     return cfl(model) ≈ CFL_by_hand
@@ -93,7 +93,7 @@ function advective_cfl_on_lat_lon_grid(arch, FT)
     set!(model.velocities.v, v₀)
     set!(model.velocities.w, w₀)
 
-    CFL_by_hand = Δt * max(abs(u₀) / Δx_min, abs(v₀) / Δy_min, abs(w₀) / Δz)
+    CFL_by_hand = Δt * (abs(u₀) / Δx_min + abs(v₀) / Δy_min + abs(w₀) / Δz)
 
     cfl = CFL(FT(Δt))
 
