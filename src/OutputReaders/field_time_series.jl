@@ -99,27 +99,27 @@ function FieldTimeSeries(path, name, backend::InMemory;
     file = jldopen(path)
 
     # Defaults
-    isnothing(iterations)   && (iterations =  parse.(Int, keys(file["timeseries/t"])))
-    isnothing(times)        && (times      =  [file["timeseries/t/$i"] for i in iterations])
-    isnothing(location)     && (location   =  file["timeseries/$name/serialized/location"])
+    isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
+    isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
+    isnothing(location)     && (location   = file["timeseries/$name/serialized/location"])
+    isnothing(grid)         && (grid       = file["serialized/grid"])
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+    end
+
+    indices = file["timeseries/$name/serialized/indices"]
+    close(file)
 
     # Default to CPU if neither architecture nor grid is specified
     architecture = isnothing(architecture) ?
         (isnothing(grid) ? CPU() : Architectures.architecture(grid)) :
         architecture
 
-    if isnothing(grid)
-        grid = file["serialized/grid"]
-    end
-
     grid = on_architecture(architecture, grid)
 
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-    end
-
     LX, LY, LZ = location
-    time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions)
+    time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices, boundary_conditions)
     set!(time_series, path, name)
 
     return time_series
@@ -148,6 +148,7 @@ Load a Field saved in JLD2 file at `path`, with `name` and at `iter`ation.
 function Field(location, path::String, name::String, iter;
                grid = nothing,
                architecture = nothing,
+               indices = (:, :, :),
                boundary_conditions = nothing)
 
     file = jldopen(path)
@@ -166,9 +167,9 @@ function Field(location, path::String, name::String, iter;
 
     try
         data = offset_data(raw_data, grid, location)
-        return Field(location, grid; boundary_conditions, data)
+        return Field(location, grid; boundary_conditions, indices, data)
     catch
-        field = Field(location, grid; boundary_conditions)
+        field = Field(location, grid; boundary_conditions, indices)
         interior(field) .= raw_data
         return field
     end
@@ -186,6 +187,7 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
         file_iter = file_iterations[file_index]
 
         field_n = Field(location(time_series), path, name, file_iter,
+                        indices = time_series.indices,
                         boundary_conditions = time_series.boundary_conditions,
                         grid = time_series.grid)
 
@@ -233,7 +235,7 @@ struct OnDiskData
     name :: String
 end
 
-function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid=nothing, indices=(:, :, :))
+function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid=nothing)
     file = jldopen(path)
 
     if isnothing(grid)
@@ -246,23 +248,11 @@ function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid
     data = OnDiskData(path, name)
     LX, LY, LZ = file["timeseries/$name/serialized/location"]
     bcs = file["timeseries/$name/serialized/boundary_conditions"]
+    indices = file["timeseries/$name/serialized/indices"]
 
     close(file)
 
     return FieldTimeSeries{LX, LY, LZ, OnDisk}(data, grid, bcs, times, indices)
-end
-
-# For creating an empty `FieldTimeSeries`.
-function FieldTimeSeries(grid, location, times; name="", filepath="", bcs=nothing)
-    LX, LY, LZ = location
-
-    Nt = length(times)
-    data_size = total_size(location, grid)
-
-    raw_data = zeros(grid, data_size..., Nt)
-    data = offset_data(raw_data, grid, location)
-
-    return FieldTimeSeries{LX, LY, LZ}(InMemory(), data, grid, bcs, times, name, filepath, 4)
 end
 
 #####
@@ -270,7 +260,7 @@ end
 #####
 
 # Include the time dimension.
-@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid)..., length(fts.times))
+@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid, fts.indices)..., length(fts.times))
 
 @propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
 
@@ -284,13 +274,12 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
 
     # Wrap Field
     loc = (LX, LY, LZ)
-    field_data = offset_data(raw_data, fts.grid, loc)
+    field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    return Field(loc, fts.grid; boundary_conditions=fts.boundary_conditions, data=field_data)
+    return Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions, data=field_data)
 end
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
-
 Base.parent(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}) where {LX, LY, LZ} = nothing
 
 #####
