@@ -3,14 +3,15 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
+struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
      C :: FT
     Cb :: FT
     Pr :: P
 
-    function SmagorinskyLilly{TD}(C, Cb, Pr) where {TD}
+    function SmagorinskyLilly{TD, FT}(C, Cb, Pr) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr, Val(false))
-        return new{TD, typeof(Pr)}(C, Cb, Pr)
+        P = typeof(Pr)
+        return new{TD, FT, P}(C, Cb, Pr)
     end
 end
 
@@ -66,7 +67,7 @@ Lilly, D. K. "The representation of small-scale turbulence in numerical simulati
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
-    SmagorinskyLilly{TD}(C, Cb, Pr)
+        SmagorinskyLilly{TD, FT}(C, Cb, Pr)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
