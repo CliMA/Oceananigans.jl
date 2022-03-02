@@ -23,7 +23,7 @@ const AMD = AnisotropicMinimumDissipation
 @inline diffusivity(::AMD, ::Val{tracer_index}, diffusivities, args...) where tracer_index =
     diffusivities.κₑ[tracer_index]
 
-Base.show(io::IO, closure::AMD{TD} where TD =
+Base.show(io::IO, closure::AMD{TD}) where TD =
     print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
@@ -108,19 +108,18 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-
-AnisotropicMinimumDissipation(FT::DataType; kwargs...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kwargs...)
-
-function AnisotropicMinimumDissipation(time_disc = ExplicitTimeDiscretization(), FT = Float64;
-                                       C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing)
+function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Float64;
+                                       C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
 
     !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
-    return AnisotropicMinimumDissipation{typeof(time_disc), FT}(Cν, Cκ, Cb)
+    return AnisotropicMinimumDissipation{TD, FT}(Cν, Cκ, Cb)
 end
+
+AnisotropicMinimumDissipation(FT::DataType; kwargs...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kwargs...)
 
 function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
