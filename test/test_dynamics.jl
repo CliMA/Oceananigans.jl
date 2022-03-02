@@ -492,97 +492,91 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Diffusion of a cosine" begin
-        N, L = 128, π/2
-        grid = RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat))
+        for arch in archs
+            N, L = 128, π/2
+            grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
-        # Derive coordinates
-        x = xnodes(Center, grid, reshape=true)
-        y = permutedims(x, (2, 1, 3))
-        z = permutedims(x, (2, 3, 1))
+            # Derive coordinates
+            x = xnodes(Center, grid, reshape=true)
+            y = permutedims(x, (2, 1, 3))
+            z = permutedims(x, (2, 3, 1))
 
-        # Build a huge list of tests.
-        grids = []
-        coords = []
-        closures = []
-        fieldnames = []
+            # Build a huge list of tests.
+            grids = []
+            coords = []
+            closures = []
+            fieldnames = []
 
-        scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1) 
-        implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1) 
-        vertical_scalar_diffusivity = VerticalScalarDiffusivity(ν=1, κ=1)
-        implicit_vertical_scalar_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
+            scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1) 
+            implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1) 
+            vertical_scalar_diffusivity = VerticalScalarDiffusivity(ν=1, κ=1)
+            implicit_vertical_scalar_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
+            
+            # Cases on Non-Flat grids with `ScalarDiffusivity`
+            append!(coords, [x, y, z])
+            append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
+            append!(closures, [scalar_diffusivity for i = 1:3])
+            append!(grids, [RectilinearGrid(arch, size=(N, 1, 1), x=(0, L), y=(0, 1), z=(0, 1), topology=(Bounded, Periodic, Periodic)),
+                            RectilinearGrid(arch, size=(1, N, 1), x=(0, 1), y=(0, L), z=(0, 1), topology=(Periodic, Bounded, Periodic)),
+                            RectilinearGrid(arch, size=(1, 1, N), x=(0, 1), y=(0, 1), z=(0, L), topology=(Periodic, Periodic, Bounded))])
 
-        # Basic cases on Flat grids with the default formulation for `ScalarDiffusivity`
-        append!(coords, [x, y, z])
-        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
-        append!(closures, [scalar_diffusivity for i = 1:3])
-        append!(grids, [RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat)),
-                        RectilinearGrid(size=N, y=(0, L), topology=(Flat, Bounded, Flat)),
-                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+            # Basic cases on Flat grids with alternate formulations of `ScalarDiffusivity`
+            append!(coords, [x, y, z])
+            append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
+            append!(closures, [HorizontalScalarDiffusivity(ν=1, κ=1),
+                               HorizontalScalarDiffusivity(ν=1, κ=1),
+                               VerticalScalarDiffusivity(ν=1, κ=1)])
+            append!(grids, [RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat)),
+                            RectilinearGrid(arch, size=N, y=(0, L), topology=(Flat, Bounded, Flat)),
+                            RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
 
-        # Cases on Non-Flat grids with `ScalarDiffusivity`
-        append!(coords, [x, y, z])
-        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
-        append!(closures, [scalar_diffusivity for i = 1:3])
-        append!(grids, [RectilinearGrid(size=(N, 1, 1), x=(0, L), y=(0, 1), z=(0, 1), topology=(Bounded, Periodic, Periodic)),
-                        RectilinearGrid(size=(1, N, 1), x=(0, 1), y=(0, L), z=(0, 1), topology=(Periodic, Bounded, Periodic)),
-                        RectilinearGrid(size=(1, 1, N), x=(0, 1), y=(0, 1), z=(0, L), topology=(Periodic, Periodic, Bounded))])
+            # VerticallyImplicitTimeDiscretization cases
+            append!(coords, [z, z])
+            append!(fieldnames, [(:u, :v, :c) for i = 1:2])
+            append!(closures, [ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1),
+                               VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)])
+            append!(grids, [RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded)),
+                            RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+                               
+            # Immersed grid cases
+            immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size=2N, z=(0, 2L), topology=(Flat, Flat, Bounded)),
+                                                          GridFittedBottom((x, y) -> L))
 
-        # Basic cases on Flat grids with alternate formulations of `ScalarDiffusivity`
-        append!(coords, [x, y, z])
-        append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
-        append!(closures, [HorizontalScalarDiffusivity(ν=1, κ=1),
-                           HorizontalScalarDiffusivity(ν=1, κ=1),
-                           VerticalScalarDiffusivity(ν=1, κ=1)])
-        append!(grids, [RectilinearGrid(size=N, x=(0, L), topology=(Bounded, Flat, Flat)),
-                        RectilinearGrid(size=N, y=(0, L), topology=(Flat, Bounded, Flat)),
-                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+            z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
 
-        # VerticallyImplicitTimeDiscretization cases
-        append!(coords, [z, z])
-        append!(fieldnames, [(:u, :v, :c) for i = 1:2])
-        append!(closures, [ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1),
-                           VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)])
-        append!(grids, [RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded)),
-                        RectilinearGrid(size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
-                           
-        # Immersed grid cases
-        immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(size=2N, z=(0, 2L), topology=(Flat, Flat, Bounded)),
-                                                      GridFittedBottom((x, y) -> L))
+            append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
+            append!(fieldnames, [(:u, :v, :c) for i = 1:4])
+            append!(closures, [scalar_diffusivity,
+                               implicit_scalar_diffusivity,
+                               vertical_scalar_diffusivity,
+                               implicit_vertical_scalar_diffusivity])
+            append!(grids, [immersed_vertical_grid for i = 1:4])
 
-        z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
+            # Stretched grid cases
+            stretched_z_grid = RectilinearGrid(arch, size=N, z=center_clustered_coord(N, L, 0), topology=(Flat, Flat, Bounded))
+            stretched_immersed_z_grid =
+                ImmersedBoundaryGrid(RectilinearGrid(arch, size=2N, z=center_clustered_coord(2N, 2L, 0), topology=(Flat, Flat, Bounded)),
+                                     GridFittedBottom((x, y) -> L))
 
-        append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
-        append!(fieldnames, [(:u, :v, :c) for i = 1:4])
-        append!(closures, [scalar_diffusivity,
-                           implicit_scalar_diffusivity,
-                           vertical_scalar_diffusivity,
-                           implicit_vertical_scalar_diffusivity])
-        append!(grids, [immersed_vertical_grid for i = 1:4])
+            stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
+            append!(coords, [znodes(Center, grid, reshape=true) for grid in stretched_grids])
+            append!(fieldnames, [(:u, :v, :c) for i = 1:4])
+            append!(closures, [vertical_scalar_diffusivity,
+                               implicit_vertical_scalar_diffusivity,
+                               vertical_scalar_diffusivity,
+                               implicit_vertical_scalar_diffusivity])
+            append!(grids, stretched_grids)
+                            
+            # Run the tests
+            for case = 1:length(grids)
+                closure = closures[case]
+                grid = grids[case]
+                coord = coords[case]
 
-        # Stretched grid cases
-        stretched_z_grid = RectilinearGrid(size=N, z=center_clustered_coord(N, L, 0), topology=(Flat, Flat, Bounded))
-        stretched_immersed_z_grid =
-            ImmersedBoundaryGrid(RectilinearGrid(size=N, z=center_clustered_coord(2N, 2L, 0), topology=(Flat, Flat, Bounded)),
-                                 GridFittedBottom((x, y) -> L))
-
-        stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
-        append!(coords, [znodes(Center, grid, reshape=true) for grid in stretched_grids])
-        append!(fieldnames, [(:u, :v, :c) for i = 1:4])
-        append!(closures, [vertical_scalar_diffusivity,
-                           implicit_vertical_scalar_diffusivity,
-                           vertical_scalar_diffusivity,
-                           implicit_vertical_scalar_diffusivity])
-        append!(grids, stretched_grids)
-                        
-        # Run the tests
-        for case = 1:length(grids)
-            closure = closures[case]
-            grid = grids[case]
-            coord = coords[case]
-
-            for fieldname in fieldnames[case]
-                @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
-                @test test_diffusion_cosine(fieldname, grid, closure, coord)
+                for fieldname in fieldnames[case]
+                    @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
+                    @test test_diffusion_cosine(fieldname, grid, closure, coord)
+                end
             end
         end
     end
