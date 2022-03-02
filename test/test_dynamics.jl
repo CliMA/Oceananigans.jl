@@ -492,7 +492,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Diffusion of a cosine" begin
-        for arch in archs
+        for arch in [CPU()] # Need some work to make these run on GPU
             N, L = 128, π/2
             grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
@@ -539,7 +539,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                             RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
                                
             # Immersed grid cases
-            immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size=2N, z=(0, 2L), topology=(Flat, Flat, Bounded)),
+            immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch,
+                                                                          size = (1, 1, 2N),
+                                                                          x = (0, 1),
+                                                                          y = (0, 1),
+                                                                          z = (0, 2L),
+                                                                          topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
             z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
@@ -555,7 +560,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # Stretched grid cases
             stretched_z_grid = RectilinearGrid(arch, size=N, z=center_clustered_coord(N, L, 0), topology=(Flat, Flat, Bounded))
             stretched_immersed_z_grid =
-                ImmersedBoundaryGrid(RectilinearGrid(arch, size=2N, z=center_clustered_coord(2N, 2L, 0), topology=(Flat, Flat, Bounded)),
+            ImmersedBoundaryGrid(RectilinearGrid(arch,
+                                                 size = (1, 1, 2N),
+                                                 x = (0, 1),
+                                                 y = (0, 1),
+                                                 z = center_clustered_coord(2N, 2L, 0),
+                                                 topology = (Periodic, Periodic, Bounded)),
                                      GridFittedBottom((x, y) -> L))
 
             stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
