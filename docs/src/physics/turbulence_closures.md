@@ -42,8 +42,6 @@ in terms of the horizontal viscosities and diffusivities, ``\nu_h`` and ``\kappa
 vertical viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
 diffusivity components ``\kappa_h`` and ``\kappa_v``.
 
-See [ScalarDiffusivity](@ref).
-
 ## Scalar biharmonic diffusivity
 
 A constant biharmonic diffusivity implies a constant tensor diffusivity ``\nu_{j k}`` and
@@ -63,8 +61,6 @@ and diffusive flux divergence
 in terms of the horizontal biharmonic viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
 vertical biharmonic viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
 diffusivity components ``\kappa_h`` and ``\kappa_z``.
-
-See [ScalarBiharmonicDiffusivity](@ref).
 
 ## Smagorinsky-Lilly turbulence closure
 
