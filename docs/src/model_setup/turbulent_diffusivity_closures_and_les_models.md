@@ -27,10 +27,10 @@ diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use `HorizontalScalarDiffu
 julia> using Oceananigans.TurbulenceClosures
 
 julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}(ν=0.001, κ=0.002)
+HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=0.002)
 
 julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity{ExplicitTimeDiscretization, VerticalFormulation}(ν=0.001, κ=0.002)
+VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=0.002)
 ```
 
 After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the
