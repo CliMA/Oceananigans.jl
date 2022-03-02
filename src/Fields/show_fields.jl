@@ -1,5 +1,6 @@
 using Printf
 using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.Utils: prettysummary
 using Oceananigans.BoundaryConditions: bc_str
 
 location_str(::Type{Face})    = "Face"
@@ -23,9 +24,9 @@ function Base.summary(field::Field)
     return string(prefix, suffix)
 end
 
-data_summary(field) = string("max=", scalar_summary(maximum(field)), ", ",
-                             "min=", scalar_summary(minimum(field)), ", ",
-                             "mean=", scalar_summary(mean(field)))
+data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
+                             "min=", prettysummary(minimum(field)), ", ",
+                             "mean=", prettysummary(mean(field)))
 
 function Base.show(io::IO, field::Field)
 

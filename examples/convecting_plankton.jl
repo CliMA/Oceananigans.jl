@@ -177,7 +177,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 outputs = (w = model.velocities.w,
            P = model.tracers.P,
-           P̄ = Average(model.tracers.P, dims=(1, 2)))
+           P_avg = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
@@ -206,19 +206,20 @@ run!(simulation)
 
 using JLD2
 
-file = jldopen(simulation.output_writers[:simple_output].filepath)
+filepath = simulation.output_writers[:simple_output].filepath
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries(filepath, "w")
+P_timeseries = FieldTimeSeries(filepath, "P")
+P_avg_timeseries = FieldTimeSeries(filepath, "P_avg")
 
-times = [file["timeseries/t/$iter"] for iter in iterations]
-
+times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
-xw, yw, zw = nodes(model.velocities.w)
-xp, yp, zp = nodes(model.tracers.P)
+xw, yw, zw = nodes(w_timeseries)
+xp, yp, zp = nodes(P_timeseries)
 nothing # hide
 
 # Finally, we animate plankton mixing and blooming,
@@ -227,22 +228,16 @@ using Plots
 
 @info "Making a movie about plankton..."
 
-w_lim = 0   # the maximum(abs(w)) across the whole timeseries
-
-for (i, iteration) in enumerate(iterations)
-    w = file["timeseries/w/$iteration"][:, 1, :]
-
-    global w_lim = maximum([w_lim, maximum(abs.(w))])
-end
+w_lim = maximum(abs, interior(w_timeseries))
 
 anim = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
 
-    t = file["timeseries/t/$iteration"]
-    w = file["timeseries/w/$iteration"][:, 1, :]
-    P = file["timeseries/P/$iteration"][:, 1, :]
-    P̄ = file["timeseries/P̄/$iteration"][1, 1, :]
+    t = times[i]
+    w = interior(w_timeseries[i])[:, 1, :]
+    P = interior(P_timeseries[i])[:, 1, :]
+    P_avg = interior(P_avg_timeseries[i])[1, 1, :]
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
@@ -269,7 +264,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                           clims = P_lims,
                           kwargs...)
 
-    P_profile = plot(P̄, zp,
+    P_profile = plot(P_avg, zp,
                      linewidth = 2,
                      label = nothing,
                      xlims = (0.9, 1.3),

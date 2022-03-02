@@ -8,7 +8,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary
 
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
@@ -304,11 +304,20 @@ backend_str(::OnDisk) = "OnDisk"
 ##### show
 #####
 
-Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K} =
-    string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at $(show_location(fts))")
+function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
+    arch = architecture(fts)
+    A = typeof(arch)
+    return string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at ", show_location(fts), " on ", A)
+end
 
-Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, K, A}) where {LX, LY, LZ, K, A} =
-    print(io, "$(summary(fts))\n",
-          "├── architecture: $A\n",
-          "└── grid: $(summary(fts.grid))")
+function Base.show(io::IO, fts::FieldTimeSeries)
+    prefix = string(summary(fts), '\n',
+                   "├── grid: ", summary(fts.grid), '\n',
+                   "├── indices: ", fts.indices, '\n')
+
+    suffix = string("└── data: ", summary(fts.data), '\n',
+                    "    └── ", data_summary(fts))
+
+    return print(io, prefix, suffix)
+end
 

@@ -41,12 +41,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     return indices
 end
 
-function construct_output(user_output::AbstractField, grid, user_indices, with_halos)
-    indices = output_indices(user_output, grid, user_indices, with_halos)
-    return construct_output(user_output, indices)
-end
-
-function construct_output(user_output::AbstractField, grid, user_indices, with_halos)
+function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
     return construct_output(user_output, indices)
 end
