@@ -39,6 +39,14 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          schedule = TimeInterval(30seconds),
                          force = true)
 
+    simulation.output_writers[:jld2_2d_with_halos] =
+        JLD2OutputWriter(model, fields_to_output,
+                         prefix = "test_2d_output_with_halos",
+                         indices = (:, :, grid.Nz),
+                         with_halos = true,
+                         schedule = TimeInterval(30seconds),
+                         force = true)
+
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
     simulation.output_writers[:jld2_1d_with_halos] =
@@ -61,6 +69,7 @@ end
     Nt = 5
 
     filepath3d = "test_3d_output_with_halos.jld2"
+    filepath2d = "test_2d_output_with_halos.jld2"
     filepath1d = "test_1d_output_with_halos.jld2"
 
     for arch in archs
@@ -108,6 +117,40 @@ end
                 @test u3[1, 2, 3, 4] isa Number
                 @test u3[1] isa Field
                 @test v3[2] isa Field
+            end
+
+            ## 2D sliced Fields
+
+            u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
+            v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
+            w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
+            T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
+            b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
+            ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
+
+            @test location(u2) == (Face, Center, Center)
+            @test location(v2) == (Center, Face, Center)
+            @test location(w2) == (Center, Center, Face)
+            @test location(T2) == (Center, Center, Center)
+            @test location(b2) == (Center, Center, Center)
+            @test location(ζ2) == (Face, Face, Center)
+
+            @test size(u2) == (Nx, Ny, 1,   Nt)
+            @test size(v2) == (Nx, Ny, 1,   Nt)
+            @test size(w2) == (Nx, Ny, 1, Nt)
+            @test size(T2) == (Nx, Ny, 1,   Nt)
+            @test size(b2) == (Nx, Ny, 1,   Nt)
+            @test size(ζ2) == (Nx, Ny, 1,   Nt)
+
+            ArrayType = array_type(arch)
+            for fts in (u3, v3, w3, T3, b3, ζ3)
+                @test parent(fts) isa ArrayType
+            end
+
+            if arch isa CPU
+                @test u2[1, 2, 1, 4] isa Number
+                @test u2[1] isa Field
+                @test v2[2] isa Field
             end
 
             ## 1D AveragedFields

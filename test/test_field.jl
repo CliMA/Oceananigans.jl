@@ -207,6 +207,7 @@ end
             @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
             @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
 
+            # "View" fields
             for f in [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
 
                 test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
