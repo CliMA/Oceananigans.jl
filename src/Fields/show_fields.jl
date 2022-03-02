@@ -50,3 +50,21 @@ Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
+const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
+
+function Base.show(io::IO, ft::FieldTuple)
+    names = keys(ft)
+    N = length(ft)
+
+    print(io, "NamedTuple with ", N, " Fields", '\n')
+
+    for name in names[1:end-1]
+        field = ft[name]
+        print(io, "├── $name: ", summary(field), '\n')
+    end
+
+    name = names[end]
+    field = ft[name]
+    print(io, "└── $name: ", summary(field))
+end
+
