@@ -113,7 +113,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(α=0.000167, β=0.00078) with -ĝ = ZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
 └── coriolis: Nothing
 ```
 
@@ -126,7 +126,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(α=0.000167, β=0.00078) with -ĝ = ZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
 ├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
@@ -140,7 +140,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(α=0.000167, β=0.00078) with -ĝ = ZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
 ├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
@@ -152,7 +152,7 @@ we might alternatively specify
 julia> buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 1.3
-└── equation of state: LinearEquationOfState(α=0.000167, β=0.00078)
+└── equation of state: LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078)
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
@@ -160,7 +160,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=1.3 and LinearEquationOfState(α=0.000167, β=0.00078) with -ĝ = ZDirection
+├── buoyancy: SeawaterBuoyancy with g=1.3 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
 └── coriolis: Nothing
 ```
 
@@ -172,10 +172,10 @@ To specify the thermal expansion and haline contraction coefficients
 ``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{psu}^{-1}``,
 
 ```jldoctest
-julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-3, β=5e-4))
+julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2e-3, haline_contraction=5e-4))
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: LinearEquationOfState(α=0.002, β=0.0005)
+└── equation of state: LinearEquationOfState(thermal_expansion=0.002, haline_contraction=0.0005)
 ```
 
 ### Idealized nonlinear equations of state
