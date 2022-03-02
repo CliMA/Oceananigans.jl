@@ -264,7 +264,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── south: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
 ├── north: Oceananigans.BoundaryConditions.DefaultPrognosticFieldBoundaryCondition
-├── bottom: BoundaryCondition{Oceananigans.BoundaryConditions.Gradient, Float64}
+├── bottom: BoundaryCondition{Gradient, Float64}
 ├── top: BoundaryCondition{Value, Int64}
 └── immersed: BoundaryCondition{Flux, Nothing}
 ```
