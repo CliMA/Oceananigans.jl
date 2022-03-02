@@ -212,6 +212,7 @@ w_timeseries = FieldTimeSeries(filepath, "w")
 P_timeseries = FieldTimeSeries(filepath, "P")
 P_avg_timeseries = FieldTimeSeries(filepath, "P_avg")
 
+iterations = w_timeseries.iterations
 times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
