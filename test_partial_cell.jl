@@ -20,6 +20,9 @@ grid = RectilinearGrid(size=(16, 8), y=(-1, 1), z=(-1, 0),
 seamount(x, y) = - 1 + h0*exp(-y^2/L^2)
 grid_with_seamount = ImmersedBoundaryGrid(grid, PartialCellBottom(seamount, 0.1))
 
+#seamount(x, y, z) = z < - 1 + h0*exp(-y^2/L^2)
+#grid_with_seamount = ImmersedBoundaryGrid(grid, GridFittedBoundary(seamount))
+
 c = CenterField(grid_with_seamount)
 c .= 1
 mask_immersed_field!(c)
@@ -119,6 +122,7 @@ for (index, advection_scheme) in enumerate(advection_schemes)
     Simulation complete with advection scheme $(advection_scheme)
     Simulation time = $(prettytime(sim_times[index]))
     Error in tracer conservation is $(tracer_errors[index]) percent.
+    Error in tracer variance is $(tracer2_errors[index]) percent.
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 
     """
