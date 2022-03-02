@@ -62,9 +62,9 @@ Return the size of a `grid` at `loc`, not including halos.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 along `x, y, z`.
 """
-@inline Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
-                                              length(loc[2], topology(grid, 2), grid.Ny),
-                                              length(loc[3], topology(grid, 3), grid.Nz))
+Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
+                                      length(loc[2], topology(grid, 2), grid.Ny),
+                                      length(loc[3], topology(grid, 3), grid.Nz))
 
 Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
 Base.size(grid::AbstractGrid, d) = size(grid)[d]
@@ -87,6 +87,13 @@ function total_size(loc, grid, indices::Tuple)
     sz = total_size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
+
+function Base.size(loc, grid::AbstractGrid, indices::Tuple)
+    sz = size(loc, grid)
+    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
+end
+
+
 
 """
     halo_size(grid)
