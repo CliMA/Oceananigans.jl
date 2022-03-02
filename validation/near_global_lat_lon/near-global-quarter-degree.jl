@@ -85,8 +85,7 @@ bathymetry = file_bathymetry["bathymetry"]
 T★ = zeros(Nx, Ny, Nmonths)
 S★ = zeros(Nx, Ny, Nmonths)
 
-for 1 in 1:Nyears
-    month = 12 * (yr - 1) + 1 : 12 * yr
+for month in 1:Nmonths
     τˣ[:, :, month] = file_tau_x["field"] ./ reference_density
     τʸ[:, :, month] = file_tau_y["field"] ./ reference_density
     T★[:, :, month] = file_temp["field"] 
@@ -228,8 +227,6 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-
-using SeawaterPolynomials
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
