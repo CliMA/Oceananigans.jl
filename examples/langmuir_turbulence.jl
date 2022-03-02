@@ -226,8 +226,8 @@ simulation.output_writers[:fields] =
 u, v, w = model.velocities
 
 U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2)
-B = Average(model.tracers.b, dims=(1, 2)))
+V = Average(v, dims=(1, 2))
+B = Average(model.tracers.b, dims=(1, 2))
 
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
