@@ -148,7 +148,7 @@ end
             end
 
             if arch isa CPU
-                @test u2[1, 2, 1, 4] isa Number
+                @test u2[1, 2, 5, 4] isa Number
                 @test u2[1] isa Field
                 @test v2[2] isa Field
             end

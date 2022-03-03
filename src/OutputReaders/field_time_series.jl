@@ -40,8 +40,8 @@ Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
 `boundary_conditions`, and initialized with zeros of `eltype(grid)`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
-                                     indices=(:, :, :),
-                                     boundary_conditions=nothing) where {LX, LY, LZ}
+                                     indices = (:, :, :),
+                                     boundary_conditions = nothing) where {LX, LY, LZ}
     Nt = length(times)
     arch = architecture(grid)
     loc = (LX, LY, LZ)
@@ -120,6 +120,7 @@ function FieldTimeSeries(path, name, backend::InMemory;
 
     LX, LY, LZ = location
     time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices, boundary_conditions)
+
     set!(time_series, path, name)
 
     return time_series
@@ -165,14 +166,9 @@ function Field(location, path::String, name::String, iter;
 
     close(file)
 
-    try
-        data = offset_data(raw_data, grid, location)
-        return Field(location, grid; boundary_conditions, indices, data)
-    catch
-        field = Field(location, grid; boundary_conditions, indices)
-        interior(field) .= raw_data
-        return field
-    end
+    data = offset_data(raw_data, grid, location, indices)
+    
+    return Field(location, grid; boundary_conditions, indices, data)
 end
 
 function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
