@@ -14,17 +14,16 @@
 # We use a one-dimensional domain of geophysical proportions,
 
 using Oceananigans
-using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 using Oceananigans.Utils: prettytime
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface 
 
-
-grid = RegularLatitudeLongitudeGrid(size = (90*2, 40*2, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-1, 0), radius = 1.2)
+grid = LatitudeLongitudeGrid(size = (360, 180, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-1, 0), radius = 1.2, halo = (3, 3, 3), precompute_metrics=true)
 #  λ for latitude and ϕ for latitude is
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, HydrostaticSphericalCoriolis
 
 Ω = 0
 coriolis = HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving(), rotation_rate = Ω)
+
+s = readline()
 
 # ## Building a `HydrostaticFreeSurfaceModel`
 #
@@ -32,21 +31,25 @@ coriolis = HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyCon
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 
 # closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=0, κh=0)
 # VectorInvariantEnergyConserving()
 # HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving())
-# momentum_advection = VectorInvariant()
-νh = κh = 1e-6
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    momentum_advection = VectorInvariant(),
+if s == "1"
+    momentum_advection = WENO5(vector_invariant=true) 
+else
+    momentum_advection =  VectorInvariant() 
+end
+
+νh = κh = 1e-8
+closure = HorizontalScalarDiffusivity(κ=κh, ν=νh)
+
+model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, closure,
                                     buoyancy = nothing,
                                     tracers = :c,
                                     coriolis = coriolis,
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=κh, νh =  νh),
-                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=1e-4),
-)
+                                    free_surface = ImplicitFreeSurface(gravitational_acceleration=1e-20, 
+                                    solver_method=:HeptadiagonalIterativeSolver))
 
 # ## The Bickley jet on a sphere
 # θ ∈ [-π/2, π/2]
@@ -78,12 +81,10 @@ uᵖ(θ, ϕ) =  u1(θ, ϕ) + u2(θ, ϕ) + u3(θ, ϕ)
 vᵖ(θ, ϕ) =  m * exp(-ℓ * (θ - θᵖ)^2) * cos(2 * (θ - θᵖ)) * cos(m * ϕ)
 hᵖ(θ, ϕ) =  0.0 
 
-u(θ, ϕ) = vˢ * (uᵐ(θ, ϕ) + ϵ * uᵖ(θ, ϕ))
-v(θ, ϕ) = vˢ * (vᵐ(θ, ϕ) + ϵ * vᵖ(θ, ϕ))
-h(θ, ϕ) = hᵐ(θ, ϕ) + ϵ * hᵖ(θ, ϕ)
+u₁(θ, ϕ) = vˢ * (uᵐ(θ, ϕ) + ϵ * uᵖ(θ, ϕ))
+v₁(θ, ϕ) = vˢ * (vᵐ(θ, ϕ) + ϵ * vᵖ(θ, ϕ))
+h₁(θ, ϕ) = hᵐ(θ, ϕ) + ϵ * hᵖ(θ, ϕ)
 tracer(θ, ϕ) = tanh(ℓᵐ * θ)
-
-
 
 # Total initial conditions
 # previously: θ ∈ [-π/2, π/2] is latitude, ϕ ∈ [0, 2π) is longitude
@@ -91,103 +92,128 @@ tracer(θ, ϕ) = tanh(ℓᵐ * θ)
 rescale¹(λ) = (λ + 180)/ 360 * 2π # λ to θ
 rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 # arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
-uᵢ(λ, ϕ, z) = u(rescale²(ϕ), rescale¹(λ))
-vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
-ηᵢ(λ, ϕ, z) = h(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
+uᵢ(λ, ϕ, z) = u₁(rescale²(ϕ), rescale¹(λ))
+vᵢ(λ, ϕ, z) = v₁(rescale²(ϕ), rescale¹(λ))
+hᵢ(λ, ϕ) = h₁(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
 tracerᵢ(λ, ϕ, z) = tracer(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
 
-set!(model, u=uᵢ, v=vᵢ, η = ηᵢ, c = tracerᵢ) 
+u, v, w = model.velocities
+η = model.free_surface.η
+c = model.tracers.c
+set!(u, uᵢ)
+set!(v, vᵢ)
+set!(η, hᵢ) 
+set!(c, tracerᵢ)
 
 # Create Simulation
 
 gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
+Δx = grid.Δxᶠᶜᵃ[1]
+
 # 20wave_propagation_time_scale,
-Δt = grid.Lz * model.grid.Δλ / gravity_wave_speed * 0.001
-simulation = Simulation(model, Δt = Δt, stop_time = 4*6000Δt, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
+Δt = 0.2 #Δx / gravity_wave_speed 
+simulation = Simulation(model, Δt = Δt, stop_time = 6000Δt)
+
+using Printf
+
+progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
+                        iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,), model.tracers)
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
+if s == "1"
+    output = "sb_weno"
+else
+    output = "sb_noweno"
+end
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(100Δt),
-                                                      prefix = "rh",
+                                                      prefix = output,
                                                       force = true)
 
 run!(simulation)
 
 ##
-using JLD2, Printf, Oceananigans.Grids, GLMakie
-using Oceananigans.Utils: hours
+#=
+using JLD2, GLMakie, Printf
 
-λ, ϕ, r = nodes(model.free_surface.η, reshape=true)
+const hours = 3600
 
-λ = λ .+ 180  # Convert to λ ∈ [0°, 360°]
-ϕ = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
-##
-file = jldopen(simulation.output_writers[:fields].filepath)
+λ = range(-180,179,length = 360)
+ϕ = range(-79.5,79.5,length = 180)
+
+filename = "sb_weno"
+
+file = jldopen(filename * ".jld2")
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-iter = Node(0)
-plot_title = @lift @sprintf("Spherical-Bickley Test: u, v, η @ time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+iter = Observable(0)
+plot_title = @lift @sprintf("Rossby-Haurwitz Test: u, v, η @ time = %s", file["timeseries/t/" * string($iter)])
 up = @lift file["timeseries/u/" * string($iter)][:, :, 1]
-vp = @lift file["timeseries/v/" * string($iter)][:, :, 1]
-ηp = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 cp = @lift file["timeseries/c/" * string($iter)][:, :, 1]
+ηp = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
 up0 = file["timeseries/u/" * string(0)][:, :, 1]
 vp0 = file["timeseries/v/" * string(0)][:, :, 1]
 ηp0 = file["timeseries/η/" * string(0)][:, :, 1]
-cp0 = file["timeseries/c/" * string(0)][:, :, 1]
 
-# Plot on the unit sphere to align with the spherical wireframe.
-# Multiply by 1.01 so the η field is a bit above the wireframe.
-x = @. 1.01 * cosd(λ) * sind(ϕ)
-y = @. 1.01 * sind(λ) * sind(ϕ)
-z = @. 1.01 * cosd(ϕ) * λ ./ λ
+function geographic2cartesian(λ, φ; r=1.01)
+    Nλ = length(λ)
+    Nφ = length(φ)
 
-x = x[:, :, 1]
-y = y[:, :, 1]
-z = z[:, :, 1]
+    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ)
+    φ = repeat(reshape(φ, 1, Nφ), Nλ, 1)
 
-fig = Figure(resolution = (3156, 1074))
+    λ_azimuthal = λ .+ 180  
+    φ_azimuthal = 90 .- φ   
 
-clims = [(-2e-3, 2e-3), (-2e-3, 2e-3), (0.94,1.01), (-1.0, 1.0)]
+    x = @. r * cosd(λ_azimuthal) * sind(φ_azimuthal)
+    y = @. r * sind(λ_azimuthal) * sind(φ_azimuthal)
+    z = @. r * cosd(φ_azimuthal)
 
-statenames = ["u", "v", "η", "c"]
-for (n, var) in enumerate([up, vp, ηp, cp])
-    ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
-    wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
-    surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
-    rotate_cam!(ax.scene, (2π/3, π/6, 0))
-    zoom!(ax.scene, (0, 0, 0), 5, false)
-    fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
+    return x, y, z
 end
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+x, y, z = geographic2cartesian(λ, ϕ)
+
+fig = Figure(resolution = (3500, 3000))
+
+fontsize_theme = Theme(fontsize = 25)
+set_theme!(fontsize_theme)
+
+ax1 = fig[1, 1] = LScene(fig) # make plot area wider
+wireframe!(ax1, Sphere(Point3f0(0), 1f0), show_axis=false)
+hm1 = surface!(ax1, x, y, z, color=up, colormap=:blues, colorrange=(-0.0004, 0.0004))
+
+ax2 = fig[1, 2] = LScene(fig) # make plot area wider
+wireframe!(ax2, Sphere(Point3f0(0), 1f0), show_axis=false)
+hm2 = surface!(ax2, x, y, z, color=cp, colormap=:solar)
+
+ax3 = fig[1, 3] = LScene(fig) # make plot area wider
+wireframe!(ax3, Sphere(Point3f0(0), 1f0), show_axis=false)
+hm2 = surface!(ax3, x, y, z, color=ηp, colormap=:balance, colorrange=(0.9,  1.05))
+
+init = (π/5, π/6, 0)
+rotate_cam!(ax1.scene, init)
+rotate_cam!(ax2.scene, init)
+rotate_cam!(ax3.scene, init)
+
+rot  = (0, π/300, 0)
+
 display(fig)
-#=
-for i in iterations
+
+record(fig, filename * ".mp4", iterations[1:end-2], framerate=10) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    # rotate_cam!(ax1.scene, rot)
+    # rotate_cam!(ax2.scene, rot)
+    # rotate_cam!(ax3.scene, rot)
     iter[] = i
-    display(fig)
 end
 =#
-##
-iterations = 1:360
-record(fig, "SphericalBickley.mp4", iterations, framerate=30) do i
-    for n in 1:3
-        rotate_cam!(fig.scene.children[n], (2π/360, 0, 0))
-    end
-end
-
-##
-record(fig, "SphericalBickley.mp4", iterations, framerate=30) do i
-    iter[] = i
-    
-    for n in 1:4
-        rotate_cam!(fig.scene.children[n], (2π/360, 0, 0))
-    end
-
-end

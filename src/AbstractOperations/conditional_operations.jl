@@ -122,7 +122,6 @@ end
 @inline get_condition(condition, i, j, k, grid, args...)                = condition(i, j, k, grid, args...)
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
-
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
