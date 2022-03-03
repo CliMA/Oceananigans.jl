@@ -343,8 +343,8 @@ end
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
-Base.isapprox(ϕ::Field, ψ::Field; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)
 Base.fill!(f::Field, val) = fill!(parent(f), val)
+Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 length_indices(N, i::Colon) = N
@@ -630,6 +630,13 @@ function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
     return CUDA.@allowscalar sqrt(r[1])
+end
+
+function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
+    conditioned_a = condition_operand(a, nothing, one(eltype(a)))
+    conditioned_b = condition_operand(b, nothing, one(eltype(b)))
+    # TODO: Make this non-allocating?
+    return all(isapprox.(conditioned_a, conditioned_b; kw...))
 end
 
 #####

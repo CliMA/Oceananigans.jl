@@ -8,8 +8,8 @@ using Oceananigans.BuoyancyModels:
     haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶠᶜ, haline_contractionᶜᶜᶠ
 
 function instantiate_linear_equation_of_state(FT, α, β)
-    eos = LinearEquationOfState(FT, α=α, β=β)
-    return eos.α == FT(α) && eos.β == FT(β)
+    eos = LinearEquationOfState(FT, thermal_expansion=α, haline_contraction=β)
+    return eos.thermal_expansion == FT(α) && eos.haline_contraction == FT(β)
 end
 
 function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)

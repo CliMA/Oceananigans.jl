@@ -71,11 +71,9 @@ plot(grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz],
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
+                                                                    haline_contraction = 8e-4))
 
-# where ``\alpha`` and ``\beta`` are the thermal expansion and haline contraction
-# coefficients for temperature and salinity.
-#
 # ## Boundary conditions
 #
 # We calculate the surface temperature flux associated with surface heating of

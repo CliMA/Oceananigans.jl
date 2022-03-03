@@ -58,7 +58,7 @@ cᵖ = 3994.0   # [J/K]  heat capacity
 ρ  = 999.8    # [kg/m³] density
 const h = 1000.0     # [m] e-folding length scale for northern sponge
 const ΔB = 8 * α * g # [m/s²] total change in buoyancy from surface to bottom
-eos = LinearEquationOfState(FT, α=α, β=0)
+eos = LinearEquationOfState(FT, thermal_expansion=α, haline_contraction=0)
 buoyancy = BuoyancyTracer()
 
 κh = 0.5e-5 # [m²/s] horizontal diffusivity

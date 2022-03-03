@@ -11,8 +11,8 @@ struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitT
     isopycnal_model :: M
 
     function TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model) where FT
-        C_Redi = convert_diffusivity(FT, C_Redi, Val(false))
-        C_GM = convert_diffusivity(FT, C_GM, Val(false))
+        C_Redi = convert_diffusivity(FT, C_Redi)
+        C_GM = convert_diffusivity(FT, C_GM)
         return new{FT, typeof(C_Redi), typeof(C_GM), typeof(isopycnal_model)}(C, C_Redi, C_GM)
     end
 end

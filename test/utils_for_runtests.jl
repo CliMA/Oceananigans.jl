@@ -14,13 +14,11 @@ test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
         Δ = φ .- φ_c
-
         Δ_min      = minimum(Δ)
         Δ_max      = maximum(Δ)
         Δ_mean     = mean(Δ)
         Δ_abs_mean = mean(abs, Δ)
         Δ_std      = std(Δ)
-
         matching    = sum(φ .≈ φ_c)
         grid_points = length(φ_c)
 
@@ -33,6 +31,7 @@ end
 ##### Grid utils
 #####
 
+# TODO: docstring?
 function center_clustered_coord(N, L, x₀)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
     z_faces = zeros(N+1) 
@@ -43,6 +42,7 @@ function center_clustered_coord(N, L, x₀)
     return z_faces
 end
 
+# TODO: docstring?
 function boundary_clustered_coord(N, L, x₀)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
     z_faces = zeros(N+1) 
@@ -84,13 +84,8 @@ interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                             grid.Hy+1:grid.Ny+grid.Hy,
                             grid.Hz+1:grid.Nz+grid.Hz)
 
-function get_model_field(field_name, model)
-    if field_name ∈ (:u, :v, :w)
-        return getfield(model.velocities, field_name)
-    else
-        return getfield(model.tracers, field_name)
-    end
-end
+datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
+datatuple(args, names) = NamedTuple{names}(a.data for a in args)
 
 function get_output_tuple(output, iter, tuplename)
     file = jldopen(output.filepath, "r")
