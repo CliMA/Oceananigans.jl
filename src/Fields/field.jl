@@ -76,7 +76,11 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-validate_index(idx, loc, topo, N, H) = throw(ArgumentError("$idx are not valid window indices for Field!"))
+function validate_index(idx, loc, topo, N, H)
+    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
+    return throw(ArgumentError("$idx are not supported window indices for Field!"))
+end
+
 validate_index(::Colon, loc, topo, N, H) = Colon()
 validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
@@ -352,8 +356,6 @@ length_indices(N, i::UnitRange) = length(i)
 
 total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
 Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
-
-Base.parent(f::Field) = parent(f.data)
 
 #####
 ##### Interface for field computations

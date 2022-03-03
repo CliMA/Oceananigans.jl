@@ -18,7 +18,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, Plots"
 # ```
 
 using Oceananigans
@@ -246,26 +246,26 @@ run!(simulation)
 
 # # Making a neat movie
 #
-# We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
+# We look at the results by loading data from file with FieldTimeSeries,
+# and plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+using Plots
+
+time_series = (;
+     w = FieldTimeSeries("langmuir_turbulence_fields.jld2", "w"),
+     u = FieldTimeSeries("langmuir_turbulence_fields.jld2", "u"),
+     B = FieldTimeSeries("langmuir_turbulence_averages.jld2", "B"),
+     U = FieldTimeSeries("langmuir_turbulence_averages.jld2", "U"),
+     V = FieldTimeSeries("langmuir_turbulence_averages.jld2", "V"),
+    wu = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wu"),
+    wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv")
+)
+
+times = time_series.w.times
+xw, yw, zw = nodes(time_series.w)
+xu, yu, zu = nodes(time_series.u)
 nothing # hide
-
-# Making the coordinate arrays takes a few lines of code,
-
-xw, yw, zw = nodes(model.velocities.w)
-xu, yu, zu = nodes(model.velocities.u)
-nothing # hide
-
-# Next, we open the JLD2 file, and extract the iterations we ended up saving at,
-
-using JLD2, Plots
-
-fields_file = jldopen(simulation.output_writers[:fields].filepath)
-averages_file = jldopen(simulation.output_writers[:averages].filepath)
-
-iterations = parse.(Int, keys(fields_file["timeseries/t"]))
 
 # This utility is handy for calculating nice contour intervals:
 
@@ -281,25 +281,24 @@ nothing # hide
 
 @info "Making an animation from the saved data..."
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(times)
 
-    @info "Drawing frame $i from iteration $iter \n"
+    @info "Drawing frame $i of $(length(times))..."
 
-    ## Load 3D fields from fields_file
-    t = fields_file["timeseries/t/$iter"]
-    w_snapshot = fields_file["timeseries/w/$iter"]
-    u_snapshot = fields_file["timeseries/u/$iter"]
-
-    B_snapshot = averages_file["timeseries/b/$iter"][1, 1, :]
-    U_snapshot = averages_file["timeseries/u/$iter"][1, 1, :]
-    V_snapshot = averages_file["timeseries/v/$iter"][1, 1, :]
-    wu_snapshot = averages_file["timeseries/wu/$iter"][1, 1, :]
-    wv_snapshot = averages_file["timeseries/wv/$iter"][1, 1, :]
+    ## Get fields at ith save point
+     wi = time_series.w[i]
+     ui = time_series.u[i]
+     Bi = time_series.B[i][1, 1, :]
+     Ui = time_series.U[i][1, 1, :]
+     Vi = time_series.V[i][1, 1, :]
+    wui = time_series.wu[i][1, 1, :]
+    wvi = time_series.wv[i][1, 1, :]
 
     ## Extract slices
-    wxy = w_snapshot[:, :, k]
-    wxz = w_snapshot[:, 1, :]
-    uxz = u_snapshot[:, 1, :]
+    k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+    wxy = wi[:, :, k]
+    wxz = wi[:, 1, :]
+    uxz = ui[:, 1, :]
 
     wlims, wlevels = nice_divergent_levels(w, 0.03)
     ulims, ulevels = nice_divergent_levels(w, 0.05)

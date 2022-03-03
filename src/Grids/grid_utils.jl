@@ -166,13 +166,13 @@ regular_dimensions(grid) = ()
 @inline interior_y_indices(loc, grid) = interior_indices(loc, topology(grid, 2), grid.Ny)
 @inline interior_z_indices(loc, grid) = interior_indices(loc, topology(grid, 3), grid.Nz)
 
-@inline interior_parent_offset(loc,             topo, H) = H
-@inline interior_parent_offset(::Type{Face},    topo, H) = H
-@inline interior_parent_offset(::Type{Nothing}, topo, H) = 1
+@inline interior_parent_offset(loc, topo, H) = H
+@inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
 
-@inline interior_parent_offset(loc,             ::Type{Flat}, H) = 1
-@inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 1
-@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 1
+#@inline interior_parent_offset(::Type{Face},    topo, H) = H
+# @inline interior_parent_offset(loc,             ::Type{Flat}, H) = 0
+# @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
+#@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
 
 @inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{Bounded}, N, H) = 1+H:N+1+H

@@ -13,7 +13,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, Plots"
 # ```
 
 # ## Model setup
@@ -107,16 +107,13 @@ run!(simulation)
 #
 # We load the output and make a movie.
 
-using JLD2
-
-file = jldopen(simulation.output_writers[:fields].filepath)
-
-iterations = parse.(Int, keys(file["timeseries/t"]))
+ω_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "ω")
+s_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "s")
 
 # Construct the ``x, y`` grid for plotting purposes,
 
-xω, yω, zω = nodes(ω_field)
-xs, ys, zs = nodes(s_field)
+xω, yω, zω = nodes(ω_timeseries)
+xs, ys, zs = nodes(s_timeseries)
 nothing # hide
 
 # and animate the vorticity and fluid speed.
@@ -125,13 +122,12 @@ using Plots
 
 @info "Making a neat movie of vorticity and speed..."
 
-anim = @animate for (i, iteration) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(ω_timeseries.times)
 
-    @info "Plotting frame $i from iteration $iteration..."
+    @info "Plotting frame $i of $(length(ω_timeseries.times))..."
 
-    t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
-    s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
+    ωi = interior(ω_timeseries[i], :, :, 1)
+    si = interior(s_timeseries[i], :, :, 1)
 
     ω_lim = 2.0
     ω_levels = range(-ω_lim, stop=ω_lim, length=20)
@@ -142,13 +138,13 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
 
-    ω_plot = contourf(xω, yω, clamp.(ω_snapshot', -ω_lim, ω_lim);
+    ω_plot = contourf(xω, yω, clamp.(ωi', -ω_lim, ω_lim);
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim);
+    s_plot = contourf(xs, ys, clamp.(si', 0, s_lim);
                        color = :thermal,
                       levels = s_levels,
                        clims = (0., s_lim),

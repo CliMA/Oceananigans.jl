@@ -34,7 +34,7 @@ noinit(args...) = nothing
     JLD2OutputWriter(model, outputs; prefix, schedule,
                               dir = ".",
                           indices = (:, :, :),
-                       with_halos = true,
+                       with_halos = false,
                        array_type = Array{Float32},
                      max_filesize = Inf,
                             force = false,
@@ -68,9 +68,12 @@ Keyword arguments
 
   ## Slicing and type conversion prior to output
 
-  - `indices`: TODO
+  - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
+               or `Int` elements. Defaults `(:, :, :)` or "all indices". If `!with_halos`,
+               halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
+               will save xy-slices of the bottom-most index.
 
-  - `with_halos`: TODO
+  - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
 
   - `array_type`: The array type to which output arrays are converted to prior to saving.
                   Default: `Array{Float32}`.
@@ -158,7 +161,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 function JLD2OutputWriter(model, outputs; prefix, schedule,
                                    dir = ".",
                                indices = (:, :, :),
-                            with_halos = true,
+                            with_halos = false,
                             array_type = Array{Float32},
                           max_filesize = Inf,
                                  force = false,
