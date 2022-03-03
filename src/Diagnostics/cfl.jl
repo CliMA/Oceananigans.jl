@@ -1,6 +1,7 @@
 using Oceananigans.Grids: AbstractGrid, Flat
 using Oceananigans.Fields: Center
-using Oceananigans.AbstractOperations: MultiaryOperation, Δx, Δy, Δz, identity1
+using Oceananigans.AbstractOperations: MultiaryOperation, Δx, Δy, Δz
+using Oceananigans.Operators: identity1
 using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterModel
