@@ -49,8 +49,8 @@ function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), 
                                      ν=0, κ=0,
                                      discrete_form = false)
 
-    ν = convert_diffusivity(FT, ν, Val(discrete_form))
-    κ = convert_diffusivity(FT, κ, Val(discrete_form))
+    ν = convert_diffusivity(FT, ν; discrete_form)
+    κ = convert_diffusivity(FT, κ; discrete_form)
     return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
 end
 

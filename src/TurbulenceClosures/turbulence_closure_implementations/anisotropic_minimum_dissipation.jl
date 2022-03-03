@@ -15,7 +15,7 @@ struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyVisco
      κ :: K
 
     function AnisotropicMinimumDissipation{TD, FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {TD, FT, PN, PK, PB}
-        κ = convert_diffusivity(FT, κ, Val(false))
+        κ = convert_diffusivity(FT, κ)
         K = typeof(κ)
         return new{TD, FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
     end

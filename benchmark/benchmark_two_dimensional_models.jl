@@ -23,8 +23,7 @@ for arch in (CPU(), GPU())
                  xz_grid,
                  yz_grid)
 
-        model = NonhydrostaticModel(architecture = arch,
-                                    timestepper = :QuasiAdamsBashforth2,
+        model = NonhydrostaticModel(timestepper = :QuasiAdamsBashforth2,
                                     grid = grid,
                                     advection = nothing,
                                     closure = nothing,
