@@ -1,9 +1,10 @@
+using Oceananigans.Grids: AbstractGrid, Flat
+using Oceananigans.Fields: Center
+using Oceananigans.AbstractOperations: MultiaryOperation, Δx, Δy, Δz, identity1
 using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
-using Oceananigans.AbstractOperations
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterModel
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Grids: AbstractGrid, Flat
 
 """
     CFL{D, S}
@@ -78,7 +79,13 @@ DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 
 function cell_advection_timescale(grid, velocities)
     u, v, w = velocities 
-    min_timescale = 1 / maximum(abs(u) / Δx + abs(v) / Δy + abs(w) / Δz)
+    terms = (abs(u) / Δx, abs(v) / Δy, abs(w) / Δz)
+    # Manually construct non-interpolating
+    #
+    #       net_frequency = abs(u) / Δx + abs(v) / Δy + abs(w) / Δz
+    #
+    net_frequency = MultiaryOperation{Center, Center, Center}(+, terms, identity1, grid)
+    min_timescale = 1 / maximum(net_frequency)
     return min_timescale
 end
 
