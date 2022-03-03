@@ -212,7 +212,6 @@ w_timeseries = FieldTimeSeries(filepath, "w")
 P_timeseries = FieldTimeSeries(filepath, "P")
 P_avg_timeseries = FieldTimeSeries(filepath, "P_avg")
 
-iterations = w_timeseries.iterations
 times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
@@ -231,9 +230,9 @@ using Plots
 
 w_lim = maximum(abs, interior(w_timeseries))
 
-anim = @animate for (i, iteration) in enumerate(iterations)
+anim = @animate for i in 1:length(times)
 
-    @info "Plotting frame $i from iteration $iteration..."
+    @info "Plotting frame $i of $(length(times))..."
 
     t = times[i]
     w = interior(w_timeseries[i])[:, 1, :]
