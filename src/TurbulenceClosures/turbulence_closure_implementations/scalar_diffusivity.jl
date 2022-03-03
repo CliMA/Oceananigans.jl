@@ -34,10 +34,15 @@ function ScalarDiffusivity(time_disc=ExplicitTimeDiscretization(),
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `HorizontalFormulation` or `ThreeDimensionalFormulation`"))
     end
-    κ = convert_diffusivity(FT, κ, Val(discrete_form))
-    ν = convert_diffusivity(FT, ν, Val(discrete_form))
+
+    κ = convert_diffusivity(FT, κ; discrete_form)
+    ν = convert_diffusivity(FT, ν; discrete_form)
+
     return ScalarDiffusivity{typeof(time_disc), typeof(formulation)}(ν, κ)
 end
+
+const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
+const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulation} where TD
 
   VerticalScalarDiffusivity(time_disc=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, VerticalFormulation(), FT; kwargs...)
 HorizontalScalarDiffusivity(time_disc=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, HorizontalFormulation(), FT; kwargs...)
@@ -56,12 +61,26 @@ end
 
 @inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
+
+# z_viscosity and z_diffusivity fallback to viscosity and diffusivity
+# for both ThreeDimensional and VerticalScalarDiffusivity
+@inline z_viscosity(closure::HorizontalScalarDiffusivity, args...) = 0
+@inline z_diffusivity(closure::HorizontalScalarDiffusivity, args...) = 0
+
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+
+# Note: we could compute ν and κ (if they are Field):
+# function calculate_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
+#     compute!(viscosity(closure, diffusivities))
+#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
+#     return nothing
+# end
 
 function Base.summary(closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
-    F = summary(formulation(closure))
-    return string("ScalarDiffusivity{$TD, $F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+    prefix = replace(summary(formulation(closure)), "Formulation" => "")
+    prefix === "ThreeDimensional" && (prefix = "")
+    return string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
 end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))

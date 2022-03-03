@@ -35,7 +35,6 @@ for arch in [ has_cuda() ? [CPU(), GPU()] : [CPU()] ]
     for grid in (grid_fly, grid_pre)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = arch,    
                               momentum_advection = VectorInvariant(),
                                     free_surface = ExplicitFreeSurface())
                       
