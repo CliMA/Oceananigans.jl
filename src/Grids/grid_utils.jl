@@ -356,6 +356,7 @@ end
 #####
 
 struct ZDirection end
+Base.summary(::ZDirection) = "ZDirection"
 
 #####
 ##### Show utils

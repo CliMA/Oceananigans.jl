@@ -15,9 +15,12 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.TurbulenceClosures:
     get_closure_ij,
     AbstractTurbulenceClosure,
-    AbstractIsotropicDiffusivity,
+    AbstractScalarDiffusivity,
     ExplicitTimeDiscretization,
-    VerticallyImplicitTimeDiscretization
+    VerticallyImplicitTimeDiscretization,
+    ThreeDimensionalFormulation, 
+    HorizontalFormulation,
+    VerticalFormulation
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
@@ -90,23 +93,23 @@ for S in (:MixingLength, :SurfaceTKEFlux)
 end
 
 """
-    CATKEVerticalDiffusivity(FT=Float64;
+    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                             warning = true,
-                             time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
+                             warning = true)
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 """
-function CATKEVerticalDiffusivity(FT=Float64;
+CATKEVerticalDiffusivity(FT::DataType; kwargs...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
+
+function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
                                   surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                                  warning = true,
-                                  time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
+                                  warning = true)
 
     if warning
         @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -120,7 +123,7 @@ function CATKEVerticalDiffusivity(FT=Float64;
     mixing_length = convert_eltype(FT, mixing_length)
     surface_TKE_flux = convert_eltype(FT, surface_TKE_flux)
 
-    return CATKEVerticalDiffusivity{TD}(Cᴰ, mixing_length, surface_TKE_flux)
+    return CATKEVerticalDiffusivity{typeof(time_discretization)}(Cᴰ, mixing_length, surface_TKE_flux)
 end
 
 #####
@@ -237,7 +240,7 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 # Disambiguiate
-const AID = AbstractIsotropicDiffusivity
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 @inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
@@ -257,7 +260,7 @@ const AID = AbstractIsotropicDiffusivity
 @inline diffusive_flux_y(i, j, k, grid, ::CATKEVD, e, ::TKETracerIndex, args...) = zero(eltype(grid))
 
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Support for VerticallyImplicit
 #####
 
 const VITD = VerticallyImplicitTimeDiscretization

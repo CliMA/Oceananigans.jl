@@ -40,7 +40,7 @@ function wall_time_step_wizard_tests(arch)
     @test Δt ≈ 3.99
 
 
-    model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1))
+    model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1))
     diff_CFL = 0.45
 
     wizard = TimeStepWizard(cfl=Inf, diffusive_cfl=diff_CFL, max_change=Inf, min_change=0)

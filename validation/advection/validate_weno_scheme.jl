@@ -84,8 +84,7 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
             scheme = WENO5(grid = grid, stretched_smoothness = true, zweno = true)
         end
 
-        model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                                    grid = grid,
+        model = HydrostaticFreeSurfaceModel(        grid = grid,
                                                  tracers = :c,
                                         tracer_advection = scheme,
                                               velocities = PrescribedVelocityFields(u=U), 
@@ -161,8 +160,7 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
             scheme = WENO5(grid = grid, stretched_smoothness = true, zweno = true)
         end
 
-        model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                                    grid = grid,
+        model = HydrostaticFreeSurfaceModel(        grid = grid,
                                                 tracers  = :c,
                                         tracer_advection = scheme,
                                             velocities   = PrescribedVelocityFields(u=U, v=V), 

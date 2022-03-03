@@ -24,7 +24,7 @@ end
                                             convective_νz = 0,
                                             background_κz = 0,
                                             background_νz = 0,
-                                            time_discretization = VerticallyImplicitTimeDiscretization())
+                                            time_discretization = VerticallyImplicittime_discretization())
 
 The one positional argument determines the floating point type of the free parameters
 of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
@@ -42,17 +42,19 @@ Keyword arguments
 
 * `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
-* `time_discretization`: Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+* `time_discretization`: Either `Explicit` or `VerticallyImplicit`.
 """
-function ConvectiveAdjustmentVerticalDiffusivity(FT = Float64;
+
+ConvectiveAdjustmentVerticalDiffusivity(FT::DataType; kwargs...) = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
+
+function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
-                                                 background_νz = zero(FT),
-                                                 time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
+                                                 background_νz = zero(FT))
 
-    return ConvectiveAdjustmentVerticalDiffusivity{TD}(convective_κz, convective_νz,
-                                                       background_κz, background_νz)
+    return ConvectiveAdjustmentVerticalDiffusivity{typeof(time_discretization)}(convective_κz, convective_νz,
+                                                                                background_κz, background_νz)
 end
 
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity

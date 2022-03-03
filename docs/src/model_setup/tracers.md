@@ -13,8 +13,9 @@ end
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid)
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -28,9 +29,10 @@ For example, to add conservative temperature `T` and absolute salinity `S`:
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S))
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── tracers: (:T, :S)
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
@@ -59,9 +61,10 @@ An arbitrary number of tracers may be simulated. For example, to simulate
 
 ```jldoctest tracers
 julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S, C₁, CO₂, nitrogen)
 ├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing

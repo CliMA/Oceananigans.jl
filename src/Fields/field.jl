@@ -174,7 +174,6 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
 Base.fill!(f::Field, val) = fill!(parent(f), val)
-Base.isapprox(ϕ::Field, ψ::Field; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)
 Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
@@ -485,3 +484,11 @@ function Statistics.norm(a::AbstractField; condition = nothing)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
     return CUDA.@allowscalar sqrt(r[1])
 end
+
+function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
+    conditioned_a = condition_operand(a, nothing, one(eltype(a)))
+    conditioned_b = condition_operand(b, nothing, one(eltype(b)))
+    # TODO: Make this non-allocating?
+    return all(isapprox.(conditioned_a, conditioned_b; kw...))
+end
+

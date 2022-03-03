@@ -50,3 +50,44 @@ Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
+const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
+
+function Base.show(io::IO, ft::FieldTuple)
+    names = keys(ft)
+    N = length(ft)
+
+    grid = first(ft).grid
+    all_same_grid = true
+    for field in ft
+        if field.grid !== grid
+            all_same_grid = false
+        end
+    end
+
+    print(io, "NamedTuple with ", N, " Fields ")
+
+    if all_same_grid
+        print(io, "on ", summary(grid), ":\n")
+    else
+        print(io, "on different grids:", '\n')
+    end
+
+    for name in names[1:end-1]
+        field = ft[name]
+        print(io, "├── $name: ", summary(field), '\n')
+
+        if !all_same_grid
+            print(io, "│   └── grid: ", summary(field.grid), '\n')
+        end
+    end
+
+    name = names[end]
+    field = ft[name]
+    print(io, "└── $name: ", summary(field))
+
+    if !all_same_grid
+        print(io, '\n')
+        print(io, "    └── grid: ", summary(field.grid))
+    end
+end
+

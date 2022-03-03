@@ -43,10 +43,10 @@ grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 # a halo in each of those directions, and that is numerically more costly.  
 # Note that we only specify the extent and size for the `Bounded` dimension.
 #
-# We next specify a model with an `IsotropicDiffusivity`, which models either
+# We next specify a model with an `ScalarDiffusivity`, which models either
 # molecular or turbulent diffusion,
 
-closure = IsotropicDiffusivity(κ=1.0)
+closure = ScalarDiffusivity(κ=1.0)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 

@@ -180,8 +180,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
 κ₄h = 1e-1 / day * grid.Δxᶜᵃᵃ^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
-Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
-biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
+Laplacian_vertical_diffusivity = VerticalScalarDiffusivity(ν=κ₂z, κ=κ₂z)
+biharmonic_horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(ν=κ₄h, κ=κ₄h)
 
 # ## Model instantiation
 #

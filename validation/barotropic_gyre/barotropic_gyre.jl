@@ -14,7 +14,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: Horizontal
+
 using Oceananigans.Utils: prettytime, hours, day, days, years
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
@@ -73,8 +74,8 @@ v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
-constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
+variable_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh)
+constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh₀)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),

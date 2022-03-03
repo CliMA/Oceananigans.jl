@@ -2,6 +2,18 @@
 ##### 'Tupled closure' implementation: 1-tuple, 2-tuple, and then n-tuple by induction
 #####
 
+function closure_summary(closures::Tuple, padchar="│")
+    Nclosures = length(closures)
+    if Nclosures == 1
+        return string("Tuple with 1 closure:", '\n',
+                      "$padchar   └── $(dict.keys[1]) => $(typeof(dict.vals[1]).name)")
+    else
+        return string("Tuple with $Nclosures closures:", '\n',
+         Tuple(string("$padchar   ├── ", summary(c), '\n') for c in closures[1:end-1])...,
+                      "$padchar   └── ", summary(closures[end]))
+    end
+end
+
 #####
 ##### Stress divergences
 #####
@@ -70,37 +82,18 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
 end
 
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Support for VerticallyImplicit
 #####
 
-const SingleExplicitClosure = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
 const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
-
-const EC = Union{SingleExplicitClosure, AbstractArray{<:SingleExplicitClosure}}
-const VIC = Union{SingleImplicitClosure, AbstractArray{<:SingleImplicitClosure}}
+const VIC = Union{AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}, AbstractArray{<:SingleImplicitClosure}}
 
 # Filter explicitly-discretized closures.
-@inline z_diffusivity(clo::Tuple{<:EC},        iᶜ, Ks, args...) = tuple(0)
-@inline z_diffusivity(clo::Tuple{<:VIC},       iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
-@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
-@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[2], iᶜ, Ks[2], args...))
+@inline z_diffusivity(closure::Tuple, iᶜ, Kstuple, args...) = 
+        Tuple((clo isa VIC ? z_diffusivity(clo, iᶜ, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
 
-@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...),
-                                                                         z_diffusivity(clo[2], iᶜ, Ks[2], args...))
-
-@inline z_diffusivity(clo::Tuple, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1:2],   iᶜ, Ks[1:2],   args...)...,
-                                                           z_diffusivity(clo[3:end], iᶜ, Ks[3:end], args...)...)
-
-@inline z_viscosity(clo::Tuple{<:EC},         Ks, args...) = tuple(0)
-@inline z_viscosity(clo::Tuple{<:VIC},        Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
-@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
-@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks, args...) = tuple(z_viscosity(clo[2], Ks[2], args...))
-
-@inline z_viscosity(clo::Tuple{<:VIC, <:VIC}, Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...),
-                                                                   z_viscosity(clo[2], Ks[2], args...))
-
-@inline z_viscosity(clo::Tuple, Ks, args...) = tuple(z_viscosity(clo[1:2],   Ks[1:2], args...)...,
-                                                     z_viscosity(clo[3:end], Ks[3:end], args...)...)
+@inline z_viscosity(closure::Tuple, Kstuple, args...) = 
+        Tuple((clo isa VIC ? z_viscosity(clo, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
 
 for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜᶠ, :κᶜᶠᶜ, :κᶠᶜᶜ)
     @eval begin
@@ -109,9 +102,6 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
         @inline $coeff(i, j, k, grid, clock, ν::Tuple)                        = $coeff(i, j, k, grid, clock, ν[1:2]) + $coeff(i, j, k, grid, clock, ν[3:end])
     end
 end
-
-const ImplicitClosure = AbstractTurbulenceClosure{TD} where TD <: VerticallyImplicitTimeDiscretization
-const ExplicitOrNothing = Union{ExplicitTimeDiscretization, Nothing}
 
 @inline combine_time_discretizations(disc) = disc
 

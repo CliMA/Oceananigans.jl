@@ -43,6 +43,42 @@ function test_function_differentiation(T=Float64)
         assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f 
     end
 
+    stretched_f = [0, 1, 3, 6]
+    stretched_c = OffsetArray([-0.5, 0.5, 2, 4.5, 7.5], -1)
+    
+    dc(i) = stretched_f[i+1] - stretched_f[i]
+    df(i) = stretched_c[i] - stretched_c[i-1]
+
+    grid  = RectilinearGrid(CPU(), T; size=(3, 3, 3), x=stretched_f, y=stretched_f, z=stretched_f, topology = (Bounded, Bounded, Bounded))
+
+    ∂x_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i-1, j, k]) / df(i)
+    ∂x_c(i, j, k) = (ϕ²[i+1, j, k] - ϕ²[i, j, k])   / dc(i)
+    ∂y_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j-1, k]) / df(j)
+    ∂y_c(i, j, k) = (ϕ²[i, j+1, k] - ϕ²[i, j, k])   / dc(j)
+    ∂z_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j, k-1]) / df(k)
+    ∂z_c(i, j, k) = (ϕ²[i, j, k+1] - ϕ²[i, j, k])   / dc(k)
+
+    for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
+        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_c(2, 2, 2) 
+    end
+    for ∂x in (∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂xᶠᶠᶠ)
+        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_f(2, 2, 2) 
+    end
+
+    for ∂y in (∂yᶜᶜᶜ, ∂yᶜᶜᶠ, ∂yᶠᶜᶜ, ∂yᶠᶜᶠ)
+        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_c(2, 2, 2) 
+    end
+    for ∂y in (∂yᶜᶠᶜ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶠ)
+        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_f(2, 2, 2)  
+    end
+
+    for ∂z in (∂zᶜᶜᶜ, ∂zᶜᶠᶜ, ∂zᶠᶜᶜ, ∂zᶠᶠᶜ)
+        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_c(2, 2, 2)  
+    end
+    for ∂z in (∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ)
+        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_f(2, 2, 2) 
+    end
+
     return assess
 end
 

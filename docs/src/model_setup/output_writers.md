@@ -70,7 +70,7 @@ simulation.output_writers[:field_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["c", "u"]
+├── 2 outputs: (c, u)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -84,7 +84,7 @@ simulation.output_writers[:surface_slice_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: another_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["c", "u"]
+├── 2 outputs: (c, u)
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -100,7 +100,7 @@ simulation.output_writers[:averaged_profile_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: another_averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -143,7 +143,7 @@ simulation.output_writers[:things] =
 NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: some_things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: ["profile", "slice", "scalar"]
+├── 3 outputs: (profile, slice, scalar)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -191,7 +191,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_data.jld2
-├── 3 outputs: (:u, :v, :w)
+├── 3 outputs: (u, v, w)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
@@ -209,7 +209,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_averaged_data.jld2
-├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
@@ -267,7 +267,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 # output
 JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
-├── 3 outputs: (:u, :v, :w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]

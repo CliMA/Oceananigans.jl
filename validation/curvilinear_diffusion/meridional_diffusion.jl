@@ -2,7 +2,7 @@
 
 using Oceananigans
 lines!(cax, c, ϕ, color = :black)
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: Horizontal
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 
 using Statistics
@@ -25,7 +25,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
                                     tracers = :c,
                                     coriolis = nothing,
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=1, νh=1),
+                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1),
                                     buoyancy = nothing)
 
 # Tracer patch for visualization
