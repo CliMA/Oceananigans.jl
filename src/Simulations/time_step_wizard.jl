@@ -1,6 +1,5 @@
 using Oceananigans: TurbulenceClosures
 
-
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
                diffusive_cfl :: FT

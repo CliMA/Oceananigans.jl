@@ -44,7 +44,6 @@ using Oceananigans.Advection:
     advective_tracer_flux_z
 
 import Base: show, summary
-import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
@@ -146,7 +145,6 @@ function show(io::IO, g::ImmersedBoundaryGrid)
                      "   with immersed: ", typeof(g.immersed_boundary))
 end
 
-@inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid) = φᶠᶠᵃ(i, j, k, ibg.grid)
 
 @inline xnode(LX, i, ibg::ImmersedBoundaryGrid) = xnode(LX, i, ibg.grid)

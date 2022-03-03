@@ -136,15 +136,15 @@ end
 ##### CFL for cubed sphere fields
 #####
 
-import Oceananigans.Diagnostics: accurate_cell_advection_timescale
+import Oceananigans.Diagnostics: cell_advection_timescale
 
-function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
+function cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
 
     min_timescale_on_faces = []
 
     for (face_index, grid_face) in enumerate(grid.faces)
         velocities_face = get_face(velocities, face_index)
-        min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
+        min_timescale_on_face = cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
     end
 

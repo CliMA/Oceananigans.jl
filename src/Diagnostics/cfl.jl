@@ -1,6 +1,9 @@
-using Oceananigans.Utils: cell_advection_timescale
 using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
 using Oceananigans.AbstractOperations
+using Oceananigans.Models: AbstractModel
+using Oceananigans.Models.ShallowWaterModels: ShallowWaterModel
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Grids: AbstractGrid, Flat
 
 """
     CFL{D, S}
@@ -8,7 +11,7 @@ using Oceananigans.AbstractOperations
 An object for computing the Courant-Freidrichs-Lewy (CFL) number.
 """
 struct CFL{D, S}
-           Δt :: D
+    Δt :: D
     timescale :: S
 end
 
@@ -70,16 +73,39 @@ julia> dcfl(model)
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 
 #####
-##### Accurate CFL via reduction
+##### Cell advection time-scale calculation
 #####
 
-using Oceananigans.Models
-
-function accurate_cell_advection_timescale(model)
-    
-    u, v, w = model.velocities 
-
-    min_timescale = minimum(1 / (abs(u) / Δx + abs(v) / Δy + abs(w) / Δz))
-
+function cell_advection_timescale(grid, velocities)
+    u, v, w = velocities 
+    min_timescale = 1 / maximum(abs(u) / Δx + abs(v) / Δy + abs(w) / Δz)
     return min_timescale
 end
+
+#####
+##### Various translations
+#####
+
+cell_advection_timescale(model::AbstractModel) = cell_advection_timescale(model.grid, model.velocities)
+cell_advection_timescale(ibg::ImmersedBoundaryGrid, velocities) = cell_advection_timescale(ibg.grid, velocities)
+
+function cell_advection_timescale(model::ShallowWaterModel)
+    uh, vh, h = model.solution
+    u = uh / h
+    v = vh / h
+    w = 0
+    return cell_advection_timescale(model.grid, (; u, v, w))
+end
+
+#####
+##### Flattened grids (just treating 2D cases for now...)
+#####
+
+const XFlatGrid = AbstractGrid{FT, Flat} where FT
+const YFlatGrid = AbstractGrid{FT, TX, Flat} where {FT, TX}
+const ZFlatGrid = AbstractGrid{FT, TX, TY, Flat} where {FT, TX, TY}
+
+cell_advection_timescale(grid::XFlatGrid, U) = cell_advection_timescale(grid, (; u=0, v=U.v, w=U.w))
+cell_advection_timescale(grid::YFlatGrid, U) = cell_advection_timescale(grid, (; u=U.u, v=0, w=U.w))
+cell_advection_timescale(grid::ZFlatGrid, U) = cell_advection_timescale(grid, (; u=U.u, v=U.v, w=0))
+

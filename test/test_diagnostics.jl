@@ -1,6 +1,9 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
+using Oceananigans.AbstractOperations: Δx, Δy, Δz, GridMetricOperation
 
 struct TestDiagnostic <: AbstractDiagnostic end
 
@@ -55,7 +58,9 @@ function advective_cfl_on_stretched_grid(arch, FT)
     Δy = model.grid.Δyᵃᶜᵃ
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
-    Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+    @show Δz_min = minimum(GridMetricOperation((Center, Center, Face), Δz, grid)) 
+    
+    @show CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -64,6 +69,9 @@ function advective_cfl_on_stretched_grid(arch, FT)
     set!(model, u=u₀, v=v₀, w=w₀, enforce_incompressibility=false)
     CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz_min)
     cfl = CFL(FT(Δt))
+
+    @show cfl(model)
+    @show CFL_by_hand
 
     return cfl(model) ≈ CFL_by_hand
 end
@@ -78,9 +86,12 @@ function advective_cfl_on_lat_lon_grid(arch, FT)
 
     # Will be the smallest at higher latitudes.
     Δx_min = CUDA.@allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+    #Δz_min = minimum(GridMetricOperation((Face, Center, Center), Δx, grid)) 
 
     # Will be the same at every grid point.
-    Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+    Δy_min = minimum(GridMetricOperation((Center, Face, Center), Δy, grid)) 
+
+    #Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
     Δz = model.grid.Δzᵃᵃᶠ
 
