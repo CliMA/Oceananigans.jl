@@ -2,13 +2,20 @@ module TurbulenceClosures
 
 export
     AbstractEddyViscosityClosure,
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
     ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
     calculate_diffusivities!,
@@ -26,6 +33,7 @@ using KernelAbstractions
 import Oceananigans.Utils: with_tracers
 
 using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
@@ -56,6 +64,7 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 # Fallbacks
 validate_closure(closure) = closure
+closure_summary(closure) = summary(closure)
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs

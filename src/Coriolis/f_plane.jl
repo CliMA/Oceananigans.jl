@@ -1,3 +1,5 @@
+using Oceananigans.Grids: scalar_summary
+
 """
     FPlane{FT} <: AbstractRotation
 
@@ -41,5 +43,10 @@ end
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 @inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = zero(eltype(grid))
 
-Base.show(io::IO, f_plane::FPlane{FT}) where FT =
-    print(io, "FPlane{$FT}: f = ", @sprintf("%.2e", f_plane.f))
+function Base.summary(fplane::FPlane{FT}) where FT 
+    fstr = scalar_summary(fplane.f)
+    return "FPlane{$FT}(f=$fstr)"
+end
+
+Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
+

@@ -114,7 +114,7 @@ const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 
-using Oceananigans.TurbulenceClosures: VerticallyImplicit
+using Oceananigans.TurbulenceClosures
 using Oceananigans.Fields: TracerFields, FunctionField
 
 tracers = TracerFields(tuple(:b), architecture, grid)
@@ -134,13 +134,9 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
 ν = Field(ν_op)
 
-vertical_closure = ScalarDiffusivity(ν = νv,
-                                     κ = κv,
-                                     isotropy = Vertical())
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
-horizontal_closure = ScalarDiffusivity(ν = νh,
-                                       κ = κh,
-                                       isotropy = Horizontal())
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 closure = (horizontal_closure, vertical_closure)
                                        

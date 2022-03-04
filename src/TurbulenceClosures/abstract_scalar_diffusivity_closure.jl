@@ -3,28 +3,28 @@
 
 Abstract type for closures with *isotropic* diffusivities.
 """
-abstract type AbstractScalarDiffusivity{TD, Iso} <: AbstractTurbulenceClosure{TD} end
+abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
 """
     struct ThreeDimensional end
 
 Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
 """
-struct ThreeDimensional end
+struct ThreeDimensionalFormulation end
 
 """
     struct Horizontal end
 
 Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
-struct Horizontal end
+struct HorizontalFormulation end
 
 """
     struct Vertical end
 
 Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 """
-struct Vertical end
+struct VerticalFormulation end
 
 """
     viscosity(closure, diffusivities)
@@ -40,15 +40,19 @@ Returns the isotropic diffusivity associated with `closure` and tracer index `c_
 """
 function diffusivity end 
 
-@inline isotropy(::AbstractScalarDiffusivity{TD, Iso}) where {TD, Iso} = Iso()
+@inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
+
+Base.summary(::VerticalFormulation) = "VerticalFormulation"
+Base.summary(::HorizontalFormulation) = "HorizontalFormulation"
+Base.summary(::ThreeDimensionalFormulation) = "ThreeDimensionalFormulation"
 
 #####
 ##### Stress divergences
 #####
 
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
-const AHD = AbstractScalarDiffusivity{<:Any, <:Horizontal}
-const AVD = AbstractScalarDiffusivity{<:Any, <:Vertical}
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
+const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
+const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
 @inline viscous_flux_vx(i, j, k, grid, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
@@ -102,7 +106,7 @@ end
 ##### Support for VerticallyImplicit
 #####
 
-const VITD = VerticallyImplicit
+const VITD = VerticallyImplicitTimeDiscretization
 
   @inline z_viscosity(closure::AbstractScalarDiffusivity, args...)        = viscosity(closure, args...)
 @inline z_diffusivity(closure::AbstractScalarDiffusivity, c_idx, args...) = diffusivity(closure, c_idx, args...)
@@ -126,24 +130,24 @@ const VITD = VerticallyImplicit
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   ivd_viscous_flux_uz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   ivd_viscous_flux_vz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_wz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  diffusive_flux_z(i, j, k, grid, Explicit(), closure, args...),
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end

@@ -1,4 +1,4 @@
-struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{Explicit}
+struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M
@@ -32,7 +32,7 @@ calculated isopycnal slope values.
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
 IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_tensor=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
-    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew, Val(false)), convert_diffusivity(FT, κ_symmetric, Val(false)), isopycnal_tensor, slope_limiter)
+    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_tensor, slope_limiter)
 
 function with_tracers(tracers, closure::ISSD)
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
@@ -40,10 +40,18 @@ function with_tracers(tracers, closure::ISSD)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
+# For ensembles of closures
 function with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
+
+    if arch isa Architectures.GPU
+        closure_vector = Vector(closure_vector)
+    end
+
     Ex = length(closure_vector)
-    return arch_array(arch, [with_tracers(tracers, closure_vector[i]) for i=1:Ex])
+    closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
+
+    return arch_array(arch, closure_vector)
 end
 
 #####

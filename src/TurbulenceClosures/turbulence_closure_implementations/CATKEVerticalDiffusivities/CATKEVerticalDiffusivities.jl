@@ -16,11 +16,11 @@ using Oceananigans.TurbulenceClosures:
     get_closure_ij,
     AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
-    Explicit,
-    VerticallyImplicit,
-    ThreeDimensional, 
-    Horizontal,
-    Vertical
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    ThreeDimensionalFormulation, 
+    HorizontalFormulation,
+    VerticalFormulation
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
@@ -93,23 +93,23 @@ for S in (:MixingLength, :SurfaceTKEFlux)
 end
 
 """
-    CATKEVerticalDiffusivity(FT=Float64;
+    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                             warning = true,
-                             time_discretization::TD = VerticallyImplicit()) where TD
+                             warning = true)
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 """
-function CATKEVerticalDiffusivity(FT=Float64;
+CATKEVerticalDiffusivity(FT::DataType; kwargs...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
+
+function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
                                   surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                                  warning = true,
-                                  time_discretization::TD = VerticallyImplicit()) where TD
+                                  warning = true)
 
     if warning
         @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -123,7 +123,7 @@ function CATKEVerticalDiffusivity(FT=Float64;
     mixing_length = convert_eltype(FT, mixing_length)
     surface_TKE_flux = convert_eltype(FT, surface_TKE_flux)
 
-    return CATKEVerticalDiffusivity{TD}(Cᴰ, mixing_length, surface_TKE_flux)
+    return CATKEVerticalDiffusivity{typeof(time_discretization)}(Cᴰ, mixing_length, surface_TKE_flux)
 end
 
 #####
@@ -240,7 +240,7 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 # Disambiguiate
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 @inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
@@ -263,7 +263,7 @@ const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensional}
 ##### Support for VerticallyImplicit
 #####
 
-const VITD = VerticallyImplicit
+const VITD = VerticallyImplicitTimeDiscretization
 
 @inline z_viscosity(closure::FlavorOfCATKE, diffusivities, args...) = diffusivities.Kᵘ
 
@@ -287,25 +287,25 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  diffusive_flux_z(i, j, k, grid, Explicit(), closure, args...),
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_uz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_vz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
-                  viscous_flux_wz(i, j, k, grid, Explicit(), closure, args...),
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 

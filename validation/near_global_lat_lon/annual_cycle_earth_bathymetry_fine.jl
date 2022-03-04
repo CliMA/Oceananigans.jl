@@ -8,7 +8,6 @@ using Oceananigans.Fields: interpolate
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.TurbulenceClosures: VerticallyImplicit, Vertical, Horizontal
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -199,7 +198,7 @@ datadep"near_global_lat_lon"
 
 # free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
-# buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0), constant_salinity = true)
+# buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2e-4), constant_salinity=true)
 
 # model = HydrostaticFreeSurfaceModel(grid = grid,
 #                                     free_surface = free_surface,
