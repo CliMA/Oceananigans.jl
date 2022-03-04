@@ -415,7 +415,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Periodic, Bounded),
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
-
+                
                 # Can't use implicit time-stepping in vertically-periodic domains right now
                 if topology !== (Periodic, Periodic, Periodic)
                     time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
@@ -423,16 +423,15 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     time_discretizations = tuple(ExplicitTimeDiscretization())
                 end
 
-                for closure in [ScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)]
+                for time_discretization in time_discretizations
+                    for closure in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
+                        
+                        if closure == HorizontalScalarDiffusivity
+                            time_discretizations = tuple(ExplicitTimeDiscretization())
+                        end
+
+                        closure = closurename(time_discretization, ν=1, κ=1)
                     
-                    if closure == HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)
-                        time_discretizations = tuple(ExplicitTimeDiscretization())
-                    end 
-
-                    for time_discretization in time_discretizations
-
                         fieldnames = [:c]
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
@@ -448,7 +447,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                     buoyancy = nothing)
 
                         td = typeof(time_discretization).name.wrapper
-                        closurename = typeof(closure).name.wrapper
 
                         for fieldname in fieldnames
                             @info "    [$timestepper, $td, $closurename] " *
