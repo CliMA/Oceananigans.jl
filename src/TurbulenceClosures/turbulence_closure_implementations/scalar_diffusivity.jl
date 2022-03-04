@@ -50,10 +50,10 @@ const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation}
 const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulation} where TD
 
 VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
-    ScalarDiffusivity(time_disc, VerticalFormulation(), FT; kwargs...)
+    ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
-    ScalarDiffusivity(time_disc, HorizontalFormulation(), FT; kwargs...)
+    ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
           ScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), ThreeDimensionalFormulation(), FT; kwargs...)
