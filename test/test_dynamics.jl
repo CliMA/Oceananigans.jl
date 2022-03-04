@@ -423,11 +423,15 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     time_discretizations = tuple(ExplicitTimeDiscretization())
                 end
 
-                for time_discretization in time_discretizations
+                for closure in [ScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
+                                HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)]
+                    
+                    if closure == HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)
+                        time_discretizations = tuple(ExplicitTimeDiscretization())
+                    end 
 
-                    for closure in [ScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)]
+                    for time_discretization in time_discretizations
 
                         fieldnames = [:c]
                         topology[1] === Periodic && push!(fieldnames, :u)
