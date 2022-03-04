@@ -259,8 +259,7 @@ time_series = (;
      U = FieldTimeSeries("langmuir_turbulence_averages.jld2", "U"),
      V = FieldTimeSeries("langmuir_turbulence_averages.jld2", "V"),
     wu = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wu"),
-    wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv")
-)
+    wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
 
 times = time_series.w.times
 xw, yw, zw = nodes(time_series.w)

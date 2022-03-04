@@ -42,13 +42,13 @@
 
 # ## The grid
 #
-# We use a two-dimensional grid with 64² points and 1 m grid spacing and assign `Flat`
-# to the `y` direction:
+# We use a two-dimensional grid with 64² points, 3² halo points for high-order advection,
+# 1 m grid spacing, and a `Flat` `y`-direction:
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
@@ -235,9 +235,9 @@ anim = @animate for i in 1:length(times)
     @info "Plotting frame $i of $(length(times))..."
 
     t = times[i]
-    w = interior(w_timeseries[i])[:, 1, :]
-    P = interior(P_timeseries[i])[:, 1, :]
-    P_avg = interior(P_avg_timeseries[i])[1, 1, :]
+    w = interior(w_timeseries[i], :, 1, :)
+    P = interior(P_timeseries[i], :, 1, :)
+    P_avg = interior(P_avg_timeseries[i], 1, 1, :)
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9

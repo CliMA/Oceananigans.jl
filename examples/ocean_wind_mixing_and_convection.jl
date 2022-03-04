@@ -263,12 +263,12 @@ intro = searchsortedfirst(times, 10minutes)
 
 anim = @animate for (i, t) in enumerate(times[intro:end])
 
-    @info "Drawing frame $i from iteration $iter..."
+    @info "Drawing frame $i of $(length(times[intro:end]))..."
 
-     w = time_series.w[:, 1, :, i]
-     T = time_series.T[:, 1, :, i]
-     S = time_series.S[:, 1, :, i]
-    νₑ = time_series.νₑ[:, 1, :, i]
+     w = interior(time_series.w[i],  :, 1, :)
+     T = interior(time_series.T[i],  :, 1, :)
+     S = interior(time_series.S[i],  :, 1, :)
+    νₑ = interior(time_series.νₑ[i], :, 1, :)
 
     wlims, wlevels = divergent_levels(w, 2e-2)
     Tlims, Tlevels = sequential_levels(T, (19.7, 19.99))

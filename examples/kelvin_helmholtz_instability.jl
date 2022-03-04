@@ -53,15 +53,14 @@ Ri, h = B.parameters
 kwargs = (ylabel="z", linewidth=3, label=nothing)
 
  U_plot = plot(shear_flow.(0, 0, zC, 0), zC; xlabel="U(z)", kwargs...)
-
  B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; xlabel="B(z)", color=:red, kwargs...)
-
 Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 # In unstable flows it is often useful to determine the dominant spatial structure of the
-# instability and the growth rate at which the instability grows. If the simulation idealizes a physical flow, this can be used to make
+# instability and the growth rate at which the instability grows.
+# If the simulation idealizes a physical flow, this can be used to make
 # predictions as to what should develop and how quickly.  Since these instabilities are often attributed to a linear instability,
 # we can determine information about the structure and the growth rate of the instability by analyzing the linear operator
 # that governs small perturbations about a base state, or by solving for the linear dynamics.
@@ -89,14 +88,17 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # L \, \phi_j = \lambda_j \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\mathrm{Re}(\lambda_1) \ge \mathrm{Re}(\lambda_2) \ge \dotsb``.
+# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part,
+# ``\mathrm{Re}(\lambda_1) \ge \mathrm{Re}(\lambda_2) \ge \dotsb``.
 #
 # Remarks:
 #
-# As we touched upon briefly above, Oceananigans.jl, does not include a linearized version of the equations. Furthermore, Oceananigans.jl does
-# not give us access to the linear operator ``L`` so that we can perform eigenanalysis. Below we discuss an alternative way
-# of approximating the eigenanalysis results. The method boils down to solving the nonlinear equations while continually renormalize
-# the magnitude of the perturbations to ensure that nonlinear terms (terms that are quadratic or higher in perturbations) remain negligibly small,
+# As we touched upon briefly above, Oceananigans.jl, does not include a linearized version of the equations.
+# Furthermore, Oceananigans.jl does not give us access to the linear operator ``L`` so that we can perform eigenanalysis.
+# Below we discuss an alternative way of approximating the eigenanalysis results.
+# The method boils down to solving the nonlinear equations while continually renormalize
+# the magnitude of the perturbations to ensure that nonlinear terms
+# (terms that are quadratic or higher in perturbations) remain negligibly small,
 # i.e.,much smaller than the background flow.
 
 # # The power method algorithm
@@ -121,7 +123,8 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # - compute the perturbation energy, ``E_0``,
 # - evolve the system for a time-interval ``\Delta \tau``,
 # - compute the perturbation energy, ``E_1``,
-# - determine the exponential growth of the most unstable mode during the interval ``\Delta \tau`` as  ``\log(E_1 / E_0) / (2 \Delta \tau)``,
+# - determine the exponential growth of the most unstable mode during the interval
+#   ``\Delta \tau`` as  ``\log(E_1 / E_0) / (2 \Delta \tau)``,
 # - repeat the above until growth rate converges.
 #
 # By fiddling a bit with ``\Delta t`` we can get convergence after only a few iterations.
@@ -207,20 +210,18 @@ Rescales all model fields so that `energy = target_kinetic_energy`.
 """
 function rescale!(model, energy; target_kinetic_energy=1e-6)
     compute!(energy)
-
     rescale_factor = √(target_kinetic_energy / energy[1, 1, 1])
 
-    model.velocities.u.data.parent .*= rescale_factor
-    model.velocities.v.data.parent .*= rescale_factor
-    model.velocities.w.data.parent .*= rescale_factor
-    model.tracers.b.data.parent .*= rescale_factor
+    for f in merge(model.velocities, model.tracers)
+        f .*= rescale_factor
+    end
 
     return nothing
 end
 
 using Printf
 
-# Some more helper function for the power method,
+# Another helper function for the power method,
 
 """
     convergence(σ)
@@ -333,13 +334,9 @@ nothing # hide
 using Random, Statistics
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
-
 noise(x, y, z) = randn()
-
 set!(model, u=noise, w=noise, b=noise)
-
 rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_energy=1e-6)
-
 growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturbation_kinetic_energy, perturbation_vorticity, b)
 
 @info "Power iterations converged! Estimated growth rate: $(growth_rates[end])"
@@ -397,11 +394,8 @@ run!(simulation)
 # Load it; plot it. First the nonlinear equilibration of the perturbation fields together with the evolution of the
 # kinetic energy.
 
-using JLD2
-
-file = jldopen(simulation.output_writers[:vorticity].filepath)
-
-iterations = parse.(Int, keys(file["timeseries/t"]))
+#file = jldopen(simulation.output_writers[:vorticity].filepath)
+#iterations = parse.(Int, keys(file["timeseries/t"]))
 
 @info "Making a neat movie of stratified shear flow..."
 
@@ -415,8 +409,7 @@ function plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmo
              xlims = (0, simulation.stop_time),
              ylims = (initial_eigenmode_energy, 1e-1),
             xlabel = "time",
-            ylabel = "kinetic energy",
-            )
+            ylabel = "kinetic energy")
 
     energy_plot = plot!(time, KE,
               label = "perturbation kinetic energy",
@@ -426,53 +419,47 @@ function plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmo
     return energy_plot
 end
 
-time = []
+filepath = simulation.output_writers[:vorticity].filepath
+ω_timeseries = FieldTimeSeries(filepath, "ω")
+b_timeseries = FieldTimeSeries(filepath, "b")
+KE_timeseries = FieldTimeSeries(filepath, "KE")
+times = ω_timeseries.times
 KE = []
 
-anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
+anim_perturbations = @animate for (i, t) in enumerate(times)
 
     @info "Plotting frame $i from iteration $iteration..."
 
-    t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/ω/$iteration"][:, 1, :]
-    b_snapshot = file["timeseries/b/$iteration"][:, 1, :]
-    ke = file["timeseries/KE/$iteration"][]
+    ω_snapshot = interior(ω_timeseries[i], :, 1, :)
+    b_snapshot = interior(b_timeseries[i], :, 1, :)
+    push!(KE, KE_timeseries[i][:])
 
-    push!(time, t)
-    push!(KE, ke)
-
-    energy_plot = plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
-
+    energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
     eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
-
     plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
-
 end
 
 mp4(anim_perturbations, "kelvin_helmholtz_instability_perturbations.mp4", fps = 8) # hide
 
 # And then the same for total vorticity & buoyancy of the fluid.
 
-time = []
+Ω_timeseries = FieldTimeSeries(filepath, "Ω")
+B_timeseries = FieldTimeSeries(filepath, "B")
+times = Ω_timeseries.times
 KE = []
 
-anim_total = @animate for (i, iteration) in enumerate(iterations)
+anim_total = @animate for (i, t) in enumerate(times)
 
     @info "Plotting frame $i from iteration $iteration..."
 
-    t = file["timeseries/t/$iteration"]
-    ω_snapshot = file["timeseries/Ω/$iteration"][:, 1, :]
-    b_snapshot = file["timeseries/B/$iteration"][:, 1, :]
-    ke = file["timeseries/KE/$iteration"][]
+    Ω_snapshot = interior(Ω_timeseries, :, 1, :)
+    B_snapshot = interior(B_timeseries, :, 1, :)
+    push!(KE, KE_timeseries[i][:])
 
-    push!(time, t)
-    push!(KE, ke)
-
-    energy_plot = plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
-
-    eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
-
+    energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
+    eigenmode_plot = eigenplot(Ω_snapshot, B_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
     plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
 end
 
 mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
+

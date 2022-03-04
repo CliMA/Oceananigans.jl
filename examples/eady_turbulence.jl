@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, Plots"
 # ```
 
 # ## The Eady problem
@@ -302,23 +302,21 @@ run!(simulation)
 
 # ## Visualizing Eady turbulence
 #
-# We animate the results by opening the JLD2 file, extracting data for
-# the iterations we ended up saving at, and ploting slices of the saved
-# fields. We prepare for animating the flow by creating coordinate arrays,
-# opening the file, building a vector of the iterations that we saved
-# data at, and defining a function for computing colorbar limits:
+# We animate slices of FieldTimeSeries of the saved data.
+# To prepare the animation we create coordinate arrays
+# and defining a function for computing colorbar limits:
 
-using JLD2, Plots
+using Plots
 
-## Coordinate arrays
-xζ, yζ, zζ = nodes(ζ)
-xδ, yδ, zδ = nodes(δ)
+filepath = simulation.output_writers[:fields].filepath
 
-## Open the file with our data
-file = jldopen(simulation.output_writers[:fields].filepath)
+ζ_timeseries = FieldTimeSeries(filepath, "ζ")
+δ_timeseries = FieldTimeSeries(filepath, "δ")
 
-## Extract a vector of iterations
-iterations = parse.(Int, keys(file["timeseries/t"]))
+## Times and spatial coordinates
+times = ζ_timeseries.times
+xζ, yζ, zζ = nodes(ζ_timeseries)
+xδ, yδ, zδ = nodes(δ_timeseries)
 
 # This utility is handy for calculating nice contour intervals:
 
@@ -334,12 +332,11 @@ nothing # hide
 
 @info "Making an animation from saved data..."
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(times)
 
     ## Load 3D fields from file
-    t = file["timeseries/t/$iter"]
-    R_snapshot = file["timeseries/ζ/$iter"] ./ coriolis.f
-    δ_snapshot = file["timeseries/δ/$iter"]
+    R_snapshot = ζ_timeseries[i] ./ coriolis.f
+    δ_snapshot = δ_timeseries[i]
 
     surface_R = R_snapshot[:, :, grid.Nz]
     surface_δ = δ_snapshot[:, :, grid.Nz]
@@ -376,8 +373,6 @@ anim = @animate for (i, iter) in enumerate(iterations)
            link = :x,
          layout = Plots.grid(2, 2, heights=[0.5, 0.5, 0.2, 0.2]),
           title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
-
-    iter == iterations[end] && close(file)
 end
 
 mp4(anim, "eady_turbulence.mp4", fps = 8) # hide

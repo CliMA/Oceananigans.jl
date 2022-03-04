@@ -137,22 +137,12 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load snapshots of the data and use it to make contour
+# To visualize the solution, we load a FieldTimeSeries of w and make contour
 # plots of vertical velocity.
 
-using JLD2, Printf, Plots
+using Printf, Plots
 
-# We use coordinate arrays appropriate for the vertical velocity field,
-
-x, y, z = nodes(model.velocities.w)
-nothing # hide
-
-# open the jld2 file with the data,
-
-file = jldopen(simulation.output_writers[:velocities].filepath)
-
-## Extracts a vector of `iterations` at which data was saved.
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
 
 # and makes an animation with Plots.jl:
 
