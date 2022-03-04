@@ -55,6 +55,7 @@ function test_jld2_file_splitting(arch)
                           init = fake_bc_init,
                           including = [:grid],
                           array_type = Array{Float64},
+                          with_halos = true,
                           max_filesize = 200KiB,
                           force = true)
 
