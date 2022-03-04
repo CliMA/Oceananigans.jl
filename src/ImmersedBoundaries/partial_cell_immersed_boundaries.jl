@@ -41,8 +41,8 @@ const PCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialC
 
 bottom_cell(i, j, k, ibg::PCIBG) = !is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) & is_immersed(i, j, k-1, ibg.grid, ibg.immersed_boundary)
 
-@inline function Δzᵃᵃᶜ(i, j, k, ibg::PCIBG)
+@inline function Δzᶜᶜᶜ(i, j, k, ibg::PCIBG)
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    Δzᵃᵃᶜ = ibg.immersed_boundary.bottom_height(x, y)
-    return Δzᵃᵃᶜ
+    Δzᶜᶜᶜ = ibg.immersed_boundary.bottom_height(x, y)
+    return Δzᶜᶜᶜ
 end
