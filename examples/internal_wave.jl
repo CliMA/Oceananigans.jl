@@ -146,12 +146,11 @@ w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
 
 # and makes an animation with Plots.jl:
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
     @info "Drawing frame $i from iteration $iter..."
 
-    w = file["timeseries/w/$iter"][:, 1, :]
-    t = file["timeseries/t/$iter"]
+    w = interior(w_timeseries[i], :, 1, :)
 
     contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
                       levels = range(-1e-8, stop=1e-8, length=10),
