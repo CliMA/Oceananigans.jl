@@ -211,7 +211,7 @@ parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
 parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
 
-parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
 parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
