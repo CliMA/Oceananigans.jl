@@ -266,69 +266,70 @@ end
     @testset "Setting fields" begin
         @info "  Testing field setting..."
 
-        CUDA.allowscalar(true)
+        CUDA.allowscalar() do
 
-        FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
+            FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
-        N = (4, 6, 8)
-        L = (2π, 3π, 5π)
-        H = (1, 1, 1)
+            N = (4, 6, 8)
+            L = (2π, 3π, 5π)
+            H = (1, 1, 1)
 
-        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
-        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
-        float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
-        rational_vals = Any[1//11, -23//7]
-        other_vals = Any[π]
-        vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
+            int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+            uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
+            float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
+            rational_vals = Any[1//11, -23//7]
+            other_vals = Any[π]
+            vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
 
-        for arch in archs, FT in float_types
-            ArrayType = array_type(arch)
-            grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
+            for arch in archs, FT in float_types
+                ArrayType = array_type(arch)
+                grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
-            for FieldType in FieldTypes, val in vals
-                @test correct_field_value_was_set(grid, FieldType, val)
+                for FieldType in FieldTypes, val in vals
+                    @test correct_field_value_was_set(grid, FieldType, val)
+                end
+
+                for loc in ((Center, Center, Center),
+                            (Face, Center, Center),
+                            (Center, Face, Center),
+                            (Center, Center, Face),
+                            (Nothing, Center, Center),
+                            (Center, Nothing, Center),
+                            (Center, Center, Nothing),
+                            (Nothing, Nothing, Center),
+                            (Nothing, Nothing, Nothing))
+
+                    field = Field(loc, grid)
+                    sz = size(field)
+                    A = rand(FT, sz...)
+                    set!(field, A)
+                    @test field.data[1, 1, 1] == A[1, 1, 1]
+                end
+
+                Nx = 8
+                topo = (Bounded, Bounded, Bounded)
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+
+                u = XFaceField(grid)
+                v = YFaceField(grid)
+                w = ZFaceField(grid)
+                c = CenterField(grid)
+
+                f(x, y, z) = exp(x) * sin(y) * tanh(z)
+
+                ϕs = (u, v, w, c)
+                [set!(ϕ, f) for ϕ in ϕs]
+
+                xu, yu, zu = nodes(u)
+                xv, yv, zv = nodes(v)
+                xw, yw, zw = nodes(w)
+                xc, yc, zc = nodes(c)
+
+                @test u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
+                @test v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
+                @test w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
+                @test c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
             end
-
-            for loc in ((Center, Center, Center),
-                        (Face, Center, Center),
-                        (Center, Face, Center),
-                        (Center, Center, Face),
-                        (Nothing, Center, Center),
-                        (Center, Nothing, Center),
-                        (Center, Center, Nothing),
-                        (Nothing, Nothing, Center),
-                        (Nothing, Nothing, Nothing))
-
-                field = Field(loc, grid)
-                sz = size(field)
-                A = rand(FT, sz...)
-                set!(field, A)
-                @test field.data[1, 1, 1] == A[1, 1, 1]
-            end
-
-            Nx = 8
-            topo = (Bounded, Bounded, Bounded)
-            grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
-
-            u = XFaceField(grid)
-            v = YFaceField(grid)
-            w = ZFaceField(grid)
-            c = CenterField(grid)
-
-            f(x, y, z) = exp(x) * sin(y) * tanh(z)
-
-            ϕs = (u, v, w, c)
-            [set!(ϕ, f) for ϕ in ϕs]
-
-            xu, yu, zu = nodes(u)
-            xv, yv, zv = nodes(v)
-            xw, yw, zw = nodes(w)
-            xc, yc, zc = nodes(c)
-
-            @test u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
-            @test v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
-            @test w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
-            @test c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
         end
     end
 
