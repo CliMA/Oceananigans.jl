@@ -58,8 +58,8 @@ julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── func: typeof(cos)
-├── condition: typeof(f)
+├── func: cos (generic function with 23 methods)
+├── condition: f (generic function with 1 method)
 └── mask: 10
 
 julia> d[1, 1, 1]
