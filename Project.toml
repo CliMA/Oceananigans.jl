@@ -58,7 +58,7 @@ SafeTestsets = "0.0.1"
 SeawaterPolynomials = "^0.2"
 StructArrays = "0.4, 0.5, 0.6"
 Tullio = "0.2, 0.3"
-julia = "^1.6"
+julia = "^1.7"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
