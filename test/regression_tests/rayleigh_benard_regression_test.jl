@@ -144,13 +144,13 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     summarize_regression_test(test_fields, correct_fields)
 
-    CUDA.allowscalar(true)
-    @test all(test_fields.u .≈ correct_fields.u)
-    @test all(test_fields.v .≈ correct_fields.v)
-    @test all(test_fields.w .≈ correct_fields.w)
-    @test all(test_fields.b .≈ correct_fields.b)
-    @test all(test_fields.c .≈ correct_fields.c)
-    CUDA.allowscalar(false)
+    CUDA.allowscalar() do
+        @test all(test_fields.u .≈ correct_fields.u)
+        @test all(test_fields.v .≈ correct_fields.v)
+        @test all(test_fields.w .≈ correct_fields.w)
+        @test all(test_fields.b .≈ correct_fields.b)
+        @test all(test_fields.c .≈ correct_fields.c)
+    end
 
     return nothing
 end

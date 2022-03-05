@@ -67,13 +67,13 @@ function run_thermal_bubble_regression_test(arch, grid_type)
 
     summarize_regression_test(test_fields, correct_fields)
     
-    CUDA.allowscalar(true)
-    @test all(test_fields.u .≈ correct_fields.u)
-    @test all(test_fields.v .≈ correct_fields.v)
-    @test all(test_fields.w .≈ correct_fields.w)
-    @test all(test_fields.T .≈ correct_fields.T)
-    @test all(test_fields.S .≈ correct_fields.S)
-    CUDA.allowscalar(false)
+    CUDA.allowscalar() do
+        @test all(test_fields.u .≈ correct_fields.u)
+        @test all(test_fields.v .≈ correct_fields.v)
+        @test all(test_fields.w .≈ correct_fields.w)
+        @test all(test_fields.T .≈ correct_fields.T)
+        @test all(test_fields.S .≈ correct_fields.S)
+    end
     
     return nothing
 end
