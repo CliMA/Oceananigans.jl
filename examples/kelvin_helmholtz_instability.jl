@@ -61,7 +61,8 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # In unstable flows it is often useful to determine the dominant spatial structure of the
 # instability and the growth rate at which the instability grows.
 # If the simulation idealizes a physical flow, this can be used to make
-# predictions as to what should develop and how quickly.  Since these instabilities are often attributed to a linear instability,
+# predictions as to what should develop and how quickly.
+# Since these instabilities are often attributed to a linear instability,
 # we can determine information about the structure and the growth rate of the instability by analyzing the linear operator
 # that governs small perturbations about a base state, or by solving for the linear dynamics.
 
@@ -172,7 +173,7 @@ the ending time of the simulation. We thus find that the growth rate
 is measured by
 
 ``
-σ = log(energy(t₀ + Δτ) / energy(t₀)) / (2 * Δτ) .
+σ = log(energy(t₀ + Δτ) / energy(t₀)) / (2 Δτ) .
 ``
 """
 function grow_instability!(simulation, energy)
@@ -244,29 +245,22 @@ Returns ``σ``.
 """
 function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1e-3)
     σ = []
-
     power_method_data = []
-
     compute!(ω)
-
     push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
 
         @info @sprintf("About to start power method iteration %d; kinetic energy: %.2e", length(σ)+1, energy[1, 1, 1])
-
         push!(σ, grow_instability!(simulation, energy))
-
         compute!(energy)
 
         @info @sprintf("Power method iteration %d, kinetic energy: %.2e, σⁿ: %.2e, relative Δσ: %.2e",
                        length(σ), energy[1, 1, 1], σ[end], convergence(σ))
 
         compute!(ω)
-
         rescale!(simulation.model, energy)
-
         push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
     end
 
@@ -284,16 +278,15 @@ b = model.tracers.b
 perturbation_vorticity = Field(∂z(u) - ∂x(w))
 
 xF, yF, zF = nodes(perturbation_vorticity)
-
 xC, yC, zC = nodes(b)
 
 eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
 
 function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
 
-    kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color = :balance, aspectratio = 1,)
-
+    kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color=:balance, aspectratio=1)
     ω_title(t) = t == nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
+    b_title(t) = t == nothing ? @sprintf("buoyancy")  : @sprintf("buoyancy at t = %.2f", t)
 
     plot_ω = contourf(xF, zF, clamp.(ω, -ω_lim, ω_lim)';
                       levels = range(-ω_lim, stop=ω_lim, length=20),
@@ -301,8 +294,6 @@ function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(ab
                        ylims = (zF[1], zF[grid.Nz]),
                        clims = (-ω_lim, ω_lim),
                        title = ω_title(t), kwargs...)
-
-    b_title(t) = t == nothing ? @sprintf("buoyancy") : @sprintf("buoyancy at t = %.2f", t)
 
     plot_b = contourf(xC, zC, clamp.(b, -b_lim, b_lim)';
                     levels = range(-b_lim, stop=b_lim, length=20),
@@ -315,11 +306,10 @@ function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(ab
 end
 
 function power_method_plot(ω, b, σ, t)
-    plot_growthrates = scatter(σ,
-                             xlabel = "Power iteration",
-                             ylabel = "Growth rate",
-                              title = eigentitle(σ, nothing),
-                              label = nothing)
+    plot_growthrates = scatter(σ, xlabel = "Power iteration",
+                                  ylabel = "Growth rate",
+                                   title = eigentitle(σ, nothing),
+                                   label = nothing)
 
     plot_eigenmode = eigenplot(ω, b, σ, nothing)
 
@@ -391,16 +381,16 @@ run!(simulation)
 
 # ## Pretty things
 #
-# Load it; plot it. First the nonlinear equilibration of the perturbation fields together with the evolution of the
-# kinetic energy.
-
-#file = jldopen(simulation.output_writers[:vorticity].filepath)
-#iterations = parse.(Int, keys(file["timeseries/t"]))
+# First we plot the nonlinear equilibration of the perturbation fields together
+# with the evolution of the kinetic energy,
 
 @info "Making a neat movie of stratified shear flow..."
 
-function plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmode_energy, stop_time)
-    energy_plot = plot([0, stop_time], initial_eigenmode_energy * exp.(2 * estimated_growth_rate * [0, stop_time]),
+function plot_energy_timeseries(t, measured_KE, σ, KEᵢ, stop_time)
+    t_segment = [0, stop_time]
+    predicted_KE = KEᵢ * exp.(2σ * [0, stop_time])
+
+    energy_plot = plot(t_segment, predicted_KE,
              label = "~ exp(2 σ t)",
             legend = :topleft,
                 lw = 2,
@@ -411,7 +401,7 @@ function plot_energy_timeseries(time, KE, estimated_growth_rate, initial_eigenmo
             xlabel = "time",
             ylabel = "kinetic energy")
 
-    energy_plot = plot!(time, KE,
+    energy_plot = plot!(t, measured_KE,
               label = "perturbation kinetic energy",
               lw = 6,
               alpha = 0.5)
@@ -427,16 +417,17 @@ times = ω_timeseries.times
 KE = []
 
 anim_perturbations = @animate for (i, t) in enumerate(times)
-
     @info "Plotting frame $i from iteration $iteration..."
 
-    ω_snapshot = interior(ω_timeseries[i], :, 1, :)
-    b_snapshot = interior(b_timeseries[i], :, 1, :)
-    push!(KE, KE_timeseries[i][:])
+    ω_snapshot = interior(ω_timeseries, :, 1, :, i)
+    b_snapshot = interior(b_timeseries, :, 1, :, i)
+    push!(KE, KE_timeseries[i][1, 1, 1])
 
     energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
     eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
-    plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
+
+    layout = @layout [A{0.6h}; B]
+    plot(eigenmode_plot, energy_plot; layout, size=(800, 600))
 end
 
 mp4(anim_perturbations, "kelvin_helmholtz_instability_perturbations.mp4", fps = 8) # hide
@@ -449,16 +440,17 @@ times = Ω_timeseries.times
 KE = []
 
 anim_total = @animate for (i, t) in enumerate(times)
-
     @info "Plotting frame $i from iteration $iteration..."
 
-    Ω_snapshot = interior(Ω_timeseries, :, 1, :)
-    B_snapshot = interior(B_timeseries, :, 1, :)
-    push!(KE, KE_timeseries[i][:])
+    Ω_snapshot = interior(Ω_timeseries, :, 1, :, i)
+    B_snapshot = interior(B_timeseries, :, 1, :, i)
+    push!(KE, KE_timeseries[i][1, 1, 1])
 
     energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
     eigenmode_plot = eigenplot(Ω_snapshot, B_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
-    plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
+
+    layout = @layout [A{0.6h}; B]
+    plot(eigenmode_plot, energy_plot; layout, size=(800, 600))
 end
 
 mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
