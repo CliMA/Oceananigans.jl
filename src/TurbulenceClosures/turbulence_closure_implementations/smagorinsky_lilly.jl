@@ -224,4 +224,3 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
 
     return (; νₑ, κₑ)
 end
-

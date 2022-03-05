@@ -84,4 +84,3 @@ function Base.summary(closure::ScalarDiffusivity)
 end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
-

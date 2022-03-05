@@ -67,5 +67,4 @@ function Base.summary(closure::ScalarBiharmonicDiffusivity)
     return string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
 end
 
-Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
-    
+Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure)) 
