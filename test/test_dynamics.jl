@@ -426,10 +426,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 for time_discretization in time_discretizations
                     for closurename in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
 
-                        if closurename == HorizontalScalarDiffusivity
-                            time_discretizations = tuple(ExplicitTimeDiscretization())
-                        end
-
+                        # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
+                        (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
+                        
                         closure = closurename(time_discretization, ν=1, κ=1)
                     
                         fieldnames = [:c]
