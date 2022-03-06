@@ -233,7 +233,7 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (u=U, v=V, b=B, wu=wu, wv=wv),
+    JLD2OutputWriter(model, (U=U, V=V, B=B, wu=wu, wv=wv),
                      schedule = AveragedTimeInterval(output_interval, window=2minutes),
                      prefix = "langmuir_turbulence_averages",
                      force = true)
