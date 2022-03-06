@@ -90,8 +90,7 @@ nothing # hide
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = NonhydrostaticModel(
-                   grid = grid,
+model = NonhydrostaticModel(; grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,
                 tracers = :b,
@@ -136,12 +135,10 @@ u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = Field(sqrt(u^2 + w^2))
+s = sqrt(u^2 + w^2)
 
 ## y-component of vorticity
-ζ = Field(∂z(u) - ∂x(w))
-
-outputs = (s = s, b = b, ζ = ζ)
+ζ = ∂z(u) - ∂x(w)
 nothing # hide
 
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
@@ -150,11 +147,10 @@ nothing # hide
 saved_output_prefix = "horizontal_convection"
 saved_output_filename = saved_output_prefix * ".jld2"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                  field_slicer = nothing,
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
-                                                        prefix = saved_output_prefix,
-                                                         force = true)
+                                                      prefix = saved_output_prefix,
+                                                      force = true)
 nothing # hide
 
 # Ready to press the big red button:
@@ -169,7 +165,6 @@ run!(simulation)
 #
 # To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
 # creating coordinate arrays that each field lives on.
-
 
 using JLD2, Plots
 using Oceananigans
@@ -205,15 +200,15 @@ anim = @animate for i in 1:length(times)
     ## Load fields from `FieldTimeSeries` and compute χ
     t = times[i]
     
-    s_snapshot = interior(s_timeseries[i])[:, 1, :]
-    ζ_snapshot = interior(ζ_timeseries[i])[:, 1, :]
+    s_snapshot = interior(s_timeseries[i], :, 1, :)
+    ζ_snapshot = interior(ζ_timeseries[i], :, 1, :)
     
     b = b_timeseries[i]
     χ = Field(κ * (∂x(b)^2 + ∂z(b)^2))
     compute!(χ)
     
-    b_snapshot = interior(b)[:, 1, :]
-    χ_snapshot = interior(χ)[:, 1, :]
+    b_snapshot = interior(b, :, 1, :)
+    χ_snapshot = interior(χ, :, 1, :)
     
     ## determine colorbar limits and contour levels
     slim = 0.6
