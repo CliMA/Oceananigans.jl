@@ -143,6 +143,7 @@ run!(simulation)
 using Printf, Plots
 
 w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+x, y, z = nodes(w_timeseries)
 
 # and makes an animation with Plots.jl:
 
