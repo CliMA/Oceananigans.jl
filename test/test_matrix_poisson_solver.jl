@@ -101,7 +101,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ_solution = CenterField(grid)
     calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)
 
-    parent(ϕ_solution) .-= mean(ϕ_solution)
+    ϕ_solution .-= mean(ϕ_solution)
 
     CUDA.@allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))
