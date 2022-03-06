@@ -34,7 +34,6 @@ function get_face(op::KernelFunctionOperation, face_index)
 end
 
 function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
-
     events = []
 
     for (face_index, face_grid) in enumerate(grid.faces)
@@ -49,3 +48,4 @@ function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; k
 end
 
 @inline launch!(arch, grid::ConformalCubedSphereGrid, ::Val{dims}, args...; kwargs...) where dims = launch!(arch, grid, dims, args...; kwargs...)
+

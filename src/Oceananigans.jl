@@ -90,7 +90,7 @@ export
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
     AndSchedule, OrSchedule,
 

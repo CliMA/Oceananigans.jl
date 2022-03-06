@@ -9,7 +9,7 @@ struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensi
     Pr :: P
 
     function SmagorinskyLilly{TD, FT}(C, Cb, Pr) where {TD, FT}
-        Pr = convert_diffusivity(FT, Pr, Val(false))
+        Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
         return new{TD, FT, P}(C, Cb, Pr)
     end

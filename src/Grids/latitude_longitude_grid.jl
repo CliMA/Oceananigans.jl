@@ -116,6 +116,12 @@ Keyword arguments
                         If `!precompute_metrics` (the default), horizontal spacings and areas
                         are computed on-the-fly during a simulation.
 
+- `topology`: Tuple of topologies (`Flat`, `Bounded`, Periodic`) for each direction. The vertical
+              `topology[3]` must be `Bounded`, while the latitude-longitude topology can be
+              `Bounded`, `Periodic`, or `Flat`. The default latitudinal `topology[2]` is `Bounded`.
+              The default longitudinal `topology[1]` is `Periodic`
+              if `diff(longitude) == 360` and `Bounded` otherwise.
+
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior.
 """
