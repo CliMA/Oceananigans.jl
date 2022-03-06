@@ -1,19 +1,15 @@
 using Oceananigans.Operators
-using Oceananigans.Fields: ZeroField
 
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, Az_qᶜᶜᶜ
 using Oceananigans.Advection:
       _advective_momentum_flux_Uu,
       _advective_momentum_flux_Vv,
-      upwind_biased_product
-
-import Oceananigans.Advection:
+      upwind_biased_product,
       div_𝐯u,
       div_𝐯v,
       div_𝐯w,
       left_biased_interpolate_xᶜᵃᵃ,
       right_biased_interpolate_xᶜᵃᵃ,
-    left_biased_interpolate_yᵃᶜᵃ,
+      left_biased_interpolate_yᵃᶜᵃ,
       right_biased_interpolate_yᵃᶜᵃ
 
 ######
@@ -45,17 +41,17 @@ import Oceananigans.Advection:
 @inline Khᶜᶜᶜ(i, j, k, grid, ::VectorInvariantSchemes, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
 @inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
-    v̂  =  ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+    v̂  =  ℑxyᶠᶜᵃ(i, j, k, grid, v)
     ζᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     ζᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ) / Δxᶠᶜᶜ(i, j, k, grid) 
+    return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
 @inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
-    û  =  ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+    û  =  ℑxyᶜᶠᵃ(i, j, k, grid, u)
     ζᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     ζᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
-    return + upwind_biased_product(û, ζᴸ, ζᴿ) / Δyᶜᶠᶜ(i, j, k, grid)
+    return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
 ######
@@ -64,16 +60,6 @@ end
 
 @inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
 @inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
-
-@inline div_𝐯u(i, j, k, grid, scheme::VectorInvariantSchemes, U, u) = U_dot_∇u(i, j, k, grid, scheme, U)
-@inline div_𝐯v(i, j, k, grid, scheme::VectorInvariantSchemes, U, v) = U_dot_∇v(i, j, k, grid, scheme, U)
-
-@inline div_𝐯u(i, j, k, grid, scheme::VectorInvariantSchemes, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, scheme::VectorInvariantSchemes, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, scheme::VectorInvariantSchemes, U, ::ZeroField) = zero(eltype(grid))
-
-@inline div_𝐯w(i, j, k, grid, scheme::VectorInvariantSchemes, U, w) = zero(eltype(grid))
-
 
 ######
 ###### No advection

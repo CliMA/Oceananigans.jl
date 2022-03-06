@@ -9,7 +9,7 @@ using JLD2
 
 h₀ = 1e3
 
-grid = LatitudeLongitudeGrid(size = (40, 40, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-h₀, 0), halo = (5, 5, 5), precompute_metrics = true)
+grid = LatitudeLongitudeGrid(size = (80, 80, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-h₀, 0), halo = (5, 5, 5), precompute_metrics = true)
 
 coriolis = HydrostaticSphericalCoriolis()
 
@@ -47,7 +47,7 @@ for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)]
     # Time step restricted on the gravity wave speed. If using the implicit free surface method it is possible to increase it
     Δt =  10wave_propagation_time_scale
 
-    simulation = Simulation(model, Δt = Δt, stop_time = 50days)
+    simulation = Simulation(model, Δt = Δt, stop_time = 10days)
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
                             iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
@@ -74,12 +74,6 @@ for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)]
     @compute l₀ₕ = Field(η₁^2)
     
     using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
-
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                        schedule = TimeInterval(100wave_propagation_time_scale),
-                                                        prefix = "rh_$(adv)_solution_",
-                                                        force = true)
-
 
     simulation.output_writers[:fields_full] = JLD2OutputWriter(model, (; lv = l₁ᵥ, l0v = l₀ᵥ, lh = l₁ₕ, l0h = l₀ₕ),
                                                           schedule = TimeInterval(100wave_propagation_time_scale),

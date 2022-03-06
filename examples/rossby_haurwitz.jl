@@ -21,11 +21,9 @@ using Printf
 
 h₀ = 8e3
 
-grid = LatitudeLongitudeGrid(size = (120, 120, 5), longitude = (-180, 180), latitude = (-80, 80), z = (-h₀, 0), halo = (3, 3, 3), precompute_metrics = true)
+grid = LatitudeLongitudeGrid(size = (70, 70, 5), longitude = (-180, 180), latitude = (-80, 80), z = (-h₀, 0), halo = (3, 3, 3), precompute_metrics = true)
 #  λ for latitude and ϕ for latitude is
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, HydrostaticSphericalCoriolis
-
-coriolis = HydrostaticSphericalCoriolis(scheme=VectorInvariantEnergyConserving())
 
 # ## Building a `HydrostaticFreeSurfaceModel`
 #
@@ -34,13 +32,21 @@ coriolis = HydrostaticSphericalCoriolis(scheme=VectorInvariantEnergyConserving()
 for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)])
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=90)
-
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                                        tracers = (),
-                                        momentum_advection = scheme, 
-                                        buoyancy = nothing,
-                                        coriolis = coriolis,
-                                        closure = nothing)
+    if adv == 1
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+                                            tracers = (),
+                                            momentum_advection = scheme, 
+                                            buoyancy = nothing,
+                                            coriolis = HydrostaticSphericalCoriolis(scheme=VectorInvariantEnergyConserving()),
+                                            closure = nothing)
+    else
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+                                            tracers = (),
+                                            momentum_advection = scheme, 
+                                            buoyancy = nothing,
+                                            coriolis =nothing,
+                                            closure = nothing)
+    end
 
     # ## The Bickley jet on a sphere
     # λ ∈ [-180°, 180°]
@@ -50,7 +56,7 @@ for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)]
     K = 7.848e-6            # [s⁻¹]
     n = 4                   # dimensionless
     g = model.free_surface.gravitational_acceleration          # [m/s²]
-    Ω = coriolis.rotation_rate     # [s⁻¹] 2π/86400
+    Ω = 7.292115e-5
     ϵ = 0.0 # perturbation veloctiy # [m/s]
 
     A(θ) = ω/2 * (2 * Ω + ω) * cos(θ)^2 + 1/4 * K^2 * cos(θ)^(2*n) * ((n+1) * cos(θ)^2 + (2 * n^2 - n - 2) - 2 * n^2 * sec(θ)^2 )
@@ -124,8 +130,8 @@ using JLD2, GLMakie, Printf
 
 const hours = 3600
 
-λ = range(-180,179,length = 120)
-ϕ = range(-79.5,79.5,length = 120)
+λ = range(-180,179,length = 70)
+ϕ = range(-79.5,79.5,length = 70)
 
 filename1 = "rh_1_solution_"
 filename2 = "rh_2_solution_"
@@ -171,11 +177,11 @@ set_theme!(fontsize_theme)
 
 ax1 = fig[1, 1] = LScene(fig) # make plot area wider
 wireframe!(ax1, Sphere(Point3f0(0), 1f0), show_axis=false)
-hm1 = surface!(ax1, x, y, z, color=ηp, colormap=:solar)
+hm1 = surface!(ax1, x, y, z, color=up, colormap=:balance)
 
 ax2 = fig[1, 2] = LScene(fig) # make plot area wider
 wireframe!(ax2, Sphere(Point3f0(0), 1f0), show_axis=false)
-hm2 = surface!(ax2, x, y, z, color=ηw, colormap=:solar)
+hm2 = surface!(ax2, x, y, z, color=uw, colormap=:balance)
 
 init = (π/5, π/6, 0)
 rotate_cam!(ax1.scene, init)
@@ -185,7 +191,7 @@ rot  = (0, π/300, 0)
 
 display(fig)
 
-record(fig, "test_adv.mp4", iterations[1:end-2], framerate=10) do i
+record(fig, "test_adv_rossby.mp4", iterations[1:end-2], framerate=10) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     rotate_cam!(ax1.scene, rot)
     rotate_cam!(ax2.scene, rot)
