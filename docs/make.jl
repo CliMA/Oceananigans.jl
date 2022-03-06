@@ -154,7 +154,7 @@ format = Documenter.HTML(
 
 makedocs(bib,
   sitename = "Oceananigans.jl",
-   authors = "Climate Modeling Alliance and co-contributors",
+   authors = "Climate Modeling Alliance and contributors",
     format = format,
      pages = pages,
    modules = [Oceananigans],
