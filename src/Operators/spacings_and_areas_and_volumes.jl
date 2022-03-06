@@ -102,10 +102,10 @@ end
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  =  CUDA.@allowscalar @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  =  CUDA.@allowscalar @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  =  CUDA.@allowscalar @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  =  CUDA.@allowscalar @inbounds grid.Δyᵃᶜᵃ[j]
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶠᵃᵃ
 @inline Δxᶜᵃᵃ(i, j, k, grid::RGX) =  @inbounds grid.Δxᶜᵃᵃ
