@@ -4,7 +4,7 @@ using Oceananigans.Utils: AbstractSchedule, prettytime
 
 import Oceananigans: run_diagnostic!
 import Oceananigans.Utils: TimeInterval
-import Oceananigans.Fields: location
+import Oceananigans.Fields: location, indices
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -78,9 +78,7 @@ JLD2OutputWriter scheduled on TimeInterval(4 years):
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
-    
     window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
-    
     return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
 end
 
@@ -129,6 +127,7 @@ end
 
 # Time-averaging doesn't change spatial location
 location(wta::WindowedTimeAverage) = location(wta.operand)
+indices(wta::WindowedTimeAverage) = indices(wta.operand)
 
 function accumulate_result!(wta, model)
 

@@ -42,6 +42,7 @@ Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :),
                                      boundary_conditions = nothing) where {LX, LY, LZ}
+
     Nt = length(times)
     arch = architecture(grid)
     loc = (LX, LY, LZ)
@@ -306,3 +307,6 @@ function Base.show(io::IO, fts::FieldTimeSeries)
     return print(io, prefix, suffix)
 end
 
+#####
+##### Reductions
+#####

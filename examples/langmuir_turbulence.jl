@@ -1,9 +1,9 @@
 # # Langmuir turbulence example
 #
-# This example implements the Langmuir turbulence simulation reported in section
+# This example implements a Langmuir turbulence simulation reported in section
 # 4 of
 #
-# > [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38).
+# > [Wagner et al., "Near-inertial waves and turbulence driven by the growth of swell", Journal of Physical Oceanography (2021)](https://journals.ametsoc.org/view/journals/phoc/51/5/JPO-D-20-0178.1.xml)
 #
 # This example demonstrates
 #
@@ -31,14 +31,13 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # ### Domain and numerical grid specification
 #
-# We create a grid with modest resolution. The grid extent is similar, but not
-# exactly the same as that in McWilliams et al. (1997).
+# We use a modest resolution and the same total extent as Wagner et al. 2021,
 
-grid = RectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
+grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# The surface wave Stokes drift profile prescribed in McWilliams et al. (1997)
+# The surface wave Stokes drift profile prescribed in Wagner et al. 2021,
 # corresponds to a 'monochromatic' (that is, single-frequency) wave field.
 #
 # A monochromatic wave field is characterized by its wavelength and amplitude
@@ -85,19 +84,19 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 ∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
 
 # Finally, we note that the time-derivative of the Stokes drift must be provided
-# if the Stokes drift changes in time. In this example, the Stokes drift is constant
+# if the Stokes drift and surface wave field undergoes _forced_ changes in time.
+# In this example, the Stokes drift is constant
 # and thus the time-derivative of the Stokes drift is 0.
 
 # ### Boundary conditions
 #
-# At the surface at ``z=0``, McWilliams et al. (1997) impose a wind stress
-# on ``u``,
+# At the surface at ``z=0``, Wagner et al. 2021 impose
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-# McWilliams et al. (1997) impose a linear buoyancy gradient `N²` at the bottom
+# Wagner et al. 2021 impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
@@ -114,7 +113,7 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ
 
 # ### Coriolis parameter
 #
-# McWilliams et al. (1997) use
+# Wagner et al. (2021) use
 
 coriolis = FPlane(f=1e-4) # s⁻¹
 
@@ -127,17 +126,15 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = NonhydrostaticModel(
-              advection = WENO5(),
-            timestepper = :RungeKutta3,
-                   grid = grid,
-                tracers = :b,
-               buoyancy = BuoyancyTracer(),
-               coriolis = coriolis,
-                closure = AnisotropicMinimumDissipation(),
-           stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
-    boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions),
-)
+model = NonhydrostaticModel(; grid,
+                            advection = WENO5(),
+                            timestepper = :RungeKutta3,
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            coriolis = coriolis,
+                            closure = AnisotropicMinimumDissipation(),
+                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
 #
@@ -155,13 +152,13 @@ stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_
 
 bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 
-# The velocity initial condition in McWilliams et al. (1997) is zero *Eulerian-mean* velocity.
-# This means that we must add the Stokes drift profile to the Lagrangian-mean ``u`` velocity field
-# modeled by Oceananigans.jl. We also add noise scaled by the friction velocity to ``u`` and ``w``.
+# The simulation we reproduce from Wagner et al. (2021) is zero Lagrangian-mean velocity.
+# This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
+# by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
-uᵢ(x, y, z) = uˢ(z) + sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
-
-wᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
+u★ = sqrt(abs(Qᵘ))
+uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
+wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
@@ -210,7 +207,7 @@ simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(10)
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivity_fields.νₑ,))
+fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, fields_to_output,
@@ -224,16 +221,16 @@ simulation.output_writers[:fields] =
 # momentum fluxes,
 
 u, v, w = model.velocities
+b = model.tracers.b
 
-U = Average(u, dims=(1, 2))
-V = Average(v, dims=(1, 2))
-B = Average(model.tracers.b, dims=(1, 2))
-
+ U = Average(u, dims=(1, 2))
+ V = Average(v, dims=(1, 2))
+ B = Average(b, dims=(1, 2))
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (U=U, V=V, B=B, wu=wu, wv=wv),
+    JLD2OutputWriter(model, (; U, V, B, wu, wv),
                      schedule = AveragedTimeInterval(output_interval, window=2minutes),
                      prefix = "langmuir_turbulence_averages",
                      force = true)
@@ -285,30 +282,30 @@ anim = @animate for (i, t) in enumerate(times)
     @info "Drawing frame $i of $(length(times))..."
 
     ## Get fields at ith save point
-     wi = time_series.w[i]
-     ui = time_series.u[i]
-     Bi = time_series.B[i][1, 1, :]
-     Ui = time_series.U[i][1, 1, :]
-     Vi = time_series.V[i][1, 1, :]
-    wui = time_series.wu[i][1, 1, :]
-    wvi = time_series.wv[i][1, 1, :]
+     wᵢ = time_series.w[i]
+     uᵢ = time_series.u[i]
+     Bᵢ = time_series.B[i][1, 1, :]
+     Uᵢ = time_series.U[i][1, 1, :]
+     Vᵢ = time_series.V[i][1, 1, :]
+    wuᵢ = time_series.wu[i][1, 1, :]
+    wvᵢ = time_series.wv[i][1, 1, :]
 
     ## Extract slices
     k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
-    wxy = wi[:, :, k]
-    wxz = wi[:, 1, :]
-    uxz = ui[:, 1, :]
+    wxy = wᵢ[:, :, k]
+    wxz = wᵢ[:, 1, :]
+    uxz = uᵢ[:, 1, :]
 
-    wlims, wlevels = nice_divergent_levels(w, 0.03)
-    ulims, ulevels = nice_divergent_levels(w, 0.05)
+    wlims, wlevels = nice_divergent_levels(interior(w), 0.03)
+    ulims, ulevels = nice_divergent_levels(interior(w), 0.05)
 
-    B_plot = plot(B_snapshot, zu,
+    B_plot = plot(Bᵢ, zu,
                   label = nothing,
                   legend = :bottom,
                   xlabel = "Buoyancy (m s⁻²)",
                   ylabel = "z (m)")
 
-    U_plot = plot([U_snapshot V_snapshot], zu,
+    U_plot = plot([Uᵢ Vᵢ], zu,
                   label = ["\$ \\bar u \$" "\$ \\bar v \$"],
                   legend = :bottom,
                   xlabel = "Velocities (m s⁻¹)",
@@ -317,7 +314,7 @@ anim = @animate for (i, t) in enumerate(times)
     wu_label = "\$ \\overline{wu} \$"
     wv_label = "\$ \\overline{wv} \$"
 
-    fluxes_plot = plot([wu_snapshot, wv_snapshot], zw,
+    fluxes_plot = plot([wuᵢ, wvᵢ], zw,
                        label = [wu_label wv_label],
                        legend = :bottom,
                        xlabel = "Momentum fluxes (m² s⁻²)",
@@ -363,11 +360,7 @@ anim = @animate for (i, t) in enumerate(times)
     plot(wxy_plot, B_plot, wxz_plot, U_plot, uxz_plot, fluxes_plot,
          layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900.5, 1000.5),
          title = [wxy_title "" wxz_title "" uxz_title ""])
-
-    if iter == iterations[end]
-        close(fields_file)
-        close(averages_file)
-    end
 end
 
 mp4(anim, "langmuir_turbulence.mp4", fps = 8) # hide
+

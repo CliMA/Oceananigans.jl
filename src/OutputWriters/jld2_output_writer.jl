@@ -171,7 +171,8 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
+                         for name in keys(outputs))
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)
