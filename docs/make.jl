@@ -154,7 +154,7 @@ format = Documenter.HTML(
 
 makedocs(bib,
   sitename = "Oceananigans.jl",
-   authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
+   authors = "Climate Modeling Alliance and co-contributors",
     format = format,
      pages = pages,
    modules = [Oceananigans],
