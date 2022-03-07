@@ -194,7 +194,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
   calculations by reusing the same chunk of memory. As an example, you can see scratch space being
   created
-  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383)
+  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_constant_fluxes.jl#L380-L383)
   and then being used in calculations
   [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
@@ -215,29 +215,28 @@ For example if can be difficult to just view a `CuArray` since Julia needs to ac
 its elements to do that. Consider the example below:
 
 ```julia
-julia> using Oceananigans; using Adapt
+julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
-                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (1, 1, 1)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
+julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1))
+1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
+└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
 
-julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
-NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: ScalarDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+julia> model = NonhydrostaticModel(; grid)
+NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}
 
 julia> adapt(Array, model.velocities.u.data)
-3×3×3 OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
  0.0  0.0  0.0
  0.0  0.0  0.0
@@ -260,22 +259,22 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}:
-ERROR: scalar getindex is disallowed
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
+ERROR: Scalar indexing is disallowed.
 ```
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way around 
 this limitation is to allow scalar operations on `CuArray`s. We can temporarily
-do that with the `CUDA.@allowscalar` macro or by calling `CUDA.allowscalar(true)`.
+do that with the `CUDA.@allowscalar` macro or by calling `CUDA.allowscalar() do .. end`.
 
 
 ```julia
-julia> using CUDA; CUDA.allowscalar(true)
+julia> using CUDA
 
-julia> model.velocities.u.data
-3×3×3 OffsetArray(::CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+julia> CUDA.@allowscalar model.velocities.u.data
+3×3×3 OffsetArray(::CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
 ┌ Warning: Performing scalar operations on GPU arrays: This is very slow, consider disallowing these operations with `allowscalar(false)`
 └ @ GPUArrays ~/.julia/packages/GPUArrays/WV76E/src/host/indexing.jl:43
