@@ -75,7 +75,6 @@ from the terminal, which will run all the commands in that script and subsequent
 the Julia REPL inside your project directory and typing each of those commands by hand (or simply issuing
 `include("my_oceananigans_script.jl")` in the REPL), with the exception that the REPL will remain open after the commands in this case.
 
-If you are using a HPC system and you want to make use of a GPU, then an extra step generally has to be added: submitting the
-job to request GPU resources. This is usually done with the `slurm` or `PBS` job schedulers and the details usually change depending
-on which cluster you are using, but the process should be similar (if not the same) to submitting other jobs in that same cluster. We
-recommend you check the cluster documentation for information on how to submit jobs that require GPU resources.
+If you want to run Oceananigans on a GPU and are using a HPC system, an extra step generally has to be added: submitting the
+job to request GPU resources. This is usually done with the `slurm` or `PBS` job schedulers. We
+recommend checking the cluster documentation for information on how to submit jobs that require GPU resources.
