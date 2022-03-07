@@ -1,5 +1,9 @@
 # Getting started
 
+This section covers the basics of installing Julia and Oceananigans, and then describes best practices when running
+Oceananigans. If you're new to Julia, we also recommend reading [Julia's "getting started" page](https://julialang.org/learning/getting-started/).
+
+
 ## Installation instructions
 
 The hardest part of installing Oceananigans is actually installing Julia (and even that should be pretty easy). 
@@ -74,7 +78,3 @@ other features to help users interact with packages. If you already have a file 
 from the terminal, which will run all the commands in that script and subsequently close Julia. This is equivalent to opening
 the Julia REPL inside your project directory and typing each of those commands by hand (or simply issuing
 `include("my_oceananigans_script.jl")` in the REPL), with the exception that the REPL will remain open after the commands in this case.
-
-If you want to run Oceananigans on a GPU and are using a HPC system, an extra step generally has to be added: submitting the
-job to request GPU resources. This is usually done with the `slurm` or `PBS` job schedulers. We
-recommend checking the cluster documentation for information on how to submit jobs that require GPU resources.
