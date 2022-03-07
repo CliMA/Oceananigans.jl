@@ -215,29 +215,28 @@ For example if can be difficult to just view a `CuArray` since Julia needs to ac
 its elements to do that. Consider the example below:
 
 ```julia
-julia> using Oceananigans; using Adapt
+julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
-                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (1, 1, 1)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
+julia> grid = RectilinearGrid(GPU(); size=(1,1,1), extent=(1,1,1))
+1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
+└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
 
-julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
-NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: ScalarDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+julia> model = NonhydrostaticModel(; grid)
+NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}
 
 julia> adapt(Array, model.velocities.u.data)
-3×3×3 OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
  0.0  0.0  0.0
  0.0  0.0  0.0
@@ -260,10 +259,10 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}:
-ERROR: scalar getindex is disallowed
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}:
+ERROR: Scalar indexing is disallowed.
 ```
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way around 
