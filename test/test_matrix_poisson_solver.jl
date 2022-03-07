@@ -85,7 +85,7 @@ function run_poisson_equation_test(grid)
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
     calc_∇²!(∇²ϕ, ϕ_truth, grid)
-    
+
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
     rhs = interior_copy(rhs)[:]

@@ -75,9 +75,6 @@ function run_field_reduction_tests(FT, arch)
 
         @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
-        # Important to make sure no CUDA scalar operations occur!
-        CUDA.allowscalar(false)
-
         @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
         @test maximum(ϕ) ≈ maximum(ϕ_vals) atol=ε
         @test mean(ϕ) ≈ mean(ϕ_vals) atol=2ε
@@ -104,8 +101,6 @@ function run_field_reduction_tests(FT, arch)
             @test all(isapprox(mean(cosh, ϕ, dims=dims),
                                mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
-
-        CUDA.allowscalar(true)
     end
 
     return nothing
