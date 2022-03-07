@@ -7,21 +7,23 @@ using Printf
 using Oceananigans.Fields: @compute 
 using JLD2
 
-h₀ = 1e3
 
-grid = LatitudeLongitudeGrid(size = (80, 80, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-h₀, 0), halo = (5, 5, 5), precompute_metrics = true)
+function run_steady_state_nonlinear_geostrophic_flow(; Nx = 80
+                                                       Ny = 80,
+                                                       advection_scheme = VectorInvariant(),
+                                                       prefix = "2ndorder")                                                   
+    h₀ = 1e3
+    grid = LatitudeLongitudeGrid(size = (80, 80, 1), 
+                                 longitude = (-180, 180), 
+                                 latitude = (-80, 80), z = (-h₀, 0), halo = (3, 3, 3), precompute_metrics = true)
 
-coriolis = HydrostaticSphericalCoriolis()
-
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-
-for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)])
+    free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
     model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                         tracers = (),
                                         momentum_advection = scheme, 
                                         buoyancy = nothing,
-                                        coriolis = coriolis,
+                                        coriolis = HydrostaticSphericalCoriolis(),
                                         closure = nothing)
 
     g  = model.free_surface.gravitational_acceleration 
@@ -67,36 +69,10 @@ for (adv, scheme) in enumerate([VectorInvariant(), WENO5(vector_invariant=true)]
     set!(v₁, vᵢ)
     set!(η₁, ηᵢ)
 
-    @compute l₁ᵥ = Field((u - u₁)^2 + (v - v₁)^2)
-    @compute l₀ᵥ = Field(u₁^2 + v₁^2)
-
-    @compute l₁ₕ = Field((η - η₁)^2)
-    @compute l₀ₕ = Field(η₁^2)
-    
-    using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
-
-    simulation.output_writers[:fields_full] = JLD2OutputWriter(model, (; lv = l₁ᵥ, l0v = l₀ᵥ, lh = l₁ₕ, l0h = l₀ₕ),
-                                                          schedule = TimeInterval(100wave_propagation_time_scale),
-                                                          prefix = "rh_$(adv)_diag_",
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
+                                                          schedule = TimeInterval(10wave_propagation_time_scale),
+                                                          prefix = "rh_$(prefix)",
                                                           force = true)
 
     run!(simulation)
- end
-
-
-file1 = jldopen("rh_1_diag_.jld2")
-file2 = jldopen("rh_2_diag_.jld2")
-
-iterations = parse.(Int, keys(file1["timeseries/t"]))
-
-d1 = zeros(length(iterations))
-d2 = zeros(length(iterations))
-h1 = zeros(length(iterations))
-h2 = zeros(length(iterations))
-
-for (i, idx) in enumerate(iterations)
-    d1[i] = sum(file1["timeseries/lv/$idx"]) / sum(file1["timeseries/l0v/$idx"])
-    d2[i] = sum(file2["timeseries/lv/$idx"]) / sum(file2["timeseries/l0v/$idx"])
-    h1[i] = sum(file1["timeseries/lh/$idx"]) / sum(file1["timeseries/l0h/$idx"])
-    h2[i] = sum(file2["timeseries/lh/$idx"]) / sum(file2["timeseries/l0h/$idx"])
 end
