@@ -1,5 +1,7 @@
 using Printf
 using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.Utils: prettysummary
+using Oceananigans.BoundaryConditions: bc_str
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
@@ -22,16 +24,22 @@ function Base.summary(field::Field)
     return string(prefix, suffix)
 end
 
-data_summary(field) = string("max=", scalar_summary(maximum(field)), ", ",
-                             "min=", scalar_summary(minimum(field)), ", ",
-                             "mean=", scalar_summary(mean(field)))
+data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
+                             "min=", prettysummary(minimum(field)), ", ",
+                             "mean=", prettysummary(mean(field)))
 
 function Base.show(io::IO, field::Field)
+
+    bcs = field.boundary_conditions
 
     prefix =
         string("$(summary(field))\n",
                "├── grid: ", summary(field.grid), '\n',
-               "├── boundary conditions: ", summary(field.boundary_conditions), '\n')
+               "├── boundary conditions: ", summary(bcs), '\n',
+               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+                     ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
+                     ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
+                     ", immersed: ", bc_str(bcs.immersed), '\n')
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), '\n',

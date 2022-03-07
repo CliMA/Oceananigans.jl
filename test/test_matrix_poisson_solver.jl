@@ -1,5 +1,4 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
-using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @kernel, @index
@@ -89,7 +88,8 @@ function run_poisson_equation_test(grid)
 
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
-    rhs = interior_copy(rhs)[:]
+    rhs = copy(interior(rhs))
+    rhs = reshape(rhs, length(rhs))
     weights_cpu = compute_poisson_weights(on_architecture(CPU(), grid))
     weights = Tuple(arch_array(arch, w) for w in weights_cpu)
     solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)

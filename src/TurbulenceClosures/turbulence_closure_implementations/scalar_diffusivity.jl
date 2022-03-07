@@ -11,8 +11,8 @@ struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
 end
 
 """
-    ScalarDiffusivity(time_disc=ExplicitTimeDiscretization,
-                      formulation=ThreeDimensionalFormulation, FT=Float64;
+    ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization,
+                      formulation=ThreeDimensionalFormulation(), FT=Float64];
                       ν=0, κ=0,
                       discrete_form = false) 
 
@@ -21,31 +21,39 @@ for each tracer field in `tracers`. If a single `κ` is provided, it is
 applied to all tracers. Otherwise `κ` must be a `NamedTuple` with values
 for every tracer individually.
 
+`formulation`:
+  - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+  - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+  - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+
 `ν` and the fields of `κ` may be constants (converted to `FT`), arrays, fields or
-    - functions of `(x, y, z, t)` if `discrete_form = false`
-    - functions of `(i, j, k, grid, LX, LY, LZ)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
-      `discrete_form = true`.
+  - functions of `(x, y, z, t)` if `discrete_form = false`
+  - functions of `(i, j, k, grid, LX, LY, LZ)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
+    `discrete_form = true`.
 """
-function ScalarDiffusivity(time_disc=ExplicitTimeDiscretization(),
+function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(), FT=Float64;
                            ν=0, κ=0,
                            discrete_form = false)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
-        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `HorizontalFormulation` or `ThreeDimensionalFormulation`"))
+        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form)
     ν = convert_diffusivity(FT, ν; discrete_form)
 
-    return ScalarDiffusivity{typeof(time_disc), typeof(formulation)}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation)}(ν, κ)
 end
 
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
 const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulation} where TD
 
-  VerticalScalarDiffusivity(time_disc=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, VerticalFormulation(), FT; kwargs...)
-HorizontalScalarDiffusivity(time_disc=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) = ScalarDiffusivity(time_disc, HorizontalFormulation(), FT; kwargs...)
+VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+    ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
+
+HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+    ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
           ScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), ThreeDimensionalFormulation(), FT; kwargs...)

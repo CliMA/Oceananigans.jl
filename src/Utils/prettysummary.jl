@@ -18,7 +18,8 @@ function prettysummary(f::Function, showmethods=true)
     end
 end
 
-prettysummary(x::Number, args...) = scalar_summary(x)
+prettysummary(x::AbstractFloat, args...) = scalar_summary(x)
+prettysummary(x::Int, args...) = string(x)
 
 # This is very important
 function prettysummary(nt::NamedTuple, args...)

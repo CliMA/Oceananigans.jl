@@ -76,7 +76,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
             set!(model, u = (x, y, z) -> rand())
 
-            @test try compute!(ζ); true; catch; false; end
+            @test try
+                compute!(ζ)
+                true
+            catch err
+                println(sprint(showerror, err))
+                false
+            end
             @test maximum(abs, ζ) > 0 # fingers crossed
         end
     end

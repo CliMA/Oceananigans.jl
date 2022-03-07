@@ -7,7 +7,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Utils
 using Oceananigans.Fields
-using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition
+using Oceananigans.BoundaryConditions: default_prognostic_bc
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ

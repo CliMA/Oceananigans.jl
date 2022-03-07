@@ -415,7 +415,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Periodic, Bounded),
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
-
+                
                 # Can't use implicit time-stepping in vertically-periodic domains right now
                 if topology !== (Periodic, Periodic, Periodic)
                     time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
@@ -424,11 +424,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 end
 
                 for time_discretization in time_discretizations
+                    for closurename in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
 
-                    for closure in [ScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    VerticalScalarDiffusivity(time_discretization, ν=1, κ=1),
-                                    HorizontalScalarDiffusivity(time_discretization, ν=1, κ=1)]
-
+                        # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
+                        (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
+                        
+                        closure = closurename(time_discretization, ν=1, κ=1)
+                    
                         fieldnames = [:c]
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
@@ -444,7 +446,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                     buoyancy = nothing)
 
                         td = typeof(time_discretization).name.wrapper
-                        closurename = typeof(closure).name.wrapper
 
                         for fieldname in fieldnames
                             @info "    [$timestepper, $td, $closurename] " *
