@@ -125,7 +125,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     return simulation.output_writers[:fields].filepath
 end
 
-filepath = run_rossby_haurwitz(Nx=360, Ny=180, advection_scheme=VectorInvariant(), prefix = "2ndorder")
+filepath = run_rossby_haurwitz(Nx=720, Ny=360, advection_scheme=VectorInvariant(), prefix = "2ndorder")
 visualize_spherical_field(filepath, "ζ")
-filepath = run_rossby_haurwitz(Nx=360, Ny=180, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
+filepath = run_rossby_haurwitz(Nx=720, Ny=360, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
 visualize_spherical_field(filepath, "ζ")
