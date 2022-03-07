@@ -73,7 +73,7 @@ command-line tool (similar to Python's IPython) that has a searchable history, t
 other features to help users interact with packages. If you already have a file with commands, you can issue `julia --project my_oceananigans_script.jl`
 from the terminal, which will run all the commands in that script and subsequently close Julia. This is equivalent to opening
 the Julia REPL inside your project directory and typing each of those commands by hand (or simply issuing
-`include("my_oceananigans_script.jl` in the REPL), with the exception that the REPL will remain open after the commands in this case.
+`include("my_oceananigans_script.jl")` in the REPL), with the exception that the REPL will remain open after the commands in this case.
 
 If you are using a HPC system and you want to make use of a GPU, then an extra step generally has to be added: submitting the
 job to request GPU resources. This is usually done with the `slurm` or `PBS` job schedulers and the details usually change depending
