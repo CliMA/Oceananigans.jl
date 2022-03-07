@@ -16,18 +16,17 @@ function apply_regionally!(func!, args...; kwargs...)
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
 
-    # @sync begin
+    @sync begin
         for (r, dev) in enumerate(devices(mra))
-            # @async begin
+            @async begin
                 switch_device!(dev)
                 region_args = Tuple(getregion(arg, r) for arg in args)
                 region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
                 func!(region_args...; region_kwargs...)
                 sync_device!(dev)
-            # end
+            end
         end
-    # end
-    sync_all_devices!(devices(mra))
+    end
 end
  
 # For functions with return statements -> BLOCKING!

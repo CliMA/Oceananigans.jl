@@ -31,11 +31,8 @@ function update_state!(mrm::MultiRegionModel, mrg::MultiRegionGrid)
 
     # Calculate diffusivities
     apply_regionally!(calculate_diffusivities!, mrm.diffusivity_fields, mrm.closure, mrm)
-    
     fill_halo_regions!(mrm.diffusivity_fields, mrm.architecture, mrm.clock, fields(mrm))
-    
     apply_regionally!(update_hydrostatic_pressure!, mrm.pressure.pHY′, mrm.architecture, mrm.grid, mrm.buoyancy, mrm.tracers)
-    
     fill_halo_regions!(mrm.pressure.pHY′, mrm.architecture)
 
     return nothing

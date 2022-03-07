@@ -1,6 +1,7 @@
 using Statistics
 import Statistics.mean
 import Statistics.norm
+import Statistics.dot
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 
@@ -24,11 +25,6 @@ for reduction in reductions
     end
 end
 
-# function Statistics.mean(f::Function, c::MultiRegionField; kwargs...) 
-#     mr = construct_regionally(Statistics.mean, f, c; kwargs...)
-#     return Statistics.mean([r for r in mr.regions])
-# end
-
 Statistics.mean(c::MultiRegionField; kwargs...) = Statistics.mean(identity, c; kwargs...)
 
 validate_reduction_location!(loc, p)            = nothing
@@ -37,3 +33,7 @@ validate_reduction_location!(loc, ::XPartition) = loc[1] == Nothing && error("Pa
 collect_data(f::NTuple{N, <:Field}) where N = Tuple(f[i].data for i in 1:N)
 collect_bcs(f::NTuple{N, <:Field})  where N = Tuple(f[i].boundary_conditions for i in 1:N)
 collect_grid(f::NTuple{N, <:Field}) where N = Tuple(f[i].grid for i in 1:N)
+
+const MRD = Union{MultiRegionField, MultiRegionObject}
+
+Statistics.dot(f::MRD,  g::MRD) = sum([r for r in construct_regionally(dot, f, g).regions])
