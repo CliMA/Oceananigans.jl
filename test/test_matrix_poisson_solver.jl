@@ -57,6 +57,7 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = zeros(grid, N...)
+    
     for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
@@ -89,7 +90,8 @@ function run_poisson_equation_test(grid)
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
     rhs = interior_copy(rhs)[:]
-    weights = compute_poisson_weights(grid)
+    weights_cpu = compute_poisson_weights(on_architecture(CPU(), grid))
+    weights = Tuple(arch_array(arch, w) for w in weights_cpu)
     solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 
     # Solve Poisson equation
