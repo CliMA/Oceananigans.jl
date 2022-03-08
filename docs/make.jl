@@ -43,7 +43,7 @@ examples = [
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
     "shallow_water_Bickley_jet.jl",
-    "horizontal_convection.jl"
+    "horizontal_convection.jl",
     "tilted_bottom_boundary_layer.jl"
 ]
 
