@@ -91,10 +91,10 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 #
 # We set-up our domain in a way that the coordinates align with the tilted bottom. That means that,
 # from the coordinate's point of view, gravity needs to be tilted by `θ_rad` radians, which we can
-# do by passing the `vertical_units_vector` parameter to `Buoyancy()`:
+# do by passing the `gravity_unit_vector` parameter to `Buoyancy()`:
 
 ĝ = [sin(params.θ_rad), 0, cos(params.θ_rad)]
-buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=ĝ)
+buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=ĝ)
 
 
 
@@ -159,7 +159,7 @@ model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             buoyancy = buoyancy,
                             coriolis = coriolis,
                             tracers = :b,
-                            closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν),
+                            closure = ScalarDiffusivity(ν=params.ν, κ=params.ν),
                             boundary_conditions = (u=u_bcs, v=v_bcs,),
                             background_fields = (b=B_field, v=V_field,),
                            )
