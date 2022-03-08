@@ -82,20 +82,32 @@ Example
 
 Construct `UniformStokesDrift` with `Field` shear and tendency:
 
-```jldoctest
+```jldoctest stokes_drift
+using Oceananigans
+
 grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
 stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
 
 # output
+UniformStokesDrift:
+├── ∂z_uˢ=1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_vˢ=Nothing
+├── ∂t_uˢ=Nothing
+└── ∂t_vˢ=Nothing
 ```
 
 Construct `UniformStokesDrift`, setting y-shear and tendencies to `nothing`:
 
-```jldoctest
+```jldoctest stokes_drift
 grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
 stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
 
 # output
+UniformStokesDrift:
+├── ∂z_uˢ=1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_vˢ=Nothing
+├── ∂t_uˢ=Nothing
+└── ∂t_vˢ=Nothing
 ```
 """
 function UniformStokesDrift(grid::AbstractGrid;
@@ -137,5 +149,11 @@ const USD = UniformStokesDrift
     - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
     - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
-end # module
+Base.show(io::IO, stokes_drift::USD) =
+    print(io, "UniformStokesDrift:", '\n',
+              "├── ∂z_uˢ=$(summary(stokes_drift.∂z_uˢ))", '\n',
+              "├── ∂z_vˢ=$(summary(stokes_drift.∂z_vˢ))", '\n',
+              "├── ∂t_uˢ=$(summary(stokes_drift.∂t_uˢ))", '\n',
+              "└── ∂t_vˢ=$(summary(stokes_drift.∂t_vˢ))")
 
+end # module
