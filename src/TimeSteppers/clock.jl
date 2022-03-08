@@ -23,7 +23,7 @@ end
 Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage`.
 """
-Clock(; time, iteration=0, stage=1) = Clock{typeof(time)}(time, iteration, stage)
+Clock(; time::T, iteration=0, stage=1) where T = Clock{T}(time, iteration, stage)
 
 Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration))")
 

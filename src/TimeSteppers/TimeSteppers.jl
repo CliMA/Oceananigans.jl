@@ -16,7 +16,7 @@ using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """
-    AbstractTimeStepper
+    abstract type AbstractTimeStepper
 
 Abstract supertype for time steppers.
 """
