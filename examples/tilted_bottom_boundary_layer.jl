@@ -49,8 +49,8 @@ params = (f₀ = 1e-4, #1/s
 # which gets progressively coarser near the top. Such a grid can be achieved with the following
 # equations:
 
-Nx = 64
-Nz = 64
+Nx = 128
+Nz = 32
 
 refinement = 1.8 # controls spacing near surface (higher means finer spaced)
 stretching = 10   # controls rate of stretching at bottom 
@@ -90,8 +90,8 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 # ## Setting up a buoyancy model in a tilted domain
 #
 # We set-up our domain in a way that the coordinates align with the tilted bottom. That means that,
-# from the coordinate's point of view, gravity needs to be tilted by `θ_rad` radians, which we can
-# do by passing the `gravity_unit_vector` parameter to `Buoyancy()`:
+# from the coordinate's point of view, gravity is tilted by `θ_rad` radians, which we can simulate
+# by passing the `gravity_unit_vector` parameter to `Buoyancy()`:
 
 ĝ = [sin(params.θ_rad), 0, cos(params.θ_rad)]
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=ĝ)
@@ -120,7 +120,7 @@ V_field = BackgroundField(V_bg, parameters=(; V∞=params.V∞))
 
 # ## Bottom drag
 #
-# We also set-up a bottom drag that follows Monin-Obukhov theory. Note that we need to include`V∞`
+# We set-up a bottom drag that follows Monin-Obukhov theory. Note that we need to include`V∞`
 # in the velocity, since we will model it as a background field.
 #
 
@@ -178,7 +178,7 @@ simulation = Simulation(model,
 
 # We now add callbacks to adjust the time-step and to display the simulation progress:
 
-wizard = TimeStepWizard(max_change=1.03, cfl=0.8)
+wizard = TimeStepWizard(max_change=1.1, cfl=0.7)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
 
 start_time = time_ns() # so we can print the total elapsed wall time
