@@ -15,11 +15,9 @@ using Oceananigans.Utils: prettytime
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+using Oceananigans.OutputReaders: FieldTimeSeries
 
-include("disk_time_series.jl")
-
-using .DiskTimeSerieses: DiskTimeSeries
-
+using Oceananigans.Advection: ZWENO, WENOVectorInvariant
 #####
 ##### The Bickley jet
 #####
@@ -48,7 +46,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                            momentum_advection = VectorInvariant())
 
     grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
-                                x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
+                                x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
                                 topology = (Periodic, Periodic, Bounded))
 
 
@@ -82,13 +80,19 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                    sim.model.clock.iteration, sim.model.clock.time,
                                    sim.Δt, maximum(abs, u.data.parent)))
 
-    wizard = TimeStepWizard(cfl=0.1, Δt=1e-4, max_change=1.1, max_Δt=10.0)
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
 
     c = sqrt(model.free_surface.gravitational_acceleration)
     Δt = 0.1 * model.grid.Δxᶜᵃᵃ / c
 
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time,
-                            iteration_interval=100, progress=progress)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
+
+    progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
+                            iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+    simulation.callbacks[:wizard]   = Callback(wizard, IterationInterval(10))
 
     # Output: primitive fields + computations
     u, v, w, c = merge(model.velocities, model.tracers)
@@ -97,23 +101,18 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
-    function init_grid_and_fields!(file, model)
-        file["serialized/grid"] = model.grid
-
-        for (i, field) in enumerate(outputs)
-            field_name = keys(outputs)[i]
-            file["timeseries/$field_name/meta/location"] = location(field)
-        end
-
-        return nothing
+    name = typeof(model.advection.momentum).name.wrapper
+    if model.advection.momentum isa ZWENO
+        name = "ZWENO"
+    elseif model.advection.momentum isa WENOVectorInvariant
+        name = "WENOVectorInvariant"
     end
 
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(typeof(model.advection.momentum).name.wrapper)"
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
                                 schedule = TimeInterval(output_time_interval),
-                                init = init_grid_and_fields!,
                                 prefix = experiment_name,
                                 field_slicer = nothing,
                                 force = true)
@@ -138,15 +137,15 @@ function visualize_bickley_jet(experiment_name)
 
     filepath = experiment_name * ".jld2"
 
-    ζ_timeseries = DiskTimeSeries(:ζ, filepath)
-    c_timeseries = DiskTimeSeries(:c, filepath)
+    ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
+    c_timeseries = FieldTimeSeries(filepath, "u", boundary_conditions=nothing, location=(Face, Center, Center))
 
     grid = c_timeseries.grid
 
     xζ, yζ, zζ = nodes(ζ_timeseries)
     xc, yc, zc = nodes(c_timeseries)
 
-    anim = @animate for (i, iteration) in enumerate(c_timeseries.iterations)
+    anim = @animate for (i, iteration) in enumerate(c_timeseries.times)
 
         @info "    Plotting frame $i from iteration $iteration..."
 
@@ -171,7 +170,7 @@ function visualize_bickley_jet(experiment_name)
         c_plot = heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
 
         ζ_title = @sprintf("ζ at t = %.1f", t)
-        c_title = @sprintf("c at t = %.1f", t)
+        c_title = @sprintf("u at t = %.1f", t)
 
         plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
     end
@@ -179,7 +178,10 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant())
-    experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=64)
-    visualize_bickley_jet(experiment_name)
+for Nx in [64, 128, 256, 512]
+    for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant(), WENO5(vector_invariant=true))
+        experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
+        visualize_bickley_jet(experiment_name)
+    end
 end
+

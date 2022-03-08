@@ -41,14 +41,14 @@ using Oceananigans.Advection:
 @inline Khᶜᶜᶜ(i, j, k, grid, ::VectorInvariantSchemes, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
 @inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
-    v̂  =  ℑxyᶠᶜᵃ(i, j, k, grid, v)
+    v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
     ζᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     ζᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
 @inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
-    û  =  ℑxyᶜᶠᵃ(i, j, k, grid, u)
+    û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     ζᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     ζᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 

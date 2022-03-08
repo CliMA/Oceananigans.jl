@@ -512,3 +512,37 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
+
+
+#####
+##### Get minima of grid
+#####
+
+ArrayOrNumber = Union{AbstractArray, Number}
+
+function min_Δx(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M <: ArrayOrNumber}
+    if TX == Flat
+        return Inf
+    else
+        return first(grid.Δxᶠᶜᵃ)
+    end
+end
+
+function min_Δy(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M <: ArrayOrNumber}
+    if TY == Flat
+        return Inf
+    else
+        return first(grid.Δyᶜᶠᵃ)
+    end
+end
+
+function min_Δz(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M <: ArrayOrNumber}
+    if TZ == Flat
+        return Inf
+    else
+        return min_number_or_array(grid.Δzᵃᵃᶜ)
+    end
+end
+
+@inline first(var) = var
+@inline first(var::AbstractVector) = var[1]

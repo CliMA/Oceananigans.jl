@@ -208,6 +208,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF, VI}) whe
         Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ))
 
 @inline boundary_buffer(::WENO5) = 2
+@inline boundary_buffer(::WENOVectorInvariant) = 3
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_fourth_order, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_fourth_order, c)

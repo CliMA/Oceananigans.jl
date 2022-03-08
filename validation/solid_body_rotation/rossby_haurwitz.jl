@@ -18,17 +18,17 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.Units
 using Oceananigans.Operators
 using Printf
-using GLMakie
+using Oceananigans.Diagnostics: accurate_cell_advection_timescale
+# using GLMakie
 
 #  λ for latitude and ϕ for latitude is
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving, HydrostaticSphericalCoriolis
 
-include("visualization.jl")
+# include("visualization.jl")
 
 # ## Building a `HydrostaticFreeSurfaceModel`
 #
 # We use `grid` and `coriolis` to build a simple `HydrostaticFreeSurfaceModel`,
-
 
 function run_rossby_haurwitz(; architecture = CPU(),
                                Nx = 90,        
@@ -37,16 +37,15 @@ function run_rossby_haurwitz(; architecture = CPU(),
                                advection_scheme = VectorInvariant(),
                                prefix = "vector_invariant")
     
-    
     h₀ = 8e3
 
     coriolis = HydrostaticSphericalCoriolis(scheme=coriolis_scheme)
 
-    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 5),
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 5),
                                  longitude = (-180, 180), 
                                  latitude = (-80, 80),
                                  z = (-h₀, 0), 
-                                 halo = (3, 3, 3), 
+                                 halo = (4, 4, 4), 
                                  precompute_metrics = true)
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=900)
@@ -92,20 +91,18 @@ function run_rossby_haurwitz(; architecture = CPU(),
     set!(v, vᵢ)
     set!(η, hᵢ) 
 
-    # Create simulation
-    gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-
-    wave_propagation_time_scale = h₀ * model.grid.Δλᶜᵃᵃ / gravity_wave_speed
-
     # Time step restricted on the gravity wave speed. If using the implicit free surface method it is possible to increase it
-    Δt =  180
+    Δt = 80
 
-    simulation = Simulation(model, Δt = Δt, stop_time = 60days)
+    simulation = Simulation(model, Δt = Δt, stop_time = 50days)
+
+    # wizard = TimeStepWizard(cfl=0.5, max_change=3.0, max_Δt=3minutes)
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
                             iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+    # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
     u, v, w = model.velocities
     η=model.free_surface.η
@@ -117,15 +114,15 @@ function run_rossby_haurwitz(; architecture = CPU(),
     output_fields = (; u = u, v = v, η = η, ζ = ζ)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                        schedule = TimeInterval(10Δt),
-                                                        prefix = "rh_$(prefix)",
+                                                        schedule = TimeInterval(40Δt),
+                                                        prefix = "rh_$(prefix)_Nx$(Nx)",
                                                         force = true)
     run!(simulation)
 
     return simulation.output_writers[:fields].filepath
 end
 
-filepath = run_rossby_haurwitz(Nx=720, Ny=360, advection_scheme=VectorInvariant(), prefix = "2ndorder")
-visualize_spherical_field(filepath, "ζ")
-filepath = run_rossby_haurwitz(Nx=720, Ny=360, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
-visualize_spherical_field(filepath, "ζ")
+filepath = run_rossby_haurwitz(architecture = GPU(), Nx=720, Ny=360, advection_scheme=VectorInvariant(), prefix = "test")
+# visualize_spherical_field(filepath, "ζ")
+filepath = run_rossby_haurwitz(architecture = GPU(), Nx=720, Ny=360, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
+# visualize_spherical_field(filepath, "ζ")
