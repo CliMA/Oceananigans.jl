@@ -24,8 +24,26 @@ end
                            Gⁿ = TendencyFields(grid, tracers),
                            G⁻ = TendencyFields(grid, tracers))
 
-Return an `RungeKutta3TimeStepper` object with tendency fields on `grid`.
-The tendency fields can be specified via optional kwargs.
+Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
+The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
+
+The scheme described by Le and Moin (1991) (see [LeMoin1991](@cite)). In a nutshel, the 3rd-order
+Runge Kutta timestepper steps forward the state `U^n` by `Δt` via 3 substeps. A pressure correction
+step is applied after at each substep.
+
+The state `U` after each substep `m` is
+
+```julia
+Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)`,
+```
+
+where `Uᵐ` is the state at the ``m``-th substep, `Gᵐ` is the tendency
+at the ``n``-th substep, and `Gᵐ⁻¹` is the tendency at the previous
+substep, and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
+``ζ¹ = 0``, ``ζ² = -17/60``, ``ζ³ = -5/12``.
+
+The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
+`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
 """
 function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
