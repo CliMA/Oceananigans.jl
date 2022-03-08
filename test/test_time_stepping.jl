@@ -329,6 +329,17 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
+    @testset "UniformStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            # Cover three cases:
+            stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
+            model = NonhydrostaticModel(; grid, stokes_drift)
+            time_step!(model, 1, euler=true)
+            @test true
+        end
+    end
+
     @testset "Idealized nonlinear equation of state" begin
         for arch in archs, FT in [Float64]
             for eos_type in (SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
