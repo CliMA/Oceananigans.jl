@@ -17,7 +17,7 @@ mutable struct Clock{T}
         stage :: Int
 
     @doc """
-        Clock{T}(time, iteration, stage=1)
+        Clock{T}(time, iteration=0, stage=1)
 
     Returns a `Clock` with time of type `T`, initialized to the first stage.
     """
