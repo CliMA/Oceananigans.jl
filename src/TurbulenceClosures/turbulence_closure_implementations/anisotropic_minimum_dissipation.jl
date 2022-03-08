@@ -116,10 +116,10 @@ function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretizatio
 
     !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
-    return AnisotropicMinimumDissipation{TD, FT}(Cν, Cκ, Cb)
+    return AnisotropicMinimumDissipation{TD}(Cν, Cκ, Cb)
 end
 
-AnisotropicMinimumDissipation(FT::DataType; kwargs...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kwargs...)
+AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
@@ -136,7 +136,8 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
-@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, buoyancy, U, C) where FT
+@inline function νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
+    FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
     Cb = closure.Cb
@@ -157,9 +158,10 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function κᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, c, ::Val{tracer_index},
-                       U) where {FT, tracer_index}
+@inline function κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index},
+                       U) where {tracer_index}
 
+    FT = eltype(grid)
     ijk = (i, j, k, grid)
 
     @inbounds Cκ = closure.Cκ[tracer_index]
