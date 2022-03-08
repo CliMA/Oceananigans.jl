@@ -267,7 +267,7 @@ ERROR: Scalar indexing is disallowed.
 
 Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
 overcome this limitation and allow scalar indexing (more about that 
-[here](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
+in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
 prototyping --- never in production-ready scripts.
 
