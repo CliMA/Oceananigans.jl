@@ -12,6 +12,7 @@ export
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields
 using Oceananigans.Operators
+using Oceananigans.Utils: prettysummary
 
 """
     abstract type AbstractStokesDrift end
@@ -34,7 +35,7 @@ abstract type AbstractStokesDrift end
 @inline z_curl_Uˢ_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, time) where FT = zero(FT)
 
 #####
-##### Uniform surface waves
+##### Uniform Stokes drift for homogeneous surface waves
 #####
 
 """
@@ -50,35 +51,46 @@ struct UniformStokesDrift{UZ, VZ, UT, VT} <: AbstractStokesDrift
 end
 
 """
-    UniformStokesDrift(; ∂z_uˢ=nothing, ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
-
-Construct a set of functions that describes the Stokes drift field beneath
-a uniform surface gravity wave field.
-"""
-UniformStokesDrift(; ∂z_uˢ=nothing, ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing) =
-    UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
-
-"""
-    UniformStokesDrift(grid; kw...)
+    UniformStokesDrift(grid=nothing; kw...)
 
 Construct four `Field`s that describe the Stokes drift shear
 and tendency beneath a uniform surface gravity wave field.
 
-These fields correspond to `kwargs` with default values:
+The keyword arguments are the four `Field`s with default values:
 
 * `∂z_uˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in x-direction
 * `∂z_vˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in y-direction
 * `∂t_uˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in x-direction
 * `∂t_vˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in y-direction
 
-Memory allocation for any of these fields is avoided by setting them
-to `nothing`.
+Memory allocation for any of these fields is avoided by setting them to `nothing`.
+*Tip*: if no `Field`s are required, omit `grid` from the constructor.
 
-Note: if the Stokes drift changes in time, the Stokes shear and tendency must be
-updated by adding a `Callback` to `Simulation.callbacks`.
+Notes
+=====
 
-Example
-=======
+* If the Stokes drift changes in time, the Stokes shear and tendency must be
+  updated by adding a `Callback` to `Simulation.callbacks`.
+
+* On that note, [time-dependent Stokes drift is a _source of momentum_ (Wagner et al. 2021).
+  Take care that the total momentum flux into your simulation
+  (boundary conditions + Stokes drift + internal forcing) is accurately specified!
+
+Examples
+========
+
+Construct Stokes drift from a function:
+
+```jldoctest stokes_drift
+a = 1.0 # m
+k = 2π / 200 # m
+g = Oceananigans.Buoyancy.g_Earth
+@inline ∂z_uˢ(z, t) = 2 * (a * k)^2 * sqrt(g * k) * exp(2k * z)
+
+stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ)
+
+# output
+```
 
 Construct `UniformStokesDrift` with `Field` shear and tendency:
 
@@ -90,24 +102,23 @@ stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t
 
 # output
 UniformStokesDrift:
-├── ∂z_uˢ=1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
-├── ∂z_vˢ=Nothing
-├── ∂t_uˢ=Nothing
-└── ∂t_vˢ=Nothing
+├── ∂z_uˢ: 1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_vˢ: Nothing
+├── ∂t_uˢ: Nothing
+└── ∂t_vˢ: Nothing
 ```
 
 Construct `UniformStokesDrift`, setting y-shear and tendencies to `nothing`:
 
 ```jldoctest stokes_drift
-grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
 stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
 
 # output
 UniformStokesDrift:
-├── ∂z_uˢ=1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
-├── ∂z_vˢ=Nothing
-├── ∂t_uˢ=Nothing
-└── ∂t_vˢ=Nothing
+├── ∂z_uˢ: 1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_vˢ: Nothing
+├── ∂t_uˢ: Nothing
+└── ∂t_vˢ: Nothing
 ```
 """
 function UniformStokesDrift(grid::AbstractGrid;
@@ -118,6 +129,9 @@ function UniformStokesDrift(grid::AbstractGrid;
 
     return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
 end
+
+UniformStokesDrift(; ∂z_uˢ=nothing, ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing) =
+    UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
 
 const USD = UniformStokesDrift
 
@@ -151,9 +165,10 @@ const USD = UniformStokesDrift
 
 Base.show(io::IO, stokes_drift::USD) =
     print(io, "UniformStokesDrift:", '\n',
-              "├── ∂z_uˢ=$(summary(stokes_drift.∂z_uˢ))", '\n',
-              "├── ∂z_vˢ=$(summary(stokes_drift.∂z_vˢ))", '\n',
-              "├── ∂t_uˢ=$(summary(stokes_drift.∂t_uˢ))", '\n',
-              "└── ∂t_vˢ=$(summary(stokes_drift.∂t_vˢ))")
+              "├── ∂z_uˢ: ", prettysummary(stokes_drift.∂z_uˢ), '\n',
+              "├── ∂z_vˢ: ", prettysummary(stokes_drift.∂z_vˢ), '\n',
+              "├── ∂t_uˢ: ", prettysummary(stokes_drift.∂t_uˢ), '\n',
+              "└── ∂t_vˢ: ", prettysummary(stokes_drift.∂t_vˢ))
 
 end # module
+
