@@ -49,57 +49,93 @@ struct UniformStokesDrift{UZ, VZ, UT, VT} <: AbstractStokesDrift
     ∂t_vˢ :: VT
 end
 
-addzero(args...) = 0
-
 """
-    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero)
+    UniformStokesDrift(; ∂z_uˢ=nothing, ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
 
 Construct a set of functions that describes the Stokes drift field beneath
 a uniform surface gravity wave field.
 """
-UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero) =
+UniformStokesDrift(; ∂z_uˢ=nothing, ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
 
-# TODO: add docstring 
 """
-    UniformStokesDrift(grid)
+    UniformStokesDrift(grid; kw...)
 
-Construct a set of `Field`s that describe the Stokes drift shear
+Construct four `Field`s that describe the Stokes drift shear
 and tendency beneath a uniform surface gravity wave field.
+
+These fields correspond to `kwargs` with default values:
+
+* `∂z_uˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in x-direction
+* `∂z_vˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in y-direction
+* `∂t_uˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in x-direction
+* `∂t_vˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in y-direction
+
+Memory allocation for any of these fields is avoided by setting them
+to `nothing`.
+
+Note: if the Stokes drift changes in time, the Stokes shear and tendency must be
+updated by adding a `Callback` to `Simulation.callbacks`.
+
+Example
+=======
+
+Construct `UniformStokesDrift` with `Field` shear and tendency:
+
+```jldoctest
+grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
+
+# output
+```
+
+Construct `UniformStokesDrift`, setting y-shear and tendencies to `nothing`:
+
+```jldoctest
+grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
+
+# output
+```
 """
-function UniformStokesDrift(grid::AbstractGrid)
-                            
-    ∂z_uˢ = Field{Nothing, Nothing, Face}(grid)
-    ∂z_vˢ = Field{Nothing, Nothing, Face}(grid)
-    ∂t_uˢ = Field{Nothing, Nothing, Center}(grid)
-    ∂t_vˢ = Field{Nothing, Nothing, Center}(grid)
+function UniformStokesDrift(grid::AbstractGrid;
+                            ∂z_uˢ = Field{Nothing, Nothing, Face}(grid),
+                            ∂z_vˢ = Field{Nothing, Nothing, Face}(grid),
+                            ∂t_uˢ = Field{Nothing, Nothing, Center}(grid),
+                            ∂t_vˢ = Field{Nothing, Nothing, Center}(grid))
 
     return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
 end
 
 const USD = UniformStokesDrift
 
-@inline get_stokes_shearᶜ(i, j, k, grid, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Center(), k, grid), time)
-@inline get_stokes_shearᶠ(i, j, k, grid, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Face(), k, grid), time)
+# Some helpers for three cases: Nothing, AbstractArray, or fallback (function)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Center(), k, grid), time)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ::Nothing, time) = zero(eltype(grid))
 
-@inline get_stokes_shearᶜ(i, j, k, grid, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
-@inline get_stokes_shearᶠ(i, j, k, grid, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Face(), k, grid), time)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ::Nothing, time) = zero(eltype(grid))
 
-@inline get_stokes_tendencyᶜ(i, j, k, grid, time, ∂t_Uˢ) = ∂t_Uˢ(znode(Center(), k, grid), time)
-@inline get_stokes_tendencyᶜ(i, j, k, grid, time, ∂t_Uˢ::AbstractArray) = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ, time) = ∂t_Uˢ(znode(Center(), k, grid), time)
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ::AbstractArray, time) = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USD, ::Nothing, time) = zero(eltype(grid))
 
-@inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = get_stokes_tendencyᶜ(i, j, k, grid, sw.∂t_uˢ, time)
-@inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = get_stokes_tendencyᶜ(i, j, k, grid, sw.∂t_vˢ, time)
-@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
+# Kernel functions
+@inline ∂t_uˢ(i, j, k, grid, sd::USD, time) = ∂t_U(i, j, k, grid, sd, sd.∂t_uˢ, time)
+@inline ∂t_vˢ(i, j, k, grid, sd::USD, time) = ∂t_U(i, j, k, grid, sd, sd.∂t_vˢ, time)
+@inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sd::USD, time) where FT = zero(FT)
 
-@inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * get_stokes_shearᶜ(i, j, k, grid, sw.∂z_uˢ, time)
+@inline x_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
+    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_uˢ, time)
 
-@inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * get_stokes_shearᶜ(i, j, k, grid, sw.∂z_vˢ, time)
+@inline y_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
+    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_vˢ, time)
 
-@inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = (
-    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * get_stokes_shearᶠ(i, j, k, grid, sw.∂z_uˢ, time)
-    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * get_stokes_shearᶠ(i, j, k, grid, sw.∂z_vˢ, time))
+@inline z_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) = (
+    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
+    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
 end # module
+
