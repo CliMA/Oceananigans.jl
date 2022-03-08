@@ -43,7 +43,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
 
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
-    closure = try Closure(FT); catch; Closure(); end
+    closure = Closure(FT)
     model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
     time_step!(model, 1, euler=true)
 

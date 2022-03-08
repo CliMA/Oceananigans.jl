@@ -28,10 +28,6 @@
 ##### Convenience diffusive flux function
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, clock, κ, c) = - κᶠᶜᶜ(i, j, k, grid, clock, κ) * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, clock, κ, c) = - κᶜᶠᶜ(i, j, k, grid, clock, κ) * ∂yᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, clock, κ, c) = - κᶜᶜᶠ(i, j, k, grid, clock, κ) * ∂zᶜᶜᶠ(i, j, k, grid, c)
-
 #####
 ##### Diffusive flux divergence
 #####

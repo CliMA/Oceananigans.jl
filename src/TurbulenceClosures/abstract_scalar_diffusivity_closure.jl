@@ -65,8 +65,6 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline viscous_flux_vx(i, j, k, grid, closure::AHD, clock, U, K, C, b) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
 @inline viscous_flux_uy(i, j, k, grid, closure::AHD, clock, U, K, C, b) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
 @inline viscous_flux_vy(i, j, k, grid, closure::AHD, clock, U, K, C, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
-
-# Note: vertical fluxes TODO: are we sure about this?? This might not be consistent for AHD
 @inline viscous_flux_wx(i, j, k, grid, closure::AHD, clock, U, K, C, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂xᶠᶜᶠ, U.w)
 @inline viscous_flux_wy(i, j, k, grid, closure::AHD, clock, U, K, C, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᶠ, U.w)
 
@@ -82,9 +80,11 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, closure::Union{AID, AHD}, c, c_idx, clock, K, C, b, U) = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
-@inline diffusive_flux_y(i, j, k, grid, closure::Union{AID, AHD}, c, c_idx, clock, K, C, b, U) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
-@inline diffusive_flux_z(i, j, k, grid, closure::Union{AID, AVD}, c, c_idx, clock, K, C, b, U) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
+const AIDorAHD = Union{AID, AHD}
+
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, c, id, clock, K, C, b, U) = - κᶠᶜᶜ(i, j, k, grid, clock, diffusivity(cl, id, K)) * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, c, id, clock, K, C, b, U) = - κᶜᶠᶜ(i, j, k, grid, clock, diffusivity(cl, id, K)) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, c, id, clock, K, C, b, U) = - κᶜᶜᶠ(i, j, k, grid, clock, diffusivity(cl, id, K)) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
 ##### Zero out not used fluxes

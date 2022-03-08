@@ -136,41 +136,20 @@ lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system
 `args...` are passed into `z_diffusivity` and `z_viscosity` appropriately for the purpose of retrieving
 the diffusivities / viscosities associated with `closure`.
 """
-function implicit_step!(field::AbstractField{LX, LY, LZ},
-                        implicit_solver::BatchedTridiagonalSolver,
-                        clock,
-                        Δt,
-                        closure,
-                        tracer_index,
-                        args...;
-                        dependencies) where {LX, LY, LZ}
+function implicit_step!(field::Field, implicit_solver::BatchedTridiagonalSolver,
+                        clock, Δt, closure, tracer_index, diffusivity_fields; dependencies)
     
-    location = (LX, LY, LZ)
+   loc = location(field)
 
-    if is_c_location(location)
-
-        locate_coeff = κᶜᶜᶠ
-        coeff = z_diffusivity(closure, Val(tracer_index), args...)
-
-    elseif is_u_location(location)
-
-        locate_coeff = νᶠᶜᶠ
-        coeff = z_viscosity(closure, args...)
-
-    elseif is_v_location(location)
-
-        locate_coeff = νᶜᶠᶠ
-        coeff = z_viscosity(closure, args...)
-
-    elseif is_w_location(location)
-
-        locate_coeff = νᶜᶜᶜ
-        coeff = z_viscosity(closure, args...)
-
-    else
-        error("Cannot take an implicit_step! for a field at $location")
-    end
+   # Look at all these assumptions
+   extractor =
+       loc === (Center, Center, Center) ? κᶜᶜᶠ :
+       loc === (Face, Center, Center)   ? νᶠᶜᶠ :
+       loc === (Center, Face, Center)   ? νᶜᶠᶠ :
+       loc === (Center, Center, Face)   ? νᶜᶜᶜ :
+       error("Cannot take an implicit_step! for a field at $location")
 
     return solve!(field, implicit_solver, field, instantiate.(location)...,
-                  clock, Δt, locate_coeff, coeff; dependencies = dependencies)
+                  clock, Δt, extractor, closure, diffusivity_fields; dependencies = dependencies)
 end
+
