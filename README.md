@@ -112,7 +112,7 @@ model = NonhydrostaticModel(
             grid = RectilinearGrid(CPU(); topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          tracers = (:T, :S),
         buoyancy = SeawaterBuoyancy(),
-         closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 )
 
 # Set a temperature perturbation with a Gaussian profile located at the center.

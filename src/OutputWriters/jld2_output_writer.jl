@@ -2,7 +2,7 @@ using Printf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
-using Oceananigans.Utils: TimeInterval, pretty_filesize
+using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
 
 using Oceananigans.Fields: boundary_conditions
 
@@ -134,7 +134,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_data.jld2
-├── 3 outputs: (:u, :v, :w)
+├── 3 outputs: (u, v, w)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
@@ -152,7 +152,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
@@ -314,15 +314,19 @@ function start_next_file(model, writer::JLD2OutputWriter)
     return nothing
 end
 
+Base.summary(ow::JLD2OutputWriter) =
+    string("JLD2OutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+
 function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
+    Noutputs = length(ow.outputs)
 
-    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-        "├── filepath: $(ow.filepath)", '\n',
-        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(summary(ow.field_slicer))", '\n',
-        "├── array type: ", show_array_type(ow.array_type), '\n',
-        "├── including: ", ow.including, '\n',
-        "└── max filesize: ", pretty_filesize(ow.max_filesize))
+    print(io, "JLD2OutputWriter scheduled on ", summary(ow.schedule), ":", '\n',
+              "├── filepath: ", ow.filepath, '\n',
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
+              "├── field slicer: ", summary(ow.field_slicer), '\n',
+              "├── array type: ", show_array_type(ow.array_type), '\n',
+              "├── including: ", ow.including, '\n',
+              "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end

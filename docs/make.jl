@@ -156,7 +156,7 @@ format = Documenter.HTML(
 
 makedocs(bib,
   sitename = "Oceananigans.jl",
-   authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
+   authors = "Climate Modeling Alliance and contributors",
     format = format,
      pages = pages,
    modules = [Oceananigans],
@@ -169,6 +169,7 @@ makedocs(bib,
 deploydocs(
           repo = "github.com/CliMA/OceananigansDocumentation.git",
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+     forcepush = true,
   push_preview = true,
      devbranch = "main"
 )
