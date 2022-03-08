@@ -58,10 +58,10 @@ and tendency beneath a uniform surface gravity wave field.
 
 The keyword arguments are the four `Field`s with default values:
 
-* `∂z_uˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in x-direction
-* `∂z_vˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in y-direction
-* `∂t_uˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in x-direction
-* `∂t_vˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in y-direction
+* `∂z_uˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in ``x``-direction
+* `∂z_vˢ = Field{Nothing, Nothing, Face}(grid)`: Stokes shear in ``y``-direction
+* `∂t_uˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in ``x``-direction
+* `∂t_vˢ = Field{Nothing, Nothing, Center}(grid)`: Stokes tendency in ``y``-direction
 
 Memory allocation for any of these fields is avoided by setting them to `nothing`.
 *Tip*: if no `Field`s are required, omit `grid` from the constructor.
@@ -82,33 +82,38 @@ Examples
 Construct Stokes drift from a function:
 
 ```jldoctest stokes_drift
+using Oceananigans
+
 a = 1.0 # m
 k = 2π / 200 # m
-g = Oceananigans.Buoyancy.g_Earth
+g = Oceananigans.BuoyancyModels.g_Earth
 @inline ∂z_uˢ(z, t) = 2 * (a * k)^2 * sqrt(g * k) * exp(2k * z)
 
 stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ)
 
 # output
-```
-
-Construct `UniformStokesDrift` with `Field` shear and tendency:
-
-```jldoctest stokes_drift
-using Oceananigans
-
-grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
-stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
-
-# output
 UniformStokesDrift:
-├── ∂z_uˢ: 1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_uˢ: ∂z_uˢ (generic function with 1 method)
 ├── ∂z_vˢ: Nothing
 ├── ∂t_uˢ: Nothing
 └── ∂t_vˢ: Nothing
 ```
 
-Construct `UniformStokesDrift`, setting y-shear and tendencies to `nothing`:
+Construct `UniformStokesDrift` with `Field` shear and tendency:
+
+```jldoctest stokes_drift
+grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+stokes_drift = UniformStokesDrift(grid)
+
+# output
+UniformStokesDrift:
+├── ∂z_uˢ: 1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂z_vˢ: 1×1×4 Field{Nothing, Nothing, Face} reduced over dims = (1, 2) on RectilinearGrid on CPU
+├── ∂t_uˢ: 1×1×3 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on RectilinearGrid on CPU
+└── ∂t_vˢ: 1×1×3 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on RectilinearGrid on CPU
+```
+
+Construct `UniformStokesDrift`, setting ``y``-shear and both tendencies to `nothing`:
 
 ```jldoctest stokes_drift
 stokes_drift = UniformStokesDrift(grid; ∂z_vˢ=nothing, ∂t_uˢ=nothing, ∂t_vˢ=nothing)
@@ -171,4 +176,3 @@ Base.show(io::IO, stokes_drift::USD) =
               "└── ∂t_vˢ: ", prettysummary(stokes_drift.∂t_vˢ))
 
 end # module
-
