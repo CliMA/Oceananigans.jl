@@ -10,7 +10,6 @@ export
     z_curl_Uˢ_cross_U
 
 using Oceananigans.Grids: AbstractGrid
-
 using Oceananigans.Fields
 using Oceananigans.Operators
 
@@ -61,22 +60,40 @@ a uniform surface gravity wave field.
 UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero) =
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
 
+#∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero) =
+function UniformStokesDrift(grid::AbstractGrid)
+                            
+    ∂z_uˢ = Field{Nothing, Nothing, Face}(grid)
+    ∂z_vˢ = Field{Nothing, Nothing, Face}(grid)
+    ∂t_uˢ = Field{Nothing, Nothing, Center}(grid)
+    ∂t_vˢ = Field{Nothing, Nothing, Center}(grid)
+
+    return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ)
+end
+
 const USD = UniformStokesDrift
 
-@inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = sw.∂t_uˢ(znode(Center(), k, grid), time)
-@inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = sw.∂t_vˢ(znode(Center(), k, grid), time)
+@inline get_stokes_shearᶜ(i, j, k, grid, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Center(), k, grid), time)
+@inline get_stokes_shearᶠ(i, j, k, grid, ∂z_Uˢ, time) = ∂z_Uˢ(znode(Face(), k, grid), time)
 
+@inline get_stokes_shearᶜ(i, j, k, grid, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline get_stokes_shearᶠ(i, j, k, grid, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
+
+@inline get_stokes_tendencyᶜ(i, j, k, grid, time, ∂t_Uˢ) = ∂t_Uˢ(znode(Center(), k, grid), time)
+
+@inline ∂t_uˢ(i, j, k, grid, sw::USD, time) = get_stokes_tendencyᶜ(i, j, k, grid, sw.∂t_uˢ, time)
+@inline ∂t_vˢ(i, j, k, grid, sw::USD, time) = get_stokes_tendencyᶜ(i, j, k, grid, sw.∂t_vˢ, time)
 @inline ∂t_wˢ(i, j, k, grid::AbstractGrid{FT}, sw::USD, time) where FT = zero(FT)
 
 @inline x_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    @inbounds ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * sw.∂z_uˢ(znode(Center(), k, grid), time)
+    @inbounds ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * get_stokes_shearᶜ(i, j, k, grid, sw.∂z_uˢ, time)
 
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) =
-    @inbounds ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * sw.∂z_vˢ(znode(Center(), k, grid), time)
+    @inbounds ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * get_stokes_shearᶜ(i, j, k, grid, sw.∂z_vˢ, time)
 
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USD, U, time) = @inbounds begin (
-    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(Face(), k, grid), time)
-    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(Face(), k, grid), time) )
+    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * get_stokes_shearᶠ(i, j, k, grid, sw.∂z_uˢ, time)
+    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * get_stokes_shearᶠ(i, j, k, grid, sw.∂z_vˢ, time))
 end
 
 end # module
