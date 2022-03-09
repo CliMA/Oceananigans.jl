@@ -522,7 +522,7 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "coverage"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -534,7 +534,7 @@ steps:
       TEST_GROUP: "coverage"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: CPU
