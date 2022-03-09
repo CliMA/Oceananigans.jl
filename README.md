@@ -45,6 +45,9 @@
   <a href="https://buildkite.com/clima/oceananigans">
     <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/main?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
   </a>
+  <a href="https://codecov.io/gh/CliMA/Oceananigans.jl">
+    <img src="https://codecov.io/gh/CliMA/Oceananigans.jl/branch/main/graph/badge.svg?token=1eev6VdKD0&style=flat-square"/>
+  </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
