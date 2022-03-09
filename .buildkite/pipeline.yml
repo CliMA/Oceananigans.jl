@@ -27,7 +27,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
 
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test("Oceananigans", coverage=true)'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage=true)'"
     agents:
       queue: Oceananigans
       architecture: GPU
