@@ -514,6 +514,22 @@ steps:
     continue_on_failure: true
 
 #####
+##### Submit to Codecov
+#####
+
+  - label: "🌸 submit code coverage from gpu environment"
+    command: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+
+  - label: "🌼 submit code coverage from cpu environment"
+    command: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; cd(Pkg.dir("Oceananigans")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+
+#####
 ##### Clean up
 #####
 
