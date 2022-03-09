@@ -3,6 +3,10 @@ coverage:
   round: down
   precision: 2
 
+  ignore:
+    - "examples"
+    - "test"
+
   status:
     project:
       default:
@@ -12,3 +16,8 @@ coverage:
       default:
         target: auto
         threshold: 20%
+
+comment: false
+
+github_checks:
+    annotations: false

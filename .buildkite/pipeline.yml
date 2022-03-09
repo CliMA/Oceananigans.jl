@@ -4,6 +4,7 @@ env:
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
+  SECRET_CODECOV_TOKEN: "Mr1jVbsCKL08vNobBBufCnRkfpFpX9VWqfrML63FDTqCFyKgiTy5KgIaaV6FqGKiJZMQPKCXaaPWlZuuZVGYGbEYZ5JRB2303uqyP+8LuVtrYmGEkf/mJjoeATLSyWLWjdfafFzjReR/eLlnuNOoj6wQXW1SnPB96vsBWNM2uiw0/a9EiLVKAJyZ0Z4Deq+aHzV/4wGFI5xmk3Kz73lvx9rpm9Znd8NAIZSg8kIVK+YNaIAAPOqMpSkNd5hxq0xmTmUU7az3jEgc6UuIvhvoorQE/6GpD758U4bG+TT1hXDQPi0U6DJ/wt+ij4owX2ZrpyTVIf+2BAMBm8Bg48yQCQ==;U2FsdGVkX19ylHznSX6EhDAyUxex/HFx6pfbRih/8ZrJqOyqJNK1v0oCus0IMnU0QPgW8cmvZvnkLrRF3aIBbA=="
 
 steps:
   - label: "🎪 initialize gpu environment"
