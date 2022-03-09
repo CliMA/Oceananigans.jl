@@ -199,15 +199,11 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 end
 
 """
-Time step fields via the 3rd-order Runge-Kutta method
+Time step velocity fields via the 3rd-order Runge-Kutta method
 
-    `U^{m+1} = U^m + Δt (γⁿ G^{m} + ζⁿ G^{m-1})`,
+    `Uᵐ⁺¹ = Uᵐ + Δt (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)`,
 
 where `m` denotes the substage.
-"""
-
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
 """
 @kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
@@ -217,9 +213,6 @@ Time step velocity fields with a 3rd-order Runge-Kutta method.
     end
 end
 
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
-"""
 @kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 

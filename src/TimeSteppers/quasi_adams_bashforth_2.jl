@@ -150,7 +150,7 @@ function ab2_step!(model, Δt, χ)
 end
 
 """
-Time step via
+Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 

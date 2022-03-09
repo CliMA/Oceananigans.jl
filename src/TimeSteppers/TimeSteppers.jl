@@ -30,7 +30,9 @@ Returns a timestepper with name `name`, instantiated with `args...`.
 Example
 =======
 
+```julia
 julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+```
 """
 function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
