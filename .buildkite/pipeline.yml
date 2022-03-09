@@ -510,9 +510,6 @@ steps:
 #       architecture: CPU
 #     depends_on: "init_cpu"
 
-#   - wait: ~
-#     continue_on_failure: true
-
 #####
 ##### Submit to Codecov
 #####
@@ -539,6 +536,9 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+
+  - wait: ~
+    continue_on_failure: true
 
 #####
 ##### Clean up
