@@ -42,7 +42,7 @@ user@system:~$ julia --project
 |__/                   |
 
 (@v1.6) pkg> activate .
-  Activating new environment at `~/Dropbox/tests/new_project/Project.toml`
+  Activating new environment at `~/new_project/Project.toml`
 
 (new_project) pkg> add Oceananigans
 (new_project) pkg> instantiate
@@ -72,9 +72,9 @@ and that any changes there will not affect other projects. That said, running Oc
 
 For initial explorations and getting used to the code, you can
 enter the commands directly in the [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) (which can be started with
-the command `julia --project`). This is an interactive
+the command `julia --project`). The REPL is an interactive
 command-line tool (similar to Python's IPython) that has a searchable history, tab-completion, helpful keybindings, and many
-other features to help users interact with packages. If you already have a file with commands, you can issue `julia --project my_oceananigans_script.jl`
-from the terminal, which will run all the commands in that script and subsequently close Julia. This is equivalent to opening
-the Julia REPL inside your project directory and typing each of those commands by hand (or simply issuing
-`include("my_oceananigans_script.jl")` in the REPL), with the exception that the REPL will remain open after the commands in this case.
+other features to help users interact with packages. If you already have a script, you can call `julia --project my_oceananigans_script.jl`
+from the terminal. This will execute all the commands in that script and subsequently close Julia. This is equivalent to opening
+the Julia REPL inside your project directory and typing each of those commands by hand (or simply calling
+`include("my_oceananigans_script.jl")` in the REPL).
