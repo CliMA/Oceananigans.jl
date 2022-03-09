@@ -61,7 +61,7 @@ This ensures that you will always use the package versions of you project and th
 other projects.. To activate the project's environment you either start Julia using `julia --project` or from Julia's
 package manager you call:
 ```Julia
-(@v1.8) pkg> activate .
+(@v1.6) pkg> activate .
   Activating new project at `~/new_project`
 
 (new_project) pkg>
