@@ -22,10 +22,10 @@ function apply_regionally!(func!, args...; kwargs...)
         devs = devices(mra)
     end
     
-    # @sync for (r, dev) in enumerate(devs))
-        @sync begin
-        r = 1
-        dev = devs[1]
+    @sync for (r, dev) in enumerate(devs)
+        # @sync begin
+        # r = 1
+        # dev = devs[1]
         @async begin
             switch_device!(dev)
             region_args = Tuple(getregion(arg, r) for arg in args)
@@ -120,6 +120,33 @@ macro regional(expr)
     else
         return quote 
             $(esc(original_expr))
+        end
+    end
+end
+
+macro apply_regionally(expr)
+    if expr.head == :call
+        func = expr.args[1]
+        args = expr.args[2:end]
+        multi_region = quote
+            apply_regionally!($func, $(args...))
+        end
+        return quote
+            $(esc(multi_region))
+        end
+    elseif expr.head == :block
+        new_expr = deepcopy(expr)
+        for (idx, arg) in enumerate(expr.args)
+            if arg isa Expr && arg.head == :call
+                func = arg.args[1]
+                args = arg.args[2:end]
+                new_expr.args[idx] = quote
+                    apply_regionally!($func, $(args...))
+                end
+            end
+        end
+        return quote
+            $(esc(new_expr))
         end
     end
 end

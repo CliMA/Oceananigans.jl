@@ -35,7 +35,7 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
         getregion(f.status, i))
 
 new_data(FT, mrg::MultiRegionGrid, loc) = construct_regionally(new_data, FT, mrg.region_grids, loc)
-set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
+# set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
 
 fill!(f::MultiRegionField, val) = apply_regionally!(fill!, f, val)
 
