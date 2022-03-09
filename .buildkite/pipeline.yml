@@ -518,16 +518,26 @@ steps:
 #####
 
   - label: "🌸 submit code coverage from gpu environment"
-    command: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: GPU
+    depends_on: "init_gpu"
 
   - label: "🌼 submit code coverage from cpu environment"
-    command: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "scripts"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: CPU
+    depends_on: "init_cpu"
 
 #####
 ##### Clean up
