@@ -522,11 +522,10 @@ steps:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "coverage"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit_local(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: GPU
-    depends_on: "init_gpu"
 
   - label: "🌼 submit code coverage from cpu environment"
     env:
@@ -534,11 +533,10 @@ steps:
       TEST_GROUP: "coverage"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit_local(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: CPU
-    depends_on: "init_cpu"
 
 #####
 ##### Clean up
