@@ -141,6 +141,6 @@ end
 # simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=512, Ny=256, super_rotations=0.01)
 # simulation_parallel = run_solid_body_tracer_advection(Nx=512, Ny=512, multigpu=true, super_rotations=0.01)
 
-model2 = run_solid_body_tracer_advection(Nx=1024, Ny=512, multigpu=true, dev = (2, 3), super_rotations=0.01)
+# model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())
 # model1 = run_solid_body_tracer_advection(Nx=128, Ny=64, multigpu=true, dev = (3, ), super_rotations=0.01, architecture=GPU())

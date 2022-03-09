@@ -103,7 +103,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime
+    prettytime, @apply_regionally, @regional
+
 
 
 using Printf

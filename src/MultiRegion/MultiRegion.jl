@@ -20,6 +20,12 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Base: show, length, size
 
+import Oceananigans.Utils:
+                getdevice,
+                switch_device!,
+                isregional,
+                getregion
+
 abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
