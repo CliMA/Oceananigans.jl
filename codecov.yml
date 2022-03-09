@@ -21,3 +21,6 @@ comment: false
 
 github_checks:
     annotations: false
+
+codecov:
+  token: fc902be7-5dcf-47f7-ab94-9d773c5b27d7
