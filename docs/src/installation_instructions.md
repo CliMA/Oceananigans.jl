@@ -28,18 +28,9 @@ project is to
 4. Add the Oceananigans package with `add Oceananigans`
 5. Instantiate/build all dependencies `instantiate`
 
-This process looks similar to this on a terminal (note that there may be many messages between some of these commands):
+To do so, open a Julia REPL from the terminal and then start the package manager by hitting `]`. Then:
 
 ```
-user@system:~$ julia --project
-               _
-   _       _ _(_)_     |  Documentation: https://docs.julialang.org
-  (_)     | (_) (_)    |
-   _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
-  | | | | | | |/ _` |  |
-  | | |_| | | | (_| |  |  Version 1.6.3 (2021-09-23)
- _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org/ release
-|__/                   |
 
 (@v1.6) pkg> activate .
   Activating new environment at `~/new_project/Project.toml`
@@ -65,10 +56,15 @@ We're more than happy to help with getting your simulations up and running.
 
 ## Running Oceananigans
 
-Whenever you run Oceananigans for a project, it's recommended that you start Julia not with the simple command `julia`,
-but with the command `julia --project`. This ensures that you will always use the package versions of you project
-and that any changes there will not affect other projects. That said, running Oceananigans can be done a couple of ways. 
+Whenever you run Oceananigans for a project, it is recommended that you activate the project's environment first.
+This ensures that you will always use the package versions of you project and that any changes there will not affect
+other projects.. To activate the project's environment you either start Julia using `julia --project` or from Julia's
+package manager you call:
+```Julia
+(@v1.8) pkg> activate .
+  Activating new project at `~/new_project`
 
+(new_project) pkg>
 
 For initial explorations and getting used to the code, you can
 enter the commands directly in the [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) (which can be started with
