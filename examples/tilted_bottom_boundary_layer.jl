@@ -173,7 +173,7 @@ model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
 using Oceananigans.Grids: min_Δz
 simulation = Simulation(model, 
                         Δt=0.5*min_Δz(grid)/params.V∞,
-                        stop_time=3days, 
+                        stop_time=2days, 
                         )
 
 # We now add callbacks to adjust the time-step and to display the simulation progress:
