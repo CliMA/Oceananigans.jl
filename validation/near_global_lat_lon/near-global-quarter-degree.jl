@@ -39,6 +39,7 @@ Nx = 1440
 Ny = 600
 Nz = 48
 
+const Nyears  = 1
 const Nmonths = 12 
 const thirty_days = 30days
 
