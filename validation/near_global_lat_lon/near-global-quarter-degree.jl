@@ -86,12 +86,11 @@ bathymetry = file_bathymetry["bathymetry"]
 T★ = zeros(Nx, Ny, Nmonths)
 S★ = zeros(Nx, Ny, Nmonths)
 
-for month in 1:Nmonths
-    τˣ[:, :, month] = file_tau_x["field"] ./ reference_density
-    τʸ[:, :, month] = file_tau_y["field"] ./ reference_density
-    T★[:, :, month] = file_temp["field"] 
-    S★[:, :, month] = file_salt["field"] 
-end
+# Files contain 1 year (1992) of 12 monthly averages
+τˣ = file_tau_x["field"] ./ reference_density
+τʸ = file_tau_y["field"] ./ reference_density
+T★ = file_temp["field"] 
+S★ = file_salt["field"] 
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 bathymetry = arch_array(arch, bathymetry)
