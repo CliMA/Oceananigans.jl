@@ -43,7 +43,7 @@ validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validat
 validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, mrg.region_grids, bcs)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc; kwargs...) =
-  construct_regionally(inject_regional_bcs, mrg, Iterate(regions(mrg.region_grids)), Reference(mrg.partition), Reference(loc); kwargs...)
+  construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc); kwargs...)
 
 function inject_regional_bcs(grid, region, partition, loc;   
                               west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),

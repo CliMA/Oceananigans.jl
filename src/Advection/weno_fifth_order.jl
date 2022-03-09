@@ -484,14 +484,12 @@ end
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+4][i] 
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+4][i] 
 
-
 @inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
 @inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N)                              = nothing
 
 @inline calc_smoothness_coefficients(FT, ::Val{false}, args...) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N) = nothing
-
 
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 

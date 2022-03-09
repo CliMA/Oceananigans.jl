@@ -1,21 +1,21 @@
-using CUDA: synchronize
+using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
+using OffsetArrays
+import Base: length
 
-getdevice(a, i)                     = CPU()
-getdevice(cu::CuArray, i)           = CUDA.device(cu)
-getdevice(cu::CuContext, i)         = CUDA.device(cu)
-getdevice(cu::Union{CuPtr, Ptr}, i) = CUDA.device(cu)
-getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
+const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
-getdevice(a)                     = CPU()
-getdevice(cu::CuArray)           = CUDA.device(cu)
-getdevice(cu::CuContext)         = CUDA.device(cu)
-getdevice(cu::Union{CuPtr, Ptr}) = CUDA.device(cu)
-getdevice(cu::OffsetArray)       = getdevice(cu.parent)
+### 
+### Multi Region Object
+###
 
-switch_device!(::CPU)    = nothing
-switch_device!(dev::Int) = CUDA.device!(dev)
-switch_device!(dev::CuDevice) = CUDA.device!(dev)
-switch_device!(dev::Tuple, i) = switch_device!(dev[i])
+struct MultiRegionObject{R, D}
+    regions :: R
+    devices :: D
+end
+
+###
+### Convenience structs 
+###
 
 struct Reference{R}
     ref :: R
@@ -25,11 +25,37 @@ struct Iterate{I}
     iter :: I
 end
 
-getregion(mo, i) = mo
-getregion(ref::Reference, i) = ref.ref
-getregion(iter::Iterate, i)  = iter.iter[i]
+###
+### Multi region functions
+###
 
-isregional(a) = false
+getdevice(a, i)                     = Oceananigans.Architectures.CPU()
+getdevice(cu::GPUVar, i)            = CUDA.device(cu)
+getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
+getdevice(mo::MultiRegionObject, i) = mo.devices[i]
+
+getdevice(a)               = Oceananigans.Architectures.CPU()
+getdevice(cu::GPUVar)      = CUDA.device(cu)
+getdevice(cu::OffsetArray) = getdevice(cu.parent)
+
+switch_device!(a)                        = nothing
+switch_device!(dev::Int)                 = CUDA.device!(dev)
+switch_device!(dev::CuDevice)            = CUDA.device!(dev)
+switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
+switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
+
+getregion(a, i) = a
+getregion(ref::Reference, i)        = ref.ref
+getregion(iter::Iterate, i)         = iter.iter[i]
+getregion(mo::MultiRegionObject, i) = mo.regions[i]
+
+isregional(a)                   = false
+isregional(::MultiRegionObject) = true
+
+devices(mo::MultiRegionObject) = mo.devices
+
+Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regions, i, args...)
+Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
 
 multiregion_transformations = Dict{Symbol, Symbol}()
 
@@ -52,16 +78,11 @@ function apply_regionally!(func!, args...; kwargs...)
     else
         devs = devices(mra)
     end
-    
+   
     @sync for (r, dev) in enumerate(devs)
-        # @sync begin
-        # r = 1
-        # dev = devs[1]
         @async begin
             switch_device!(dev)
-            region_args = Tuple(getregion(arg, r) for arg in args)
-            region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
-            func!(region_args...; region_kwargs...)
+            func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
         end
     end
 end 
@@ -98,8 +119,8 @@ function sync_all_devices!(devices)
     end
 end
 
-sync_device!(::CuDevice) = synchronize(blocking=false)
-sync_device!(::CPU)      = nothing
+sync_device!(::CuDevice) = CUDA.synchronize(blocking=false)
+sync_device!(a)          = nothing
 
 redispatch(arg::Symbol) = arg
 

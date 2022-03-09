@@ -3,26 +3,26 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition
 
-# To delete
-export switch_device!, getregion, getdevice
-
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.Models
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
+using Oceananigans.Utils
 using CUDA
 using Adapt
 using OffsetArrays
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Utils: Reference, Iterate
 
 import Base: show, length, size
 
 import Oceananigans.Utils:
                 getdevice,
                 switch_device!,
+                devices,
                 isregional,
                 getregion
 
@@ -31,7 +31,6 @@ abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY
 abstract type AbstractPartition end
 
 include("multi_region_utils.jl")
-include("multi_region_transformation.jl")
 include("multi_region_object.jl")
 include("x_partitions.jl")
 include("multi_region_grid.jl")

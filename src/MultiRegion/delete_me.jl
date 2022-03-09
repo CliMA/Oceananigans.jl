@@ -46,6 +46,8 @@ function update_state!(mrm::MultiRegionModel, mrg::MultiRegionGrid)
     return nothing
 end
 
+time_step!(mrm::MultiRegionModel, Δt) = apply_regionally!(time_step!, mrm, Δt)
+
 ab2_step!(mrm::MultiRegionModel, Δt, χ)      = apply_regionally!(ab2_step!, mrm, Δt, χ)
 calculate_tendencies!(mrm::MultiRegionModel) = apply_regionally!(calculate_tendencies!, mrm)
 store_tendencies!(mrm::MultiRegionModel)     = apply_regionally!(store_tendencies!, mrm)
@@ -55,6 +57,8 @@ getregion(mr::AbstractModel, i)            = getname(mr)(Tuple(getregion(getprop
 getregion(ts::AbstractTimeStepper, i)      = getname(ts)(Tuple(getregion(getproperty(ts, propertynames(ts)[idx]), i) for idx in 1:length(propertynames(ts)))...)
 getregion(fs::AbstractFreeSurface, i)      = getname(fs)(Tuple(getregion(getproperty(fs, propertynames(fs)[idx]), i) for idx in 1:length(propertynames(fs)))...)
 getregion(pv::PrescribedVelocityFields, i) = getname(pv)(Tuple(getregion(getproperty(pv, propertynames(pv)[idx]), i) for idx in 1:length(propertynames(pv)))...)
+
+getregion(c::Clock, i) = Clock(time = 0)
 
 getregion(fs::ExplicitFreeSurface, i) =
      ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)

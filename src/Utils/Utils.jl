@@ -11,8 +11,8 @@ export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export instantiate
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule 
-export apply_regionally!, construct_regionally, @apply_regionally, @regional
-export isregional, getregion, getdevice, switch_device!, sync_device!
+export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
+export isregional, getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
 
 import CUDA  # To avoid name conflicts
 
@@ -28,6 +28,7 @@ instantiate(X::DataType) = X()
 #####
 
 include("prettysummary.jl")
+include("multi_region_transformation.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("prettytime.jl")
@@ -39,6 +40,5 @@ include("with_tracers.jl")
 include("versioninfo.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
-include("multi_region_transformation.jl")
 
 end

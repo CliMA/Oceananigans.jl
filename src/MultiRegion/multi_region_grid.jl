@@ -12,6 +12,14 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiGrid{FT, T
     end
 end
 
+isregional(mrg::MultiRegionGrid)        = true
+getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
+switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
+
+getregion(mrg::MultiRegionGrid, i)  = getregion(mrg.region_grids, i)
+Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
+
 function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
 
     arch    = devices isa Nothing ? CPU() : GPU()
@@ -31,14 +39,6 @@ function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothi
 
     return MultiRegionGrid{FT, topo[1], topo[2], topo[3]}(arch, partition, region_grids, devices)
 end
-
-devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
-
-getregion(mrg::MultiRegionGrid, i)      = getregion(mrg.region_grids, i)
-getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
-switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
-
-isregional(mrg::MultiRegionGrid) = true
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent)
     halo = halo_size(grid)
