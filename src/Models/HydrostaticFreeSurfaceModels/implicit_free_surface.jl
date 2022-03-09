@@ -9,7 +9,7 @@ using Oceananigans.Utils: prettytime
 using Adapt
 using KernelAbstractions: NoneEvent
 
-struct ImplicitFreeSurface{E, G, B, I, M, S}
+struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
     η :: E
     gravitational_acceleration :: G
     barotropic_volume_flux :: B

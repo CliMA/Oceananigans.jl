@@ -31,6 +31,7 @@ function update_state!(model::NonhydrostaticModel)
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
     update_hydrostatic_pressure!(model)
+    fill_halo_regions!(model.pressure.pHY′, model.architecture)
 
     return nothing
 end

@@ -32,7 +32,7 @@ function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothi
     return MultiRegionGrid{FT, topo[1], topo[2], topo[3]}(arch, partition, region_grids, devices)
 end
 
-devices(mrg::MultiRegionGrid)      = devices(mrg.region_grids)
+devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
 
 getregion(mrg::MultiRegionGrid, i)      = getregion(mrg.region_grids, i)
 getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)

@@ -10,51 +10,65 @@ multiregion_transformations[:ImmersedBoundaryGrid]  = Symbol("MultiRegionGrid{<:
 multiregion_transformations[:AbstractField] = :MultiRegionField
 multiregion_transformations[:Field]         = :MultiRegionField
 
-# For non-returning functions -> can we make it NON BLOCKING?
+# For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 function apply_regionally!(func!, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
 
-    @sync begin
-        for (r, dev) in enumerate(devices(mra))
-            @async begin
-                switch_device!(dev)
-                region_args = Tuple(getregion(arg, r) for arg in args)
-                region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
-                func!(region_args...; region_kwargs...)
-                sync_device!(dev)
-            end
+    if isnothing(mra) 
+        devs = devices(mrk)
+    else
+        devs = devices(mra)
+    end
+    
+    # @sync for (r, dev) in enumerate(devs))
+        @sync begin
+        r = 1
+        dev = devs[1]
+        @async begin
+            switch_device!(dev)
+            region_args = Tuple(getregion(arg, r) for arg in args)
+            region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs)
+            func!(region_args...; region_kwargs...)
         end
     end
-end
- 
-# For functions with return statements -> BLOCKING!
+end 
+
+# For functions with return statements -> BLOCKING! (use as seldom as possible)
 function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
 
+    if isnothing(mra) 
+        devs = devices(mrk)
+    else
+        devs = devices(mra)
+    end
+
     res = Tuple((switch_device!(dev);
                 region_args = Tuple(getregion(arg, r) for arg in args);
                 region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs);
                 constructor(region_args...; region_kwargs...))
-                for (r, dev) in enumerate(devices(mra)))
+                for (r, dev) in enumerate(devs))
 
-    sync_all_devices!(devices(mra))
+    sync_all_devices!(devs)
 
-    return MultiRegionObject(Tuple(res), devices(mra))
+    return MultiRegionObject(Tuple(res), devs)
 end
 
 function sync_all_devices!(devices)
-    for dev in devices
-        switch_device!(dev)
-        sync_device!(dev)
+    @sync for dev in devices
+        @async begin
+            switch_device!(dev)
+            sync_device!(dev)
+        end
     end
 end
 
 sync_device!(::CuDevice) = synchronize(blocking=false)
-sync_device!(::CPU) = nothing
+sync_device!(::CPU)      = nothing
 
 redispatch(arg::Symbol) = arg
 

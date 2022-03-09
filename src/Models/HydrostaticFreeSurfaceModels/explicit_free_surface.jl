@@ -12,11 +12,11 @@ The explicit free surface solver.
 
 $(TYPEDFIELDS)
 """
-struct ExplicitFreeSurface{E, T}
+struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
     "free surface elevation"
     η :: E
     "gravitational accelerations"
-    gravitational_acceleration :: T
+    gravitational_acceleration :: G
 end
 
 ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
