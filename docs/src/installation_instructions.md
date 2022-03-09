@@ -6,16 +6,12 @@ Oceananigans. If you're new to Julia, we also recommend reading [Julia's "gettin
 
 ## Installation instructions
 
-Usually the hardest part of installing Oceananigans is installing Julia. The main options here in order
-of simple to complex are
-
-1. Check if your system already has Julia installed. Most HPC systems these days have Julia
-   available.
-2. Install Julia via the package manager of the operational system you use. E.g. `apt` for Ubuntu.
-3. Download the [Julia pre-compiled binaries](https://julialang.org/downloads/), where you can
-   simply run the Julia executable that's contained inside.
-4. Manually compile Julia from source code. You can find instructions on how to do that
-[here](https://github.com/JuliaLang/julia#building-julia).
+Usually the hardest part of installing Oceananigans is installing Julia. You can first check if your
+system already has Julia installed. If that's not the case, installation is necessary and you can
+find instructions for your platform
+[here](https://julialang.org/downloads/platform/#linux_and_freebsd) and
+[here](https://julialang.org/downloads/). You can also manually compile Julia from source code
+following the instructions [here](https://github.com/JuliaLang/julia#building-julia).
 
 With Julia installed, you can install Oceananigans with a single line of code within Julia itself: `] add Oceananigans`. 
 However, best practices for Julia suggest a couple extra commands to ensure that each project has
