@@ -25,9 +25,6 @@ end
                                             background_κz = 0,
                                             background_νz = 0)
 
-The one positional argument determines the floating point type of the free parameters
-of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
-
 Arguments
 =========
 
