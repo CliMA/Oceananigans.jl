@@ -40,6 +40,10 @@ Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
 function diffusivity end 
 
+# For tuples
+viscosity(closure::Tuple, K) = sum(Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure)))
+diffusivity(closure::Tuple, K, id) = sum(Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure)))
+
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
 Base.summary(::VerticalFormulation) = "VerticalFormulation"
