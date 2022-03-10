@@ -16,7 +16,7 @@ using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """
-    AbstractTimeStepper
+    abstract type AbstractTimeStepper
 
 Abstract supertype for time steppers.
 """
@@ -30,7 +30,9 @@ Returns a timestepper with name `name`, instantiated with `args...`.
 Example
 =======
 
+```julia
 julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+```
 """
 function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
