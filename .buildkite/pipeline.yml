@@ -61,16 +61,16 @@ steps:
 ##### Unit tests
 #####
 
-  - label: "🐿️ gpu unit tests"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "unit"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage=true)'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    depends_on: "init_gpu"
+  # - label: "🐿️ gpu unit tests"
+  #   env:
+  #     JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  #     TEST_GROUP: "unit"
+  #   commands:
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage=true)'"
+  #   agents:
+  #     queue: Oceananigans
+  #     architecture: GPU
+  #   depends_on: "init_gpu"
 
   - label: "🐇 cpu unit tests"
     env:
@@ -533,7 +533,7 @@ steps:
       TEST_GROUP: "coverage"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit_generic(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: CPU
