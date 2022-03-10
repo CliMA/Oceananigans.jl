@@ -19,16 +19,15 @@ a separate and easily reproducible environment (we suggest that users read [this
 to get a better understanding of working with environments). Best practices when starting a new Oceananigans 
 project is to 
 
-1. Start with a empty directory (in this example called `new_project`)
-2. Inside the empty directory, start Julia with the command `julia --project`
-3. Access the built-in package manager by pressing `]` in the Julia command prompt
-4. Add the Oceananigans package with `add Oceananigans`
-5. Instantiate/build all dependencies `instantiate`
+1. Start with a empty directory (in this example called `new_project`).
+2. Inside the empty directory, start Julia with the command `julia --project`.
+3. Access the built-in package manager by pressing `]` in the Julia command prompt.
+4. Add the Oceananigans package with `add Oceananigans`.
+5. Instantiate/build all dependencies `instantiate`.
 
 To do so, open a Julia REPL from the terminal and then start the package manager by hitting `]`. Then:
 
-```
-
+```julia
 (@v1.6) pkg> activate .
   Activating new environment at `~/new_project/Project.toml`
 
@@ -57,11 +56,13 @@ Whenever you run Oceananigans for a project, it is recommended that you activate
 This ensures that you will always use the package versions of you project and that any changes there will not affect
 other projects.. To activate the project's environment you either start Julia using `julia --project` or from Julia's
 package manager you call:
-```Julia
+
+```julia
 (@v1.6) pkg> activate .
   Activating new project at `~/new_project`
 
 (new_project) pkg>
+```
 
 For initial explorations and getting used to the code, you can
 enter the commands directly in the [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) (which can be started with
