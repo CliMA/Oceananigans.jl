@@ -81,6 +81,11 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
+        end
+    end
+
+    if group == :time_stepping_3 || group == :all
+        @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
         end
     end
