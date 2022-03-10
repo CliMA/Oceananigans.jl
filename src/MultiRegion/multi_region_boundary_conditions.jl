@@ -26,14 +26,13 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs
     N = size(grid)[1]
     w = neighbors[bc.condition]
 
+    dst = arch_array(arch, zeros(H, size(parent(c), 2), size(parent(c), 3)))
+
     switch_device!(getdevice(w))
     src = deepcopy(parent(w)[N+1:N+H, :, :])
 
     switch_device!(getdevice(c))
-    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
-
     copyto!(dst, src)
-    synchronize()
 
     p  = view(parent(c), 1:H, :, :)
     p .= dst
@@ -46,15 +45,13 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs
     N = size(grid)[1]
     e = neighbors[bc.condition]
 
+    dst = arch_array(arch, zeros(H, size(parent(c), 2), size(parent(c), 3)))
 
     switch_device!(getdevice(e))
     src = deepcopy(parent(e)[H+1:2H, :, :])
 
-    switch_device!(getdevice(c))
-    dst = arch_array(arch, zeros(length(H), size(parent(c), 2), size(parent(c), 3)))
-    
+    switch_device!(getdevice(c))    
     copyto!(dst, src)
-    synchronize()
     
     p  = view(parent(c), N+H+1:N+2H, :, :)
     p .= dst

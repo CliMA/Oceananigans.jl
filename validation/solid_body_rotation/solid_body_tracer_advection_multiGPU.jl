@@ -15,6 +15,7 @@
 
 using Oceananigans
 using Oceananigans.Grids
+using Oceananigans.Grids: min_Δy, min_Δx
 using Oceananigans.MultiRegion
 
 using Oceananigans.Coriolis:
@@ -52,94 +53,88 @@ using BenchmarkTools
 # in the same direction as the "background" rotation rate ``\Omega``.
 # The velocity ``U`` determines the magnitude of the additional rotation.
 
-const U = 0.1
-
-solid_body_rotation(λ, ϕ) = U * cosd(ϕ)
-solid_body_geostrophic_height(λ, ϕ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(ϕ)^2 / g
-
 # In addition to the solid body rotation solution, we paint a Gaussian tracer patch
 # on the spherical strip to visualize the rotation.
+const U = 0.1
 
 northern_boundary = 80 # degrees
 Ω = 1 # rad / s
 g = 1 # m s⁻²
 
+Nx=512; Ny=512; dev=(0, 1); architecture = GPU()
+
 function run_solid_body_tracer_advection(; architecture = CPU(),
-                                           multigpu = false,
                                            Nx = 360,
                                            Ny = 8,
-                                           dev = nothing,
-                                           super_rotations = 4)
+                                           dev = nothing)
 
     # A spherical domain
-    @show grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
-                                       radius = 1,
-                                       halo = (3, 3, 3),
-                                       latitude = (-northern_boundary, northern_boundary),
-                                       longitude = (-180, 180),
-                                       z = (-1, 0))
+    grid = RectilinearGrid(architecture, size = (Nx, Ny),
+                                       halo = (3, 3),
+                                       topology = (Periodic, Periodic, Flat),
+                                       x = (0, 1),
+                                       y = (0, 1))
 
-    if multigpu
-        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = dev)
-    else
+    if dev isa Nothing
         mrg = grid
+    else
+        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = dev)
     end
 
-    uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
+    uᵢ = Field{Face, Center, Center}(grid)
+    fill!(uᵢ, U)
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         tracers = (:c, :d, :e),
-                                        # velocities = PrescribedVelocityFields(u=uᵢ),
-                                        momentum_advection = VectorInvariant(),
+                                        velocities = PrescribedVelocityFields(u=uᵢ),
+                                        free_surface = ExplicitFreeSurface(),
+                                        momentum_advection = nothing,
                                         tracer_advection = WENO5(),
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure  = nothing)
-    return model
+
+    # Tracer patch for visualization
+    Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
+
+    # Tracer patch parameters
+    L = 0.1 # degree
+
+    cᵢ(x, y, z) = Gaussian(x, 0, L)
+    dᵢ(x, y, z) = Gaussian(0, y, L)
+    eᵢ(x, y, z) = Gaussian(x, y, L)
+
+    set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
+
+    Δx_min = min_Δx(grid)
+    Δy_min = min_Δy(grid)
+    Δ_min = min(Δx_min, Δy_min)
+
+    # Time-scale for tracer advection across the smallest grid cell
+    @show advection_time_scale = Δ_min / U
+    super_rotation_period = 200advection_time_scale
+
+    Δt = 0.1advection_time_scale
+    simulation = Simulation(model,
+                            Δt = Δt,
+                            stop_time = super_rotation_period)
+
+                            # stop_time = super_rotations * super_rotation_period)
+
+    progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, max|c|: %.2f",
+                                   sim.model.clock.iteration, sim.model.clock.time,
+                                   sim.Δt, maximum(abs, sim.model.tracers.c)))
+
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+
+    run!(simulation)
+
+    @show simulation.run_wall_time
+    return simulation
 end
-#     # Tracer patch for visualization
-#     Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
 
-#     # Tracer patch parameters
-#     L = 24 # degree
-#     ϕ₀ = 0 # degrees
-
-#     cᵢ(λ, ϕ, z) = Gaussian(λ, 0, L)
-#     dᵢ(λ, ϕ, z) = Gaussian(0, ϕ - ϕ₀, L)
-#     eᵢ(λ, ϕ, z) = Gaussian(λ, ϕ - ϕ₀, L)
-
-#     set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
-
-#     ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
-#     Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλᶜᵃᵃ)
-#     Δy_min = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
-#     Δ_min = min(Δx_min, Δy_min)
-
-#     # Time-scale for tracer advection across the smallest grid cell
-#     @show advection_time_scale = Δ_min / U
-#     super_rotation_period = 2π * grid.radius / U
-
-#     Δt = 0.1advection_time_scale
-#     simulation = Simulation(model,
-#                             Δt = Δt,
-#                             stop_time = 1000Δt)
-
-#                             # stop_time = super_rotations * super_rotation_period)
-
-#     progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, max|c|: %.2f",
-#                                    sim.model.clock.iteration, sim.model.clock.time,
-#                                    sim.Δt, maximum(abs, sim.model.tracers.c)))
-
-#     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-
-#     run!(simulation)
-
-#     @show simulation.run_wall_time
-#     return simulation
-# end
-
-# simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=512, Ny=256, super_rotations=0.01)
-# simulation_parallel = run_solid_body_tracer_advection(Nx=512, Ny=512, multigpu=true, super_rotations=0.01)
+simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=256, Ny=256)
+simulation_parallel = run_solid_body_tracer_advection(Nx=256, Ny=256, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())

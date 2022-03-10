@@ -6,6 +6,8 @@ import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.Grids: new_data
 import Base: fill!
 
+import Oceananigans.Simulations: hasnan
+
 const MultiRegionField{LX, LY, LZ, O}                  = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
 const MultiRegionFunctionField{LX, LY, LZ, C, P, F, G} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
 
@@ -35,9 +37,9 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
         getregion(f.status, i))
 
 new_data(FT, mrg::MultiRegionGrid, loc) = construct_regionally(new_data, FT, mrg.region_grids, loc)
-# set!(f::MultiRegionField, func::Function) = apply_regionally!(set!, f, func)
 
 fill!(f::MultiRegionField, val) = apply_regionally!(fill!, f, val)
+hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
 validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, mrg.region_grids)
 validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, mrg.region_grids, bcs)

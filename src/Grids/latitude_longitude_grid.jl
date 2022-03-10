@@ -126,11 +126,12 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                latitude,
                                longitude,
                                z,
+                               topology = nothing,
                                radius = R_Earth,
                                halo = (1, 1, 1))
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo)
+        validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -185,7 +186,7 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo)
+function validate_lat_lon_grid_args(latitude, longitude, size, halo, topo)
 
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
@@ -199,13 +200,15 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo)
     Lλ = λ₂ - λ₁
     Lφ = φ₂ - φ₁
 
-    TX = Lλ == 360 ? Periodic : Bounded
-    TY = Bounded
-    TZ = Bounded
-    topo = (TX, TY, TZ)
+    if topo isa Nothing
+        TX = Lλ == 360 ? Periodic : Bounded
+        TY = Bounded
+        TZ = Bounded
+        topo = (TX, TY, TZ)
+    end
     
-    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
+    Nλ, Nφ, Nz = validate_size(topo..., size)
+    Hλ, Hφ, Hz = validate_halo(topo..., halo)
 
     return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
 end

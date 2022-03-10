@@ -54,7 +54,7 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
     lon, lat, z = extent
     return LatitudeLongitudeGrid(child_arch, FT; 
                                  size = size, halo = halo,
-                                 latitude = lat, longitude = lon, z = z,
+                                 latitude = lat, longitude = lon, z = z, topology = topo, 
                                  precompute_metrics = metrics_precomputed(grid))
 end
 

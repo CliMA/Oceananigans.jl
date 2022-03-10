@@ -49,6 +49,9 @@ getregion(ref::Reference, i)        = ref.ref
 getregion(iter::Iterate, i)         = iter.iter[i]
 getregion(mo::MultiRegionObject, i) = mo.regions[i]
 
+getregion(t::Tuple, i)              = Tuple(getregion(elem, i) for elem in t)
+getregion(nt::NamedTuple, i)        = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
+
 isregional(a)                   = false
 isregional(::MultiRegionObject) = true
 
@@ -85,6 +88,8 @@ function apply_regionally!(func!, args...; kwargs...)
             func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
         end
     end
+
+    sync_all_devices!(devs)
 end 
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
@@ -100,9 +105,7 @@ function construct_regionally(constructor, args...; kwargs...)
     end
 
     res = Tuple((switch_device!(dev);
-                region_args = Tuple(getregion(arg, r) for arg in args);
-                region_kwargs = Tuple(getregion(kwarg, r) for kwarg in kwargs);
-                constructor(region_args...; region_kwargs...))
+                constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...))
                 for (r, dev) in enumerate(devs))
 
     sync_all_devices!(devs)

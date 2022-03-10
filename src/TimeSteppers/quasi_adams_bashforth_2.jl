@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -70,19 +71,21 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model)
 
-    calculate_tendencies!(model)
-
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
-
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
-
+    @apply_regionally local_time_stepping!(model, Δt, χ)
+    
     tick!(model.clock, Δt)
     update_state!(model)
-    store_tendencies!(model)
     update_particle_properties!(model, Δt)
 
     return nothing
+end
+
+function local_time_stepping!(model, Δt, χ)
+    calculate_tendencies!(model)
+    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    calculate_pressure_correction!(model, Δt)
+    pressure_correct_velocities!(model, Δt)
+    store_tendencies!(model)
 end
 
 #####

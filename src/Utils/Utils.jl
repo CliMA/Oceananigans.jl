@@ -28,7 +28,6 @@ instantiate(X::DataType) = X()
 #####
 
 include("prettysummary.jl")
-include("multi_region_transformation.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("prettytime.jl")
@@ -40,5 +39,6 @@ include("with_tracers.jl")
 include("versioninfo.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
+include("multi_region_transformation.jl")
 
 end

@@ -31,7 +31,6 @@ abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY
 abstract type AbstractPartition end
 
 include("multi_region_utils.jl")
-include("multi_region_object.jl")
 include("x_partitions.jl")
 include("multi_region_grid.jl")
 include("multi_region_field.jl")
