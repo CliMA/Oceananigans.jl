@@ -75,13 +75,19 @@ struct DiscreteDiffusionFunction{F} <: Function
 end
 
 #####
-##### Include module code
+##### Tracer indices
+#####
+
+# For "vanilla" tracers we use `Val(id)`.
+# "Special" tracers need custom types.
+
+#####
+##### The magic
 #####
 
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
-include("diffusion_operators.jl")
-include("viscous_dissipation_operators.jl")
+include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
@@ -90,14 +96,19 @@ include("isopycnal_rotation_tensor_components.jl")
 
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
+
+# AbstractScalarDiffusivity closures:
 include("turbulence_closure_implementations/scalar_diffusivity.jl")
 include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
-include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
-include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
+
+# Special non-abstracted diffusivities:
+# TODO: introduce abstract typing for these
+include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
+include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 

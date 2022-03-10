@@ -15,55 +15,34 @@ function closure_summary(closures::Tuple, padchar="│")
 end
 
 #####
-##### Stress divergences
+##### Kernel functions
 #####
 
-for stress_div in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ)
+for kernel_func in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :ivd_diagonal)
     @eval begin
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any}, clock, U, Ks, args...) =
-                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1], args...)
+        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any}, Ks, args...) =
+                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any}, clock, U, Ks, args...) = (
-                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1], args...)
-                  + $stress_div(i, j, k, grid, closures[2], clock, U, Ks[2], args...))
+        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
+                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $kernel_func(i, j, k, grid, closures[2], Ks[2], args...))
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any, <:Any}, clock, U, Ks, args...) = (
-                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1], args...)
-                  + $stress_div(i, j, k, grid, closures[2], clock, U, Ks[2], args...) 
-                  + $stress_div(i, j, k, grid, closures[3], clock, U, Ks[3], args...))
+        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
+                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $kernel_func(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $kernel_func(i, j, k, grid, closures[3], Ks[3], args...))
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple, clock, U, Ks, args...) = (
-                    $stress_div(i, j, k, grid, closures[1:2], clock, U, Ks[1:2], args...)
-                  + $stress_div(i, j, k, grid, closures[3:end], clock, U, Ks[3:end], args...))
+        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple, Ks, args...) = (
+                    $kernel_func(i, j, k, grid, closures[1:2], Ks[1:2], args...)
+                  + $kernel_func(i, j, k, grid, closures[3:end], Ks[3:end], args...))
     end
 end
-
-#####
-##### Tracer flux divergences
-#####
-
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any}, c, iᶜ, clock, Ks, args...) =
-        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], args...)
-
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any}, c, iᶜ, clock, Ks, args...) = (
-        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], args...)
-      + ∇_dot_qᶜ(i, j, k, grid, closures[2], c, iᶜ, clock, Ks[2], args...))
-
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any, <:Any}, c, iᶜ, clock, Ks, args...) = (
-        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], args...)
-      + ∇_dot_qᶜ(i, j, k, grid, closures[2], c, iᶜ, clock, Ks[2], args...) 
-      + ∇_dot_qᶜ(i, j, k, grid, closures[3], c, iᶜ, clock, Ks[3], args...))
-
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple, c, iᶜ, clock, Ks, args...) = (
-        ∇_dot_qᶜ(i, j, k, grid, closures[1:2], c, iᶜ, clock, Ks[1:2], args...)
-      + ∇_dot_qᶜ(i, j, k, grid, closures[3:end], c, iᶜ, clock, Ks[3:end], args...))
 
 #####
 ##### Utilities
 #####
 
-with_tracers(tracers, closure_tuple::Tuple) =
-    Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
 function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...)
     for (α, closure) in enumerate(closure_tuple)
@@ -85,16 +64,6 @@ end
 ##### Support for VerticallyImplicit
 #####
 
-const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
-const VIC = Union{AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}, AbstractArray{<:SingleImplicitClosure}}
-
-# Filter explicitly-discretized closures.
-@inline z_diffusivity(closure::Tuple, iᶜ, Kstuple, args...) = 
-        Tuple((clo isa VIC ? z_diffusivity(clo, iᶜ, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
-
-@inline z_viscosity(closure::Tuple, Kstuple, args...) = 
-        Tuple((clo isa VIC ? z_viscosity(clo, Ks, args...) : 0) for (clo, Ks) in zip(closure, Kstuple))
-
 for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜᶠ, :κᶜᶠᶜ, :κᶠᶜᶜ)
     @eval begin
         @inline $coeff(i, j, k, grid, clock, ν::Tuple{C1})     where C1       = $coeff(i, j, k, grid, clock, ν[1])
@@ -103,14 +72,20 @@ for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜ�
     end
 end
 
+#####
+##### Compiler-inferrable time_discretization for tuples
+#####
+
+const ETD = ExplicitTimeDiscretization
+const VITD = VerticallyImplicitTimeDiscretization
+
 @inline combine_time_discretizations(disc) = disc
+@inline combine_time_discretizations(::ETD, ::VITD)  = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VITD, ::ETD)  = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VITD, ::VITD) = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::ETD, ::ETD)   = ExplicitTimeDiscretization()
 
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::ExplicitTimeDiscretization)           = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::VerticallyImplicitTimeDiscretization, ::VerticallyImplicitTimeDiscretization) = VerticallyImplicitTimeDiscretization()
-@inline combine_time_discretizations(::ExplicitTimeDiscretization, ::ExplicitTimeDiscretization)                     = ExplicitTimeDiscretization()
-
-@inline combine_time_discretizations(disc1, disc2, other_discs...) =
-    combine_time_discretizations(combine_time_discretizations(disc1, disc2), other_discs...)
+@inline combine_time_discretizations(d1, d2, other_discs...) =
+    combine_time_discretizations(combine_time_discretizations(d1, d2), other_discs...)
 
 @inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)

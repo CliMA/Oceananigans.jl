@@ -6,20 +6,6 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
-"""
-    z_viscosity(closure, args...)
-
-Returns the "vertical" (z-direction) viscosity associated with `closure`.
-"""
-function z_viscosity end
-
-"""
-    z_diffusivity(closure, ::Val{tracer_index}, args...) where tracer_index
-
-Returns the "vertical" (z-direction) diffusivity associated with `closure` and `tracer_index`.
-"""
-function z_diffusivity end
-
 implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
 implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
@@ -34,17 +20,19 @@ instantiate(X) = X()
 
 # Tracers and horizontal velocities at cell centers in z
 
-@inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
-    κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
+    #κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
+    κᵏ⁺¹ = κz(i, j, k+1, grid, closure, K, id, clock)
 
     return ifelse(k > grid.Nz-1,
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
+    #κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
+    κᵏ = κz(i, j, k′, grid, closure, K, id, clock)
 
     return ifelse(k < 1,
                   zero(eltype(grid)),
@@ -55,18 +43,19 @@ end
 #
 # Note: these coefficients are specific to vertically-bounded grids (and so is
 # the BatchedTridiagonalSolver).
-
-@inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
-    νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ) 
+    #νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
+    νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure, K, clock)
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
+    #νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
+    νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure, K, clock)
     return ifelse(k < 1,
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
@@ -74,9 +63,9 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, LX, LY, LZ, clock, Δt, interp_κ, κ) =
-    one(eltype(grid)) - ivd_upper_diagonal(i, j, k, grid, LX, LY, LZ, clock, Δt, interp_κ, κ) -
-                        ivd_lower_diagonal(i, j, k-1, grid, LX, LY, LZ, clock, Δt, interp_κ, κ)
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
+    one(eltype(grid)) - ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                        ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
 #####
 ##### Solver constructor
@@ -88,13 +77,13 @@ end
 Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 - Δt ∂z κ ∂z) cⁿ⁺¹ = c★
+(1 - Δt ∂z κz ∂z) cⁿ⁺¹ = c★
 ```
 
 and
 
 ```math
-(1 - Δt ∂z ν ∂z) wⁿ⁺¹ = w★
+(1 - Δt ∂z νz ∂z) wⁿ⁺¹ = w★
 ```
 
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
@@ -119,10 +108,11 @@ end
 ##### Implicit step functions
 #####
 
-is_c_location(loc) = loc === (Center, Center, Center)
-is_u_location(loc) = loc === (Face, Center, Center)
-is_v_location(loc) = loc === (Center, Face, Center)
-is_w_location(loc) = loc === (Center, Center, Face)
+# Special viscosity extractors with tracer_index === nothing
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock)
+
+is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
 """
     implicit_step!(field, solver::BatchedTridiagonalSolver, clock, Δt,
@@ -136,20 +126,43 @@ lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system
 `args...` are passed into `z_diffusivity` and `z_viscosity` appropriately for the purpose of retrieving
 the diffusivities / viscosities associated with `closure`.
 """
-function implicit_step!(field::Field, implicit_solver::BatchedTridiagonalSolver,
-                        clock, Δt, closure, tracer_index, diffusivity_fields; dependencies)
+function implicit_step!(field::Field,
+                        implicit_solver::BatchedTridiagonalSolver,
+                        closure::Union{AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}, Tuple},
+                        diffusivity_fields,
+                        tracer_index,
+                        clock,
+                        Δt; dependencies)
     
    loc = location(field)
 
-   # Look at all these assumptions
-   extractor =
-       loc === (Center, Center, Center) ? κᶜᶜᶠ :
-       loc === (Face, Center, Center)   ? νᶠᶜᶠ :
-       loc === (Center, Face, Center)   ? νᶜᶠᶠ :
-       loc === (Center, Center, Face)   ? νᶜᶜᶜ :
+   # << Look at all these assumptions >>
+   # Or put another way, `location(field)` serves to identify velocity components.
+   # Change this if `location(field)` does not uniquely identify velocity components.
+   κz = # "Extractor function
+       loc === (Center, Center, Center) ? κzᶜᶜᶠ :
+       loc === (Face, Center, Center)   ? νzᶠᶜᶠ :
+       loc === (Center, Face, Center)   ? νzᶜᶠᶠ :
+       loc === (Center, Center, Face)   ? νzᶜᶜᶜ :
        error("Cannot take an implicit_step! for a field at $location")
 
-    return solve!(field, implicit_solver, field, instantiate.(location)...,
-                  clock, Δt, extractor, closure, diffusivity_fields; dependencies = dependencies)
+    # Nullify tracer_index if `field` is not a tracer   
+    κz === κzᶜᶜᶠ || (tracer_index = nothing)
+
+    # Filter explicit closures
+    if closure isa Tuple
+        closure_tuple = closure
+        N = length(closure_tuple)
+        closure = Tuple(closure_tuple[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
+        diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
+    end
+
+    @show closure
+
+    return solve!(field, implicit_solver,
+                  field,
+                  # ivd_*_diagonal gets called with these args after (i, j, k, grid):
+                  closure, diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz;
+                  dependencies)
 end
 

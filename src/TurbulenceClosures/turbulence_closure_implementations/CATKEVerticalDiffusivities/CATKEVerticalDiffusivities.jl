@@ -14,6 +14,7 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 using Oceananigans.TurbulenceClosures:
     get_closure_ij,
+    time_discretization,
     AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
     ExplicitTimeDiscretization,
@@ -63,7 +64,12 @@ function with_tracers(tracer_names, closure::FlavorOfCATKE)
     return closure
 end
 
-# Closure tuple sorting
+# For tuples of closures, we need to know _which_ closure is CATKE.
+# Here we take a "simple" approach that sorts the tuple so CATKE is first.
+# This is not sustainable though if multiple closures require this.
+# The two other possibilities are:
+# 1. Recursion to find which closure is CATKE in a compiler-inferrable way
+# 2. Store the "CATKE index" inside CATKE via validate_closure.
 validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=catke_first))
 
 catke_first(closure1, catke::FlavorOfCATKE) = false
@@ -93,7 +99,7 @@ Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 """
-CATKEVerticalDiffusivity(FT::DataType; kwargs...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
+CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   Cᴰ = 2.91,
@@ -132,7 +138,10 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     Kᶜ = CenterField(grid, boundary_conditions=bcs.Kᶜ)
     Kᵉ = CenterField(grid, boundary_conditions=bcs.Kᵉ)
 
-    return (; Kᵘ, Kᶜ, Kᵉ)
+    # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
+    _tupled_tracer_diffusivities = NamedTuple(name => name === :e ? Kᵉ : Kᶜ for name in tracer_names)
+
+    return (; Kᵘ, Kᶜ, Kᵉ, _tupled_tracer_diffusivities)
 end        
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
@@ -188,41 +197,9 @@ end
     return ℓe * u★
 end
 
-#####
-##### Viscous flux, diffusive fluxes, plus shenanigans for diffusive fluxes of TKE (eg TKE "transport")
-#####
-
-# Special "index type" alternative to Val for dispatch
-struct TKETracerIndex{N} end
-
-@inline TKETracerIndex(N) = TKETracerIndex{N}()
-
-# Diffusive flux of TKE!
-@inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, e, ::TKETracerIndex, clock, diffusivities, args...)
-    Keᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᵉ)
-    return - Keᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, e)
-end
-
-# "Translations" for diffusive transport by non-CATKEVD closures
-const ATC = AbstractTurbulenceClosure
-@inline diffusive_flux_x(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_y(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
-
-@inline viscosity(::FlavorOfCATKE, diffusivities, args...) = diffusivities.Kᵘ
-
-@inline function diffusivity(::FlavorOfCATKE, ::Val{tracer_index},
-                               diffusivities, tracers, args...) where tracer_index
-
-    tke_index = findfirst(name -> name === :e, keys(tracers))
-
-    if tracer_index === tke_index
-        return diffusivities.Kᵉ
-    else
-        return diffusivities.Kᶜ
-    end
-end
-
+@inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.Kᵘ
+@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+    
 #####
 ##### Show
 #####

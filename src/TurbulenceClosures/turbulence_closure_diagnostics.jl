@@ -48,9 +48,8 @@ end
 function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
     Δ = min_Δxyz(grid, formulation(closure))
     min_Pr = closure.Pr isa NamedTuple{()} ? 1 : minimum(closure.Pr) # Innocuous value is there's no tracers
-    max_κ = maximum(closure.κ)
     max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/min_Pr)
-    return min(Δ^2 / max_νκ, Δ^2 / max_κ)
+    return Δ^2 / max_νκ
 end
 
 function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffusivities, grid)

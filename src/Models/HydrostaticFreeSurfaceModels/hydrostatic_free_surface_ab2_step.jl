@@ -66,11 +66,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       nothing,
                        model.clock,
                        Δt,
-                       model.closure,
-                       nothing,
-                       model.diffusivity_fields,
                        dependencies = explicit_velocity_step_events[i])
     end
 
@@ -104,15 +104,17 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         tracer_field = tracers[tracer_name]
+        explicit_tracer_step_event = explicit_tracer_step_events[tracer_index]
+        closure = model.closure
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
+                       closure,
+                       model.diffusivity_fields,
+                       Val(tracer_index),
                        model.clock,
                        Δt,
-                       model.closure,
-                       tracer_index,
-                       model.diffusivity_fields,
-                       dependencies = explicit_tracer_step_events[tracer_index])
+                       dependencies = explicit_tracer_step_event)
     end
 
     return explicit_tracer_step_events

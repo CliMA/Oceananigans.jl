@@ -15,9 +15,8 @@ struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensi
     end
 end
 
-@inline viscosity(::SmagorinskyLilly, diffusivities, args...) = diffusivities.νₑ
-@inline diffusivity(::SmagorinskyLilly, ::Val{tracer_index}, diffusivities, args...) where tracer_index =
-    diffusivities.κₑ[tracer_index]
+@inline viscosity(::SmagorinskyLilly, K) = K.νₑ
+@inline diffusivity(::SmagorinskyLilly, K, ::Val{id}) where id = K.κₑ[id]
 
 """
     SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1)
@@ -69,9 +68,9 @@ SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscret
 SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
         SmagorinskyLilly{TD, FT}(C, Cb, Pr)
 
-function with_tracers(tracers, closure::SmagorinskyLilly{TD}) where TD
+function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return SmagorinskyLilly{TD}(closure.C, closure.Cb, Pr)
+    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr)
 end
 
 """

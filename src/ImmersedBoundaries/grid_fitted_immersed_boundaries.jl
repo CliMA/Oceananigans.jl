@@ -79,15 +79,17 @@ for location in (:upper_, :lower_)
     alt_func = Symbol(:_ivd_, location, :diagonal)
     func     = Symbol(:ivd_ , location, :diagonal)
     @eval begin
-        @inline function $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
+        @inline function $alt_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
             return ifelse(ivd_immersed_solid_interface(LX, LY, LZ, i, j, k, ibg),
                           zero(eltype(ibg.grid)),
-                          $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
+                          $func(i, j, k, ibg.grid, closure, K, id, LX, LY, LZ, clock, Δt, κz))
         end
-        @inline $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Face, clock, Δt, interp_κ, κ) =
-                $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
-        @inline $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Center, clock, Δt, interp_κ, κ) =
-                $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
+
+        @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Face, clock, Δt, κz) =
+                $alt_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+
+        @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Center, clock, Δt, κz) =
+                $alt_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, Δt, κz)
     end
 end
 
