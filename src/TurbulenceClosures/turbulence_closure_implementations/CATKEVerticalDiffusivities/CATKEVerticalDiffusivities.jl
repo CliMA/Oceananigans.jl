@@ -246,9 +246,13 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
-@inline diffusive_flux_x(i, j, k, grid, clo::Union{AID, CAVD}, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_y(i, j, k, grid, clo::Union{AID, CAVD}, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
-@inline diffusive_flux_z(i, j, k, grid, clo::Union{AID, CAVD}, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+
+@inline diffusive_flux_x(i, j, k, grid, clo::CAVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, clo::CAVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
+@inline diffusive_flux_z(i, j, k, grid, clo::CAVD, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 @inline diffusive_flux_x(i, j, k, grid, clo::AVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, clo::AVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
