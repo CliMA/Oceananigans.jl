@@ -8,10 +8,9 @@ Oceananigans. If you're new to Julia, we also recommend reading [Julia's "gettin
 
 Usually the hardest part of installing Oceananigans is installing Julia. You can first check if your
 system already has Julia installed. If that's not the case, installation is necessary and you can
-find instructions for your platform
-[here](https://julialang.org/downloads/platform/#linux_and_freebsd) and
-[here](https://julialang.org/downloads/). You can also manually compile Julia from source code
-following the instructions [here](https://github.com/JuliaLang/julia#building-julia).
+[download](https://julialang.org/downloads/) Julia from its official website, where also you can
+find [platform-specific installation instructions](https://julialang.org/downloads/platform/).
+Alternatively, you can also manually [compile Julia from source code](https://github.com/JuliaLang/julia#building-julia).
 
 With Julia installed, you can install Oceananigans with a single line of code within Julia itself: `] add Oceananigans`. 
 However, best practices for Julia suggest a couple extra commands to ensure that each project has
