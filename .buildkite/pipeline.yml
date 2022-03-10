@@ -538,6 +538,9 @@ steps:
       queue: Oceananigans
       architecture: CPU
 
+  - wait: ~
+    continue_on_failure: true
+
 #####
 ##### Clean up
 #####
