@@ -34,7 +34,6 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
     "one_dimensional_diffusion.jl",
-    "geostrophic_adjustment.jl",
     "two_dimensional_turbulence.jl",
     "internal_wave.jl",
     "convecting_plankton.jl",
@@ -58,7 +57,6 @@ end
 
 example_pages = [
     "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
-    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
     "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
     "Internal wave"                      => "generated/internal_wave.md",
     "Convecting plankton"                => "generated/convecting_plankton.md",
