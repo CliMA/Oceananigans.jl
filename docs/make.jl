@@ -43,7 +43,8 @@ examples = [
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
     "shallow_water_Bickley_jet.jl",
-    "horizontal_convection.jl"
+    "horizontal_convection.jl",
+    "tilted_bottom_boundary_layer.jl"
 ]
 
 for example in examples
@@ -66,7 +67,8 @@ example_pages = [
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
     "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"              => "generated/horizontal_convection.md"
+    "Horizontal convection"              => "generated/horizontal_convection.md",
+    "Tilted bottom boundary layer"        => "generated/tilted_bottom_boundary_layer.md"
  ]
 
 model_setup_pages = [
