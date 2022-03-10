@@ -267,14 +267,14 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
 
 # Stencil for vector invariant calculation of smoothness indicators
 
-# Parallel to the interpolation direction! (same as )
+# Parallel to the interpolation direction! (same as left/right stencil)
 @inline tangential_left_stencil_x(i, j, k, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, v)
 @inline tangential_left_stencil_y(i, j, k, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, u)
 
 @inline tangential_right_stencil_x(i, j, k, ::Val{1}, v) = @inbounds right_stencil_x(i, j, k, v)
 @inline tangential_right_stencil_y(i, j, k, ::Val{2}, u) = @inbounds right_stencil_y(i, j, k, u)
 
-# Perpendicular to the interpolation direction!
+# Perpendicular to the interpolation direction! (take stencils perpendicular to the interpolation direction)
 @inline tangential_left_stencil_x(i, j, k, ::Val{2}, v)  = @inbounds ( (v[i-1, j-2, k], v[i, j-2, k], v[i+1, j-2, k]), (v[i-1, j-1, k], v[i, j-1, k], v[i+1, j-1, k]), (v[i-1, j, k], v[i, j, k], v[i+1, j, k]) )
 @inline tangential_left_stencil_y(i, j, k, ::Val{1}, u)  = @inbounds ( (u[i-2, j-1, k], u[i-2, j, k], u[i-2, j+1, k]), (u[i-1, j-1, k], u[i-1, j, k], u[i-1, j+1, k]), (u[i, j-1, k], u[i, j, k], u[i, j+1, k]) )
 
@@ -361,7 +361,7 @@ end
 @inline right_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₀ / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
 #####
-##### VectorInvariant reconstruction
+##### VectorInvariant reconstruction (based on JS or Z)
 #####
 
 @inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, dir, idx, loc, u, v)
@@ -378,9 +378,9 @@ end
     βv₁ = left_biased_β₁(FT, v₁, T, scheme, dir, idx, loc)
     βv₂ = left_biased_β₂(FT, v₂, T, scheme, dir, idx, loc)
            
-    β₀ = sqrt(βu₀^2 + βv₀^2)  
-    β₁ = sqrt(βu₁^2 + βv₁^2)     
-    β₂ = sqrt(βu₂^2 + βv₂^2)  
+    β₀ = 0.5*(βu₀ + βv₀)  
+    β₁ = 0.5*(βu₁ + βv₁)     
+    β₂ = 0.5*(βu₂ + βv₂)  
 
     if scheme isa ZWENOVectorInvariant
         τ₅ = abs(β₂ - β₀)
@@ -414,9 +414,9 @@ end
     βv₁ = right_biased_β₁(FT, v₁, T, scheme, Val(1), idx, loc)
     βv₂ = right_biased_β₂(FT, v₂, T, scheme, Val(1), idx, loc)
            
-    β₀ = sqrt(βu₀^2 + βv₀^2)  
-    β₁ = sqrt(βu₁^2 + βv₁^2)     
-    β₂ = sqrt(βu₂^2 + βv₂^2)  
+    β₀ = 0.5*(βu₀ + βv₀)  
+    β₁ = 0.5*(βu₁ + βv₁)     
+    β₂ = 0.5*(βu₂ + βv₂)  
 
     if scheme isa ZWENOVectorInvariant
         τ₅ = abs(β₂ - β₀)
