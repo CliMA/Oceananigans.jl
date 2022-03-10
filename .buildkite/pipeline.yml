@@ -533,7 +533,7 @@ steps:
       TEST_GROUP: "coverage"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "CODECOV_TOKEN=$SECRET_CODECOV_TOKEN $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder(); token=fc902be7-5dcf-47f7-ab94-9d773c5b27d7)'"
     agents:
       queue: Oceananigans
       architecture: CPU
