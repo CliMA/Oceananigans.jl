@@ -26,7 +26,7 @@ required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 """
     ScalarBiharmonicDiffusivity([formulation=ThreeDimensionalFormulation(), FT=Float64;]
                                 ν=0, κ=0,
-                                discrete_form = false) 
+                                discrete_form = false)
 
 Returns parameters for a scalar biharmonic diffusivity model.
 
@@ -41,7 +41,7 @@ Keyword arguments
   - `discrete_form`: `Boolean`.
 
   - `formulation`: formulation used for the discretization of the diffusivity operator.
-                   Options are `VerticalFormulation()`, `HorizontalFormulation()` and 
+                   Options are `VerticalFormulation()`, `HorizontalFormulation()` and
                    `ThreeDimensionalFormulation()`.
 
 """
@@ -70,4 +70,3 @@ function Base.summary(closure::ScalarBiharmonicDiffusivity)
 end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
-    
