@@ -239,11 +239,21 @@ const ATC = AbstractTurbulenceClosure
 @inline diffusive_flux_y(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
-# Disambiguiate
+# Why do we have to do this?
 const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
+const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
+const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 @inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+
+@inline diffusive_flux_x(i, j, k, grid, clo::AVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, clo::AVD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
+@inline diffusive_flux_z(i, j, k, grid, clo::AVD, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+
+@inline diffusive_flux_x(i, j, k, grid, clo::AHD, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_y(i, j, k, grid, clo::AHD, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_z(i, j, k, grid, clo::AHD, e, ::TKETracerIndex{N}, args...) where N = zero(eltype(grid))
 
 # Shortcuts --- CATKEVD incurs no horizontal transport
 @inline viscous_flux_ux(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
