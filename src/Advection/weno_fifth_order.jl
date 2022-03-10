@@ -10,10 +10,6 @@ import Base: show
 
 const two_32 = Int32(2)
 
-const C3₀ = 3/10
-const C3₁ = 3/5
-const C3₂ = 1/10
-
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-6
 
@@ -51,6 +47,11 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF, VI} <: AbstractUpwindBiasedAdvectio
     smooth_zᵃᵃᶠ::ZS
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
+
+    "coefficient for WENO reconstruction, optimal weights"
+    C3₀ :: FT
+    C3₁ :: FT 
+    C3₂ :: FT
 end
 
 """
@@ -136,7 +137,11 @@ Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Scheme
 Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation
     laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
-function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false, vector_invariant = false)
+function WENO5(coeffs = nothing, FT = Float64; 
+               grid = nothing, 
+               stretched_smoothness = false, 
+               zweno = false, 
+               vector_invariant = false)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
@@ -169,8 +174,15 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno
     YS = typeof(smooth_yᵃᶠᵃ)
     ZS = typeof(smooth_zᵃᵃᶠ)
 
+    if coeffs isa Nothing
+        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
+    else
+        C3₀, C3₁, C3₂ = FT.(coeffs)
+    end
+
     return WENO5{FT, XT, YT, ZT, XS, YS, ZS, zweno, vector_invariant}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                                                      smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
+                                                                      smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
+                                                                      C3₀, C3₁, C3₂)
 end
 
 return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
@@ -205,7 +217,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF, VI}) whe
         Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
         Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
         Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ))
+        Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
 @inline boundary_buffer(::WENOVectorInvariant) = 3
@@ -322,16 +334,16 @@ end
 # Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
 # indicators around grid point `i-1/2`.
 
-@inline left_biased_α₀(FT, ψ, T, scheme, args...) = FT(C3₀) / (left_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline left_biased_α₁(FT, ψ, T, scheme, args...) = FT(C3₁) / (left_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline left_biased_α₂(FT, ψ, T, scheme, args...) = FT(C3₂) / (left_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline left_biased_α₀(FT, ψ, T, scheme, args...) = scheme.C3₀ / (left_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline left_biased_α₁(FT, ψ, T, scheme, args...) = scheme.C3₁ / (left_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline left_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₂ / (left_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
-@inline right_biased_α₀(FT, ψ, T, scheme, args...) = FT(C3₂) / (right_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline right_biased_α₁(FT, ψ, T, scheme, args...) = FT(C3₁) / (right_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline right_biased_α₂(FT, ψ, T, scheme, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline right_biased_α₀(FT, ψ, T, scheme, args...) = scheme.C3₂ / (right_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline right_biased_α₁(FT, ψ, T, scheme, args...) = scheme.C3₁ / (right_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline right_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₀ / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
 #####
-##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemesfor hyperbolic conservation laws)
+##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws)
 #####
 
 @inline function left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, T, scheme::ZWENO, args...)
@@ -340,9 +352,9 @@ end
     β₂ = left_biased_β₂(FT, ψ₂, T, scheme, args...)
     
     τ₅ = abs(β₂ - β₀)
-    α₀ = FT(C3₀) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-    α₁ = FT(C3₁) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-    α₂ = FT(C3₂) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+    α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+    α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -358,9 +370,9 @@ end
     β₂ = right_biased_β₂(FT, ψ₂, T, scheme, args...)
 
     τ₅ = abs(β₂ - β₀)
-    α₀ = FT(C3₂) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-    α₁ = FT(C3₁) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-    α₂ = FT(C3₀) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+    α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+    α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
     
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα

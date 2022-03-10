@@ -92,6 +92,8 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                             maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
+
     simulation.callbacks[:wizard]   = Callback(wizard, IterationInterval(10))
 
     # Output: primitive fields + computations
@@ -178,10 +180,10 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-for Nx in [64, 128, 256, 512]
-    for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant(), WENO5(vector_invariant=true))
-        experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
-        visualize_bickley_jet(experiment_name)
-    end
-end
+# for Nx in [64, 128, 256, 512]
+#     for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant(), WENO5(vector_invariant=true))
+#         experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
+#         visualize_bickley_jet(experiment_name)
+#     end
+# end
 
