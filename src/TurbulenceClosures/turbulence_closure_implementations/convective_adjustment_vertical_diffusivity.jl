@@ -28,6 +28,13 @@ end
 The one positional argument determines the floating point type of the free parameters
 of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
 
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`; default `VerticallyImplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
+
 Keyword arguments
 =================
 
@@ -40,8 +47,6 @@ Keyword arguments
                   a number, function, array, or field.
 
 * `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
-
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`.
 
 Example
 =======
