@@ -1,9 +1,11 @@
-ENV["GKSwstype"] = "nul"
-using Plots
-
 using Printf
 using Statistics
 
+using LinearAlgebra
+using Distributions: MvNormal
+using LinearAlgebra: cholesky, Symmetric
+
+using Random
 using Oceananigans
 using Oceananigans.Advection
 using Oceananigans.AbstractOperations
@@ -21,6 +23,10 @@ using Oceananigans.Advection: ZWENO, WENOVectorInvariant
 #####
 ##### The Bickley jet
 #####
+
+⊗(a, b) = a * b'
+Random.seed!(1234)
+
 
 Ψ(y) = - tanh(y)
 U(y) = sech(y)^2
@@ -42,11 +48,12 @@ ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(C3₀, C3₁; arch = GPU(), Nh = 64)
+function run_bickley_jet(coeff, Nh = 64)
 
+    C3₀, C3₁ = coeff
     C3₂ = 1 - C3₀ - C3₁
 
-    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
+    grid = RectilinearGrid(size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
                                 topology = (Periodic, Periodic, Bounded))
 
@@ -84,7 +91,12 @@ function run_bickley_jet(C3₀, C3₁; arch = GPU(), Nh = 64)
 
     u, v, w = model.velocities
 
+    # u₀, v₀, _ = deepcopy(model.velocities)
+
+    # @compute ζ₀ = Field(∂x(v₀) - ∂y(u₀))
+
     enst   = zeros(nsave)
+    loss   = zeros(nsave)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
@@ -95,29 +107,156 @@ function run_bickley_jet(C3₀, C3₁; arch = GPU(), Nh = 64)
             time_step!(model, Δt)
             time = time + Δt
         end
-        @info "saving iteration number $i, with time $time, and var $(enst[i])"
+        if i > 1
+            loss[i] = (enst[i] - enst[1]) + 0.5 * Int(enst[i] > enst[i-1]) * (enst[i] - enst[i-1])
+        end
+        @info "iteration $i, time $time, var $(enst[i]), loss $(loss[i])"
     end
 
     @show model.clock.time
 
-    return (model, enst)
+    # @compute ζ = Field(∂x(v) - ∂y(u))
+    for i in 2:nsave
+    end
+
+
+    return enst #(model, enst, ζ₀, ζ)
 end
    
 N = 10
 # timestep size (h = 1/N implies T=1 at the final time)
-h = 1 / N
+h = 100 / N
 
-Nparticles = 20
+M = 20
+# Implicitly define the likelihood function via the covariance 
+MM = randn(M, M)
+Γ = (MM' * MM + I)
+
+ξ = MvNormal(1 / h * Γ)
+
+Nparticles = 10
 # number of ensemble members
-J = Nparticles * 2
+J = Nparticles 
 
+function regularize(vec)
+    if vec[1] > 1
+        vec[1] = 1 - (vec[1] - 1)
+    elseif vec[1] < 0
+        vec[1] = - vec[1]
+    end
+    if vec[2] > 1
+        vec[2] = 1 - (vec[2] - 1) 
+    elseif vec[1] < 0
+        vec[2] = - vec[2]
+    end
+    if vec[1] + vec[2] > 1
+        x = vec[1] 
+        y = vec[2] 
+        vec[2] = 1 - x
+        vec[1] = 1 - y
+    end
+    return vec
+end
 
-priors = vcat([rand() - 0.2 for i in 1:Nparticles], [rand() + 0.1 for i in 1:Nparticles])
+u = [regularize([rand() - 0.2, rand() + 0.1]) for i in 1:Nparticles]
 
+ȳ = zeros(20)
+timeseries = []
 
-# function forward_map(enst,)
+# EKI Algorithm
+for i = 1:N
+    u̅ = mean(u)
+    G = run_bickley_jet.(u, Ref(32)) # error handling needs to go here
+    G̅ = mean(G)
 
-# end
+    # define covariances
+    Cᵘᵖ = (u[1] - u̅) ⊗ (G[1] - G̅)
+    Cᵖᵖ = (G[1] - G̅) ⊗ (G[1] - G̅)
+    for j = 2:J
+        Cᵘᵖ += (u[j] - u̅) ⊗ (G[j] - G̅)
+        Cᵖᵖ += (G[j] - G̅) ⊗ (G[j] - G̅)
+    end
+    Cᵘᵖ *= 1 / (J - 1)
+    Cᵖᵖ *= 1 / (J - 1)
+
+    # ensemblize the data
+    y = [ȳ + rand(ξ) for i = 1:J]
+    r = y - G
+
+    # update
+    Cᵖᵖ_factorized = cholesky(Symmetric(Cᵖᵖ + 1 / h * Γ))
+    for j = 1:J
+        u[j] += Cᵘᵖ * (Cᵖᵖ_factorized \ r[j])
+    end
+
+    u = regularize.(u)
+    @info "updated priors tstep $i"
+    push!(timeseries, copy(u))
+end
+
 
 
 # function
+
+
+using GLMakie, Printf
+
+fig = Figure()
+ax = Axis(fig[2, 1])
+sc_init = scatter!(ax, [(timeseries[1][i][1], timeseries[1][i][2]) for i in eachindex(u)], color = :red)
+sc_final = scatter!(ax, [(timeseries[end][i][1], timeseries[end][i][2]) for i in eachindex(u)], color = :blue)
+
+time_slider = Slider(fig, range = 1:length(timeseries), startvalue = 1)
+ti = time_slider.value
+
+ensemble = @lift [(timeseries[$ti][i][1], timeseries[$ti][i][2]) for i in eachindex(u)]
+sc_transition = scatter!(ax, ensemble, color = :purple)
+
+scstar = scatter!(ax, [(exact[1], exact[2])], marker = '⋆', color = :yellow, markersize = 30)
+
+ax.xlabel = "c¹"
+ax.ylabel = "c²"
+
+time_string = @lift("Time = " * @sprintf("%0.2f", ($ti - 1) / (length(timeseries) - 1)))
+fig[3, 1] = vgrid!(
+    Label(fig, time_string, width = nothing),
+    time_slider,
+)
+
+c¹ = @lift([timeseries[$ti][i][1] for i in eachindex(timeseries[end])])
+c² = @lift([timeseries[$ti][i][2] for i in eachindex(timeseries[end])])
+
+ax.xlabelsize = 25
+ax.ylabelsize = 25
+
+ax_above = Axis(fig[1, 1])
+ax_side = Axis(fig[2, 2])
+
+ax_above.ylabel = "probability density"
+ax_side.xlabel = "probability density"
+
+
+hideydecorations!(ax_side, ticks = false, grid = false)
+hidexdecorations!(ax_above, ticks = false, grid = false)
+
+# colsize!(fig.layout, 1, Relative(2 / 3))
+# rowsize!(fig.layout, 1, Relative(1 / 3))
+colgap!(fig.layout, 10)
+rowgap!(fig.layout, 10)
+
+update!(fig.scene)
+display(fig)
+##
+seconds = 5
+fps = 30
+frames = round(Int, fps * seconds)
+frames = lengt
+fps = 30
+record(fig, pwd() * "/example.mp4"; framerate = fps) do io
+    for i = 1:frames
+        ti[] = i
+        sleep(1 / fps)
+        recordframe!(io)
+    end
+end
+

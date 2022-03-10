@@ -40,7 +40,6 @@ h = 1 / N
 # number of ensemble members
 J = 4000 * Mo
 # Likelihood perturbation for algorithm, (constructed from before)
-ξ = MvNormal(1 / h * Γ)
 
 # Construct Posterior
 HΓHΣ = Symmetric((H' * (cholesky(Γ) \ H) + cholesky(Σ) \ I))

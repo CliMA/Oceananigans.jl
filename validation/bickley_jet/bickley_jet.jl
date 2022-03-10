@@ -76,10 +76,6 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     set!(model, u=uᵢ, v=vᵢ, c=cᵢ)
 
-    progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, max|u|: %.2f",
-                                   sim.model.clock.iteration, sim.model.clock.time,
-                                   sim.Δt, maximum(abs, u.data.parent)))
-
     wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
 
     c = sqrt(model.free_surface.gravitational_acceleration)
@@ -140,7 +136,7 @@ function visualize_bickley_jet(experiment_name)
     filepath = experiment_name * ".jld2"
 
     ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
-    c_timeseries = FieldTimeSeries(filepath, "u", boundary_conditions=nothing, location=(Face, Center, Center))
+    c_timeseries = FieldTimeSeries(filepath, "c", boundary_conditions=nothing, location=(Face, Center, Center))
 
     grid = c_timeseries.grid
 
