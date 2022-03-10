@@ -10,7 +10,7 @@ using Oceananigans.Utils
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
-    ν = model.closure.ν
+    ν = model.closure[2].ν # TODO: use interface function rather than hard-coding
 
     compute!(Uavg)
     U = Array(interior(Uavg))  # Exclude average of halo region.
@@ -29,7 +29,8 @@ end
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
-    κ = model.closure.κ.T
+    # TODO: use interface function rather than hard-coding ScalarDiffusivity as second closure
+    κ = model.closure[2].κ.T
 
     compute!(Tavg)
     Θ = Array(interior(Tavg)) # Exclude average of halo region.
@@ -55,7 +56,7 @@ end
 
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Reτ::FrictionReynoldsNumber)(model)
-    ν = model.closure.ν
+    ν = model.closure[2].ν
     h = model.grid.Lz / 2
     uτ_top, uτ_bottom = uτ(model, Reτ.Uavg, Reτ.U_wall)
 
@@ -64,7 +65,7 @@ end
 
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
-    κ = model.closure.κ.T
+    κ = model.closure[2].κ.T
     h = model.grid.Lz / 2
 
     q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.Θ_wall)
@@ -116,7 +117,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(; grid, buoyancy,
                                 tracers = (:T, :S),
-                                closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
+                                closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
                                 boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
 
     #####
