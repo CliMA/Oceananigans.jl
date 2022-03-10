@@ -25,10 +25,14 @@ end
                                             background_κz = 0,
                                             background_νz = 0)
 
+Return a convective adjustment vertical diffusivity closure that applies different values of diffusivity and/or viscosity depending
+whether the region is statically stable (positive or zero buoyancy gradient) or statically unstable (negative buoyancy gradient).
+
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`; default `VerticallyImplicitTimeDiscretization()`.
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`;
+                         default `VerticallyImplicitTimeDiscretization()`.
 
 * `FT`: Float type; default `Float64`.
 
