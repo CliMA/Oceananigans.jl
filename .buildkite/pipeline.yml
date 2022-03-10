@@ -7,30 +7,30 @@ env:
   SECRET_CODECOV_TOKEN: "Mr1jVbsCKL08vNobBBufCnRkfpFpX9VWqfrML63FDTqCFyKgiTy5KgIaaV6FqGKiJZMQPKCXaaPWlZuuZVGYGbEYZ5JRB2303uqyP+8LuVtrYmGEkf/mJjoeATLSyWLWjdfafFzjReR/eLlnuNOoj6wQXW1SnPB96vsBWNM2uiw0/a9EiLVKAJyZ0Z4Deq+aHzV/4wGFI5xmk3Kz73lvx9rpm9Znd8NAIZSg8kIVK+YNaIAAPOqMpSkNd5hxq0xmTmUU7az3jEgc6UuIvhvoorQE/6GpD758U4bG+TT1hXDQPi0U6DJ/wt+ij4owX2ZrpyTVIf+2BAMBm8Bg48yQCQ==;U2FsdGVkX19ylHznSX6EhDAyUxex/HFx6pfbRih/8ZrJqOyqJNK1v0oCus0IMnU0QPgW8cmvZvnkLrRF3aIBbA=="
 
 steps:
-  - label: "🎪 initialize gpu environment"
-    key: "init_gpu"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
-    commands:
-      # Download julia binaries
-      - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
+  # - label: "🎪 initialize gpu environment"
+  #   key: "init_gpu"
+  #   env:
+  #     JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  #     TEST_GROUP: "init"
+  #   commands:
+  #     # Download julia binaries
+  #     - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
+  #     - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
 
-      # Instantiate and precompile
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
+  #     # Instantiate and precompile
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
+  #     # Force the initialization of the CUDA runtime as it is lazily loaded by default
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
 
-      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage=true)'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
+  #     # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage=true)'"
+  #   agents:
+  #     queue: Oceananigans
+  #     architecture: GPU
 
   - label: "🏕️ initialize cpu environment"
     key: "init_cpu"
@@ -517,15 +517,15 @@ steps:
 ##### Submit to Codecov
 #####
 
-  - label: "🌸 submit code coverage from gpu environment"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "coverage"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit_local(Codecov.process_folder())'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
+  # - label: "🌸 submit code coverage from gpu environment"
+  #   env:
+  #     JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  #     TEST_GROUP: "coverage"
+  #   commands:
+  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
+  #   agents:
+  #     queue: Oceananigans
+  #     architecture: GPU
 
   - label: "🌼 submit code coverage from cpu environment"
     env:
@@ -533,7 +533,7 @@ steps:
       TEST_GROUP: "coverage"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit_local(Codecov.process_folder())'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(Codecov.process_folder())'"
     agents:
       queue: Oceananigans
       architecture: CPU
