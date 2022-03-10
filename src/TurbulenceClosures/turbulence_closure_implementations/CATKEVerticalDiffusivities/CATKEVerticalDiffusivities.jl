@@ -16,6 +16,7 @@ using Oceananigans.TurbulenceClosures:
     get_closure_ij,
     AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
+    ConvectiveAdjustmentVerticalDiffusivity,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     ThreeDimensionalFormulation, 
