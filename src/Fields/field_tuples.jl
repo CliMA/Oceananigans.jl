@@ -2,8 +2,6 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 
 # TODO: This code belongs in the Models module
 
-const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
-
 @inline extract_field_data(field::Field) = field.data
 
 @inline function extract_field_bcs(field::Field) 
@@ -14,25 +12,20 @@ const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
     end
 end
 
-@inline reduced_dimension_or_nothing(f)        = nothing
-@inline reduced_dimension_or_nothing(f::Field) = reduced_dimensions(f)
-
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) where {S, N}
 
-    arch = architecture(field)
-    reduced_dims = reduced_dimension_or_nothing.(fields)
-
-    red_idx     = findall((x) -> (x !== () && x !== nothing), reduced_dims)
-    red_fields  = fields[red_idx]
+    red_idx     = findall((r) -> r isa ReducedField, fields)
+    red_fields  = Tuple(fields[idx] for idx in red_idx) 
 
     for field in red_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
-    full_idx     = findall((x) -> x == (), reduced_dims)
-    full_fields  = fields[full_idx]
+    full_idx     = findall((f) -> ((f isa Field) && !(f isa ReducedField)), fields)
+    full_fields  = Tuple(fields[idx] for idx in full_idx) 
 
-    fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), field.grid, args...; kwargs...)
+    grid = full_fields[1].grid
+    fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
 
     return nothing
 end
