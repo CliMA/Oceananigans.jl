@@ -265,7 +265,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
 @inline right_stencil_y(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j-2, k, grid, args...), ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j+1, k, grid, args...)), (ψ(i, j, k, grid, args...), ψ(i, j+1, k, grid, args...), ψ(i, j+2, k, grid, args...)) )
 @inline right_stencil_z(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j, k-2, grid, args...), ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j, k+1, grid, args...)), (ψ(i, j, k, grid, args...), ψ(i, j, k+1, grid, args...), ψ(i, j, k+2, grid, args...)) )
 
-# Stencil for vector invariant calculation of smoothness indicators
+# Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 
 # Parallel to the interpolation direction! (same as left/right stencil)
 @inline tangential_left_stencil_x(i, j, k, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, v)
@@ -280,7 +280,6 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
 
 @inline tangential_right_stencil_x(i, j, k, ::Val{2}, v) = @inbounds ( (v[i-1, j-1, k], v[i, j-1, k], v[i+1, j-1, k]), (v[i-1, j, k], v[i, j, k], v[i+1, j, k]), (v[i-1, j+1, k], v[i, j+1, k], v[i+1, j+1, k]) )
 @inline tangential_right_stencil_y(i, j, k, ::Val{1}, u) = @inbounds ( (u[i-1, j-1, k], u[i-1, j, k], u[i-1, j+1, k]), (u[i, j-1, k], u[i, j, k], u[i, j+1, k]), (u[i+1, j-1, k], u[i+1, j, k], u[i+1, j+1, k]) )
-
 
 #####
 ##### biased pₖ for û calculation
