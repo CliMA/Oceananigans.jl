@@ -181,9 +181,7 @@ run!(simulation)
 ##### Visualize
 #####
 
-using GLMakie
-
-using Oceananigans, JLD2
+using CairoMakie
 
 filename = "baroclinic_adjustment"
 
@@ -252,8 +250,6 @@ title = @lift(string("Buoyancy at t = ",
 fig[0, :] = Label(fig, title, textsize=50)
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
-
-# display(fig)
 
 record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
