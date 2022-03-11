@@ -17,7 +17,7 @@ end
 @inline reduced_dimension_or_nothing(f)        = nothing
 @inline reduced_dimension_or_nothing(f::Field) = reduced_dimensions(f)
 
-function fill_halo_regions!(fields::Union{NTuple{N, <:Field}, FieldTuple{S, N}}, args...; kwargs...) where {S, N}
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) where {S, N}
 
     arch = architecture(field)
     reduced_dims = reduced_dimension_or_nothing.(fields)
@@ -26,7 +26,7 @@ function fill_halo_regions!(fields::Union{NTuple{N, <:Field}, FieldTuple{S, N}},
     red_fields  = fields[red_idx]
 
     for field in red_fields
-        fill_halo_regions!(field, arch, args...; kwargs...)
+        fill_halo_regions!(field, args...; kwargs...)
     end
 
     full_idx     = findall((x) -> x == (), reduced_dims)
