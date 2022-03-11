@@ -14,12 +14,15 @@ const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
     end
 end
 
+@inline reduced_dimension_or_nothing(f)        = nothing
+@inline reduced_dimension_or_nothing(f::Field) = reduced_dimensions(f)
+
 function fill_halo_regions!(fields::Union{NTuple{N, <:Field}, FieldTuple{S, N}}, args...; kwargs...) where {S, N}
 
     arch = architecture(field)
-    reduced_dims = reduced_dimensions.(fields)
+    reduced_dims = reduced_dimension_or_nothing.(fields)
 
-    red_idx     = findall((x) -> x == (), reduced_dims)
+    red_idx     = findall((x) -> (x !== () && x !== nothing), reduced_dims)
     red_fields  = fields[red_idx]
 
     for field in red_fields
