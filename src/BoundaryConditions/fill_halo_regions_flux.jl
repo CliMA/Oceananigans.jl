@@ -33,7 +33,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     end
 end
 
-@inline function _fill_east_halo!(j, k, grid, ::FBC, args...)
+@inline function _fill_east_halo!(j, k, grid, c, ::FBC, args...)
     @unroll for i in 1:grid.Hx
         _fill_flux_east_halo!(i, j, k, grid, c)
     end
@@ -69,7 +69,6 @@ end
 
 @kernel function fill_flux_west_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
     @unroll for i in 1:grid.Hx
         _fill_flux_west_halo!(i, j, k, grid, c)
     end
@@ -77,7 +76,6 @@ end
 
 @kernel function fill_flux_south_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
     @unroll for j in 1:grid.Hy
         _fill_flux_south_halo!(i, j, k, grid, c)
     end
@@ -85,7 +83,6 @@ end
 
 @kernel function fill_flux_bottom_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
     @unroll for k in 1:grid.Hz
         _fill_flux_bottom_halo!(i, j, k, grid, c)
     end
@@ -93,7 +90,6 @@ end
 
 @kernel function fill_flux_east_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
     @unroll for i in 1:grid.Hx
         _fill_flux_east_halo!(i, j, k, grid, c)
     end
@@ -101,7 +97,6 @@ end
 
 @kernel function fill_flux_north_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
     @unroll for j in 1:grid.Hy
         _fill_flux_north_halo!(i, j, k, grid, c)
     end
@@ -109,7 +104,6 @@ end
 
 @kernel function fill_flux_top_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
     @unroll for k in 1:grid.Hz
         _fill_flux_top_halo!(i, j, k, grid, c)
     end

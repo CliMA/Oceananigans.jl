@@ -89,19 +89,19 @@ fill_first(bc1, bc2)             = true
 ##### General fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c::OffsetArray, west_bc, east_bc, grid, args...)
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, grid, args...)
     j, k = @index(Global, NTuple)
     _fill_west_halo!(j, k, grid, c, west_bc, args...)
     _fill_east_halo!(j, k, grid, c, east_bc, args...)
 end
 
-@kernel function _fill_south_and_north_halo!(c::OffsetArray, south_bc, north_bc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, grid, args...)
     i, k = @index(Global, NTuple)
     _fill_south_halo!(i, k, grid, c, south_bc, args...)
     _fill_north_halo!(i, k, grid, c, north_bc, args...)
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::OffsetArray, bottom_bc, top_bc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, grid, args...)
     i, j = @index(Global, NTuple)
     _fill_bottom_halo!(i, j, grid, c, bottom_bc, args...)
        _fill_top_halo!(i, j, grid, c, top_bc, args...)
@@ -113,7 +113,7 @@ end
 
 @kernel function _fill_west_and_east_halo!(c::Tuple, west_bc::Tuple, east_bc::Tuple, grid, args...) 
     j, k = @index(Global, NTuple)
-    @unroll for n in 1:length(c)
+    for n in 1:length(c)
         _fill_west_halo!(j, k, grid, c[n], west_bc[n], args...)
         _fill_east_halo!(j, k, grid, c[n], east_bc[n], args...)
     end
@@ -121,7 +121,7 @@ end
 
 @kernel function _fill_south_and_north_halo!(c::Tuple, south_bc::Tuple, north_bc::Tuple, grid, args...) where N
     i, k = @index(Global, NTuple)
-    @unroll for n in 1:length(c)
+    for n in 1:length(c)
         _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
         _fill_north_halo!(i, k, grid, c[n], north_bc[n], args...)
     end
@@ -129,7 +129,7 @@ end
 
 @kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc::Tuple, top_bc::Tuple, grid, args...) where N
     i, j = @index(Global, NTuple)
-    @unroll for n in 1:length(c)
+    for n in 1:length(c)
         _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], args...)
            _fill_top_halo!(i, j, grid, c[n], top_bc[n],    args...)
     end
@@ -139,7 +139,7 @@ fill_west_and_east_halo!(c, west_bc, east_bc, arch, dep, grid, args...; kwargs..
     launch!(arch, grid, :yz, _fill_west_and_east_halo!, c, west_bc, east_bc, grid, args...; dependencies=dep, kwargs...)
 
 fill_south_and_north_halo!(c, south_bc, north_bc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :xz, _fill_south_and_north_halo!, south_bc, north_bc, c, grid, args...; dependencies=dep, kwargs...)
+    launch!(arch, grid, :xz, _fill_south_and_north_halo!, c, south_bc, north_bc, grid, args...; dependencies=dep, kwargs...)
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, :xy, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, grid, args...; dependencies=dep, kwargs...)
