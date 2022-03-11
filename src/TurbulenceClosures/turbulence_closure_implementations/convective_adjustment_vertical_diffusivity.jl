@@ -87,6 +87,10 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CAVD, CAVDArr
     return (; κ, ν)
 end       
 
+const FlavorOfCAVD = Union{CAVD, AbstractArray{<:CAVD}}
+@inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
+@inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
+
 function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}, model)
 
     arch = model.architecture
