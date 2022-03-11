@@ -80,7 +80,7 @@ end
   @unroll for n = 1:M
    @unroll for j = 1:H
       @inbounds begin
-          c[n][i, j, k]     = c[n][i, N+j, k]     # south
+          c[n][i, j, k]     = c[n][i, N+j, k] # south
           c[n][i, N+H+j, k] = c[n][i, H+j, k] # north
       end
     end
