@@ -28,7 +28,19 @@ required_halo_size(::ScalarBiharmonicDiffusivity) = 2
                                 ν=0, κ=0,
                                 discrete_form = false)
 
-Returns parameters for a scalar biharmonic diffusivity model.
+Return a scalar biharmonic diffusivity turbulence closure with viscosity coefficient `ν` and tracer
+diffusivities `κ` for each tracer field in `tracers`. If a single `κ` is provided, it is applied to
+all tracers. Otherwise `κ` must be a `NamedTuple` with values for every tracer individually.
+
+Arguments
+=========
+
+* `formulation`:
+  - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+  - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+  - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+
+* `FT`: the float datatype (default: `Float64`)
 
 Keyword arguments
 =================
@@ -39,11 +51,6 @@ Keyword arguments
          `NamedTuple` of diffusivities with entries for each tracer.
 
   - `discrete_form`: `Boolean`.
-
-  - `formulation`: formulation used for the discretization of the diffusivity operator.
-                   Options are `VerticalFormulation()`, `HorizontalFormulation()` and
-                   `ThreeDimensionalFormulation()`.
-
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,
