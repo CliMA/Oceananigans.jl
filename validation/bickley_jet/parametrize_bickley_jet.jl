@@ -108,7 +108,7 @@ function run_bickley_jet(coeff, Nh = 64)
             time = time + Δt
         end
         if i > 1
-            loss[i] = (enst[i] - enst[1]) + 0.5 * Int(enst[i] > enst[i-1]) * (enst[i] - enst[i-1])
+            loss[i] = (enst[i] - enst[1]) + 2 * Int(enst[i] > enst[i-1]) * (enst[i] - enst[i-1])
         end
         @info "iteration $i, time $time, var $(enst[i]), loss $(loss[i])"
     end
@@ -134,7 +134,7 @@ MM = randn(M, M)
 
 ξ = MvNormal(1 / h * Γ)
 
-Nparticles = 10
+Nparticles = 100
 # number of ensemble members
 J = Nparticles 
 
@@ -166,7 +166,7 @@ timeseries = []
 # EKI Algorithm
 for i = 1:N
     u̅ = mean(u)
-    G = run_bickley_jet.(u, Ref(32)) # error handling needs to go here
+    G = run_bickley_jet.(u, Ref(64)) # error handling needs to go here
     G̅ = mean(G)
 
     # define covariances

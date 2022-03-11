@@ -361,8 +361,63 @@ end
 @inline right_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₀ / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
 #####
-##### VectorInvariant reconstruction
+##### VectorInvariant reconstruction (z-direction Val{3} is different from x- and y-directions)
 #####
+
+@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, ::Val{3}, idx, loc, u)
+    i, j, k = ijk
+
+    u₂, u₁, u₀ = left_stencil_z(i, j, k, u)
+    
+    β₀ = left_biased_β₀(FT, u₀, T, scheme, Val(3), idx, loc)
+    β₁ = left_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
+    β₂ = left_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
+
+    if scheme isa ZWENOVectorInvariant
+        τ₅ = abs(β₂ - β₀)
+        α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+        α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    else
+        α₀ = scheme.C3₀ / (β₀ + FT(ε))^ƞ
+        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
+        α₂ = scheme.C3₂ / (β₂ + FT(ε))^ƞ
+    end
+    Σα = α₀ + α₁ + α₂
+    w₀ = α₀ / Σα
+    w₁ = α₁ / Σα
+    w₂ = α₂ / Σα
+
+    return w₀, w₁, w₂
+end
+
+@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, ::Val{3}, idx, loc, u)
+    i, j, k = ijk
+    
+    u₂, u₁, u₀ = right_stencil_z(i, j, k, u)
+
+    β₀ = right_biased_β₀(FT, u₀, T, scheme, Val(3), idx, loc)
+    β₁ = right_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
+    β₂ = right_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
+
+    if scheme isa ZWENOVectorInvariant
+        τ₅ = abs(β₂ - β₀)
+        α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+        α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    else    
+        α₀ = scheme.C3₂ / (β₀ + FT(ε))^ƞ
+        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
+        α₂ = scheme.C3₀ / (β₂ + FT(ε))^ƞ
+    end
+        
+    Σα = α₀ + α₁ + α₂
+    w₀ = α₀ / Σα
+    w₁ = α₁ / Σα
+    w₂ = α₂ / Σα
+
+    return w₀, w₁, w₂
+end
 
 @inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, dir, idx, loc, u, v)
     i, j, k = ijk

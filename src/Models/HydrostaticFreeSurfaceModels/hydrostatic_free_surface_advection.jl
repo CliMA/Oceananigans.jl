@@ -18,18 +18,35 @@ using Oceananigans.Advection:
 ###### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
 ######
 
-@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶜ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) / Azᶠᶜᶜ(i, j, k, grid)
-@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶜ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) / Azᶜᶠᶜ(i, j, k, grid)
+@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) / Azᶠᶜᶜ(i, j, k, grid)
+@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) / Azᶜᶠᶜ(i, j, k, grid)
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
     + vertical_vorticity_U(i, j, k, grid, scheme, U.u, U.v)  # Vertical relative vorticity term
-    + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v) # Bernoulli head term
-    + ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, U.u, U.w))  # Horizontal vorticity / vertical advection term
-
+    + vertical_advection_U(i, j, k, grid, scheme, U.u, U.w)  # Horizontal vorticity / vertical advection term
+    + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)) # Bernoulli head term
+    
 @inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
     + vertical_vorticity_V(i, j, k, grid, scheme, U.u, U.v) # Vertical relative vorticity term
-    + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v) # Bernoulli head term
-    + ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, U.v, U.w)) # Horizontal vorticity / vertical advection term
+    + vertical_advection_V(i, j, k, grid, scheme, U.v, U.w)  # Horizontal vorticity / vertical advection term
+    + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)) # Bernoulli head term
+
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariant, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariant, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w)
+
+@inline function vertical_advection_term_U(i, j, k, grid, scheme::WENOVectorInvariant, u, w)
+    ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶠᵃᵃ, Az_qᶜᶜᶠ, w) / Azᶠᶜᶜ(i, j, k, grid)
+    ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
+    ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
+    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+end
+
+@inline function vertical_advection_term_V(i, j, k, grid, scheme::WENOVectorInvariant, v, w)
+    ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶠᵃ, Az_qᶜᶜᶠ, w) / Azᶜᶠᶜ(i, j, k, grid)
+    ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
+    ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
+    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+end
 
 @inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariant, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 @inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariant, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
