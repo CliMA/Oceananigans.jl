@@ -29,12 +29,12 @@ end
 ### Multi region functions
 ###
 
-getdevice(a, i)                     = Oceananigans.Architectures.CPU()
+getdevice(a, i)                     = nothing
 getdevice(cu::GPUVar, i)            = CUDA.device(cu)
 getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
 getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
-getdevice(a)               = Oceananigans.Architectures.CPU()
+getdevice(a)               = nothing
 getdevice(cu::GPUVar)      = CUDA.device(cu)
 getdevice(cu::OffsetArray) = getdevice(cu.parent)
 

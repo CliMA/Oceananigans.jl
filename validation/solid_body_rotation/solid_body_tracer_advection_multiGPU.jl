@@ -61,7 +61,7 @@ northern_boundary = 80 # degrees
 Ω = 1 # rad / s
 g = 1 # m s⁻²
 
-Nx=512; Ny=512; dev=(0, 1); architecture = GPU()
+Nx=10; Ny=10; dev=(0, 0); architecture = CPU()
 
 function run_solid_body_tracer_advection(; architecture = CPU(),
                                            Nx = 360,
@@ -69,11 +69,21 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
                                            dev = nothing)
 
     # A spherical domain
-    grid = RectilinearGrid(architecture, size = (Nx, Ny),
-                                       halo = (3, 3),
-                                       topology = (Periodic, Periodic, Flat),
+    # @show grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
+    #                                    radius = 1,
+    #                                    latitude = (-northern_boundary, northern_boundary),
+    #                                    longitude = (-180, 180),
+    #                                    z = (-1, 0))
+    
+    # 
+
+    # A rectilinear domain
+    grid = RectilinearGrid(architecture, size = (Nx, Ny, 30),
+                                       halo = (3, 3, 3),
+                                       topology = (Periodic, Periodic, Bounded),
                                        x = (0, 1),
-                                       y = (0, 1))
+                                       y = (0, 1),
+                                       z = (0, 1))
 
     if dev isa Nothing
         mrg = grid
@@ -81,12 +91,24 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
         mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = dev)
     end
 
-    uᵢ = Field{Face, Center, Center}(grid)
-    fill!(uᵢ, U)
+    if grid isa RectilinearGrid
+        Δx_min = min_Δx(grid)
+        Δy_min = min_Δy(grid)
+        Δ_min = min(Δx_min, Δy_min)
+        uᵢ = Field{Face, Center, Center}(mrg)
+        fill!(uᵢ, U)
+        velocities = PrescribedVelocityFields(u=uᵢ)
+    else
+        ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+        Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
+        Δy_min = grid.radius * deg2rad(grid.Δϕ)
+        Δ_min = min(Δx_min, Δy_min)
+        velocities = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> solid_body_rotation(λ, ϕ))
+    end
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         tracers = (:c, :d, :e),
-                                        velocities = PrescribedVelocityFields(u=uᵢ),
+                                        velocities = velocities,
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
                                         tracer_advection = WENO5(),
@@ -105,10 +127,6 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
     set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
-
-    Δx_min = min_Δx(grid)
-    Δy_min = min_Δy(grid)
-    Δ_min = min(Δx_min, Δy_min)
 
     # Time-scale for tracer advection across the smallest grid cell
     @show advection_time_scale = Δ_min / U
@@ -133,8 +151,8 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     return simulation
 end
 
-simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=256, Ny=256)
-simulation_parallel = run_solid_body_tracer_advection(Nx=256, Ny=256, dev=(0, 1))
+simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=512, Ny=512)
+simulation_parallel = run_solid_body_tracer_advection(Nx=1204, Ny=512, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())

@@ -30,10 +30,11 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs
 
     switch_device!(getdevice(w))
     src = deepcopy(parent(w)[N+1:N+H, :, :])
-
+    synchronize()
+    
     switch_device!(getdevice(c))
     copyto!(dst, src)
-
+    
     p  = view(parent(c), 1:H, :, :)
     p .= dst
 
@@ -49,7 +50,8 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, args...; kwargs
 
     switch_device!(getdevice(e))
     src = deepcopy(parent(e)[H+1:2H, :, :])
-
+    synchronize()
+    
     switch_device!(getdevice(c))    
     copyto!(dst, src)
     

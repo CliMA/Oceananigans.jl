@@ -27,15 +27,15 @@ const MultiRegionSimulation = Simulation{<:MultiRegionModel}
 function update_state!(mrm::MultiRegionModel, mrg::MultiRegionGrid)
 
     # No Masking for the moment: Remember to apply masking!!
-    # fill_halo_regions!(prognostic_fields(mrm), mrm.architecture, mrm.clock, fields(mrm))
+    fill_halo_regions!(prognostic_fields(mrm), mrm.architecture, mrm.clock, fields(mrm))
 
     @apply_regionally begin
         update_state_actions!(mrm)
     end
 
-    # fill_halo_regions!(mrm.velocities.w, mrm.architecture, mrm.clock, fields(mrm))
-    # fill_halo_regions!(mrm.diffusivity_fields, mrm.architecture, mrm.clock, fields(mrm))
-    # fill_halo_regions!(mrm.pressure.pHY′, mrm.architecture)
+    fill_halo_regions!(mrm.velocities.w, mrm.architecture, mrm.clock, fields(mrm))
+    fill_halo_regions!(mrm.diffusivity_fields, mrm.architecture, mrm.clock, fields(mrm))
+    fill_halo_regions!(mrm.pressure.pHY′, mrm.architecture)
     
     return nothing
 end
