@@ -42,7 +42,7 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-vertical_diffusive_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
+vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν = νz, κ = κz)
 
 horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
