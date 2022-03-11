@@ -14,19 +14,15 @@ fill_halo_regions!(::Nothing, args...) = nothing
 Fill halo regions for each field in the tuple `fields` according to their boundary
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
-function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
-    for field in fields
-        fill_halo_regions!(field, arch, args...)
-    end
-    return nothing
-end
 
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 # Finally, the true fill_halo!
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, arch, grid, args...; kwargs...)
+function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...)
+
+    arch = architecture(grid)
 
     fill_halos! = [
         fill_west_and_east_halo!,

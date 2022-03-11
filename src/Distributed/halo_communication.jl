@@ -52,7 +52,9 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_location, args...; kwargs...)
+const MPIGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MultiArch}
+
+function fill_halo_regions!(c::OffsetArray, bcs, grid::MPIGrid, c_location, args...; kwargs...)
 
     barrier = Event(device(child_architecture(arch)))
 

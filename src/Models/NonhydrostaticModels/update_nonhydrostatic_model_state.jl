@@ -19,7 +19,7 @@ function update_state!(model::NonhydrostaticModel)
     wait(device(model.architecture), MultiEvent(tracer_masking_events))
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,  model.clock, fields(model))
+    fill_halo_regions!(merge(model.velocities, model.tracers),  model.clock, fields(model))
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -28,9 +28,10 @@ function update_state!(model::NonhydrostaticModel)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     update_hydrostatic_pressure!(model)
+    fill_halo_regions!(model.pressure.pHY′)
 
     return nothing
 end

@@ -5,14 +5,33 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
 
 @inline extract_field_data(field::Field) = field.data
-@inline extract_field_bcs(field::Field)  = field.boundary_conditions
+
+@inline function extract_field_bcs(field::Field) 
+    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
+        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
+    else
+        maybe_filtered_bcs = field.boundary_conditions
+    end
+end
 
 function fill_halo_regions!(fields::Union{NTuple{N, <:Field}, FieldTuple{S, N}}, args...; kwargs...) where {S, N}
 
-    field_data          = extract_field_data.(fields)
-    boundary_conditions = extract_field_bcs.(fields)
+    arch = architecture(field)
+    reduced_dims = reduced_dimensions.(fields)
 
-    return fill_halo_regions!(field_data, boundary_conditions, architecture(field), field.grid, args...; kwargs...)
+    red_idx     = findall((x) -> x == (), reduced_dims)
+    red_fields  = fields[red_idx]
+
+    for field in red_fields
+        fill_halo_regions!(field, arch, args...; kwargs...)
+    end
+
+    full_idx     = findall((x) -> x == (), reduced_dims)
+    full_fields  = fields[full_idx]
+
+    fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), field.grid, args...; kwargs...)
+
+    return nothing
 end
 
 #####

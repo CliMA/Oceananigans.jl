@@ -302,7 +302,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
-    fill_halo_regions!(x, arch) 
+    fill_halo_regions!(x) 
 
     return
 end

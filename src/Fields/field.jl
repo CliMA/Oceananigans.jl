@@ -656,7 +656,6 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return fill_halo_regions!(field.data,
                               maybe_filtered_bcs,
-                              architecture(field),
                               field.grid,
                               args...;
                               reduced_dimensions = reduced_dims,

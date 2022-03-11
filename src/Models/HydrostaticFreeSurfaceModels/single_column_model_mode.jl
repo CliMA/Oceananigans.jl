@@ -49,7 +49,7 @@ calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
 
-    fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     compute_auxiliary_fields!(model.auxiliary_fields)
 
@@ -57,7 +57,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields,
-                       model.architecture,
                        model.clock,
                        fields(model))
 

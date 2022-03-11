@@ -9,7 +9,7 @@ end
 
 const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 
-fill_halo_regions!(field::DistributedField, arch, args...; kwargs...) =
+fill_halo_regions!(field::DistributedField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        architecture(field),
