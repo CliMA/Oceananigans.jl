@@ -1,4 +1,5 @@
 using Oceananigans.Operators
+using Oceananigans.Operators: hack_sind
 
 using Oceananigans.Advection:
       _advective_momentum_flux_Uu,
@@ -54,20 +55,22 @@ end
 @inline bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantSchemes, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)    
 @inline bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantSchemes, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)  
 
+@inline ζₜ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) 
+
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, ::VectorInvariantSchemes, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
 @inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
-    ζᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
+    ζᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζₜ, u, v)
+    ζᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζₜ, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
 @inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant, u, v)
     û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
-    ζᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, u, v)
+    ζᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζₜ, u, v)
+    ζᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζₜ, u, v)
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
