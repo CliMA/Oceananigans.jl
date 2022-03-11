@@ -253,8 +253,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         CFL = simulation.Δt / cell_advection_timescale(model)
 
         Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
-        νmax = maximum(model.diffusivity_fields.νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields.κₑ.T.data.parent)
+        νmax = maximum(model.diffusivity_fields[2].νₑ.data.parent)
+        κmax = maximum(model.diffusivity_fields[2].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 
