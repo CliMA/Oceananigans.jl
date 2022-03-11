@@ -27,37 +27,37 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Combined halo filling functions
 #####
 
-@inline function _fill_west_halo!(j, k, c, ::FBC, grid, args...)
+@inline function _fill_west_halo!(j, k, grid, c, ::FBC, args...)
     @unroll for i in 1:grid.Hx
         _fill_flux_west_halo!(i, j, k, grid, c)
     end
 end
 
-@inline function _fill_east_halo!(j, k, c, ::FBC, grid, args...)
+@inline function _fill_east_halo!(j, k, grid, ::FBC, args...)
     @unroll for i in 1:grid.Hx
         _fill_flux_east_halo!(i, j, k, grid, c)
     end
 end
 
-@inline function _fill_south_halo!(i, k, c, ::FBC, grid, args...)
+@inline function _fill_south_halo!(i, k, grid, c, ::FBC, args...)
     @unroll for j in 1:grid.Hy
         _fill_flux_south_halo!(i, j, k, grid, c)
     end
 end
 
-@inline function _fill_north_halo!(i, k, c, ::FBC, grid, args...)
+@inline function _fill_north_halo!(i, k, grid, c, ::FBC, args...)
     @unroll for j in 1:grid.Hy
         _fill_flux_north_halo!(i, j, k, grid, c)
     end
 end
 
-@inline function _fill_bottom_halo!(i, j, c, ::FBC, grid, args...)
+@inline function _fill_bottom_halo!(i, j, grid, c, ::FBC, args...)
     @unroll for k in 1:grid.Hz
         _fill_flux_bottom_halo!(i, j, k, grid, c)
     end
 end
 
-@inline function _fill_top_halo!(i, j, c, ::FBC, grid, args...)
+@inline function _fill_top_halo!(i, j, grid, c, ::FBC, args...)
     @unroll for k in 1:grid.Hz
         _fill_flux_top_halo!(i, j, k, grid, c)
     end
