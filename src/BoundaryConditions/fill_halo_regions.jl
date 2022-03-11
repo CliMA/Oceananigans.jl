@@ -65,29 +65,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, arg
 end
 
 @inline validate_event(::Nothing) = NoneEvent()
-@inline validate_event(event) = event
-
-# Fallbacks split into two calls
-function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
-     west_event = validate_event(fill_west_halo!(c, west_bc, args...; kwargs...))
-     east_event = validate_event(fill_east_halo!(c, east_bc, args...; kwargs...))
-    multi_event = MultiEvent((west_event, east_event))
-    return multi_event
-end
-
-function fill_south_and_north_halo!(c, south_bc, north_bc, args...; kwargs...)
-    south_event = validate_event(fill_south_halo!(c, south_bc, args...; kwargs...))
-    north_event = validate_event(fill_north_halo!(c, north_bc, args...; kwargs...))
-    multi_event = MultiEvent((south_event, north_event))
-    return multi_event
-end
-
-function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
-    bottom_event = validate_event(fill_bottom_halo!(c, bottom_bc, args...; kwargs...))
-       top_event = validate_event(fill_top_halo!(c, top_bc, args...; kwargs...))
-     multi_event = MultiEvent((bottom_event, top_event))
-     return multi_event
-end
+@inline validate_event(event)     = event
 
 #####
 ##### Halo filling order
@@ -97,3 +75,62 @@ fill_first(bc1::PBC, bc2)      = false
 fill_first(bc1, bc2::PBC)      = true
 fill_first(bc1::PBC, bc2::PBC) = true
 fill_first(bc1, bc2)           = true
+
+#####
+##### General fill_halo! kernels
+#####
+
+fill_west_and_east_halo!(c, west_bc, east_bc, arch, dep, grid, args...; kwargs...) =
+    launch!(arch, grid, :yz, _fill_west_and_east_halo!, c, grid; dependencies=dep, kwargs...)
+
+fill_south_and_north_halo!(c, south_bc, north_bc, arch, dep, grid, args...; kwargs...) =
+    launch!(arch, grid, :xz, _fill_south_and_north_halo!, c, grid, args...; dependencies=dep, kwargs...)
+
+fill_bottom_and_top_halo!(c, bottom_bc, top_bc, arch, dep, grid, args...; kwargs...) =
+    launch!(arch, grid, :xy, _fill_bottom_and_top_halo!, c, grid, args...; dependencies=dep, kwargs...)
+
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, grid, args...)
+    j, k = @index(Global, NTuple)
+    _fill_west_halo!(j, k, grid, c, west_bc, args...)
+    _fill_east_halo!(j, k, grid, c, east_bc, args...)
+end
+
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, grid, args...)
+    i, k = @index(Global, NTuple)
+    _fill_south_halo!(i, k, grid, c, south_bc, args...)
+    _fill_north_halo!(i, k, grid, c, north_bc, args...)
+end
+
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, grid, args...)
+    i, j = @index(Global, NTuple)
+    _fill_bottom_halo!(c, i, j, grid, bottom_bc, args...)
+    _fill_top_halo!(c, i, j, grid, top_bc, args...)
+end
+
+#####
+##### Tuple fill_halo! kernels
+#####
+
+@kernel function _fill_west_and_east_halo!(c::NTuple{N}, west_bc::NTuple{N}, east_bc::NTuple{N}, grid, args...) where N
+    j, k = @index(Global, NTuple)
+    @unroll for n in 1:N
+        _fill_west_halo!(j, k, grid, c[n], west_bc[n], args...)
+        _fill_east_halo!(j, k, grid, c[n], east_bc[n], args...)
+    end
+end
+
+@kernel function _fill_south_and_north_halo!(c::NTuple{N}, south_bc::NTuple{N}, north_bc::NTuple{N}, grid, args...) where N
+    i, k = @index(Global, NTuple)
+    @unroll for n in 1:N
+        _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
+        _fill_north_halo!(i, k, grid, c[n], north_bc[n], args...)
+    end
+end
+
+@kernel function _fill_bottom_and_top_halo!(c::NTuple{N}, bottom_bc::NTuple{N}, top_bc::NTuple{N}, grid, args...) where N
+    i, j = @index(Global, NTuple)
+    @unroll for n in 1:N
+        _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], args...)
+           _fill_top_halo!(i, j, grid, c[n], top_bc[n], args...)
+    end
+end
