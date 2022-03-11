@@ -2,6 +2,19 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 
 # TODO: This code belongs in the Models module
 
+const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
+
+@inline extract_field_data(field::Field) = field.data
+@inline extract_field_bcs(field::Field)  = field.boundary_conditions
+
+function fill_halo_regions!(fields::Union{NTuple{N, <:Field}, FieldTuple{S, N}}, args...; kwargs...) where {S, N}
+
+    field_data          = extract_field_data.(fields)
+    boundary_conditions = extract_field_bcs.(fields)
+
+    return fill_halo_regions!(field_data, boundary_conditions, architecture(field), field.grid, args...; kwargs...)
+end
+
 #####
 ##### Tracer names
 #####

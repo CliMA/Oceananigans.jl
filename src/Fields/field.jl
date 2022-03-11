@@ -645,7 +645,7 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, arch, args...; kwargs...)
+function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
     if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
@@ -662,4 +662,3 @@ function fill_halo_regions!(field::Field, arch, args...; kwargs...)
                               reduced_dimensions = reduced_dims,
                               kwargs...)
 end
-

@@ -54,7 +54,6 @@ end
 @inline function _fill_bottom_halo!(i, j, c, ::FBC, grid)
     @unroll for k in 1:grid.Hz
         _fill_flux_bottom_halo!(i, j, k, grid, c)
-        _fill_flux_top_halo!(i, j, k, grid, c)
     end
 end
 
@@ -65,7 +64,7 @@ end
 end
 
 #####
-##### Single halo filling functions
+##### Single halo filling kernels
 #####
 
 @kernel function fill_flux_west_halo!(c, grid)

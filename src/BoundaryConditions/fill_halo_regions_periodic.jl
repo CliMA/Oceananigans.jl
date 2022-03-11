@@ -4,8 +4,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Periodic boundary conditions
 #####
 
-const PBCT = Union{PBC, NTuple{N, <:PBC}}
-
 function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, arch, dep, grid, args...; kw...)
   c_parent = parent(c)
   yz_size = size(c_parent)[[2, 3]]

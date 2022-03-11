@@ -1,5 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Architectures: device_event
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 #####
 ##### General halo filling functions
@@ -23,8 +24,9 @@ end
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
+# Finally, the true fill_halo!
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, args...; kwargs...)
+function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, arch, grid, args...; kwargs...)
 
     fill_halos! = [
         fill_west_and_east_halo!,
@@ -71,10 +73,12 @@ end
 ##### Halo filling order
 #####
 
-fill_first(bc1::PBC, bc2)      = false
-fill_first(bc1, bc2::PBC)      = true
-fill_first(bc1::PBC, bc2::PBC) = true
-fill_first(bc1, bc2)           = true
+const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
+
+fill_first(bc1::PBCT, bc2)       = false
+fill_first(bc1, bc2::PBCT)       = true
+fill_first(bc1::PBCT, bc2::PBCT) = true
+fill_first(bc1, bc2)             = true
 
 #####
 ##### General fill_halo! kernels
