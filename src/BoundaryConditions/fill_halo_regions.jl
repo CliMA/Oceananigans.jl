@@ -1,5 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Architectures: device_event
+using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 #####
