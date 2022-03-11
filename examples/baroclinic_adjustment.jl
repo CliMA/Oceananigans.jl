@@ -130,8 +130,6 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b = model.tracers.b
 
-ζ = Field(∂x(v) - ∂y(u))
-
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
 W = Field(Average(w, dims=1))
@@ -140,9 +138,6 @@ b′ = b - B
 w′ = w - W
 
 w′b′ = Field(Average(b′ * w′, dims=1))
-
-outputs = (; b, ζ, u)
-
 
 #####
 ##### Build output writers
@@ -158,7 +153,7 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, outputs;
+    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, u);
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices,
                                                        prefix = filename * "_$(side)_slice",
