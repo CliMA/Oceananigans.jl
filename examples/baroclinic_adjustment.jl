@@ -1,6 +1,5 @@
 using Printf
 using Statistics
-using Random
 using JLD2
 
 using Oceananigans
@@ -57,7 +56,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                    tracers = (:b, :c),
+                                    tracers = :b,
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
                                     free_surface = ImplicitFreeSurface())
@@ -84,16 +83,13 @@ N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
 Δy = 50kilometers
-Δz = 100
 
-Δc = 2Δy
 Δb = Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
-set!(model, b=bᵢ, c=cᵢ)
+set!(model, b=bᵢ)
 
 #####
 ##### Simulation building
@@ -132,36 +128,25 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 #####
 
 u, v, w = model.velocities
-b, c = model.tracers.b, model.tracers.c
+b = model.tracers.b
 
 ζ = Field(∂x(v) - ∂y(u))
 
 B = Field(Average(b, dims=1))
-C = Field(Average(c, dims=1))
 U = Field(Average(u, dims=1))
-V = Field(Average(v, dims=1))
 W = Field(Average(w, dims=1))
 
 b′ = b - B
-v′ = v - V
 w′ = w - W
 
-v′b′ = Field(Average(v′ * b′, dims=1))
-w′b′ = Field(Average(w′ * b′, dims=1))
+w′b′ = Field(Average(b′ * w′, dims=1))
 
-outputs = (; b, c, ζ, u, v, w)
-
-averaged_outputs = (; v′b′, w′b′, B, U)
+outputs = (; b, ζ, u)
 
 
 #####
-##### Build checkpointer and output writer
+##### Build output writers
 #####
-
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(5years),
-                                                        prefix = filename,
-                                                        force = true)
 
 slicers = (west = (1, :, :),
            east = (grid.Nx, :, :),
@@ -180,7 +165,7 @@ for side in keys(slicers)
                                                        force = true)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W, vb=v′b′, wb=w′b′),
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, wb=w′b′);
                                                      schedule = TimeInterval(save_fields_interval),
                                                      prefix = filename * "_zonal_average",
                                                      force = true)
@@ -196,19 +181,15 @@ run!(simulation)
 ##### Visualize
 #####
 
-using CairoMakie
+using GLMakie
 
 using Oceananigans, JLD2
 
 filename = "baroclinic_adjustment"
 
-fig = Figure(resolution = (3000, 1600))
+fig = Figure(resolution = (1000, 800))
 
-ax_b = fig[1:5, 1] = LScene(fig)
-ax_c = fig[1:5, 2] = LScene(fig)
-
-axis_rotation_angles = (π/24, -π/6, 0)
-
+ax_b = fig[1, 1] = LScene(fig)
 
 # Extract surfaces on all 6 boundaries
 
@@ -224,12 +205,12 @@ slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for s
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
 
-yscale = 3
-zscale = 800
+yscale = 2.5
+zscale = 600
 z = z .* zscale
 y = y .* yscale
 
-zonal_slice_displacement = 1.35
+zonal_slice_displacement = 1.5
 
 #####
 ##### Plot buoyancy...
@@ -245,7 +226,7 @@ b_slices = (
 )
 
 clims_b = @lift 1.1 .* extrema(slice_files.top["timeseries/b/" * string($iter)][:])
-kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
+kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
 
 surface!(ax_b, y, z, b_slices.west;   transformation = (:yz, x[1]),   kwargs_b...)
 surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
@@ -255,56 +236,20 @@ surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b..
 surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
 b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
-clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
-
-surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_b, colormap=:balance)
+surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_b, colormap=:deep)
 contour!(ax_b, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
 
-rotate_cam!(ax_b.scene, axis_rotation_angles)
-
-#####
-##### Plot tracer...
-#####
-
-c_slices = (
-      west = @lift(Array(slice_files.west["timeseries/c/"   * string($iter)][1, :, :])),
-      east = @lift(Array(slice_files.east["timeseries/c/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/c/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/c/"  * string($iter)][:, 1, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/c/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/c/"    * string($iter)][:, :, 1]))
-)
-
-clims_c = @lift extrema(slice_files.west["timeseries/c/" * string($iter)][:])
-clims_c = (0, 0.5)
-kwargs_c = (colorrange=clims_c, colormap=:deep, show_axis=false)
-
-surface!(ax_c, y, z, c_slices.west;   transformation = (:yz, x[1]),   kwargs_c...)
-surface!(ax_c, y, z, c_slices.east;   transformation = (:yz, x[end]), kwargs_c...)
-surface!(ax_c, x, z, c_slices.south;  transformation = (:xz, y[1]),   kwargs_c...)
-surface!(ax_c, x, z, c_slices.north;  transformation = (:xz, y[end]), kwargs_c...)
-surface!(ax_c, x, y, c_slices.bottom; transformation = (:xy, z[1]),   kwargs_c...)
-surface!(ax_c, x, y, c_slices.top;    transformation = (:xy, z[end]), kwargs_c...)
-
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
-
-surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
-contour!(ax_c, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
-
-rotate_cam!(ax_c.scene, axis_rotation_angles)
+rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
 #####
 ##### Make title and animate
 #####
 
-title = @lift(string("Buoyancy and tracer concentration at t = ",
+title = @lift(string("Buoyancy at t = ",
                      string(slice_files[1]["timeseries/t/" * string($iter)]/day), " days"))
 
-fig[0, :] = Label(fig, title, textsize=60)
-
+fig[0, :] = Label(fig, title, textsize=50)
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 
@@ -322,5 +267,4 @@ end
 close(zonal_file)
 
 # Here's a movie
-
 ![movie](filename * ".mp4")

@@ -346,11 +346,23 @@ git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
 
+[[GLFW]]
+deps = ["GLFW_jll"]
+git-tree-sha1 = "35dbc482f0967d8dceaa7ce007d16f9064072166"
+uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
+version = "3.4.1"
+
 [[GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
 git-tree-sha1 = "51d2dfe8e590fbd74e7a842cf6d13d8a2f45dc01"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
 version = "3.3.6+0"
+
+[[GLMakie]]
+deps = ["ColorTypes", "Colors", "FileIO", "FixedPointNumbers", "FreeTypeAbstraction", "GLFW", "GeometryBasics", "LinearAlgebra", "Makie", "Markdown", "MeshIO", "ModernGL", "Observables", "Printf", "Serialization", "ShaderAbstractions", "StaticArrays"]
+git-tree-sha1 = "b8140fd8718490698ce878480ff6db751d336f75"
+uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+version = "0.5.4"
 
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "RelocatableFolders", "Serialization", "Sockets", "Test", "UUIDs"]
@@ -753,6 +765,12 @@ git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.1"
 
+[[MeshIO]]
+deps = ["ColorTypes", "FileIO", "GeometryBasics", "Printf"]
+git-tree-sha1 = "8be09d84a2d597c7c0c34d7d604c039c9763e48c"
+uuid = "7269a6da-0436-5bbc-96c2-40638cbb6118"
+version = "0.4.10"
+
 [[Missings]]
 deps = ["DataAPI"]
 git-tree-sha1 = "bf210ce90b6c9eed32d25dbcae1ebc565df2687f"
@@ -767,6 +785,12 @@ deps = ["Compat", "ExprTools"]
 git-tree-sha1 = "29714d0a7a8083bba8427a4fbfb00a540c681ce7"
 uuid = "78c3b35d-d492-501b-9361-3d52fe80e533"
 version = "0.7.3"
+
+[[ModernGL]]
+deps = ["Libdl"]
+git-tree-sha1 = "344f8896e55541e30d5ccffcbf747c98ad57ca47"
+uuid = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
+version = "1.1.4"
 
 [[MosaicViews]]
 deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
@@ -1062,6 +1086,12 @@ version = "1.1.0"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[ShaderAbstractions]]
+deps = ["ColorTypes", "FixedPointNumbers", "GeometryBasics", "LinearAlgebra", "Observables", "StaticArrays", "StructArrays", "Tables"]
+git-tree-sha1 = "0d97c895406b552bed78f3a1fe9925248e908ae2"
+uuid = "65257c39-d410-5151-9873-9b3e5be5013e"
+version = "0.2.8"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
