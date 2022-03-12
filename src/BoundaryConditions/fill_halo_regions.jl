@@ -111,7 +111,7 @@ end
 ##### Tuple fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, grid, args...) 
+@kernel function _fill_west_and_east_halo!(c::NTuple{N}, west_bc, east_bc, grid, args...) 
     j, k = @index(Global, NTuple)
     for n in 1:length(c)
         _fill_west_halo!(j, k, grid, c[n], west_bc[n], args...)
@@ -119,7 +119,7 @@ end
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c::NTuple{N}, south_bc, north_bc, grid, args...)
     i, k = @index(Global, NTuple)
     for n in 1:length(c)
         _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
@@ -127,7 +127,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, grid, args...) 
+@kernel function _fill_bottom_and_top_halo!(c::NTuple{N}, bottom_bc, top_bc, grid, args...) 
     i, j = @index(Global, NTuple)
     for n in 1:length(c)
         _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], args...)

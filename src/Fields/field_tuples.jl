@@ -12,8 +12,8 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
     end
 end
 
-function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) where {S, N}
-
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
+    
     red_idx     = findall((r) -> r isa ReducedField, fields)
     red_fields  = Tuple(fields[idx] for idx in red_idx) 
 
@@ -28,7 +28,7 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
     if !isempty(full_fields)
         fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
     end
-    
+
     return nothing
 end
 
