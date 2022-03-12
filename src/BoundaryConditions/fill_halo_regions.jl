@@ -119,7 +119,7 @@ end
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple{N}, south_bc, north_bc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c::NTuple{N}, south_bc, north_bc, grid, args...) where N
     i, k = @index(Global, NTuple)
     for n in 1:length(c)
         _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
