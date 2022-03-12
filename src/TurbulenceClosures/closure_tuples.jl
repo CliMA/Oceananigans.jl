@@ -18,23 +18,32 @@ end
 ##### Kernel functions
 #####
 
-for kernel_func in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :ivd_diagonal)
+funcs     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :_ivd_upper_diagonal, :_ivd_lower_diagonal, :_ivd_diagonal]
+alt_funcs = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :ivd_diagonal]
+
+for (f, alt_f) in zip(funcs, alt_funcs)
     @eval begin
-        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any}, Ks, args...) =
-                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any}, Ks, args...) =
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
 
-        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
-                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $kernel_func(i, j, k, grid, closures[2], Ks[2], args...))
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...))
 
-        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
-                    $kernel_func(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $kernel_func(i, j, k, grid, closures[2], Ks[2], args...) 
-                  + $kernel_func(i, j, k, grid, closures[3], Ks[3], args...))
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...))
 
-        @inline $kernel_func(i, j, k, grid::AbstractGrid, closures::Tuple, Ks, args...) = (
-                    $kernel_func(i, j, k, grid, closures[1:2], Ks[1:2], args...)
-                  + $kernel_func(i, j, k, grid, closures[3:end], Ks[3:end], args...))
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $alt_f(i, j, k, grid, closures[4], Ks[4], args...))
+
+        @inline $f(i, j, k, grid, closures::Tuple, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
     end
 end
 

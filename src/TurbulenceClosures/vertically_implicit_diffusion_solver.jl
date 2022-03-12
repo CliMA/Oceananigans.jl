@@ -21,7 +21,6 @@ instantiate(X) = X()
 # Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
-    #κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
     κᵏ⁺¹ = κz(i, j, k+1, grid, closure, K, id, clock)
 
     return ifelse(k > grid.Nz-1,
@@ -31,7 +30,6 @@ end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    #κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
     κᵏ = κz(i, j, k′, grid, closure, K, id, clock)
 
     return ifelse(k < 1,
@@ -44,7 +42,6 @@ end
 # Note: these coefficients are specific to vertically-bounded grids (and so is
 # the BatchedTridiagonalSolver).
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ) 
-    #νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure, K, clock)
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
@@ -54,7 +51,6 @@ end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    #νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
     νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure, K, clock)
     return ifelse(k < 1,
                   zero(eltype(grid)),
@@ -66,6 +62,10 @@ end
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
     one(eltype(grid)) - ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
                         ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+
+@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
+@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+@inline _ivd_diagonal(args...) = ivd_diagonal(args...)
 
 #####
 ##### Solver constructor
@@ -90,16 +90,15 @@ where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
 and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
-
     topo = topology(grid)
 
     topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = ivd_lower_diagonal,
-                                        diagonal = ivd_diagonal,
-                                        upper_diagonal = ivd_upper_diagonal)
+                                        lower_diagonal = _ivd_lower_diagonal,
+                                        diagonal = _ivd_diagonal,
+                                        upper_diagonal = _ivd_upper_diagonal)
 
     return z_solver
 end
@@ -156,8 +155,6 @@ function implicit_step!(field::Field,
         closure = Tuple(closure_tuple[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
         diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
     end
-
-    @show closure
 
     return solve!(field, implicit_solver,
                   field,
