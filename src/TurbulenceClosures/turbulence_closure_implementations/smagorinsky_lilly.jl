@@ -192,7 +192,7 @@ end
 end
 
 Base.summary(closure::SmagorinskyLilly) = string("SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr)")
-Base.show(io::IO, closure::SmagorinskyLilly) = print(io, closure)
+Base.show(io::IO, closure::SmagorinskyLilly) = print(io, summary(closure))
 
 #####
 ##### For closures that only require an eddy viscosity νₑ field.
