@@ -179,8 +179,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields.κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivity_fields.νₑ.data.parent))
+   :kappaT => model -> Array(model.diffusivity_fields[2].κₑ.T.data.parent),
+       :nu => model -> Array(model.diffusivity_fields[2].νₑ.data.parent))
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
