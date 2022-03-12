@@ -10,6 +10,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
     else
         maybe_filtered_bcs = field.boundary_conditions
     end
+    return maybe_filtered_bcs
 end
 
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
