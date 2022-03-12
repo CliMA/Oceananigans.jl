@@ -82,10 +82,10 @@ for location in (:upper_, :lower_)
     @eval begin
         # Disambiguation
         @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Face, clock, Δt, κz) =
-                $alt_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
         @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Center, clock, Δt, κz) =
-                $alt_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
         @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
             return ifelse(immersed_ivd_solid_interface(LX, LY, LZ, i, j, k, ibg),
