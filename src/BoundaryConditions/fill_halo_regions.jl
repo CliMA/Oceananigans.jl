@@ -143,11 +143,3 @@ fill_south_and_north_halo!(c, south_bc, north_bc, arch, dep, grid, args...; kwar
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, arch, dep, grid, args...; kwargs...) = 
     launch!(arch, grid, :xy, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, grid, args...; dependencies=dep, kwargs...)
-
-    
-for dir in (:west, :east, :south, :north, :bottom, :top)
-    fill_nothing! = Symbol(:_fill_, dir, :_halo!)
-    @eval begin
-        @inline $fill_nothing!(i, j, grid, ::Nothing) = nothing
-    end
-end
