@@ -65,30 +65,36 @@ end
 
 @kernel function fill_periodic_west_and_east_halo!(c::Tuple, H::Int, N)
   j, k = @index(Global, NTuple)
-  @unroll for n = 1:length(c), i = 1:H
-    @inbounds begin
+  for n = 1:length(c)
+    @unroll for i = 1:H
+      @inbounds begin
         c[n][i, j, k]     = c[n][N+i, j, k] # west
         c[n][N+H+i, j, k] = c[n][H+i, j, k] # east
+      end
     end
   end
 end
 
 @kernel function fill_periodic_south_and_north_halo!(c::Tuple, H::Int, N)
   i, k = @index(Global, NTuple)
-  @unroll for n = 1:length(c), j = 1:H
-    @inbounds begin
-        c[n][i, j, k]     = c[n][i, N+j, k] # south
-        c[n][i, N+H+j, k] = c[n][i, H+j, k] # north
+  for n = 1:length(c)
+    @unroll for j = 1:H
+      @inbounds begin
+          c[n][i, j, k]     = c[n][i, N+j, k] # south
+          c[n][i, N+H+j, k] = c[n][i, H+j, k] # north
+      end
     end
   end
 end
 
 @kernel function fill_periodic_bottom_and_top_halo!(c::Tuple, H::Int, N) 
   i, j = @index(Global, NTuple)
-  @unroll for n = 1:length(c), k = 1:H
-    @inbounds begin
-        c[n][i, j, k]     = c[n][i, j, N+k]        # top
+  for n = 1:length(c)
+    @unroll for k = 1:H
+      @inbounds begin
+        c[n][i, j, k]     = c[n][i, j, N+k] # top
         c[n][i, j, N+H+k] = c[n][i, j, H+k] # bottom
-    end  
+      end  
+    end
   end
 end
