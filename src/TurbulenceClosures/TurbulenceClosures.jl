@@ -56,12 +56,6 @@ Abstract supertype for turbulence closures.
 """
 abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
-@inline get_closure_i(i, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
-@inline get_closure_i(i, closure::AbstractTurbulenceClosure) = closure
-
-@inline get_closure_ij(i, j, closure::AbstractMatrix{<:AbstractTurbulenceClosure}) = @inbounds closure[i, j]
-@inline get_closure_ij(i, j, closure::AbstractTurbulenceClosure) = closure
-
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
@@ -84,6 +78,11 @@ end
 #####
 ##### The magic
 #####
+
+# Closure ensemble util
+@inline getclosure(i, j, closure::AbstractMatrix{<:AbstractTurbulenceClosure}) = @inbounds closure[i, j]
+@inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
+@inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")

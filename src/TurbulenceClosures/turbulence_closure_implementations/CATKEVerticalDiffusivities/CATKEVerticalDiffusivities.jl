@@ -13,7 +13,7 @@ using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 using Oceananigans.TurbulenceClosures:
-    get_closure_ij,
+    getclosure,
     time_discretization,
     AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
@@ -169,7 +169,7 @@ end
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
-    closure_ij = get_closure_ij(i, j, closure)
+    closure_ij = getclosure(i, j, closure)
 
     @inbounds begin
         diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure_ij, args...)

@@ -129,7 +129,7 @@ end
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
-    closure_ij = get_closure_ij(i, j, closure)
+    closure_ij = getclosure(i, j, closure)
 
     stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) &
                   is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)

@@ -104,7 +104,7 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
                                   velocities, tracers, clock, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
-    closure = get_closure_i(i, closure)
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
@@ -133,7 +133,7 @@ end
                                   velocities, tracers, clock, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
-    closure = get_closure_i(i, closure)
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
@@ -162,7 +162,7 @@ end
                                   velocities, tracers, clock, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
-    closure = get_closure_i(i, closure)
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)

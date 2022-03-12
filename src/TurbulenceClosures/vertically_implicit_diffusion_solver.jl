@@ -21,7 +21,8 @@ instantiate(X) = X()
 # Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
-    κᵏ⁺¹ = κz(i, j, k+1, grid, closure, K, id, clock)
+    closure_ij = getclosure(i, j, closure)  
+    κᵏ⁺¹ = κz(i, j, k+1, grid, closure_ij, K, id, clock)
 
     return ifelse(k > grid.Nz-1,
                   zero(eltype(grid)),
@@ -30,7 +31,8 @@ end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    κᵏ = κz(i, j, k′, grid, closure, K, id, clock)
+    closure_ij = getclosure(i, j, closure)  
+    κᵏ = κz(i, j, k′, grid, closure_ij, K, id, clock)
 
     return ifelse(k < 1,
                   zero(eltype(grid)),
@@ -42,7 +44,8 @@ end
 # Note: these coefficients are specific to vertically-bounded grids (and so is
 # the BatchedTridiagonalSolver).
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ) 
-    νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure, K, clock)
+    closure_ij = getclosure(i, j, closure)  
+    νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
                   zero(eltype(grid)),
@@ -51,7 +54,8 @@ end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Face, clock, Δt, νzᶜᶜᶜ)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure, K, clock)
+    closure_ij = getclosure(i, j, closure)  
+    νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     return ifelse(k < 1,
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
