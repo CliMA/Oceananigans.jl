@@ -24,8 +24,8 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
     full_idx     = findall((f) -> ((f isa Field) && !(f isa ReducedField)), fields)
     full_fields  = Tuple(fields[idx] for idx in full_idx) 
 
-    grid = full_fields[1].grid
     if !isempty(full_fields)
+        grid = full_fields[1].grid
         fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
     end
 

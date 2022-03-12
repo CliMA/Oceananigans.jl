@@ -113,27 +113,44 @@ end
 
 @kernel function _fill_west_and_east_halo!(c::NTuple{N}, west_bc, east_bc, grid, args...) where N
     j, k = @index(Global, NTuple)
-    for n in 1:length(c)
-        _fill_west_halo!(j, k, grid, c[n], west_bc[n], args...)
-        _fill_east_halo!(j, k, grid, c[n], east_bc[n], args...)
+    @unroll for n in 1:N
+        bc_west = west_bc[n]
+        bc_east = east_bc[n]
+        _fill_west_halo!(j, k, grid, c[n], bc_west, args...)
+        _fill_east_halo!(j, k, grid, c[n], bc_east, args...)
     end
 end
 
 @kernel function _fill_south_and_north_halo!(c::NTuple{N}, south_bc, north_bc, grid, args...) where N
     i, k = @index(Global, NTuple)
-    for n in 1:length(c)
-        _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
-        _fill_north_halo!(i, k, grid, c[n], north_bc[n], args...)
+    @unroll for n in 1:N
+        bc_south = south_bc[n]
+        bc_north = north_bc[n]
+        _fill_south_halo!(i, k, grid, c[n], bc_south, args...)
+        _fill_north_halo!(i, k, grid, c[n], bc_north, args...)
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple{N}, bottom_bc, top_bc, grid, args...)  where N
+@kernel function _fill_bottom_and_top_halo!(c::NTuple{N}, bottom_bc, top_bc, grid, args...) where N
     i, j = @index(Global, NTuple)
-    for n in 1:length(c)
-        _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], args...)
-           _fill_top_halo!(i, j, grid, c[n], top_bc[n],    args...)
+    @unroll for n in 1:N
+        bc_bot = bottom_bc[n]
+        bc_top = top_bc[n]
+        _fill_bottom_halo!(i, j, grid, c[n], bc_bot, args...)
+           _fill_top_halo!(i, j, grid, c[n], bc_top, args...)
     end
 end
+
+
+    #     # try
+    #     @inbounds bc_bot = top_bc
+    #     @inbounds bc_top = top_bc
+    # catch err
+    #     code_typed(err; interactive = true)
+    # end
+    # # _fill_bottom_halo!(i, j, grid, c[n], bc_bot, args...)
+    # #    _fill_top_halo!(i, j, grid, c[n], bc_top, args...)
+# end
 
 fill_west_and_east_halo!(c, west_bc, east_bc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, :yz, _fill_west_and_east_halo!, c, west_bc, east_bc, grid, args...; dependencies=dep, kwargs...)
