@@ -12,7 +12,12 @@ const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 fill_halo_regions!(field::DistributedField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
-                       architecture(field),
                        field.grid,
                        location(field),
                        args...; kwargs...)
+
+function fill_halo_regions!(fields::NTuple{N, DistributedField}, args; kwargs...) where N
+    for field in fields
+        fill_halo_regions!(field, args; kwargs...)
+    end
+end

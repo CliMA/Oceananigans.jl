@@ -52,14 +52,6 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-const MPIGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MultiArch}
-
-function fill_halo_regions!(fields::NTuple{N, DistributedField}, args; kwargs...) where N
-    for field in fields
-        fill_halo_regions!(field, args; kwargs...)
-    end
-end
-
 function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_location, args...; kwargs...)
 
     barrier = Event(device(child_architecture(arch)))
