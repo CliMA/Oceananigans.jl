@@ -55,7 +55,7 @@ serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Functi
 serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
 
 # Serializing grids:
-serializeproperty!(file, location, p::AbstractGrid) = file[location] = on_architecture(CPU(), p.grid)
+serializeproperty!(file, location, p::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
 
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
     # TODO: convert immersed boundary grid to array representation in order to save.
