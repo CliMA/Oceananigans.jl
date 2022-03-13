@@ -7,7 +7,8 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indice
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status)
 end
 
-const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 
 fill_halo_regions!(field::DistributedField, args...; kwargs...) =
     fill_halo_regions!(field.data,
@@ -16,7 +17,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        location(field),
                        args...; kwargs...)
 
-function fill_halo_regions!(fields::NTuple{N, DistributedField}, args; kwargs...) where N
+function fill_halo_regions!(fields::Union{NTuple{N, DistributedField}, DistributedFieldTuple}, args; kwargs...) where N
     for field in fields
         fill_halo_regions!(field, args; kwargs...)
     end
