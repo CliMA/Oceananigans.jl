@@ -11,12 +11,14 @@ using Benchmarks
 
 Logging.global_logger(OceananigansLogger())
 
+MPI.Init()      
+      
       comm = MPI.COMM_WORLD
 local_rank = MPI.Comm_rank(comm)
          R = MPI.Comm_size(comm)
 
- #assigns one GPU per rank, could increase efficiency but must have enough GPUs
- #CUDA.device!(local_rank)
+ # Assigns one GPU per rank, could increase efficiency but must have enough GPUs
+ # CUDA.device!(local_rank)
 
  Nx = parse(Int, ARGS[1])
  Ny = parse(Int, ARGS[2])
