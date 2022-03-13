@@ -92,7 +92,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     set!(η, hᵢ) 
 
     # Time step restricted on the gravity wave speed. If using the implicit free surface method it is possible to increase it
-    Δt = 80
+    Δt = 12minutes
 
     simulation = Simulation(model, Δt = Δt, stop_time = 50days)
 
@@ -122,7 +122,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     return simulation.output_writers[:fields].filepath
 end
 
-filepath = run_rossby_haurwitz(architecture = GPU(), Nx=720, Ny=360, advection_scheme=VectorInvariant(), prefix = "test")
+# filepath_v = run_rossby_haurwitz(Nx=180, Ny=190, advection_scheme=VectorInvariant(), prefix = "test")
 # visualize_spherical_field(filepath, "ζ")
-filepath = run_rossby_haurwitz(architecture = GPU(), Nx=720, Ny=360, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
+filepath_w = run_rossby_haurwitz(Nx=180, Ny=90, advection_scheme=WENO5(zweno = true, vector_invariant=true), prefix = "weno")
 # visualize_spherical_field(filepath, "ζ")

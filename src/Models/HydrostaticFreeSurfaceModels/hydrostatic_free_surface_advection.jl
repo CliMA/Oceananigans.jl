@@ -11,7 +11,9 @@ using Oceananigans.Advection:
       left_biased_interpolate_xᶜᵃᵃ,
       right_biased_interpolate_xᶜᵃᵃ,
       left_biased_interpolate_yᵃᶜᵃ,
-      right_biased_interpolate_yᵃᶜᵃ
+      right_biased_interpolate_yᵃᶜᵃ,
+      left_biased_interpolate_zᵃᵃᶜ,
+      right_biased_interpolate_zᵃᵃᶜ
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
@@ -67,22 +69,22 @@ end
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) / Azᶠᶜᶜ(i, j, k, grid)
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) / Azᶜᶠᶜ(i, j, k, grid)
     
-@inline vertical_advection_U(i, j, k, grid, ::VectorInvariant, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w)
-@inline vertical_advection_V(i, j, k, grid, ::VectorInvariant, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantSchemes, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantSchemes, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w)
 
-@inline function vertical_advection_term_U(i, j, k, grid, scheme::WENOVectorInvariant, u, w)
-    ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶠᵃᵃ, Az_qᶜᶜᶠ, w) / Azᶠᶜᶜ(i, j, k, grid)
-    ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
-    ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
-    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
-end
+# @inline function vertical_advection_U(i, j, k, grid, scheme::WENOVectorInvariant, u, w)
+#     ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶠᵃᵃ, Az_qᶜᶜᶠ, w) / Azᶠᶜᶜ(i, j, k, grid)
+#     ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
+#     ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, u)
+#     return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+# end
 
-@inline function vertical_advection_term_V(i, j, k, grid, scheme::WENOVectorInvariant, v, w)
-    ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶠᵃ, Az_qᶜᶜᶠ, w) / Azᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
-    ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
-    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
-end
+# @inline function vertical_advection_V(i, j, k, grid, scheme::WENOVectorInvariant, v, w)
+#     ŵ = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶠᵃ, Az_qᶜᶜᶠ, w) / Azᶜᶠᶜ(i, j, k, grid)
+#     ζᴸ =  left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
+#     ζᴿ = right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, v)
+#     return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+# end
 
 ######
 ###### Conservative formulation of momentum advection

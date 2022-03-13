@@ -215,5 +215,5 @@ end
 
 filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=VectorInvariant(), prefix = "2ndorder")
 plot_zonal_average_solid_body_rotation(filepath)
-filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=WENO5(vector_invariant=true), prefix = "weno")
+filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=WENO5(zweno=true, vector_invariant=true), prefix = "weno")
 plot_zonal_average_solid_body_rotation(filepath)

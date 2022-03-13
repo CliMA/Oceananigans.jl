@@ -128,61 +128,33 @@ function visualize_cartesian_field(filepath, variable, range = nothing)
 end
 
 
-function visualize_cartesian_comparison(filepath1, filepath2, title1, title2, variable, crange = nothing)
+function visualize_cartesian_comparison(filepath1, filepath2, title1, title2, variable)
 
     @show output_prefix = "comparison"
 
     file1 = jldopen(filepath1)
     file2 = jldopen(filepath2)
 
-    iterations = parse.(Int, keys(file1["timeseries/t"]))
+    it1 = parse.(Int, keys(file1["timeseries/t"]))
+    it2 = parse.(Int, keys(file2["timeseries/t"]))
     
-    iterations = iterations[1:4:end]
-    if crange isa Nothing
-        crange = variable_range(file1, variable)
-    end
-    Nx = file1["grid/Nx"]
-    Ny = file1["grid/Ny"]
+    frames = collect(1:length(it1))
 
-    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                 radius = 1,
-                                 latitude = (-80, 80),
-                                 longitude = (-180, 180),
-                                 z = (-1, 0))
+    iter = Observable(1)
 
-    λ = xnodes(Face, grid)
-    φ = ynodes(Center, grid)
-
-    iter = Observable(0)
-
-    plot_title = @lift "vorticity at: time = $(prettytime(file1["timeseries/t/" * string($iter)]))"
-
-    var1 = @lift file1["timeseries/$(variable)/" * string($iter)][:, :, 1]
-    var2 = @lift file2["timeseries/$(variable)/" * string($iter)][:, :, 1]
+    var1 = @lift file1["timeseries/$(variable)/" * string(it1[$iter])][:, :, 1]
+    var2 = @lift file2["timeseries/$(variable)/" * string(it2[$iter])][:, :, 1]
     
     fig = Figure(resolution = (3500, 1000))
     
-    fontsize_theme = Theme(fontsize = 25)
-    set_theme!(fontsize_theme)
-    
     ax = Axis(fig[1, 1], title = title1)
-    hm = heatmap!(ax, var1, colormap=:thermal, colorrange=crange)
-    ct = contour!(ax, var1, levels = range(crange[1], crange[2], length = 10), color = :black, interpolate = true)
-    
-    cb = Colorbar(fig[1, 2], hm, label=plot_title)
-    cb.height = Relative(2/3)
-    cb.width = 20
+    hm = heatmap!(ax, var1, colormap=:balance, colorrange=(-10, 10))
 
     ax = Axis(fig[1, 3], title = title2)
-    hm = heatmap!(ax, var2, colormap=:thermal, colorrange=crange)
-    ct = contour!(ax, var2, levels = range(crange[1], crange[2], length = 10), color = :black, interpolate = true)
+    hm = heatmap!(ax, var2, colormap=:balance, colorrange=(-10, 10))
 
-    cb = Colorbar(fig[1, 4], hm, label=plot_title)
-    cb.height = Relative(2/3)
-    cb.width = 20
-
-    record(fig, output_prefix * ".mp4", iterations, framerate=150) do i
-        @info "Animating iteration $i/$(iterations[end])..."
+    record(fig, output_prefix * ".mp4", frames, framerate=10) do i
+        @info "Animating iteration $i/$(frames[end])..."
         iter[] = i
     end
 
