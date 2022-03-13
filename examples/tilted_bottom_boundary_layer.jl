@@ -94,9 +94,9 @@ coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=ĝ)
 # _perturbations_ away from the constant density stratification by imposing
 # a constant stratification as a `BackgroundField`,
 
-B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N²∞ = 1e-5))
+B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = 1e-5))
 
-# where ``N²_∞ = 10⁻⁵ \rm{s}⁻¹`` is the background buoyancy gradient.
+# where ``N² = 10⁻⁵ \rm{s}⁻¹`` is the background buoyancy gradient.
 
 # ## Bottom drag
 #
