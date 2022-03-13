@@ -54,6 +54,12 @@ end
 
 const MPIGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MultiArch}
 
+function fill_halo_regions!(arrays::NTuple, bcs, grid::MPIGrid, args...; kwargs...)
+    for (array, bc) in zip(arrays, bcs)
+        fill_halo_regions!(array, bc, grid, args...; kwargs...)
+    end
+end
+
 function fill_halo_regions!(c::OffsetArray, bcs, grid::MPIGrid, c_location, args...; kwargs...)
 
     barrier = Event(device(child_architecture(arch)))
