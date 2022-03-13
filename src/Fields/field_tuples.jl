@@ -11,10 +11,18 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
     return maybe_filtered_bcs
 end
 
-@inline recursive_fill(filtered_fields, field::ReducedField, ::Type{ReducedField}) = push!(filtered_fields, field)
-@inline recursive_fill(filtered_fields, field::Field,        ::Type{ReducedField}) = nothing
-@inline recursive_fill(filtered_fields, field::Field,        ::Type{Field})        = push!(filtered_fields, field)
-@inline recursive_fill(filtered_fields, field::ReducedField, ::Type{Field})        = nothing
+const AllFieldTypes = [:Field, :ReducedField]
+
+for FieldType in AllFieldTypes
+
+    @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$FieldType}) = push!(filtered_fields, field)
+    OtherFieldTypes = deepcopy(AllFieldTypes)
+    deleteat!(OtherFieldTypes, OtherFieldTypes .== FieldType)
+        
+    for OtherFieldType in OtherFieldTypes
+        @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$OtherFieldType}) = nothing
+    end
+end
 
 @inline function recursive_fill(filtered_fields, fields::Union{Tuple, NamedTuple}, Type) 
     for field in fields
@@ -28,7 +36,7 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
     red_fields = Tuple(recursive_fill([], fields, ReducedField))
 
     for field in red_fields
-        fill_halo_regions!(field, args...; kwargs...)
+        fill_halo_regions!(field, args...; reduced_dims = reduced_dimensions(field), kwargs...)
     end
 
     full_fields = Tuple(recursive_fill([], fields, Field))
