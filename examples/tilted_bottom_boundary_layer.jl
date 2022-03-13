@@ -96,7 +96,7 @@ coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=ĝ)
 
 B_field = BackgroundField(constant_stratification, parameters=(; ĝ, N²∞ = 1e-5))
 
-# where ``N²_∞ = 1e-5 \rm{s}⁻¹`` is the background buoyancy gradient.
+# where ``N²_∞ = 10⁻⁵ \rm{s}⁻¹`` is the background buoyancy gradient.
 
 # ## Bottom drag
 #
@@ -176,7 +176,7 @@ total_v = v + V∞
 
 outputs = (; u, total_v, w, total_b, ω_y)
 
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs, 
+simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
                                                         filepath = "tilted_bottom_boundary_layer.nc",
                                                         schedule = TimeInterval(20minutes),
                                                         mode = "c")
