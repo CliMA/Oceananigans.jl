@@ -68,9 +68,9 @@ end
 #### Tupled periodic boundary condition 
 ####
 
-@kernel function fill_periodic_west_and_east_halo!(c::Tuple, H::Int, N)
+@kernel function fill_periodic_west_and_east_halo!(c::NTuple{M}, H::Int, N) where M
   j, k = @index(Global, NTuple)
-  for n = 1:length(c)
+  @unroll for n = 1:M
     @unroll for i = 1:H
       @inbounds begin
         c[n][i, j, k]     = c[n][N+i, j, k] # west
@@ -80,9 +80,9 @@ end
   end
 end
 
-@kernel function fill_periodic_south_and_north_halo!(c::Tuple, H::Int, N)
+@kernel function fill_periodic_south_and_north_halo!(c::NTuple{M}, H::Int, N) where M
   i, k = @index(Global, NTuple)
-  for n = 1:length(c)
+  @unroll for n = 1:M
     @unroll for j = 1:H
       @inbounds begin
           c[n][i, j, k]     = c[n][i, N+j, k] # south
@@ -92,9 +92,9 @@ end
   end
 end
 
-@kernel function fill_periodic_bottom_and_top_halo!(c::Tuple, H::Int, N) 
+@kernel function fill_periodic_bottom_and_top_halo!(c::NTuple{M}, H::Int, N) where M
   i, j = @index(Global, NTuple)
-  for n = 1:length(c)
+  @unroll for n = 1:M
     @unroll for k = 1:H
       @inbounds begin
         c[n][i, j, k]     = c[n][i, j, N+k] # top
