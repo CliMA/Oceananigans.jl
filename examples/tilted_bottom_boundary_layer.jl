@@ -82,7 +82,7 @@ ĝ = (sind(θ), 0, cosd(θ))
 buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=ĝ)
 coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=ĝ)
 
-# where we have used a constant Coriolis parameter ``f = 10⁻⁴ s⁻¹``.
+# where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
@@ -234,4 +234,3 @@ end
 close(ds)
 
 mp4(anim, "tilted_bottom_boundary_layer.mp4", fps=12)
-
