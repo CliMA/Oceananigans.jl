@@ -195,8 +195,8 @@ using NCDatasets
 xω, zω = xnodes(ω_y), znodes(ω_y)
 xv, zv = xnodes(total_v), znodes(total_v)
 
-kwargs = (xlabel = "x",
-          zlabel = "z",
+kwargs = (xlabel = "along-slope distance",
+          zlabel = "across-slope distance",
           fill = true,
           levels = 20,
           linewidth = 0,
