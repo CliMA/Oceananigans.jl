@@ -11,6 +11,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
+function fill_halo_regions!(fields::NTuple{N, AbstractCubedSphereField}, args; kwargs...) where N
+    for field in fields
+        fill_halo_regions!(field, args; kwargs...)
+    end
+end
+
 function fill_halo_regions!(field::AbstractCubedSphereField, args...; cubed_sphere_exchange=true, kwargs...)
 
     for (i, face_field) in enumerate(faces(field))

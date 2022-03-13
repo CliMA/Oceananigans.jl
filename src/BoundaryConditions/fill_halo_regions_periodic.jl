@@ -4,8 +4,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Periodic boundary conditions
 #####
 
-@inline parent_and_size(c, dim1, dim2)        = (parent(c), size(parent(c))[[dim1, dim2]])
-@inline parent_and_size(c::Tuple, dim1, dim2) = (parent.(c), size(parent(c[1]))[[dim1, dim2]])
+@inline parent_and_size(c, dim1, dim2)        = (parent(c),  size(parent(c))[[dim1, dim2]])
+@inline parent_and_size(c::Tuple, dim1, dim2) = (parent.(c), size(parent(c[minimum(length.(c))]))[[dim1, dim2]])
 
 function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, arch, dep, grid, args...; kw...)
   c_parent, yz_size = parent_and_size(c, 2, 3)

@@ -100,6 +100,8 @@ end
 ##### fill_bottom_and_top_halos!  }
 #####
 
+const CBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
+
 for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     send_side_halo = Symbol("send_$(side)_halo")
@@ -108,7 +110,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC,
+        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT,
                                    arch, barrier, grid, c_location, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs

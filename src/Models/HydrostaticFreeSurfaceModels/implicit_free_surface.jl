@@ -78,7 +78,7 @@ is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
 function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
+    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
     return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 

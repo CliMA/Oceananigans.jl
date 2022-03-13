@@ -15,6 +15,8 @@ struct HaloCommunicationRanks{F, T}
       to :: T
 end
 
+const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
+
 HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
 Base.summary(hcr::HaloCommunicationRanks) = "(from rank $(hcr.from) to rank $(hcr.to))"
