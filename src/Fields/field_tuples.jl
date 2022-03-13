@@ -1,7 +1,5 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
-# TODO: This code belongs in the Models module
-
 @inline extract_field_data(field::Field) = field.data
 
 @inline function extract_field_bcs(field::Field) 
@@ -13,17 +11,27 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
     return maybe_filtered_bcs
 end
 
+@inline recursive_fill(filtered_fields, field::ReducedField, ::Type{ReducedField}) = push!(filtered_fields, field)
+@inline recursive_fill(filtered_fields, field::Field,        ::Type{ReducedField}) = nothing
+@inline recursive_fill(filtered_fields, field::Field,        ::Type{Field})        = push!(filtered_fields, field)
+@inline recursive_fill(filtered_fields, field::ReducedField, ::Type{Field})        = nothing
+
+@inline function recursive_fill(filtered_fields, fields::Union{Tuple, NamedTuple}, Type) 
+    for field in fields
+        recursive_fill(filtered_fields, field, Type)
+    end
+    return Tuple(filtered_fields)
+end
+
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
     
-    red_idx     = findall((r) -> r isa ReducedField, fields)
-    red_fields  = Tuple(fields[idx] for idx in red_idx) 
+    red_fields = recursive_fill([], fields, ReducedField)
 
     for field in red_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
-    full_idx     = findall((f) -> ((f isa Field) && !(f isa ReducedField)), fields)
-    full_fields  = Tuple(fields[idx] for idx in full_idx) 
+    full_fields = recursive_fill([], fields, Field)
 
     if !isempty(full_fields)
         grid = full_fields[1].grid
@@ -32,6 +40,8 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
 
     return nothing
 end
+
+# TODO: This code belongs in the Models module
 
 #####
 ##### Tracer names
