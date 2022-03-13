@@ -1,3 +1,9 @@
+# Run this script with
+#
+# $ mpiexec -n 2 julia --project mpi_nonhydrostatic_two_dimensional_turbulence.jl
+#
+# For example.
+
 using MPI
 using Oceananigans
 using Oceananigans.Distributed
@@ -8,14 +14,18 @@ comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
-@info "Running on rank $rank of $Nranks"
+@info "Running on rank $rank of $Nranks..."
 
 Nx = Ny = 256
 Lx = Ly = 2π
 topology = (Periodic, Periodic, Flat)
-arch = MultiArch(CPU(); topology, ranks=(1, 2, 1))
-grid = RectilinearGrid(; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y=(0, 2π))
-model = NonhydrostaticModel(arch; grid, advection=WENO5(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
+arch = MultiArch(CPU(); topology, ranks=(1, Nranks, 1))
+grid = RectilinearGrid(arch; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y=(0, 2π))
+
+@info "Built $Nranks grids:"
+@show grid
+
+model = NonhydrostaticModel(; grid, advection=WENO5(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
 
 ϵ(x, y, z) = 2rand() - 1 # ∈ (-1, 1)
 set!(model, u=ϵ, v=ϵ)
