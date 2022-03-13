@@ -1,4 +1,5 @@
 using StructArrays: StructArray, replace_storage
+using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: AbstractField
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction
