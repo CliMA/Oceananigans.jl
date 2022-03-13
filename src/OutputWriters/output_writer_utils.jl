@@ -28,7 +28,7 @@ saveproperty!(file, location, p::Tuple) =
 saveproperty!(file, location, p) =
     [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, grid)
+saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, p)
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, bcs::FieldBoundaryConditions)
@@ -55,7 +55,7 @@ serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Functi
 serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
 
 # Serializing grids:
-serializeproperty!(file, location, p::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
+serializeproperty!(file, location, grid::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
 
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
     # TODO: convert immersed boundary grid to array representation in order to save.
