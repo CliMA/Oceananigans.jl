@@ -24,6 +24,8 @@ for FieldType in AllFieldTypes
     end
 end
 
+@inline recursive_fill(filtered_fields, ::Nothign, Type) = nothing
+
 @inline function recursive_fill(filtered_fields, fields::Union{Tuple, NamedTuple}, Type) 
     for field in fields
         recursive_fill(filtered_fields, field, Type)
