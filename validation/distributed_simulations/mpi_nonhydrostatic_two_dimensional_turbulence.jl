@@ -12,6 +12,7 @@ using MPI
 using Oceananigans
 using Oceananigans.Distributed
 using Statistics
+using Printf
 
 MPI.Init()
 
@@ -57,9 +58,7 @@ function progress(sim)
     compute!(ζ)
     compute!(e)
 
-    if rank === 0
-        @info "Iteration: " * iteration(sim) * ", time: " * prettytime(sim)
-    end
+    rank == 0 && @info(string("Iteration: ", iteration(sim), ", time: ", prettytime(sim)))
 
     @info @sprintf("Rank %d: max|ζ|: %.2e, max(e): %.2e",
                    MPI.Comm_rank(comm), maximum(abs, ζ), maximum(abs, e))
