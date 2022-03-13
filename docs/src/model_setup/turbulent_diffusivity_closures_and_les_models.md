@@ -47,7 +47,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
+SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0
 ```
 
 although they may be specified. By default, the background viscosity and diffusivity are assumed to
@@ -61,7 +61,7 @@ To use the constant anisotropic minimum dissipation (AMD) LES closure,
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = AnisotropicMinimumDissipation()
-AnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.08333333333333333
                         Buoyancy modification multiplier Cb: nothing
