@@ -13,9 +13,9 @@ Nranks = MPI.Comm_size(comm)
 Nx = Ny = 256
 Lx = Ly = 2π
 topology = (Periodic, Periodic, Flat)
-arch = MultiArch(CPU(); topology, ranks=(1, 4, 1))
+arch = MultiArch(CPU(); topology, ranks=(1, 2, 1))
 grid = RectilinearGrid(; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y=(0, 2π))
-model = NonhydrostaticModel(; grid, advection=WENO5(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
+model = NonhydrostaticModel(arch; grid, advection=WENO5(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
 
 ϵ(x, y, z) = 2rand() - 1 # ∈ (-1, 1)
 set!(model, u=ϵ, v=ϵ)
