@@ -20,18 +20,18 @@ end
     for field in fields
         recursive_fill(filtered_fields, field, Type)
     end
-    return Tuple(filtered_fields)
+    return filtered_fields
 end
 
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
     
-    red_fields = recursive_fill([], fields, ReducedField)
+    red_fields = Tuple(recursive_fill([], fields, ReducedField))
 
     for field in red_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
-    full_fields = recursive_fill([], fields, Field)
+    full_fields = Tuple(recursive_fill([], fields, Field))
 
     if !isempty(full_fields)
         grid = full_fields[1].grid
