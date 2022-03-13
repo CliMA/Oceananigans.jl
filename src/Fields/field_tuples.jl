@@ -33,6 +33,9 @@ end
     return filtered_fields
 end
 
+@inline fill_full_fields_halo_regions!(full_fields, grid, args...; kwargs...) = 
+        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
+
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
     
     red_fields = Tuple(recursive_fill([], fields, ReducedField))
@@ -45,7 +48,7 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
 
     if !isempty(full_fields)
         grid = full_fields[1].grid
-        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
+        fill_full_fields_halo_regions!(full_fields, grid, args...; kwargs...)
     end
 
     return nothing

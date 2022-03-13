@@ -1,6 +1,8 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
+import Oceananigans.Fields: fill_full_fields_halo_regions!
+
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
@@ -51,6 +53,12 @@ end
 #####
 ##### Filling halos for halo communication boundary conditions
 #####
+
+function fill_full_fields_halo_regions!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
+    for field in full_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+end
 
 function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_location, args...; kwargs...)
 
