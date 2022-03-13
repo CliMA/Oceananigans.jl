@@ -17,7 +17,7 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
-saveproperty!(file, location, p::Union{Number,Array}) = file[location] = p
+saveproperty!(file, location, p::Union{Number, Array}) = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
@@ -28,7 +28,7 @@ saveproperty!(file, location, p::Tuple) =
 saveproperty!(file, location, p) =
     [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
-saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, p)
+saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, p.grid)
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, bcs::FieldBoundaryConditions)
