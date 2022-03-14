@@ -65,7 +65,6 @@ for model in (immersed_model, not_immersed_model)
     simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=model.velocities.u),
                                                           schedule = TimeInterval(0.01),
                                                           prefix = prefix,
-                                                          field_slicer = nothing,
                                                           force = true)
 
     run!(simulation)
@@ -87,7 +86,7 @@ utn = FieldTimeSeries(not_immersed_filepath, "u", grid=grid)
 
 times = uti.times
 Nt = length(times)
-n = Node(1)
+n = Observable(1)
 uii(n) = interior(uti[n])[1, 1, :]
 uin(n) = interior(utn[n])[1, 1, :]
 upi = @lift uii($n)
