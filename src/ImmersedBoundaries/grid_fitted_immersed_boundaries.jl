@@ -52,7 +52,7 @@ function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGrid
     bottom_field = Field{Center, Center, Nothing}(grid)
     bottom_data = arch_array(arch, ib.bottom)
     bottom_field .= bottom_data
-    fill_halo_regions!(bottom_field, arch)
+    fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
     new_ib = GridFittedBottom(offset_bottom_array)
     return ImmersedBoundaryGrid(grid, new_ib)
@@ -90,3 +90,4 @@ for location in (:upper_, :lower_)
                 $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
     end
 end
+

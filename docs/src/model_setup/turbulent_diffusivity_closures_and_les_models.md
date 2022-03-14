@@ -1,51 +1,41 @@
 # Turbulent diffusivity closures and large eddy simulation models
 
-A turbulent diffusivity closure representing the effects of viscous dissipation and diffusion can be passed via the
-`closure` keyword.
+A turbulent diffusivity closure representing the effects of viscous dissipation and diffusion can
+be passed via the `closure` keyword.
 
-See [turbulence closures](@ref numerical_closures) and [large eddy simulation](@ref numerical_les) for more details
-on turbulent diffusivity closures.
+See [turbulence closures](@ref numerical_closures) and [large eddy simulation](@ref numerical_les) for
+more details on turbulent diffusivity closures.
 
 ## Constant isotropic diffusivity
 
-To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use `ScalarDiffusivity`
+To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use `ScalarDiffusivity`:
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-ScalarDiffusivity:
-ν=0.01, κ=0.01
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.ThreeDimensionalFormulation
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.01, κ=0.01)
 ```
 
 ## Constant anisotropic diffusivity
 
-To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use `HorizontalScalarDiffusivity()` and
-`VerticalScalarDiffusivity()`
+To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``,
+and horizontal and vertical diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use
+`HorizontalScalarDiffusivity()` and `VerticalScalarDiffusivity()`, e.g.,
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
 
 julia> horizontal_closure = HorizontalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity:
-ν=0.001, κ=0.002
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.HorizontalFormulation
+HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=0.002)
 
 julia> vertical_closure = VerticalScalarDiffusivity(ν=1e-3, κ=2e-3)
-ScalarDiffusivity:
-ν=0.001, κ=0.002
-time discretization: ExplicitTimeDiscretization
-formulation: Oceananigans.TurbulenceClosures.VerticalFormulation
-
+VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=0.002)
 ```
 
-After that you can set `closure = (horizontal_closure, vertical_closure)` when constructing the
-model so that all components will be taken into account when calculating the diffusivity term. Note
-that `VerticalScalarDiffusivity` and `HorizontalScalarDiffusivity` are implemented using [different
+After that you can set, e.g., `closure = (horizontal_closure, vertical_closure)` when constructing
+the model so that all components will be taken into account when calculating the diffusivity term.
+Note that `VerticalScalarDiffusivity` and `HorizontalScalarDiffusivity` are implemented using [different
 schemes](https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation)
 with different conservation properties.
 
@@ -60,8 +50,8 @@ julia> closure = SmagorinskyLilly()
 SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
 ```
 
-although they may be specified. By default, the background viscosity and diffusivity are assumed to be the molecular
-values for seawater. For more details see [`SmagorinskyLilly`](@ref).
+although they may be specified. By default, the background viscosity and diffusivity are assumed to
+be the molecular values for seawater. For more details see [`SmagorinskyLilly`](@ref).
 
 ## Anisotropic minimum dissipation
 
@@ -91,5 +81,5 @@ viscosity ``\nu_z``, anytime and anywhere the background stratification becomes 
 julia> using Oceananigans
 
 julia> closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, background_κz = 1e-3)
-ConvectiveAdjustmentVerticalDiffusivity: (background_κz=0.001, convective_κz=1.0, background_νz=0.0, convective_νz=0.0)
+ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.001 convective_κz=1.0 background_νz=0.0 convective_νz=0.0)
 ```

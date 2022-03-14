@@ -1,7 +1,6 @@
 using Oceananigans.Architectures
 using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.Grids: interior_parent_indices, topology
-using Oceananigans.Fields: interior_copy
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
@@ -162,7 +161,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     coeff_bound_z = zeros(eltype(grid), M - posz[2])
 
     # initializing elements which vary during the simulation (as a function of Δt)
-    loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N), N)
+    loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
     event = loop!(diag, D, N; dependencies=Event(Architectures.device(arch)))
     wait(event)
 
@@ -303,7 +302,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
-    fill_halo_regions!(x, arch) 
+    fill_halo_regions!(x) 
 
     return
 end

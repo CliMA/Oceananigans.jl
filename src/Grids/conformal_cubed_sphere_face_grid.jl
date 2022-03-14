@@ -199,7 +199,7 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
 
     view(underlying_data, ip, jp) .= interior_data
 
-    return offset_data(underlying_data, loc, topo, N, H)
+    return offset_data(underlying_data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
 function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
@@ -263,10 +263,10 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
     Tyᶠᶜ = total_length(loc_fc[2], topology[2], N[2], H[2])
     Tyᶜᶠ = total_length(loc_cf[2], topology[2], N[2], H[2])
 
-    λᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology, N, H)
-    λᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology, N, H)
-    φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology, N, H)
-    φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology, N, H)
+    λᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
+    λᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
+    φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
+    φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
     return ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,

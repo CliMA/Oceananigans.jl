@@ -9,7 +9,6 @@ using StructArrays
 using Oceananigans.Grids
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
-using Oceananigans.Utils: MAX_THREADS_PER_BLOCK
 
 import Base: size, length, show
 

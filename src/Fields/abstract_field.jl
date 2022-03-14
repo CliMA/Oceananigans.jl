@@ -30,10 +30,6 @@ abstract type AbstractField{LX, LY, LZ, G <: GridOrNothing, T, N} <: AbstractArr
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
 
-# Endpoint for recursive `datatuple` function:
-data(a) = a
-@inline datatuple(obj::AbstractField) = data(obj)
-
 #####
 ##### AbstractField functionality
 #####

@@ -1,4 +1,8 @@
-function prettysummary(f::Function)
+using Oceananigans.Grids: scalar_summary
+
+prettysummary(x, args...) = summary(x)
+
+function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
     mt = ft.name.mt
     name = mt.name
@@ -7,8 +11,42 @@ function prettysummary(f::Function)
     sname = string(name)
     isself = isdefined(ft.name.module, name) && ft == typeof(getfield(ft.name.module, name))
     ns = (isself || '#' in sname) ? sname : string("(::", ft, ")")
-    return string(ns, " (", "generic function", " with $n $m)")
+    if showmethods
+        return string(ns, " (", "generic function", " with $n $m)")
+    else
+        return string(ns)
+    end
 end
 
-prettysummary(x) = summary(x)
+prettysummary(x::AbstractFloat, args...) = scalar_summary(x)
+prettysummary(x::Int, args...) = string(x)
+
+# This is very important
+function prettysummary(nt::NamedTuple, args...)
+    n = nfields(nt)
+
+    if n == 0
+        return "NamedTuple()"
+    else
+        str = "("
+        for i = 1:n
+            f = nt[i]
+            str = string(str, fieldname(typeof(nt), i), "=", prettysummary(getfield(nt, i)))
+            if n == 1
+                str = string(str, ",")
+            elseif i < n
+                str = string(str, ", ")
+            end
+        end
+    end
+
+    return string(str, ")")
+end
+
+function prettykeys(t)
+    names = collect(keys(t))
+    length(names) == 0 && return "()"
+    length(names) == 1 && return string(first(names))
+    return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")
+end
 

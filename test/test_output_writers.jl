@@ -12,18 +12,19 @@ using Oceananigans.TimeSteppers: update_state!
 ##### WindowedTimeAverage tests
 #####
 
-function instantiate_windowed_time_average(model)
+function run_instantiate_windowed_time_average_tests(model)
 
     set!(model, u = (x, y, z) -> rand())
-
     u, v, w = model.velocities
+    Nx, Ny, Nz = size(u)
 
-    u₀ = similar(interior(u))
-    u₀ .= interior(u)
+    for test_u in (u, view(u, 1:Nx, 1:Ny, 1:Nz))
+        u₀ = deepcopy(parent(test_u))
+        wta = WindowedTimeAverage(test_u, schedule=AveragedTimeInterval(10, window=1))
+        @test all(wta(model) .== u₀)
+    end
 
-    wta = WindowedTimeAverage(model.velocities.u, schedule=AveragedTimeInterval(10, window=1))
-
-    return all(wta(model) .== u₀)
+    return nothing
 end
 
 function time_step_with_windowed_time_average(model)
@@ -39,7 +40,7 @@ function time_step_with_windowed_time_average(model)
     simulation.diagnostics[:u_avg] = wta
     run!(simulation)
 
-    return all(wta(model) .== interior(model.velocities.u))
+    return all(wta(model) .== parent(model.velocities.u))
 end
 
 #####
@@ -69,6 +70,7 @@ function test_dependency_adding(model)
     # JLD2 dependencies test
     jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", prefix="test", force=true)
 
+    windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
 
     # NetCDF dependency test
@@ -78,6 +80,7 @@ function test_dependency_adding(model)
                                               output_attributes = attributes,
                                               dimensions = dimensions)
 
+    windowed_time_average = netcdf_output_writer.outputs["time_average"]
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
     rm("test.nc")
@@ -191,7 +194,7 @@ end
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
-            @test instantiate_windowed_time_average(model)
+            run_instantiate_windowed_time_average_tests(model)
             @test time_step_with_windowed_time_average(model)
             @test_throws ArgumentError AveragedTimeInterval(1.0, window=1.1)
         end
@@ -218,3 +221,4 @@ end
         end
     end
 end
+

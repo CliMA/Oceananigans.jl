@@ -218,7 +218,7 @@ for arch in archs
                                       topology=(Periodic, Periodic, Bounded))
 
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
-                                             equation_of_state = LinearEquationOfState(α=1, β=1))
+                                    equation_of_state = LinearEquationOfState(thermal_expansion=1, haline_contraction=1))
 
         model = NonhydrostaticModel(grid = grid,
                                 buoyancy = buoyancy,

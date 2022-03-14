@@ -1,7 +1,8 @@
 import Oceananigans.Grids: required_halo_size
+using Oceananigans.Utils: prettysummary
 
 """
-    ScalarBiharmonicDiffusivity{F, N, K}
+    struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
@@ -23,9 +24,23 @@ HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarB
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
 """
-    ScalarBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)
+    ScalarBiharmonicDiffusivity([formulation=ThreeDimensionalFormulation(), FT=Float64;]
+                                ν=0, κ=0,
+                                discrete_form = false)
 
-Returns parameters for a scalar biharmonic diffusivity model.
+Return a scalar biharmonic diffusivity turbulence closure with viscosity coefficient `ν` and tracer
+diffusivities `κ` for each tracer field in `tracers`. If a single `κ` is provided, it is applied to
+all tracers. Otherwise `κ` must be a `NamedTuple` with values for every tracer individually.
+
+Arguments
+=========
+
+* `formulation`:
+  - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
+  - `VerticalFormulation()` for diffusivity applied in the vertical direction,
+  - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+
+* `FT`: the float datatype (default: `Float64`)
 
 Keyword arguments
 =================
@@ -36,18 +51,13 @@ Keyword arguments
          `NamedTuple` of diffusivities with entries for each tracer.
 
   - `discrete_form`: `Boolean`.
-
-  - `formulation`: formulation used for the discretization of the diffusivity operator.
-                   Options are `VerticalFormulation`, `HorizontalFormulation` and 
-                   `ThreeDimensionalFormulation`.
-
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,
-                                     discrete_form = false) 
+                                     discrete_form = false)
 
-    ν = convert_diffusivity(FT, ν, Val(discrete_form))
-    κ = convert_diffusivity(FT, κ, Val(discrete_form))
+    ν = convert_diffusivity(FT, ν; discrete_form)
+    κ = convert_diffusivity(FT, κ; discrete_form)
     return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
 end
 
@@ -61,7 +71,9 @@ end
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{F}) where {F} = 
-    print(io, "ScalarBiharmonicDiffusivity: " *
-              "(ν=$(closure.ν), κ=$(closure.κ)), " *
-              "formulation: $F")
+function Base.summary(closure::ScalarBiharmonicDiffusivity)
+    F = summary(formulation(closure))
+    return string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+end
+
+Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))

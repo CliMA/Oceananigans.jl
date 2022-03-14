@@ -69,26 +69,34 @@ julia> d[2, 1, 1]
 10
 ```
 """
-function ConditionalOperation(operand::AbstractField; func = identity, condition = nothing, mask = 0)
-    grid = operand.grid
+function ConditionalOperation(operand::AbstractField;
+                              func = identity,
+                              condition = nothing,
+                              mask = 0)
+
     LX, LY, LZ = location(operand)
-    return ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+    return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
-function ConditionalOperation(c::ConditionalOperation; func = nothing, condition = nothing, mask = nothing)
+function ConditionalOperation(c::ConditionalOperation;
+                              func = c.func,
+                              condition = c.condition,
+                              mask = c.mask)
+
     LX, LY, LZ = location(c)
-    return ConditionalOperation{LX, LY, LZ}(c.operand, c.func, c.grid, c.condition, c.mask)
+    return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
-@inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
-@inline condition_operand(func::Function, operand::AbstractField, ::Nothing, mask) = ConditionalOperation(operand; func, condition = truefunc, mask)
+@inline condition_operand(func::Function, op::AbstractField, condition, mask) = ConditionalOperation(op; func, condition, mask)
+@inline condition_operand(func::Function, op::AbstractField, ::Nothing, mask) = ConditionalOperation(op; func, condition = truefunc, mask)
+
 @inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask) 
     condition = arch_array(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
 
 @inline condition_operand(func::typeof(identity), c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
-@inline condition_operand(func::Function, c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
+@inline condition_operand(func::Function,         c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
 
 @inline truefunc(args...) = true
 
