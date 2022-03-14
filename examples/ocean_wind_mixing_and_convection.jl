@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, Plots"
 # ```
 
 # We start by importing all of the packages and functions that we'll need for this
@@ -23,7 +23,6 @@
 using Random
 using Printf
 using Plots
-using JLD2
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hour
@@ -71,11 +70,9 @@ plot(grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz],
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion = 2e-4,
+                                                                    haline_contraction = 8e-4))
 
-# where ``\alpha`` and ``\beta`` are the thermal expansion and haline contraction
-# coefficients for temperature and salinity.
-#
 # ## Boundary conditions
 #
 # We calculate the surface temperature flux associated with surface heating of
@@ -141,8 +138,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # for large eddy simulation to model the effect of turbulent motions at
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
-model = NonhydrostaticModel(
-                            advection = UpwindBiasedFifthOrder(),
+model = NonhydrostaticModel(advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
                             grid = grid,
                             tracers = (:T, :S),
@@ -218,7 +214,7 @@ eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
                            prefix = "ocean_wind_mixing_and_convection",
-                     field_slicer = FieldSlicer(j=Int(grid.Ny/2)),
+                          indices = (:, grid.Ny/2, :),
                          schedule = TimeInterval(1minute),
                             force = true)
 
@@ -229,19 +225,19 @@ run!(simulation)
 # ## Turbulence visualization
 #
 # We animate the data saved in `ocean_wind_mixing_and_convection.jld2`.
-# We prepare for animating the flow by creating coordinate arrays,
-# opening the file, building a vector of the iterations that we saved
-# data at, and defining functions for computing colorbar limits:
+# We prepare for animating the flow by loading the data into
+# FieldTimeSeries and defining functions for computing colorbar limits.
+
+filepath = "ocean_wind_mixing_and_convection.jld2"
+
+time_series = (w = FieldTimeSeries(filepath, "w"),
+               T = FieldTimeSeries(filepath, "T"),
+               S = FieldTimeSeries(filepath, "S"),
+               νₑ = FieldTimeSeries(filepath, "νₑ"))
 
 ## Coordinate arrays
-xw, yw, zw = nodes(model.velocities.w)
-xT, yT, zT = nodes(model.tracers.T)
-
-## Open the file with our data
-file = jldopen(simulation.output_writers[:slices].filepath)
-
-## Extract a vector of iterations
-iterations = parse.(Int, keys(file["timeseries/t"]))
+xw, yw, zw = nodes(time_series.w)
+xT, yT, zT = nodes(time_series.T)
 
 """ Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
 function divergent_levels(c, clim, nlevels=21)
@@ -262,18 +258,17 @@ nothing # hide
 
 # We start the animation at `t = 10minutes` since things are pretty boring till then:
 
-times = [file["timeseries/t/$iter"] for iter in iterations]
+times = time_series.w.times
 intro = searchsortedfirst(times, 10minutes)
 
-anim = @animate for (i, iter) in enumerate(iterations[intro:end])
+anim = @animate for (i, t) in enumerate(times[intro:end])
 
-    @info "Drawing frame $i from iteration $iter..."
+    @info "Drawing frame $i of $(length(times[intro:end]))..."
 
-    t = file["timeseries/t/$iter"]
-    w = file["timeseries/w/$iter"][:, 1, :]
-    T = file["timeseries/T/$iter"][:, 1, :]
-    S = file["timeseries/S/$iter"][:, 1, :]
-    νₑ = file["timeseries/νₑ/$iter"][:, 1, :]
+     w = interior(time_series.w[i],  :, 1, :)
+     T = interior(time_series.T[i],  :, 1, :)
+     S = interior(time_series.S[i],  :, 1, :)
+    νₑ = interior(time_series.νₑ[i], :, 1, :)
 
     wlims, wlevels = divergent_levels(w, 2e-2)
     Tlims, Tlevels = sequential_levels(T, (19.7, 19.99))
@@ -298,8 +293,6 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, ν_plot, layout=(2, 2), size=(1200, 600),
          title=[w_title T_title S_title ν_title])
-
-    iter == iterations[end] && close(file)
 end
 
 mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide

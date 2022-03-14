@@ -1,6 +1,6 @@
 # Simulation tips
 
-Oceananigans attemps to optimize as much of a computation as possible "behind the scenes".
+Oceananigans attemps to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,
 especially for complex setups with user-defined forcing functions, boundary condition functions, and diagnostics.
 Furthermore, in case of more complex GPU runs, some details could
@@ -125,7 +125,7 @@ ddz² = Field(∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2)
 compute!(ε)
 ```
 
-This method is expensive because it requires computing and storing 3 intermediate terms.
+This method increases the computational cost since it requires computing and storing 3 intermediate terms.
 `ε` may also be calculated via `KernelFunctionOperations`s, which
 requires explicitly building a "kernel function" from low-level Oceananigans
 operators.
@@ -181,7 +181,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
-  on your GPU and how much of it you're using and you can run it from Julia with the command ``run(`nvidia-smi`)``.
+  on your GPU and how much of it you're using and you can run it from Julia with the command `` run(`nvidia-smi`) ``.
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
@@ -215,29 +215,28 @@ For example if can be difficult to just view a `CuArray` since Julia needs to ac
 its elements to do that. Consider the example below:
 
 ```julia
-julia> using Oceananigans; using Adapt
+julia> using Oceananigans, Adapt
 
-julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
-                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (1, 1, 1)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
+julia> grid = RectilinearGrid(GPU(); size=(1,1,1), extent=(1,1,1))
+1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=1.0
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=1.0
+└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=1.0
 
-julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
-NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-├── tracers: (:T, :S)
-├── closure: ScalarDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+julia> model = NonhydrostaticModel(; grid)
+NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
 └── coriolis: Nothing
 
 julia> typeof(model.velocities.u.data)
-OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}
+OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}
 
 julia> adapt(Array, model.velocities.u.data)
-3×3×3 OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
  0.0  0.0  0.0
  0.0  0.0  0.0
@@ -260,43 +259,17 @@ without that step we get an error:
 
 ```julia
 julia> model.velocities.u.data
-3×3×3 OffsetArray(::CUDA.CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+3×3×3 OffsetArray(::CUDA.CuArray{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
 [:, :, 0] =
-Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}:
-ERROR: scalar getindex is disallowed
+Error showing value of type OffsetArrays.OffsetArray{Float64, 3, CUDA.CuArray{Float64, 3}}:
+ERROR: Scalar indexing is disallowed.
 ```
 
-Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way around 
-this limitation is to allow scalar operations on `CuArray`s. We can temporarily
-do that with the `CUDA.@allowscalar` macro or by calling `CUDA.allowscalar(true)`.
-
-
-```julia
-julia> using CUDA; CUDA.allowscalar(true)
-
-julia> model.velocities.u.data
-3×3×3 OffsetArray(::CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
-[:, :, 0] =
-┌ Warning: Performing scalar operations on GPU arrays: This is very slow, consider disallowing these operations with `allowscalar(false)`
-└ @ GPUArrays ~/.julia/packages/GPUArrays/WV76E/src/host/indexing.jl:43
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 1] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-
-[:, :, 2] =
- 0.0  0.0  0.0
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-```
-
-Notice the warning we get when we do this. Scalar operations on GPUs can be very slow, so it is
-advised to only use this last method when using the REPL or prototyping --- never in
-production-ready scripts.
+Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There are ways to
+overcome this limitation and allow scalar indexing (more about that 
+in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
+can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
+prototyping --- never in production-ready scripts.
 
 
 You might also need to keep these differences in mind when using arrays

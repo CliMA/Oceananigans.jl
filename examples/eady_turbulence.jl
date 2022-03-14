@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, Plots"
 # ```
 
 # ## The Eady problem
@@ -120,7 +120,6 @@
 using Printf
 using Oceananigans
 using Oceananigans.Units: hours, day, days
-using Oceananigans.TurbulenceClosures: Horizontal, Vertical
 
 # ## The grid
 #
@@ -181,8 +180,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
 κ₄h = 1e-1 / day * grid.Δxᶜᵃᵃ^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
-Laplacian_vertical_diffusivity = ScalarDiffusivity(ν=κ₂z, κ=κ₂z, isotropy=Vertical())
-biharmonic_horizontal_diffusivity = ScalarBiharmonicDiffusivity(ν=κ₄h, κ=κ₄h, isotropy=Vertical())
+Laplacian_vertical_diffusivity = VerticalScalarDiffusivity(ν=κ₂z, κ=κ₂z)
+biharmonic_horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(ν=κ₄h, κ=κ₄h)
 
 # ## Model instantiation
 #
@@ -282,16 +281,16 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Vertical vorticity [s⁻¹]
-ζ = Field(∂x(v) - ∂y(u))
+ζ = ∂x(v) - ∂y(u)
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
-δ = Field(-∂z(w))
+δ = -∂z(w)
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
 # `simulation`.
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
                                                         prefix = "eady_turbulence",
                                                          force = true)
@@ -303,23 +302,21 @@ run!(simulation)
 
 # ## Visualizing Eady turbulence
 #
-# We animate the results by opening the JLD2 file, extracting data for
-# the iterations we ended up saving at, and ploting slices of the saved
-# fields. We prepare for animating the flow by creating coordinate arrays,
-# opening the file, building a vector of the iterations that we saved
-# data at, and defining a function for computing colorbar limits:
+# We animate slices of FieldTimeSeries of the saved data.
+# To prepare the animation we create coordinate arrays
+# and defining a function for computing colorbar limits:
 
-using JLD2, Plots
+using Plots
 
-## Coordinate arrays
-xζ, yζ, zζ = nodes(ζ)
-xδ, yδ, zδ = nodes(δ)
+filepath = simulation.output_writers[:fields].filepath
 
-## Open the file with our data
-file = jldopen(simulation.output_writers[:fields].filepath)
+ζ_timeseries = FieldTimeSeries(filepath, "ζ")
+δ_timeseries = FieldTimeSeries(filepath, "δ")
 
-## Extract a vector of iterations
-iterations = parse.(Int, keys(file["timeseries/t"]))
+## Times and spatial coordinates
+times = ζ_timeseries.times
+xζ, yζ, zζ = nodes(ζ_timeseries)
+xδ, yδ, zδ = nodes(δ_timeseries)
 
 # This utility is handy for calculating nice contour intervals:
 
@@ -335,12 +332,11 @@ nothing # hide
 
 @info "Making an animation from saved data..."
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(times)
 
     ## Load 3D fields from file
-    t = file["timeseries/t/$iter"]
-    R_snapshot = file["timeseries/ζ/$iter"] ./ coriolis.f
-    δ_snapshot = file["timeseries/δ/$iter"]
+    R_snapshot = ζ_timeseries[i] ./ coriolis.f
+    δ_snapshot = δ_timeseries[i]
 
     surface_R = R_snapshot[:, :, grid.Nz]
     surface_δ = δ_snapshot[:, :, grid.Nz]
@@ -377,8 +373,6 @@ anim = @animate for (i, iter) in enumerate(iterations)
            link = :x,
          layout = Plots.grid(2, 2, heights=[0.5, 0.5, 0.2, 0.2]),
           title = [@sprintf("ζ(t=%s) / f", prettytime(t)) @sprintf("δ(t=%s) (s⁻¹)", prettytime(t)) "" ""])
-
-    iter == iterations[end] && close(file)
 end
 
 mp4(anim, "eady_turbulence.mp4", fps = 8) # hide

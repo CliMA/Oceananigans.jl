@@ -5,8 +5,8 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicit, time_discretization, 
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-evd_closure = ScalarDiffusivity(κ = 1.0, isotropy = Vertical())
-ivd_closure = ScalarDiffusivity(κ = 1.0, isotropy = Vertical(), time_discretization = VerticallyImplicit())
+evd_closure = VerticalScalarDiffusivity(κ = 1.0)
+ivd_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, κ = 1.0)
 
 model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 

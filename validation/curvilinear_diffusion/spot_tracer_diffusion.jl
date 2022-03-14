@@ -24,7 +24,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = :c,
                                     velocities = PrescribedVelocityFields(), # quiescent
-                                    closure = ScalarDiffusivity(κ=1, isotropy=Horizontal()),
+                                    closure = HorizontalScalarDiffusivity(κ=1),
                                     buoyancy = nothing)
 
 # Tracer patch for visualization

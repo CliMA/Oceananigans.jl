@@ -1,4 +1,5 @@
 using StructArrays: StructArray, replace_storage
+using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: AbstractField
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction
@@ -16,7 +17,7 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
-saveproperty!(file, location, p::Union{Number,Array}) = file[location] = p
+saveproperty!(file, location, p::Union{Number, Array}) = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
 saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
@@ -53,10 +54,14 @@ serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, locat
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
 
+# Serializing grids:
+serializeproperty!(file, location, grid::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
+
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
+    # TODO: convert immersed boundary grid to array representation in order to save.
     # Note: when we support array representations of immersed boundaries, we should save those too.
     @warn "Cannot serialize ImmersedBoundaryGrid; serializing underlying grid instead."
-    file[location] = p.grid
+    serializeproperty!(file, location, p.grid)
     return nothing
 end
 

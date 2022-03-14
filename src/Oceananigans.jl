@@ -51,12 +51,17 @@ export
     UniformStokesDrift,
 
     # Turbulence closures
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
     ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -85,7 +90,7 @@ export
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
     AndSchedule, OrSchedule,
 

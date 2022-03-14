@@ -15,11 +15,11 @@ function uτ(model, Uavg, U_wall)
     compute!(Uavg)
     U = Array(interior(Uavg))  # Exclude average of halo region.
 
-    # Use a finite difference to calculate dU/dz at the top and bottomtom walls.
+    # Use a finite difference to calculate dU/dz at the top and bottom walls.
     # The distance between the center of the cell adjacent to the wall and the
     # wall itself is Δz/2.
-    uτ²_top    = ν * abs(U[1] - U_wall)    / (Δz/2)  # Top wall    where u = +U_wall
-    uτ²_bottom = ν * abs(-U_wall  - U[Nz]) / (Δz/2)  # Bottom wall where u = -U_wall
+    uτ²_top    = ν * abs(U_wall - U[Nz]) / (Δz/2)  # Top wall    where u = +U_wall
+    uτ²_bottom = ν * abs(U[1] + U_wall)  / (Δz/2)  # Bottom wall where u = -U_wall
 
     uτ_top, uτ_bottom = √uτ²_top, √uτ²_bottom
 
@@ -112,14 +112,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
-
-    model = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
-                    tracers = (:T, :S),
-                    closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
-        boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs)
-    )
+    equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
+    buoyancy = SeawaterBuoyancy(; equation_of_state)
+    model = NonhydrostaticModel(; grid, buoyancy,
+                                tracers = (:T, :S),
+                                closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
+                                boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
 
     #####
     ##### Set initial conditions

@@ -21,7 +21,7 @@ Returns the "vertical" (z-direction) diffusivity associated with `closure` and `
 function z_diffusivity end
 
 implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
-implicit_diffusion_solver(::Explicit, args...; kwargs...) = nothing
+implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
@@ -83,7 +83,7 @@ end
 #####
 
 """
-    implicit_diffusion_solver(::VerticallyImplicit, grid)
+    implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
 Build tridiagonal solvers for the elliptic equations
 
@@ -100,11 +100,11 @@ and
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
 and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
 """
-function implicit_diffusion_solver(::VerticallyImplicit, grid)
+function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
     topo = topology(grid)
 
-    topo[3] == Periodic && error("VerticallyImplicit can only be specified on " *
+    topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
@@ -174,4 +174,3 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
     return solve!(field, implicit_solver, field, instantiate.(location)...,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
-

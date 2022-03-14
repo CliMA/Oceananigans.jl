@@ -2,13 +2,20 @@ module TurbulenceClosures
 
 export
     AbstractEddyViscosityClosure,
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
     ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
     calculate_diffusivities!,
@@ -57,6 +64,7 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 # Fallbacks
 validate_closure(closure) = closure
+closure_summary(closure) = summary(closure)
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
@@ -89,8 +97,8 @@ include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
-include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 

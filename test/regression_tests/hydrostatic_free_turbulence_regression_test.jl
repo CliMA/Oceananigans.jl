@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
-using Oceananigans.TurbulenceClosures: Horizontal
+using Oceananigans.TurbulenceClosures
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
@@ -17,7 +17,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                           momentum_advection = VectorInvariant(),
                                 free_surface = free_surface,
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                     closure = ScalarDiffusivity(ν=1e+5, κ=1e+4, isotropy=Horizontal()))
+                                     closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
     
     #####
     ##### Imposing initial conditions:

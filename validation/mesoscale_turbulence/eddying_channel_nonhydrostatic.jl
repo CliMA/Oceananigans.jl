@@ -9,7 +9,6 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations
 using Oceananigans.Advection
-using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 const hydrostatic = false
 
@@ -59,7 +58,7 @@ cᵖ = 3994.0   # [J/K]  heat capacity
 ρ  = 999.8    # [kg/m³] density
 const h = 1000.0     # [m] e-folding length scale for northern sponge
 const ΔB = 8 * α * g # [m/s²] total change in buoyancy from surface to bottom
-eos = LinearEquationOfState(FT, α=α, β=0)
+eos = LinearEquationOfState(FT, thermal_expansion=α, haline_contraction=0)
 buoyancy = BuoyancyTracer()
 
 κh = 0.5e-5 # [m²/s] horizontal diffusivity
@@ -67,13 +66,9 @@ buoyancy = BuoyancyTracer()
 κv = 0.5e-5 # [m²/s] vertical diffusivity
 νv = 3e-4   # [m²/s] vertical viscocity
 
-vertical_closure = ScalarDiffusivity(ν = νv,
-                                     κ = κv,
-                                     isotropy = Vertical())
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
-horizontal_closure = ScalarDiffusivity(ν = νh,
-                                       κ = κh,
-                                       isotropy = Horizontal())
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
                                        
 parameters = (
     Ly = Ly,                   # y-domain length

@@ -5,17 +5,17 @@ using Oceananigans.Grids: solid_interface
 
 Abstract type for closures with *isotropic* diffusivities.
 """
-abstract type AbstractScalarBiharmonicDiffusivity{Iso} <: AbstractTurbulenceClosure{Explicit} end
+abstract type AbstractScalarBiharmonicDiffusivity{F} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization} end
 
-@inline isotropy(::AbstractScalarBiharmonicDiffusivity{Iso}) where {Iso} = Iso()
+@inline formulation(::AbstractScalarBiharmonicDiffusivity{F}) where {F} = F()
 
 #####
 ##### Stress divergences
 #####
 
-const AIBD = AbstractScalarBiharmonicDiffusivity{<:ThreeDimensional}
-const AHBD = AbstractScalarBiharmonicDiffusivity{<:Horizontal}
-const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
+const AIBD = AbstractScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation}
+const AHBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalFormulation}
+const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::AIBD, clock, U, args...) = + ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶜᶜᶜ, biharmonic_mask_x, ∇²ᶠᶜᶜ, U.u)
 @inline viscous_flux_vx(i, j, k, grid, closure::AIBD, clock, U, args...) = + ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), biharmonic_mask_x, ∂xᶠᶠᶜ, ∇²ᶜᶠᶜ, U.v)
