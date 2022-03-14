@@ -71,8 +71,8 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 θ = 3 # degrees
 
-# so that ``x`` is "upslope" direction, ``z`` is perpendicular to the bottom,
-# and the unit vector anti-aligned with gravity is
+# so that ``x`` is the along-slope direction, ``z`` is the across-sloce direction that
+# is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
 ĝ = (sind(θ), 0, cosd(θ))
 
@@ -90,7 +90,7 @@ coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=ĝ)
 @inline constant_stratification(x, y, z, t, p) = p.N² * (x * p.ĝ[1] + z * p.ĝ[3])
 
 # is _not_ periodic in ``x``. Thus we cannot explicitly model a constant stratification
-# on an ``x``-periodic grid such as ours. Instead, we simulate periodic
+# on an ``x``-periodic grid such as the one used here. Instead, we simulate periodic
 # _perturbations_ away from the constant density stratification by imposing
 # a constant stratification as a `BackgroundField`,
 
