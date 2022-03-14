@@ -44,22 +44,21 @@ ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
+function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
                            momentum_advection = VectorInvariant())
 
     underlying_grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
                                 topology = (Periodic, Periodic, Bounded))
-
-    @inline mask_grid(x, y) = ((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3)))
-
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFitterBottom(mask_grid))
+    
+    @inline bottom(x, y) = Int((((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3)))))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
                                                       grid = grid,
                                                    tracers = :c,
-                                                   closure = ScalarDiffusivity(ν=ν, κ=ν),
+                                                   closure = nothing,
                                               free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0),
                                                   coriolis = nothing,
                                                   buoyancy = nothing)
