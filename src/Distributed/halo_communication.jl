@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
-import Oceananigans.Fields: fill_full_fields_halo_regions!
+import Oceananigans.Fields: fill_halo_regions_field_tuple!
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
@@ -54,14 +54,14 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_full_fields_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+function fill_halo_regions_field_tuple!(full_fields, grid::DistributedGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_location, args...; kwargs...)
-
+    arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
     x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...; kwargs...)

@@ -3,7 +3,7 @@ import CUDA
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
 
-import Oceananigans.Fields: fill_full_fields_halo_regions!
+import Oceananigans.Fields: fill_halo_regions_field_tuple!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
 
 # These filling functions won't work so let's not use them.
@@ -11,8 +11,14 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
  fill_east_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+# These filling functions won't work so let's not use them.
+ _fill_west_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+ _fill_east_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+_fill_south_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+_fill_north_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_full_fields_halo_regions!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
+
+function fill_halo_regions_field_tuple!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
