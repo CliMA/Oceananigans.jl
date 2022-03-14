@@ -100,7 +100,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     @eval begin
         function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
                 event = $fill_both_halo!(c, bc_side, bc_opposite_side, child_architecture(arch), barrier, grid, args...; kwargs...)
-            return Tuple(event)
+            return [event]
         end
     end
 end
