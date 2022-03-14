@@ -83,18 +83,18 @@ for (model, name) in zip((:nonhydrostatic, :hydrostatic, :shallowwater), ("Nonhy
     end
 
     plt = plot(Ns, CPU_Float32, lw=4, label="CPU Float32", xaxis=:log2, yaxis=:log, legend=:topleft,
-            xlabel="Nx", ylabel="Times (ms)", title= name * "Model Benchmarks: CPU vs GPU")
+            xlabel="Nx", ylabel="Times (ms)", title= name * " Benchmarks: CPU vs GPU")
     plot!(plt, Ns, CPU_Float64, lw=4, label="CPU Float64")
     plot!(plt, Ns, GPU_Float32, lw=4, label="GPU Float32")
     plot!(plt, Ns, GPU_Float64, lw=4, label="GPU Float64")
     display(plt)
-    savefig(plt, "nonhydrostatic_times.png")
+    savefig(plt, string(model) * "_times.png")
 
     plt2 = plot(Ns, CPU_Float32./GPU_Float32, lw=4, xaxis=:log2, legend=:topleft, label="Float32",
                 xlabel="Nx", ylabel="Speedup Ratio", title= name * "Model Benchmarks: CPU/GPU")
     plot!(plt2, Ns, CPU_Float64./GPU_Float64, lw=4, label="Float64")
     display(plt2)
-    savefig(plt2, "nonhydrostatic_speedup.png")
+    savefig(plt2, string(model) * "_speedup.png")
 
     df = benchmarks_dataframe(suite)
     benchmarks_pretty_table(df, title=name * " benchmarks")
