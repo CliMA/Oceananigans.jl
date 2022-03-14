@@ -42,10 +42,10 @@ trilinear(x, y, z) = x + y + z
 
                 # Note: halo regions must be *filled* prior to computing an average
                 # if the average within halo regions is to be correct.
-                fill_halo_regions!(T, arch)
+                fill_halo_regions!(T)
                 @compute Txy = Field(Average(T, dims=(1, 2)))
 
-                fill_halo_regions!(T, arch)
+                fill_halo_regions!(T)
                 @compute Tx = Field(Average(T, dims=1))
 
                 @compute wxyz = Field(Average(w, dims=(1, 2, 3)))
@@ -158,8 +158,8 @@ trilinear(x, y, z) = x + y + z
             T = CenterField(grid)
             set!(T, trilinear)
             set!(w, trilinear)
-            fill_halo_regions!(T, arch)
-            fill_halo_regions!(w, arch)
+            fill_halo_regions!(T)
+            fill_halo_regions!(w)
 
             @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
             @compute Txy = Field(Average(T, dims=(1, 2)))

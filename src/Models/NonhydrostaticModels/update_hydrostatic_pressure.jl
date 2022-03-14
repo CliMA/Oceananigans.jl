@@ -29,7 +29,6 @@ function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
 
     # Fill halo regions for pressure
     wait(device(arch), pressure_calculation)
-
-    fill_halo_regions!(pHY′, arch)
+    
     return nothing
 end
