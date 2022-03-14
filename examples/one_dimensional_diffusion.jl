@@ -29,7 +29,7 @@ using Oceananigans
 #
 # ## Instantiating and configuring a model
 #
-# A core Oceananigans type is `NonhydrostaticModel`. We build an `NonhydrostaticModel`
+# A core Oceananigans type is `NonhydrostaticModel`. We build a `NonhydrostaticModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
 # Below, we build a rectilinear grid with 128 regularly-spaced grid points in
