@@ -36,6 +36,13 @@ end
 @inline fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...) = 
         fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
 
+"""
+    fill_halo_regions!field_tuple, args...; kwargs...) 
+
+separated `ReducedField`s from `Field`s in a `red_fields` and `full_fields` tuple.
+The halo of the former are filled individually, while for the latter, all halos are filled
+together in the same direction
+"""
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
     
     red_fields = Tuple(recursive_fill([], fields, ReducedField))
