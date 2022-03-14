@@ -12,12 +12,11 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
  fill_east_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
-# These filling functions won't work so let's not use them.
+
  _fill_west_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
  _fill_east_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 _fill_south_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 _fill_north_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
-
 
 function fill_halo_regions_field_tuple!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
     for field in full_fields
