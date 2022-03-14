@@ -64,9 +64,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_locati
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...; kwargs...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, barrier, grid, c_location, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, barrier, grid, c_location, args...; kwargs...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, barrier, grid, c_location, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
@@ -78,26 +78,6 @@ function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_locati
     wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
     return nothing
-end
-
-#####
-##### fill_west_and_east_halos!   }
-##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
-##### fill_bottom_and_top_halos!  }
-#####
-
-for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
-    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    fill_side_halo! = Symbol("fill_$(side)_halo!")
-    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
-
-    @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
-            event_side = $fill_side_halo!(c, bc_side, child_architecture(arch), barrier, grid, args...; kwargs...)
-            event_opposite_side = $fill_opposite_side_halo!(c, bc_opposite_side, child_architecture(arch), barrier, grid, args...)
-            return event_side, event_opposite_side
-        end
-    end
 end
 
 #####
@@ -117,7 +97,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
 
     @eval begin
         function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT,
-                                   arch, barrier, grid, c_location, args...; kwargs...)
+                                   barrier, grid, c_location, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
