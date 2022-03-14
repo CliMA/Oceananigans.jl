@@ -14,7 +14,7 @@ end
 const AllFieldTypes = [:Field, :ReducedField]
 
 for FieldType in AllFieldTypes
-
+    
     @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$FieldType}) = push!(filtered_fields, field)
     OtherFieldTypes = deepcopy(AllFieldTypes)
     deleteat!(OtherFieldTypes, OtherFieldTypes .== FieldType)

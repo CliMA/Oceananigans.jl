@@ -54,7 +54,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_full_fields_halo_regions!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
+function fill_full_fields_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
