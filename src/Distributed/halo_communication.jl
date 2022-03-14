@@ -96,7 +96,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT,
+        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, arch, 
                                    barrier, grid, c_location, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
