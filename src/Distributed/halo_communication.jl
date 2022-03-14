@@ -95,6 +95,7 @@ end
 
 for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
+    fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
         function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
