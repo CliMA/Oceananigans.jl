@@ -18,6 +18,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.OutputReaders: FieldTimeSeries
 
 using Oceananigans.Advection: ZWENO, WENOVectorInvariant
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
+
 #####
 ##### The Bickley jet
 #####
@@ -45,10 +47,13 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
                            momentum_advection = VectorInvariant())
 
-    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
+    underlying_grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
                                 topology = (Periodic, Periodic, Bounded))
 
+    @inline mask_grid(x, y) = ((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3)))
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFitterBottom(mask_grid))
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
@@ -176,10 +181,10 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-# for Nx in [64, 128, 256, 512]
-#     for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant(), WENO5(vector_invariant=true))
-#         experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
-#         visualize_bickley_jet(experiment_name)
-#     end
-# end
+for Nx in [64, 128, 256, 512]
+    for momentum_advection in (WENO5(), VectorInvariant(), WENO5(zweno = true, vector_invariant=true))
+        experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
+        visualize_bickley_jet(experiment_name)
+    end
+end
 
