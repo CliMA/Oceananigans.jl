@@ -1,7 +1,8 @@
 import CUDA
 
 import Oceananigans.BoundaryConditions:
-    fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
+    fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!,
+    _fill_west_halo!, _fill_east_halo!, _fill_south_halo!, _fill_north_halo!
 
 import Oceananigans.Fields: fill_halo_regions_field_tuple!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
