@@ -1,19 +1,8 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: hack_sind
 
-using Oceananigans.Advection:
-      _advective_momentum_flux_Uu,
-      _advective_momentum_flux_Vv,
-      upwind_biased_product,
-      div_𝐯u,
-      div_𝐯v,
-      div_𝐯w,
-      left_biased_interpolate_xᶜᵃᵃ,
-      right_biased_interpolate_xᶜᵃᵃ,
-      left_biased_interpolate_yᵃᶜᵃ,
-      right_biased_interpolate_yᵃᶜᵃ,
-      left_biased_interpolate_zᵃᵃᶜ,
-      right_biased_interpolate_zᵃᵃᶜ
+struct VectorInvariant end
+
+const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme

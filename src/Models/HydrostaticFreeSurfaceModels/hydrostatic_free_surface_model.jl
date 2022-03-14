@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, WENOVectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -17,8 +17,6 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, Diffusivi
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
-
-struct VectorInvariant end
 
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
@@ -211,8 +209,6 @@ function validate_vertical_velocity_boundary_conditions(w)
 end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
-
-const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 
 validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)

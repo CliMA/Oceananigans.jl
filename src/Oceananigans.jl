@@ -24,7 +24,7 @@ export
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, VectorInvariant, WENO5,
 
     # Boundary conditions
     BoundaryCondition,

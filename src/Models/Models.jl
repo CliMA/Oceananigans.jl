@@ -2,7 +2,7 @@ module Models
 
 export
     NonhydrostaticModel, ShallowWaterModel,
-    HydrostaticFreeSurfaceModel, VectorInvariant,
+    HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields, PressureField
@@ -22,7 +22,7 @@ include("ShallowWaterModels/ShallowWaterModels.jl")
 using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 
 using .HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel, VectorInvariant,
+    HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis,
     VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,

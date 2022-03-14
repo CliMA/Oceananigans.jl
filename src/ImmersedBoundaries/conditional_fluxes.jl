@@ -115,3 +115,19 @@ for bias in (:symmetric, :left_biased, :right_biased)
         end
     end
 end
+
+@inline near_any_boundary(i, j, k, ibg, scheme) = near_x_boundary(i, j, k, ibg, scheme) | near_y_boundary(i, j, k, ibg, scheme) | near_z_boundary(i, j, k, ibg, scheme) 
+
+for advection in (:U_dot_∇u, :U_dot_∇v)
+
+    # Conditional high-order interpolation in Bounded directions for VectorInvariant
+    @eval begin
+        using Oceananigans.Advection: VectorInvariant
+        import Oceananigans.Advection: $advection
+        
+        @inline $advection(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, U) =
+            ifelse(near_any_boundary(i, j, k, ibg, scheme),
+                   $advection(i, j, k, ibg.grid, VectorInvariant(), U),
+                   $advection(i, j, k, ibg.grid, scheme, U))
+    end
+end

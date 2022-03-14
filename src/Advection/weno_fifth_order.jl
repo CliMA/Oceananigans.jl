@@ -13,6 +13,11 @@ const two_32 = Int32(2)
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-6
 
+abstract type SmoothnessStencil end
+
+struct VorticityStencil <:SmoothnessStencil end
+struct VelocityStencil <:SmoothnessStencil end
+
 """
     struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
 
@@ -141,7 +146,7 @@ function WENO5(coeffs = nothing, FT = Float64;
                grid = nothing, 
                stretched_smoothness = false, 
                zweno = false, 
-               vector_invariant = false)
+               vector_invariant = nothing)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
@@ -180,18 +185,22 @@ function WENO5(coeffs = nothing, FT = Float64;
         C3₀, C3₁, C3₂ = FT.(coeffs)
     end
 
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, vector_invariant, zweno}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                                                      smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
-                                                                      C3₀, C3₁, C3₂)
+    VI = typeof(vector_invariant)
+
+    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+                                                        smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
+                                                        C3₀, C3₁, C3₂)
 end
 
 return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 # Flavours of WENO
-const ZWENO                 = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false, true}
-const WENOVectorInvariant   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const ZWENOVectorInvariant  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true, true}
+const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const WENOVectorInvariantVel  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, VelocityStencil}
+const WENOVectorInvariantVort = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, VorticityStencil}
+
+const WENOVectorInvariant = Union{WENOVectorInvariantVel, WENOVectorInvariantVort}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
@@ -348,22 +357,11 @@ end
 @inline right_biased_β₁(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 1, args...) 
 @inline right_biased_β₂(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 0, args...) 
 
-# Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
-# indicators around grid point `i-1/2`.
-
-@inline left_biased_α₀(FT, ψ, T, scheme, args...) = scheme.C3₀ / (left_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline left_biased_α₁(FT, ψ, T, scheme, args...) = scheme.C3₁ / (left_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline left_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₂ / (left_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-
-@inline right_biased_α₀(FT, ψ, T, scheme, args...) = scheme.C3₂ / (right_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline right_biased_α₁(FT, ψ, T, scheme, args...) = scheme.C3₁ / (right_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-@inline right_biased_α₂(FT, ψ, T, scheme, args...) = scheme.C3₀ / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
-
 #####
 ##### VectorInvariant reconstruction (based on JS or Z) (z-direction Val{3} is different from x- and y-directions)
 #####
 
-@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, ::Val{3}, idx, loc, u)
+@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, ::Val{3}, idx, loc, u)
     i, j, k = ijk
 
     u₂, u₁, u₀ = left_stencil_z(i, j, k, u)
@@ -372,7 +370,7 @@ end
     β₁ = left_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
     β₂ = left_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
 
-    if scheme isa ZWENOVectorInvariant
+    if scheme isa ZWENO
         τ₅ = abs(β₂ - β₀)
         α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
@@ -390,7 +388,7 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, ::Val{3}, idx, loc, u)
+@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, ::Val{3}, idx, loc, u)
     i, j, k = ijk
     
     u₂, u₁, u₀ = right_stencil_z(i, j, k, u)
@@ -399,7 +397,7 @@ end
     β₁ = right_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
     β₂ = right_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
 
-    if scheme isa ZWENOVectorInvariant
+    if scheme isa ZWENO
         τ₅ = abs(β₂ - β₀)
         α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
@@ -418,7 +416,7 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, dir, idx, loc, u, v)
+@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, dir, idx, loc, u, v)
     i, j, k = ijk
 
     u₂, u₁, u₀ = tangential_left_stencil_y(i, j, k, dir, u)
@@ -436,7 +434,7 @@ end
     β₁ = 0.5*(βu₁ + βv₁)     
     β₂ = 0.5*(βu₂ + βv₂)  
 
-    if scheme isa ZWENOVectorInvariant
+    if scheme isa ZWENO
         τ₅ = abs(β₂ - β₀)
         α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
@@ -454,7 +452,7 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariant, dir, idx, loc, u, v)
+@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, dir, idx, loc, u, v)
     i, j, k = ijk
     
     u₂, u₁, u₀ = tangential_right_stencil_y(i, j, k, dir, u)
@@ -472,7 +470,7 @@ end
     β₁ = 0.5*(βu₁ + βv₁)     
     β₂ = 0.5*(βu₂ + βv₂)  
 
-    if scheme isa ZWENOVectorInvariant
+    if scheme isa ZWENO
         τ₅ = abs(β₂ - β₀)
         α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
@@ -494,54 +492,25 @@ end
 #####
 ##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws)
 #####
-
-@inline function left_biased_weno5_weights(FT, ψₜ, T, scheme::ZWENO, dir, idx, loc, args...)
-    ψ₂, ψ₁, ψ₀ = ψₜ 
-    β₀ = left_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
-    β₁ = left_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
-    β₂ = left_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
-    
-    τ₅ = abs(β₂ - β₀)
-    α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-    α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-    α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-
-    Σα = α₀ + α₁ + α₂
-    w₀ = α₀ / Σα
-    w₁ = α₁ / Σα
-    w₂ = α₂ / Σα
-
-    return w₀, w₁, w₂
-end
-
-@inline function right_biased_weno5_weights(FT, ψₜ, T, scheme::ZWENO, dir, idx, loc, args...)
-    ψ₂, ψ₁, ψ₀ = ψₜ 
-    β₀ = right_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
-    β₁ = right_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
-    β₂ = right_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
-
-    τ₅ = abs(β₂ - β₀)
-    α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-    α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-    α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-    
-    Σα = α₀ + α₁ + α₂
-    w₀ = α₀ / Σα
-    w₁ = α₁ / Σα
-    w₂ = α₂ / Σα
-
-    return w₀, w₁, w₂
-end
-
-#####
 ##### JS-WENO-5 reconstruction
 #####
 
 @inline function left_biased_weno5_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
     ψ₂, ψ₁, ψ₀ = ψₜ 
-    α₀ = left_biased_α₀(FT, ψ₀, T, scheme, dir, idx, loc)
-    α₁ = left_biased_α₁(FT, ψ₁, T, scheme, dir, idx, loc)
-    α₂ = left_biased_α₂(FT, ψ₂, T, scheme, dir, idx, loc)
+    β₀ = left_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
+    β₁ = left_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
+    β₂ = left_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
+    
+    if scheme isa ZWENO
+        τ₅ = abs(β₂ - β₀)
+        α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+        α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    else
+        α₀ = scheme.C3₀ / (β₀ + FT(ε))^ƞ
+        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
+        α₂ = scheme.C3₂ / (β₂ + FT(ε))^ƞ
+    end
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -552,11 +521,22 @@ end
 end
 
 @inline function right_biased_weno5_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
-    ψ₂, ψ₁, ψ₀ = ψₜ
-    α₀ = right_biased_α₀(FT, ψ₀, T, scheme, dir, idx, loc)
-    α₁ = right_biased_α₁(FT, ψ₁, T, scheme, dir, idx, loc)
-    α₂ = right_biased_α₂(FT, ψ₂, T, scheme, dir, idx, loc)
+    ψ₂, ψ₁, ψ₀ = ψₜ 
+    β₀ = right_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
+    β₁ = right_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
+    β₂ = right_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
 
+    if scheme isa ZWENO
+        τ₅ = abs(β₂ - β₀)
+        α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+        α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    else    
+        α₀ = scheme.C3₂ / (β₀ + FT(ε))^ƞ
+        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
+        α₂ = scheme.C3₀ / (β₂ + FT(ε))^ƞ
+    end
+    
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα

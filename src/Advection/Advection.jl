@@ -21,7 +21,8 @@ export
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
-    WENO5
+    WENO5,
+    VectorInvariant
 
 using DocStringExtensions
 
@@ -51,5 +52,6 @@ include("weno_fifth_order.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
+include("vector_invariant_advection.jl")
 
 end # module

@@ -14,10 +14,9 @@ using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: ZWENO, WENOVectorInvariant
+using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
 
 #####
@@ -104,10 +103,11 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
     name = typeof(model.advection.momentum).name.wrapper
-    if model.advection.momentum isa ZWENO
-        name = "ZWENO"
-    elseif model.advection.momentum isa WENOVectorInvariant
-        name = "WENOVectorInvariant"
+    if model.advection.momentum isa WENOVectorInvariantVel
+        name = "WENOVectorInvariantVel"
+    end
+    if model.advection.momentum isa WENOVectorInvariantVort
+        name = "WENOVectorInvariantVort"
     end
 
     @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
@@ -116,7 +116,6 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         JLD2OutputWriter(model, outputs,
                                 schedule = TimeInterval(output_time_interval),
                                 prefix = experiment_name,
-                                field_slicer = nothing,
                                 force = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
@@ -180,8 +179,8 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-for Nx in [64, 128, 256, 512]
-    for momentum_advection in (WENO5(), VectorInvariant(), WENO5(zweno = true, vector_invariant=true))
+for Nx in [256]
+    for momentum_advection in [WENO5(zweno = true, vector_invariant=true)]
         experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end
