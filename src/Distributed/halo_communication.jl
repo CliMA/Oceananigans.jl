@@ -6,7 +6,10 @@ import Oceananigans.Fields: fill_halo_regions_field_tuple!
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
-    fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+    fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
+    fill_west_and_east_halos!, 
+    fill_south_and_north_halos!,
+    fill_bottom_and_top_halos!
 
 #####
 ##### MPI tags for halo communication BCs
