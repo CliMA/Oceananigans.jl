@@ -18,7 +18,7 @@ fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 _fill_south_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 _fill_north_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions_field_tuple!(full_fields, grid::ConformalCubedSphereFaceGrid, args...; kwargs...) 
+function fill_halo_regions_field_tuple!(full_fields, grid::ConformalCubedSphereGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
