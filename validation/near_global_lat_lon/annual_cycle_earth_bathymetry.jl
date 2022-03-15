@@ -4,7 +4,7 @@ using Printf
 using Oceananigans
 using Oceananigans.Units
 
-using Oceananigans.Advection: VelocityStencil
+using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
@@ -264,16 +264,23 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 u, v, w = model.velocities
-T, S = model.tracers
+
+T = model.tracers.T
+S = model.tracers.S
 η = model.free_surface.η
 
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+                                                              schedule = TimeInterval(save_interval),
+                                                              prefix = output_prefix * "_surface",
+                                                              indices = (:, :, grid.Nz),
+                                                              force = true)
+
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(30days),
+                                                        schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        cleanup = true,
                                                         force = true)
 
 # Let's goo!
@@ -294,14 +301,15 @@ run!(simulation)
 #### Visualize solution
 ####
 
-# using GLMakie
+# using GLMakie, JLD2
+
+# output_prefix = "annual_cycle_global_lat_lon_128_60_18_temp"
 
 # surface_file = jldopen(output_prefix * "_surface.jld2")
-# bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
 # iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
-# iter = Node(0)
+# iter = Observable(0)
 
 # ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
 # ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
@@ -317,10 +325,7 @@ run!(simulation)
 # v = @lift vi($iter)
 # T = @lift Ti($iter)
 
-# ub = @lift ubi($iter)
-# vb = @lift vbi($iter)
-
-# max_η = 4
+# max_η = 2
 # min_η = - max_η
 # max_u = 0.2
 # min_u = - max_u
@@ -344,14 +349,6 @@ run!(simulation)
 # ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
 # hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
 # cb = Colorbar(fig[2, 4], hm)
-
-# ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
-# hm = GLMakie.heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
-# cb = GLMakie.Colorbar(fig[3, 2], hm)
-
-# ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
-# hm = GLMakie.heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[3, 4], hm)
 
 # title_str = @lift "Earth day = " * ti($iter)
 # ax_t = fig[0, :] = Label(fig, title_str)
