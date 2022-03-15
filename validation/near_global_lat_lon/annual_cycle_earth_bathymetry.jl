@@ -4,9 +4,10 @@ using Printf
 using Oceananigans
 using Oceananigans.Units
 
+using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, is_immersed_boundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -27,7 +28,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
-arch = GPU()
+arch = CPU()
 reference_density = 1035
 
 #####
@@ -107,13 +108,13 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 ##### Physics and model setup
 #####
 
-νh = 1e+5
+νh = 0 #1e+5
 νz = 1e+1
-κh = 1e+3
+κh = 0 #1e+3
 κz = 1e-4
 
-vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, 
-                                     ν = νv, κ = κv)
+vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), 
+                                     ν = νz, κ = κz)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
@@ -169,25 +170,25 @@ v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, para
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 # Linear bottom drag:
-μ         = Δz_bottom / 10days
-μ_forcing = 10days
+μ = Δz_bottom / 10days
+# μ_forcing = 10days
 
-@inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
-    u = @inbounds fields.u[i, j, k]
-    return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
-                  - μ * u,
-                 zero(eltype(grid)))
-end
+# @inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
+#     u = @inbounds fields.u[i, j, k]
+#     return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
+#                   - μ * u,
+#                  zero(eltype(grid)))
+# end
 
-@inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
-    v = @inbounds fields.v[i, j, k]
-    return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
-                  - μ * v,
-                 zero(eltype(grid)))
-end
+# @inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
+#     v = @inbounds fields.v[i, j, k]
+#     return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
+#                   - μ * v,
+#                  zero(eltype(grid)))
+# end
 
-Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
-Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
+# Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
+# Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -196,21 +197,20 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
-                                   preconditioner_settings = (ε = 0.01, nzrel = 6))
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver) #, preconditioner_method=:SparseInverse,
+                                   #preconditioner_settings = (ε = 0.01, nzrel = 6))
 
 equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = WENO5(zweno=true, vector_invariant=VelocityStencil()),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = (:T, :S),
-                                    closure = (background_diffusivity..., convective_adjustment)) #,
-                                    # forcing = (u=Fu, v=Fv))
+                                    closure = (vertical_closure, convective_adjustment)) 
 
 #####
 ##### Initial condition:
@@ -270,20 +270,8 @@ T, S = model.tracers
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
-                                                              field_slicer = FieldSlicer(k=grid.Nz),
-                                                              force = true)
-
-simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
-                                                             schedule = TimeInterval(save_interval),
-                                                             prefix = output_prefix * "_bottom",
-                                                             field_slicer = FieldSlicer(k=1),
-                                                             force = true)
-
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1year),
+                                                        schedule = TimeInterval(30days),
                                                         prefix = output_prefix * "_checkpoint",
                                                         cleanup = true,
                                                         force = true)

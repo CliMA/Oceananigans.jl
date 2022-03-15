@@ -50,7 +50,13 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                            x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
                            topology = (Periodic, Periodic, Bounded))
     
-    @inline bottom(x, y) = Int((((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3)))))
+    @inline toplft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
+    @inline botlft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
+    @inline toprgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
+    @inline botrgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
+    
+    @inline bottom(x, y) = Int(toplft(x, y) | toprgt(x, y) | botlft(x, y) | botrgt(x, y))
+
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
@@ -179,8 +185,13 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-for Nx in [256]
-    for advection in [WENO5(zweno = true, vector_invariant=VelocityStencil())]
+advection_schemes = [WENO5(zweno = true, vector_invariant=VelocityStencil()), 
+                     WENO5(zweno = true, vector_invariant=VorticityStencil()),
+                     WENO5(zweno = true), 
+                     VectorInvariant()]
+
+for Nx in [64, 128, 256, 512]
+    for advection in advection_schemes
         experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end
