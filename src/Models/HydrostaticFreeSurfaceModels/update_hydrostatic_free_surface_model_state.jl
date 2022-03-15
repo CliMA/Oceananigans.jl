@@ -30,7 +30,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 
     # Fill halos for velocities and tracers. On the CubedSphere, the halo filling for velocity fields is wrong.
-    fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     # This _refills_ the halos for horizontal velocity fields when grid::ConformalCubedSphereGrid
     # For every other type of grid, fill_horizontal_velocity_halos! does nothing.
@@ -38,16 +38,16 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     compute_w_from_continuity!(model)
 
-    fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
 
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
-    fill_halo_regions!(model.pressure.pHY′, model.architecture)
+    fill_halo_regions!(model.pressure.pHY′)
 
     return nothing
 end

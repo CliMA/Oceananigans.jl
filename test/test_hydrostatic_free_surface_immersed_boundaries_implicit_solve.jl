@@ -65,7 +65,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
             solve!(η, solver, rhs, g, Δt)
 
-            fill_halo_regions!(η, arch)
+            fill_halo_regions!(η)
 
             #=
             println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
@@ -78,7 +78,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             println("")
 
             pressure_correct_velocities!(model, Δt)
-            fill_halo_regions!(u, arch)
+            fill_halo_regions!(u)
 
             println("u")
             show(stdout,"text/plain", u.data[1:Nx, 1:Ny, 1])
