@@ -16,7 +16,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant
+using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
 
 #####
@@ -46,12 +46,12 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
                            momentum_advection = VectorInvariant())
 
-    underlying_grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
-                                x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
-                                topology = (Periodic, Periodic, Bounded))
+    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
+                           x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
+                           topology = (Periodic, Periodic, Bounded))
     
     @inline bottom(x, y) = Int((((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3)))))
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
@@ -180,9 +180,8 @@ function visualize_bickley_jet(experiment_name)
 end
 
 for Nx in [256]
-    for momentum_advection in [WENO5(zweno = true, vector_invariant=true)]
-        experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
+    for advection in [VectorInvariant()] #[WENO5(zweno = true, vector_invariant=VelocityStencil())]
+        experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end
 end
-

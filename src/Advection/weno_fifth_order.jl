@@ -197,10 +197,14 @@ return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ
 
 # Flavours of WENO
 const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const WENOVectorInvariantVel  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, VelocityStencil}
-const WENOVectorInvariantVort = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, VorticityStencil}
 
-const WENOVectorInvariant = Union{WENOVectorInvariantVel, WENOVectorInvariantVort}
+const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}  = 
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF}
+const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} = 
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF}
+
+const WENOVectorInvariant =
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:Union{VelocityStencil, VorticityStencil}, WF}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
@@ -230,7 +234,6 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
         Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
-@inline boundary_buffer(::WENOVectorInvariant) = 3
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_fourth_order, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_fourth_order, c)
@@ -361,62 +364,7 @@ end
 ##### VectorInvariant reconstruction (based on JS or Z) (z-direction Val{3} is different from x- and y-directions)
 #####
 
-@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, ::Val{3}, idx, loc, u)
-    i, j, k = ijk
-
-    u₂, u₁, u₀ = left_stencil_z(i, j, k, u)
-    
-    β₀ = left_biased_β₀(FT, u₀, T, scheme, Val(3), idx, loc)
-    β₁ = left_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
-    β₂ = left_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
-
-    if scheme isa ZWENO
-        τ₅ = abs(β₂ - β₀)
-        α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-        α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-    else
-        α₀ = scheme.C3₀ / (β₀ + FT(ε))^ƞ
-        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-        α₂ = scheme.C3₂ / (β₂ + FT(ε))^ƞ
-    end
-    Σα = α₀ + α₁ + α₂
-    w₀ = α₀ / Σα
-    w₁ = α₁ / Σα
-    w₂ = α₂ / Σα
-
-    return w₀, w₁, w₂
-end
-
-@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, ::Val{3}, idx, loc, u)
-    i, j, k = ijk
-    
-    u₂, u₁, u₀ = right_stencil_z(i, j, k, u)
-
-    β₀ = right_biased_β₀(FT, u₀, T, scheme, Val(3), idx, loc)
-    β₁ = right_biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
-    β₂ = right_biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
-
-    if scheme isa ZWENO
-        τ₅ = abs(β₂ - β₀)
-        α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-        α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-        α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-    else    
-        α₀ = scheme.C3₂ / (β₀ + FT(ε))^ƞ
-        α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-        α₂ = scheme.C3₀ / (β₂ + FT(ε))^ƞ
-    end
-        
-    Σα = α₀ + α₁ + α₂
-    w₀ = α₀ / Σα
-    w₁ = α₁ / Σα
-    w₂ = α₂ / Σα
-
-    return w₀, w₁, w₂
-end
-
-@inline function left_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, dir, idx, loc, u, v)
+@inline function left_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
     i, j, k = ijk
 
     u₂, u₁, u₀ = tangential_left_stencil_y(i, j, k, dir, u)
@@ -452,7 +400,7 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function right_biased_weno5_weights(FT, ijk, T, scheme::WENOVectorInvariantVel, dir, idx, loc, u, v)
+@inline function right_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
     i, j, k = ijk
     
     u₂, u₁, u₀ = tangential_right_stencil_y(i, j, k, dir, u)
@@ -549,56 +497,91 @@ end
 ##### Biased interpolation functions
 #####
 
-pass_stencil(ψ, i, j, k, scheme) = ψ 
-pass_stencil(ψ, i, j, k, ::WENOVectorInvariant) = (i, j, k)
+pass_stencil(ψ, i, j, k, scheme, args...) = ψ 
+pass_stencil(ψ, i, j, k, scheme, ::Type{VelocityStencil}) = (i, j, k)
 
-@inline function weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_x(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), XS, scheme, Val(1), idx, loc, args...)
-    return w₀ * left_biased_p₀(scheme, ψ₀, XT, Val(1), idx, loc) + 
-           w₁ * left_biased_p₁(scheme, ψ₁, XT, Val(1), idx, loc) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, XT, Val(1), idx, loc)
+for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT], [:XS, :YS, :ZS]) 
+    for side in (:left, :right)
+        interpolate_func = Symbol(:weno_, side, :_biased_interpolate_, interp)
+        stencil       = Symbol(side, :_stencil_, dir)
+        weno5_weights = Symbol(side, :_biased_weno5_weights)
+        biased_p₀ = Symbol(side, :_biased_p₀)
+        biased_p₁ = Symbol(side, :_biased_p₁)
+        biased_p₂ = Symbol(side, :_biased_p₂)
+
+        @eval begin
+            @inline function $interpolate_func(i, j, k, grid, 
+                                               scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, 
+                                               ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
+                
+                ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
+                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, Nothing), $cS, scheme, Val($val), idx, loc, Nothing, args...)
+                return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
+                       w₁ * $biased_p₁(scheme, ψ₁, $cT, Val($val), idx, loc) + 
+                       w₂ * $biased_p₂(scheme, ψ₂, $cT, Val($val), idx, loc)
+            end
+
+            @inline function $interpolate_func(i, j, k, grid, 
+                                               scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS}, 
+                                               ψ, idx, loc, VI, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
+
+                ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
+                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), $cS, scheme, Val($val), idx, loc, VI, args...)
+                return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
+                       w₁ * $biased_p₁(scheme, ψ₁, $cT, Val($val), idx, loc) + 
+                       w₂ * $biased_p₂(scheme, ψ₂, $cT, Val($val), idx, loc)
+            end
+        end
+    end
 end
 
-@inline function weno_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_y(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), YS, scheme, Val(2), idx, loc, args...)
-    return w₀ * left_biased_p₀(scheme, ψ₀, YT, Val(2), idx, loc) + 
-           w₁ * left_biased_p₁(scheme, ψ₁, YT, Val(2), idx, loc) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, YT, Val(2), idx, loc)
-end
+# @inline function weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_x(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), XS, scheme, Val(1), idx, loc, VI, args...)
+#     return w₀ * left_biased_p₀(scheme, ψ₀, XT, Val(1), idx, loc) + 
+#            w₁ * left_biased_p₁(scheme, ψ₁, XT, Val(1), idx, loc) + 
+#            w₂ * left_biased_p₂(scheme, ψ₂, XT, Val(1), idx, loc)
+# end
 
-@inline function weno_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_z(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), ZS, scheme, Val(3), idx, loc, args...)
-    return w₀ * left_biased_p₀(scheme, ψ₀, ZT, Val(3), idx, loc) +
-           w₁ * left_biased_p₁(scheme, ψ₁, ZT, Val(3), idx, loc) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, ZT, Val(3), idx, loc)
-end
+# @inline function weno_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_y(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), YS, scheme, Val(2), idx, loc, VI, args...)
+#     return w₀ * left_biased_p₀(scheme, ψ₀, YT, Val(2), idx, loc) + 
+#            w₁ * left_biased_p₁(scheme, ψ₁, YT, Val(2), idx, loc) + 
+#            w₂ * left_biased_p₂(scheme, ψ₂, YT, Val(2), idx, loc)
+# end
 
-@inline function weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_x(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), XS, scheme, Val(1), idx, loc, args...)
-    return w₀ * right_biased_p₀(scheme, ψ₀, XT, Val(1), idx, loc) +
-           w₁ * right_biased_p₁(scheme, ψ₁, XT, Val(1), idx, loc) +
-           w₂ * right_biased_p₂(scheme, ψ₂, XT, Val(1), idx, loc)
-end
+# @inline function weno_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = left_stencil_z(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = left_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), ZS, scheme, Val(3), idx, loc, VI, args...)
+#     return w₀ * left_biased_p₀(scheme, ψ₀, ZT, Val(3), idx, loc) +
+#            w₁ * left_biased_p₁(scheme, ψ₁, ZT, Val(3), idx, loc) + 
+#            w₂ * left_biased_p₂(scheme, ψ₂, ZT, Val(3), idx, loc)
+# end
 
-@inline function weno_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_y(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), YS, scheme, Val(2), idx, loc, args...)
-    return w₀ * right_biased_p₀(scheme, ψ₀, YT, Val(2), idx, loc) + 
-           w₁ * right_biased_p₁(scheme, ψ₁, YT, Val(2), idx, loc) + 
-           w₂ * right_biased_p₂(scheme, ψ₂, YT, Val(2), idx, loc)
-end
+# @inline function weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_x(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), XS, scheme, Val(1), idx, loc, VI, args...)
+#     return w₀ * right_biased_p₀(scheme, ψ₀, XT, Val(1), idx, loc) +
+#            w₁ * right_biased_p₁(scheme, ψ₁, XT, Val(1), idx, loc) +
+#            w₂ * right_biased_p₂(scheme, ψ₂, XT, Val(1), idx, loc)
+# end
 
-@inline function weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-    ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_z(i, j, k, ψ, grid, args...)
-    w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme), ZS, scheme, Val(3), idx, loc, args...)
-    return w₀ * right_biased_p₀(scheme, ψ₀, ZT, Val(3), idx, loc) + 
-           w₁ * right_biased_p₁(scheme, ψ₁, ZT, Val(3), idx, loc) +
-           w₂ * right_biased_p₂(scheme, ψ₂, ZT, Val(3), idx, loc)
-end
+# @inline function weno_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_y(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), YS, scheme, Val(2), idx, loc, VI, args...)
+#     return w₀ * right_biased_p₀(scheme, ψ₀, YT, Val(2), idx, loc) + 
+#            w₁ * right_biased_p₁(scheme, ψ₁, YT, Val(2), idx, loc) + 
+#            w₂ * right_biased_p₂(scheme, ψ₂, YT, Val(2), idx, loc)
+# end
+
+# @inline function weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}, ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ψ₂, ψ₁, ψ₀ = ψₜ = right_stencil_z(i, j, k, ψ, grid, args...)
+#     w₀, w₁, w₂ = right_biased_weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), ZS, scheme, Val(3), idx, loc, VI, args...)
+#     return w₀ * right_biased_p₀(scheme, ψ₀, ZT, Val(3), idx, loc) + 
+#            w₁ * right_biased_p₁(scheme, ψ₁, ZT, Val(3), idx, loc) +
+#            w₂ * right_biased_p₂(scheme, ψ₂, ZT, Val(3), idx, loc)
+# end
 
 #####
 ##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)

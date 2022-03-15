@@ -82,6 +82,13 @@ const ATD = AbstractTimeDiscretization
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j - 2, k, ibg) | solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg) | solid_node(i, j + 2, k, ibg)
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k - 2, ibg) | solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg) | solid_node(i, j, k + 2, ibg)
 
+using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil
+
+@inline function near_horizontal_boundary(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+    return solid_interface(i - 2, j, k, ibg) | solid_interface(i - 1, j, k, ibg) | solid_interface(i, j, k, ibg) | solid_interface(i + 1, j, k, ibg) | solid_interface(i + 2, j, k, ibg) | 
+           solid_interface(i, j - 2, k, ibg) | solid_interface(i, j - 1, k, ibg) | solid_interface(i, j, k, ibg) | solid_interface(i, j + 1, k, ibg) | solid_interface(i, j + 2, k, ibg)
+end
+
 # Takes forever to compile, but works.
 # @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
 # @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
@@ -110,24 +117,17 @@ for bias in (:symmetric, :left_biased, :right_biased)
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
 
-                # @inline $alt_interp(i, j, k, ibg::IBG, scheme, ψ) = $interp(i, j, k, ibg.grid, scheme, ψ)
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
+                    ifelse($near_boundary(i, j, k, ibg, scheme),
+                           $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
+                           $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
+
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, VI, u, v) =
+                    ifelse(near_horizontal_boundary(i, j, k, ibg, scheme),
+                       $interp(i, j, k, ibg, ζ, VorticityStencil, u, v),
+                       $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
             end
         end
     end
 end
 
-@inline near_any_boundary(i, j, k, ibg, scheme) = near_x_boundary(i, j, k, ibg, scheme) | near_y_boundary(i, j, k, ibg, scheme) | near_z_boundary(i, j, k, ibg, scheme) 
-
-for advection in (:U_dot_∇u, :U_dot_∇v)
-
-    # Conditional high-order interpolation in Bounded directions for VectorInvariant
-    @eval begin
-        using Oceananigans.Advection: VectorInvariant
-        import Oceananigans.Advection: $advection
-        
-        @inline $advection(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, U) =
-            ifelse(near_any_boundary(i, j, k, ibg, scheme),
-                   $advection(i, j, k, ibg.grid, VectorInvariant(), U),
-                   $advection(i, j, k, ibg.grid, scheme, U))
-    end
-end
