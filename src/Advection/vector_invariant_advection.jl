@@ -39,15 +39,15 @@ const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 
 @inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, v) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
-    ζᴿ = right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
 @inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, v) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
     û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
-    ζᴿ = right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 

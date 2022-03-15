@@ -180,7 +180,7 @@ function visualize_bickley_jet(experiment_name)
 end
 
 for Nx in [256]
-    for advection in [VectorInvariant()] #[WENO5(zweno = true, vector_invariant=VelocityStencil())]
+    for advection in [WENO5(zweno = true, vector_invariant=VelocityStencil())]
         experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end

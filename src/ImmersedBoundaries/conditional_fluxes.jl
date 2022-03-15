@@ -82,11 +82,20 @@ const ATD = AbstractTimeDiscretization
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j - 2, k, ibg) | solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg) | solid_node(i, j + 2, k, ibg)
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k - 2, ibg) | solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg) | solid_node(i, j, k + 2, ibg)
 
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil
+using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
-@inline function near_horizontal_boundary(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return solid_interface(i - 2, j, k, ibg) | solid_interface(i - 1, j, k, ibg) | solid_interface(i, j, k, ibg) | solid_interface(i + 1, j, k, ibg) | solid_interface(i + 2, j, k, ibg) | 
-           solid_interface(i, j - 2, k, ibg) | solid_interface(i, j - 1, k, ibg) | solid_interface(i, j, k, ibg) | solid_interface(i, j + 1, k, ibg) | solid_interface(i, j + 2, k, ibg)
+@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+    return solid_interface(c, f, c, i - 2, j, k, ibg) | solid_interface(c, f, c, i - 1, j, k, ibg) | 
+               solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i + 1, j, k, ibg) | solid_interface(c, f, c, i + 2, j, k, ibg) | 
+           solid_interface(c, f, c, i, j - 2, k, ibg) | solid_interface(c, f, c, i, j - 1, k, ibg) | 
+               solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i, j + 1, k, ibg) | solid_interface(c, f, c, i, j + 2, k, ibg)
+end
+
+@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+    return solid_interface(f, c, c, i - 2, j, k, ibg) | solid_interface(f, c, c, i - 1, j, k, ibg) | 
+               solid_interface(f, c, c, i, j, k, ibg) | solid_interface(f, c, c, i + 1, j, k, ibg) | solid_interface(f, c, c, i + 2, j, k, ibg) | 
+           solid_interface(f, c, c, i, j - 2, k, ibg) | solid_interface(f, c, c, i, j - 1, k, ibg) | 
+               solid_interface(f, c, c, i, j, k, ibg) | solid_interface(f, c, c, i, j + 1, k, ibg) | solid_interface(f, c, c, i, j + 2, k, ibg)
 end
 
 # Takes forever to compile, but works.
@@ -121,13 +130,24 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
                            $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
-
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, VI, u, v) =
-                    ifelse(near_horizontal_boundary(i, j, k, ibg, scheme),
-                       $interp(i, j, k, ibg, ζ, VorticityStencil, u, v),
-                       $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
             end
         end
     end
 end
+
+for bias in (:left_biased, :right_biased)
+    for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
+        interp     = Symbol(bias, :_interpolate_, dir)
+        alt_interp = Symbol(:_, interp)
+
+        near_horizontal_boundary = Symbol(:near_horizontal_boundary_, d)
+        @eval begin
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
+            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
+               $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
+               $interp(i, j, k, ibg.grid, scheme, ζ, VelocityStencil, u, v))
+        end
+    end
+end
+
 
