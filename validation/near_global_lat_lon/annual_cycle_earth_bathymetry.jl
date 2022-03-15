@@ -28,7 +28,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
-arch = CPU()
+arch = GPU()
 reference_density = 1035
 
 #####
