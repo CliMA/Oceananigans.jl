@@ -116,28 +116,34 @@ Keyword arguments
                         If `!precompute_metrics` (the default), horizontal spacings and areas
                         are computed on-the-fly during a simulation.
 
+- `topology`: Tuple of topologies (`Flat`, `Bounded`, Periodic`) for each direction. The vertical
+              `topology[3]` must be `Bounded`, while the latitude-longitude topology can be
+              `Bounded`, `Periodic`, or `Flat`. The default latitudinal `topology[2]` is `Bounded`.
+              The default longitudinal `topology[1]` is `Periodic`
+              if `diff(longitude) == 360` and `Bounded` otherwise.
+
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior.
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
-                               precompute_metrics = false,
+                               precompute_metrics = true,
                                size,
                                latitude,
                                longitude,
                                z,
                                topology = nothing,
                                radius = R_Earth,
+                               topology = nothing,
                                halo = (1, 1, 1))
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
         validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
-    
-    TX, TY, TZ = topo
+    TX, TY, TZ = topology
     
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, Nλ, Hλ, longitude, architecture)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, Nφ, Hφ, latitude,  architecture)
@@ -186,7 +192,7 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo, topo)
+function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
 
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
@@ -200,17 +206,19 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo, topo)
     Lλ = λ₂ - λ₁
     Lφ = φ₂ - φ₁
 
-    if topo isa Nothing
+    if !isnothing(topology)
+        TX, TY, TZ = topology
+        TZ === Bounded || throw(ArgumentError("z topology must be Bounded"))
+    else
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
         TZ = Bounded
-        topo = (TX, TY, TZ)
     end
-    
-    Nλ, Nφ, Nz = validate_size(topo..., size)
-    Hλ, Hφ, Hz = validate_halo(topo..., halo)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
+    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
+
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)

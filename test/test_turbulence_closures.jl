@@ -42,9 +42,9 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
     end
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
+    fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = datatuples(velocities, tracers)
+    U, C = velocities, tracers
 
     @test ∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 2ν
@@ -84,9 +84,9 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
     interior(T)[:, 1, 4] .= [0,  1, 0]
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
+    fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = datatuples(velocities, tracers)
+    U, C = velocities, tracers
 
     return (∇_dot_qᶜ(2, 1, 3, grid, closureh, C.T, Val(1), clock, nothing) == -  8κh &&
             ∇_dot_qᶜ(2, 1, 3, grid, closurez, C.T, Val(1), clock, nothing) == - 10κz &&

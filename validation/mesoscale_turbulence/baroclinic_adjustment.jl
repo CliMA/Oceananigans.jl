@@ -180,7 +180,7 @@ catch err
     showerror(stdout, err)
 end
 
-@info "Simulation completed in " * prettytime(simulation.run_time)
+@info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
 #####
 ##### Visualize

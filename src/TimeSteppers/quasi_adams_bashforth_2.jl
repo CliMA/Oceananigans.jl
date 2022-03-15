@@ -18,9 +18,27 @@ end
                                     Gⁿ = TendencyFields(grid, tracers),
                                     G⁻ = TendencyFields(grid, tracers))
 
-Return an QuasiAdamsBashforth2TimeStepper object with tendency fields and
-`grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
-kwargs.
+Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
+on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻` can be
+specified via  optional `kwargs`.
+
+The 2nd-order quasi Adams-Bashforth timestepper steps forward the state `Uⁿ` by `Δt` via
+
+```julia
+Uⁿ⁺¹ = Uⁿ + Δt * [(3/2 + χ) * Gⁿ - (1/2 + χ) * Gⁿ⁻¹]
+```
+
+where `Uⁿ` is the state at the ``n``-th timestep, `Gⁿ` is the tendency
+at the ``n``-th timestep, and `Gⁿ⁻¹` is the tendency at the previous
+timestep (`G⁻`).
+
+!!! note "First timestep"
+    For the first timestep, since there are no saved tendencies from the previous timestep,
+    the `QuasiAdamsBashforth2TimeStepper` performs an Euler timestep:
+
+    ```julia
+    Uⁿ⁺¹ = Uⁿ + Δt * Gⁿ
+    ```
 """
 function QuasiAdamsBashforth2TimeStepper(grid, tracers,
                                          χ = 0.1;
@@ -135,7 +153,7 @@ function ab2_step!(model, Δt, χ)
 end
 
 """
-Time step via
+Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 

@@ -13,13 +13,15 @@ using Oceananigans: Clock
 function test_DateTime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(grid=grid, clock=clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
-    simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
+    simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
 
     filepath = "test_DateTime.nc"
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+    isfile(filepath) && rm(filepath)
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); filepath,
+                                                         schedule = IterationInterval(1))
 
     run!(simulation)
 
@@ -44,14 +46,15 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(grid=grid, clock=clock,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
 
     filepath = "test_TimeDate.nc"
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+    isfile(filepath) && rm(filepath)
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); filepath,
+                                                         schedule = IterationInterval(1))
 
     run!(simulation)
 
@@ -80,9 +83,7 @@ function test_thermal_bubble_netcdf_output(arch)
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+    model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -99,18 +100,24 @@ function test_thermal_bubble_netcdf_output(arch)
                    "S" => model.tracers.S)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
+    isfile(nc_filepath) && rm(nc_filepath)
     nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10), verbose=true)
     push!(simulation.output_writers, nc_writer)
 
-    i_slice = 1:2:10
+    i_slice = 1:10
     j_slice = 13
     k_slice = 9:11
-    field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
+    indices = (i_slice, j_slice, k_slice)
     j_slice = j_slice:j_slice  # So we can correctly index with it for later tests.
 
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
-    nc_sliced_writer = NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, schedule=IterationInterval(10),
-                                          array_type=Array{Float32}, field_slicer=field_slicer, verbose=true)
+    isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
+    nc_sliced_writer = NetCDFOutputWriter(model, outputs,
+                                          filepath = nc_sliced_filepath,
+                                          schedule = IterationInterval(10),
+                                          array_type = Array{Float32},
+                                          indices = indices,
+                                          verbose = true)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
@@ -247,9 +254,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+    model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -261,9 +266,9 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                                   filepath=nc_filepath,
-                                   schedule=IterationInterval(10),
-                                   field_slicer=FieldSlicer(with_halos=true))
+                                   filepath = nc_filepath,
+                                   schedule = IterationInterval(10),
+                                   with_halos = true)
 
     push!(simulation.output_writers, nc_writer)
 

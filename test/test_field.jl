@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
 using Oceananigans.Fields: regrid!, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
 using Oceananigans.Fields: reduced_location
@@ -86,23 +85,13 @@ function run_field_reduction_tests(FT, arch)
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
         for dims in dims_to_test
-            @test all(isapprox(minimum(ϕ, dims=dims),
-                               minimum(ϕ_vals, dims=dims), atol=4ε))
-
-            @test all(isapprox(maximum(ϕ, dims=dims),
-                               maximum(ϕ_vals, dims=dims), atol=4ε))
-
-            @test all(isapprox(mean(ϕ, dims=dims),
-                               mean(ϕ_vals, dims=dims), atol=4ε))
-
-            @test all(isapprox(minimum(sin, ϕ, dims=dims),
-                               minimum(sin, ϕ_vals, dims=dims), atol=4ε))
-
-            @test all(isapprox(maximum(cos, ϕ, dims=dims),
-                               maximum(cos, ϕ_vals, dims=dims), atol=4ε))
-
-            @test all(isapprox(mean(cosh, ϕ, dims=dims),
-                               mean(cosh, ϕ_vals, dims=dims), atol=5ε))
+            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(mean(ϕ, dims=dims), mean(ϕ_vals, dims=dims), atol=4ε))
+                               
+            @test all(isapprox(minimum(sin, ϕ, dims=dims), minimum(sin, ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(maximum(cos, ϕ, dims=dims), maximum(cos, ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(mean(cosh, ϕ, dims=dims), mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
 
         CUDA.allowscalar(true)
@@ -218,6 +207,22 @@ end
             @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
             @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
 
+            # "View" fields
+            for f in [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+                test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
+                test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3))]
+                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))] 
+
+                for (t, indices) in enumerate(test_indices)
+                    field_sz = test_field_sizes[t]
+                    parent_sz = test_parent_sizes[t]
+                    f_view = view(f, indices...)
+                    @test size(f_view) == field_sz
+                    @test size(parent(f_view)) == parent_sz
+                end
+            end
+        
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             for side in (:east, :west, :north, :south, :top, :bottom)
                 for wrong_bc in (ValueBoundaryCondition(0), 
@@ -356,18 +361,6 @@ end
         @test has_velocities((:u, :v)) == false
         @test has_velocities((:u, :v, :w)) == true
 
-        grid = RectilinearGrid(CPU(), size=(4, 6, 8), extent=(1, 1, 1))
-        ϕ = CenterField(grid)
-        @test cpudata(ϕ).parent isa Array
-
-        if CUDA.has_cuda()
-            grid = RectilinearGrid(GPU(), size=(4, 6, 8), extent=(1, 1, 1))
-            ϕ = CenterField(grid)
-            @test cpudata(ϕ).parent isa Array
-        end
-
-        @test FieldSlicer() isa FieldSlicer
-
         @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
 
         grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
@@ -421,6 +414,7 @@ end
                 fine_column_stretched_c[1, 1, 2] = c₂
             end
 
+            @show typeof(fine_stretched_c[:, :, 1])
             fine_stretched_c[:, :, 1] .= c₁
             fine_stretched_c[:, :, 2] .= c₂
 

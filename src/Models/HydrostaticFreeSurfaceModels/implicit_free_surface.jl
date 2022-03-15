@@ -78,7 +78,7 @@ is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
 function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
+    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
     return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 
@@ -119,7 +119,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
-    fill_halo_regions!(η, arch)
+    fill_halo_regions!(η)
     
     return NoneEvent()
 end

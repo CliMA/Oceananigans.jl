@@ -128,10 +128,10 @@ continents[water] .= NaN
 sp = @lift begin
     uri .= ui($iter)
     vri .= vi($iter)
-    fill_halo_regions!(uri, CPU())
-    fill_halo_regions!(vri, CPU())
+    fill_halo_regions!(uri)
+    fill_halo_regions!(vri)
     spi .= sqrt(uri^2 + vri^2)
-    fill_halo_regions!(spi, CPU())
+    fill_halo_regions!(spi)
     sp = spi[1:Nx+1, 1:Ny, 1]
     # sp[land] .= NaN
     return sp

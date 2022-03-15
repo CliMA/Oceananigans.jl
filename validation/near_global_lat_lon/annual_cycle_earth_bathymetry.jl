@@ -199,13 +199,15 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
                                    preconditioner_settings = (ε = 0.01, nzrel = 6))
 
+equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
-                                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
+                                    buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = (:T, :S),
                                     closure = (background_diffusivity..., convective_adjustment)) #,
                                     # forcing = (u=Fu, v=Fv))
