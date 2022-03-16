@@ -88,7 +88,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     if dev isa Nothing
         mrg = grid
     else
-        mrg = MultiRegionGrid(grid, partition = XPartition(2), devices = dev)
+        mrg = MultiRegionGrid(grid, partition = XPartition(length(dev)), devices = dev)
     end
 
     if grid isa RectilinearGrid
@@ -152,7 +152,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 end
 
 simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=2048, Ny=512)
-simulation_parallel = run_solid_body_tracer_advection(Nx=4096, Ny=512, dev=(0, 1))
+simulation_parallel = run_solid_body_tracer_advection(Nx=8192, Ny=512, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())

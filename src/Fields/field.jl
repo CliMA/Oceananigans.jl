@@ -474,6 +474,7 @@ function Adapt.adapt_structure(to, reduced_field::ReducedField)
                              nothing,
                              nothing,
                              nothing,
+                             nothing,
                              nothing)
 end
 
