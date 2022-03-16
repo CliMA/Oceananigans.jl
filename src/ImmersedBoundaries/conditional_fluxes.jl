@@ -85,15 +85,15 @@ const ATD = AbstractTimeDiscretization
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return solid_interface(f, c, c, i - 2, j, k, ibg) | solid_interface(f, c, c, i - 1, j, k, ibg) | 
-               solid_interface(f, c, c, i, j, k, ibg) | solid_interface(f, c, c, i + 1, j, k, ibg) | solid_interface(f, c, c, i + 2, j, k, ibg) | 
-           solid_interface(f, c, c, i, j - 1, k, ibg) | solid_interface(f, c, c, i, j + 1, k, ibg)
+    return solid_interface(c, f, c, i - 2, j, k, ibg) | solid_interface(c, f, c, i - 1, j, k, ibg) | 
+               solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i + 1, j, k, ibg) | solid_interface(c, f, c, i + 2, j, k, ibg) | 
+           solid_interface(c, f, c, i, j - 1, k, ibg) | solid_interface(c, f, c, i, j + 1, k, ibg)
 end
 
 @inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return solid_interface(c, f, c, i - 1, j, k, ibg) | solid_interface(c, f, c, i + 1, j, k, ibg) | 
-           solid_interface(c, f, c, i, j - 2, k, ibg) | solid_interface(c, f, c, i, j - 1, k, ibg) | 
-               solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i, j + 1, k, ibg) | solid_interface(c, f, c, i, j + 2, k, ibg)
+    return solid_interface(f, c, c, i - 1, j, k, ibg) | solid_interface(f, c, c, i + 1, j, k, ibg) | 
+           solid_interface(f, c, c, i, j - 2, k, ibg) | solid_interface(f, c, c, i, j - 1, k, ibg) | 
+               solid_interface(f, c, c, i, j, k, ibg) | solid_interface(f, c, c, i, j + 1, k, ibg) | solid_interface(f, c, c, i, j + 2, k, ibg)
 end
 
 # Takes forever to compile, but works.

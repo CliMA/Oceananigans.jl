@@ -203,8 +203,7 @@ const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}  =
 const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF}
 
-const WENOVectorInvariant =
-      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:Union{VelocityStencil, VorticityStencil}, WF}
+const WENOVectorInvariant = WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
@@ -269,29 +268,26 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
 @inline right_stencil_y(i, j, k, ψ, args...) = @inbounds ( (ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]), (ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]), (ψ[i, j, k], ψ[i, j+1, k], ψ[i, j+2, k]) )
 @inline right_stencil_z(i, j, k, ψ, args...) = @inbounds ( (ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]), (ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]), (ψ[i, j, k], ψ[i, j, k+1], ψ[i, j, k+2]) )
 
-@inline left_stencil_x(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i-3, j, k, grid, args...), ψ(i-2, j, k, grid, args...), ψ(i-1, j, k, grid, args...)), (ψ(i-2, j, k, grid, args...), ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...), ψ(i+1, j, k, grid, args...)) )
-@inline left_stencil_y(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j-3, k, grid, args...), ψ(i, j-2, k, grid, args...), ψ(i, j-1, k, grid, args...)), (ψ(i, j-2, k, grid, args...), ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j+1, k, grid, args...)) )
-@inline left_stencil_z(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j, k-3, grid, args...), ψ(i, j, k-2, grid, args...), ψ(i, j, k-1, grid, args...)), (ψ(i, j, k-2, grid, args...), ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j, k+1, grid, args...)) )
+@inline left_stencil_x(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i-3, j, k, args...), ψ(i-2, j, k, args...), ψ(i-1, j, k, args...)), (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)) )
+@inline left_stencil_y(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j-3, k, args...), ψ(i, j-2, k, args...), ψ(i, j-1, k, args...)), (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)) )
+@inline left_stencil_z(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j, k-3, args...), ψ(i, j, k-2, args...), ψ(i, j, k-1, args...)), (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)) )
 
-@inline right_stencil_x(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i-2, j, k, grid, args...), ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i-1, j, k, grid, args...), ψ(i, j, k, grid, args...), ψ(i+1, j, k, grid, args...)), (ψ(i, j, k, grid, args...), ψ(i+1, j, k, grid, args...), ψ(i+2, j, k, grid, args...)) )
-@inline right_stencil_y(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j-2, k, grid, args...), ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j+1, k, grid, args...)), (ψ(i, j, k, grid, args...), ψ(i, j+1, k, grid, args...), ψ(i, j+2, k, grid, args...)) )
-@inline right_stencil_z(i, j, k, ψ::Function, grid, args...) = @inbounds ( (ψ(i, j, k-2, grid, args...), ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...)), (ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...), ψ(i, j, k+1, grid, args...)), (ψ(i, j, k, grid, args...), ψ(i, j, k+1, grid, args...), ψ(i, j, k+2, grid, args...)) )
+@inline right_stencil_x(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)), (ψ(i, j, k, args...), ψ(i+1, j, k, args...), ψ(i+2, j, k, args...)) )
+@inline right_stencil_y(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)), (ψ(i, j, k, args...), ψ(i, j+1, k, args...), ψ(i, j+2, k, args...)) )
+@inline right_stencil_z(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)), (ψ(i, j, k, args...), ψ(i, j, k+1, args...), ψ(i, j, k+2, args...)) )
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_left_stencil_x(i, j, k, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, v)
-@inline tangential_left_stencil_y(i, j, k, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, u)
+@inline tangential_left_stencil_u(i, j, k, ::Val{1}, u)  = @inbounds left_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, ::Val{2}, v)  = @inbounds left_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
 
-@inline tangential_right_stencil_x(i, j, k, ::Val{1}, v) = @inbounds right_stencil_x(i, j, k, v)
-@inline tangential_right_stencil_y(i, j, k, ::Val{2}, u) = @inbounds right_stencil_y(i, j, k, u)
-
-# Perpendicular to the interpolation direction! (take stencils perpendicular to the interpolation direction)
-@inline tangential_left_stencil_x(i, j, k, ::Val{2}, v)  = @inbounds ( (v[i-1, j-2, k], v[i, j-2, k], v[i+1, j-2, k]), (v[i-1, j-1, k], v[i, j-1, k], v[i+1, j-1, k]), (v[i-1, j, k], v[i, j, k], v[i+1, j, k]) )
-@inline tangential_left_stencil_y(i, j, k, ::Val{1}, u)  = @inbounds ( (u[i-2, j-1, k], u[i-2, j, k], u[i-2, j+1, k]), (u[i-1, j-1, k], u[i-1, j, k], u[i-1, j+1, k]), (u[i, j-1, k], u[i, j, k], u[i, j+1, k]) )
-
-@inline tangential_right_stencil_x(i, j, k, ::Val{2}, v) = @inbounds ( (v[i-1, j-1, k], v[i, j-1, k], v[i+1, j-1, k]), (v[i-1, j, k], v[i, j, k], v[i+1, j, k]), (v[i-1, j+1, k], v[i, j+1, k], v[i+1, j+1, k]) )
-@inline tangential_right_stencil_y(i, j, k, ::Val{1}, u) = @inbounds ( (u[i-1, j-1, k], u[i-1, j, k], u[i-1, j+1, k]), (u[i, j-1, k], u[i, j, k], u[i, j+1, k]), (u[i+1, j-1, k], u[i+1, j, k], u[i+1, j+1, k]) )
+@inline tangential_right_stencil_u(i, j, k, ::Val{1}, u)  = @inbounds right_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
 
 #####
 ##### biased pₖ for û calculation
@@ -367,8 +363,8 @@ end
 @inline function left_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
     i, j, k = ijk
 
-    u₂, u₁, u₀ = tangential_left_stencil_y(i, j, k, dir, u)
-    v₂, v₁, v₀ = tangential_left_stencil_x(i, j, k, dir, v)
+    u₂, u₁, u₀ = tangential_left_stencil_u(i, j, k, dir, u)
+    v₂, v₁, v₀ = tangential_left_stencil_v(i, j, k, dir, v)
 
     βu₀ = left_biased_β₀(FT, u₀, T, scheme, dir, idx, loc)
     βu₁ = left_biased_β₁(FT, u₁, T, scheme, dir, idx, loc)
@@ -403,8 +399,8 @@ end
 @inline function right_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
     i, j, k = ijk
     
-    u₂, u₁, u₀ = tangential_right_stencil_y(i, j, k, dir, u)
-    v₂, v₁, v₀ = tangential_right_stencil_x(i, j, k, dir, v)
+    u₂, u₁, u₀ = tangential_right_stencil_u(i, j, k, dir, u)
+    v₂, v₁, v₀ = tangential_right_stencil_v(i, j, k, dir, v)
 
     βu₀ = right_biased_β₀(FT, u₀, T, scheme, Val(2), idx, loc)
     βu₁ = right_biased_β₁(FT, u₁, T, scheme, Val(2), idx, loc)
