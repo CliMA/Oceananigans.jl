@@ -6,10 +6,11 @@ import Oceananigans.Fields:
                       validate_field_data,
                       validate_boundary_conditions, 
                       validate_indices,
-                      FieldBoundaryBuffers, 
-                      regularize_field_boundary_conditions
-                      
-import Oceananigans.BoundaryConditions: FieldBoundaryConditions
+                      FieldBoundaryBuffers
+
+import Oceananigans.BoundaryConditions: 
+                FieldBoundaryConditions, 
+                regularize_field_boundary_conditions
 import Oceananigans.Grids: new_data
 import Base: fill!
 
