@@ -255,8 +255,8 @@ T_init = file_init["T"]
 S_init = file_init["S"]
 
 set!(model, T=T_init, S=S_init)
-fill_halo_regions!(T, arch)
-fill_halo_regions!(S, arch)
+fill_halo_regions!(T)
+fill_halo_regions!(S)
 
 @info "model initialized"
 

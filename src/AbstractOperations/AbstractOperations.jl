@@ -23,7 +23,7 @@ using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: compute_at!
+import Oceananigans.Fields: compute_at!, recursive_fill
 
 #####
 ##### Basic functionality
@@ -34,7 +34,8 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
 # We have no halos to fill
-fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+@inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+@inline recursive_fill(filtered_fields, ::AbstractOperation,  Type) = nothing
 
 architecture(a::AbstractOperation) = architecture(a.grid)
 
