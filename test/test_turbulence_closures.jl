@@ -165,9 +165,8 @@ function run_time_step_with_catke_tests(arch, closure)
     return model
 end
 
-function compute_closure_specific_diffusive_cfl(closurename)
+function compute_closure_specific_diffusive_cfl(closure)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
-    closure = getproperty(TurbulenceClosures, closurename)()
 
     model = NonhydrostaticModel(; grid, closure)
     dcfl = DiffusiveCFL(0.1)
@@ -255,7 +254,10 @@ end
     @testset "Diagnostics" begin
         @info "  Testing turbulence closure diagnostics..."
         for closure in closures
+            closure = getproperty(TurbulenceClosures, closurename)()
             compute_closure_specific_diffusive_cfl(closure)
         end
+
+        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity()))
     end
 end
