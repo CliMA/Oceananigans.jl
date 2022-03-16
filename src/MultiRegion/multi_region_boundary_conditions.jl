@@ -14,16 +14,10 @@ import Oceananigans.BoundaryConditions:
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
-function fill_halo_regions_field_tuple!(full_fields, grid::MultiRegionGrid, args...; kwargs...) 
-    for field in full_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-end
+@inline extract_field_buffers(field::Field) = field.boundary_buffers
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, mrg::MultiRegionGrid, field_name::Symbol, prognostic_field_names=nothing)
-    loc = assumed_field_location(field_name)
-    return FieldBoundaryConditions(mrg, loc)
-end
+@inline fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...) = 
+        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, extract_field_buffers.(full_fields), args...; kwargs...)
 
 function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
@@ -37,15 +31,13 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
                               kwargs...)
 end
 
-@inline extract_field_bcs(field::MultiRegionField) = field.boundary_conditions
-
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
 fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-fill_halo_regions!(c::NTuple, bcs, mrg::MultiRegionGrid, args...; kwargs...) = 
-    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(Tuple(obj.regions for obj in c)), args...; kwargs...)
+fill_halo_regions!(c::NTuple, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
+    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(Tuple(obj.regions for obj in c)), Reference(Tuple(buff.regions for buff in buffers)), args...; kwargs...)
 
 function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
@@ -96,7 +88,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     return nothing
 end
 
-function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
+function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -152,8 +144,6 @@ function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
     return nothing
 end
   
-
-
 # Everything goes for Connected
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 
 validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing 
