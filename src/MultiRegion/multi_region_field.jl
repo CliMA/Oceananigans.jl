@@ -50,6 +50,11 @@ validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = construct_region
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, args...; kwargs...) =
   construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), args...; kwargs...)
 
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, mrg::MultiRegionGrid, field_name::Symbol, prognostic_field_names=nothing)
+    loc = assumed_field_location(field_name)
+    return FieldBoundaryConditions(mrg, loc)
+end
+
 FieldBoundaryBuffers(grid::MultiRegionGrid, args...) = construct_regionally(FieldBoundaryBuffers, grid, args...)
 
 function inject_regional_bcs(grid, region, partition, loc, args...;   
@@ -87,3 +92,5 @@ function Base.show(io::IO, field::MultiRegionField)
 
   print(io, prefix, middle, suffix)
 end
+
+
