@@ -1,7 +1,7 @@
-using Oceananigans.BoundaryConditions: default_auxiliary_field_boundary_condition
-using Oceananigans.Fields: FunctionField
+using Oceananigans.BoundaryConditions: default_auxiliary_bc
+using Oceananigans.Fields: FunctionField, data_summary
 
-import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions, validate_indices, FieldBoundaryBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.Grids: new_data
 import Base: fill!
@@ -33,27 +33,32 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
         getregion(f.grid, i),
         getregion(f.data, i),
         getregion(f.boundary_conditions, i),
+        getregion(f.indices, i),
         getregion(f.operand, i),
-        getregion(f.status, i))
+        getregion(f.status, i),
+        getregion(f.boundary_buffers, i))
 
-new_data(FT, mrg::MultiRegionGrid, loc) = construct_regionally(new_data, FT, mrg.region_grids, loc)
+new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg.region_grids, args...)
 
 fill!(f::MultiRegionField, val) = apply_regionally!(fill!, f, val)
 hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
-validate_field_data(loc, data, mrg::MultiRegionGrid) = apply_regionally!(validate_field_data, loc, data, mrg.region_grids)
-validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs) = apply_regionally!(validate_boundary_conditions, loc, mrg.region_grids, bcs)
+validate_field_data(loc, data, mrg::MultiRegionGrid, args...) = apply_regionally!(validate_field_data, loc, data, mrg.region_grids, args...)
+validate_boundary_conditions(loc, mrg::MultiRegionGrid, bcs, args...) = apply_regionally!(validate_boundary_conditions, loc, mrg.region_grids, bcs, args...)
+validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
 
-FieldBoundaryConditions(mrg::MultiRegionGrid, loc; kwargs...) =
-  construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc); kwargs...)
+FieldBoundaryConditions(mrg::MultiRegionGrid, loc, args...; kwargs...) =
+  construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), args...; kwargs...)
 
-function inject_regional_bcs(grid, region, partition, loc;   
-                              west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                              east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                             south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                             north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                            bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
-                               top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+FieldBoundaryBuffers(grid::MultiRegionGrid, args...) = construct_regionally(FieldBoundaryBuffers, grid, args...)
+
+function inject_regional_bcs(grid, region, partition, loc, args...;   
+                              west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                              east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                             south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                             north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                            bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                               top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
   west  = inject_west_boundary(region, partition, west)
@@ -63,6 +68,22 @@ function inject_regional_bcs(grid, region, partition, loc;
   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-
-
 Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
+
+function Base.show(io::IO, field::MultiRegionField)
+
+  bcs = field.boundary_conditions
+
+  prefix =
+      string("$(summary(field))\n",
+             "├── grid: ", summary(field.grid), '\n',
+             "├── boundary conditions: ", summary(bcs), '\n')
+  middle = isnothing(field.operand) ? "" :
+      string("├── operand: ", summary(field.operand), '\n',
+             "├── status: ", summary(field.status), '\n')
+
+  suffix = string("└── data: ", summary(field.data), '\n',
+                  "    └── ", data_summary(field))
+
+  print(io, prefix, middle, suffix)
+end

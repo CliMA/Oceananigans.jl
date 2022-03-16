@@ -78,7 +78,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     # 
 
     # A rectilinear domain
-    grid = RectilinearGrid(architecture, size = (Nx, Ny, 30),
+    grid = RectilinearGrid(architecture, size = (Nx, Ny, 48),
                                        halo = (3, 3, 3),
                                        topology = (Periodic, Periodic, Bounded),
                                        x = (0, 1),
@@ -139,11 +139,11 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
                             # stop_time = super_rotations * super_rotation_period)
 
-    progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, max|c|: %.2f",
+    progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f", #, max|c|: %.2f",
                                    sim.model.clock.iteration, sim.model.clock.time,
-                                   sim.Δt, maximum(abs, sim.model.tracers.c)))
+                                   sim.Δt)) #, maximum(abs, sim.model.tracers.c)))
 
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
     run!(simulation)
 
@@ -151,8 +151,8 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     return simulation
 end
 
-simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=512, Ny=512)
-simulation_parallel = run_solid_body_tracer_advection(Nx=1204, Ny=512, dev=(0, 1))
+simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=128, Ny=128)
+simulation_parallel = run_solid_body_tracer_advection(Nx=128, Ny=128, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())

@@ -79,20 +79,16 @@ end
 #####
 
 const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
+const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
 
 fill_first(bc1::PBCT, bc2)       = false
+fill_first(bc1::CBCT, bc2)       = false
+fill_first(bc1::CBCT, bc2::PBCT) = false
 fill_first(bc1, bc2::PBCT)       = true
 fill_first(bc1::PBCT, bc2::PBCT) = true
+fill_first(bc1::CBCT, bc2::CBCT) = true
+fill_first(bc1::PBCT, bc2::CBCT) = true
 fill_first(bc1, bc2)             = true
-
-fill_first(bc1::PBC, bc2)      = false
-fill_first(bc1::CBC, bc2)      = false
-fill_first(bc1, bc2::PBC)      = true
-fill_first(bc1::PBC, bc2::PBC) = true
-fill_first(bc1::CBC, bc2::CBC) = true
-fill_first(bc1::CBC, bc2::PBC) = true
-fill_first(bc1::PBC, bc2::CBC) = true
-fill_first(bc1, bc2)           = true
 
 #####
 ##### General fill_halo! kernels

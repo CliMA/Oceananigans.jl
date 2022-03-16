@@ -132,7 +132,6 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                latitude,
                                longitude,
                                z,
-                               topology = nothing,
                                radius = R_Earth,
                                topology = nothing,
                                halo = (1, 1, 1))

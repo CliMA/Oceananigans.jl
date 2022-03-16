@@ -53,10 +53,10 @@ inject_north_boundary(region, p::XPartition, bc) = bc
 function inject_west_boundary(region, p::XPartition, global_bc) 
     if region == 1
         typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
-                bc = ConnectedBoundaryCondition(length(p)) : 
+                bc = ConnectedBoundaryCondition((rank = region, from_rank = length(p))) : 
                 bc = global_bc
     else
-        bc = ConnectedBoundaryCondition(region - 1)
+        bc = ConnectedBoundaryCondition((rank = region, from_rank = region - 1))
     end
     return bc
 end
@@ -64,10 +64,10 @@ end
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
-                bc = ConnectedBoundaryCondition(1) : 
+                bc = ConnectedBoundaryCondition((rank = region, from_rank = 1)) : 
                 bc = global_bc
     else
-        bc = ConnectedBoundaryCondition(region + 1)
+        bc = ConnectedBoundaryCondition((rank = region, from_rank = region + 1))
     end
     return bc
 end

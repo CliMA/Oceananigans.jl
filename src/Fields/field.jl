@@ -13,18 +13,19 @@ import Statistics: norm, mean, mean!
 ##### The bees knees
 #####
 
-struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
     indices :: I
     operand :: O
     status :: S
+    boundary_buffers :: F
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S, I}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, indices, op, status)
+        return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
     end
 end
 
@@ -104,8 +105,9 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=not
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
     indices = validate_indices(indices, loc, grid)
+    buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
-    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status)
+    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
 
 """
