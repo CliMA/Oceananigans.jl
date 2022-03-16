@@ -1,7 +1,14 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary
 
-import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions, validate_indices, FieldBoundaryBuffers
+import Oceananigans.Fields: 
+                      set!,
+                      validate_field_data,
+                      validate_boundary_conditions, 
+                      validate_indices,
+                      FieldBoundaryBuffers, 
+                      regularize_field_boundary_conditions
+                      
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.Grids: new_data
 import Base: fill!

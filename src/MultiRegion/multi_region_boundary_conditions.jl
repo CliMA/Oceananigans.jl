@@ -3,21 +3,24 @@ using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 
 using Oceananigans.BoundaryConditions: CBCT, CBC
-import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs
+import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
 
 import Oceananigans.BoundaryConditions: 
             fill_west_halo!, 
             fill_east_halo!, 
             fill_halo_regions!,
-            fill_west_and_east_halo!,
-            regularize_field_boundary_conditions
-
+            fill_west_and_east_halo!
+            
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
 @inline extract_field_buffers(field::Field) = field.boundary_buffers
 
-@inline fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...) = 
-        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, extract_field_buffers.(full_fields), args...; kwargs...)
+@inline function fill_halo_regions_field_tuple!(full_fields, grid::MultiRegionField, args...; kwargs...) 
+    for field in full_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+end
+        # fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, extract_field_buffers.(full_fields), args...; kwargs...)
 
 function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
@@ -44,7 +47,6 @@ function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc::CBCT, arch, dep, gr
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
     return NoneEvent()
 end   
-
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
