@@ -105,7 +105,6 @@ end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
-
     default_top_bc = default_prognostic_bc(topology(grid, 3)(), Center())
 
     user_bc_names = keys(user_bcs)
