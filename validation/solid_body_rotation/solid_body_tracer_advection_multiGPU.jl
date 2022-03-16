@@ -78,7 +78,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     # 
 
     # A rectilinear domain
-    grid = RectilinearGrid(architecture, size = (Nx, Ny, 48),
+    grid = RectilinearGrid(architecture, size = (Nx, Ny, 1),
                                        halo = (3, 3, 3),
                                        topology = (Periodic, Periodic, Bounded),
                                        x = (0, 1),
@@ -151,8 +151,8 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     return simulation
 end
 
-simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=128, Ny=128)
-simulation_parallel = run_solid_body_tracer_advection(Nx=128, Ny=128, dev=(0, 1))
+simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=2048, Ny=512)
+simulation_parallel = run_solid_body_tracer_advection(Nx=4096, Ny=512, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())
