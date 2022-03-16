@@ -253,11 +253,12 @@ end
 
     @testset "Diagnostics" begin
         @info "  Testing turbulence closure diagnostics..."
-        for closure in closures
+        for closurename in closures
             closure = getproperty(TurbulenceClosures, closurename)()
             compute_closure_specific_diffusive_cfl(closure)
         end
 
+        # now test also a case for a tuple of closures
         compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity()))
     end
 end
