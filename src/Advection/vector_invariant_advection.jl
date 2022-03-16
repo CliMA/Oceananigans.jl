@@ -1,8 +1,18 @@
 using Oceananigans.Operators
 
-struct VectorInvariant end
+struct EnergyConservingScheme end
+struct EnstrophyConservingScheme end
+
+struct VectorInvariant{S}
+    scheme :: S
+end
+
+VectorInvariant(; scheme::S = EnergyConservingScheme()) where S = VectorInvariant{S}(scheme)
 
 const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
+
+const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
+const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
@@ -34,8 +44,20 @@ const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 #### Horizontal advection terms
 ####
 
-@inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariant, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-@inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariant, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline ζ_ℑx_vᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+@inline ζ_ℑy_uᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+
+@inline x_ζ_cross_U(i, j, k, grid, u, v) =
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) / Δxᶠᶜᶜ(i, j, k, grid)
+
+@inline y_ζ_cross_U(i, j, k, grid, u, v) =
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) / Δyᶜᶠᶜ(i, j, k, grid)
+
+@inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = x_ζ_cross_U(i, j, k, grid, u, v)
+@inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = y_ζ_cross_U(i, j, k, grid, u, v)
+
+@inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
+@inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
 @inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, v) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 

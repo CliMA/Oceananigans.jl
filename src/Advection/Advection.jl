@@ -22,7 +22,9 @@ export
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
     WENO5,
-    VectorInvariant
+    VectorInvariant,
+    EnergyConservingScheme,
+    EnstrophyConservingScheme
 
 using DocStringExtensions
 

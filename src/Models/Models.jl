@@ -4,7 +4,6 @@ export
     NonhydrostaticModel, ShallowWaterModel,
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields, PressureField
 
 using Oceananigans: AbstractModel
@@ -24,8 +23,6 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields
 
 using .ShallowWaterModels: ShallowWaterModel
