@@ -19,6 +19,7 @@ using Oceananigans.MultiRegion
 using Statistics
 using JLD2
 using Printf
+using CUDA
 
 const U = 0.1
 
@@ -109,7 +110,7 @@ end
 
 using BenchmarkTools
 
-simulation_serial = run_solid_body_rotation(Nx=256,  Ny=256, architecture=GPU())
+simulation_serial = run_solid_body_rotation(Nx=256,  Ny=512, architecture=GPU())
 simulation_parall = run_solid_body_rotation(Nx=512,  Ny=512, dev = (0, 1), architecture=GPU())
 
 using BenchmarkTools
