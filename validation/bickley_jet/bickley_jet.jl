@@ -190,7 +190,9 @@ advection_schemes = [WENO5(zweno = true, vector_invariant=VelocityStencil()),
                      WENO5(zweno = true), 
                      VectorInvariant()]
 
-for Nx in [64, 128, 256, 512]
+
+advection_schemes = [WENO5(zweno = true, vector_invariant=VelocityStencil())]
+for Nx in [128] #[64, 128, 256, 512]
     for advection in advection_schemes
         experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)

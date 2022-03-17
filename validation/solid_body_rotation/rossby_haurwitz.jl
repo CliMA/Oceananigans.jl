@@ -22,7 +22,8 @@ using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 # using GLMakie
 
 #  λ for latitude and ϕ for latitude is
-using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving, HydrostaticSphericalCoriolis
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
 # include("visualization.jl")
 
@@ -33,7 +34,7 @@ using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEns
 function run_rossby_haurwitz(; architecture = CPU(),
                                Nx = 90,        
                                Ny = 30,
-                               coriolis_scheme = VectorInvariantEnstrophyConserving(),
+                               coriolis_scheme = EnstrophyConservingScheme(),
                                advection_scheme = VectorInvariant(),
                                prefix = "vector_invariant")
     
