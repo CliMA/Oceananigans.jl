@@ -25,8 +25,8 @@ end
 
 create_buffer_x(arch, data, H, bc)    = nothing
 create_buffer_y(arch, data, H, bc)    = nothing
-create_buffer_x(arch, data, H, ::CBC) = arch_array(arch, zeros(H * size(parent(data), 2) * size(parent(data), 3)))
-create_buffer_y(arch, data, H, ::CBC) = arch_array(arch, zeros(size(parent(data), 1) * H * size(parent(data), 3)))
+create_buffer_x(arch, data, H, ::CBC) = arch_array(arch, zeros(H, size(parent(data), 2), size(parent(data), 3)))
+create_buffer_y(arch, data, H, ::CBC) = arch_array(arch, zeros(size(parent(data), 1), H, size(parent(data), 3)))
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 

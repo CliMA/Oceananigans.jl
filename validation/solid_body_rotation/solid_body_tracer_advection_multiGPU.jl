@@ -145,14 +145,14 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
-    run!(simulation)
+    # run!(simulation)
 
     @show simulation.run_wall_time
     return simulation
 end
 
-simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=2048, Ny=512)
-simulation_parallel = run_solid_body_tracer_advection(Nx=8192, Ny=512, dev=(0, 1))
+simulation_serial   = run_solid_body_tracer_advection(architecture=GPU(), Nx=16, Ny=16)
+simulation_parallel = run_solid_body_tracer_advection(Nx=16, Ny=16, dev=(0, 1))
 
 # model2 = run_solid_body_tracer_advection(Nx=256, Ny=64, multigpu=true, dev = (2, 3), super_rotations=0.01)
 # model0 = run_solid_body_tracer_advection(Nx=128, Ny=64, super_rotations=0.01, architecture=GPU())

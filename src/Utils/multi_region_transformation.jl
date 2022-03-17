@@ -86,7 +86,7 @@ end
 function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func(args...; kwargs...)
+    isnothing(mra) && isnothing(mrk) && return constructor(args...; kwargs...)
 
     if isnothing(mra) 
         devs = devices(mrk)

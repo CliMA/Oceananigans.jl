@@ -59,7 +59,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
-                                        tracers = :c,
+                                        tracers = (:T, :c),
                                         tracer_advection = WENO5(),
                                         buoyancy = nothing,
                                         closure = nothing)
@@ -82,6 +82,10 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
+    u, v, w = model.velocities
+    c = model.tracers.c
+    η = model.free_surface.η
+
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
     # Time-scale for gravity wave propagation across the smallest grid cell
@@ -92,35 +96,38 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     simulation = Simulation(model,
                             Δt = Δt,
-                            stop_iteration = 10)
-
-                            # stop_time = super_rotations * super_rotation_period)
+                            stop_iteration = 500)
 
     progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f", #, max|c|: %.2f",
                                    sim.model.clock.iteration, sim.model.clock.time,
                                    sim.Δt)) #, maximum(abs, sim.model.tracers.c)))
 
+    # simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=u, η=η, c=c),
+    #                                schedule = IterationInterval(100),
+    #                                prefix = "try_1",
+    #                                force = true)
+
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
-    run!(simulation)
+    # run!(simulation)
 
     @show simulation.run_wall_time
     return simulation
 end
 
-using BenchmarkTools
+# using BenchmarkTools
 
-simulation_serial = run_solid_body_rotation(Nx=256,  Ny=512, architecture=GPU())
-simulation_parall = run_solid_body_rotation(Nx=512,  Ny=512, dev = (0, 1), architecture=GPU())
+simulation_serial = run_solid_body_rotation(Nx=10, Ny=10, architecture=GPU())
+simulation_paral1 = run_solid_body_rotation(Nx=10, Ny=10, dev = (0, 1), architecture=GPU())
 
-using BenchmarkTools
+# using BenchmarkTools
 
-time_step!(simulation_serial.model, 1)
-trial_serial = @benchmark begin
-    CUDA.@sync time_step!(simulation_serial.model, 1)
-end samples = 10
+# time_step!(simulation_serial.model, 1)
+# trial_serial = @benchmark begin
+#     CUDA.@sync time_step!(simulation_serial.model, 1)
+# end samples = 10
 
-time_step!(simulation_parall.model, 1)
-trial_parall = @benchmark begin
-    CUDA.@sync time_step!(simulation_parall.model, 1)
-end samples = 10
+# time_step!(simulation_paral1.model, 1)
+# trial_paral1 = @benchmark begin
+#     CUDA.@sync time_step!(simulation_paral1.model, 1)
+# end samples = 10

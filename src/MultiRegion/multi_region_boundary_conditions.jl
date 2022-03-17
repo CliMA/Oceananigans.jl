@@ -60,7 +60,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     src = buffers[bc.condition.from_rank].west
 
     switch_device!(getdevice(w))
-    src .= (parent(w)[N+1:N+H, :, :])[:]
+    src .= (parent(w)[N+1:N+H, :, :])
     synchronize()
     
     switch_device!(getdevice(c))
@@ -81,7 +81,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     src = buffers[bc.condition.from_rank].east
 
     switch_device!(getdevice(e))
-    src .= (parent(e)[H+1:2H, :, :])[:]
+    src .= (parent(e)[H+1:2H, :, :])
     synchronize()
     
     switch_device!(getdevice(c))    
@@ -113,7 +113,7 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
         end
     end
     synchronize()
-    
+
     switch_device!(getdevice(c[1]))
     copyto!(dst, src)
 
@@ -123,7 +123,6 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
             p .= dst[n]
         end
     end
-
     synchronize()
 
     return nothing
