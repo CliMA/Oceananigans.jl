@@ -35,7 +35,8 @@ const z0 = 0.02 # roughness, user defined in future?
 ##### Two ways to specify a boundary condition: "intrinsically", and with a forcing function
 #####
 
-u_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC, field_dependencies = (:u, :v, :w)))
+u_drag_bc = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC, field_dependencies = (:u, :v, :w)))
+u_noslip_bc = FieldBoundaryConditions(bottom = ValueBoundaryCondition(0))
 
 kwargs = (closure = ScalarDiffusivity(ν=ν),
           advection = nothing,
@@ -43,10 +44,15 @@ kwargs = (closure = ScalarDiffusivity(ν=ν),
           coriolis = nothing,
           buoyancy = nothing)
 
-not_immersed_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_bcs), kwargs...)
+control_drag_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_drag_bc), kwargs...)
+control_noslip_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_noslip_bc), kwargs...)
 immersed_model = NonhydrostaticModel(grid = immersed_grid; kwargs...)
+
+models = (control_drag_model, control_noslip_model, immersed_model,)
+names = ("control_drag_model", "control_noslip_model", "immersed_model",)
                           
-for model in (immersed_model, not_immersed_model)
+for (prefix, model) in zip(names, models)
+    @info "Now running model $prefix"
     # Linear stratification
     set!(model, u = U)
 
@@ -57,12 +63,6 @@ for model in (immersed_model, not_immersed_model)
     progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-
-    if model.grid isa ImmersedBoundaryGrid
-        prefix = "immersed_stokes_first_problem_drag"
-    else
-        prefix = "not_immersed_stokes_first_problem_drag"
-    end
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=model.velocities.u),
                                                           schedule = TimeInterval(0.01),
