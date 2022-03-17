@@ -14,6 +14,7 @@ using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
+using Oceananigans.Advection: EnergyConservingScheme
 using Oceananigans.OutputReaders: FieldTimeSeries
 
 using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
@@ -191,7 +192,7 @@ advection_schemes = [WENO5(zweno = true, vector_invariant=VelocityStencil()),
                      VectorInvariant()]
 
 
-advection_schemes = [WENO5(zweno = true, vector_invariant=VelocityStencil())]
+advection_schemes = [VectorInvariant()]
 for Nx in [128] #[64, 128, 256, 512]
     for advection in advection_schemes
         experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)

@@ -7,7 +7,7 @@ struct VectorInvariant{S}
     scheme :: S
 end
 
-VectorInvariant(; scheme::S = EnergyConservingScheme()) where S = VectorInvariant{S}(scheme)
+VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme)
 
 const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 
