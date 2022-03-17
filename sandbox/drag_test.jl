@@ -6,17 +6,19 @@ using Oceananigans.Architectures: device
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δxᶜᵃᵃ
 
 Nz = 64 # Resolution
-ext_NZ = 80 # extra nodes in solid region
+Lz = 1
+ext_Lz = 1.25Lz
+ext_NZ = Int(ext_Lz/(Lz/Nz)) # extra nodes in solid region
 ν = 1e-2 # Viscosity
 U = 1
 
 @info "Checking u bottom BCs with drag"
 grid = RectilinearGrid(size = Nz,
-                              z = (0, 1),
+                              z = (1-Lz, 1),
                               halo = 1,
                               topology = (Flat, Flat, Bounded))
 ext_grid = RectilinearGrid(size = ext_NZ,
-                              z = (-.25, 1),
+                              z = (1-ext_Lz, 1),
                               halo = 1,
                               topology = (Flat, Flat, Bounded))
 
@@ -66,6 +68,11 @@ for model in (immersed_model, not_immersed_model)
                                                           schedule = TimeInterval(0.01),
                                                           prefix = prefix,
                                                           force = true)
+
+    simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; u=model.velocities.u),
+                                                            schedule = TimeInterval(0.01),
+                                                            filepath = "$prefix.nc",
+                                                            mode = "c")
 
     run!(simulation)
 
