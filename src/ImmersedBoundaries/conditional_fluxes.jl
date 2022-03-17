@@ -85,33 +85,26 @@ const ATD = AbstractTimeDiscretization
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return solid_node(f, c, c, i, j, k, ibg) | solid_node(c, f, c, i, j, k, ibg) |       
-           solid_node(c, f, c, i-3, j, k, ibg) | solid_node(c, f, c, i+3, j, k, ibg) |
-           solid_node(c, f, c, i-2, j, k, ibg) | solid_node(c, f, c, i+2, j, k, ibg) |
-           solid_node(c, f, c, i-1, j, k, ibg) | solid_node(c, f, c, i+1, j, k, ibg) | 
-           solid_node(f, c, c, i-3, j, k, ibg) | solid_node(f, c, c, i+3, j, k, ibg) |
-           solid_node(f, c, c, i-2, j, k, ibg) | solid_node(f, c, c, i+2, j, k, ibg) |
-           solid_node(f, c, c, i-1, j, k, ibg) | solid_node(f, c, c, i+1, j, k, ibg) |
-           solid_node(f, c, c, i-3, j+1, k, ibg) | solid_node(f, c, c, i+3, j+1, k, ibg) |
+    return solid_node(f, c, c, i, j, k, ibg)     | solid_node(c, f, c, i, j, k, ibg) |       
+           solid_node(c, f, c, i-3, j, k, ibg)   | solid_node(c, f, c, i+3, j, k, ibg) |
+           solid_node(c, f, c, i-2, j, k, ibg)   | solid_node(c, f, c, i+2, j, k, ibg) |
+           solid_node(c, f, c, i-1, j, k, ibg)   | solid_node(c, f, c, i+1, j, k, ibg) | 
+           solid_node(f, c, c, i-2, j, k, ibg)   | solid_node(f, c, c, i+2, j, k, ibg) |
+           solid_node(f, c, c, i-1, j, k, ibg)   | solid_node(f, c, c, i+1, j, k, ibg) |
            solid_node(f, c, c, i-2, j+1, k, ibg) | solid_node(f, c, c, i+2, j+1, k, ibg) |
            solid_node(f, c, c, i-1, j+1, k, ibg) | solid_node(f, c, c, i+1, j+1, k, ibg) 
 end
 
 @inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return solid_node(f, c, c, i, j, k, ibg) | solid_node(c, f, c, i, j, k, ibg) |       
-           solid_node(c, f, c, i, j-3, k, ibg) | solid_node(c, f, c, i, j+3, k, ibg) |
-           solid_node(c, f, c, i, j-2, k, ibg) | solid_node(c, f, c, i, j+2, k, ibg) |
-           solid_node(c, f, c, i, j-1, k, ibg) | solid_node(c, f, c, i, j+1, k, ibg) | 
-           solid_node(c, f, c, i+1, j-3, k, ibg) | solid_node(c, f, c, i+1, j+3, k, ibg) |
+    return solid_node(f, c, c, i, j, k, ibg)     | solid_node(c, f, c, i, j, k, ibg) | 
+           solid_node(f, c, c, i, j+3, k, ibg)   | solid_node(f, c, c, i, j+3, k, ibg) |
+           solid_node(f, c, c, i, j+2, k, ibg)   | solid_node(f, c, c, i, j+2, k, ibg) |
+           solid_node(f, c, c, i, j+1, k, ibg)   | solid_node(f, c, c, i, j+1, k, ibg) |     
+           solid_node(c, f, c, i, j-2, k, ibg)   | solid_node(c, f, c, i, j+2, k, ibg) |
+           solid_node(c, f, c, i, j-1, k, ibg)   | solid_node(c, f, c, i, j+1, k, ibg) | 
            solid_node(c, f, c, i+1, j-2, k, ibg) | solid_node(c, f, c, i+1, j+2, k, ibg) |
-           solid_node(c, f, c, i+1, j-1, k, ibg) | solid_node(c, f, c, i+1, j+1, k, ibg) | 
-           solid_node(f, c, c, i, j+1, k, ibg) | solid_node(f, c, c, i, j+3, k, ibg) |
-           solid_node(f, c, c, i, j+1, k, ibg) | solid_node(f, c, c, i, j+2, k, ibg) |
-           solid_node(f, c, c, i, j+1, k, ibg) | solid_node(f, c, c, i, j+1, k, ibg)
+           solid_node(c, f, c, i+1, j-1, k, ibg) | solid_node(c, f, c, i+1, j+1, k, ibg) 
 end
-
-
-
 
 # Takes forever to compile, but works.
 # @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
