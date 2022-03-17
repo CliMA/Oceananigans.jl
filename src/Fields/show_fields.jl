@@ -9,6 +9,8 @@ location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
+const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
+
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
     prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
@@ -57,8 +59,6 @@ Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
 Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
-
-const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
 
 function Base.show(io::IO, ft::FieldTuple)
     names = keys(ft)
