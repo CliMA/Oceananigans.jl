@@ -2,6 +2,7 @@ ENV["GKSwstype"] = "nul"
 
 using Printf
 using Statistics
+using Plots
 
 using Oceananigans
 using Oceananigans.Operators: ζ₃ᶠᶠᶜ
@@ -13,10 +14,10 @@ using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: ZWENO, WENOVectorInvariant
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 #####
 ##### The Bickley jet
 #####
@@ -48,9 +49,16 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     grid = LatitudeLongitudeGrid(arch, size=(Nh, Nφ, 1),
                                 radius = 1,
-                                longitude = (-180, 180), latitude=(-45, 45), z=(0, 1), halo = (4, 4, 4),
+                                longitude = (-180, 180), latitude=(-80, 80), z=(0, 1), halo = (4, 4, 4),
                                 precompute_metrics = true)
+
+    @inline toplft(x, y) = (((x > 45) & (x < 135)) & (((y > 15) & (y < 30)) | ((y > 45) & (y < 60))))
+    @inline botlft(x, y) = (((x > 45) & (x < 135)) & (((y < -15) & (y > -30)) | ((y < -45) & (y > -60))))
     
+    @inline bottom(x, y) = Int(toplft(x, y) | botlft(x, y))
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+                            
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1)
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
@@ -107,10 +115,10 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
     name = typeof(model.advection.momentum).name.wrapper
-    if model.advection.momentum isa ZWENO
-        name = "ZWENO"
-    elseif model.advection.momentum isa WENOVectorInvariant
-        name = "WENOVectorInvariant"
+    if model.advection.momentum isa WENOVectorInvariantVel
+        name = "WENOVectorInvariantVel"
+    elseif model.advection.momentum isa WENOVectorInvariantVort
+        name = "WENOVectorInvariantVort"
     end
 
     @show experiment_name = "spherical_bickley_jet_Nh_$(Nh)_$(name)"
@@ -119,7 +127,6 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         JLD2OutputWriter(model, outputs,
                                 schedule =TimeInterval(output_time_interval),
                                 prefix = experiment_name,
-                                field_slicer = nothing,
                                 force = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
@@ -129,13 +136,66 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     return experiment_name 
 end
 
+
+"""
+    visualize_bickley_jet(experiment_name)
+
+Visualize the Bickley jet data associated with `experiment_name`.
+"""
+function visualize_bickley_jet(experiment_name)
+
+    @info "Making a fun movie about an unstable Bickley jet..."
+
+    filepath = experiment_name * ".jld2"
+
+    ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
+    c_timeseries = FieldTimeSeries(filepath, "c", boundary_conditions=nothing, location=(Face, Center, Center))
+
+    grid = c_timeseries.grid
+
+    xζ, yζ, zζ = nodes(ζ_timeseries)
+    xc, yc, zc = nodes(c_timeseries)
+
+    anim = @animate for (i, iteration) in enumerate(c_timeseries.times)
+
+        @info "    Plotting frame $i from iteration $iteration..."
+
+        ζ = ζ_timeseries[i]
+        c = c_timeseries[i]
+        t = ζ_timeseries.times[i]
+
+        ζi = interior(ζ)[:, :, 1]
+        ci = interior(c)[:, :, 1]
+
+        kwargs = Dict(
+                      :aspectratio => 1,
+                      :linewidth => 0,
+                      :colorbar => :none,
+                      :ticks => nothing,
+                      :clims => (-1, 1),
+                      :xlims => (-grid.Lx/2, grid.Lx/2),
+                      :ylims => (-grid.Ly/2, grid.Ly/2)
+                     )
+
+        ζ_plot = Plots.heatmap(xζ, yζ, clamp.(ζi, -1, 1)'; color = :balance, kwargs...)
+        c_plot = Plots.heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
+
+        ζ_title = @sprintf("ζ at t = %.1f", t)
+        c_title = @sprintf("u at t = %.1f", t)
+
+        Plots.plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
+    end
+
+    mp4(anim, experiment_name * ".mp4", fps = 8)
+end
+
 # experiment_name = run_bickley_jet(momentum_advection=VectorInvariant(), Nh=128)
 # experiment_name = run_bickley_jet(momentum_advection=WENO5(zweno=true, vector_invariant=true), Nh=128)
 
-for Nx in [256]
-    for momentum_advection in [WENO5(zweno=true, vector_invariant=true)]
+for Nx in [128]
+    for momentum_advection in [WENO5(zweno=true, vector_invariant=VelocityStencil())]
         experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=Nx)
-        # visualize_bickley_jet(experiment_name)
+        visualize_bickley_jet(experiment_name)
     end
 end
 
