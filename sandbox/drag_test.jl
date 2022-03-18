@@ -5,22 +5,27 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, G
 using Oceananigans.Architectures: device
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δxᶜᵃᵃ
 
-Nz = 64 # Resolution
+Nz = 10 # Resolution
 Lz = 1
-ext_Lz = 1.25Lz
+ext_Lz = 1.5Lz
 ext_NZ = Int(ext_Lz/(Lz/Nz)) # extra nodes in solid region
 ν = 1e-2 # Viscosity
 U = 1
+topo = (Periodic, Periodic, Bounded)
 
 @info "Checking u bottom BCs with drag"
-grid = RectilinearGrid(size = Nz,
-                              z = (1-Lz, 1),
-                              halo = 1,
-                              topology = (Flat, Flat, Bounded))
-ext_grid = RectilinearGrid(size = ext_NZ,
-                              z = (1-ext_Lz, 1),
-                              halo = 1,
-                              topology = (Flat, Flat, Bounded))
+grid = RectilinearGrid(size = (10, 10, Nz),
+                       x=(0, 1),
+                       y=(0, 1),
+                       z = (1-Lz, 1),
+                       halo = (1,1,1),
+                       topology = topo)
+ext_grid = RectilinearGrid(size = (10, 10, ext_NZ),
+                       x=(0, 1),
+                       y=(0, 1),
+                       z = (1-ext_Lz, 1),
+                       halo = (1,1,1),
+                       topology = topo)
 
 flat_bottom(x, y) = 0
 immersed_grid = ImmersedBoundaryGrid(ext_grid, GridFittedBottom(flat_bottom))
@@ -39,7 +44,7 @@ u_drag_bc = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC, f
 u_noslip_bc = FieldBoundaryConditions(bottom = ValueBoundaryCondition(0))
 
 kwargs = (closure = ScalarDiffusivity(ν=ν),
-          advection = nothing,
+          advection = UpwindBiasedThirdOrder(),
           tracers = nothing,
           coriolis = nothing,
           buoyancy = nothing)
@@ -48,8 +53,10 @@ control_drag_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u
 control_noslip_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_noslip_bc), kwargs...)
 immersed_model = NonhydrostaticModel(grid = immersed_grid; kwargs...)
 
-models = (control_drag_model, control_noslip_model, immersed_model,)
-names = ("control_drag_model", "control_noslip_model", "immersed_model",)
+#models = (control_drag_model, control_noslip_model, immersed_model,)
+#names = ("control_drag_model", "control_noslip_model", "immersed_model",)
+models = (immersed_model,)
+names = ("immersed_model",)
                           
 for (prefix, model) in zip(names, models)
     @info "Now running model $prefix"
@@ -65,12 +72,12 @@ for (prefix, model) in zip(names, models)
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=model.velocities.u),
-                                                          schedule = TimeInterval(0.01),
+                                                          schedule = TimeInterval(0.02),
                                                           prefix = prefix,
                                                           force = true)
 
     simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; u=model.velocities.u),
-                                                            schedule = TimeInterval(0.01),
+                                                            schedule = TimeInterval(0.02),
                                                             filepath = "$prefix.nc",
                                                             mode = "c")
 
@@ -82,8 +89,9 @@ for (prefix, model) in zip(names, models)
     """
 end
 
-immersed_filepath = "immersed_stokes_first_problem_drag.jld2"
-not_immersed_filepath = "not_immersed_stokes_first_problem_drag.jld2"
+pause
+immersed_filepath = "control_drag_model.jld2"
+not_immersed_filepath = "immersed_model.jld2"
 
 z = znodes(Center, grid)
 zi = znodes(Center, ext_grid)
