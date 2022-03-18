@@ -114,14 +114,10 @@ end
 function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
-
     arch = model.architecture
     barrier = device_event(arch)
-
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
-
     model_fields = prognostic_fields(model)
-
     events = []
 
     for (i, field) in enumerate(model_fields)
@@ -134,16 +130,15 @@ function ab2_step!(model, Δt, χ)
         push!(events, field_event)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = i - 3 # assumption
+        tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       tracer_index,
                        model.clock,
                        Δt,
-                       model.closure,
-                       tracer_index,
-                       model.diffusivity_fields,
-                       model.tracers,
                        dependencies = field_event)
     end
 
