@@ -8,7 +8,7 @@ for metric in (:Δ, :A), dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :
     grid_metric = Symbol(metric, dir, LX, LY, LZ)
 
     @eval begin
-        $operator(i, j, k, grid, q) = $grid_metric(i, j, k, grid) * q[i, j, k]
-        $operator(i, j, k, grid, f::Function, args...) = $grid_metric(i, j, k, grid) * f(i, j, k, grid, args...)
+        @inline $operator(i, j, k, grid, q) = $grid_metric(i, j, k, grid) * q[i, j, k]
+        @inline $operator(i, j, k, grid, f::Function, args...) = $grid_metric(i, j, k, grid) * f(i, j, k, grid, args...)
     end   
 end
