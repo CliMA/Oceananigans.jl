@@ -28,13 +28,26 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 @inline τʸˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid)   * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑyzᵃᶠᶜ(i, j, k, grid, U.w)^2)^(0.5)
 @inline τᶻˣ_drag(i, j, k, grid, U) = @inbounds west_drag_const(i, j, k, grid)   * U.w[i, j, k] * (U.w[i, j, k]^2 + ℑyzᵃᶜᶠ(i, j, k, grid, U.v)^2)^(0.5)
 
+
+# These will only work for face nodes of GridFittedBoundary grids
+@inline  east_fluid_solid_interface(::Face, LY, Lz, i, j, k, grid) = solid_node(Center(), LY, Lz, i-1, j, k, grid) & !solid_node(Center(), LY, Lz, i, j, k, grid)
+@inline north_fluid_solid_interface(LX, ::Face, Lz, i, j, k, grid) = solid_node(LX, Center(), Lz, i, j-1, k, grid) & !solid_node(LX, Center(), Lz, i, j, k, grid)
+@inline   top_fluid_solid_interface(LX, LY, ::Face, i, j, k, grid) = solid_node(LX, LY, Center(), i, j, k-1, grid) & !solid_node(LX, LY, Center(), i, j, k, grid)
+
+
 # will always be within cell for grid fitted
 @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, clock, U, args...))
 # tau xy, tau yx
 @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, clock, U, args...))
 # tau xz, tau zx
 #@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, closure, clock, U, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag(i, j, k, ibg, U), flux(i, j, k, ibg, closure, disc, clock, U, args...))
+@inline function conditional_flux_fcf(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT 
+    @show top_fluid_solid_interface(f, c, f, i, j, k, ibg) # Show something to see if this is being called!
+    #return ifelse(top_solid_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag(i, j, k, ibg, U), flux(i, j, k, ibg, closure, disc, clock, U, args...))
+    return 10 # Something silly to show that this is being called
+end
+
+
 # tau yz, tau zy
 @inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, closure, disc, clock, U, flux, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, disc, clock, U, args...))
 
