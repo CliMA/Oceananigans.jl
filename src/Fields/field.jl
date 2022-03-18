@@ -102,8 +102,8 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 
 # Common outer constructor for all field flavors that performs input validation
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=nothing, status=nothing)
-    validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, bcs)
+    @apply_regionally validate_field_data(loc, data, grid, indices)
+    @apply_regionally validate_boundary_conditions(loc, grid, bcs)
     indices = validate_indices(indices, loc, grid)
     buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc

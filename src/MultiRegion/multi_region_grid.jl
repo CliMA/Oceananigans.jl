@@ -20,7 +20,11 @@ devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
 getregion(mrg::MultiRegionGrid, i)  = getregion(mrg.region_grids, i)
 Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
-function MultiRegionGrid(global_grid; partition = XPartition(1), devices = nothing)
+function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+
+    if length(partition) == 1
+        return global_grid
+    end
 
     arch    = devices isa Nothing ? CPU() : GPU()
     devices = validate_devices(partition, devices)
@@ -53,8 +57,8 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
     FT   = eltype(grid)
     lon, lat, z = extent
     return LatitudeLongitudeGrid(child_arch, FT; 
-                                 size = size, halo = halo,
-                                 latitude = lat, longitude = lon, z = z, topology = topo, 
+                                 size = size, halo = halo, radius = grid.radius,
+                                 latitude = lat, longitude = lon, z = z, topology = topo,
                                  precompute_metrics = metrics_precomputed(grid))
 end
 

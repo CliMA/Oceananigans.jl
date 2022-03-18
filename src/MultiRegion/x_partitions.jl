@@ -33,7 +33,7 @@ end
 function partition_extent(p::XPartition, grid)
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
-    z = cpu_face_constructor_y(grid)
+    z = cpu_face_constructor_z(grid)
 
     x = divide_direction(x, p)
     return Tuple((x = x[i], y = y, z = z) for i in 1:length(p))

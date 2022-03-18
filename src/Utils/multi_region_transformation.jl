@@ -54,6 +54,13 @@ getregion(nt::NamedTuple, i)        = NamedTuple{keys(nt)}(getregion(elem, i) fo
 
 isregional(a)                   = false
 isregional(::MultiRegionObject) = true
+isregional(t::Union{Tuple, NamedTuple}) = any([isregional(elem) for elem in t])
+
+for func in [:devices, :switch_device!]
+    @eval begin
+        $func(t::Union{Tuple, NamedTuple}) = $func(t[1])
+    end
+end
 
 devices(mo::MultiRegionObject) = mo.devices
 

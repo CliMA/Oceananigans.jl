@@ -110,21 +110,14 @@ function HydrostaticFreeSurfaceModel(; grid,
     )
 
     # Check halos and throw an error if the grid's halo is too small
-    # user_halo = halo_size(grid)
-    # required_halo = inflate_halo_size(user_halo..., topology(grid),
-    #                                   momentum_advection,
-    #                                   tracer_advection,
-    #                                   closure)
-
-    # any(user_halo .< required_halo) &&
-    #     throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+    @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     arch = architecture(grid)
 
     arch == GPU() && !has_cuda() &&
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
-    momentum_advection = validate_momentum_advection(momentum_advection, grid)
+    @apply_regionally validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -168,7 +161,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
-    validate_velocity_boundary_conditions(velocities)
+    @apply_regionally validate_velocity_boundary_conditions(velocities)
 
     free_surface = FreeSurface(free_surface, velocities, grid)
 
@@ -212,6 +205,17 @@ end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-validate_momentum_advection(momentum_advection, grid) = momentum_advection
+validate_momentum_advection(momentum_advection, grid) = nothing
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = nothing
+
+function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+  user_halo = halo_size(grid)
+  required_halo = inflate_halo_size(user_halo..., topology(grid),
+                                    momentum_advection,
+                                    tracer_advection,
+                                    closure)
+
+  any(user_halo .< required_halo) &&
+      throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+end

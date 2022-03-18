@@ -99,17 +99,17 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     @show experiment_name = "bickley_jet_Nh_$(Nh)_$(typeof(model.advection.momentum).name.wrapper)"
 
-    simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs,
-                                schedule = TimeInterval(output_time_interval),
-                                prefix = experiment_name,
-                                force = true)
+    # simulation.output_writers[:fields] =
+    #     JLD2OutputWriter(model, outputs,
+    #                             schedule = TimeInterval(output_time_interval),
+    #                             prefix = experiment_name,
+    #                             force = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
     start_time = time_ns()
 
-    run!(simulation)
+    # run!(simulation)
 
     return simulation
 end
@@ -172,4 +172,4 @@ Visualize the Bickley jet data associated with `experiment_name`.
 # end
 
 simulation_serial = run_bickley_jet(arch = GPU(), Nh=12)
-# simulation_parall = run_bickley_jet(devices=(0, 1), Nh=12)
+simulation_parall = run_bickley_jet(devices=(0, 1), Nh=12)
