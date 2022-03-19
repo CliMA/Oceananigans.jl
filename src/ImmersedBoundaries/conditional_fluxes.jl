@@ -67,24 +67,27 @@ else
     @inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 end
 
+
+
+
 #####
-##### Advective fluxes
+##### Viscous fluxes
 #####
 
 # ccc, ffc, fcf
- @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, closure, disc, clock, U, args...)
- @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, closure, disc, clock, U, args...)
- @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, closure, disc, clock, U, args...)
- 
- # ffc, ccc, cff
- @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, closure, disc, clock, U, args...)
- @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, closure, disc, clock, U, args...)
- @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, closure, disc, clock, U, args...)
- 
- # fcf, cff, ccc
- @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, closure, disc, clock, U, args...)
- @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, closure, disc, clock, U, args...)
- @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, closure, disc, clock, U, args...)
+@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, closure, disc, clock, U, args...)
+@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, closure, disc, clock, U, args...)
+@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, closure, disc, clock, U, args...)
+
+# ffc, ccc, cff
+@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, closure, disc, clock, U, args...)
+@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, closure, disc, clock, U, args...)
+@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, closure, disc, clock, U, args...)
+
+# fcf, cff, ccc
+@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, closure, disc, clock, U, args...)
+@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, closure, disc, clock, U, args...)
+@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, closure, disc, clock, U, args...)
 
 # fcc, cfc, ccf
 @inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
@@ -95,27 +98,35 @@ end
 ##### Advective fluxes
 #####
 
+@inline conditional_advective_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_advective_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+
 # dx(uu), dy(vu), dz(wu)
 # ccc,    ffc,    fcf
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, closure, U, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Uu, closure, U, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, closure, U, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Vu, closure, U, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, closure, U, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Wu, closure, U, args...)
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ccc(i, j, k, ibg, advective_momentum_flux_Uu, args...)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ffc(i, j, k, ibg, advective_momentum_flux_Vu, args...)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_fcf(i, j, k, ibg, advective_momentum_flux_Wu, args...)
 
 # dx(uv), dy(vv), dz(wv)
 # ffc,    ccc,    cff
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Uv, closure, disc::ATD, clock, U, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Vv, closure, disc::ATD, clock, U, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Wv, closure, disc::ATD, clock, U, args...)
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ffc(i, j, k, ibg, advective_momentum_flux_Uv, args...)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ccc(i, j, k, ibg, advective_momentum_flux_Vv, args...)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_cff(i, j, k, ibg, advective_momentum_flux_Wv, args...)
 
 # dx(uw), dy(vw), dz(ww)
 # fcf,    cff,    ccc
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Uw, closure, disc::ATD, clock, U, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Vw, closure, disc::ATD, clock, U, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Ww, closure, disc::ATD, clock, U, args...)
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_fcf(i, j, k, ibg, advective_momentum_flux_Uw, args...)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_cff(i, j, k, ibg, advective_momentum_flux_Vw, args...)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ccc(i, j, k, ibg, advective_momentum_flux_Ww, args...)
 
-@inline _advective_tracer_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, advective_tracer_flux_x, args...)
-@inline _advective_tracer_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, advective_tracer_flux_y, args...)
-@inline _advective_tracer_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, advective_tracer_flux_z, args...)
+@inline _advective_tracer_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_fcc(i, j, k, ibg, advective_tracer_flux_x, args...)
+@inline _advective_tracer_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_cfc(i, j, k, ibg, advective_tracer_flux_y, args...)
+@inline _advective_tracer_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_advective_flux_ccf(i, j, k, ibg, advective_tracer_flux_z, args...)
 
 #####
 ##### "Boundary-aware" interpolation
