@@ -80,4 +80,3 @@ end
 
     @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
 end
-
