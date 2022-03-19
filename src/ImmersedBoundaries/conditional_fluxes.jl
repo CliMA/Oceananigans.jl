@@ -19,7 +19,9 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 @inline south_drag_const(i, j, k, grid)  = @inbounds -(κVK / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
 @inline bottom_drag_const(i, j, k, grid) = @inbounds -(κVK / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
 
-@inline τˣᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)
+@inline τˣᶻ_drag_bottom(i, j, k, grid, U) = @inbounds +bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)
+@inline τˣᶻ_drag_top(i, j, k, grid, U) = @inbounds -bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)
+
 @inline τʸᶻ_drag(i, j, k, grid, U) = @inbounds bottom_drag_const(i, j, k, grid) * U.v[i, j, k] * (U.v[i, j, k]^2 + ℑxyᶜᶠᵃ(i, j, k, grid, U.u)^2)^(0.5)
 
 @inline τˣʸ_drag(i, j, k, grid, U) = @inbounds south_drag_const(i, j, k, grid)  * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxzᶠᵃᶜ(i, j, k, grid, U.w)^2)^(0.5)
@@ -30,9 +32,13 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 
 
 # These will only work for face nodes of GridFittedBoundary grids
-@inline  east_fluid_solid_interface(::Face, LY, Lz, i, j, k, grid) = solid_node(Center(), LY, Lz, i-1, j, k, grid) & !solid_node(Center(), LY, Lz, i, j, k, grid)
-@inline north_fluid_solid_interface(LX, ::Face, Lz, i, j, k, grid) = solid_node(LX, Center(), Lz, i, j-1, k, grid) & !solid_node(LX, Center(), Lz, i, j, k, grid)
-@inline   top_fluid_solid_interface(LX, LY, ::Face, i, j, k, grid) = solid_node(LX, LY, Center(), i, j, k-1, grid) & !solid_node(LX, LY, Center(), i, j, k, grid)
+#@inline  east_fluid_solid_interface(::Face, LY, Lz, i, j, k, grid) = solid_node(Center(), LY, Lz, i-1, j, k, grid) & !solid_node(Center(), LY, Lz, i, j, k, grid)
+#@inline north_fluid_solid_interface(LX, ::Face, Lz, i, j, k, grid) = solid_node(LX, Center(), Lz, i, j-1, k, grid) & !solid_node(LX, Center(), Lz, i, j, k, grid)
+@inline   solid_bottom_fluid_top_interface(LX, LY, ::Face, i, j, k, grid) = solid_node(LX, LY, Center(), i, j, k-1, grid) & !solid_node(LX, LY, Center(), i, j, k, grid)
+
+#@inline  east_fluid_solid_interface(::Face, LY, Lz, i, j, k, grid) = solid_node(Center(), LY, Lz, i-1, j, k, grid) & !solid_node(Center(), LY, Lz, i, j, k, grid)
+#@inline north_fluid_solid_interface(LX, ::Face, Lz, i, j, k, grid) = solid_node(LX, Center(), Lz, i, j-1, k, grid) & !solid_node(LX, Center(), Lz, i, j, k, grid)
+@inline   solid_top_fluid_bottom_interface(LX, LY, ::Face, i, j, k, grid) = !solid_node(LX, LY, Center(), i, j, k-1, grid) & solid_node(LX, LY, Center(), i, j, k, grid)
 
 
 if true # For drag boundary conditions
@@ -40,11 +46,12 @@ if true # For drag boundary conditions
     @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
     # tau xy, tau yx
     @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
-    # tau xz, tau zx
-    @inline function conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT 
-        #println("AAAA")
-        return ifelse(top_fluid_solid_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag(i, j, k, ibg, U), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
-    end
+
+    # tau xz, tau zx; we need to check (in all cases) if the interface is on the left or right of
+    # the axis since the drag will have opposite signs depending on which is true.
+    @inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_bottom_fluid_top_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag_bottom(i, j, k, ibg, U), 
+                                                                                                                          ifelse(solid_top_fluid_bottom_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag_top(i, j, k, ibg, U), 
+                                                                                                                                 flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
 
     # tau yz, tau zy
     @inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
