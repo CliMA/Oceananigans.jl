@@ -35,30 +35,30 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 @inline   top_fluid_solid_interface(LX, LY, ::Face, i, j, k, grid) = solid_node(LX, LY, Center(), i, j, k-1, grid) & !solid_node(LX, LY, Center(), i, j, k, grid)
 
 
-if false # For drag boundary conditions
+if true # For drag boundary conditions
     # will always be within cell for grid fitted
-    @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, clock, U, args...))
+    @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
     # tau xy, tau yx
-    @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, clock, U, args...))
+    @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
     # tau xz, tau zx
-    @inline function conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT 
-        println("AAAA")
-        return ifelse(top_solid_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag(i, j, k, ibg, U), flux(i, j, k, ibg, closure, disc, clock, U, args...))
+    @inline function conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT 
+        #println("AAAA")
+        return ifelse(top_fluid_solid_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag(i, j, k, ibg, U), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
     end
 
     # tau yz, tau zy
-    @inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, disc, clock, U, args...))
-                                                            
-    @inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, disc, clock, U, args...))
-    @inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, disc, clock, U, args...))
-    @inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, closure, disc, clock, U, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, closure, disc, clock, U, args...))
+    @inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
+
+    @inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
+    @inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
+    @inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
 
 else
 
     @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
     @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
     @inline function conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT
-        println("BBBB")
+        #println("BBBB")
         return ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
     end
     @inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
@@ -75,19 +75,19 @@ end
 #####
 
 # ccc, ffc, fcf
-@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, closure, disc, clock, U, args...)
-@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, closure, disc, clock, U, args...)
-@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, closure, disc, clock, U, args...)
-
-# ffc, ccc, cff
-@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, closure, disc, clock, U, args...)
-@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, closure, disc, clock, U, args...)
-@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, closure, disc, clock, U, args...)
-
-# fcf, cff, ccc
-@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, closure, disc, clock, U, args...)
-@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, closure, disc, clock, U, args...)
-@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, closure, disc::ATD, clock, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, closure, disc, clock, U, args...)
+@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, disc, closure, diffusivities, U, args...)
+                                                                                                                                                        
+# ffc, ccc, cff                                                                                                                                         
+@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, disc, closure, diffusivities, U, args...)
+                                                                                                                                                        
+# fcf, cff, ccc                                                                                                                                         
+@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, disc, closure, diffusivities, U, args...)
+@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, disc::ATD, closure, diffusivities, U, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, disc, closure, diffusivities, U, args...)
 
 # fcc, cfc, ccf
 @inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
