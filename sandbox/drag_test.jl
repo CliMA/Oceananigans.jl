@@ -5,7 +5,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, G
 using Oceananigans.Architectures: device
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δxᶜᵃᵃ
 
-Nz = 10 # Resolution
+Nz = 16 # Resolution
 Lz = 1
 ext_Lz = 1.5Lz
 ext_NZ = Int(ext_Lz/(Lz/Nz)) # extra nodes in solid region
@@ -33,30 +33,37 @@ immersed_grid = ImmersedBoundaryGrid(ext_grid, GridFittedBottom(flat_bottom))
 const κVK = 0.4 # van Karman's const
 const z0 = 0.02 # roughness, user defined in future?
 @inline drag_C(delta) = -(κVK ./ log(0.5*delta/z0)).^2 
-@inline τˣᶻ_BC(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶜ) * u * (u^2 + v^2)^0.5
+@inline τˣᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶜ) * u * (u^2 + v^2)^0.5
+@inline τˣᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
 
 
 #####
 ##### Two ways to specify a boundary condition: "intrinsically", and with a forcing function
 #####
 
-u_drag_bc = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC, field_dependencies = (:u, :v, :w)))
-u_noslip_bc = FieldBoundaryConditions(bottom = ValueBoundaryCondition(0))
+u_drag_bc = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC_bottom, field_dependencies = (:u, :v, :w)),
+                                    top    = FluxBoundaryCondition(τˣᶻ_BC_top, field_dependencies = (:u, :v, :w)),
+                                    )
+u_noslip_bc = FieldBoundaryConditions(bottom = ValueBoundaryCondition(0),
+                                      top    = ValueBoundaryCondition(0),
+                                      )
 
 kwargs = (closure = ScalarDiffusivity(ν=ν),
-          advection = UpwindBiasedThirdOrder(),
+          advection = WENO5(),
           tracers = nothing,
           coriolis = nothing,
           buoyancy = nothing)
 
 control_drag_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_drag_bc), kwargs...)
-control_noslip_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_noslip_bc), kwargs...)
+#control_noslip_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_noslip_bc), kwargs...)
 immersed_model = NonhydrostaticModel(grid = immersed_grid; kwargs...)
 
-#models = (control_drag_model, control_noslip_model, immersed_model,)
-#names = ("control_drag_model", "control_noslip_model", "immersed_model",)
 models = (immersed_model,)
 names = ("immersed_model",)
+models = (control_drag_model, immersed_model)
+names = ("control_drag_model", "immersed_model")
+#models = (control_drag_model, control_noslip_model, immersed_model,)
+#names = ("control_drag_model", "control_noslip_model", "immersed_model",)
                           
 for (prefix, model) in zip(names, models)
     @info "Now running model $prefix"
