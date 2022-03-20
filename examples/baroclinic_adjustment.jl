@@ -1,16 +1,29 @@
-using Printf
-using Statistics
-using JLD2
+# # Baroclinic adjustment
+#
+# In this example, we simulate the evolution and equilibration of a baroclinically
+# unstable front.
+#
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, CairoMakie, JLD2"
+# ```
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fields
 
-arch = CPU()
+using Printf
+using Statistics
+using JLD2
 
-filename = "baroclinic_adjustment"
+# ## Grid
+#
+# We use a three-dimensional channel that is periodic in the `x` direction:
 
-# Domain
 Lx = 1000kilometers # east-west extent [m]
 Ly = 1000kilometers # north-south extent [m]
 Lz = 1kilometers    # depth [m]
@@ -19,11 +32,7 @@ Nx = 64
 Ny = 64
 Nz = 40
 
-save_fields_interval = 0.5day
-stop_time = 40days
-Δt₀ = 5minutes
-
-grid = RectilinearGrid(arch;
+grid = RectilinearGrid(CPU();
                        topology = (Periodic, Bounded, Bounded), 
                        size = (Nx, Ny, Nz), 
                        x = (0, Lx),
@@ -31,7 +40,8 @@ grid = RectilinearGrid(arch;
                        z = (-Lz, 0),
                        halo = (3, 3, 3))
 
-coriolis = BetaPlane(latitude = -45)
+# We prescribe the values of vertical viscocity and diffusivity according to the ratio
+# of the vertical and lateral grid spacing.
 
 Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
 
@@ -42,26 +52,24 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν = νz, κ = κz)
-
 horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
-#####
-##### Model building
-#####
+vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
+                                                       ν = νz, κ = κz)
 
-@info "Building a model..."
+# ## Model
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
-                                    buoyancy = BuoyancyTracer(),
-                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                    tracers = :b,
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
-                                    free_surface = ImplicitFreeSurface())
+# We built a `HydrostaticFreeSurfaceModel` with an `ImplicitFreeSurface` solver.
+# Regarding Coriolis, we use a beta-plane centered at 45° South.
 
-@info "Built $model."
+model = HydrostaticFreeSurfaceModel(; grid,
+                                      coriolis = BetaPlane(latitude = -45),
+                                      buoyancy = BuoyancyTracer(),
+                                      closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                      tracers = :b,
+                                      momentum_advection = WENO5(),
+                                      tracer_advection = WENO5(),
+                                      free_surface = ImplicitFreeSurface())
 
 #####
 ##### Initial conditions
@@ -94,6 +102,11 @@ set!(model, b=bᵢ)
 #####
 ##### Simulation building
 #####
+
+filename = "baroclinic_adjustment"
+save_fields_interval = 0.5day
+stop_time = 40days
+Δt₀ = 5minutes
 
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
@@ -172,9 +185,10 @@ run!(simulation)
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
 
-#####
-##### Visualize
-#####
+# ## Visualization
+
+# Now we are ready to visualize! We use `CairoMakie` in this example. But on a system
+# with OpenGL then using `GLMakie` would be more convenient.
 
 using CairoMakie
 
