@@ -245,9 +245,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary)) 
 
-    x_summary = dimension_summary(TX(), "lon", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary) -2)
-    y_summary = dimension_summary(TY(), "lat", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary) -2)
-    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = dimension_summary(TX(), "lon", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = dimension_summary(TY(), "lat", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary) + 2)
 
     print(io, summary(grid), '\n',
           "├── ", x_summary, '\n',
