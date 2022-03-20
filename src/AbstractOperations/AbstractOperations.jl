@@ -91,4 +91,3 @@ push!(operators, :*)
 push!(multiary_operators, :*)
 
 end # module
-
