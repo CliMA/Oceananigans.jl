@@ -265,6 +265,7 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
     iter[] = i
 end
 
+# Let's now close the files
 for file in slice_files
     close(file)
 end
