@@ -62,6 +62,11 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # temporarily in xc and later extracting the real part into 
     # the solution, x.
     xc = b = solver.storage[2]
+    @show xc
+    @show b
+    @show λx
+    @show λy
+    @show λz
     @. xc = - b / (λx + λy + λz)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
