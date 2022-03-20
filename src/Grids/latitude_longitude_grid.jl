@@ -83,21 +83,24 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
 """
     LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
+                          precompute_metrics = true,
                           size,
-                          latitude,
                           longitude,
+                          latitude,
                           z,
                           radius = R_Earth,
-                          precompute_metrics = false,
+                          topology = nothing,
                           halo = (1, 1, 1))
 
 Creates a `LatitudeLongitudeGrid` with `size = (Nx, Ny, Nz)` grid points.
+
+Note: the latitude-longitude coordinates are expected in degrees.
 
 Positional arguments
 =================
 
 - `architecture`: Specifies whether arrays of coordinates and spacings are stored
-                  on the CPU or GPU. Default: `architecture = CPU()`.
+                  on the CPU or GPU. Default: `CPU()`.
 
 - `FT` : Floating point data type. Default: `FT = Float64`.
 
@@ -106,21 +109,19 @@ Keyword arguments
 
 - `size` (required): A 3-tuple prescribing the number of grid points each direction.
 
-- `latitude`, `longitude`, `z`: Each is either a
+- `longitude`, `latitude`, `z`: Each is either a
                                 (i) 2-tuple that specify the end points of the domain,
                                 (ii) one-dimensional array specifying the cell interface locations or
                                 (iii) a single-argument function that takes an index and returns
                                       cell interface location.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
-                        If `!precompute_metrics` (the default), horizontal spacings and areas
-                        are computed on-the-fly during a simulation.
+                        Default: `true`. When `precompute_metrics = false`, horizontal spacings
+                        and areas are computed on-the-fly during a simulation.
 
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topology can be
-              `Bounded`, `Periodic`, or `Flat`. The default latitudinal `topology[2]` is `Bounded`.
-              The default longitudinal `topology[1]` is `Periodic`
-              if `diff(longitude) == 360` and `Bounded` otherwise.
+              `Bounded`, `Periodic`, or `Flat`.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior.
@@ -129,8 +130,8 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
                                precompute_metrics = true,
                                size,
-                               latitude,
                                longitude,
+                               latitude,
                                z,
                                radius = R_Earth,
                                topology = nothing,
@@ -244,8 +245,8 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary)) 
 
-    x_summary = dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
-    y_summary = dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    x_summary = dimension_summary(TX(), "lon", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary) -2)
+    y_summary = dimension_summary(TY(), "lat", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary) -2)
     z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     print(io, summary(grid), '\n',
