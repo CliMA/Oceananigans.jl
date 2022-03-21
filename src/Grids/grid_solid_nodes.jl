@@ -31,21 +31,21 @@ for Topo in Topos
         @inline solid_node(i, j, k, grid::ZBoundedGrid) = ifelse($zcondition, true, false)
     end
     for OtherTopo in Topos
-        xycondition = :( $xcondition | $(build_condition(Topo, :j, :Ny)))
-        xzcondition = :( $xcondition | $(build_condition(Topo, :k, :Nz)))
-        yzcondition = :( $ycondition | $(build_condition(Topo, :k, :Nz)))
+        xycondition = :( $xcondition | $(build_condition(OtherTopo, :j, :Ny)))
+        xzcondition = :( $xcondition | $(build_condition(OtherTopo, :k, :Nz)))
+        yzcondition = :( $ycondition | $(build_condition(OtherTopo, :k, :Nz)))
 
         @eval begin
             XYBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo}
-            XZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo, <:Any, <:$OtherTopo}
-            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$Topo, <:$OtherTopo}
+            XZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:Any, <:$OtherTopo}
+            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo, <:$OtherTopo}
 
             @inline solid_node(i, j, k, grid::XYBoundedGrid) = ifelse($xycondition, true, false)
             @inline solid_node(i, j, k, grid::XZBoundedGrid) = ifelse($xzcondition, true, false)
             @inline solid_node(i, j, k, grid::YZBoundedGrid) = ifelse($yzcondition, true, false)
         end
         for LastTopo in Topos
-            xyzcondition = :( $xycondition | $(build_condition(Topo, :k, :Nz)))
+            xyzcondition = :( $xycondition | $(build_condition(LastTopo, :k, :Nz)))
 
             @eval begin
                 XYZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo, <:$LastTopo}

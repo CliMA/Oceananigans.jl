@@ -6,7 +6,7 @@ using OffsetArrays: IdOffsetRange
 #####
 ##### Convenience functions
 #####
-const BoundedTopology = Union{Bounded, LeftConnected, RightConnected}
+const BoundedTopology = Union{Bounded, LeftConnected}
 
 Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1

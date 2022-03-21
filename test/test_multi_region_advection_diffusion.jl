@@ -12,8 +12,6 @@ function Δ_min(grid)
     return min(Δx_min, Δy_min)
 end
 
-# function 
-
 function solid_body_tracer_advection_test(grid; regions = 1)
 
     if architecture(grid) isa GPU
@@ -135,76 +133,76 @@ end
 
 Nx = 32; Ny = 32
 
-for arch in archs
+for arch in [CPU()] #archs
 
-    grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
-                                        halo = (3, 3, 3),
-                                        topology = (Periodic, Bounded, Bounded),
-                                        x = (0, 1),
-                                        y = (0, 1),
-                                        z = (0, 1))
+    # grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
+    #                                     halo = (3, 3, 3),
+    #                                     topology = (Periodic, Bounded, Bounded),
+    #                                     x = (0, 1),
+    #                                     y = (0, 1),
+    #                                     z = (0, 1))
 
-    grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                        halo = (3, 3, 3),
-                                        radius = 1, latitude = (-80, 80),
-                                        longitude = (-180, 180), z = (-1, 0))
+    # grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+    #                                     halo = (3, 3, 3),
+    #                                     radius = 1, latitude = (-80, 80),
+    #                                     longitude = (-180, 180), z = (-1, 0))
 
-    @testset "Testing multi region tracer advection" begin
-        for grid in [grid_rect, grid_lat]
+    # @testset "Testing multi region tracer advection" begin
+    #     for grid in [grid_rect, grid_lat]
         
-            cs, ds, es = solid_body_tracer_advection_test(grid)
+    #         cs, ds, es = solid_body_tracer_advection_test(grid)
             
-            cs = interior(cs);
-            ds = interior(ds);
-            es = interior(es);
+    #         cs = interior(cs);
+    #         ds = interior(ds);
+    #         es = interior(es);
 
-            for regions in [2, 4, 8]
-                @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
-                c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
+    #         for regions in [2, 4, 8]
+    #             @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
+    #             c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
 
-                c = construct_regionally(interior, c)
-                d = construct_regionally(interior, d)
-                e = construct_regionally(interior, e)
+    #             c = construct_regionally(interior, c)
+    #             d = construct_regionally(interior, d)
+    #             e = construct_regionally(interior, e)
                 
-                for region in 1:regions
-                    init = Int(size(cs, 1) / regions) * (region - 1) + 1
-                    fin  = Int(size(cs, 1) / regions) * region
-                    @show @test all(c[region] .== cs[init:fin, :, :])
-                    @show @test all(d[region] .== ds[init:fin, :, :])
-                    @show @test all(e[region] .== es[init:fin, :, :])
-                end
-            end
-        end
-    end
+    #             for region in 1:regions
+    #                 init = Int(size(cs, 1) / regions) * (region - 1) + 1
+    #                 fin  = Int(size(cs, 1) / regions) * region
+    #                 @show @test all(c[region] .== cs[init:fin, :, :])
+    #                 @show @test all(d[region] .== ds[init:fin, :, :])
+    #                 @show @test all(e[region] .== es[init:fin, :, :])
+    #             end
+    #         end
+    #     end
+    # end
 
-    @testset "Testing multi region solid body rotation" begin
-        grid = grid_lat
-        us, vs, ws, cs = solid_body_rotation_test(grid)
+    # @testset "Testing multi region solid body rotation" begin
+    #     grid = grid_lat
+    #     us, vs, ws, cs = solid_body_rotation_test(grid)
             
-        us = interior(us);
-        vs = interior(vs);
-        ws = interior(ws);
-        cs = interior(cs);
+    #     us = interior(us);
+    #     vs = interior(vs);
+    #     ws = interior(ws);
+    #     cs = interior(cs);
         
-        for regions in [2, 4, 8]
-            @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
-            u, v, w, c = solid_body_rotation_test(grid; regions=regions)
+    #     for regions in [2, 4, 8]
+    #         @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
+    #         u, v, w, c = solid_body_rotation_test(grid; regions=regions)
 
-            u = construct_regionally(interior, u)
-            v = construct_regionally(interior, v)
-            w = construct_regionally(interior, w)
-            c = construct_regionally(interior, c)
+    #         u = construct_regionally(interior, u)
+    #         v = construct_regionally(interior, v)
+    #         w = construct_regionally(interior, w)
+    #         c = construct_regionally(interior, c)
                 
-            for region in 1:regions
-                init = Int(size(cs, 1) / regions) * (region - 1) + 1
-                fin  = Int(size(cs, 1) / regions) * region
-                @test all(u[region] .== us[init:fin, :, :])
-                @test all(v[region] .== vs[init:fin, :, :])
-                @test all(w[region] .== ws[init:fin, :, :])
-                @test all(c[region] .== cs[init:fin, :, :])
-            end
-        end
-    end
+    #         for region in 1:regions
+    #             init = Int(size(cs, 1) / regions) * (region - 1) + 1
+    #             fin  = Int(size(cs, 1) / regions) * region
+    #             @test all(u[region] .== us[init:fin, :, :])
+    #             @test all(v[region] .== vs[init:fin, :, :])
+    #             @test all(w[region] .== ws[init:fin, :, :])
+    #             @test all(c[region] .== cs[init:fin, :, :])
+    #         end
+    #     end
+    # end
 
     @testset "Testing multi region gaussian diffusion" begin
         grid  = RectilinearGrid(arch, size = (Nx, Ny, 1),
