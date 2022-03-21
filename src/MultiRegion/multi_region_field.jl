@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
-
 using Oceananigans.Fields: FunctionField, data_summary
+using Oceananigans.Operators: assumed_field_location
 
 import Oceananigans.Fields: 
                       set!,
@@ -54,15 +54,31 @@ new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new
 fill!(f::MultiRegionField, val) = apply_regionally!(fill!, f, val)
 hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
+validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = 
+              construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
+
+FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) = 
+              construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, args...; kwargs...) =
   construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), args...; kwargs...)
 
-regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, mrg::MultiRegionGrid, field_name::Symbol, prognostic_field_names) = 
-    construct_regionally(regularize_field_boundary_conditions, bcs, mrg, Reference(field_name), Reference(prognostic_field_names))
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              mrg::MultiRegionGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_name=nothing)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...) = construct_regionally(FieldBoundaryBuffers, grid, args...)
+  reg_bcs = regularize_field_boundary_conditions(bcs, mrg.region_grids[1], field_name, prognostic_field_name)
+  loc = assumed_field_location(field_name)
+
+  return FieldBoundaryConditions(mrg, loc; west = reg_bcs.west,
+                                           east = reg_bcs.east,
+                                           south = reg_bcs.south,
+                                           north = reg_bcs.north,
+                                           bottom = reg_bcs.bottom,
+                                           top = reg_bcs.top,
+                                           immersed = reg_bcs.immersed)
+end
 
 function inject_regional_bcs(grid, region, partition, loc, args...;   
                               west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),

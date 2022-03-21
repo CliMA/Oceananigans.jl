@@ -42,10 +42,13 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-fill_halo_regions!(c::NTuple, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
-    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(Tuple(obj.regions for obj in c)), Reference(Tuple(obj.buffers for obj in c)), args...; kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
+    fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
+    fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
+    return NoneEvent()
+end   
 
-function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
+function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
     return NoneEvent()
@@ -57,7 +60,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     w = neighbors[bc.condition.from_rank]
 
     dst = buffers[bc.condition.rank].west
-    src = buffers[bc.condition.from_rank].west
+    src = buffers[bc.condition.from_rank].east
 
     switch_device!(getdevice(w))
     src .= (parent(w)[N+1:N+H, :, :])
@@ -68,6 +71,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     
     p  = view(parent(c), 1:H, :, :)
     p .= reshape(dst, size(p))
+    synchronize()
 
     return nothing
 end
@@ -76,19 +80,20 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]
-    
+
     dst = buffers[bc.condition.rank].east
-    src = buffers[bc.condition.from_rank].east
+    src = buffers[bc.condition.from_rank].west
 
     switch_device!(getdevice(e))
     src .= (parent(e)[H+1:2H, :, :])
-    sync_device!(getdevice(e))    
+    sync_device!(getdevice(e))
 
     switch_device!(getdevice(c))    
     copyto!(dst, src)
     
     p  = view(parent(c), N+H+1:N+2H, :, :)
     p .= reshape(dst, size(p))
+    synchronize()
 
     return nothing
 end

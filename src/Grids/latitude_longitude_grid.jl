@@ -522,3 +522,35 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
+
+#####
+##### Get minima of grid
+#####
+
+function min_Δx(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+        return grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(min_number_or_array(grid.Δλᶜᵃᵃ))
+    end
+end
+
+function min_Δy(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.radius * deg2rad(min_number_or_array(grid.Δφᵃᶜᵃ))
+    end
+end
+
+function min_Δz(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return min_number_or_array(grid.Δzᵃᵃᶜ)
+    end
+end

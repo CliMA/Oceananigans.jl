@@ -21,6 +21,9 @@ getregion(fs::ExplicitFreeSurface, i) =
 
 getname(type) = typeof(type).name.wrapper
 
+isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
+devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
+
 isregional(mrm::MultiRegionModel)        = true
 devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 getdevice(mrm::MultiRegionModel, i)      = getdevice(mrm.grid, i)
