@@ -38,7 +38,7 @@ for arch in archs
             end
         end
 
-        fill_halo_regions!(field, arch)
+        fill_halo_regions!(field)
 
         CUDA.allowscalar(true)
 
