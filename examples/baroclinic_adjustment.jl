@@ -15,10 +15,6 @@
 using Oceananigans
 using Oceananigans.Units
 
-using Printf
-using Statistics
-using JLD2
-
 # ## Grid
 #
 # We use a three-dimensional channel that is periodic in the `x` direction:
@@ -141,6 +137,8 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # Also, we add a callback to print a message about how the simulation is going,
 
+using Printf
+
 wall_clock = [time_ns()]
 
 function print_progress(sim)
@@ -220,6 +218,8 @@ nothing #hide
 # Extract surfaces on all 6 boundaries
 
 iter = Observable(0)
+
+using JLD2
 
 zonal_file = jldopen(filename * "_zonal_average.jld2")
 grid = zonal_file["serialized/grid"]
