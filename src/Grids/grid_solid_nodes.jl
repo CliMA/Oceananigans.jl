@@ -5,7 +5,7 @@ const f = Face()
 
 function build_condition(Topo, side, dim) 
     if Topo == :Bounded 
-        return :(($side < 1) | (side > grid.$dim))
+        return :(($side < 1) | ($side > grid.$dim))
     elseif Topo == :LeftConnected
         return :(($side > grid.$dim))
     else 

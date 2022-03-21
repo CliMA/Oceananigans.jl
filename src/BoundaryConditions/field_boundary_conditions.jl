@@ -8,16 +8,12 @@ struct DefaultPrognosticFieldBoundaryCondition end
 
 default_prognostic_bc(::Grids.Periodic, loc)       = PeriodicBoundaryCondition()
 default_prognostic_bc(::Bounded,        ::Center)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::LeftConnected,  ::Center)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::RightConnected, ::Center)  = NoFluxBoundaryCondition()
 default_prognostic_bc(::Bounded,        ::Face)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::FullyConnected, loc)       = HaloBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Center)  = NoFluxBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Center)  = NoFluxBoundaryCondition()
 default_prognostic_bc(::LeftConnected,  ::Face)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Face)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Center)  = NoFluxBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Center)  = NoFluxBoundaryCondition()
 default_prognostic_bc(::RightConnected, ::Face)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Face)    = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::FullyConnected, loc)       = CommunicationBoundaryCondition()
 
 default_prognostic_bc(::Bounded,        ::Nothing) = nothing
 default_prognostic_bc(::Flat,           ::Nothing) = nothing
