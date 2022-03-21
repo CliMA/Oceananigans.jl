@@ -20,6 +20,8 @@ Return a range of indices for a field located at cell `Face`s along a grid dimen
 is `Bounded` and has length `N` and with halo points `H`.
 """
 offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Type{Face}, ::Type{RightConnected}, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Type{Face}, ::Type{LeftConnected}, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.

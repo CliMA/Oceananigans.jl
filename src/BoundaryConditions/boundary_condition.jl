@@ -87,6 +87,7 @@ const HBC  = BoundaryCondition{<:Halo}
     PeriodicBoundaryCondition() = BoundaryCondition(Periodic, nothing)
       NoFluxBoundaryCondition() = BoundaryCondition(Flux,     nothing)
 ImpenetrableBoundaryCondition() = BoundaryCondition(Open,     nothing)
+        HaloBoundaryCondition() = BoundaryCondition(Halo,     nothing)
 
      FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
     ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)

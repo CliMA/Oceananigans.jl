@@ -48,7 +48,7 @@ function partition_topology(p::XPartition, grid)
                    RightConnected :
                    i == length(p) ?
                    LeftConnected :
-                   FullyConnected), TY, TZ) for i in 1: length(p))
+                   FullyConnected), TY, TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualXPartition) = 
