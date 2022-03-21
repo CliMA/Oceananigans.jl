@@ -46,11 +46,9 @@ examples = [
     # "tilted_bottom_boundary_layer.jl"
 ]
 
-withenv("JULIA_DEBUG" => "Literate") do
-    for example in examples
-        example_filepath = joinpath(EXAMPLES_DIR, example)
-        Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
-    end
+for example in examples
+    example_filepath = joinpath(EXAMPLES_DIR, example)
+    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
