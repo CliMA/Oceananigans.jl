@@ -24,7 +24,6 @@ end
 
 function schedule_aligned_Δt(sim, aligned_Δt)
     clock = sim.model.clock
-
     activities = collect_scheduled_activities(sim)
 
     for activity in activities

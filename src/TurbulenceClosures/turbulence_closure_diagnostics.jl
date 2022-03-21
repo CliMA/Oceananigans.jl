@@ -45,32 +45,17 @@ function cell_diffusion_timescale(closure::ScalarBiharmonicDiffusivity{Dir}, dif
     return min(Δ^4/ max_ν, Δ^4 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, TD, P, <:NamedTuple{()}},
-                                  diffusivities, grid) where {FT, TD, P}
-    Δ = min_Δxyz(grid, formulation(closure))
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
-end
-
 function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
     Δ = min_Δxyz(grid, formulation(closure))
-    min_Pr = minimum(closure.Pr)
-    max_κ = maximum(closure.κ)
+    min_Pr = closure.Pr isa NamedTuple{()} ? 1 : minimum(closure.Pr) # Innocuous value is there's no tracers
     max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/min_Pr)
-    return min(Δ^2 / max_νκ, Δ^2 / max_κ)
-end
-
-function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation{FT, TD, PK, PN, <:NamedTuple{()}},
-                                  diffusivities, grid) where {FT, TD, PK, PN}
-    Δ = min_Δxyz(grid, formulation(closure))
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
+    return Δ^2 / max_νκ
 end
 
 function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffusivities, grid)
     Δ = min_Δxyz(grid, formulation(closure))
     max_ν = maximum(diffusivities.νₑ.data.parent)
-    max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in diffusivities.κₑ)...)
+    max_κ = diffusivities.κₑ isa NamedTuple{()} ? Inf : max(Tuple(maximum(κₑ.data.parent) for κₑ in diffusivities.κₑ)...)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 

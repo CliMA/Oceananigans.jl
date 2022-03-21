@@ -114,6 +114,7 @@ end
 @kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, grid, args...)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
+        Base.@_inline_meta
         @inbounds begin
             _fill_west_halo!(j, k, grid, c[n], west_bc[n], args...)
             _fill_east_halo!(j, k, grid, c[n], east_bc[n], args...)
@@ -124,6 +125,7 @@ end
 @kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, grid, args...)
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
+        Base.@_inline_meta
         @inbounds begin
             _fill_south_halo!(i, k, grid, c[n], south_bc[n], args...)
             _fill_north_halo!(i, k, grid, c[n], north_bc[n], args...)
@@ -134,6 +136,7 @@ end
 @kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, grid, args...)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
+        Base.@_inline_meta
         @inbounds begin
             _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], args...)
             _fill_top_halo!(i, j, grid, c[n], top_bc[n], args...)

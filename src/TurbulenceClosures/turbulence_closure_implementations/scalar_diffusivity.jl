@@ -90,13 +90,8 @@ function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
     return ScalarDiffusivity{TD, F}(closure.ν, κ)
 end
 
-@inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
-@inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
-
-# z_viscosity and z_diffusivity fallback to viscosity and diffusivity
-# for both ThreeDimensional and VerticalScalarDiffusivity
-@inline z_viscosity(closure::HorizontalScalarDiffusivity, args...) = 0
-@inline z_diffusivity(closure::HorizontalScalarDiffusivity, args...) = 0
+@inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
+@inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
