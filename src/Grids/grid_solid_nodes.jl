@@ -2,29 +2,65 @@
 const c = Center()
 const f = Face()
 
-const XBoundedGrid = AbstractGrid{<:Any, <:Bounded}
-const YBoundedGrid = AbstractGrid{<:Any, <:Any, <:Bounded}
-const ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}
 
-const XYBoundedGrid = AbstractGrid{<:Any, <:Bounded, <:Bounded}
-const XZBoundedGrid = AbstractGrid{<:Any, <:Bounded, <:Any, <:Bounded}
-const YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Bounded, <:Bounded}
+function build_condition(Topo, side, dim) 
+    if Topo == :Bounded 
+        return :(($side < 1) | (side > grid.$dim))
+    elseif Topo == :LeftConnected
+        return :(($side > grid.$dim))
+    else 
+        return :(($side < 1))
+    end
+end
 
 const FullBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
+Topos     = [:Bounded, :LeftConnected, :RightConnected] 
+condition = [:((c < 1) | (c > End)), :(c > End), :(c < 1)]
+
+for (Topo, cond) in zip(Topos, condition)
+
+    xcondition = build_condition(Topo, :i, :Nx)
+    ycondition = build_condition(Topo, :j, :Ny)
+    zcondition = build_condition(Topo, :k, :Nz)
+
+    @eval begin
+        XBoundedGrid = AbstractGrid{<:Any, <:$Topo}
+        YBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo}
+        ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$Topo}
+
+        @inline solid_node(i, j, k, grid::XBoundedGrid) = ifelse($xcondition, true, false)
+        @inline solid_node(i, j, k, grid::YBoundedGrid) = ifelse($ycondition, true, false)
+        @inline solid_node(i, j, k, grid::ZBoundedGrid) = ifelse($zcondition, true, false)
+    end
+    for OtherTopo in Topos
+        xycondition = :( $xcondition | $(build_condition(Topo, :j, :Ny)))
+        xzcondition = :( $xcondition | $(build_condition(Topo, :k, :Nz)))
+        yzcondition = :( $ycondition | $(build_condition(Topo, :k, :Nz)))
+
+        @eval begin
+            XYBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo}
+            XZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo, <:Any, <:$OtherTopo}
+            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$Topo, <:$OtherTopo}
+
+            @inline solid_node(i, j, k, grid::XYBoundedGrid) = ifelse($xycondition, true, false)
+            @inline solid_node(i, j, k, grid::XZBoundedGrid) = ifelse($xzcondition, true, false)
+            @inline solid_node(i, j, k, grid::YZBoundedGrid) = ifelse($yzcondition, true, false)
+        end
+        for LastTopo in Topos
+            xyzcondition = :( $xycondition | $(build_condition(Topo, :k, :Nz)))
+
+            @eval begin
+                XYZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo, <:$LastTopo}
+               
+                @inline solid_node(i, j, k, grid::XYZBoundedGrid) = ifelse($xyzcondition, true, false)
+            end
+        end
+    end
+end
+
 # Fallback for general grids
 @inline solid_node(i, j, k, grid) = false
-@inline solid_node(i, j, k, grid::XBoundedGrid) = ifelse((i < 1) | (i > grid.Nx), true, false)
-@inline solid_node(i, j, k, grid::YBoundedGrid) = ifelse((j < 1) | (j > grid.Ny), true, false)
-@inline solid_node(i, j, k, grid::ZBoundedGrid) = ifelse((k < 1) | (k > grid.Nz), true, false)
-
-@inline solid_node(i, j, k, grid::XYBoundedGrid) = ifelse((i < 1) | (i > grid.Nx) | (j < 1) | (j > grid.Ny), true, false)
-@inline solid_node(i, j, k, grid::XZBoundedGrid) = ifelse((i < 1) | (i > grid.Nx) | (k < 1) | (k > grid.Nz), true, false)
-@inline solid_node(i, j, k, grid::YZBoundedGrid) = ifelse((j < 1) | (j > grid.Ny) | (k < 1) | (k > grid.Nz), true, false)
-
-@inline solid_node(i, j, k, grid::FullBoundedGrid) = ifelse((i < 1) | (i > grid.Nx) |
-                                                            (j < 1) | (j > grid.Ny) |
-                                                            (k < 1) | (k > grid.Nz), true, false)
 
 @inline solid_node(LX, LY, LZ, i, j, k, grid)      = solid_node(i, j, k, grid)
 @inline solid_interface(LX, LY, LZ, i, j, k, grid) = solid_node(i, j, k, grid)

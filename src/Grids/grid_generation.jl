@@ -11,11 +11,11 @@ get_coord_face(coord::Nothing, i) = 1
 get_coord_face(coord::Function, i) = coord(i)
 get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
-lower_exterior_Δcoordᶠ(topology,        Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::Type{Bounded}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::Type{BoundedTopology}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
 
-upper_exterior_Δcoordᶠ(topology,        Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::Type{Bounded}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::Type{BoundedTopology}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
 
 # generate a stretched coordinate passing the explicit coord faces as vector of functionL
 function generate_coordinate(FT, topology, N, H, coord, architecture)

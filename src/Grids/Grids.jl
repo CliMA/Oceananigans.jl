@@ -1,7 +1,7 @@
 module Grids
 
 export Center, Face
-export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
+export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export AbstractRectilinearGrid, RectilinearGrid 
@@ -71,14 +71,25 @@ is uniform and does not vary.
 struct Flat <: AbstractTopology end
 
 """
-    Connected
+    FullyConnected
 
-Grid topology for dimensions that are connected to other models or domains on both sides.
+Grid topology for dimensions that are connected to other models or domains.
 """
-struct Connected{L, R} <:AbstractTopology 
-    left :: L
-    right :: R
-end
+struct FullyConnected <: AbstractTopology end
+
+"""
+    LeftConnected
+
+Grid topology for dimensions that are connected to other models or domains only on the left (the other direction is bounded)
+"""
+struct LeftConnected <: AbstractTopology end
+
+"""
+    RightConnected
+
+Grid topology for dimensions that are connected to other models or domains only on the right (the other direction is bounded)
+"""
+struct RightConnected <: AbstractTopology end
 
 """
     AbstractGrid{FT, TX, TY, TZ}

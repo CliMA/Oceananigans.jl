@@ -116,7 +116,7 @@ end
 # Note: I think we want to keep faces and face_connectivity tuples
 # so it's easy to support an arbitrary number of faces.
 
-struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, Connected, Connected, Bounded, Arch}
+struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, FullyConnected, FullyConnected, Bounded, Arch}
          architecture :: Arch
                 faces :: F
     face_connectivity :: C
@@ -160,7 +160,7 @@ end
 function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    face_topo = (Connected, Connected, Bounded)
+    face_topo = (FullyConnected, FullyConnected, Bounded)
     face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
 
     faces = Tuple(ConformalCubedSphereFaceGrid(filepath, arch, FT; face=n, face_kwargs...) for n in 1:6)

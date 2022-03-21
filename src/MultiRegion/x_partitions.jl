@@ -39,6 +39,18 @@ function partition_extent(p::XPartition, grid)
     return Tuple((x = x[i], y = y, z = z) for i in 1:length(p))
 end
 
+function partition_topology(p::XPartition, grid) 
+    TX, TY, TZ = topology(grid)
+    
+    return Tuple(((TX == Periodic ? 
+                   FullyConnected : 
+                   i == 1 ?
+                   RightConnected :
+                   i == length(p) ?
+                   LeftConnected :
+                   FullyConnected), TY, TZ) for i in 1: length(p))
+end
+
 divide_direction(x::Tuple, p::EqualXPartition) = 
     Tuple((x[1]+(i-1)*(x[2] - x[1])/length(p), x[1]+i*(x[2] - x[1])/length(p)) for i in 1:length(p))
 
