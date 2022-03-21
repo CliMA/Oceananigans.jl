@@ -13,7 +13,7 @@ function build_condition(Topo, side, dim)
     end
 end
 
-Topos     = [:Bounded, :LeftConnected, :RightConnected] 
+Topos = [:Bounded, :LeftConnected, :RightConnected] 
 
 for Topo in Topos
 

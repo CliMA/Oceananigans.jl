@@ -9,12 +9,9 @@ using OffsetArrays: IdOffsetRange
 const BoundedTopology = Union{Bounded, LeftConnected, RightConnected}
 
 Base.length(::Type{Face}, topo, N) = N
-Base.length(::Type{Face}, ::Type{BoundedTopology}, N) = N+1
+Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
-
-Base.length(::Type{Face}, ::Type{FullyConnected}, args...)   = Base.length(Face, Periodic, args...)
-Base.length(::Type{Center}, ::Type{FullyConnected}, args...) = Base.length(Center, Periodic, args...)
 
 Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
 Base.length(::Type{Face},    ::Type{Flat}, N) = N
@@ -114,9 +111,7 @@ Return the total extent, including halo regions, of constant-spaced
 constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
-@inline total_extent(::Type{BoundedTopology}, H, Δ, L) = L + 2H * Δ
-@inline total_extent(::Type{FullyConnected}, args...)  = total_extent(Periodic, args...)
-
+@inline total_extent(::Type{<:BoundedTopology}, H, Δ, L) = L + 2H * Δ
 
 """
     total_length(loc, topo, N, H=0)
@@ -126,7 +121,7 @@ one dimension of `topo`logy with `N` centered cells and
 `H` halo cells.
 """
 @inline total_length(loc,             topo,            N, H=0) = N + 2H
-@inline total_length(::Type{Face},    ::Type{BoundedTopology}, N, H=0) = N + 1 + 2H
+@inline total_length(::Type{Face},    ::Type{<:BoundedTopology}, N, H=0) = N + 1 + 2H
 @inline total_length(::Type{Nothing}, topo,            N, H=0) = 1
 @inline total_length(::Type{Nothing}, ::Type{Flat},    N, H=0) = N
 @inline total_length(::Type{Face},    ::Type{Flat},    N, H=0) = N
@@ -150,18 +145,18 @@ regular_dimensions(grid) = ()
 @inline left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 @inline right_halo_indices(loc, topo, N, H) = N+1:N+H
-@inline right_halo_indices(::Type{Face}, ::Type{BoundedTopology}, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H) = N+2:N+1+H
 @inline right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 @inline underlying_left_halo_indices(loc, topo, N, H) = 1:H
 @inline underlying_left_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 @inline underlying_right_halo_indices(loc, topo, N, H) = N+1+H:N+2H
-@inline underlying_right_halo_indices(::Type{Face}, ::Type{BoundedTopology}, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H) = N+2+H:N+1+2H
 @inline underlying_right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,             topo,            N) = 1:N
-@inline interior_indices(::Type{Face},    ::Type{BoundedTopology}, N) = 1:N+1
+@inline interior_indices(::Type{Face},    ::Type{<:BoundedTopology}, N) = 1:N+1
 @inline interior_indices(::Type{Nothing}, topo,            N) = 1:1
 
 @inline interior_indices(::Type{Nothing}, topo::Type{Flat}, N) = 1:N
@@ -181,7 +176,7 @@ regular_dimensions(grid) = ()
 #@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
 
 @inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
-@inline interior_parent_indices(::Type{Face},    ::Type{BoundedTopology}, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
 
 @inline interior_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
@@ -190,7 +185,7 @@ regular_dimensions(grid) = ()
 
 # All indices including halos.
 @inline all_indices(loc,             topo,            N, H) = 1-H:N+H
-@inline all_indices(::Type{Face},    ::Type{BoundedTopology}, N, H) = 1-H:N+1+H
+@inline all_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1-H:N+1+H
 @inline all_indices(::Type{Nothing}, topo,            N, H) = 1:1
 
 @inline all_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
@@ -202,7 +197,7 @@ regular_dimensions(grid) = ()
 @inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
 @inline all_parent_indices(loc,             topo,            N, H) = 1:N+2H
-@inline all_parent_indices(::Type{Face},    ::Type{BoundedTopology}, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1:N+1+2H
 @inline all_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
 
 @inline all_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
@@ -308,7 +303,7 @@ Examples
 julia> using Oceananigans
 
 julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
-                                                 topology=(Periodic, Periodic, BoundedTopology));
+                                                 topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Center, horz_periodic_grid)
 3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, 0:4), 1:3) with eltype Float64:
