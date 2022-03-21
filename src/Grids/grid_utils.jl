@@ -403,9 +403,9 @@ function domain_summary(topo, name, left, right)
     topo_string = topo isa Periodic ? "Periodic " :
                                       "Bounded  "
 
-    prefix = string(topo_string, name, " ∈ [",
-                    scalar_summary(left), ", ",
-                    scalar_summary(right), interval)
+    return string(topo_string, name, " ∈ [",
+                  scalar_summary(left), ", ",
+                  scalar_summary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -418,4 +418,3 @@ coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s",
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
                                                        name, scalar_summary(minimum(parent(Δ))),
                                                        name, scalar_summary(maximum(parent(Δ))))
-
