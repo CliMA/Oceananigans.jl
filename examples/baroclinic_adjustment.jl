@@ -109,17 +109,24 @@ using CairoMakie
 
 y, z = grid.yᵃᶜᵃ[1:grid.Ny], grid.zᵃᵃᶜ[1:grid.Nz]
 
-fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(model.tracers.b)[1, :, :],
+b = model.tracers.b
+
+fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(b)[1, :, :],
                       colormap=:deep,
                       axis = (xlabel = "y [km]", ylabel = "z [km]"))
 
 Colorbar(fig[1, 2], hm)
 
-save("initial_buoyancy.svg", fig)
+fig[0, :] = Label(fig, "b(x=0, y, z, t=0)")
+
+save("initial_buoyancy.svg", fig); nothing # hide
+
+# ![](initial_buoyancy.svg)
 
 # Now let's built a `Simulation`.
 
 Δt₀ = 5minutes
+stop_time = 40days
 
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
@@ -157,14 +164,12 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 # the zonal (``x``) averages of buoyancy and zonal velocity ``u``.
 
 u, v, w = model.velocities
-b = model.tracers.b
 
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
 
 filename = "baroclinic_adjustment"
 save_fields_interval = 0.5day
-stop_time = 40days
 
 slicers = (west = (1, :, :),
            east = (grid.Nx, :, :),
