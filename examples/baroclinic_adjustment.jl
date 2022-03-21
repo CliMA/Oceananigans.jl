@@ -115,7 +115,7 @@ fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(b)[1, :, :],
                       colormap=:deep,
                       axis = (xlabel = "y [km]", ylabel = "z [km]"))
 
-Colorbar(fig[1, 2], hm)
+Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
 
 fig[0, :] = Label(fig, "b(x=0, y, z, t=0)")
 
