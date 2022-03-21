@@ -2,7 +2,7 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 
-using Oceananigans.BoundaryConditions: CBCT, CBC
+using Oceananigans.BoundaryConditions: HBCT, HBC
 import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
 
 import Oceananigans.BoundaryConditions: 
@@ -42,25 +42,25 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
+function fill_west_and_east_halo!(c, west_bc::HBC, east_bc::HBC, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
     return NoneEvent()
 end   
 
-function fill_west_and_east_halo!(c, west_bc, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
+function fill_west_and_east_halo!(c, west_bc, east_bc::HBC, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
     return NoneEvent()
 end   
 
-function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc, arch, dep, grid, args...; kwargs...) 
+function fill_west_and_east_halo!(c, west_bc::HBC, east_bc, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
     return NoneEvent()
 end   
 
-function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_west_halo!(c, bc::HBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
@@ -82,7 +82,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     return nothing
 end
 
-function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_east_halo!(c, bc::HBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]
@@ -104,7 +104,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     return nothing
 end
 
-function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
+function fill_west_halo!(c::NTuple, bc::NTuple{M, HBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -139,7 +139,7 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
     return nothing
 end
 
-function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
+function fill_east_halo!(c::NTuple, bc::NTuple{M, HBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -167,7 +167,7 @@ function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
     return nothing
 end
   
-# Everything goes for Connected
+# Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 
 validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing 
 validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing

@@ -62,8 +62,8 @@ and can also be used to describe nested or linked simulation domains.
 struct Open <: AbstractBoundaryConditionClassification end
 
 """
-    struct Connected <: AbstractBoundaryConditionClassification
+    struct Halo <: AbstractBoundaryConditionClassification
 
 A classification specifying a communicating boundary condition
 """
-struct Connected <: AbstractBoundaryConditionClassification end
+struct Halo <: AbstractBoundaryConditionClassification end

@@ -5,7 +5,7 @@ const DFBC = DefaultPrognosticFieldBoundaryCondition
 
 bc_str(::FBC)     = "Flux"
 bc_str(::PBC)     = "Periodic"
-bc_str(::CBC)     = "Connected"
+bc_str(::HBC)     = "Halo"
 bc_str(::OBC)     = "Open"
 bc_str(::VBC)     = "Value"
 bc_str(::GBC)     = "Gradient"

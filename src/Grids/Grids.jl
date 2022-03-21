@@ -75,7 +75,10 @@ struct Flat <: AbstractTopology end
 
 Grid topology for dimensions that are connected to other models or domains on both sides.
 """
-const Connected = Periodic  # Right now we just need them to behave like Periodic dimensions except we change the boundary conditions.
+struct Connected{L, R} <:AbstractTopology 
+    left :: L
+    right :: R
+end
 
 """
     AbstractGrid{FT, TX, TY, TZ}

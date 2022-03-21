@@ -3,7 +3,7 @@ module BoundaryConditions
 export
     BCType, Flux, Gradient, Value, Open,
     BoundaryCondition, getbc, setbc!,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, ConnectedBoundaryCondition,
+    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, HaloBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,

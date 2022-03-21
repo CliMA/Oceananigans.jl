@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.BoundaryConditions: OBC, CBC
+using Oceananigans.BoundaryConditions: OBC, HBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
 
 using Adapt
@@ -47,7 +47,7 @@ function validate_field_data(loc, data, grid, indices)
 end
 
 validate_boundary_condition_location(bc, ::Center, side) = nothing                        # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, CBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
+validate_boundary_condition_location(::Union{OBC, Nothing, HBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                # its nothing or nothing
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
