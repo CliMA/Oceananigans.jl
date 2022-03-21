@@ -107,11 +107,11 @@ set!(model, b=bᵢ)
 
 using CairoMakie
 
-y, z = grid.yᵃᶜᵃ[1:grid.Ny], grid.zᵃᵃᶜ[1:grid.Nz]
+x, y, z = 1e-3 .* nodes((Center, Center, Center), grid) # convert m -> km
 
 b = model.tracers.b
 
-fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(b)[1, :, :],
+fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
                       colormap=:deep,
                       axis = (xlabel = "y [km]", ylabel = "z [km]"))
 
@@ -276,6 +276,8 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
+
+# ![](baroclinic_adjustment.mp4)
 
 # Let's now close all the files we opened.
 
