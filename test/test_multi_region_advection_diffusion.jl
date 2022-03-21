@@ -214,12 +214,9 @@ grid_lat = LatitudeLongitudeGrid(CPU(), size = (Nx, Ny, 1),
                 f = construct_regionally(interior, f)
 
                 for region in 1:regions
-                    init = Int(size(cs, 1) / regions) * (region - 1) + 1
-                    fin  = Int(size(cs, 1) / regions) * region
-                    @test all(f[region] .== fs[init:fin, :, :])
-                    @test all(v[region] .== vs[init:fin, :, :])
-                    @test all(w[region] .== ws[init:fin, :, :])
-                    @test all(c[region] .== cs[init:fin, :, :])
+                    init = Int(size(grid, 1) / regions) * (region - 1) + 1
+                    fin  = Int(size(grid, 1) / regions) * region
+                    @test all(f[region][1:(1+fin-init), :, :] .== fs[init:fin, :, :])
                 end
             end
         end

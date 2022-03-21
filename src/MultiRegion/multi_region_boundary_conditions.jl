@@ -42,6 +42,12 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
+function fill_west_and_east_halo!(c, west_bc::CBCT, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
+    fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
+    fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
+    return NoneEvent()
+end   
+
 function fill_west_and_east_halo!(c, west_bc, east_bc::CBCT, arch, dep, grid, args...; kwargs...) 
     fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
     fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
