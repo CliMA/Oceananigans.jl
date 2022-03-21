@@ -107,9 +107,9 @@ set!(model, b=bᵢ)
 
 using CairoMakie
 
-y, z = grid.yᵃᶜᵃ, grid.zᵃᵃᶜ
+y, z = grid.yᵃᶜᵃ[1:grid.Ny], grid.zᵃᵃᶜ[1:grid.Nz]
 
-fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, [bᵢ(0, y, z) for y in y, z in z],
+fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(model.tracers.b)[1, :, :],
                       colormap=:deep,
                       axis = (xlabel = "y [km]", ylabel = "z [km]"))
 
