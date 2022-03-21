@@ -213,7 +213,7 @@ using CairoMakie
 
 filename = "baroclinic_adjustment"
 
-fig = Figure(resolution = (1000, 800))
+fig = Figure(resolution = (1500, 1200))
 ax_b = fig[1, 1] = LScene(fig)
 nothing #hide
 
@@ -276,8 +276,6 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
     iter[] = i
 end
 nothing #hide
-
-# ![](baroclinic_adjustment.mp4)
 
 # ![](baroclinic_adjustment.mp4)
 
