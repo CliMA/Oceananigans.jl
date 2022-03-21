@@ -206,8 +206,8 @@ kwargs = (xlabel = "along-slope distance",
           xlim = (0, Lx),
           zlim = (0, Lz))
 
-# Read in the output_writer for the two-dimensional fields and then create an animation showing the
-# vorticity.
+# Read in the simulation's `output_writer` for the two-dimensional fields and then create an
+# animation showing the ``y``-component of vorticity.
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
@@ -231,6 +231,8 @@ anim = @animate for (frame, time) in enumerate(ds["time"])
     plot(plot_ω, plot_v, layout = (2, 1), size = (800, 440))
 end
 
-close(ds)
-
 mp4(anim, "tilted_bottom_boundary_layer.mp4", fps=12)
+
+# It's always good practice to close the NetCDF files when we are done.
+
+close(ds)

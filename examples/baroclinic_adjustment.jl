@@ -14,7 +14,6 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: fields
 
 using Printf
 using Statistics
@@ -40,10 +39,12 @@ grid = RectilinearGrid(CPU();
                        z = (-Lz, 0),
                        halo = (3, 3, 3))
 
+# ## Turbulence closures
+
 # We prescribe the values of vertical viscocity and diffusivity according to the ratio
 # of the vertical and lateral grid spacing.
 
-Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
+Δx, Δz = Lx/Nx, Lz/Nz
 
 𝒜 = Δz/Δx # Grid cell aspect ratio.
 
@@ -65,8 +66,8 @@ vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDis
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis = BetaPlane(latitude = -45),
                                       buoyancy = BuoyancyTracer(),
-                                      closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
                                       tracers = :b,
+                                      closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
                                       momentum_advection = WENO5(),
                                       tracer_advection = WENO5(),
                                       free_surface = ImplicitFreeSurface())
@@ -75,41 +76,61 @@ model = HydrostaticFreeSurfaceModel(; grid,
 # noise.
 
 """
+    ramp(y, Δy)
+
 Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
 
 For example:
-
-y < y₀           => ramp = 0
-y₀ < y < y₀ + Δy => ramp = y / Δy
-y > y₀ + Δy      => ramp = 1
+```
+            y < -Δy/2 => ramp = 0
+    -Δy/2 < y < -Δy/2 => ramp = y / Δy
+            y >  Δy/2 => ramp = 1
+```
 """
 ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
+
+# We then use `ramp(y, Δy)` to construct an initial buoyancy configuration of a baroclinically
+# unstable front. The front has a buoyancy jump `Δb` over a latitudinal width `Δy`.
 
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
 Δy = 50kilometers # width of the region of the front
-sΔb = Δy * M²      # buoyancy jump associated with the front
+Δb = Δy * M²      # buoyancy jump associated with the front
 ϵb = 1e-2 * Δb    # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
 
 set!(model, b=bᵢ)
 
+# Let's visualize the initial buoyancy distribution.
+
+using CairoMakie
+
+y, z = grid.yᵃᶜᵃ, grid.zᵃᵃᶜ
+
+fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, [bᵢ(0, y, z) for y in y, z in z],
+                      colormap=:deep,
+                      axis = (xlabel = "y [km]", ylabel = "z [km]"))
+
+Colorbar(fig[1, 2], hm)
+
+save("initial_buoyancy.svg", fig)
+
 # Now let's built a `Simulation`.
 
-filename = "baroclinic_adjustment"
-save_fields_interval = 0.5day
-stop_time = 40days
 Δt₀ = 5minutes
 
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
-# add timestep wizard callback
+# We add a `TimeStepWizard` callback to adapt the siulation's time-step,
+
 wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
-# add progress callback
+# Also, we add a callback to print a message about how the simulation is going,
+
 wall_clock = [time_ns()]
 
 function print_progress(sim)
@@ -130,8 +151,10 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-# Add some diagnostics. Here, we save the buoyancy, ``b``, at the edges of our domain as well as the
-# zonal (``x``) averages of buoyancy and zonal velocity ``u``.
+# ## Diagnostics/Output
+
+# Add some diagnostics. Here, we save the buoyancy, ``b``, at the edges of our domain as well as
+# the zonal (``x``) averages of buoyancy and zonal velocity ``u``.
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -139,9 +162,9 @@ b = model.tracers.b
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
 
-#####
-##### Build output writers
-#####
+filename = "baroclinic_adjustment"
+save_fields_interval = 0.5day
+stop_time = 40days
 
 slicers = (west = (1, :, :),
            east = (grid.Nx, :, :),
@@ -173,7 +196,6 @@ run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
-
 # ## Visualization
 
 # Now we are ready to visualize our resutls! We use `CairoMakie` in this example.
@@ -198,6 +220,7 @@ sides = keys(slicers)
 slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
 # Build coordinates, rescaling the vertical coordinate
+
 x, y, z = nodes((Center, Center, Center), grid)
 
 yscale = 2.5
@@ -249,7 +272,7 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
     iter[] = i
 end
 
-# Let's now close the files
+# Let's now close all the files we opened.
 
 for file in slice_files
     close(file)
