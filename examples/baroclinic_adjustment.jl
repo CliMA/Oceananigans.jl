@@ -71,9 +71,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection = WENO5(),
                                       free_surface = ImplicitFreeSurface())
 
-#####
-##### Initial conditions
-#####
+# We want to initialize our model with a baroclinically unstable front plus some small-amplitude
+# noise.
 
 """
 Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
@@ -86,22 +85,18 @@ y > y₀ + Δy      => ramp = 1
 """
 ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 
-# Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-Δy = 50kilometers
-
-Δb = Δy * M²
-ϵb = 1e-2 * Δb # noise amplitude
+Δy = 50kilometers # width of the region of the front
+sΔb = Δy * M²      # buoyancy jump associated with the front
+ϵb = 1e-2 * Δb    # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
 
 set!(model, b=bᵢ)
 
-#####
-##### Simulation building
-#####
+# Now let's built a `Simulation`.
 
 filename = "baroclinic_adjustment"
 save_fields_interval = 0.5day
@@ -135,22 +130,14 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-
-#####
-##### Diagnostics
-#####
+# Add some diagnostics. Here, we save the buoyancy, ``b``, at the edges of our domain as well as the
+# zonal (``x``) averages of buoyancy and zonal velocity ``u``.
 
 u, v, w = model.velocities
 b = model.tracers.b
 
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
-W = Field(Average(w, dims=1))
-
-b′ = b - B
-w′ = w - W
-
-w′b′ = Field(Average(b′ * w′, dims=1))
 
 #####
 ##### Build output writers
@@ -173,10 +160,12 @@ for side in keys(slicers)
                                                        force = true)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, wb=w′b′);
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);
                                                      schedule = TimeInterval(save_fields_interval),
                                                      prefix = filename * "_zonal_average",
                                                      force = true)
+
+# Now let's run!
 
 @info "Running the simulation..."
 
@@ -187,15 +176,14 @@ run!(simulation)
 
 # ## Visualization
 
-# Now we are ready to visualize! We use `CairoMakie` in this example. But on a system
-# with OpenGL then using `GLMakie` would be more convenient.
+# Now we are ready to visualize our resutls! We use `CairoMakie` in this example.
+# But on a system with OpenGL then `using GLMakie` can be more convenient.
 
 using CairoMakie
 
 filename = "baroclinic_adjustment"
 
 fig = Figure(resolution = (1000, 800))
-
 ax_b = fig[1, 1] = LScene(fig)
 
 # Extract surfaces on all 6 boundaries
@@ -219,9 +207,7 @@ y = y .* yscale
 
 zonal_slice_displacement = 1.5
 
-#####
-##### Plot buoyancy...
-#####
+# Plot buoyancy
 
 b_slices = (
       west = @lift(Array(slice_files.west["timeseries/b/"   * string($iter)][1, :, :])),
@@ -249,9 +235,7 @@ contour!(ax_b, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformati
 
 rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
-#####
-##### Make title and animate
-#####
+# Add a figure title with the time of the snapshot and then record a movie.
 
 title = @lift(string("Buoyancy at t = ",
                      string(slice_files[1]["timeseries/t/" * string($iter)]/day), " days"))
@@ -266,6 +250,7 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
 end
 
 # Let's now close the files
+
 for file in slice_files
     close(file)
 end
