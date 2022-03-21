@@ -13,12 +13,9 @@ function build_condition(Topo, side, dim)
     end
 end
 
-const FullBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
-
 Topos     = [:Bounded, :LeftConnected, :RightConnected] 
-condition = [:((c < 1) | (c > End)), :(c > End), :(c < 1)]
 
-for (Topo, cond) in zip(Topos, condition)
+for Topo in Topos
 
     xcondition = build_condition(Topo, :i, :Nx)
     ycondition = build_condition(Topo, :j, :Ny)
