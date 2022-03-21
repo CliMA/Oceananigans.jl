@@ -57,6 +57,8 @@ horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
                                                        ν = νz, κ = κz)
+nothing #hide
+
 
 # ## Model
 
@@ -88,6 +90,7 @@ For example:
 ```
 """
 ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
+nothing #hide
 
 # We then use `ramp(y, Δy)` to construct an initial buoyancy configuration of a baroclinically
 # unstable front. The front has a buoyancy jump `Δb` over a latitudinal width `Δy`.
@@ -107,11 +110,11 @@ set!(model, b=bᵢ)
 
 using CairoMakie
 
-y, z = grid.yᵃᶜᵃ[1:grid.Ny], grid.zᵃᵃᶜ[1:grid.Nz]
+x, y, z = 1e-3 .* nodes((Center, Center, Center), grid) # convert m -> km
 
 b = model.tracers.b
 
-fig, ax, hm = heatmap(y * 1e-3, z * 1e-3, interior(b)[1, :, :],
+fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
                       colormap=:deep,
                       axis = (xlabel = "y [km]", ylabel = "z [km]"))
 
@@ -212,6 +215,7 @@ filename = "baroclinic_adjustment"
 
 fig = Figure(resolution = (1000, 800))
 ax_b = fig[1, 1] = LScene(fig)
+nothing #hide
 
 # Extract surfaces on all 6 boundaries
 
@@ -234,14 +238,12 @@ z = z .* zscale
 y = y .* yscale
 
 zonal_slice_displacement = 1.5
+nothing #hide
 
 # Plot buoyancy
 
 b_slices = (
-      west = @lift(Array(slice_files.west["timeseries/b/"   * string($iter)][1, :, :])),
       east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/b/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/b/"  * string($iter)][:, 1, :])),
     bottom = @lift(Array(slice_files.bottom["timeseries/b/" * string($iter)][:, :, 1])),
        top = @lift(Array(slice_files.top["timeseries/b/"    * string($iter)][:, :, 1]))
 )
@@ -249,10 +251,7 @@ b_slices = (
 clims_b = @lift 1.1 .* extrema(slice_files.top["timeseries/b/" * string($iter)][:])
 kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
 
-surface!(ax_b, y, z, b_slices.west;   transformation = (:yz, x[1]),   kwargs_b...)
 surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
-surface!(ax_b, x, z, b_slices.south;  transformation = (:xz, y[1]),   kwargs_b...)
-surface!(ax_b, x, z, b_slices.north;  transformation = (:xz, y[end]), kwargs_b...)
 surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
 surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
@@ -268,7 +267,7 @@ rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 title = @lift(string("Buoyancy at t = ",
                      string(slice_files[1]["timeseries/t/" * string($iter)]/day), " days"))
 
-fig[0, :] = Label(fig, title, textsize=50)
+fig[0, :] = Label(fig, title, textsize=55)
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 
@@ -276,6 +275,9 @@ record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
+nothing #hide
+
+# ![](baroclinic_adjustment.mp4)
 
 # Let's now close all the files we opened.
 
