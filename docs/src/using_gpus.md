@@ -65,4 +65,4 @@ Once the CUDA Toolkit is installed, you might have to build Oceananigans again
 julia>]
 (v1.6) pkg> build Oceananigans
 ```
-The [ocean wind mixing and convection](@ref gpu_example) example is a good one to test out on the GPU.
+The ocean wind mixing and convection example is a good one to test out on the GPU.
