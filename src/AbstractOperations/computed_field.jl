@@ -62,7 +62,7 @@ function compute!(comp::ComputedField, time=nothing)
     event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
     wait(device(arch), event)
 
-    fill_halo_regions!(comp, arch)
+    fill_halo_regions!(comp)
 
     return comp
 end
@@ -80,4 +80,3 @@ end
 
     @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
 end
-

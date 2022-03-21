@@ -1,5 +1,66 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
+@inline extract_field_data(field::Field) = field.data
+
+@inline function extract_field_bcs(field::Field) 
+    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
+        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
+    else
+        maybe_filtered_bcs = field.boundary_conditions
+    end
+    return maybe_filtered_bcs
+end
+
+const AllFieldTypes = [:Field, :ReducedField]
+
+for FieldType in AllFieldTypes
+    
+    @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$FieldType}) = push!(filtered_fields, field)
+    OtherFieldTypes = deepcopy(AllFieldTypes)
+    deleteat!(OtherFieldTypes, OtherFieldTypes .== FieldType)
+        
+    for OtherFieldType in OtherFieldTypes
+        @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$OtherFieldType}) = nothing
+    end
+end
+
+@inline recursive_fill(filtered_fields, ::Nothing, Type) = nothing
+
+@inline function recursive_fill(filtered_fields, fields::Union{Tuple, NamedTuple}, Type) 
+    for field in fields
+        recursive_fill(filtered_fields, field, Type)
+    end
+    return filtered_fields
+end
+
+@inline fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...) = 
+        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
+
+"""
+    fill_halo_regions!field_tuple, args...; kwargs...) 
+
+separated `ReducedField`s from `Field`s in a `red_fields` and `full_fields` tuple.
+The halo of the former are filled individually, while for the latter, all halos are filled
+together in the same direction
+"""
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
+    
+    red_fields = Tuple(recursive_fill([], fields, ReducedField))
+
+    for field in red_fields
+        fill_halo_regions!(field, args...; reduced_dims = reduced_dimensions(field), kwargs...)
+    end
+
+    full_fields = Tuple(recursive_fill([], fields, Field))
+
+    if !isempty(full_fields)
+        grid = full_fields[1].grid
+        fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...)
+    end
+
+    return nothing
+end
+
 # TODO: This code belongs in the Models module
 
 #####

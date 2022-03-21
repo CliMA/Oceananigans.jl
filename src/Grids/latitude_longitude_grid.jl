@@ -127,7 +127,7 @@ Keyword arguments
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
-                               precompute_metrics = false,
+                               precompute_metrics = true,
                                size,
                                latitude,
                                longitude,

@@ -11,20 +11,29 @@ struct ScalarDiffusivity{TD, F, N, K} <: AbstractScalarDiffusivity{TD, F}
 end
 
 """
-    ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization,
+    ScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
                       formulation=ThreeDimensionalFormulation(), FT=Float64];
                       ν=0, κ=0,
                       discrete_form = false) 
 
-Return `ScalarDiffusivity` with viscosity `ν` and tracer diffusivities `κ`
-for each tracer field in `tracers`. If a single `κ` is provided, it is
-applied to all tracers. Otherwise `κ` must be a `NamedTuple` with values
-for every tracer individually.
+Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
+for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
+Otherwise `κ` must be a `NamedTuple` with values for every tracer individually.
 
-`formulation`:
+Arguments
+=========
+
+* `time_discretization`: either `ExplicitTimeDiscretization()` (default) or `VerticallyImplicitTimeDiscretization()`.
+
+* `formulation`:
   - `HorizontalFormulation()` for diffusivity applied in the horizontal direction(s)
   - `VerticalFormulation()` for diffusivity applied in the vertical direction,
   - `ThreeDimensionalFormulation()` (default) for diffusivity applied isotropically to all directions
+
+* `FT`: the float datatype (default: `Float64`)
+
+Keyword arguments
+=================
 
 `ν` and the fields of `κ` may be constants (converted to `FT`), arrays, fields or
   - functions of `(x, y, z, t)` if `discrete_form = false`
@@ -49,9 +58,23 @@ end
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
 const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulation} where TD
 
+"""
+    VerticalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
+                              FT::DataType=Float64;]
+                              kwargs...)
+
+Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
+"""
 VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
+"""
+    HorizontalScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
+                                FT::DataType=Float64;]
+                                kwargs...)
+
+Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
+"""
 HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
@@ -67,13 +90,8 @@ function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
     return ScalarDiffusivity{TD, F}(closure.ν, κ)
 end
 
-@inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
-@inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
-
-# z_viscosity and z_diffusivity fallback to viscosity and diffusivity
-# for both ThreeDimensional and VerticalScalarDiffusivity
-@inline z_viscosity(closure::HorizontalScalarDiffusivity, args...) = 0
-@inline z_diffusivity(closure::HorizontalScalarDiffusivity, args...) = 0
+@inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
+@inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 

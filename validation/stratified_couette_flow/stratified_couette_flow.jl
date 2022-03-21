@@ -8,9 +8,9 @@ using Oceananigans.Diagnostics
 using Oceananigans.Utils
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
-function uτ(model, Uavg, U_wall)
+function uτ(model, Uavg, U_wall, n)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
-    ν = model.closure.ν
+    ν = model.closure[n].ν
 
     compute!(Uavg)
     U = Array(interior(Uavg))  # Exclude average of halo region.
@@ -27,9 +27,10 @@ function uτ(model, Uavg, U_wall)
 end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
-function q_wall(model, Tavg, Θ_wall)
+function q_wall(model, Tavg, Θ_wall, n)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
-    κ = model.closure.κ.T
+    # TODO: interface function for extracting diffusivity?
+    κ = model.closure[n].κ.T
 
     compute!(Tavg)
     Θ = Array(interior(Tavg)) # Exclude average of halo region.
@@ -46,28 +47,30 @@ end
 struct FrictionReynoldsNumber{H, U}
     Uavg :: H
     U_wall :: U
+    n_scalar :: Int
 end
 
 struct NusseltNumber{H, T}
     Tavg :: H
     Θ_wall :: T
+    n_scalar :: Int
 end
 
 """ Friction Reynolds number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Reτ::FrictionReynoldsNumber)(model)
-    ν = model.closure.ν
+    ν = model.closure[Reτ.n_scalar].ν
     h = model.grid.Lz / 2
-    uτ_top, uτ_bottom = uτ(model, Reτ.Uavg, Reτ.U_wall)
+    uτ_top, uτ_bottom = uτ(model, Reτ.Uavg, Reτ.U_wall, Reτ.n_scalar)
 
     return h * uτ_top / ν, h * uτ_bottom / ν
 end
 
 """ Nusselt number. See equation (20) of Vreugdenhil & Taylor (2018). """
 function (Nu::NusseltNumber)(model)
-    κ = model.closure.κ.T
+    κ = model.closure[Nu.n_scalar].κ.T
     h = model.grid.Lz / 2
 
-    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.Θ_wall)
+    q_wall_top, q_wall_bottom = q_wall(model, Nu.Tavg, Nu.Θ_wall, Nu.n_scalar)
 
     return (q_wall_top * h)/(κ * Nu.Θ_wall), (q_wall_bottom * h)/(κ * Nu.Θ_wall)
 end
@@ -112,11 +115,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
+    
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(; grid, buoyancy,
                                 tracers = (:T, :S),
-                                closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
+                                closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
                                 boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
 
     #####
@@ -173,13 +177,15 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         file["parameters/wall_temperature"] = Θ_wall
     end
 
+    n_amd = findfirst(c -> c isa AnisotropicMinimumDissipation, model.closure)
+
     fields = Dict(
         :u => model -> Array(model.velocities.u.data.parent),
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields.κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivity_fields.νₑ.data.parent))
+   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
+       :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
@@ -190,12 +196,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = Field(Average(model.velocities.u,            dims=(1, 2)))
-    Vavg = Field(Average(model.velocities.v,            dims=(1, 2)))
-    Wavg = Field(Average(model.velocities.w,            dims=(1, 2)))
-    Tavg = Field(Average(model.tracers.T,               dims=(1, 2)))
-    νavg = Field(Average(model.diffusivity_fields.νₑ,   dims=(1, 2)))
-    κavg = Field(Average(model.diffusivity_fields.κₑ.T, dims=(1, 2)))
+    Uavg = Field(Average(model.velocities.u,               dims=(1, 2)))
+    Vavg = Field(Average(model.velocities.v,               dims=(1, 2)))
+    Wavg = Field(Average(model.velocities.w,               dims=(1, 2)))
+    Tavg = Field(Average(model.tracers.T,                  dims=(1, 2)))
+    νavg = Field(Average(model.diffusivity_fields[n_amd].νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
@@ -214,8 +220,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up statistic output writer
     #####
 
-    Reτ = FrictionReynoldsNumber(Uavg, U_wall)
-     Nu = NusseltNumber(Tavg, Θ_wall)
+    n_scalar = findfirst(c -> c isa ScalarDiffusivity, model.closure)
+
+    Reτ = FrictionReynoldsNumber(Uavg, U_wall, n_scalar)
+     Nu = NusseltNumber(Tavg, Θ_wall, n_scalar)
 
     statistics = Dict(
         :Re_tau => model -> Reτ(model),
@@ -252,8 +260,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         CFL = simulation.Δt / cell_advection_timescale(model)
 
         Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
-        νmax = maximum(model.diffusivity_fields.νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields.κₑ.T.data.parent)
+        νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
+        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 

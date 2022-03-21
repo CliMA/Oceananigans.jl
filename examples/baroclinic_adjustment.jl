@@ -279,6 +279,8 @@ nothing #hide
 
 # ![](baroclinic_adjustment.mp4)
 
+# ![](baroclinic_adjustment.mp4)
+
 # Let's now close all the files we opened.
 
 for file in slice_files
