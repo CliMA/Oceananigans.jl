@@ -19,7 +19,7 @@ backend will lazily load field time snapshots when the `FieldTimeSeries` is inde
 linearly.
 
 - `metadata_paths`: A list of JLD2 paths to look for metadata. By default it looks in
-`file["metadata"]`.
+  `file["metadata"]`.
 
 - `grid`: May be specified to override the grid used in the JLD2 file.
 """
