@@ -159,7 +159,7 @@ for arch in [GPU()]
             ds = interior(ds);
             es = interior(es);
 
-            for regions in [2]
+            for regions in [2, 4]
                 @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
                 c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
 
@@ -170,73 +170,73 @@ for arch in [GPU()]
                 for region in 1:regions
                     init = Int(size(cs, 1) / regions) * (region - 1) + 1
                     fin  = Int(size(cs, 1) / regions) * region
-                    @show @test all(c[region] .== cs[init:fin, :, :])
-                    @show @test all(d[region] .== ds[init:fin, :, :])
-                    @show @test all(e[region] .== es[init:fin, :, :])
+                    @show @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
+                    @show @test all(Array(d[region]) .== Array(ds)[init:fin, :, :])
+                    @show @test all(Array(e[region]) .== Array(es)[init:fin, :, :])
                 end
             end
         end
     end
 
-    # @testset "Testing multi region solid body rotation" begin
-    #     grid = grid_lat
-    #     us, vs, ws, cs = solid_body_rotation_test(grid)
+    @testset "Testing multi region solid body rotation" begin
+        grid = grid_lat
+        us, vs, ws, cs = solid_body_rotation_test(grid)
             
-    #     us = interior(us);
-    #     vs = interior(vs);
-    #     ws = interior(ws);
-    #     cs = interior(cs);
+        us = interior(us);
+        vs = interior(vs);
+        ws = interior(ws);
+        cs = interior(cs);
         
-    #     for regions in [2, 4, 8]
-    #         @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
-    #         u, v, w, c = solid_body_rotation_test(grid; regions=regions)
+        for regions in [2, 4]
+            @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
+            u, v, w, c = solid_body_rotation_test(grid; regions=regions)
 
-    #         u = construct_regionally(interior, u)
-    #         v = construct_regionally(interior, v)
-    #         w = construct_regionally(interior, w)
-    #         c = construct_regionally(interior, c)
+            u = construct_regionally(interior, u)
+            v = construct_regionally(interior, v)
+            w = construct_regionally(interior, w)
+            c = construct_regionally(interior, c)
                 
-    #         for region in 1:regions
-    #             init = Int(size(cs, 1) / regions) * (region - 1) + 1
-    #             fin  = Int(size(cs, 1) / regions) * region
-    #             @test all(u[region] .== us[init:fin, :, :])
-    #             @test all(v[region] .== vs[init:fin, :, :])
-    #             @test all(w[region] .== ws[init:fin, :, :])
-    #             @test all(c[region] .== cs[init:fin, :, :])
-    #         end
-    #     end
-    # end
+            for region in 1:regions
+                init = Int(size(cs, 1) / regions) * (region - 1) + 1
+                fin  = Int(size(cs, 1) / regions) * region
+                @test all(u[region] .== us[init:fin, :, :])
+                @test all(v[region] .== vs[init:fin, :, :])
+                @test all(w[region] .== ws[init:fin, :, :])
+                @test all(c[region] .== cs[init:fin, :, :])
+            end
+        end
+    end
 
-    # @testset "Testing multi region gaussian diffusion" begin
-    #     grid  = RectilinearGrid(arch, size = (Nx, Ny, 1),
-    #                             halo = (3, 3, 3),
-    #                             topology = (Bounded, Bounded, Bounded),
-    #                             x = (0, 1),
-    #                             y = (0, 1),
-    #                             z = (0, 1))
+    @testset "Testing multi region gaussian diffusion" begin
+        grid  = RectilinearGrid(arch, size = (Nx, Ny, 1),
+                                halo = (3, 3, 3),
+                                topology = (Bounded, Bounded, Bounded),
+                                x = (0, 1),
+                                y = (0, 1),
+                                z = (0, 1))
         
-    #     diff₂ = ScalarDiffusivity(ν = 1, κ = 1)
-    #     diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
+        diff₂ = ScalarDiffusivity(ν = 1, κ = 1)
+        diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
 
-    #     for fieldname in [:u, :v, :c]
-    #         for closure in [diff₄]
+        for fieldname in [:u, :v, :c]
+            for closure in [diff₂]
 
-    #             fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
-    #             fs = interior(fs);
+                fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
+                fs = interior(fs);
 
-    #             for regions in [2, 4, 8]
-    #                 @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper)"
+                for regions in [2, 4]
+                    @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper)"
 
-    #                 f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
-    #                 f = construct_regionally(interior, f)
+                    f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
+                    f = construct_regionally(interior, f)
 
-    #                 for region in 1:regions
-    #                     init = Int(size(grid, 1) / regions) * (region - 1) + 1
-    #                     fin  = Int(size(grid, 1) / regions) * region
-    #                     @test all(f[region][1:(1+fin-init), :, :] .== fs[init:fin, :, :])
-    #                 end
-    #             end
-    #         end
-    #     end
-    # end
+                    for region in 1:regions
+                        init = Int(size(grid, 1) / regions) * (region - 1) + 1
+                        fin  = Int(size(grid, 1) / regions) * region
+                        @test all(f[region][1:(1+fin-init), :, :] .== fs[init:fin, :, :])
+                    end
+                end
+            end
+        end
+    end
 end
