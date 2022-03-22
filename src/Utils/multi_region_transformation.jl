@@ -44,13 +44,13 @@ switch_device!(dev::CuDevice)            = CUDA.device!(dev)
 switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
 switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
-getregion(a, i) = a
-getregion(ref::Reference, i)        = ref.ref
-getregion(iter::Iterate, i)         = iter.iter[i]
-getregion(mo::MultiRegionObject, i) = mo.regions[i]
+@inline getregion(a, i) = a
+@inline getregion(ref::Reference, i)        = ref.ref
+@inline getregion(iter::Iterate, i)         = iter.iter[i]
+@inline getregion(mo::MultiRegionObject, i) = mo.regions[i]
 
-getregion(t::Tuple, i)              = Tuple(getregion(elem, i) for elem in t)
-getregion(nt::NamedTuple, i)        = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
+@inline getregion(t::Tuple, i)              = Tuple(getregion(elem, i) for elem in t)
+@inline getregion(nt::NamedTuple, i)        = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
 
 isregional(a)                   = false
 isregional(::MultiRegionObject) = true
@@ -119,8 +119,8 @@ function sync_all_devices!(devices)
     end
 end
 
-sync_device!(::CuDevice) = CUDA.synchronize(blocking=false)
-sync_device!(a)          = nothing
+sync_device!(::CuDevice; blocking = false) = CUDA.synchronize(; blocking)
+sync_device!(a; kwargs...)                 = nothing
 
 macro apply_regionally(expr)
     if expr.head == :call

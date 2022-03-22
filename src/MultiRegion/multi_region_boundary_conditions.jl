@@ -70,7 +70,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
 
     switch_device!(getdevice(w))
     src .= (parent(w)[N+1:N+H, :, :])
-    sync_device!(getdevice(w))
+    sync_device!(getdevice(w); blocking = true)
     
     switch_device!(getdevice(c))
     copyto!(dst, src)
@@ -92,7 +92,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
 
     switch_device!(getdevice(e))
     src .= (parent(e)[H+1:2H, :, :])
-    sync_device!(getdevice(e))
+    sync_device!(getdevice(e); blocking = true)
 
     switch_device!(getdevice(c))    
     copyto!(dst, src)

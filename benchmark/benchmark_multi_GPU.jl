@@ -36,7 +36,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    coriolis_scheme = VectorInvariantEnstrophyConserving())
 
     # A spherical domain
-    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 10),
                                  radius = 1,
                                  latitude = (-80, 80),
                                  longitude = (-180, 180),
@@ -117,8 +117,8 @@ end
 
 # using BenchmarkTools
 
-simulation_serial = run_solid_body_rotation(Nx=10, Ny=10, architecture=GPU())
-simulation_paral1 = run_solid_body_rotation(Nx=10, Ny=10, dev = (0, 1), architecture=GPU())
+simulation_serial = run_solid_body_rotation(Nx=512, Ny=512, architecture=GPU())
+simulation_paral1 = run_solid_body_rotation(Nx=1024, Ny=512, dev = (0, 1), architecture=GPU())
 
 # using BenchmarkTools
 
