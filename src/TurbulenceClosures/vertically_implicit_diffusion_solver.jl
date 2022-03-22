@@ -64,11 +64,11 @@ end
 ### Diagonal terms
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) - _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                        _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+    one(eltype(grid)) - maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                        maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
-@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
-@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+@inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
+@inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
 
 #####
 ##### Solver constructor
@@ -99,9 +99,9 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                        lower_diagonal = _ivd_lower_diagonal,
+                                        lower_diagonal = maybe_tupled_ivd_lower_diagonal,
                                         diagonal = ivd_diagonal,
-                                        upper_diagonal = _ivd_upper_diagonal)
+                                        upper_diagonal = maybe_tupled_ivd_upper_diagonal)
 
     return z_solver
 end
