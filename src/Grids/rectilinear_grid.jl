@@ -113,7 +113,7 @@ Keyword arguments
 *Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
 
 - `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
-          the physical interior for each non-`Flat` direction.
+          the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.
 
 The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
 indicating the left and right endpoints of each dimensions, e.g. `x = (-π, π)` or via

@@ -90,7 +90,7 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
                           radius = R_Earth,
                           topology = nothing,
                           precompute_metrics = true,
-                          halo = (1, 1, 1))
+                          halo = nothing)
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.
@@ -126,7 +126,7 @@ Keyword arguments
                         on-the-fly during a simulation.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
-          the physical interior.
+          the physical interior. The default is 3 halo cells in every direction.
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
@@ -137,7 +137,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                radius = R_Earth,
                                topology = nothing,
                                precompute_metrics = true,
-                               halo = (1, 1, 1))
+                               halo = nothing)
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
         validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
