@@ -68,6 +68,9 @@ end
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
+    ## Can we take this off??
+    wait(dep)
+
     H = halo_size(grid)[1]
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
@@ -76,6 +79,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
     src .= view(parent(w), N+1:N+H, :, :)
+    sync_device!(getdevice(w))
 
     switch_device!(getdevice(c))
     copyto!(dst, src)
@@ -87,15 +91,19 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
 end
 
 function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+    
+    ## Can we take this off??
+    wait(dep)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
-
+    
     switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
     src .= view(parent(e), H+1:2H, :, :)
+    sync_device!(getdevice(e))
 
     switch_device!(getdevice(c))    
     copyto!(dst, src)
@@ -107,6 +115,10 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
 end
 
 function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
+    
+    ## Can we take this off??
+    wait(dep)
+    
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -136,12 +148,15 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
             p .= dst[n]
         end
     end
-    sync_device!(getdevice(c[1]))
 
     return nothing
 end
 
 function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
+    
+    ## Can we take this off??
+    wait(dep)
+    
     H = halo_size(grid)[1]
     N = size(grid)[1]
 
@@ -150,21 +165,23 @@ function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
     switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
     src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
     
-    for n in 1:M
-        e = neighbors[n][bc[n].condition.from_rank]
-        src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
+    @sync for n in 1:M
+        @async begin
+            e = neighbors[n][bc[n].condition.from_rank]
+            src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
+        end
     end
 
     sync_device!(getdevice(src[1]))
     
     switch_device!(getdevice(c[1]))
     copyto!(dst, src)
-    for n in 1:M
-        p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
-        p .= dst[n, :, :, :]
+    @sync for n in 1:M
+        @async begin
+            p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
+            p .= dst[n, :, :, :]
+        end
     end
-
-    sync_device!(getdevice(c[1]))
 
     return nothing
 end

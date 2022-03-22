@@ -24,9 +24,9 @@ if CUDA.has_cuda_gpu()
     end
 
     const STREAM_GC_LOCK = Threads.ReentrantLock()
-
     const FREE_STREAMS_D = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
     const STREAMS_D      = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
+
     function next_stream()
         ctx = CUDA.current_context()
         lock(STREAM_GC_LOCK) do
@@ -91,14 +91,6 @@ struct CPU <: AbstractArchitecture end
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
-
-"""
-    MultiGPU <: AbstractArchitecture
-
-Run Oceananigans on multiple NVIDIA CUDA GPUs connected to the same host.
-Can be used only in connection with `MultiRegionGrid`
-"""
-struct MultiGPU <: AbstractArchitecture end
 
 #####
 ##### These methods are extended in Distributed.jl

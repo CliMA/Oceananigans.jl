@@ -136,7 +136,7 @@ end
 
 Nx = 32; Ny = 32
 
-for arch in [GPU()]
+for arch in archs
 
     grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
