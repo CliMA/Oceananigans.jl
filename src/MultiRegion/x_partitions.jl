@@ -1,4 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct XPartition{N} <: AbstractPartition
     div :: N
@@ -64,7 +65,7 @@ inject_north_boundary(region, p::XPartition, bc) = bc
 
 function inject_west_boundary(region, p::XPartition, global_bc) 
     if region == 1
-        typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
+        typeof(global_bc) <: Union{CBC, PBC} ?  
                 bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
                 bc = global_bc
     else
@@ -75,7 +76,7 @@ end
 
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
-        typeof(global_bc) <: BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing} ?  
+        typeof(global_bc) <: Union{CBC, PBC} ?  
                 bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
                 bc = global_bc
     else

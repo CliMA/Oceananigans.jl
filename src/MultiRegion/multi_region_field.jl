@@ -51,7 +51,6 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 
-fill!(f::MultiRegionField, val) = apply_regionally!(fill!, f, val)
 hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = 

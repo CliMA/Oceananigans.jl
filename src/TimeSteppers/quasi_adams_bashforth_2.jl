@@ -80,7 +80,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         # Ensure zeroing out all previous tendency fields to avoid errors in
         # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for field in model.timestepper.G⁻
-            !isnothing(field) && fill!(field, 0)
+            !isnothing(field) && @apply_regionally fill!(field, 0)
         end
     end
 
@@ -89,7 +89,12 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model)
 
-    @apply_regionally local_time_stepping!(model, Δt, χ)
+    @apply_regionally local_tendency_calculation!(model)
+    @apply_regionally ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    
+    calculate_pressure_correction!(model, Δt)
+
+    @apply_regionally pressure_correct_velocities!(model, Δt)
     
     tick!(model.clock, Δt)
     update_state!(model)
@@ -98,11 +103,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-function local_time_stepping!(model, Δt, χ)
+function local_tendency_calculation!(model)
     calculate_tendencies!(model)
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
-    calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
     store_tendencies!(model)
 end
 

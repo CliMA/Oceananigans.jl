@@ -1,10 +1,11 @@
 using Oceananigans.MultiRegion
 using Oceananigans.Grids: min_Δx, min_Δy
+using Oceananigans.Operators: hack_cosd
 
 # Tracer patch for visualization
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 
-prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * cosd(ϕ))
+prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t=0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid) 
     Δx_min = min_Δx(grid)
@@ -119,7 +120,9 @@ function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c)
 
     init(x, y, z) = cos(m * x)
     f = fields(model)[field_name]
+
     @apply_regionally set!(f, init)
+    
     update_state!(model)
 
     # Step forward with small time-step relative to diff. time-scale

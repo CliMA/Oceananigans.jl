@@ -13,8 +13,6 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-
     if model.free_surface isa SplitExplicitFreeSurface
         sefs = model.free_surface
         u, v, _ = model.velocities
