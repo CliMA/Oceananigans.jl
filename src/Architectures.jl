@@ -11,99 +11,55 @@ using Adapt
 using OffsetArrays
 
 # Adapt CUDAKernels to multiple devices by splitting stream pool
-
 import CUDAKernels: next_stream
 
-#=
-using CUDAKernels: STREAM_GC_LOCK
-
 if CUDA.has_cuda_gpu()     
-    DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
-    DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
-    const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
+    const FREE_STREAMS = CUDA.CuStream[]
+    const STREAMS = CUDA.CuStream[]
+    const STREAM_GC_THRESHOLD = Ref{Int}(16)
 
+    # This code is loaded after an `@init` step
+    if haskey(ENV, "KERNELABSTRACTIONS_STREAMS_GC_THRESHOLD")
+        global STREAM_GC_THRESHOLD[] = parse(Int, ENV["KERNELABSTRACTIONS_STREAMS_GC_THRESHOLD"])
+    end
+
+    const STREAM_GC_LOCK = Threads.ReentrantLock()
+
+    const FREE_STREAMS_D = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
+    const STREAMS_D      = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
     function next_stream()
+        ctx = CUDA.current_context()
         lock(STREAM_GC_LOCK) do
-            handle = CUDA.device().handle + 1
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
+            # see if there is a compatible free stream
+            FREE_STREAMS_CT  = get!(FREE_STREAMS_D, ctx) do
+            CUDA.CuStream[]
+            end
+            if !isempty(FREE_STREAMS_CT)
+            return pop!(FREE_STREAMS_CT)
             end
 
-            if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
-                for stream in DEVICE_STREAMS[handle]
+            # GC to recover streams that are not busy
+            STREAMS_CT  = get!(STREAMS_D, ctx) do
+                CUDA.CuStream[]
+            end
+            if length(STREAMS_CT) > STREAM_GC_THRESHOLD[]
+                for stream in STREAMS_CT
                     if CUDA.query(stream)
-                        push!(DEVICE_FREE_STREAMS[handle], stream)
+                        push!(FREE_STREAMS_CT, stream)
                     end
                 end
             end
 
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
+            # if there is a compatible free stream after GC, return that stream
+            if !isempty(FREE_STREAMS_CT)
+                return pop!(FREE_STREAMS_CT)
             end
+
+            # no compatible free stream available so create a new one
             stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
-            push!(DEVICE_STREAMS[handle], stream)
+            push!(STREAMS_CT, stream)
             return stream
         end
-    end
-end
-=#
-
-
-const FREE_STREAMS = CUDA.CuStream[]
-const STREAMS = CUDA.CuStream[]
-const STREAM_GC_THRESHOLD = Ref{Int}(16)
-
-# This code is loaded after an `@init` step
-if haskey(ENV, "KERNELABSTRACTIONS_STREAMS_GC_THRESHOLD")
-    global STREAM_GC_THRESHOLD[] = parse(Int, ENV["KERNELABSTRACTIONS_STREAMS_GC_THRESHOLD"])
-end
-
-## Stream GC
-# Simplistic stream gc design in which when we have a total number
-# of streams bigger than a threshold, we start scanning the streams
-# and add them back to the freelist if all work on them has completed.
-# Alternative designs:
-# - Enqueue a host function on the stream that adds the stream back to the freelist
-# - Attach a finalizer to events that adds the stream back to the freelist
-# Possible improvements
-# - Add a background task that occasionally scans all streams
-# - Add a hysterisis by checking a "since last scanned" timestamp
-const STREAM_GC_LOCK = Threads.ReentrantLock()
-
-const FREE_STREAMS_D = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
-const STREAMS_D      = Dict{CUDA.CuContext,Array{CUDA.CuStream,1}}()
-function next_stream()
-    ctx = CUDA.current_context()
-    lock(STREAM_GC_LOCK) do
-        # see if there is a compatible free stream
-        FREE_STREAMS_CT  = get!(FREE_STREAMS_D, ctx) do
-           CUDA.CuStream[]
-        end
-        if !isempty(FREE_STREAMS_CT)
-           return pop!(FREE_STREAMS_CT)
-        end
-
-        # GC to recover streams that are not busy
-        STREAMS_CT  = get!(STREAMS_D, ctx) do
-            CUDA.CuStream[]
-        end
-        if length(STREAMS_CT) > STREAM_GC_THRESHOLD[]
-            for stream in STREAMS_CT
-                if CUDA.query(stream)
-                    push!(FREE_STREAMS_CT, stream)
-                end
-            end
-        end
-
-        # if there is a compatible free stream after GC, return that stream
-        if !isempty(FREE_STREAMS_CT)
-            return pop!(FREE_STREAMS_CT)
-        end
-
-        # no compatible free stream available so create a new one
-        stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
-        push!(STREAMS_CT, stream)
-        return stream
     end
 end
 

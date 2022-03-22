@@ -160,7 +160,7 @@ for arch in [GPU()]
             es = interior(es);
 
             for regions in [2, 4]
-                @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
+                @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
                 c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
 
                 c = construct_regionally(interior, c)
@@ -170,9 +170,9 @@ for arch in [GPU()]
                 for region in 1:regions
                     init = Int(size(cs, 1) / regions) * (region - 1) + 1
                     fin  = Int(size(cs, 1) / regions) * region
-                    @show @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
-                    @show @test all(Array(d[region]) .== Array(ds)[init:fin, :, :])
-                    @show @test all(Array(e[region]) .== Array(es)[init:fin, :, :])
+                    @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
+                    @test all(Array(d[region]) .== Array(ds)[init:fin, :, :])
+                    @test all(Array(e[region]) .== Array(es)[init:fin, :, :])
                 end
             end
         end
@@ -188,7 +188,7 @@ for arch in [GPU()]
         cs = interior(cs);
         
         for regions in [2, 4]
-            @info "  Testing $regions partitions on $(typeof(grid).name.wrapper)"
+            @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c = solid_body_rotation_test(grid; regions=regions)
 
             u = construct_regionally(interior, u)
@@ -199,10 +199,10 @@ for arch in [GPU()]
             for region in 1:regions
                 init = Int(size(cs, 1) / regions) * (region - 1) + 1
                 fin  = Int(size(cs, 1) / regions) * region
-                @test all(u[region] .== us[init:fin, :, :])
-                @test all(v[region] .== vs[init:fin, :, :])
-                @test all(w[region] .== ws[init:fin, :, :])
-                @test all(c[region] .== cs[init:fin, :, :])
+                @test all(Array(u[region]) .== Array(us)[init:fin, :, :])
+                @test all(Array(v[region]) .== Array(vs)[init:fin, :, :])
+                @test all(Array(w[region]) .== Array(ws)[init:fin, :, :])
+                @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
             end
         end
     end
@@ -219,13 +219,13 @@ for arch in [GPU()]
         diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
 
         for fieldname in [:u, :v, :c]
-            for closure in [diff₂]
+            for closure in [diff₂, diff₄]
 
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
                 fs = interior(fs);
 
                 for regions in [2, 4]
-                    @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper)"
+                    @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper) on the $arch"
 
                     f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
                     f = construct_regionally(interior, f)
@@ -233,7 +233,7 @@ for arch in [GPU()]
                     for region in 1:regions
                         init = Int(size(grid, 1) / regions) * (region - 1) + 1
                         fin  = Int(size(grid, 1) / regions) * region
-                        @test all(f[region][1:(1+fin-init), :, :] .== fs[init:fin, :, :])
+                        @test all(Array(f[region])[1:(1+fin-init), :, :] .== Array(fs)[init:fin, :, :])
                     end
                 end
             end
