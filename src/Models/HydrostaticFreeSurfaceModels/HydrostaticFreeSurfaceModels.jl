@@ -8,6 +8,7 @@ export
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 
 using DocStringExtensions

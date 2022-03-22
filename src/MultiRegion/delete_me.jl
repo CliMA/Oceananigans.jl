@@ -6,7 +6,8 @@ using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans: prognostic_fields, fields
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
-                        HydrostaticFreeSurfaceModel
+                        HydrostaticFreeSurfaceModel,
+                        build_implicit_step_solver
 
 const MultiRegionModel      = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
@@ -28,3 +29,9 @@ isregional(mrm::MultiRegionModel)        = true
 devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 getdevice(mrm::MultiRegionModel, i)      = getdevice(mrm.grid, i)
 switch_region!(mrm::MultiRegionModel, i) = switch_region!(mrm.grid, i)
+
+function build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational_acceleration, settings)
+     default_method = :PreconditionedConjugateGradient
+     return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
+ end
+ 

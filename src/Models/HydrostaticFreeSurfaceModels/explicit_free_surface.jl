@@ -50,14 +50,19 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, velocities_update) =
-    explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ) =
+    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
 
-explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
-    launch!(model.architecture, model.grid, :xy,
-            _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
-            model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
-            dependencies = device_event(model.architecture))
+function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) 
+    
+    event = launch!(model.architecture, model.grid, :xy,
+                    _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
+                    model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
+                    dependencies = device_event(model.architecture))
+
+    wait(device(model.architecture), event)
+    return nothing
+end
 
 #####
 ##### Kernel
