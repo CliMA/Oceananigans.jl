@@ -160,6 +160,7 @@ function implicit_step!(field::Field,
         vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
     else
         vi_closure = closure
+        vi_diffusivity_fields = diffusivity_fields
     end
 
     return solve!(field, implicit_solver, field,
