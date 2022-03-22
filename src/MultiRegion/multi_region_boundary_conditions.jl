@@ -77,7 +77,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     
     p  = view(parent(c), 1:H, :, :)
     p .= reshape(dst, size(p))
-    synchronize()
+    sync_device!(getdevice(c))
 
     return nothing
 end
@@ -99,7 +99,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     
     p  = view(parent(c), N+H+1:N+2H, :, :)
     p .= reshape(dst, size(p))
-    synchronize()
+    sync_device!(getdevice(c))
 
     return nothing
 end
@@ -123,7 +123,7 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
             src[n] .= parent(w)[N+1:N+H, :, :]
         end
     end
-    synchronize()
+    sync_device!(getdevice(src[1]))
 
     switch_device!(getdevice(c[1]))
     copyto!(dst, src)
@@ -134,7 +134,7 @@ function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
             p .= dst[n]
         end
     end
-    synchronize()
+    sync_device!(getdevice(c[1]))
 
     return nothing
 end
@@ -153,7 +153,7 @@ function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
         src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
     end
 
-    synchronize()
+    sync_device!(getdevice(src[1]))
     
     switch_device!(getdevice(c[1]))
     copyto!(dst, src)
@@ -162,7 +162,7 @@ function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbo
         p .= dst[n, :, :, :]
     end
 
-    synchronize()
+    sync_device!(getdevice(c[1]))
 
     return nothing
 end
