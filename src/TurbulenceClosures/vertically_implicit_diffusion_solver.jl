@@ -64,12 +64,11 @@ end
 ### Diagonal terms
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) - ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                        ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+    one(eltype(grid)) - _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                        _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
 @inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
-@inline _ivd_diagonal(args...) = ivd_diagonal(args...)
 
 #####
 ##### Solver constructor
@@ -101,7 +100,7 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
 
     z_solver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = _ivd_lower_diagonal,
-                                        diagonal = _ivd_diagonal,
+                                        diagonal = ivd_diagonal,
                                         upper_diagonal = _ivd_upper_diagonal)
 
     return z_solver
@@ -118,8 +117,9 @@ end
 is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
 """
-    implicit_step!(field, solver::BatchedTridiagonalSolver, clock, Δt,
-                   closure, tracer_index, args...; dependencies = Event
+    implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
+                   closure, diffusivity_fields, tracer_index, clock, Δt;
+                   dependencies)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments
@@ -152,18 +152,19 @@ function implicit_step!(field::Field,
     # Nullify tracer_index if `field` is not a tracer   
     κz === κzᶜᶜᶠ || (tracer_index = nothing)
 
-    # Filter explicit closures
+    # Filter explicit closures for closure tuples
     if closure isa Tuple
         closure_tuple = closure
         N = length(closure_tuple)
-        closure = Tuple(closure_tuple[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
-        diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure_tuple[n]))
+        vi_closure = Tuple(closure[n] for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
+    else
+        vi_closure = closure
     end
 
-    return solve!(field, implicit_solver,
-                  field,
+    return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  closure, diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz;
+                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz;
                   dependencies)
 end
 
