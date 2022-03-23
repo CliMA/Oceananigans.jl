@@ -48,10 +48,6 @@ The Richardson-number dependent diffusivities are multiplied by the stability
 function
 
     1. ``σ(Ri) = σ⁻ * (1 + rσ * step(Ri, Riᶜ, Riʷ))``
-    3. ``σ(Ri) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, Riᶜ, Riʷ)``
-
-σ⁻ = σ₀
-rσ = (σ⁺ - σ⁻) / σ₀
 
 where ``σ₀``, ``Δσ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by

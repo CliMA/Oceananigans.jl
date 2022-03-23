@@ -1,17 +1,15 @@
 using Oceananigans.Architectures: architecture, device_event, arch_array
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: Riᶜᶜᶜ, scale
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: Riᶜᶜᶜ
 
 struct RiBasedVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
-    ν₁    :: FT
-    r_ν   :: FT
-    Riᶜ_ν :: FT
-    Riᵟ_ν :: FT
-    κ₁    :: FT
-    r_κ  :: FT
-    Riᶜ_κ :: FT
-    Riᵟ_κ :: FT
+    ν₀   :: FT
+    Ri₀ν :: FT
+    Riᵟν :: FT
+    κ₀   :: FT
+    Ri₀κ :: FT
+    Riᵟκ :: FT
 end
 
 """
@@ -19,17 +17,15 @@ end
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
-                                    ν₁ = 0.1,
-                                    r_ν = 1e-2,
-                                    Riᶜ_ν = -2.0,
-                                    Riᵟ_ν = 0.1,
-                                    κ₁ = 0.1,
-                                    r_κ = 1e-2,
-                                    Riᶜ_κ = -2.0,
-                                    Riᵟ_κ = 0.1)
+                                    ν₀   = 0.01,
+                                    Ri₀ν = 0.0,
+                                    Riᵟν = 1.0,
+                                    κ₀   = 0.1,
+                                    Ri₀κ = 0.0,
+                                    Riᵟκ = 1.0)
 
     TD = typeof(time_discretization)
-    return RiBasedVerticalDiffusivity{TD, FT}(ν₁, r_ν, Riᶜ_ν, Riᵟ_ν, κ₁, r_κ, Riᶜ_κ, Riᵟ_κ)
+    return RiBasedVerticalDiffusivity{TD, FT}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ)
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
@@ -70,25 +66,28 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
     return nothing
 end
 
+# 1. x < x₀     => step_down = 1
+# 2. x > x₀ + δ => step_down = 0
+# 3. Otherwise, vary linearly between 1 and 0
+@inline step_down(x::T, x₀, δ) where T = one(T) - min(one(T), max(zero(T), (x - x₀) / δ))
+
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure, velocities, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    ν₁    = closure_ij.ν₁    
-    r_ν   = closure_ij.r_ν     
-    Riᶜ_ν = closure_ij.Riᶜ_ν 
-    Riᵟ_ν = closure_ij.Riᵟ_ν 
-    κ₁    = closure_ij.κ₁    
-    r_κ   = closure_ij.r_κ   
-    Riᶜ_κ = closure_ij.Riᶜ_κ 
-    Riᵟ_κ = closure_ij.Riᵟ_κ 
+    ν₀   = closure_ij.ν₀    
+    Ri₀ν = closure_ij.Ri₀ν 
+    Riᵟν = closure_ij.Riᵟν 
+    κ₀   = closure_ij.κ₀    
+    Ri₀κ = closure_ij.Ri₀κ 
+    Riᵟκ = closure_ij.Riᵟκ 
 
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
 
-    @inbounds diffusivities.κ[i, j, k] = scale(Ri, κ₁, r_κ, Riᶜ_κ, Riᵟ_κ)
-    @inbounds diffusivities.ν[i, j, k] = scale(Ri, ν₁, r_ν, Riᶜ_ν, Riᵟ_ν)
+    @inbounds diffusivities.κ[i, j, k] = κ₀ * step_down(Ri, Ri₀κ, Riᵟκ)
+    @inbounds diffusivities.ν[i, j, k] = ν₀ * step_down(Ri, Ri₀ν, Riᵟν)
 end
 
 #####
