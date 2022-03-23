@@ -89,6 +89,28 @@ function apply_regionally!(func!, args...; kwargs...)
     sync_all_devices!(devs; blocking = true)
 end 
 
+# For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
+function threaded_apply_regionally!(func!, args...; kwargs...)
+    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
+    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
+    isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
+
+    if isnothing(mra) 
+        devs = devices(mrk)
+    else
+        devs = devices(mra)
+    end
+   
+    @sync for (r, dev) in enumerate(devs)
+        Threads.@spawn begin
+            switch_device!(dev)
+            func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        end
+    end
+
+    sync_all_devices!(devs; blocking = true)
+end 
+
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
 function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
@@ -123,11 +145,18 @@ sync_device!(::CuDevice; blocking = false) = CUDA.synchronize(; blocking)
 sync_device!(a; kwargs...) = nothing
 
 macro apply_regionally(expr)
+
+    if (CUDA.has_cuda_gpu()) && (Threads.nthreads() >= length(CUDA.devices()))
+        apply_func! = :threaded_apply_regionally!
+    else
+        apply_func! = :apply_regionally!
+    end
+
     if expr.head == :call
         func = expr.args[1]
         args = expr.args[2:end]
         multi_region = quote
-            apply_regionally!($func, $(args...))
+            $apply_func!($func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -139,7 +168,7 @@ macro apply_regionally(expr)
                 func = arg.args[1]
                 args = arg.args[2:end]
                 new_expr.args[idx] = quote
-                    apply_regionally!($func, $(args...))
+                    $apply_func!($func, $(args...))
                 end
             end
         end

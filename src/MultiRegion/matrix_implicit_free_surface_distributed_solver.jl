@@ -20,30 +20,27 @@ end
 
 function MatrixImplicitFreeSurfaceDistributedSolver(mrg::MultiRegionGrid, gravitational_acceleration, settings)
     
+    grid = reconstruct_grid(mrg)
+
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), mrg)
-    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), mrg)
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
-    
-    arch = architecture(mrg)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    dims = total_length(mrg, mrg.partition)
-
-    right_hand_side = unified_zeros(eltype(mrg), arch, dims[1] * dims[2])
+    right_hand_side = unified_array(zeros(eltype(grid), grid.Nx*grid.Ny))
 
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
-    maximum_iterations = get(settings, :maximum_iterations, dims[1] * dims[2])
+    maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
-    coeffs = construct_regionally(compute_matrix_coefficients, vertically_integrated_lateral_areas, grid, gravitational_acceleration)
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    solver = construct_regionally(HeptadiagonalIterativeSolver, coeffs; reduced_dim = (false, false, true),
-                                  grid = mrg, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
+                                  grid = grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end

@@ -36,7 +36,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    coriolis_scheme = VectorInvariantEnstrophyConserving())
 
     # A spherical domain
-    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 10),
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 30),
                                  radius = 1,
                                  halo = (3, 3, 3),
                                  latitude = (-80, 80),
@@ -56,14 +56,16 @@ function run_solid_body_rotation(; architecture = CPU(),
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
 
+    closure = (HorizontalDiffusivity(ν=1, κ=1), VerticalDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1, ν=1))
+
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
-                                        tracers = (:T, :c),
+                                        tracers = (:T, :S),
                                         tracer_advection = WENO5(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+                                        buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState()),                                        ,
+                                        closure = closure)
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
@@ -111,21 +113,20 @@ function run_solid_body_rotation(; architecture = CPU(),
     return simulation
 end
 
-# using BenchmarkTools
+simulation_serial = run_solid_body_rotation(Nx=1400, Ny=600, architecture=GPU())
+simulation_paral1 = run_solid_body_rotation(Nx=1400, Ny=600, dev = (0, 1), architecture=GPU())
+simulation_paral2 = run_solid_body_rotation(Nx=1400, Ny=600, dev = (0, 1, 2), architecture=GPU())
 
-simulation_serial = run_solid_body_rotation(Nx=512, Ny=512, architecture=GPU())
-simulation_paral1 = run_solid_body_rotation(Nx=1024, Ny=512, dev = (0, 1), architecture=GPU())
+using BenchmarkTools
 
-# using BenchmarkTools
+CUDA.device!(0)
 
-# CUDA.device!(0)
+time_step!(simulation_serial.model, 1)
+trial_serial = @benchmark begin
+    CUDA.@sync time_step!(simulation_serial.model, 1)
+end samples = 10
 
-# time_step!(simulation_serial.model, 1)
-# trial_serial = @benchmark begin
-#     CUDA.@sync time_step!(simulation_serial.model, 1)
-# end samples = 10
-
-# time_step!(simulation_paral1.model, 1)
-# trial_paral1 = @benchmark begin
-#     CUDA.@sync time_step!(simulation_paral1.model, 1)
-# end samples = 10
+time_step!(simulation_paral1.model, 1)
+trial_paral1 = @benchmark begin
+    CUDA.@sync time_step!(simulation_paral1.model, 1)
+end samples = 10

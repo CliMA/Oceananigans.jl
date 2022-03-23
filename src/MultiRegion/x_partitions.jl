@@ -60,6 +60,29 @@ function divide_direction(x::AbstractArray, p::EqualXPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
+function reconstruct_size(mrg, p::XPartition)
+    Ny = mrg.region_grids[1].Ny
+    Nz = mrg.region_grids[1].Nz
+    Nx = sum([grid.Nx for grid in mrg.region_grids.regions])
+    return (Nx, Ny, Nz)
+end
+
+function reconstruct_extent(mrg, p::XPartition)
+    y = cpu_face_constructor_y(mrg.region_grids.regions[1])
+    z = cpu_face_constructor_z(mrg.region_grids.regions[1])
+
+    if cpu_face_constructor_x(mrg.region_grids.regions[1]) isa Tuple
+        x = (cpu_face_constructor_x(mrg.region_grids.regions[1])[1], 
+             cpu_face_constructor_x(mrg.region_grids.regions[length(p)])[end])
+    else
+        x = [cpu_face_constructor_x(mrg.region_grids.regions[1])...]
+        for grid in mrg.region_grids.regions
+            x = [x..., cpu_face_constructor_x(grid)[2:end]...]
+        end
+    end
+    return (; x = x, y = y, z = z)
+end
+
 inject_south_boundary(region, p::XPartition, bc) = bc
 inject_north_boundary(region, p::XPartition, bc) = bc
 

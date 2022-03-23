@@ -80,6 +80,9 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-import Oceananigans.Grids: total_length
-
-total_length(mrg::MultiRegionGrid, p::XPartition) = (sum([grid.Nx for grid in mrg.region_grids.regions]), mrg.region_grids[1].Ny, mrg.region_grids[1].Nz)
+function reconstruct_grid(mrg)
+    size    = reconstruct_size(mrg, mrg.partition)
+    extent  = reconstruct_extent(mrg, mrg.partition)
+    topo    = topology(mrg)
+    return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
+end
