@@ -295,7 +295,7 @@ julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
 
 julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: c
 ├── closure: Nothing
@@ -304,18 +304,18 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 
 julia> model.velocities.u
 16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Value, top: Value, immersed: ZeroFlux
-└── data: 18×18×18 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices 0:17×0:17×0:17
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 
 julia> model.tracers.c
 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Gradient, top: Value, immersed: ZeroFlux
-└── data: 18×18×18 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices 0:17×0:17×0:17
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 ```
 
