@@ -1,7 +1,7 @@
 using Oceananigans.Operators: index_and_interp_dependencies
 using Oceananigans.Utils: tupleit, user_function_arguments
-
 import Oceananigans: location
+import Oceananigans.Utils: prettysummary
 
 """
     struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
@@ -126,6 +126,14 @@ end
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::ContinuousBoundaryFunction) = BoundaryCondition(Classification(), condition)
+
+# TODO: show parameter, field dependencies, etc
+function Base.summary(bf::ContinuousBoundaryFunction)
+    loc = location(bf)
+    return string("ContinuousBoundaryFunction ", prettysummary(bf.func, false), " at ", loc)
+end
+
+prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
     
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, I}) where {LX, LY, LZ, I} =
     ContinuousBoundaryFunction{LX, LY, LZ, I}(Adapt.adapt(to, bf.func),

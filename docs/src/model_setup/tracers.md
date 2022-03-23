@@ -13,8 +13,9 @@ end
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid)
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -28,9 +29,10 @@ For example, to add conservative temperature `T` and absolute salinity `S`:
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S))
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── tracers: (:T, :S)
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
@@ -42,14 +44,16 @@ whose fields can be accessed via `model.tracers.T` and `model.tracers.S`.
 julia> model.tracers.T
 64×64×64 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 66×66×66 OffsetArray(::Array{Float64, 3}, 0:65, 0:65, 0:65) with eltype Float64 with indices 0:65×0:65×0:65
     └── max=0.0, min=0.0, mean=0.0
 
 julia> model.tracers.S
 64×64×64 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 66×66×66 OffsetArray(::Array{Float64, 3}, 0:65, 0:65, 0:65) with eltype Float64 with indices 0:65×0:65×0:65
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -59,9 +63,10 @@ An arbitrary number of tracers may be simulated. For example, to simulate
 
 ```jldoctest tracers
 julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
+├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── tracers: (T, S, C₁, CO₂, nitrogen)
 ├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing

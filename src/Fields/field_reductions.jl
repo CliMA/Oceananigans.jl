@@ -46,23 +46,27 @@ max_c²[1:Nx, 1:Ny]
 """
 Reduction(reduce!, operand; dims) = Reduction(reduce!, operand, dims)
 
+location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
+
 function Field(reduction::Reduction;
                data = nothing,
+               indices = indices(reduction.operand),
                recompute_safely = false)
 
     operand = reduction.operand
     grid = operand.grid
-    LX, LY, LZ = loc = reduced_location(location(operand); dims=reduction.dims)
+    LX, LY, LZ = loc = location(reduction)
+    indices = reduced_indices(indices; dims=reduction.dims)
 
     if isnothing(data)
-        data = new_data(grid, loc)
+        data = new_data(grid, loc, indices)
         recompute_safely = false
     end
 
-    boundary_conditions = FieldBoundaryConditions(grid, loc)
+    boundary_conditions = FieldBoundaryConditions(grid, loc, indices)
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(loc, grid, data, boundary_conditions, reduction, status)
+    return Field(loc, grid, data, boundary_conditions, indices, reduction, status)
 end
 
 const ReducedComputedField = Field{<:Any, <:Any, <:Any, <:Reduction}
@@ -88,3 +92,8 @@ Base.show(io::IO, field::ReducedComputedField) =
 Base.summary(r::Reduction) = string(r.reduce!, 
                                     " over dims ", r.dims,
                                     " of ", summary(r.operand))
+
+Base.show(io::IO, r::Reduction) =
+    print(io, "$(summary(r))\n",
+          "└── operand: $(summary(r.operand))\n",
+          "    └── grid: $(summary(r.operand.grid))")

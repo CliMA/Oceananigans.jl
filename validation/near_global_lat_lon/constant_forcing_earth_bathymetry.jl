@@ -8,8 +8,8 @@ using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity,
-                                       ExplicitTimeDiscretization, 
-                                       VerticallyImplicitTimeDiscretization
+                                       Explicit, 
+                                       VerticallyImplicit
 using Oceananigans.Units
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -73,12 +73,12 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 κz = 1e-4
 
 # Fully explicit
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=ExplicitTimeDiscretization())
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=ExplicitTimeDiscretization())
+background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=Explicit())
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=Explicit())
 
 # Vertically-implicit, horizontally-explicit
-#background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=VerticallyImplicitTimeDiscretization())
-#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=VerticallyImplicitTimeDiscretization())
+#background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz, time_discretization=VerticallyImplicit())
+#convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, time_discretization=VerticallyImplicit())
 
 #####
 ##### Boundary conditions / constant-in-time surface forcing
@@ -109,14 +109,14 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
+equation_of_state = LinearEquationOfState(thermal_expansion=2e-4)
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
-                                    #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
-                                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
+                                    buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=true),
                                     tracers = (:T, :S),
                                     closure = (background_diffusivity, convective_adjustment))
 
@@ -247,7 +247,7 @@ run!(simulation)
     Time step: $(prettytime(Δt))
 
 """
-#   Simulation took $(prettytime(simulation.run_time))
+#   Simulation took $(prettytime(simulation.run_wall_time))
 #   Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
 
 #####

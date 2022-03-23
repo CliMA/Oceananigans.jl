@@ -4,8 +4,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, Prescri
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
@@ -110,7 +110,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "Halo size check in model constructor" begin
         for topo in topos_3d
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-            hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+            hcabd_closure = ScalarBiharmonicDiffusivity()
 
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
@@ -229,11 +229,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection=momentum_advection)
         end
 
-        for closure in (IsotropicDiffusivity(),
-                        HorizontallyCurvilinearAnisotropicDiffusivity(),
-                        HorizontallyCurvilinearAnisotropicDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()),
+        for closure in (ScalarDiffusivity(),
+                        HorizontalScalarDiffusivity(),
+                        VerticalScalarDiffusivity(),
+                        VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization()),
                         CATKEVerticalDiffusivity(),
-                        CATKEVerticalDiffusivity(time_discretization=ExplicitTimeDiscretization()))
+                        CATKEVerticalDiffusivity(ExplicitTimeDiscretization()))
 
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
@@ -243,7 +244,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        closure = IsotropicDiffusivity()
+        closure = ScalarDiffusivity()
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)

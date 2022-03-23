@@ -84,59 +84,68 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 """
     LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
                           size,
-                          latitude,
                           longitude,
+                          latitude,
                           z,
                           radius = R_Earth,
-                          precompute_metrics = false,
+                          topology = nothing,
+                          precompute_metrics = true,
                           halo = (1, 1, 1))
 
-Creates a `LatitudeLongitudeGrid` with `size = (Nx, Ny, Nz)` grid points.
+Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
+and vertical coordinate respectively.
 
 Positional arguments
-=================
+====================
 
 - `architecture`: Specifies whether arrays of coordinates and spacings are stored
-                  on the CPU or GPU. Default: `architecture = CPU()`.
+                  on the CPU or GPU. Default: `CPU()`.
 
-- `FT` : Floating point data type. Default: `FT = Float64`.
+- `FT` : Floating point data type. Default: `Float64`.
 
 Keyword arguments
 =================
 
 - `size` (required): A 3-tuple prescribing the number of grid points each direction.
 
-- `latitude`, `longitude`, `z`: Each is either a
-                                (i) 2-tuple that specify the end points of the domain,
-                                (ii) one-dimensional array specifying the cell interface locations or
-                                (iii) a single-argument function that takes an index and returns
-                                      cell interface location.
+- `longitude`, `latitude`, `z` (required): Each is either a
+                                           (i) 2-tuple that specify the end points of the domain,
+                                           (ii) one-dimensional array specifying the cell interface locations or
+                                           (iii) a single-argument function that takes an index and returns
+                                                 cell interface location.
+  **Note**: the latitude and longitude coordinates extents are expected in degrees.
+
+- `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
+
+- `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical 
+              `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
+              `Bounded`, `Periodic`, or `Flat`.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
-                        If `!precompute_metrics` (the default), horizontal spacings and areas
-                        are computed on-the-fly during a simulation.
+                        Default: `true`. When `false`, horizontal spacings and areas are computed
+                        on-the-fly during a simulation.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior.
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
-                               precompute_metrics = false,
                                size,
-                               latitude,
                                longitude,
+                               latitude,
                                z,
                                radius = R_Earth,
+                               topology = nothing,
+                               precompute_metrics = true,
                                halo = (1, 1, 1))
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo)
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
+        validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
-    
-    TX, TY, TZ = topo
+    TX, TY, TZ = topology
     
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, Nλ, Hλ, longitude, architecture)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, Nφ, Hφ, latitude,  architecture)
@@ -185,7 +194,7 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo)
+function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
 
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
@@ -197,17 +206,20 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo)
         @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
 
     Lλ = λ₂ - λ₁
-    Lφ = φ₂ - φ₁
 
-    TX = Lλ == 360 ? Periodic : Bounded
-    TY = Bounded
-    TZ = Bounded
-    topo = (TX, TY, TZ)
-    
+    if !isnothing(topology)
+        TX, TY, TZ = topology
+        TZ === Bounded || throw(ArgumentError("z topology must be Bounded"))
+    else
+        TX = Lλ == 360 ? Periodic : Bounded
+        TY = Bounded
+        TZ = Bounded
+    end
+
     Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
@@ -234,9 +246,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary)) 
 
-    x_summary = dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
-    y_summary = dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
-    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     print(io, summary(grid), '\n',
           "├── ", x_summary, '\n',

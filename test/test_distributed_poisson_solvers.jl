@@ -15,9 +15,9 @@ function random_divergent_source_term(grid)
     set!(Rw, (x, y, z) -> rand())
 
     arch = architecture(grid)
-    fill_halo_regions!(Ru, arch)
-    fill_halo_regions!(Rv, arch)
-    fill_halo_regions!(Rw, arch)
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    fill_halo_regions!(Rw)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)

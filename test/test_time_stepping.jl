@@ -14,6 +14,18 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
+function euler_time_stepping_doesnt_propagate_NaNs(arch)
+    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
+
+    CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
+    time_step!(model, 1, euler=true)
+    u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
+    
+    return !isnan(u111)
+end
+
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
@@ -25,17 +37,14 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
 end
 
 function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
-
     # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
-    # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
-
-    model = NonhydrostaticModel(grid=grid,
-                                closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
-
+    # Use halos of size 3 to be conservative
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    closure = Closure(FT)
+    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -153,7 +162,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
+                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh), 
+                                           VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -209,9 +219,8 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity,
-            AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity,
+Closures = (ScalarDiffusivity,
+            ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,
             SmagorinskyLilly,
@@ -282,6 +291,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for arch in archs
             @info "  Testing that time stepping works with background fields [$(typeof(arch))]..."
             @test time_stepping_with_background_fields(arch)
+        end
+    end
+
+    @testset "Euler time stepping propagate NaNs in previous tendency G⁻" begin
+        for arch in archs
+            @info "  Testing that Euler time stepping doesn't propagate NaNs found in previous tendency G⁻ [$(typeof(arch))]..."
+            @test euler_time_stepping_doesnt_propagate_NaNs(arch)
         end
     end
 

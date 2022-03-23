@@ -112,7 +112,7 @@ model = NonhydrostaticModel(
             grid = RectilinearGrid(CPU(); topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          tracers = (:T, :S),
         buoyancy = SeawaterBuoyancy(),
-         closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 )
 
 # Set a temperature perturbation with a Gaussian profile located at the center.
@@ -125,7 +125,7 @@ simulation = Simulation(model, Δt=10, stop_iteration=5000)
 run!(simulation)
 ```
 
-By changing `architecture = CPU()` to `architecture = GPU()` the example will run on a CUDA-enabled Nvidia GPU!
+By changing the first positional argument of `RectilinearGrid` from `CPU()` to `GPU()` the example will run on a CUDA-enabled Nvidia GPU!
 
 You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 

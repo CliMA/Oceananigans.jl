@@ -2,7 +2,7 @@ using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-    name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
+    name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)
 
     spinup_steps = 10000
       test_steps = 10
@@ -27,17 +27,15 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵀ), bottom = BoundaryCondition(Gradient, ∂T∂z))
     S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
 
-    # Model instantiation
-    model = NonhydrostaticModel(
-                     grid = grid,
-                 coriolis = FPlane(f=1e-4),
-                 buoyancy = Buoyancy(model=SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))),
-                  tracers = (:T, :S),
-                  closure = closure,
-      boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
-    )
+    equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
-    @show model.diffusivity_fields
+    # Model instantiation
+    model = NonhydrostaticModel(; grid, 
+                                coriolis = FPlane(f=1e-4),
+                                buoyancy = SeawaterBuoyancy(; equation_of_state),
+                                tracers = (:T, :S),
+                                closure = closure,
+                                boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)

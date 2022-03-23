@@ -1,6 +1,6 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: arch_array
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_implicit_free_surface_right_hand_side!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocities!
@@ -65,7 +65,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
             solve!(η, solver, rhs, g, Δt)
 
-            fill_halo_regions!(η, arch)
+            fill_halo_regions!(η)
 
             #=
             println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
@@ -78,7 +78,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             println("")
 
             pressure_correct_velocities!(model, Δt)
-            fill_halo_regions!(u, arch)
+            fill_halo_regions!(u)
 
             println("u")
             show(stdout,"text/plain", u.data[1:Nx, 1:Ny, 1])

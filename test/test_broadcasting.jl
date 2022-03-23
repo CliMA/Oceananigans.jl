@@ -26,7 +26,7 @@ include("dependencies_for_runtests.jl")
         @test all(c .== 4)
 
         # Halo regions
-        fill_halo_regions!(c, arch) # Does not happen by default in broadcasting now
+        fill_halo_regions!(c) # Does not happen by default in broadcasting now
         @test c[1, 1, 0] == 4
         @test c[1, 1, Nz+1] == 4
 
@@ -42,7 +42,7 @@ include("dependencies_for_runtests.jl")
         b2 = ZFaceField(three_point_grid, boundary_conditions=b2_bcs)
 
         b2 .= 1
-        fill_halo_regions!(b2, arch) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
+        fill_halo_regions!(b2) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
 
         @test b2[1, 1, 1] == 0
         @test b2[1, 1, 2] == 1

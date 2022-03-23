@@ -40,10 +40,18 @@ function with_tracers(tracers, closure::ISSD)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
+# For ensembles of closures
 function with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
+
+    if arch isa Architectures.GPU
+        closure_vector = Vector(closure_vector)
+    end
+
     Ex = length(closure_vector)
-    return arch_array(arch, [with_tracers(tracers, closure_vector[i]) for i=1:Ex])
+    closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
+
+    return arch_array(arch, closure_vector)
 end
 
 #####
@@ -92,10 +100,11 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
-                                  diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  velocities, tracers, clock, buoyancy) where tracer_index
 
-    closure = get_closure_i(i, closure)
+    c = tracers[tracer_index]
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
@@ -120,10 +129,11 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
-                                  diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  velocities, tracers, clock, buoyancy) where tracer_index
 
-    closure = get_closure_i(i, closure)
+    c = tracers[tracer_index]
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
@@ -148,10 +158,11 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
-                                  diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  velocities, tracers, clock, buoyancy) where tracer_index
 
-    closure = get_closure_i(i, closure)
+    c = tracers[tracer_index]
+    closure = getclosure(i, j, closure)
 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)

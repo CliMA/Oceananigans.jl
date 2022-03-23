@@ -44,7 +44,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = nothing,
-                                     closure = IsotropicDiffusivity(ν=1),
+                                     closure = ScalarDiffusivity(ν=1),
                                      forcing = (u = (x, y, z, t) -> Fᵘ(x, z, t),
                                                 w = (x, y, z, t) -> Fᵛ(x, z, t))
                                 )
@@ -79,14 +79,13 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
-    model = NonhydrostaticModel(architecture = architecture,
-                                        grid = grid,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = nothing,
-                                     closure = IsotropicDiffusivity(ν=1),
-                                     forcing = (u = (x, y, z, t) -> Fᵘ(x, y, t),
-                                                v = (x, y, z, t) -> Fᵛ(x, y, t))
+    model = NonhydrostaticModel(    grid = grid,
+                                coriolis = nothing,
+                                buoyancy = nothing,
+                                 tracers = nothing,
+                                 closure = ScalarDiffusivity(ν=1),
+                                 forcing = (u = (x, y, z, t) -> Fᵘ(x, y, t),
+                                            v = (x, y, z, t) -> Fᵛ(x, y, t))
                                 )
 
     set!(model, u = (x, y, z) -> u(x, y, 0),

@@ -14,9 +14,10 @@ the vertical vorticity by first integrating the velocity field around the border
 of the vorticity cell to find the vertical circulation, and then dividing by the area of
 the vorticity cell to compute vertical vorticity.
 """
-function VerticalVorticityField(model; kw...)
-    grid = model.grid
-    u, v, w = model.velocities
+VerticalVorticityField(model; kw...) = VerticalVorticityField(model.grid, model.velocities)
+
+function VerticalVorticityField(grid, velocities; kw...)
+    u, v, w = velocities
     vorticity_operation = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
     return Field(vorticity_operation; kw...)
 end

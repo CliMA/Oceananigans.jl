@@ -1,7 +1,7 @@
 # # Meridional diffusion
 
 using Oceananigans
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: Horizontal
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, PrescribedVelocityFields
 
 using Statistics
@@ -24,7 +24,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = :c,
                                     velocities = PrescribedVelocityFields(), # quiescent
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=1),
+                                    closure = HorizontalScalarDiffusivity(κ=1),
                                     buoyancy = nothing)
 
 # Tracer patch for visualization

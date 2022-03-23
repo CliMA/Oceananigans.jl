@@ -11,14 +11,33 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+    QuasiAdamsBashforth2TimeStepper(grid, tracers,
+                                    χ = 0.1;
                                     implicit_solver = nothing,
                                     Gⁿ = TendencyFields(grid, tracers),
                                     G⁻ = TendencyFields(grid, tracers))
 
-Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
-`grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
-kwargs.
+Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
+on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻` can be
+specified via  optional `kwargs`.
+
+The 2nd-order quasi Adams-Bashforth timestepper steps forward the state `Uⁿ` by `Δt` via
+
+```julia
+Uⁿ⁺¹ = Uⁿ + Δt * [(3/2 + χ) * Gⁿ - (1/2 + χ) * Gⁿ⁻¹]
+```
+
+where `Uⁿ` is the state at the ``n``-th timestep, `Gⁿ` is the tendency
+at the ``n``-th timestep, and `Gⁿ⁻¹` is the tendency at the previous
+timestep (`G⁻`).
+
+!!! note "First timestep"
+    For the first timestep, since there are no saved tendencies from the previous timestep,
+    the `QuasiAdamsBashforth2TimeStepper` performs an Euler timestep:
+
+    ```julia
+    Uⁿ⁺¹ = Uⁿ + Δt * Gⁿ
+    ```
 """
 function QuasiAdamsBashforth2TimeStepper(grid, tracers,
                                          χ = 0.1;
@@ -52,9 +71,17 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
     euler = euler || (Δt != model.timestepper.previous_Δt)
+    
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
-    euler && @debug "Taking a forward Euler step."
+    if euler
+        @debug "Taking a forward Euler step."
+        # Ensure zeroing out all previous tendency fields to avoid errors in
+        # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
+        for field in model.timestepper.G⁻
+            !isnothing(field) && fill!(field, 0)
+        end
+    end
 
     model.timestepper.previous_Δt = Δt
 
@@ -84,14 +111,10 @@ end
 function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
-
     arch = model.architecture
     barrier = device_event(arch)
-
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
-
     model_fields = prognostic_fields(model)
-
     events = []
 
     for (i, field) in enumerate(model_fields)
@@ -104,16 +127,15 @@ function ab2_step!(model, Δt, χ)
         push!(events, field_event)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = i - 3 # assumption
+        tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       tracer_index,
                        model.clock,
                        Δt,
-                       model.closure,
-                       tracer_index,
-                       model.diffusivity_fields,
-                       model.tracers,
                        dependencies = field_event)
     end
 
@@ -123,7 +145,7 @@ function ab2_step!(model, Δt, χ)
 end
 
 """
-Time step via
+Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
@@ -139,4 +161,3 @@ Time step via
 end
 
 @kernel ab2_step_field!(::FunctionField, args...) = nothing
-

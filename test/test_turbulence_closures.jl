@@ -14,18 +14,18 @@ function closure_instantiation(closurename)
 end
 
 function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
-    closure = IsotropicDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
+    closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
     return closure.ν == ν && closure.κ.T == κ
 end
 
-function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(0.7))
-    closure = AnisotropicDiffusivity(κh=(T=κh, S=κh), νh=νh)
-    return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
+function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7))
+    closure = HorizontalScalarDiffusivity(κ=(T=κh, S=κh), ν=νh)
+    return closure.ν == νh && closure.κ.T == κh && closure.κ.T == κh
 end
 
 function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
-       closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
+       closure = ScalarDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(grid)
        tracers = TracerFields((:T, :S), grid)
@@ -42,27 +42,31 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
     end
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
+    fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = datatuples(velocities, tracers)
+    U, C = velocities, tracers
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - 2κ
-    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 2ν
-    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 4ν
-    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 6ν
+    K, b = nothing, nothing
+    closure_args = (U, C, clock, b)
+
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), closure_args...) == - 2κ
+    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
+    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 4ν
+    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 6ν
 
     return nothing
 end
 
-function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
-          arch = CPU()
-       closure = AnisotropicDiffusivity(FT, νh=νh, νz=νz, κh=(T=κh, S=κh), κz=(T=κz, S=κz))
-          grid = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
-           eos = LinearEquationOfState(FT)
-      buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
+function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
+    arch       = CPU()
+    closureh   = HorizontalScalarDiffusivity(FT, ν=νh, κ=(T=κh, S=κh))
+    closurez   = VerticalScalarDiffusivity(FT, ν=νz, κ=(T=κz, S=κz))
+    grid       = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
+    eos        = LinearEquationOfState(FT)
+    buoyancy   = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
     velocities = VelocityFields(grid)
-       tracers = TracerFields((:T, :S), grid)
-         clock = Clock(time=0.0)
+    tracers    = TracerFields((:T, :S), grid)
+    clock      = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)
 
@@ -83,20 +87,27 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
     interior(T)[:, 1, 4] .= [0,  1, 0]
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
-    fill_halo_regions!(merge(velocities, tracers), arch, nothing, model_fields)
+    fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = datatuples(velocities, tracers)
+    U, C = velocities, tracers
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - (8κh + 10κz) &&
-              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (2νh + 4νz) &&
-              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (4νh + 6νz) &&
-              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (6νh + 8νz))
+    K, b = nothing, nothing
+    closure_args = (U, C, clock, b)
+
+    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), closure_args...) == -  8κh &&
+            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), closure_args...) == - 10κz &&
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (2νh) &&
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (4νz) &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (4νh) &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (6νz) &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (6νh) &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (8νz))
 end
 
 function time_step_with_variable_isotropic_diffusivity(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
-    closure = IsotropicDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
-                                   κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
+    closure = ScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
+                                κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
     model = NonhydrostaticModel(; grid, closure)
     time_step!(model, 1, euler=true)
@@ -104,29 +115,25 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 end
 
 function time_step_with_variable_anisotropic_diffusivity(arch)
+    clov = VerticalScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
+                                     κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
-    closure = AnisotropicDiffusivity(νx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     νy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     νz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     κx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     κy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     κz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t))
-
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=closure)
-
-    time_step!(model, 1, euler=true)
-
+    cloh = HorizontalScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
+                                       κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
+    for clo in (clov, cloh)
+        model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
+        time_step!(model, 1, euler=true)
+    end
     return true
 end
 
 function time_step_with_tupled_closure(FT, arch)
-    closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
+    closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
     model = NonhydrostaticModel(closure=closure_tuple,
                                 grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
-
     return true
 end
 
@@ -139,9 +146,9 @@ function run_time_step_with_catke_tests(arch, closure)
     @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers=(:b, :E))
 
     # CATKE isn't supported with NonhydrostaticModel (we don't diffuse vertical velocity)
-    @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :e))
+    @test_throws ErrorException NonhydrostaticModel(; grid, closure, buoyancy, tracers=(:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :e))
+    model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy, tracers = (:b, :c, :e))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
@@ -158,9 +165,8 @@ function run_time_step_with_catke_tests(arch, closure)
     return model
 end
 
-function compute_closure_specific_diffusive_cfl(closurename)
+function compute_closure_specific_diffusive_cfl(closure)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
-    closure = getproperty(TurbulenceClosures, closurename)()
 
     model = NonhydrostaticModel(; grid, closure)
     dcfl = DiffusiveCFL(0.1)
@@ -183,20 +189,20 @@ end
         end
     end
 
-    @testset "Constant isotropic diffusivity" begin
-        @info "  Testing constant isotropic diffusivity..."
+    @testset "ScalarDiffusivity" begin
+        @info "  Testing ScalarDiffusivity..."
         for T in float_types
             @test constant_isotropic_diffusivity_basic(T)
             run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
     end
 
-    @testset "Constant anisotropic diffusivity" begin
-        @info "  Testing constant anisotropic diffusivity..."
+    @testset "HorizontalScalarDiffusivity" begin
+        @info "  Testing HorizontalScalarDiffusivity..."
         for T in float_types
-            @test anisotropic_diffusivity_convenience_kwarg(T)
-            @test anisotropic_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
-            @test anisotropic_diffusivity_fluxdiv(T)
+            @test tracer_specific_horizontal_diffusivity(T)
+            @test horizontal_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
+            @test horizontal_diffusivity_fluxdiv(T)
         end
     end
 
@@ -217,20 +223,20 @@ end
             closure = CATKEVerticalDiffusivity(; warning)
             run_time_step_with_catke_tests(arch, closure)
 
-            @info "    Testing time-stepping CATKE in a 2-tuple with IsotropicDiffusivity..."
-            closure = (CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
+            closure = (CATKEVerticalDiffusivity(; warning), HorizontalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[1]
 
             # Test that closure tuples with CATKE are correctly reordered
-            @info "    Testing time-stepping CATKE in a 2-tuple with AnisotropicDiffusivity..."
-            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning))
+            @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning))
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
-            closure = (AnisotropicDiffusivity(), CATKEVerticalDiffusivity(; warning), IsotropicDiffusivity())
+            closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(; warning), VerticalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
         end
@@ -247,8 +253,12 @@ end
 
     @testset "Diagnostics" begin
         @info "  Testing turbulence closure diagnostics..."
-        for closure in closures
+        for closurename in closures
+            closure = getproperty(TurbulenceClosures, closurename)()
             compute_closure_specific_diffusive_cfl(closure)
         end
+
+        # now test also a case for a tuple of closures
+        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity()))
     end
 end

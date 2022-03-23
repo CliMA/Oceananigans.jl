@@ -8,12 +8,13 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans: fields
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures
+using Oceananigans.TurbulenceClosures: FluxTapering
 
 filename = "zonally_averaged_baroclinic_adjustment_withGM"
 
 # Architecture
-architecture = GPU()
+architecture = CPU()
 
 # Domain
 Ly = 1000kilometers  # north-south extent [m]
@@ -27,7 +28,7 @@ stop_time = 60days
 Δt₀ = 5minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
-grid = RectilinearGrid(architecture = architecture,
+grid = RectilinearGrid(architecture;
                        topology = (Flat, Bounded, Bounded), 
                        size = (Ny, Nz), 
                        y = (-Ly/2, Ly/2),
@@ -45,16 +46,16 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-diffusive_closure = AnisotropicDiffusivity(νh = νh,
-                                           νz = νz,
-                                           κh = κh,
-                                           κz = κz,
-					                       time_discretization = VerticallyImplicitTimeDiscretization())
+vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
+
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+
+diffusive_closures = (vertical_closure, horizontal_closure)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
-gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
+gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                                                 κ_symmetric = 900,
@@ -65,10 +66,9 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 @info "Building a model..."
 
-closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
+closures = (diffusive_closures..., convective_adjustment, gent_mcwilliams_diffusivity)
 
-model = HydrostaticFreeSurfaceModel(architecture,
-                                    grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
@@ -117,7 +117,7 @@ set!(model, b=bᵢ, c=cᵢ)
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
@@ -163,7 +163,6 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 ∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ,
                                                          grid,
-                                                         architecture = model.architecture,
                                                          computed_dependencies = dependencies)
 
 # R(b) eg the Redi operator applied to buoyancy
@@ -181,13 +180,15 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 
 run!(simulation, pickup=false)
 
-@info "Simulation completed in " * prettytime(simulation.run_time)
+@info "Simulation completed in " * prettytime(simulation.run_wall_time)
+
+#=
 
 #####
 ##### Visualize
 #####
 
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1400, 700))
 
@@ -245,7 +246,7 @@ hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:ba
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm)
 
-title_str = @lift "Parameterized baroclinic adjustment at t = " * prettytime(times[$n])
+title_str = @lift "Baroclinic adjustment with GM at t = " * prettytime(times[$n])
 ax_t = fig[0, :] = Label(fig, title_str)
 
 display(fig)
@@ -254,3 +255,5 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
+
+=#

@@ -14,9 +14,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-using Oceananigans.TurbulenceClosures:
-    HorizontallyCurvilinearAnisotropicDiffusivity,
-    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures
 
 using Oceananigans.Utils: prettytime, hours, day, days, years, year
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
@@ -62,8 +60,7 @@ diffusive_time_scale = 120days
 @show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
 @show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 
-#closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
-closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
+closure = ScalarBiharmonicDiffusivity(ν=νh₄)
 
 coriolis = HydrostaticSphericalCoriolis()
 Ω = coriolis.rotation_rate / 20
@@ -84,16 +81,16 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 # Random noise
 ψ★ = Field(Face, Face, Center, model.architecture, model.grid)
 set!(ψ★, (x, y, z) -> rand())
-fill_halo_regions!(ψ★, model.architecture)
+fill_halo_regions!(ψ★)
 
 # Zonal wind
 step(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
 polar_mask(y) = step(y, -5, 60) * step(y, 5, -60)
 zonal_ψ(y) = (cosd(4y)^3 + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
 
-ψ̄ = Field(Face, Face, Center, model.architecture, model.grid)
+ψ̄ = Field((Face, Face, Center), model.grid)
 set!(ψ̄, (x, y, z) -> zonal_ψ(y))
-fill_halo_regions!(ψ̄, model.architecture)
+fill_halo_regions!(ψ̄)
 
 ψ_total = 40 * ψ★ + Ny * ψ̄
 

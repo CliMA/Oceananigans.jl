@@ -1,6 +1,7 @@
 using CUDA
 using Printf
 using Base.Ryu: writeshortest
+using OffsetArrays: IdOffsetRange
 
 #####
 ##### Convenience functions
@@ -57,9 +58,9 @@ Return the size of a `grid` at `loc`, not including halos.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 along `x, y, z`.
 """
-@inline Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
-                                              length(loc[2], topology(grid, 2), grid.Ny),
-                                              length(loc[3], topology(grid, 3), grid.Nz))
+Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
+                                      length(loc[2], topology(grid, 2), grid.Ny),
+                                      length(loc[3], topology(grid, 3), grid.Nz))
 
 Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
 Base.size(grid::AbstractGrid, d) = size(grid)[d]
@@ -73,9 +74,22 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                         total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                         total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+
+
+function total_size(loc, grid, indices::Tuple)
+    sz = total_size(loc, grid)
+    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
+end
+
+function Base.size(loc, grid::AbstractGrid, indices::Tuple)
+    sz = size(loc, grid)
+    return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
+end
+
+
 
 """
     halo_size(grid)
@@ -148,13 +162,21 @@ regular_dimensions(grid) = ()
 @inline interior_y_indices(loc, grid) = interior_indices(loc, topology(grid, 2), grid.Ny)
 @inline interior_z_indices(loc, grid) = interior_indices(loc, topology(grid, 3), grid.Nz)
 
+@inline interior_parent_offset(loc, topo, H) = H
+@inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
+
+#@inline interior_parent_offset(::Type{Face},    topo, H) = H
+# @inline interior_parent_offset(loc,             ::Type{Flat}, H) = 0
+# @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
+#@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
+
 @inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{Bounded}, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
 
-@inline interior_parent_indices(::Type{Nothing}, topo::Type{Flat}, N, H) = 1:N
-@inline interior_parent_indices(::Type{Face},    topo::Type{Flat}, N, H) = 1:N
-@inline interior_parent_indices(::Type{Center},  topo::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
 
 # All indices including halos.
 @inline all_indices(loc,             topo,            N, H) = 1-H:N+H
@@ -180,6 +202,16 @@ regular_dimensions(grid) = ()
 @inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
+
+parent_index_range(::Colon,                       loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
+
+parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
+parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
+
+index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
+index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
 #####
 ##### << Nodes >>
@@ -352,6 +384,7 @@ end
 #####
 
 struct ZDirection end
+Base.summary(::ZDirection) = "ZDirection"
 
 #####
 ##### Show utils
@@ -366,9 +399,9 @@ function domain_summary(topo, name, left, right)
     topo_string = topo isa Periodic ? "Periodic " :
                                       "Bounded  "
 
-    prefix = string(topo_string, name, " ∈ [",
-                    scalar_summary(left), ", ",
-                    scalar_summary(right), interval)
+    return string(topo_string, name, " ∈ [",
+                  scalar_summary(left), ", ",
+                  scalar_summary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -381,4 +414,3 @@ coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s",
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
                                                        name, scalar_summary(minimum(parent(Δ))),
                                                        name, scalar_summary(maximum(parent(Δ))))
-
