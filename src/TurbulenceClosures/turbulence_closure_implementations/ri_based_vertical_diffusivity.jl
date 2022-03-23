@@ -19,10 +19,10 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     FT = Float64;
                                     ν₀   = 0.01,
                                     Ri₀ν = 0.0,
-                                    Riᵟν = 1.0,
+                                    Riᵟν = 0.5,
                                     κ₀   = 0.1,
                                     Ri₀κ = 0.0,
-                                    Riᵟκ = 1.0)
+                                    Riᵟκ = 0.5)
 
     TD = typeof(time_discretization)
     return RiBasedVerticalDiffusivity{TD, FT}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ)
