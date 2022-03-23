@@ -79,33 +79,14 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
 # Support for "ManyIndependentColumnMode"
 const CAVDArray = AbstractArray{<:CAVD}
+const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
-with_tracers(tracers, closure::CAVD{TD}) where TD =
-    ConvectiveAdjustmentVerticalDiffusivity{TD}(closure.convective_κz,
-                                                closure.convective_νz,
-                                                closure.background_κz,
-                                                closure.background_νz)
-
-function with_tracers(tracers, closure_array::CAVDArray)
-    arch = architecture(closure_array)
-    Ex, Ey = size(closure_array)
-    return arch_array(arch, [with_tracers(tracers, closure_array[i, j]) for i=1:Ex, j=1:Ey])
-end
-
-# Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
-    ## If we can get away with only precomputing the "stability" of a cell:
-    # data = new_data(Bool, arch, grid, (Center, Center, Center))
-    κ = CenterField(grid)
-    ν = CenterField(grid)
-    return (; κ, ν)
-end
-
-const FlavorOfCAVD = Union{CAVD, AbstractArray{<:CAVD}}
+with_tracers(tracers, closure::FlavorOfCAVD) = closure
+DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = CenterField(grid), ν = CenterField(grid))
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
 
-function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
 
     arch = model.architecture
     grid = model.grid

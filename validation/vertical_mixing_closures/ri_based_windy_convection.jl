@@ -2,17 +2,14 @@ using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
 
 grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
-closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1,
-                                                  background_κz = 1e-5,
-                                                  convective_νz = 1e-3,
-                                                  background_νz = 1e-4)
-                                      
+closure = RiBasedVerticalDiffusivity()
+
 Qᵇ = +1e-8
-Qᵘ = +1e-5
+Qᵘ = -1e-5
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
