@@ -13,6 +13,9 @@ using Oceananigans
 using Oceananigans.Distributed
 using Statistics
 using Printf
+using Logging
+
+Logging.global_logger(OceananigansLogger())
 
 MPI.Init()
 
@@ -67,6 +70,14 @@ function progress(sim)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+outputs = merge(model.velocities, (; e, ζ))
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+                                                      schedule = TimeInterval(0.1),
+                                                      with_halos = true,
+                                                      prefix = "two_dimensional_turbulence_rank$rank",
+                                                      force = true)
 
 run!(simulation)
 
