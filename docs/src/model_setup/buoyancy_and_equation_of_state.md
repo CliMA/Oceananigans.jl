@@ -86,7 +86,7 @@ We follow the same pattern to create a `HydrostaticFreeSurfaceModel` with buoyan
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3x3 halo
+├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
@@ -224,7 +224,7 @@ julia> model = NonhydrostaticModel(grid=grid,
                                    buoyancy=Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃), 
                                    tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing

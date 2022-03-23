@@ -46,7 +46,7 @@ julia> model.tracers.T
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 70×70×70 OffsetArray(::Array{Float64, 3}, -2:67, -2:67, -2:67) with eltype Float64 with indices 0:65×0:65×0:65
+└── data: 70×70×70 OffsetArray(::Array{Float64, 3}, -2:67, -2:67, -2:67) with eltype Float64 with indices -2:67×-2:67×-2:67
     └── max=0.0, min=0.0, mean=0.0
 
 julia> model.tracers.S
@@ -54,7 +54,7 @@ julia> model.tracers.S
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 70×70×70 OffsetArray(::Array{Float64, 3}, -2:67, -2:67, -2:67) with eltype Float64 with indices 0:65×0:65×0:65
+└── data: 70×70×70 OffsetArray(::Array{Float64, 3}, -2:67, -2:67, -2:67) with eltype Float64 with indices -2:67×-2:67×-2:67
     └── max=0.0, min=0.0, mean=0.0
 ```
 

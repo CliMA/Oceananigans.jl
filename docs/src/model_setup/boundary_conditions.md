@@ -307,7 +307,7 @@ julia> model.velocities.u
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Value, top: Value, immersed: ZeroFlux
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 
 julia> model.tracers.c
@@ -315,7 +315,7 @@ julia> model.tracers.c
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Gradient, top: Value, immersed: ZeroFlux
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, 0:17, 0:17, 0:17) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=0.0, min=0.0, mean=0.0
 ```
 
