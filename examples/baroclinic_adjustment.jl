@@ -205,7 +205,8 @@ run!(simulation)
 # ## Visualization
 
 # Now we are ready to visualize our resutls! We use `CairoMakie` in this example.
-# But on a system with OpenGL then `using GLMakie` can be more convenient.
+# On a system with OpenGL `using GLMakie` can be more convenient as figures will be
+# displayed on the screen.
 
 using CairoMakie
 
@@ -215,9 +216,13 @@ fig = Figure(resolution = (1000, 800))
 ax_b = fig[1, 1] = LScene(fig)
 nothing #hide
 
-# Extract surfaces on all 6 boundaries
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
 iter = Observable(0)
+
+# We open the saved output `.jld2` files and extract the buoyancy surfaces on the top, bottom,
+# and east surface.
 
 using JLD2
 
@@ -228,7 +233,7 @@ sides = keys(slicers)
 
 slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
-# Build coordinates, rescaling the vertical coordinate
+# We build the coordinates and we rescale the vertical coordinate for visualization purposes.
 
 x, y, z = nodes((Center, Center, Center), grid)
 
@@ -240,7 +245,8 @@ y = y .* yscale
 zonal_slice_displacement = 1.5
 nothing #hide
 
-# Plot buoyancy
+# Now let's make a 3D plot of the buoyancy and in front of it we'll use the zonally-averaged output
+# to plot the instantaneous zonal-average of the buoyancy.
 
 b_slices = (
       east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
@@ -262,7 +268,7 @@ contour!(ax_b, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformati
 
 rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
-# Add a figure title with the time of the snapshot and then record a movie.
+# Finally, we add a figure title with the time of the snapshot and then record a movie.
 
 title = @lift(string("Buoyancy at t = ",
                      string(slice_files[1]["timeseries/t/" * string($iter)]/day), " days"))
@@ -279,7 +285,7 @@ nothing #hide
 
 # ![](baroclinic_adjustment.mp4)
 
-# Let's now close all the files we opened.
+# Let's be tidy now and close all the `.jld2` files we opened.
 
 for file in slice_files
     close(file)
