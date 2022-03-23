@@ -62,7 +62,7 @@ include("dependencies_for_runtests.jl")
 
         # Model ensures that halos are at least of size 2 with ScalarBiharmonicDiffusivity
         model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=default_grid)
-        @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
+        @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
         model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
