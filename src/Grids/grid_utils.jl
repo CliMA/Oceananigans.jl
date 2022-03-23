@@ -301,7 +301,7 @@ Examples
 ```jldoctest znodes
 julia> using Oceananigans
 
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halos=(1, 1, 1),
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
                                                  topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Center, horz_periodic_grid)
