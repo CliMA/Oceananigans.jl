@@ -47,6 +47,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accelera
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    fill_halo_regions!(vertically_integrated_lateral_areas)
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 

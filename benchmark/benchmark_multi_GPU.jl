@@ -38,6 +38,7 @@ function run_solid_body_rotation(; architecture = CPU(),
     # A spherical domain
     grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 10),
                                  radius = 1,
+                                 halo = (3, 3, 3),
                                  latitude = (-80, 80),
                                  longitude = (-180, 180),
                                  z = (-1, 0))
@@ -102,14 +103,9 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    sim.model.clock.iteration, sim.model.clock.time,
                                    sim.Δt)) #, maximum(abs, sim.model.tracers.c)))
 
-    # simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=u, η=η, c=c),
-    #                                schedule = IterationInterval(100),
-    #                                prefix = "try_1",
-    #                                force = true)
-
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
-    # run!(simulation)
+    run!(simulation)
 
     @show simulation.run_wall_time
     return simulation
@@ -121,6 +117,8 @@ simulation_serial = run_solid_body_rotation(Nx=512, Ny=512, architecture=GPU())
 simulation_paral1 = run_solid_body_rotation(Nx=1024, Ny=512, dev = (0, 1), architecture=GPU())
 
 # using BenchmarkTools
+
+# CUDA.device!(0)
 
 # time_step!(simulation_serial.model, 1)
 # trial_serial = @benchmark begin

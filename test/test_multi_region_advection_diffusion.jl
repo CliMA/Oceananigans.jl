@@ -101,7 +101,6 @@ function solid_body_rotation_test(grid; regions = 1)
     return merge(model.velocities, model.tracers)
 end
 
-
 function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c) 
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 

@@ -17,9 +17,6 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
     sum!(∫ᶻ_A.xᶠᶜᶜ, Axᶠᶜᶜ)
     sum!(∫ᶻ_A.yᶜᶠᶜ, Ayᶜᶠᶜ)
 
-    fill_halo_regions!(∫ᶻ_A.xᶠᶜᶜ)
-    fill_halo_regions!(∫ᶻ_A.yᶜᶠᶜ)
-
     return nothing
 end
 
