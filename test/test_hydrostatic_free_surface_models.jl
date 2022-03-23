@@ -109,7 +109,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
     @testset "Halo size check in model constructor" begin
         for topo in topos_3d
-            grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
             hcabd_closure = ScalarBiharmonicDiffusivity()
 
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
