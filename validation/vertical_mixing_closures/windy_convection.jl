@@ -9,18 +9,11 @@ using Oceananigans.TurbulenceClosures:
     ConvectiveAdjustmentVerticalDiffusivity
 
 #####
-##### Choose a closure
-#####
-
-# closure = nothing
-#closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1.0, ν=1.0)
-closure = RiBasedVerticalDiffusivity()
-#closure = CATKEVerticalDiffusivity()
-#closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.1)
-
-#####
 ##### Setup simulation
 #####
+
+convective_adjustment =
+    ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
 
 grid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=1e-4)
@@ -31,67 +24,95 @@ Qᵘ = -1e-4
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e),
-                                    buoyancy = BuoyancyTracer(),
-                                    boundary_conditions = (; b=b_bcs, u=u_bcs))
-                                    
-N² = 1e-5
-bᵢ(x, y, z) = N² * z
-set!(model, b = bᵢ)
+closures_to_run = [RiBasedVerticalDiffusivity(),
+                   CATKEVerticalDiffusivity(),
+                   convective_adjustment]
 
-simulation = Simulation(model, Δt = 1minute, stop_time=48hours)
+for closure in closures_to_run
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                     schedule = TimeInterval(10minutes),
-                     prefix = "windy_convection",
-                     force = true)
 
-progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim))
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
+                                        tracers = (:b, :e),
+                                        buoyancy = BuoyancyTracer(),
+                                        boundary_conditions = (; b=b_bcs, u=u_bcs))
+                                        
+    N² = 1e-5
+    bᵢ(x, y, z) = N² * z
+    set!(model, b = bᵢ)
 
-run!(simulation)
+    simulation = Simulation(model, Δt=1minute, stop_time=48hours)
+
+    closurename = string(nameof(typeof(closure)))
+
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+                         schedule = TimeInterval(10minutes),
+                         prefix = "windy_convection_" * closurename,
+                         force = true)
+
+    progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+
+    @info "Running a simulation of $model..."
+
+    run!(simulation)
+end
 
 #####
 ##### Visualize
 #####
 
-filepath = "windy_convection.jld2"
-b_ts = FieldTimeSeries(filepath, "b")
-u_ts = FieldTimeSeries(filepath, "u")
-v_ts = FieldTimeSeries(filepath, "v")
-z = znodes(b_ts)
-Nt = length(b_ts.times)
+b_ts = []
+u_ts = []
+v_ts = []
+
+for closure in closures_to_run
+    closurename = string(nameof(typeof(closure)))
+    filepath = "windy_convection_" * closurename * ".jld2"
+
+    push!(b_ts, FieldTimeSeries(filepath, "b"))
+    push!(u_ts, FieldTimeSeries(filepath, "u"))
+    push!(v_ts, FieldTimeSeries(filepath, "v"))
+end
+
+b1 = first(b_ts)
+
+z = znodes(b1)
+Nt = length(b1.times)
 
 fig = Figure(resolution=(1200, 800))
 
 slider = Slider(fig[2, 1:2], range=1:Nt, startvalue=1)
 n = slider.value
 
-buoyancy_label = @lift "Buoyancy at t = " * prettytime(b_ts.times[$n])
-velocities_label = @lift "Velocities at t = " * prettytime(b_ts.times[$n])
+buoyancy_label = @lift "Buoyancy at t = " * prettytime(b1.times[$n])
+velocities_label = @lift "Velocities at t = " * prettytime(b1.times[$n])
 ax_b = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z")
 ax_u = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z")
 
-bn = @lift interior(b_ts[$n], 1, 1, :)
-un = @lift interior(u_ts[$n], 1, 1, :)
-vn = @lift interior(v_ts[$n], 1, 1, :)
-
-lb = lines!(ax_b, bn, z)
-lu = lines!(ax_u, un, z)
-lv = lines!(ax_u, vn, z, linestyle=:dash)
-
 xlims!(ax_b, -grid.Lz * N², 0)
-xlims!(ax_u, -0.1, 0.1)
+xlims!(ax_u, -1.0, 1.0)
+
+colors = [:black, :blue, :red]
+
+for (i, closure) in enumerate(closures_to_run)
+    bn = @lift interior(b_ts[i][$n], 1, 1, :)
+    un = @lift interior(u_ts[i][$n], 1, 1, :)
+    vn = @lift interior(v_ts[i][$n], 1, 1, :)
+    
+    closurename = string(nameof(typeof(closure)))
+
+    lines!(ax_b, bn, z, label=closurename, color=colors[i])
+    lines!(ax_u, un, z, label="u, " * closurename, color=colors[i])
+    lines!(ax_u, vn, z, label="v, " * closurename, linestyle=:dash, color=colors[i])
+end
+
+axislegend(ax_b, position=:lb)
+axislegend(ax_u, position=:rb)
 
 display(fig)
 
-#=
-Nframes = 100
-Niters = 10 # per frame
-record(fig, "ri_based_vertical_mixing.mp4", 1:Nframes, framerate=24) do frame
-    [time_step!(simulation) for i = 1:Niters]
-    update!()
+record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
+    n[] = nn
 end
-=#
+
