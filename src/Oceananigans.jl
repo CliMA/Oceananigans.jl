@@ -105,7 +105,7 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, @apply_regionally, @regional, MultiRegionObject
+    prettytime, threaded_apply_regionally!, apply_regionally!, @apply_regionally, @regional, MultiRegionObject
 
 
 

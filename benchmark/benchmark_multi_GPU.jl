@@ -15,6 +15,7 @@ using Oceananigans.Utils: prettytime, hours
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Oceananigans.MultiRegion
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 using Statistics
 using JLD2
@@ -22,6 +23,12 @@ using Printf
 using CUDA
 
 const U = 0.1
+const Nx = 128
+const Ny = 128
+const Nz = 1
+const mult1 = 1
+const mult2 = 1
+
 
 solid_body_rotation(φ) = U * cosd(φ)
 solid_body_geostrophic_height(φ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(φ)^2 / g
@@ -36,7 +43,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    coriolis_scheme = VectorInvariantEnstrophyConserving())
 
     # A spherical domain
-    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 30),
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, Nz),
                                  radius = 1,
                                  halo = (3, 3, 3),
                                  latitude = (-80, 80),
@@ -56,15 +63,15 @@ function run_solid_body_rotation(; architecture = CPU(),
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
 
-    closure = (HorizontalDiffusivity(ν=1, κ=1), VerticalDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1, ν=1))
+    closure = (HorizontalScalarDiffusivity(ν=1, κ=1), VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=1, ν=1))
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
-                                        tracers = (:T, :S),
+                                        tracers = (:T, :b),
                                         tracer_advection = WENO5(),
-                                        buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState()),                                        ,
+                                        buoyancy = BuoyancyTracer(),                                        
                                         closure = closure)
 
     g = model.free_surface.gravitational_acceleration
@@ -83,11 +90,7 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     cᵢ(λ, φ, z) = Gaussian(λ, φ - φ₀, L)
 
-    set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
-
-    u, v, w = model.velocities
-    c = model.tracers.c
-    η = model.free_surface.η
+    set!(model, u=uᵢ, η=ηᵢ)
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
@@ -108,18 +111,19 @@ function run_solid_body_rotation(; architecture = CPU(),
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
     run!(simulation)
-
+ 
     @show simulation.run_wall_time
     return simulation
 end
 
-simulation_serial = run_solid_body_rotation(Nx=1400, Ny=600, architecture=GPU())
-simulation_paral1 = run_solid_body_rotation(Nx=1400, Ny=600, dev = (0, 1), architecture=GPU())
-simulation_paral2 = run_solid_body_rotation(Nx=1400, Ny=600, dev = (0, 1, 2), architecture=GPU())
+simulation_serial = run_solid_body_rotation(Nx=Nx, Ny=Ny, architecture=GPU()) # 104 ms
+simulation_paral1 = run_solid_body_rotation(Nx=mult1*Nx, Ny=Ny, dev = (0, 1), architecture=GPU()) # 85 ms
+simulation_paral2 = run_solid_body_rotation(Nx=mult2*Nx, Ny=Ny, dev = (0, 1, 2), architecture=GPU())  # 80 ms
 
 using BenchmarkTools
 
 CUDA.device!(0)
+
 
 time_step!(simulation_serial.model, 1)
 trial_serial = @benchmark begin
@@ -129,4 +133,9 @@ end samples = 10
 time_step!(simulation_paral1.model, 1)
 trial_paral1 = @benchmark begin
     CUDA.@sync time_step!(simulation_paral1.model, 1)
+end samples = 10
+
+time_step!(simulation_paral2.model, 1)
+trial_paral2 = @benchmark begin
+    CUDA.@sync time_step!(simulation_paral2.model, 1)
 end samples = 10
