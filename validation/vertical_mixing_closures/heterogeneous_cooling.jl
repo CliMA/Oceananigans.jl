@@ -5,7 +5,7 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 Nx = 1
 Ny = 2
-Nz = 64
+Nz = 32
 
 Lx = Ly = 100kilometers
 Lz = 400
@@ -24,8 +24,8 @@ u_bcs = FieldBoundaryConditions(top=u_top_bc)
 Δh = Ly / Ny
 κ₄ = Δh^4 / 30days
 biharmonic_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄, κ=κ₄)
-#boundary_layer_closure = CATKEVerticalDiffusivity()
-boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
+boundary_layer_closure = CATKEVerticalDiffusivity()
+#boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
 
 closure = (boundary_layer_closure, biharmonic_closure)
 
@@ -40,7 +40,7 @@ N² = 1e-5
 bᵢ(x, y, z) = N² * z # + 1e-8 * rand()
 set!(model, b=bᵢ)
 
-simulation = Simulation(model, Δt=2minutes, stop_iteration=1000)
+simulation = Simulation(model, Δt=2minutes, stop_iteration=10000)
 
 #=
 slice_indices = (
@@ -82,7 +82,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 
