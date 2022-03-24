@@ -26,11 +26,12 @@ u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
 Δh = Ly / Ny
 κ₄ = Δh^4 / 1day
-κ₂ = Δh^2 / 1day
-#horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄, κ=κ₄)
-horizontal_closure = HorizontalScalarDiffusivity(ν=κ₂, κ=κ₂)
-#boundary_layer_closure = CATKEVerticalDiffusivity()
-boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
+κ₂ = Δh^2 / 10days
+
+horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄, κ=κ₄)
+#horizontal_closure = HorizontalScalarDiffusivity(ν=κ₂, κ=κ₂)
+boundary_layer_closure = CATKEVerticalDiffusivity()
+#boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
 
 closure = (boundary_layer_closure, horizontal_closure)
 #closure = boundary_layer_closure
@@ -92,7 +93,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 run!(simulation)
 
@@ -125,7 +126,9 @@ x, y, z = nodes(b_ts)
 shear_yz = @lift begin
     u = u_ts[$n]
     v = v_ts[$n]
-    shear_op = @at (Center, Center, Center) sqrt(∂z(u)^2 + ∂z(v)^2)
+    shear_u = compute!(Field(∂z(u)^2))
+    shear_v = compute!(Field(∂z(v)^2))
+    shear_op = @at (Center, Center, Center) sqrt(shear_u + shear_v)
     shear = compute!(Field(shear_op))
     interior(shear, 1, :, :)
 end
