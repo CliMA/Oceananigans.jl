@@ -58,7 +58,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     
     @inline bottom(x, y) = Int(toplft(x, y) | toprgt(x, y) | botlft(x, y) | botrgt(x, y))
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+#    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
