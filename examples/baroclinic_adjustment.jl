@@ -205,7 +205,7 @@ run!(simulation)
 # ## Visualization
 
 # Now we are ready to visualize our resutls! We use `CairoMakie` in this example.
-# On a system with OpenGL `using GLMakie` can be more convenient as figures will be
+# On a system with OpenGL `using GLMakie` is more convenient as figures will be
 # displayed on the screen.
 
 using CairoMakie
