@@ -75,7 +75,7 @@ function compute!(field::ReducedComputedField, time=nothing)
     reduction = field.operand
     compute_at!(reduction.operand, time)
     reduction.reduce!(field, reduction.operand)
-    return nothing
+    return field
 end
 
 #####
