@@ -1,33 +1,39 @@
 using Printf
+using GLMakie
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
-Nx = 1
-Ny = 2
+Nx = 128
+Ny = 128
 Nz = 32
 
 Lx = Ly = 100kilometers
-Lz = 400
+Lz = 200
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), halo=(3, 3, 3),
-                       x=(0, Lx), y=(-Ly/2, Ly/2), z=(-Lz, 0),
+                       x=(0, Lx), y=(0, Ly), z=(-Lz, 0),
                        topology=(Periodic, Bounded, Bounded))
 
+@show grid
+
 Qᵇ(x, y, t) = 2e-8 * y / Ly
-Qᵘ(x, y, t) = 0.0 #-1e-4
+Qᵘ(x, y, t) = -1e-5
 b_top_bc = FluxBoundaryCondition(Qᵇ)
 u_top_bc = FluxBoundaryCondition(Qᵘ)
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
 Δh = Ly / Ny
-κ₄ = Δh^4 / 30days
-biharmonic_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄, κ=κ₄)
-boundary_layer_closure = CATKEVerticalDiffusivity()
-#boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
+κ₄ = Δh^4 / 1day
+κ₂ = Δh^2 / 1day
+#horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄, κ=κ₄)
+horizontal_closure = HorizontalScalarDiffusivity(ν=κ₂, κ=κ₂)
+#boundary_layer_closure = CATKEVerticalDiffusivity()
+boundary_layer_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
 
-closure = (boundary_layer_closure, biharmonic_closure)
+closure = (boundary_layer_closure, horizontal_closure)
+#closure = boundary_layer_closure
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,
                                     momentum_advection = WENO5(),
@@ -37,10 +43,11 @@ model = HydrostaticFreeSurfaceModel(; grid, closure,
                                     buoyancy = BuoyancyTracer())
 
 N² = 1e-5
-bᵢ(x, y, z) = N² * z # + 1e-8 * rand()
+h = Lz / 3
+bᵢ(x, y, z) = N² * z #N² * h * exp(z / h) # + 1e-8 * rand()
 set!(model, b=bᵢ)
 
-simulation = Simulation(model, Δt=2minutes, stop_iteration=10000)
+simulation = Simulation(model, Δt=1minutes, stop_iteration=10000)
 
 #=
 slice_indices = (
@@ -66,16 +73,19 @@ end
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers);
-                     schedule = TimeInterval(4hours),
+                     schedule = TimeInterval(5minutes),
                      prefix = "heterogeneous_cooling",
                      force = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities
+    e = sim.model.tracers.e
 
-    msg = @sprintf("Iter: %d, t: %s, Δt: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹",
+    msg = @sprintf("Iter: %d, t: %s, Δt: %s, max|u|: (%6.2e, %6.2e, %6.2e) m s⁻¹", 
                    iteration(sim), prettytime(sim), prettytime(sim.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w))
+
+    msg *= @sprintf(", max(e): %6.2e m² s⁻²", maximum(abs, e))
 
     @info msg
     
@@ -86,29 +96,50 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 
-using GLMakie
+filepath = "heterogeneous_cooling.jld2"
+b_ts = FieldTimeSeries(filepath, "b")
+e_ts = FieldTimeSeries(filepath, "e")
+u_ts = FieldTimeSeries(filepath, "u")
+v_ts = FieldTimeSeries(filepath, "v")
+Nt = length(b_ts.times)
 
-fig = Figure(resolution=(800, 1200))
+fig = Figure(resolution=(1600, 1200))
 
-b = model.tracers.b
-b_xy = interior(b, :, :, Nz)
-b_xz = interior(b, :, 1, :)
-b_yz = interior(b, 1, :, :)
+ax_bxy = Axis(fig[1, 1], aspect=1)
+ax_exy = Axis(fig[1, 2], aspect=1)
+ax_syz = Axis(fig[2, 1], aspect=2)
+ax_eyz = Axis(fig[2, 2], aspect=2)
+slider = Slider(fig[3, :], range=1:Nt, startvalue=1)
+n = slider.value
 
-x, y, z = nodes(b)
+b_xy = @lift interior(b_ts[$n], :, :, Nz)
+b_xz = @lift interior(b_ts[$n], :, 1, :)
+b_yz = @lift interior(b_ts[$n], 1, :, :)
 
-u = model.velocities.u
-v = model.velocities.v
-shear_op = @at (Center, Center, Center) sqrt(∂z(u)^2 + ∂z(v)^2)
-shear = compute!(Field(shear_op))
-shear_yz = interior(shear, 1, :, :)
+e_xy = @lift interior(e_ts[$n], :, :, Nz)
+e_xz = @lift interior(e_ts[$n], :, 1, :)
+e_yz = @lift interior(e_ts[$n], 1, :, :)
 
-ax_xy = Axis(fig[1, 1], aspect=1)
-ax_yz = Axis(fig[2, 1], aspect=2)
+x, y, z = nodes(b_ts)
 
-heatmap!(ax_xy, x, y, b_xy)
-heatmap!(ax_yz, y, z, shear_yz)
-contour!(ax_yz, y, z, b_yz, levels=15)
+shear_yz = @lift begin
+    u = u_ts[$n]
+    v = v_ts[$n]
+    shear_op = @at (Center, Center, Center) sqrt(∂z(u)^2 + ∂z(v)^2)
+    shear = compute!(Field(shear_op))
+    interior(shear, 1, :, :)
+end
+
+heatmap!(ax_bxy, x, y, b_xy)
+heatmap!(ax_exy, x, y, e_xy)
+
+heatmap!(ax_syz, y, z, shear_yz)
+contour!(ax_syz, y, z, b_yz, levels=15)
+
+heatmap!(ax_eyz, y, z, e_yz)
+contour!(ax_eyz, y, z, b_yz, levels=15)
+
+display(fig)
 
 #=
 ax = Axis3(fig[1, 1], aspect=:data)
