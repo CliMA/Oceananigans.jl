@@ -12,14 +12,14 @@ using Oceananigans.TurbulenceClosures:
 ##### Setup simulation
 #####
 
-convective_adjustment =
-    ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
 
 grid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=1e-4)
 
-Qᵇ = +1e-7
-Qᵘ = -1e-4
+N² = 1e-5
+Qᵇ = +1e-8
+Qᵘ = -1e-3
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
@@ -36,11 +36,10 @@ for closure in closures_to_run
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
                                         
-    N² = 1e-5
     bᵢ(x, y, z) = N² * z
     set!(model, b = bᵢ)
 
-    simulation = Simulation(model, Δt=1minute, stop_time=48hours)
+    simulation = Simulation(model, Δt=30, stop_time=4days)
 
     closurename = string(nameof(typeof(closure)))
 

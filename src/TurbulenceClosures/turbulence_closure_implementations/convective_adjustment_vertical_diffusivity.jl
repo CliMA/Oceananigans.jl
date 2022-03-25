@@ -82,7 +82,9 @@ const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
 with_tracers(tracers, closure::FlavorOfCAVD) = closure
-DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = CenterField(grid), ν = CenterField(grid))
+DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
+@inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
 
@@ -112,8 +114,7 @@ end
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) &
-                  is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 
     @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
                                                 closure_ij.background_κz,
