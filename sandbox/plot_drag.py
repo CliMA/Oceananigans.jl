@@ -17,8 +17,7 @@ def plotfunc(ds, fig, tt, *args, **kwargs):
 
     # Time series
     ds0.u_cdrag.pnplot(ax=ax1, y='z', label="u (no IBM w/ drag)")
-    ds0.u_noslip.pnplot(ax=ax1, y='z', label="u (no IBM w/ no slip)")
-    ds0.u_imsd.pnplot(ax=ax1, y='z', label="u (w/ IBM)")
+    ds0.u_imsd.pnplot(ax=ax1, y='z', label="u (w/ IBM)", ls="--")
     ax1.set_xlim(0, None)
     ax1.legend()
 
@@ -28,9 +27,8 @@ def plotfunc(ds, fig, tt, *args, **kwargs):
 
 #++++ Open dataset
 vid_cdrag = xr.load_dataset("control_drag_model.nc", decode_times=False, engine="netcdf4")
-vid_noslip = xr.load_dataset("control_noslip_model.nc", decode_times=False, engine="netcdf4")
 vid_imsd = xr.load_dataset("immersed_model.nc", decode_times=False, engine="netcdf4")
-ds = xr.Dataset(dict(u_cdrag=vid_cdrag.u, u_noslip=vid_noslip.u, u_imsd=vid_imsd.u)).pnmean(('x', 'y'))
+ds = xr.Dataset(dict(u_cdrag=vid_cdrag.u, u_imsd=vid_imsd.u)).pnmean(('x', 'y'))
 if parallel:
     ds = ds.chunk(dict(time=1))
 #----
