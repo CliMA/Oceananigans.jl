@@ -359,131 +359,6 @@ end
 #####
 ##### VectorInvariant reconstruction (based on JS or Z) (z-direction Val{3} is different from x- and y-directions)
 #####
-
-# @inline function left_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
-#     i, j, k = ijk
-
-#     u₂, u₁, u₀ = tangential_left_stencil_u(i, j, k, dir, u)
-#     v₂, v₁, v₀ = tangential_left_stencil_v(i, j, k, dir, v)
-
-#     βu₀ = left_biased_β₀(FT, u₀, T, scheme, dir, idx, loc)
-#     βu₁ = left_biased_β₁(FT, u₁, T, scheme, dir, idx, loc)
-#     βu₂ = left_biased_β₂(FT, u₂, T, scheme, dir, idx, loc)
-
-#     βv₀ = left_biased_β₀(FT, v₀, T, scheme, dir, idx, loc)
-#     βv₁ = left_biased_β₁(FT, v₁, T, scheme, dir, idx, loc)
-#     βv₂ = left_biased_β₂(FT, v₂, T, scheme, dir, idx, loc)
-           
-#     β₀ = 0.5*(βu₀ + βv₀)  
-#     β₁ = 0.5*(βu₁ + βv₁)     
-#     β₂ = 0.5*(βu₂ + βv₂)  
-
-#     if scheme isa ZWENO
-#         τ₅ = abs(β₂ - β₀)
-#         α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-#         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-#         α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-#     else
-#         α₀ = scheme.C3₀ / (β₀ + FT(ε))^ƞ
-#         α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-#         α₂ = scheme.C3₂ / (β₂ + FT(ε))^ƞ
-#     end
-#     Σα = α₀ + α₁ + α₂
-#     w₀ = α₀ / Σα
-#     w₁ = α₁ / Σα
-#     w₂ = α₂ / Σα
-
-#     return w₀, w₁, w₂
-# end
-
-# @inline function right_biased_weno5_weights(FT, ijk, T, scheme, dir, idx, loc, ::Type{VelocityStencil}, u, v)
-#     i, j, k = ijk
-    
-#     u₂, u₁, u₀ = tangential_right_stencil_u(i, j, k, dir, u)
-#     v₂, v₁, v₀ = tangential_right_stencil_v(i, j, k, dir, v)
-
-#     βu₀ = right_biased_β₀(FT, u₀, T, scheme, Val(2), idx, loc)
-#     βu₁ = right_biased_β₁(FT, u₁, T, scheme, Val(2), idx, loc)
-#     βu₂ = right_biased_β₂(FT, u₂, T, scheme, Val(2), idx, loc)
-
-#     βv₀ = right_biased_β₀(FT, v₀, T, scheme, Val(1), idx, loc)
-#     βv₁ = right_biased_β₁(FT, v₁, T, scheme, Val(1), idx, loc)
-#     βv₂ = right_biased_β₂(FT, v₂, T, scheme, Val(1), idx, loc)
-           
-#     β₀ = 0.5*(βu₀ + βv₀)  
-#     β₁ = 0.5*(βu₁ + βv₁)     
-#     β₂ = 0.5*(βu₂ + βv₂)  
-
-#     if scheme isa ZWENO
-#         τ₅ = abs(β₂ - β₀)
-#         α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-#         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-#         α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-#     else    
-#         α₀ = scheme.C3₂ / (β₀ + FT(ε))^ƞ
-#         α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-#         α₂ = scheme.C3₀ / (β₂ + FT(ε))^ƞ
-#     end
-        
-#     Σα = α₀ + α₁ + α₂
-#     w₀ = α₀ / Σα
-#     w₁ = α₁ / Σα
-#     w₂ = α₂ / Σα
-
-#     return w₀, w₁, w₂
-# end
-
-# @inline function left_biased_weno5_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
-#     ψ₂, ψ₁, ψ₀ = ψₜ 
-#     β₀ = left_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
-#     β₁ = left_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
-#     β₂ = left_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
-    
-#     if scheme isa ZWENO
-#         τ₅ = abs(β₂ - β₀)
-#         α₀ = scheme.C3₀ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-#         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-#         α₂ = scheme.C3₂ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-#     else
-#         α₀ = scheme.C3₀ / (β₀ + FT(ε))^ƞ
-#         α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-#         α₂ = scheme.C3₂ / (β₂ + FT(ε))^ƞ
-#     end
-
-#     Σα = α₀ + α₁ + α₂
-#     w₀ = α₀ / Σα
-#     w₁ = α₁ / Σα
-#     w₂ = α₂ / Σα
-
-#     return w₀, w₁, w₂
-# end
-
-# @inline function right_biased_weno5_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
-#     ψ₂, ψ₁, ψ₀ = ψₜ 
-#     β₀ = right_biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
-#     β₁ = right_biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
-#     β₂ = right_biased_β₂(FT, ψ₂, T, scheme, dir, idx, loc)
-
-#     if scheme isa ZWENO
-#         τ₅ = abs(β₂ - β₀)
-#         α₀ = scheme.C3₂ * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-#         α₁ = scheme.C3₁ * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-#         α₂ = scheme.C3₀ * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
-#     else    
-#         α₀ = scheme.C3₂ / (β₀ + FT(ε))^ƞ
-#         α₁ = scheme.C3₁ / (β₁ + FT(ε))^ƞ
-#         α₂ = scheme.C3₀ / (β₂ + FT(ε))^ƞ
-#     end
-    
-#     Σα = α₀ + α₁ + α₂
-#     w₀ = α₀ / Σα
-#     w₁ = α₁ / Σα
-#     w₂ = α₂ / Σα
-
-#     return w₀, w₁, w₂
-# end
-
-#####
 ##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws)
 #####
 ##### JS-WENO-5 reconstruction
@@ -498,6 +373,8 @@ for (side, coeffs) in zip([:left, :right], ([:C3₀, :C3₁, :C3₂], [:C3₂, :
     tangential_stencil_u = Symbol(:tangential_, side, :_stencil_u)
     tangential_stencil_v = Symbol(:tangential_, side, :_stencil_v)
 
+    biased_stencil_z = Symbol(side, :_stencil_z)
+    
     @eval begin
         @inline function $biased_weno5_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
             ψ₂, ψ₁, ψ₀ = ψₜ 
@@ -560,6 +437,34 @@ for (side, coeffs) in zip([:left, :right], ([:C3₀, :C3₁, :C3₂], [:C3₂, :
         
             return w₀, w₁, w₂
         end
+
+        @inline function $biased_weno5_weights(FT, ijk, T, scheme, ::Val{3}, idx, loc, ::Type{VelocityStencil}, u)
+            i, j, k = ijk
+            
+            u₂, u₁, u₀ = $biased_stencil_z(i, j, k, u)
+        
+            β₀ = $biased_β₀(FT, u₀, T, scheme, Val(3), idx, loc)
+            β₁ = $biased_β₁(FT, u₁, T, scheme, Val(3), idx, loc)
+            β₂ = $biased_β₂(FT, u₂, T, scheme, Val(3), idx, loc)
+        
+            if scheme isa ZWENO
+                τ₅ = abs(β₂ - β₀)
+                α₀ = scheme.$(coeffs[1]) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = scheme.$(coeffs[2]) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+                α₂ = scheme.$(coeffs[3]) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+            else    
+                α₀ = scheme.$(coeffs[1]) / (β₀ + FT(ε))^ƞ
+                α₁ = scheme.$(coeffs[2]) / (β₁ + FT(ε))^ƞ
+                α₂ = scheme.$(coeffs[3]) / (β₂ + FT(ε))^ƞ
+            end
+                
+            Σα = α₀ + α₁ + α₂
+            w₀ = α₀ / Σα
+            w₁ = α₁ / Σα
+            w₂ = α₂ / Σα
+        
+            return w₀, w₁, w₂
+        end
     end
 end
 
@@ -567,8 +472,8 @@ end
 ##### Biased interpolation functions
 #####
 
-pass_stencil(ψ, i, j, k, scheme, args...) = ψ 
-pass_stencil(ψ, i, j, k, scheme, ::Type{VelocityStencil}) = (i, j, k)
+pass_stencil(ψ, i, j, k, stencil) = ψ 
+pass_stencil(ψ, i, j, k, ::Type{VelocityStencil}) = (i, j, k)
 
 for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT], [:XS, :YS, :ZS]) 
     for side in (:left, :right)
@@ -585,7 +490,7 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
                                                ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
                 
                 ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
-                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, Nothing), $cS, scheme, Val($val), idx, loc, Nothing, args...)
+                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, Nothing), $cS, scheme, Val($val), idx, loc, Nothing, args...)
                 return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
                        w₁ * $biased_p₁(scheme, ψ₁, $cT, Val($val), idx, loc) + 
                        w₂ * $biased_p₂(scheme, ψ₂, $cT, Val($val), idx, loc)
@@ -596,7 +501,7 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
                                                ψ, idx, loc, VI, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
 
                 ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
-                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, scheme, VI), $cS, scheme, Val($val), idx, loc, VI, args...)
+                w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, VI), $cS, scheme, Val($val), idx, loc, VI, args...)
                 return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
                        w₁ * $biased_p₁(scheme, ψ₁, $cT, Val($val), idx, loc) + 
                        w₂ * $biased_p₂(scheme, ψ₂, $cT, Val($val), idx, loc)

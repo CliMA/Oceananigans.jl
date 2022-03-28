@@ -12,6 +12,7 @@ using Oceananigans.OutputWriters
 using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
+using Oceananigans.Units
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
 using Oceananigans.Advection: EnergyConservingScheme
@@ -19,7 +20,10 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 
 using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
+using Oceananigans.Operators: Δx, Δy
+using Oceananigans.TurbulenceClosures
 
+CUDA.device!(1)
 #####
 ##### The Bickley jet
 #####
@@ -58,7 +62,17 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     
     @inline bottom(x, y) = Int(toplft(x, y) | toprgt(x, y) | botlft(x, y) | botrgt(x, y))
 
-#    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -1))
+
+    c = sqrt(10.0)
+    Δt = 0.1 * grid.Δxᶜᵃᵃ / c
+
+    timescale = (5days / (6minutes) * Δt)
+    @show prettytime(timescale)
+
+    @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
+
+    biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
@@ -88,9 +102,6 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
 
-    c = sqrt(model.free_surface.gravitational_acceleration)
-    Δt = 0.1 * model.grid.Δxᶜᵃᵃ / c
-
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
@@ -117,7 +128,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         name = "WENOVectorInvariantVort"
     end
 
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_Upwind"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
@@ -191,9 +202,9 @@ advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
                      WENO5(),
                      VectorInvariant()]
 
-for Nx in [64, 128, 256, 512]
+for Nx in [128]
     for advection in advection_schemes
-        experiment_name = run_bickley_jet(momentum_advection=advection, Nh=Nx)
-        visualize_bickley_jet(experiment_name)
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        # visualize_bickley_jet(experiment_name)
     end
 end

@@ -137,11 +137,27 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
-
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
-                           $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
+            end
+            if ξ == :z
+                @eval begin
+                    import Oceananigans.Advection: $alt_interp
+                    using Oceananigans.Advection: $interp
+    
+                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
+                        ifelse($near_boundary(i, j, k, ibg, scheme),
+                            $second_order_interp(i, j, k, ibg.grid, ∂z, u),
+                            $interp(i, j, k, ibg.grid, scheme, ∂z, VI, u))
+                end
+            else    
+                @eval begin
+                    import Oceananigans.Advection: $alt_interp
+                    using Oceananigans.Advection: $interp
+    
+                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
+                        ifelse($near_boundary(i, j, k, ibg, scheme),
+                                $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
+                                $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
+                end    
             end
         end
     end
@@ -161,5 +177,3 @@ for bias in (:left_biased, :right_biased)
         end
     end
 end
-
-

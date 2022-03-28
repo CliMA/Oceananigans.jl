@@ -19,6 +19,8 @@ using Oceananigans.Units
 using Oceananigans.Operators
 using Printf
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, EnstrophyConservingScheme
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 # using GLMakie
 
 #  λ for latitude and ϕ for latitude is
@@ -48,6 +50,8 @@ function run_rossby_haurwitz(; architecture = CPU(),
                                  z = (-h₀, 0), 
                                  halo = (4, 4, 4), 
                                  precompute_metrics = true)
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -h₀-1))
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=900)
     
@@ -93,7 +97,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     set!(η, hᵢ) 
 
     # Time step restricted on the gravity wave speed. If using the implicit free surface method it is possible to increase it
-    Δt = 12minutes
+    Δt =0.1*accurate_cell_advection_timescale(model) 
 
     simulation = Simulation(model, Δt = Δt, stop_time = 50days)
 
@@ -123,7 +127,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     return simulation.output_writers[:fields].filepath
 end
 
-# filepath_v = run_rossby_haurwitz(Nx=180, Ny=190, advection_scheme=VectorInvariant(), prefix = "test")
-# visualize_spherical_field(filepath, "ζ")
-filepath_w = run_rossby_haurwitz(Nx=180, Ny=90, advection_scheme=WENO5(zweno = true, vector_invariant=true), prefix = "weno")
-# visualize_spherical_field(filepath, "ζ")
+filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO5(vector_invariant=VelocityStencil()), prefix = "WENOVectorInvariantVel")
+filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO5(vector_invariant=VorticityStencil()), prefix = "WENOVectorInvariantVort")
+filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=VectorInvariant(), prefix = "VectorInvariant")
+

@@ -108,17 +108,15 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 ##### Physics and model setup
 #####
 
-νh = 0 #1e+5
+νh = 1e+5
 νz = 1e+1
-κh = 0 #1e+3
+κh = 1e+3
 κz = 1e-4
 
 vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), 
                                      ν = νz, κ = κz)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
-background_diffusivity = (horizontal_closure, vertical_closure)
                                        
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
@@ -197,20 +195,20 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver) #, preconditioner_method=:SparseInverse,
-                                   #preconditioner_settings = (ε = 0.01, nzrel = 6))
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
+                                   preconditioner_settings = (ε = 0.01, nzrel = 10))
 
 equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO5(zweno=true, vector_invariant=VelocityStencil()),
+                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = (:T, :S),
-                                    closure = (vertical_closure, convective_adjustment)) 
+                                    closure = (horizontal_closure, vertical_closure, convective_adjustment)) 
 
 #####
 ##### Initial condition:
@@ -301,63 +299,60 @@ run!(simulation)
 #### Visualize solution
 ####
 
-# using GLMakie, JLD2
+using GLMakie, JLD2
 
-# output_prefix = "annual_cycle_global_lat_lon_128_60_18_temp"
+output_prefix = "annual_cycle_global_lat_lon_128_60_18_temp"
 
-# surface_file = jldopen(output_prefix * "_surface.jld2")
+surface_file = jldopen(output_prefix * "_surface.jld2")
 
-# iterations = parse.(Int, keys(surface_file["timeseries/t"]))
+iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
-# iter = Observable(0)
+iter = Observable(0)
 
-# ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
-# ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
-# vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
-# Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
-# ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
+ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
+ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
+vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
+Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
+ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
 
-# ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
-# vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
+η = @lift ηi($iter) 
+u = @lift ui($iter)
+v = @lift vi($iter)
+T = @lift Ti($iter)
 
-# η = @lift ηi($iter) 
-# u = @lift ui($iter)
-# v = @lift vi($iter)
-# T = @lift Ti($iter)
+max_η = 2
+min_η = - max_η
+max_u = 0.2
+min_u = - max_u
+max_T = 32
+min_T = 0
 
-# max_η = 2
-# min_η = - max_η
-# max_u = 0.2
-# min_u = - max_u
-# max_T = 32
-# min_T = 0
+fig = Figure(resolution = (1200, 900))
 
-# fig = Figure(resolution = (1200, 900))
+ax = Axis(fig[1, 1], title="Free surface displacement (m)")
+hm = GLMakie.heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
+cb = Colorbar(fig[1, 2], hm)
 
-# ax = Axis(fig[1, 1], title="Free surface displacement (m)")
-# hm = GLMakie.heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
-# cb = Colorbar(fig[1, 2], hm)
+ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
+hm = GLMakie.heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
+cb = Colorbar(fig[2, 2], hm)
 
-# ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
-# hm = GLMakie.heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
-# cb = Colorbar(fig[2, 2], hm)
+ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
+hm = GLMakie.heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[1, 4], hm)
 
-# ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
-# hm = GLMakie.heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[1, 4], hm)
+ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
+hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[2, 4], hm)
 
-# ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
-# hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[2, 4], hm)
+title_str = @lift "Earth day = " * ti($iter)
+ax_t = fig[0, :] = Label(fig, title_str)
 
-# title_str = @lift "Earth day = " * ti($iter)
-# ax_t = fig[0, :] = Label(fig, title_str)
+GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
+end
 
-# GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
-#     @info "Plotting iteration $i of $(iterations[end])..."
-#     iter[] = i
-# end
+display(fig)
 
-# display(fig)
-
-# close(surface_file)
+close(surface_file)

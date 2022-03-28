@@ -21,6 +21,7 @@ const AUG = AbstractUnderlyingGrid
 @inline outside_right_biased_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ - 1 && i < N + 1 - Nᴮ
 
 const ADV = AbstractAdvectionScheme
+const WVI = WENOVectorInvariant
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
@@ -42,24 +43,39 @@ for bias in (:symmetric, :left_biased, :right_biased)
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::ADV, args...) where FT =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme, ψ) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $second_order_interp(i, j, k, grid, args...))
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
+
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::WVI, ζ, VI, u, v) where FT =
+                        ifelse($outside_buffer(i, grid.Nx, scheme),
+                            $interp(i, j, k, grid, scheme, ζ, VI, u, v),
+                            $second_order_interp(i, j, k, grid, ζ, u, v))
                 end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::ADV, args...) where {FT, TX} =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme, ψ) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $second_order_interp(i, j, k, grid, args...))
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
+
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::WVI, ζ, VI, u, v) where {FT, TX} =
+                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
+                               $second_order_interp(i, j, k, grid, ζ, u, v))
                 end
             elseif ξ == :z
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::ADV, args...) where {FT, TX, TY} =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme, ψ) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $second_order_interp(i, j, k, grid, args...))
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
+
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::WVI, ∂z, VI, u) where {FT, TX, TY} =
+                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                                $interp(i, j, k, grid, scheme, ∂z, VI, u),
+                                $second_order_interp(i, j, k, grid, ∂z, u))
                 end
             end
         end

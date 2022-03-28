@@ -71,11 +71,25 @@ end
 #### Vertical advection terms
 ####
 
-@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) / Azᶠᶜᶜ(i, j, k, grid)
-@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) / Azᶜᶠᶜ(i, j, k, grid)
+@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
+@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
     
-@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantSchemes, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w)
-@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantSchemes, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariant, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariant, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+
+# @inline function vertical_advection_U(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, w) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ŵ  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δx_qᶜᶜᶠ, w) / Δxᶠᶜᶜ(i, j, k, grid) 
+#     ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
+#     ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
+#     return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+# end
+
+# @inline function vertical_advection_V(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, v, w) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+#     ŵ  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δy_qᶜᶜᶠ, w) / Δyᶜᶠᶜ(i, j, k, grid)
+#     ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
+#     ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
+#     return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
+# end
 
 ######
 ###### Conservative formulation of momentum advection
