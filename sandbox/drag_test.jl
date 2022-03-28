@@ -44,29 +44,24 @@ const z0 = 0.02 # roughness, user defined in future?
 u_drag_bc = FieldBoundaryConditions(bottom = FluxBoundaryCondition(τˣᶻ_BC_bottom, field_dependencies = (:u, :v, :w)),
                                     top    = FluxBoundaryCondition(τˣᶻ_BC_top, field_dependencies = (:u, :v, :w)),
                                     )
-u_noslip_bc = FieldBoundaryConditions(bottom = ValueBoundaryCondition(0),
-                                      top    = ValueBoundaryCondition(0),
-                                      )
 
 kwargs = (closure = ScalarDiffusivity(ν=ν),
-          advection = WENO5(),
+          advection = UpwindBiasedFifthOrder(),
           tracers = nothing,
           coriolis = nothing,
           buoyancy = nothing)
 
 control_drag_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_drag_bc), kwargs...)
-#control_noslip_model = NonhydrostaticModel(grid = grid; boundary_conditions = (; u=u_noslip_bc), kwargs...)
 immersed_model = NonhydrostaticModel(grid = immersed_grid; kwargs...)
 
 models = (immersed_model,)
 names = ("immersed_model",)
 models = (control_drag_model, immersed_model)
 names = ("control_drag_model", "immersed_model")
-#models = (control_drag_model, control_noslip_model, immersed_model,)
-#names = ("control_drag_model", "control_noslip_model", "immersed_model",)
                           
-for (prefix, model) in zip(names, models)
-    @info "Now running model $prefix"
+
+for (model_prefix, model) in zip(names, models)
+    @info "Now running model $model_prefix"
     # Linear stratification
     set!(model, u = U)
 
@@ -80,12 +75,12 @@ for (prefix, model) in zip(names, models)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u=model.velocities.u),
                                                           schedule = TimeInterval(0.02),
-                                                          prefix = prefix,
+                                                          prefix = model_prefix,
                                                           force = true)
 
     simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; u=model.velocities.u),
                                                             schedule = TimeInterval(0.02),
-                                                            filepath = "$prefix.nc",
+                                                            filepath = "$model_prefix.nc",
                                                             mode = "c")
 
     run!(simulation)
@@ -126,8 +121,8 @@ current_figure()
 title_gen(n) = @sprintf("Stokes first problem at t = %.2f", times[n])
 title_str = @lift title_gen($n)
 ax_t = fig[0, :] = Label(fig, title_str)
-prefix = "bottom_u_drag"
-record(fig, prefix * ".mp4", 1:Nt, framerate=8) do nt
+model_prefix = "bottom_u_drag"
+record(fig, model_prefix * ".mp4", 1:Nt, framerate=8) do nt
     n[] = nt
 end
 
