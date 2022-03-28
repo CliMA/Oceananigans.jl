@@ -147,6 +147,8 @@ for i in 1:3
     end
 end
 
+# I couldn't make the rest of this script work with more recent versions of GLMakie!
+# So I switched to `plot_drag.py`
 pause
 immersed_filepath = "control_drag_model.jld2"
 not_immersed_filepath = "immersed_model.jld2"

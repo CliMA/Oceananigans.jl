@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-import pynanigans as pn
 
 
 
@@ -18,16 +17,19 @@ def plotfunc(ds, fig, tt, framedim, y_dir = "z", vels=["u", "v"]):
     axes = fig.subplots(ncols=2, sharey=True)
 
     # Time series
-    ds0[f"{vels[0]}_ddrag"].pnplot(ax=axes[0], y=y_dir, label="u (no IBM w/ drag)")
-    ds0[f"{vels[0]}_immsd"].pnplot(ax=axes[0], y=y_dir, label="u (w/ IBM)", ls="--")
+    y_dir = ds0[f"{vels[0]}_ddrag"].dims[0]
+    ds0[f"{vels[0]}_ddrag"].plot(ax=axes[0], y=y_dir, label="u (no IBM w/ drag)")
+    ds0[f"{vels[0]}_immsd"].plot(ax=axes[0], y=y_dir, label="u (w/ IBM)", ls="--")
 
-    ds0[f"{vels[1]}_ddrag"].pnplot(ax=axes[1], y=y_dir, label="u (no IBM w/ drag)")
-    ds0[f"{vels[1]}_immsd"].pnplot(ax=axes[1], y=y_dir, label="u (w/ IBM)", ls="--")
+    y_dir = ds0[f"{vels[1]}_ddrag"].dims[0]
+    ds0[f"{vels[1]}_ddrag"].plot(ax=axes[1], y=y_dir, label="u (no IBM w/ drag)")
+    ds0[f"{vels[1]}_immsd"].plot(ax=axes[1], y=y_dir, label="u (w/ IBM)", ls="--")
 
     for i, ax in enumerate(axes):
         ax.set_xlim(0, None)
         ax.legend()
         ax.set_title(vels[i])
+        ax.set_xlabel(f"{vels[i]} from immersed boundary and regular domains")
     return None, None
 #----
 
@@ -64,7 +66,9 @@ for bounded_dir in directions:
 
         with ProgressBar():
             mov.save(f"{bounded_dir}_drag.mp4", 
-                     parallel=parallel, parallel_compute_kwargs=dict(), 
+                     parallel=parallel, 
                      overwrite_existing=True,
+                     parallel_compute_kwargs=dict(), 
+                     #parallel_compute_kwargs=dict(num_workers=8, memory_limit='1GB', scheduler="processes"), # 2 min
                      )
     #----
