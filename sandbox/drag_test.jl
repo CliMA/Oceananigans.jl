@@ -11,20 +11,16 @@ ext_Lz = 1.5Lz
 ext_NZ = Int(ext_Lz/(Lz/Nz)) # extra nodes in solid region
 ν = 1e-2 # Viscosity
 U = 1
-topo = (Periodic, Periodic, Bounded)
+topo = (Flat, Flat, Bounded)
 
 @info "Checking u bottom BCs with drag"
-grid = RectilinearGrid(size = (10, 10, Nz),
-                       x=(0, 1),
-                       y=(0, 1),
+grid = RectilinearGrid(size = Nz,
                        z = (1-Lz, 1),
-                       halo = (1,1,1),
+                       halo = 1,
                        topology = topo)
-ext_grid = RectilinearGrid(size = (10, 10, ext_NZ),
-                       x=(0, 1),
-                       y=(0, 1),
+ext_grid = RectilinearGrid(size = ext_NZ,
                        z = (1-ext_Lz, 1),
-                       halo = (1,1,1),
+                       halo = 1,
                        topology = topo)
 
 flat_bottom(x, y) = 0
