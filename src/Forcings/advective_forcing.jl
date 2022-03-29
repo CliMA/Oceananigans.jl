@@ -37,7 +37,7 @@ w_Stokes = - 2/9 * Δb / ν * R^2
 
 settling = AdvectiveForcing(WENO5(), w=w_Stokes)
 """
-function AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
+function AdvectiveForcing(scheme=UpwindBiasedFifthOrder(); u=ZeroField(), v=ZeroField(), w=ZeroField())
     velocities = (; u, v, w)
     return AdvectiveForcing(velocities, scheme, nothing, nothing) # stub
 end
