@@ -117,6 +117,7 @@ include("dependencies_for_runtests.jl")
     if group == :multi_region || group == :all
         @testset "Multi Region tests" begin
             include("test_multi_region_advection_diffusion.jl")
+            include("test_multi_region_implicit_solver.jl")
         end
     end
 

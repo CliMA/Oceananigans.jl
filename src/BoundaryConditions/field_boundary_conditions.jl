@@ -24,7 +24,9 @@ default_prognostic_bc(::RightConnected, ::Nothing) = nothing
 default_prognostic_bc(::Flat, loc) = nothing
 
 default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc)
-default_auxiliary_bc(::Bounded, ::Face) = nothing
+default_auxiliary_bc(::Bounded, ::Face)        = nothing
+default_auxiliary_bc(::RightConnected, ::Face) = nothing
+default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 
 #####
 ##### Field boundary conditions

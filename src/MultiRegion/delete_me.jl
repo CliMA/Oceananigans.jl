@@ -38,9 +38,5 @@ function build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, grav
      return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 
-implicit_diffusion_solver(time_discretization, mrg::MultiRegionGrid) = 
-      construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
-
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
-

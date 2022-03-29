@@ -42,29 +42,37 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-function fill_west_and_east_halo!(c, west_bc::CBC, east_bc::CBC, arch, dep, grid, args...; kwargs...) 
-    @sync begin
-        @async fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
-        @async fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
-    end
-    return NoneEvent()
-end   
+## Fill communicating boundary condition halos
+for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
+    fill_both_halo! = Symbol(:fill_, lside, :_and_, rside, :_halo!)
+    fill_left_halo!  = Symbol(:fill_, lside, :_halo!)
+    fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
-function fill_west_and_east_halo!(c, west_bc, east_bc::CBC, arch, dep, grid, args...; kwargs...) 
-    @sync begin
-        @async fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
-        @async fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
+    @eval begin
+        function $fill_both_halo!(c, left_bc::CBC, right_bc::CBC, arch, dep, grid, args...; kwargs...) 
+            @sync begin
+                @async  $fill_left_halo!(c,  left_bc, arch, dep, grid, args...; kwargs...)
+                @async $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
+            end
+            return NoneEvent()
+        end   
+        function $fill_both_halo!(c, left_bc::CBC, right_bc, arch, dep, grid, args...; kwargs...) 
+            @sync begin
+                @async  $fill_left_halo!(c,  left_bc, arch, dep, grid, args...; kwargs...)
+                @async $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
+            end
+            return NoneEvent()
+        end   
+        function $fill_both_halo!(c, left_bc, right_bc::CBC, arch, dep, grid, args...; kwargs...) 
+            @sync begin
+                @async  $fill_left_halo!(c,  left_bc, arch, dep, grid, args...; kwargs...)
+                @async $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
+            end
+            return NoneEvent()
+        end   
     end
-    return NoneEvent()
-end   
+end
 
-function fill_west_and_east_halo!(c, west_bc::CBC, east_bc, arch, dep, grid, args...; kwargs...) 
-    @sync begin
-        @async fill_west_halo!(c, west_bc, arch, dep, grid, args...; kwargs...)
-        @async fill_east_halo!(c, east_bc, arch, dep, grid, args...; kwargs...)
-    end
-    return NoneEvent()
-end   
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
@@ -114,77 +122,79 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     return nothing
 end
 
-function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
+## Tupled field boundary conditions for 
+
+# function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
     
-    ## Can we take this off??
-    wait(dep)
+#     ## Can we take this off??
+#     wait(dep)
     
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
+#     H = halo_size(grid)[1]
+#     N = size(grid)[1]
 
-    dst = []
-    src = []
-    for n in M
-        push!(dst, buffers[n][bc[n].condition.rank].west...)
-        push!(src, buffers[n][bc[n].condition.from_rank].west...)
-    end
+#     dst = []
+#     src = []
+#     for n in M
+#         push!(dst, buffers[n][bc[n].condition.rank].west...)
+#         push!(src, buffers[n][bc[n].condition.from_rank].west...)
+#     end
     
-    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
+#     switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
     
-    @sync for n in 1:M
-        @async begin
-            w = neighbors[n][bc[n].condition.from_rank]
-            src[n] .= parent(w)[N+1:N+H, :, :]
-        end
-    end
-    sync_device!(getdevice(src[1]))
+#     @sync for n in 1:M
+#         @async begin
+#             w = neighbors[n][bc[n].condition.from_rank]
+#             src[n] .= parent(w)[N+1:N+H, :, :]
+#         end
+#     end
+#     sync_device!(getdevice(src[1]))
 
-    switch_device!(getdevice(c[1]))
-    copyto!(dst, src)
+#     switch_device!(getdevice(c[1]))
+#     copyto!(dst, src)
 
-    @sync for n in 1:M
-        @async begin
-            p  = view(parent(c[n]), 1:H, :, :)
-            p .= dst[n]
-        end
-    end
+#     @sync for n in 1:M
+#         @async begin
+#             p  = view(parent(c[n]), 1:H, :, :)
+#             p .= dst[n]
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
-function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
+# function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
     
-    ## Can we take this off??
-    wait(dep)
+#     ## Can we take this off??
+#     wait(dep)
     
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
+#     H = halo_size(grid)[1]
+#     N = size(grid)[1]
 
-    dst = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
+#     dst = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
 
-    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
-    src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
+#     switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
+#     src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
     
-    @sync for n in 1:M
-        @async begin
-            e = neighbors[n][bc[n].condition.from_rank]
-            src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
-        end
-    end
+#     @sync for n in 1:M
+#         @async begin
+#             e = neighbors[n][bc[n].condition.from_rank]
+#             src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
+#         end
+#     end
 
-    sync_device!(getdevice(src[1]))
+#     sync_device!(getdevice(src[1]))
     
-    switch_device!(getdevice(c[1]))
-    copyto!(dst, src)
-    @sync for n in 1:M
-        @async begin
-            p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
-            p .= dst[n, :, :, :]
-        end
-    end
+#     switch_device!(getdevice(c[1]))
+#     copyto!(dst, src)
+#     @sync for n in 1:M
+#         @async begin
+#             p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
+#             p .= dst[n, :, :, :]
+#         end
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
   
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 

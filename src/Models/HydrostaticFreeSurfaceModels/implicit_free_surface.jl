@@ -88,10 +88,10 @@ end
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update)
+ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
+    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
 
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update)
+function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
     η = free_surface.η
     g = free_surface.gravitational_acceleration
     rhs = free_surface.implicit_step_solver.right_hand_side
@@ -100,17 +100,14 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     arch = model.architecture
 
     # Wait for predictor velocity update step to complete.
-    wait(device(arch), velocities_update)
-
-    masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
-    wait(device(model.architecture), MultiEvent(masking_events))
-
-    # Compute barotropic volume flux. Blocking.
-    compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
+    @apply_regionally local_mask_velocities!(model.velocities, arch)
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     # Compute right hand side of implicit free surface equation
-    rhs_event = compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
-    wait(device(arch), rhs_event)
+    @apply_regionally compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
+    fill_halo_regions!(∫ᶻQ, model.clock, fields(model))
+
+    @apply_regionally compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
@@ -124,3 +121,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     return NoneEvent()
 end
 
+function local_mask_velocities!(velocities, arch)
+    masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
+    wait(device(arch), MultiEvent(masking_events))
+end

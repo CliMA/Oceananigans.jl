@@ -69,7 +69,15 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, size, exten
     return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, size, extent), boundary)
 end
 
-getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = apply_regionally(Base.getproperty, grids(mrg), x)
+getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
+
+const MRG = MultiRegionGrid
+
+@inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
+@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getfield(getindex(getfield(ibg, :region_grids), 1), property)
+@inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
+@inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
+@inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
 
 Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",

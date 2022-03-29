@@ -29,50 +29,48 @@ end
 
 # Finally, the true fill_halo!
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...) = nothing
 
+function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...)
 
-# function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...)
-# 
-#     arch = architecture(grid)
-# 
-#     fill_halos! = [
-#         fill_west_and_east_halo!,
-#         fill_south_and_north_halo!,
-#         fill_bottom_and_top_halo!,
-#     ]
-# 
-#     boundary_conditions_array_left = [
-#         extract_west_bc(boundary_conditions),
-#         extract_south_bc(boundary_conditions),
-#         extract_bottom_bc(boundary_conditions)
-#     ]
-# 
-#     boundary_conditions_array_right = [
-#         extract_east_bc(boundary_conditions),
-#         extract_north_bc(boundary_conditions),
-#         extract_top_bc(boundary_conditions),
-#     ]
-# 
-#     perm = sortperm(boundary_conditions_array_left, lt=fill_first)
-#     fill_halos! = fill_halos![perm]
-#     boundary_conditions_array_left  = boundary_conditions_array_left[perm]
-#     boundary_conditions_array_right = boundary_conditions_array_right[perm]
-#    
-#     for task = 1:3
-#         barrier = device_event(arch)
-# 
-#         fill_halo!  = fill_halos![task]
-#         bc_left     = boundary_conditions_array_left[task]
-#         bc_right    = boundary_conditions_array_right[task]
-# 
-#         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
-# 
-#         wait(device(arch), events)
-#     end
-# 
-#     return nothing
-# end
+    arch = architecture(grid)
+
+    fill_halos! = [
+        fill_west_and_east_halo!,
+        fill_south_and_north_halo!,
+        fill_bottom_and_top_halo!,
+    ]
+
+    boundary_conditions_array_left = [
+        extract_west_bc(boundary_conditions),
+        extract_south_bc(boundary_conditions),
+        extract_bottom_bc(boundary_conditions)
+    ]
+
+    boundary_conditions_array_right = [
+        extract_east_bc(boundary_conditions),
+        extract_north_bc(boundary_conditions),
+        extract_top_bc(boundary_conditions),
+    ]
+
+    perm = sortperm(boundary_conditions_array_left, lt=fill_first)
+    fill_halos! = fill_halos![perm]
+    boundary_conditions_array_left  = boundary_conditions_array_left[perm]
+    boundary_conditions_array_right = boundary_conditions_array_right[perm]
+   
+    for task = 1:3
+        barrier = device_event(arch)
+
+        fill_halo!  = fill_halos![task]
+        bc_left     = boundary_conditions_array_left[task]
+        bc_right    = boundary_conditions_array_right[task]
+
+        events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
+
+        wait(device(arch), events)
+    end
+
+    return nothing
+end
 
 @inline validate_event(::Nothing) = NoneEvent()
 @inline validate_event(event)     = event

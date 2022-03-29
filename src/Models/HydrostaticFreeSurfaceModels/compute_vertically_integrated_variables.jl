@@ -33,13 +33,8 @@ V★ = ∫ᶻ Ay * v★ dz
 function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model)
 
     # Fill halo regions for predictor velocity.
-    fill_halo_regions!(model.velocities, model.clock, fields(model))
-
     sum!(∫ᶻ_U.u, Ax * model.velocities.u)
     sum!(∫ᶻ_U.v, Ay * model.velocities.v)
-
-    # We didn't include right boundaries, so...
-    fill_halo_regions!(∫ᶻ_U, model.clock, fields(model))
 
     return nothing
 end

@@ -37,4 +37,5 @@ collect_grid(f::NTuple{N, <:Field}) where N = Tuple(f[i].grid for i in 1:N)
 const MRD = Union{MultiRegionField, MultiRegionObject}
 
 # make it more efficient?
-Statistics.dot(f::MRD,  g::MRD) = sum([r for r in construct_regionally(dot, f, g).regions])
+Statistics.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regions])
+Statistics.norm(f::MRD) = sqrt(dot(f, f))
