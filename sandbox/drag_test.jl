@@ -1,4 +1,4 @@
-using GLMakie
+#using GLMakie
 using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, mask_immersed_field!
@@ -24,23 +24,23 @@ const κVK = 0.4 # van Karman's const
 const z0 = 0.02 # roughness, user defined in future?
 @inline drag_C(delta) = -(κVK ./ log(0.5*delta/z0)).^2 
 
-@inline   τʸˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * v * (v^2 + w^2)^0.5
-@inline   τᶻˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * w * (v^2 + w^2)^0.5
+@inline τʸˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * v * (v^2 + w^2)^0.5
+@inline τᶻˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * w * (v^2 + w^2)^0.5
 
-@inline  τˣʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * u * (u^2 + w^2)^0.5
-@inline  τᶻʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * w * (u^2 + w^2)^0.5
+@inline τˣʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * u * (u^2 + w^2)^0.5
+@inline τᶻʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * w * (u^2 + w^2)^0.5
 
 @inline τˣᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶠ) * u * (u^2 + v^2)^0.5
 @inline τʸᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶠ) * v * (u^2 + v^2)^0.5
 
-@inline  τʸˣ_BC_east(x, y, t, u, v, w) = -τʸˣ_BC_west(x, y, t, u, v, w)
-@inline  τᶻˣ_BC_east(x, y, t, u, v, w) = -τᶻˣ_BC_west(x, y, t, u, v, w)
+@inline τʸˣ_BC_east(x, y, t, u, v, w) = -τʸˣ_BC_west(x, y, t, u, v, w)
+@inline τᶻˣ_BC_east(x, y, t, u, v, w) = -τᶻˣ_BC_west(x, y, t, u, v, w)
 
 @inline τˣʸ_BC_north(x, y, t, u, v, w) = -τˣʸ_BC_south(x, y, t, u, v, w)
 @inline τᶻʸ_BC_north(x, y, t, u, v, w) = -τᶻʸ_BC_south(x, y, t, u, v, w)
 
-@inline   τˣᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
-@inline   τʸᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
+@inline τˣᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
+@inline τʸᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
 
 topo_main = [Flat, Flat, Bounded]
 directions = [:x, :y, :z]
@@ -121,9 +121,8 @@ for i in 1:3
         set!(model; vels_dict...)
     
         Δt = 1e-1 * grid.Δzᵃᵃᶜ^2 / ν
-    
         simulation = Simulation(model, Δt = Δt, stop_time = 1.0,)
-    
+        
         progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
     
         simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
@@ -149,39 +148,39 @@ end
 
 # I couldn't make the rest of this script work with more recent versions of GLMakie!
 # So I switched to `plot_drag.py`
-pause
-immersed_filepath = "control_drag_model.jld2"
-not_immersed_filepath = "immersed_model.jld2"
+#pause
+#immersed_filepath = "control_drag_model.jld2"
+#not_immersed_filepath = "immersed_model.jld2"
 
-z = znodes(Center, grid)
-zi = znodes(Center, grid_ext)
+#z = znodes(Center, grid)
+#zi = znodes(Center, grid_ext)
 
-uti = FieldTimeSeries(immersed_filepath, "u", grid=grid_ext)
-utn = FieldTimeSeries(not_immersed_filepath, "u", grid=grid)
+#uti = FieldTimeSeries(immersed_filepath, "u", grid=grid_ext)
+#utn = FieldTimeSeries(not_immersed_filepath, "u", grid=grid)
 
-times = uti.times
-Nt = length(times)
-n = Observable(1)
-uii(n) = interior(uti[n])[1, 1, :]
-uin(n) = interior(utn[n])[1, 1, :]
-upi = @lift uii($n)
-upn = @lift uin($n)
+#times = uti.times
+#Nt = length(times)
+#n = Observable(1)
+#uii(n) = interior(uti[n])[1, 1, :]
+#uin(n) = interior(utn[n])[1, 1, :]
+#upi = @lift uii($n)
+#upn = @lift uin($n)
 
-fig = Figure(resolution=(400, 600))
+#fig = Figure(resolution=(400, 600))
 
-ax = Axis(fig[1, 1], xlabel="u(z)", ylabel="z")
-lines!(ax, upi, zi, label="immersed", linewidth=4, linestyle=:solid, color = :red)
-lines!(ax, upn, z, label="not immersed", linewidth=4, color = :blue, linestyle="--")
-ylims!(ax, -.1,1)
-axislegend()
-current_figure()
+#ax = Axis(fig[1, 1], xlabel="u(z)", ylabel="z")
+#lines!(ax, upi, zi, label="immersed", linewidth=4, linestyle=:solid, color = :red)
+#lines!(ax, upn, z, label="not immersed", linewidth=4, color = :blue, linestyle="--")
+#ylims!(ax, -.1,1)
+#axislegend()
+#current_figure()
 
-title_gen(n) = @sprintf("Stokes first problem at t = %.2f", times[n])
-title_str = @lift title_gen($n)
-ax_t = fig[0, :] = Label(fig, title_str)
-model_prefix = "bottom_u_drag"
-record(fig, model_prefix * ".mp4", 1:Nt, framerate=8) do nt
-    n[] = nt
-end
+#title_gen(n) = @sprintf("Stokes first problem at t = %.2f", times[n])
+#title_str = @lift title_gen($n)
+#ax_t = fig[0, :] = Label(fig, title_str)
+#model_prefix = "bottom_u_drag"
+#record(fig, model_prefix * ".mp4", 1:Nt, framerate=8) do nt
+#    n[] = nt
+#end
 
-display(fig)
+#display(fig)
