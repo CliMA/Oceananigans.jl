@@ -208,7 +208,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = (:T, :S),
-                                    closure = (horizontal_closure, vertical_closure, convective_adjustment)) 
+                                    closure = (vertical_closure, convective_adjustment)) 
 
 #####
 ##### Initial condition:
@@ -236,7 +236,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds
 else
-    Δt = 20minutes
+    Δt = 5minutes
 end
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
