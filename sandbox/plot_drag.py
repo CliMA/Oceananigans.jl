@@ -29,7 +29,7 @@ def plotfunc(ds, fig, tt, framedim, y_dir = "z", vels=["u", "v"]):
         ax.set_xlim(0, None)
         ax.legend()
         ax.set_title(vels[i])
-        ax.set_xlabel(f"{vels[i]} from immersed boundary and regular domains")
+        ax.set_xlabel(f"{vels[i]} w/ and w/o IB")
     return None, None
 #----
 
