@@ -335,38 +335,37 @@ for arch in archs
         buoyancy = SeawaterBuoyancy(; gravitational_acceleration, equation_of_state)
         model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
 
-        @testset "Instantiating computed fields [$A]" begin
+        @testset "Instantiating and computing computed fields [$A]" begin
+            @info "  Testing computed Field instantiation and computation [$A]..."
             c = CenterField(grid)
-            c² = Field(c^2)
-            compute!(c²)
+            c² = compute!(Field(c^2))
             @test c² isa Field
 
             # Test indices
             indices = [(:, :, :), (1, :, :), (:, :, grid.Nz), (2:4, 3, 5)]
             sizes   = [(4, 4, 4), (1, 4, 4), (4, 4, 1),       (3, 1, 1)]
             for (ii, sz) in zip(indices, sizes)
-                c² = Field(c^2; indices=ii)
-                compute!(c²)
+                c² = compute!(Field(c^2; indices=ii))
                 @test size(interior(c²)) === sz
             end
         end
 
         @testset "Derivative computations [$A]" begin
-            @info "      Testing compute! derivatives..."
+            @info "      Testing correctness of compute! derivatives..."
             @test compute_derivative(model, ∂x)
             @test compute_derivative(model, ∂y)
             @test compute_derivative(model, ∂z)
         end
 
         @testset "Unary computations [$A]" begin
-            @info "      Testing compute! unary operations..."
+            @info "      Testing correctness of compute! unary operations..."
             for unary in (sqrt, sin, cos, exp, tanh)
                 @test compute_unary(unary, model)
             end
         end
 
         @testset "Binary computations [$A]" begin
-            @info "      Testing compute! binary operations..."
+            @info "      Testing correctness of compute! binary operations..."
             @test compute_plus(model)
             @test compute_minus(model)
             @test compute_times(model)
@@ -377,10 +376,10 @@ for arch in archs
         end
 
         @testset "Multiary computations [$A]" begin
-            @info "      Testing compute! multiary operations..."
+            @info "      Testing correctness of compute! multiary operations..."
             @test compute_many_plus(model)
 
-            @info "      Testing compute! kinetic energy..."
+            @info "      Testing correctness of compute! kinetic energy..."
             @test compute_kinetic_energy(model)
         end
 
