@@ -1,10 +1,11 @@
 using Oceananigans.Advection: UpwindBiasedFifthOrder
 using Oceananigans.Fields: ZeroField
 
-struct AdvectiveForcing{I, U, S, F}
+struct AdvectiveForcing{U, S, F, C}
     velocities :: U
     advection_scheme :: S
     advection_kernel_function :: F
+    advected_field :: C
 end
 
 """
@@ -36,7 +37,7 @@ settling = AdvectiveForcing(WENO5(), w=w_Stokes)
 """
 function AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
     velocities = (; u, v, w)
-    return AdvectiveForcing{Nothing}(velocities, scheme, nothing) # stub
+    return AdvectiveForcing(velocities, scheme, nothing, nothing) # stub
 end
     
 function regularize_forcing(af::AdvectiveForcing, field, field_name, model_field_names)
@@ -45,13 +46,11 @@ function regularize_forcing(af::AdvectiveForcing, field, field_name, model_field
         field_name === :v ? div_𝐯v :
         field_name === :w ? div_𝐯w : div_Uc
 
-    field_index = findfirst(name -> name === field_name, model_field_names) 
-
-    return AdvectiveForcing{field_index}(af.velocities, af.advection_scheme, kernel_function)
+    return AdvectiveForcing(af.velocities, af.advection_scheme, kernel_function, field)
 end
 
 # div_Uc(i, j, k, grid, advection, velocities, c)
 
-@inline (forcing::AdvectiveForcing{I})(i, j, k, grid, clock, model_fields) where I =
-    af.advection_kernel_function(i, j, k, grid, af.advection_scheme, af.velocities, model_fields[I])
+@inline (forcing::AdvectiveForcing)(i, j, k, grid, clock, model_fields) =
+    af.advection_kernel_function(i, j, k, grid, af.advection_scheme, af.velocities, af.field)
 
