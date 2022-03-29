@@ -366,7 +366,7 @@ Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indice
 
 Computes `field.data` from `field.operand`.
 """
-compute!(field, time=nothing) = nothing # fallback
+compute!(field, time=nothing) = field # fallback
 
 """
     @compute(exprs...)

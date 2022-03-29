@@ -21,7 +21,10 @@ export
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
-    WENO5
+    WENO5,
+    VectorInvariant,
+    EnergyConservingScheme,
+    EnstrophyConservingScheme
 
 using DocStringExtensions
 
@@ -36,8 +39,6 @@ abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionSc
 
 required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer + 1
 
-include("topologically_conditional_interpolation.jl")
-
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 include("flat_advective_fluxes.jl")
@@ -48,6 +49,9 @@ include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 include("upwind_biased_fifth_order.jl")
 include("weno_fifth_order.jl")
+include("vector_invariant_advection.jl")
+
+include("topologically_conditional_interpolation.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
