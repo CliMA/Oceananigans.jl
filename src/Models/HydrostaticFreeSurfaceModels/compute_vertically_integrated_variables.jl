@@ -42,7 +42,7 @@ function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model)
     sum!(∫ᶻ_U.v, Ay * model.velocities.v)
 
     # We didn't include right boundaries, so...
-    fill_halo_regions!(∫ᶻ_U, model.clock, fields(model))
+    fill_halo_regions!(∫ᶻ_U)
 
     return nothing
 end
