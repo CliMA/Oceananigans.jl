@@ -19,6 +19,8 @@ Example
 # Using a tracer field to model sinking particles
 
 ```jldoctest
+using Oceananigans
+
 # Physical parameters
 gravitational_acceleration          = 9.81     # m s⁻²
 ocean_density                       = 1026     # kg m⁻³

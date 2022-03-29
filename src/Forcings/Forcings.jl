@@ -1,6 +1,6 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, LinearTarget
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, LinearTarget, AdvectiveForcing
 
 using Oceananigans.Fields
 
