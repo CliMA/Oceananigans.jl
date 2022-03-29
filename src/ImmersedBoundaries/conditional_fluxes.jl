@@ -12,12 +12,12 @@ const ATD = AbstractTimeDiscretization
 #### Drag functions
 ####
 
-const κVK = 0.4 # van Karman's const
+const κᵥₖ = 0.4 # van Karman's const
 const z₀ = 0.02 # roughness length (meters), user defined in future?
 
-@inline west_drag_const(i, j, k, grid)   = @inbounds -(κVK / log(0.5 * Δxᶠᶜᶜ(i, j, k, grid) / z₀))^2 
-@inline south_drag_const(i, j, k, grid)  = @inbounds -(κVK / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
-@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κVK / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
+@inline west_drag_const(i, j, k, grid)   = @inbounds -(κᵥₖ / log(0.5 * Δxᶠᶜᶜ(i, j, k, grid) / z₀))^2 
+@inline south_drag_const(i, j, k, grid)  = @inbounds -(κᵥₖ / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
+@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κᵥₖ / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
 
 # interpolate drag to u face 
 @inline τˣᶻ_drag_bottom(i, j, k, grid, U) = @inbounds +bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)
@@ -55,31 +55,34 @@ const z₀ = 0.02 # roughness length (meters), user defined in future?
 
 if true # For drag boundary conditions
     # will always be within cell for grid fitted
-    @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
+    @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), 
+                                                                                                                          zero(FT), 
+                                                                                                                          flux(i, j, k, ibg, disc, closure, diffusivities, U, args...))
+
     # tau xy
     @inline conditional_flux_ffc_uy(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_south_fluid_north_interface(f, f, c, i, j, k, ibg), τˣʸ_drag_south(i, j, k, ibg, U), 
-                                                                                                                            ifelse(solid_north_fluid_south_interface(f, f, c, i, j, k, ibg), τˣʸ_drag_north(i, j, k, ibg, U), 
+                                                                                                                             ifelse(solid_north_fluid_south_interface(f, f, c, i, j, k, ibg), τˣʸ_drag_north(i, j, k, ibg, U), 
                                                                                                                                     flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
     # tau yx
     @inline conditional_flux_ffc_vx(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_west_fluid_east_interface(f, f, c, i, j, k, ibg), τʸˣ_drag_west(i, j, k, ibg, U), 
-                                                                                                                                    ifelse(solid_east_fluid_west_interface(f, f, c, i, j, k, ibg), τʸˣ_drag_east(i, j, k, ibg, U), 
-                                                                                                                                            flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
+                                                                                                                             ifelse(solid_east_fluid_west_interface(f, f, c, i, j, k, ibg), τʸˣ_drag_east(i, j, k, ibg, U), 
+                                                                                                                                    flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
     # tau xz; we need to check (in all cases) if the interface is on the left or right of
     # the axis since the drag will have opposite signs depending on which is true.
     @inline conditional_flux_fcf_uz(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_bottom_fluid_top_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag_bottom(i, j, k, ibg, U), 
-                                                                                                                          ifelse(solid_top_fluid_bottom_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag_top(i, j, k, ibg, U), 
-                                                                                                                                 flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
+                                                                                                                             ifelse(solid_top_fluid_bottom_interface(f, c, f, i, j, k, ibg), τˣᶻ_drag_top(i, j, k, ibg, U), 
+                                                                                                                                    flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
     # tau zx
     @inline conditional_flux_fcf_wx(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_west_fluid_east_interface(f, c, f, i, j, k, ibg), τᶻˣ_drag_west(i, j, k, ibg, U), 
-                                                                                                                                 ifelse(solid_east_fluid_west_interface(f, c, f, i, j, k, ibg), τᶻˣ_drag_east(i, j, k, ibg, U), 
-                                                                                                                                        flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
+                                                                                                                             ifelse(solid_east_fluid_west_interface(f, c, f, i, j, k, ibg), τᶻˣ_drag_east(i, j, k, ibg, U), 
+                                                                                                                                    flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
     # tau yz
     @inline conditional_flux_cff_vz(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_bottom_fluid_top_interface(c, f, f, i, j, k, ibg), τʸᶻ_drag_bottom(i, j, k, ibg, U), 
-                                                                                                                            ifelse(solid_top_fluid_bottom_interface(c, f, f, i, j, k, ibg), τʸᶻ_drag_top(i, j, k, ibg, U), 
+                                                                                                                             ifelse(solid_top_fluid_bottom_interface(c, f, f, i, j, k, ibg), τʸᶻ_drag_top(i, j, k, ibg, U), 
                                                                                                                                     flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
     # tau zy
     @inline conditional_flux_cff_wy(i, j, k, ibg::IBG{FT}, flux, disc, closure, diffusivities, U, args...) where FT = ifelse(solid_south_fluid_north_interface(c, f, f, i, j, k, ibg), τᶻʸ_drag_south(i, j, k, ibg, U), 
-                                                                                                                            ifelse(solid_north_fluid_south_interface(c, f, f, i, j, k, ibg), τᶻʸ_drag_north(i, j, k, ibg, U), 
+                                                                                                                             ifelse(solid_north_fluid_south_interface(c, f, f, i, j, k, ibg), τᶻʸ_drag_north(i, j, k, ibg, U), 
                                                                                                                                     flux(i, j, k, ibg, disc, closure, diffusivities, U, args...)))
 
     # keeping no flux condition for tracers
