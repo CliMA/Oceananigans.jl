@@ -32,6 +32,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 
 import Oceananigans.Grids: required_halo_size
+import Oceananigans.Operators: _symmetric_interpolate_xᶠᵃᵃ, _symmetric_interpolate_yᵃᶠᵃ
 
 abstract type AbstractAdvectionScheme{Buffer} end
 abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end

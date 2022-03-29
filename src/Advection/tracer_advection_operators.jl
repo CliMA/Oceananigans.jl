@@ -29,3 +29,10 @@ which ends up at the location `ccc`.
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U.v, c) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
 end
+
+@inline function div_Uc(i, j, k, grid, advection, divergence, U, c)
+    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, divergence, U.u, c) +
+                             δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, divergence, U.v, c) +
+                             δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, divergence, U.w, c))
+end
+

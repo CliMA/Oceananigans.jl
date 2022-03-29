@@ -126,3 +126,30 @@ end
 
     return Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
 end
+
+@inline function advective_tracer_flux_x(i, j, k, grid, advection_scheme::Upwind, divergence_scheme, U, c) 
+
+    ũ  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, divergence_scheme, U)
+    cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection_scheme, c)
+    cᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, advection_scheme, c)
+
+    return Axᶠᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
+end
+
+@inline function advective_tracer_flux_y(i, j, k, grid, advection_scheme::Upwind, V, c)
+
+    ṽ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, divergence_scheme, V)
+    cᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection_scheme, c)
+    cᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection_scheme, c)
+
+    return Ayᶜᶠᶜ(i, j, k, grid) * upwind_biased_product(ṽ, cᴸ, cᴿ)
+end
+
+@inline function advective_tracer_flux_z(i, j, k, grid, advection_scheme::Upwind, divergence_scheme, W, c)
+
+    @inbounds w̃ = W[i, j, k]
+    cᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection_scheme, c)
+    cᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, advection_scheme, c)
+
+    return Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
+end
