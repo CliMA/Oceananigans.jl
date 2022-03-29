@@ -1,4 +1,3 @@
-
 # Defining all the First order derivatives for the immersed boundaries
 
 @inline conditional_x_derivative_f(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(solid_node(c, LY, LZ, i, j, k, ibg) | solid_node(c, LY, LZ, i-1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.grid, args...))
@@ -37,3 +36,12 @@
 ∂zᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(c, f, i, j, k, ibg, ∂zᶜᶠᶜ, args...)
 ∂zᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(f, c, i, j, k, ibg, ∂zᶠᶜᶜ, args...)
 ∂zᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(f, f, i, j, k, ibg, ∂zᶠᶠᶜ, args...)
+
+using  Oceananigans.Operators
+import Oceananigans.Operators: Γᶠᶠᶜ
+
+# Circulation equal to zero on a solid nodes
+@inline Γᶠᶠᶜ(i, j, k, ibg::IBG, u, v) =  
+    conditional_x_derivative_f(f, c, i, j, k, ibg, δxᶠᵃᵃ, Δy_qᶜᶠᶜ, v) - conditional_y_derivative_f(f, c, i, j, k, ibg, δyᵃᶠᵃ, Δx_qᶠᶜᶜ, u)
+
+

@@ -11,14 +11,14 @@ using Benchmarks
 
 Logging.global_logger(OceananigansLogger())
 
-MPI.Init()
-
+MPI.Init()      
+      
       comm = MPI.COMM_WORLD
 local_rank = MPI.Comm_rank(comm)
          R = MPI.Comm_size(comm)
 
- #assigns one GPU per rank, could increase efficiency but must have enough GPUs
- #CUDA.device!(local_rank)
+ # Assigns one GPU per rank, could increase efficiency but must have enough GPUs
+ # CUDA.device!(local_rank)
 
  Nx = parse(Int, ARGS[1])
  Ny = parse(Int, ARGS[2])
@@ -32,9 +32,9 @@ local_rank = MPI.Comm_rank(comm)
 @info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Periodic)
-distributed_grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
-arch = MultiCPU(grid=distributed_grid, ranks=(Rx, Ry, Rz))
-model = DistributedNonhydrostaticModel(architecture=arch, grid=distributed_grid)
+arch = MultiArch(CPU(), topology=topo, ranks=(Rx, Ry, Rz), communicator=MPI.COMM_WORLD)
+distributed_grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=distributed_grid)
 
 @info "Warming up distributed nonhydrostatic model on rank $local_rank..."
 

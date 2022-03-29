@@ -91,7 +91,7 @@ end
 
 """
     CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
-                             Cᴰ = 2.91,
+                             Cᴰ = 0.215,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
                              warning = true)

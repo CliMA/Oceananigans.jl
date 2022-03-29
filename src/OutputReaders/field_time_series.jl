@@ -34,10 +34,11 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 #####
 
 """
-    FieldTimeSeries{LX, LY, LZ}(grid, times, boundary_conditions=nothing)
+    FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
+                                indices = (:, :, :),
+                                boundary_conditions = nothing)
 
-Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
-`boundary_conditions`, and initialized with zeros of `eltype(grid)`.
+Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :),
@@ -69,8 +70,8 @@ Keyword arguments
 - `backend`: `InMemory()` to load data into a 4D array or `OnDisk()` to lazily load data from disk
              when indexing into `FieldTimeSeries`.
 
-- `grid`: A grid to associated with data, in the case that the native grid
-          was not serialized properly.
+- `grid`: A grid to associated with data, in the case that the native grid was not serialized
+          properly.
 
 - `iterations`: Iterations to load. Defaults to all iterations found in the file.
 
@@ -142,10 +143,14 @@ end
 #####
 
 """
-    Field(path::String, name::String, iter; grid=nothing)
+    Field(location, path, name, iter;
+          grid = nothing,
+          architecture = nothing,
+          indices = (:, :, :),
+          boundary_conditions = nothing)
 
-Load a Field saved in JLD2 file at `path`, with `name` and at `iter`ation.
-`grid` is loaded from `path` if not specified.
+Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
+Unless specified, the `grid` is loaded from `path`.
 """
 function Field(location, path::String, name::String, iter;
                grid = nothing,
@@ -306,7 +311,3 @@ function Base.show(io::IO, fts::FieldTimeSeries)
 
     return print(io, prefix, suffix)
 end
-
-#####
-##### Reductions
-#####
