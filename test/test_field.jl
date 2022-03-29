@@ -218,6 +218,8 @@ end
                     field_sz = test_field_sizes[t]
                     parent_sz = test_parent_sizes[t]
                     f_view = view(f, indices...)
+                    f_sliced = Field(f, indices)
+                    f2_sliced = Field(f^2, indices)
                     @test size(f_view) == field_sz
                     @test size(parent(f_view)) == parent_sz
                 end
