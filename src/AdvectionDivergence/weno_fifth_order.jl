@@ -19,38 +19,25 @@ struct VorticityStencil <:SmoothnessStencil end
 struct VelocityStencil <:SmoothnessStencil end
 
 """
-    struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
+    struct WENO5{WF, VI, FT, XT, YT, ZT, XS, YS, ZS} <: AbstractUpwindBiasedAdvectionScheme{2}
 
 Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 
 $(TYPEDFIELDS)
 """
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
-    "coefficient for ENO reconstruction on x-faces" 
-    coeff_xᶠᵃᵃ::XT
-    "coefficient for ENO reconstruction on x-centers"
-    coeff_xᶜᵃᵃ::XT
-    "coefficient for ENO reconstruction on y-faces"
-    coeff_yᵃᶠᵃ::YT
-    "coefficient for ENO reconstruction on y-centers"
-    coeff_yᵃᶜᵃ::YT
-    "coefficient for ENO reconstruction on z-faces"
-    coeff_zᵃᵃᶠ::ZT
-    "coefficient for ENO reconstruction on z-centers"
-    coeff_zᵃᵃᶜ::ZT
-    
-    "coefficient for WENO smoothness indicators on x-faces"
-    smooth_xᶠᵃᵃ::XS
-    "coefficient for WENO smoothness indicators on x-centers"
-    smooth_xᶜᵃᵃ::XS
-    "coefficient for WENO smoothness indicators on y-faces"
-    smooth_yᵃᶠᵃ::YS
-    "coefficient for WENO smoothness indicators on y-centers"
-    smooth_yᵃᶜᵃ::YS
-    "coefficient for WENO smoothness indicators on z-faces"
-    smooth_zᵃᵃᶠ::ZS
-    "coefficient for WENO smoothness indicators on z-centers"
-    smooth_zᵃᵃᶜ::ZS
+struct WENO5{WF, VI, FT, XT, YT, ZT, XS, YS, ZS} <: AbstractUpwindBiasedAdvectionScheme{2}
+    coeff_xᶠᵃᵃ :: XT  # coefficients for 3rd-order reconstruction on x-faces 
+    coeff_xᶜᵃᵃ :: XT  # coefficients for 3rd-order reconstruction on x-centers
+    coeff_yᵃᶠᵃ :: YT  # coefficients for 3rd-order reconstruction on y-faces
+    coeff_yᵃᶜᵃ :: YT  # coefficients for 3rd-order reconstruction on y-centers
+    coeff_zᵃᵃᶠ :: ZT  # coefficients for 3rd-order reconstruction on z-faces
+    coeff_zᵃᵃᶜ :: ZT  # coefficients for 3rd-order reconstruction on z-centers
+    smooth_xᶠᵃᵃ :: XS # coefficients for WENO smoothness indicators on x-faces
+    smooth_xᶜᵃᵃ :: XS # coefficients for WENO smoothness indicators on x-centers
+    smooth_yᵃᶠᵃ :: YS # coefficients for WENO smoothness indicators on y-faces
+    smooth_yᵃᶜᵃ :: YS # coefficients for WENO smoothness indicators on y-centers
+    smooth_zᵃᵃᶠ :: ZS # coefficients for WENO smoothness indicators on z-faces
+    smooth_zᵃᵃᶜ :: ZS # coefficients for WENO smoothness indicators on z-centers
 
     "coefficient for WENO reconstruction, optimal weights"
     C3₀ :: FT
@@ -182,8 +169,12 @@ function WENO5(coeffs = nothing, FT = Float64;
 
     VI = typeof(vector_invariant)
 
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                                        smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
+    return WENO5{zweno, VI, FT, XT, YT, ZT, XS, YS, ZS}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ ,
+                                                        coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ ,
+                                                        coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+                                                        smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ,
+                                                        smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ,
+                                                        smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
                                                         C3₀, C3₁, C3₂)
 end
 
@@ -191,42 +182,38 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 # Flavours of WENO
-const ZWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const ZWENO = WENO5{true}
 
-const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}  = 
-      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF}
+const WENOVectorInvariantVel{WF} = WENO5{WF, VelocityStencil} where WF
+const WENOVectorInvariantVel{WF} = WENO5{WF, VorticityStencil} where WF
+const WENOVectorInvariant{WF} = WENO5{WF, <:SmoothnessStencil} where WF
 
-const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} = 
-      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF}
-
-const WENOVectorInvariant = WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF}
-
-function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
+function Base.show(io::IO, a::WENO5{WF, VI, RX, RY, RZ}) where {WF, VI, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
-Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF} =
-     WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
-               typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ)), VI, WF}(
-        Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-        Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
+Adapt.adapt_structure(to, scheme::WENO5{WF, VI, FT}) where {WF, VI, FT} =
+     WENO5{WF, VI, FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
+                       typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
+                       typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
+                       typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
+                       typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
+                       typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ))}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
+                                                                    Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                                                                    Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
+                                                                    Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                                                                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
+                                                                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                                                                    Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
+                                                                    Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                                                                    Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
+                                                                    Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                                                                    Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
+                                                                    Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
+                                                                    scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
 
@@ -264,26 +251,26 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
 @inline right_stencil_y(i, j, k, ψ, args...) = @inbounds ( (ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]), (ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]), (ψ[i, j, k], ψ[i, j+1, k], ψ[i, j+2, k]) )
 @inline right_stencil_z(i, j, k, ψ, args...) = @inbounds ( (ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]), (ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]), (ψ[i, j, k], ψ[i, j, k+1], ψ[i, j, k+2]) )
 
-@inline left_stencil_x(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i-3, j, k, args...), ψ(i-2, j, k, args...), ψ(i-1, j, k, args...)), (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)) )
-@inline left_stencil_y(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j-3, k, args...), ψ(i, j-2, k, args...), ψ(i, j-1, k, args...)), (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)) )
-@inline left_stencil_z(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j, k-3, args...), ψ(i, j, k-2, args...), ψ(i, j, k-1, args...)), (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)) )
+@inline left_stencil_x(i, j, k, ψ::Function, args...) = ( (ψ(i-3, j, k, args...), ψ(i-2, j, k, args...), ψ(i-1, j, k, args...)), (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)) )
+@inline left_stencil_y(i, j, k, ψ::Function, args...) = ( (ψ(i, j-3, k, args...), ψ(i, j-2, k, args...), ψ(i, j-1, k, args...)), (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)) )
+@inline left_stencil_z(i, j, k, ψ::Function, args...) = ( (ψ(i, j, k-3, args...), ψ(i, j, k-2, args...), ψ(i, j, k-1, args...)), (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)) )
 
-@inline right_stencil_x(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)), (ψ(i, j, k, args...), ψ(i+1, j, k, args...), ψ(i+2, j, k, args...)) )
-@inline right_stencil_y(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)), (ψ(i, j, k, args...), ψ(i, j+1, k, args...), ψ(i, j+2, k, args...)) )
-@inline right_stencil_z(i, j, k, ψ::Function, args...) = @inbounds ( (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)), (ψ(i, j, k, args...), ψ(i, j, k+1, args...), ψ(i, j, k+2, args...)) )
+@inline right_stencil_x(i, j, k, ψ::Function, args...) = ( (ψ(i-2, j, k, args...), ψ(i-1, j, k, args...), ψ(i, j, k, args...)), (ψ(i-1, j, k, args...), ψ(i, j, k, args...), ψ(i+1, j, k, args...)), (ψ(i, j, k, args...), ψ(i+1, j, k, args...), ψ(i+2, j, k, args...)) )
+@inline right_stencil_y(i, j, k, ψ::Function, args...) = ( (ψ(i, j-2, k, args...), ψ(i, j-1, k, args...), ψ(i, j, k, args...)), (ψ(i, j-1, k, args...), ψ(i, j, k, args...), ψ(i, j+1, k, args...)), (ψ(i, j, k, args...), ψ(i, j+1, k, args...), ψ(i, j+2, k, args...)) )
+@inline right_stencil_z(i, j, k, ψ::Function, args...) = ( (ψ(i, j, k-2, args...), ψ(i, j, k-1, args...), ψ(i, j, k, args...)), (ψ(i, j, k-1, args...), ψ(i, j, k, args...), ψ(i, j, k+1, args...)), (ψ(i, j, k, args...), ψ(i, j, k+1, args...), ψ(i, j, k+2, args...)) )
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_left_stencil_u(i, j, k, ::Val{1}, u)  = @inbounds left_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, ::Val{2}, v)  = @inbounds left_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_u(i, j, k, ::Val{1}, u)  = left_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, ::Val{2}, u)  = left_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, ::Val{1}, v)  = left_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, ::Val{2}, v)  = left_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
 
-@inline tangential_right_stencil_u(i, j, k, ::Val{1}, u)  = @inbounds right_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_u(i, j, k, ::Val{1}, u)  = right_stencil_x(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, ::Val{2}, u)  = right_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, ::Val{1}, v)  = right_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, ::Val{2}, v)  = right_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
 
 #####
 ##### biased pₖ for û calculation
@@ -481,10 +468,8 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
         biased_p₂ = Symbol(side, :_biased_p₂)
 
         @eval begin
-            @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, 
-                                               ψ, idx, loc, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-                
+            @inline function $interpolate_func(i, j, k, grid, scheme::WENO5, ψ, idx, loc, args...)
+                FT = eltype(grid) 
                 ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
                 w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, Nothing), $cS, scheme, Val($val), idx, loc, Nothing, args...)
                 return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
@@ -492,10 +477,8 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
                        w₂ * $biased_p₂(scheme, ψ₂, $cT, Val($val), idx, loc)
             end
 
-            @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS}, 
-                                               ψ, idx, loc, VI, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
-
+            @inline function $interpolate_func(i, j, k, grid, scheme::WENOVectorInvariant, ψ, idx, loc, VI, args...)
+                FT = eltype(grid)
                 ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)
                 w₀, w₁, w₂ = $weno5_weights(FT, pass_stencil(ψₜ, i, j, k, VI), $cS, scheme, Val($val), idx, loc, VI, args...)
                 return w₀ * $biased_p₀(scheme, ψ₀, $cT, Val($val), idx, loc) + 
@@ -553,7 +536,6 @@ end
 @inline calc_smoothness_coefficients(FT, ::Val{false}, args...) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N) = nothing
-
 
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 
