@@ -27,11 +27,11 @@ mean_particle_radius                = 1e-3     # m
 ocean_molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
 
 # Terminal velocity of a sphere in viscous flow
-Δb = gravitational_acceleration * (mean_particle_density - ocean_density)
-μ = ocean_density * ocean_molecular_kinematic_viscosity
+Δb = gravitational_acceleration * (mean_particle_density - ocean_density) / ocean_density
+ν = ocean_molecular_kinematic_viscosity
 R = mean_particle_radius
 
-w_Stokes = - 2/9 * Δb / μ * R^2
+w_Stokes = - 2/9 * Δb / ν * R^2
 
 settling = AdvectiveForcing(WENO5(), w=w_Stokes)
 """
