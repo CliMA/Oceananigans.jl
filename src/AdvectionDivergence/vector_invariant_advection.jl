@@ -20,12 +20,12 @@ const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConserving
 ###### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
 ######
 
-@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
+@inline 𝐯_dot_∇u(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
     + vertical_vorticity_U(i, j, k, grid, scheme, U.u, U.v)  # Vertical relative vorticity term
     + vertical_advection_U(i, j, k, grid, scheme, U.u, U.w)  # Horizontal vorticity / vertical advection term
     + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))     # Bernoulli head term
     
-@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
+@inline 𝐯_dot_∇v(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
     + vertical_vorticity_V(i, j, k, grid, scheme, U.u, U.v)  # Vertical relative vorticity term
     + vertical_advection_V(i, j, k, grid, scheme, U.v, U.w)  # Horizontal vorticity / vertical advection term
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))     # Bernoulli head term
@@ -95,12 +95,12 @@ end
 ###### Conservative formulation of momentum advection
 ######
 
-@inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
-@inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
+@inline 𝐯_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
+@inline 𝐯_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
 
 ######
 ###### No advection
 ######
 
-@inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
-@inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline 𝐯_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline 𝐯_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)

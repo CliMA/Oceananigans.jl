@@ -59,7 +59,7 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectio
 end
 
 """
-    WENO5([FT = Float64;] grid = nothing, stretched_smoothness = false, zweno = false)
+    WENO5([FT = Float64;] grid = nothing, stretched_smoothness = false, zweno = false, vector_invariant = nothing)
 
 Construct a fifth-order weigthed essentially non-oscillatory advection scheme. The constructor allows
 construction of WENO schemes on either uniform or stretched grids.
@@ -72,14 +72,10 @@ Keyword arguments
     indicators β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
   - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation. (defaults to
     `false`)
-
-!!! warn "No support for WENO5 on curvilinear grids"
-    Currently, WENO 5th-order advection schemes don't work for for curvilinear grids.
-    Providing `WENO5(::AbstractCurvilinearGrid)` defaults to uniform setting, i.e.
-    `WENO5(::AbstractCurvilinearGrid) = WENO5()`.
+  - `vector_invariant`:
 
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
-setting) in all directions, using a JS-WENO formulation.
+setting) in all directions, using a Z-WENO formulation.
 
 ```jldoctest; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> using Oceananigans
@@ -114,7 +110,7 @@ WENO5 advection scheme with:
 additionally, it also computes the smoothness indicators coefficients, ``β₀``, ``β₁``, and ``β₂``,
 taking into account the stretched dimensions.
 
-`WENO5(zweno = true)` implements a Z-WENO formulation for the WENO weights calculation
+`WENO5(zweno = false)` implements a JS-WENO formulation for the WENO weights calculation
 
 Comments
 ========
@@ -195,10 +191,11 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 # Flavours of WENO
-const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const ZWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 
 const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}  = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF}
+
 const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF}
 

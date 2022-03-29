@@ -1,5 +1,6 @@
 using Printf
 using Oceananigans
+using Oceananigans.AdvectionDivergence: VelocityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 underlying_grid = RectilinearGrid(CPU(),
@@ -14,11 +15,11 @@ underlying_grid = RectilinearGrid(CPU(),
 bump(x, y) = -1 + exp(-x^2)
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
-Δh = 1
-τ = 1
+Δh = underlying_grid.Δxᶜᵃᵃ
+τ = 10
 ν₄ = Δh^4 / τ
-model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
-                                    momentum_advection = WENO5(),
+model = HydrostaticFreeSurfaceModel(; grid,
+                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()),
                                     tracer_advection = WENO5(),
                                     free_surface = ImplicitFreeSurface(),
                                     closure = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, κ=ν₄),
@@ -26,16 +27,22 @@ model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = FPlane(f=sqrt(0.5)))
 
-# Linear stratification
-set!(model, b = (x, y, z) -> 4 * z)
+N² = 4
+S² = 1
+bᵢ(x, y, z) = 4 * z
+uᵢ(x, y, z) = sqrt(S²) * z + 1
+set!(model, b=bᵢ, u=uᵢ)
 
-progress_message(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
-                            100 * s.model.clock.time / s.stop_time, s.model.clock.iteration,
-                            s.model.clock.time, maximum(abs, model.velocities.w))
+Δt = 0.1 * Δh # CFL=0.1 with max(u) = 1
+simulation = Simulation(model; Δt, stop_iteration=10)
+
+progress_message(s) = @info @sprintf("Iter: %d, t: %.3f, Δt: %.3f, max|w|: %.2e",
+                                     iteration(s), time(s), s.Δt, maximum(abs, model.velocities.w))
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
-simulation = Simulation(model, Δt = 1, stop_iteration=10)
+wizard = TimeStepWizard(cfl=0.1)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                     schedule = TimeInterval(0.1),

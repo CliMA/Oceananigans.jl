@@ -1,7 +1,7 @@
 module AdvectionDivergence
 
 export 
-    div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
+    𝐯_dot_∇u, 𝐯_dot_∇v, 𝐯_dot_∇w, div_Uc,
 
     momentum_flux_uu,
     momentum_flux_uv,
