@@ -20,9 +20,9 @@ kwargs_model = (closure = ScalarDiffusivity(ν=ν),
                 buoyancy = nothing)
 
 
-const κVK = 0.4 # van Karman's const
+const κᵥₖ = 0.4 # van Karman's const
 const z0 = 0.02 # roughness, user defined in future?
-@inline drag_C(delta) = -(κVK ./ log(0.5*delta/z0)).^2 
+@inline drag_C(delta) = -(κᵥₖ ./ log(0.5*delta/z0)).^2 
 
 @inline τʸˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * v * (v^2 + w^2)^0.5
 @inline τᶻˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * w * (v^2 + w^2)^0.5
