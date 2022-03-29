@@ -1,4 +1,4 @@
-using Oceananigans.Advection: UpwindBiasedFifthOrder
+using Oceananigans.Advection: UpwindBiasedFifthOrder,div_Uc
 using Oceananigans.Fields: ZeroField
 
 struct AdvectiveForcing{U, S, F, C}
