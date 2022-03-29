@@ -1,4 +1,5 @@
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.AdvectionDivergence: AbstractAdvectionScheme
+using Oceananigans.AdvectionDivergence: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -82,8 +83,6 @@ const ATD = AbstractTimeDiscretization
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j - 2, k, ibg) | solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg) | solid_node(i, j + 2, k, ibg)
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k - 2, ibg) | solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg) | solid_node(i, j, k + 2, ibg)
 
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
-
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
     return solid_node(c, f, c, i, j, k, ibg)     |       
            solid_node(c, f, c, i-3, j, k, ibg)   | solid_node(c, f, c, i+3, j, k, ibg) |
@@ -130,8 +129,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
             # Conditional high-order interpolation in Bounded directions
             @eval begin
-                import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
+                import Oceananigans.AdvectionDivergence: $alt_interp
+                using Oceananigans.AdvectionDivergence: $interp
 
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
@@ -140,8 +139,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
             end
             if ξ == :z
                 @eval begin
-                    import Oceananigans.Advection: $alt_interp
-                    using Oceananigans.Advection: $interp
+                    import Oceananigans.AdvectionDivergence: $alt_interp
+                    using Oceananigans.AdvectionDivergence: $interp
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
@@ -150,8 +149,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             else    
                 @eval begin
-                    import Oceananigans.Advection: $alt_interp
-                    using Oceananigans.Advection: $interp
+                    import Oceananigans.AdvectionDivergence: $alt_interp
+                    using Oceananigans.AdvectionDivergence: $interp
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),

@@ -1,4 +1,4 @@
-using Oceananigans.Advection
+using Oceananigans.AdvectionDivergence
 using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators

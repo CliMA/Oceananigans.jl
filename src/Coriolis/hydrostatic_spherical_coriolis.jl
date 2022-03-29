@@ -1,6 +1,6 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.AdvectionDivergence: EnergyConservingScheme, EnstrophyConservingScheme
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"

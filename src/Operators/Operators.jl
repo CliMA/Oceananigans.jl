@@ -49,8 +49,7 @@ export Ay_∂yᶠᶠᶠ, Ay_∂yᶠᶠᶜ, Ay_∂yᶠᶜᶠ, Ay_∂yᶠᶜᶜ, A
 export Az_∂zᶠᶠᶠ, Az_∂zᶠᶠᶜ, Az_∂zᶠᶜᶠ, Az_∂zᶠᶜᶜ, Az_∂zᶜᶠᶠ, Az_∂zᶜᶠᶜ, Az_∂zᶜᶜᶠ, Az_∂zᶜᶜᶜ
 
 # Divergence and vorticity
-export divᶜᶜᶜ, div_xyᶜᶜᶜ, ζ₃ᶠᶠᶜ
-export TrivialSecondOrder
+export ζ₃ᶠᶠᶜ
 export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜᶜᶜ, ∇²hᶠᶜᶜ, ∇²hᶜᶠᶜ
 
 # Interpolations
@@ -79,7 +78,6 @@ include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
-include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 

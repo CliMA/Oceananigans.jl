@@ -136,7 +136,7 @@ end
     return Axᶠᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
 end
 
-@inline function advective_tracer_flux_y(i, j, k, grid, advection_scheme::Upwind, V, c)
+@inline function advective_tracer_flux_y(i, j, k, grid, advection_scheme::Upwind, divergence_scheme, V, c)
 
     ṽ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, divergence_scheme, V)
     cᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, advection_scheme, c)

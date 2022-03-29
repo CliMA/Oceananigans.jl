@@ -182,9 +182,9 @@ include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
-include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("AdvectionDivergence/AdvectionDivergence.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Solvers/Solvers.jl")
 include("Distributed/Distributed.jl")
@@ -217,7 +217,7 @@ include("CubedSpheres/CubedSpheres.jl")
 using .Logger
 using .Architectures
 using .Utils
-using .Advection
+using .AdvectionDivergence
 using .Grids
 using .BoundaryConditions
 using .Fields

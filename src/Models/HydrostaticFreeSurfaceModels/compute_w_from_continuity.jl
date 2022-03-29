@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: device, device_event
-using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
+using Oceananigans.AdvectionDivergence: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     compute_w_from_continuity!(model)
@@ -14,12 +15,8 @@ compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities,
 
 function compute_w_from_continuity!(velocities, arch, grid)
 
-    event = launch!(arch,
-                    grid,
-                    :xy,
-                    _compute_w_from_continuity!,
-                    velocities,
-                    grid,
+    event = launch!(arch, grid, :xy,
+                    _compute_w_from_continuity!, velocities, grid,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -34,3 +31,4 @@ end
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v)
     end
 end
+

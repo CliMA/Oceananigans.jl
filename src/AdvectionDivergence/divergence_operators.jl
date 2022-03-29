@@ -1,6 +1,3 @@
-abstract type AbstractDivergenceScheme end
-
-
 #####
 ##### Divergence operators
 #####
@@ -14,22 +11,11 @@ Calculates the divergence ∇·𝐔 of a vector field 𝐔 = (u, v, w),
 
 which will end up at the cell centers `ccc`.
 """
-@inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
+@inline function divᶜᶜᶜ(i, j, k, grid, scheme, u, v, w)
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, reconstruct_uᶠᵃᵃ, scheme, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, reconstruct_vᵃᶠᵃ, scheme, v) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 end
-
-#####
-##### Schemes for calculating horizontal divergence
-#####
-
-struct TrivialSecondOrder <: AbstractHorizontalDivergenceScheme end
-struct UpwindWENO4 <: AbstractHorizontalDivergenceScheme end
-struct CenteredWENO5 <: AbstractHorizontalDivergenceScheme end
-
-@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::TrivialSecondOrder, u) = @inbounds u[i, j, k]
-@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::TrivialSecondOrder, v) = @inbounds v[i, j, k]
 
 """
     div_xyᶜᶜᵃ(i, j, k, grid, u, v)
@@ -46,11 +32,8 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
 `div_xyᶜᶜᵃ` ends up at the location `cca`.
 """
 @inline function div_xyᶜᶜᶜ(i, j, k, grid, scheme, u, v)
-    ũ  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, u)
-    ṽ  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, v)
-
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, ũ) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, ṽ))
+    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, reconstruct_uᶠᵃᵃ, scheme, u) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, reconstruct_vᵃᶠᵃ, scheme, v))
 end
 
 # Default

@@ -1,4 +1,4 @@
-module Advection
+module AdvectionDivergence
 
 export 
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
@@ -32,7 +32,6 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 
 import Oceananigans.Grids: required_halo_size
-import Oceananigans.Operators: _symmetric_interpolate_xᶠᵃᵃ, _symmetric_interpolate_yᵃᶠᵃ
 
 abstract type AbstractAdvectionScheme{Buffer} end
 abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
@@ -52,8 +51,11 @@ include("upwind_biased_fifth_order.jl")
 include("weno_fifth_order.jl")
 include("vector_invariant_advection.jl")
 
+include("colocated_reconstruction.jl")
+
 include("topologically_conditional_interpolation.jl")
 
+include("divergence_operators.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 

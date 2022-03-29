@@ -1,4 +1,4 @@
-using Oceananigans.Advection: 
+using Oceananigans.AdvectionDivergence: 
     _advective_momentum_flux_Uu,
     _advective_momentum_flux_Uv,
     _advective_momentum_flux_Vu,

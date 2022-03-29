@@ -25,7 +25,7 @@ using Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
-using Oceananigans.Advection:
+using Oceananigans.AdvectionDivergence:
     advective_momentum_flux_Uu,
     advective_momentum_flux_Uv,
     advective_momentum_flux_Uw,
@@ -46,7 +46,7 @@ import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 
-import Oceananigans.Advection:
+import Oceananigans.AdvectionDivergence:
     _advective_momentum_flux_Uu,
     _advective_momentum_flux_Uv,
     _advective_momentum_flux_Uw,

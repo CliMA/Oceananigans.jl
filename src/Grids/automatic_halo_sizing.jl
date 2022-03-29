@@ -8,7 +8,7 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans.Advection: CenteredFourthOrder
+using Oceananigans.AdvectionDivergence: CenteredFourthOrder
 using Oceananigans.Grids: required_halo_size
 
 required_halo_size(CenteredFourthOrder())

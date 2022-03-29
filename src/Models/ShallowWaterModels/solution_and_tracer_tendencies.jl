@@ -1,4 +1,4 @@
-using Oceananigans.Advection
+using Oceananigans.AdvectionDivergence
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Coriolis
 using Oceananigans.Operators

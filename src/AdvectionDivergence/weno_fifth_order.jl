@@ -26,7 +26,6 @@ Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 $(TYPEDFIELDS)
 """
 struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
-    
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
     "coefficient for ENO reconstruction on x-centers"
