@@ -125,7 +125,7 @@ simulation = Simulation(model, Δt=10, stop_iteration=5000)
 run!(simulation)
 ```
 
-By changing `architecture = CPU()` to `architecture = GPU()` the example will run on a CUDA-enabled Nvidia GPU!
+By changing the first positional argument of `RectilinearGrid` from `CPU()` to `GPU()` the example will run on a CUDA-enabled Nvidia GPU!
 
 You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 

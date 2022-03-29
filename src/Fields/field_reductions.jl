@@ -75,7 +75,7 @@ function compute!(field::ReducedComputedField, time=nothing)
     reduction = field.operand
     compute_at!(reduction.operand, time)
     reduction.reduce!(field, reduction.operand)
-    return nothing
+    return field
 end
 
 #####
@@ -92,3 +92,8 @@ Base.show(io::IO, field::ReducedComputedField) =
 Base.summary(r::Reduction) = string(r.reduce!, 
                                     " over dims ", r.dims,
                                     " of ", summary(r.operand))
+
+Base.show(io::IO, r::Reduction) =
+    print(io, "$(summary(r))\n",
+          "└── operand: $(summary(r.operand))\n",
+          "    └── grid: $(summary(r.operand.grid))")

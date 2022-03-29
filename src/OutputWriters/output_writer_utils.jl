@@ -20,7 +20,7 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 saveproperty!(file, location, p::Union{Number, Array}) = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
-saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
+saveproperty!(file, location, p::Function) = nothing
 
 saveproperty!(file, location, p::Tuple) =
     [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
@@ -37,7 +37,6 @@ function saveproperty!(file, location, bcs::FieldBoundaryConditions)
         file[location * "/$endpoint/type"] = bc_str(bc)
 
         if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
             file[location * "/$boundary/condition"] = missing
         else
             file[location * "/$boundary/condition"] = bc.condition
@@ -51,8 +50,8 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = (file[location] = p)
 serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
-serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
-serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
+serializeproperty!(file, location, p::Function) = nothing
+serializeproperty!(file, location, p::ContinuousBoundaryFunction) = nothing
 
 # Serializing grids:
 serializeproperty!(file, location, grid::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
@@ -67,8 +66,6 @@ end
 
 function serializeproperty!(file, location, p::FieldBoundaryConditions)
     if has_reference(Function, p)
-        @warn "Cannot serialize $location as it contains functions. Will replace with missing. " *
-              "Function boundary conditions must be restored manually."
         file[location] = missing
     else
         file[location] = p
