@@ -18,16 +18,16 @@ Example
 
 # Using a tracer field to model sinking particles
 
-```julia
+```jldoctest
 # Physical parameters
-gravitational_acceleration    = 9.81     # m s⁻²
-ocean_density                 = 1026     # kg m⁻³
-particle_density              = 2000     # kg m⁻³
-molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
-mean_particle_radius          = 1e-3     # m
+gravitational_acceleration          = 9.81     # m s⁻²
+ocean_density                       = 1026     # kg m⁻³
+mean_particle_density               = 2000     # kg m⁻³
+mean_particle_radius                = 1e-3     # m
+ocean_molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
 
 # Terminal velocity of a sphere in viscous flow
-Δb = gravitational_acceleration * (particle_density - ocean_density)
+Δb = gravitational_acceleration * (mean_particle_density - ocean_density)
 μ = ocean_density * ocean_molecular_kinematic_viscosity
 R = mean_particle_radius
 
