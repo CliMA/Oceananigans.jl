@@ -46,7 +46,9 @@ for bounded_dir in directions:
 
     vels_ddrag = { f"{vel}_ddrag" : vid_ddrag[vel] for vel in per_velocities }
     vels_immsd = { f"{vel}_immsd" : vid_immsd[vel] for vel in per_velocities }
-    ds = xr.Dataset(vels_ddrag | vels_immsd).squeeze()
+
+    periodic_dirs = np.append(*[ [f"{d}F", f"{d}C"] for d in directions if d != bounded_dir])
+    ds = xr.Dataset(vels_ddrag | vels_immsd).mean(periodic_dirs)
 
     if parallel:
         ds = ds.chunk(dict(time=1))

@@ -9,7 +9,7 @@ Nz = 16 # Resolution
 Lz = 1
 δ = 1/4
 Lz_ext = Lz + 2δ
-ext_NZ = Int(Lz_ext/(Lz/Nz)) # extra nodes in solid region
+Nz_ext = Int(Lz_ext/(Lz/Nz)) # extra nodes in solid region
 ν = 1e-2 # Viscosity
 U = 1
 
@@ -42,7 +42,7 @@ const z0 = 0.02 # roughness, user defined in future?
 @inline τˣᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
 @inline τʸᶻ_BC_top(x, y, t, u, v, w) = -τˣᶻ_BC_bottom(x, y, t, u, v, w)
 
-topo_main = [Flat, Flat, Bounded]
+topo_main = [Periodic, Periodic, Bounded]
 directions = [:x, :y, :z]
 vels = [:u, :v, :w]
 
@@ -56,18 +56,20 @@ for i in 1:3
     global topo = circshift(topo_main, i)
     global bounded_dir = directions[i]
 
-    kwargs = Dict(directions[i] => (1-Lz, 1))
-    global grid = RectilinearGrid(; size = Nz,
-                           kwargs...,
-                           halo = 1,
-                           topology = topo)
+    global kwargs = Dict(dir => (1-Lz, 1) for dir in directions)
+    global sizes = [ j==i ? Nz : Int(Nz/4) for j in 1:3 ]
+    global grid = RectilinearGrid(; size = sizes,
+                                  kwargs...,
+                                  halo = (3,3,3),
+                                  topology = topo)
     @show grid
 
-    global kwargs_ext = Dict(bounded_dir => (1-Lz-δ, 1+δ))
-    global grid_ext = RectilinearGrid(; size = ext_NZ,
-                               kwargs_ext...,
-                               halo = 1,
-                               topology = topo)
+    global kwargs_ext = Dict(j==i ? (dir => (1-Lz-δ, 1+δ)) : (dir => (0, 1)) for (j, dir) in enumerate(directions))
+    global sizes_ext = [ j==i ? Nz_ext : Int(Nz/4) for j in 1:3 ]
+    global grid_ext = RectilinearGrid(; size = sizes_ext,
+                                      kwargs_ext...,
+                                      halo = (3,3,3),
+                                      topology = topo)
     @show grid_ext
 
     if bounded_dir == :x
