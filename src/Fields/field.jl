@@ -659,7 +659,7 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     # which will be useful for implementing halo filling for windowed fields in the future.
     if field.indices isa typeof(default_indices(3))
         fill_halo_regions!(field.data,
-                           maybe_filtered_bcs,
+                           field.boundary_conditions,
                            field.grid,
                            args...;
                            reduced_dimensions = reduced_dims,
