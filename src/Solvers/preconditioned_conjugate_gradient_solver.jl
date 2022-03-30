@@ -190,6 +190,10 @@ end
     parent(x) .= op.(parent(x),  α .* parent(p))
 end
 
+@inline function copy_to!(x, y)
+    parent(x) .= parent(y)
+end
+
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
@@ -208,7 +212,7 @@ function iterate!(x, solver, b, args...)
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     if solver.iteration == 0
-        @apply_regionally copyto!(p, z)
+        @apply_regionally copy_to!(p, z)
     else
         β = ρ / solver.ρⁱ⁻¹
         @apply_regionally add_terms!(p, z, β)
