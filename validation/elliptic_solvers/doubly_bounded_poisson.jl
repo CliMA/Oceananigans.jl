@@ -29,12 +29,14 @@ Ay = [Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i
 Az = [Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 
 hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid, preconditioner_method = nothing)
-solve!(ϕ_hd, hd_solver, interior(r), 1.0)
+@time solve!(ϕ_hd, hd_solver, interior(r), 1.0)
 
 fig = Figure(resolution=(1200, 600))
 ax_r = Axis(fig[1, 1], title="RHS")
 ax_ϕ_fft = Axis(fig[1, 2], title="Solution")
+ax_ϕ_hd = Axis(fig[1, 3], title="Solution")
 heatmap!(ax_r, interior(r, :, :, 1))
 heatmap!(ax_ϕ_fft, interior(ϕ_fft, :, :, 1))
+heatmap!(ax_ϕ_hd, interior(ϕ_hd, :, :, 1))
 
 display(fig)
