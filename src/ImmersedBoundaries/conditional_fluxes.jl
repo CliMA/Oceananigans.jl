@@ -1,7 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ, 
                               ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
-                              Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
+                              Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 using Oceananigans: fields
 
@@ -15,9 +15,9 @@ const ATD = AbstractTimeDiscretization
 const κᵥₖ = 0.4 # van Karman's const
 const z₀ = 0.02 # roughness length (meters), user defined in future?
 
-@inline west_drag_const(i, j, k, grid)   = @inbounds -(κᵥₖ / log(0.5 * Δxᶠᶜᶜ(i, j, k, grid) / z₀))^2 
-@inline south_drag_const(i, j, k, grid)  = @inbounds -(κᵥₖ / log(0.5 * Δyᶜᶠᶜ(i, j, k, grid) / z₀))^2 
-@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κᵥₖ / log(0.5 * Δzᶜᶜᶠ(i, j, k, grid) / z₀))^2 
+@inline west_drag_const(i, j, k, grid)   = @inbounds -(κᵥₖ / log(0.5 * Δxᶜᶜᶜ(i, j, k, grid) / z₀))^2 
+@inline south_drag_const(i, j, k, grid)  = @inbounds -(κᵥₖ / log(0.5 * Δyᶜᶜᶜ(i, j, k, grid) / z₀))^2 
+@inline bottom_drag_const(i, j, k, grid) = @inbounds -(κᵥₖ / log(0.5 * Δzᶜᶜᶜ(i, j, k, grid) / z₀))^2 
 
 # interpolate drag to u face 
 @inline τˣᶻ_drag_bottom(i, j, k, grid, U) = @inbounds +bottom_drag_const(i, j, k, grid) * U.u[i, j, k] * (U.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, U.v)^2)^(0.5)

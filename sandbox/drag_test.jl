@@ -2,8 +2,6 @@
 using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, mask_immersed_field!
-using Oceananigans.Architectures: device
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 Nz = 16 # Resolution
 Lz = 1
@@ -13,7 +11,7 @@ Nz_ext = Int(Lz_ext/(Lz/Nz)) # extra nodes in solid region
 ν = 1e-2 # Viscosity
 U = 1
 
-kwargs_model = (closure = ScalarDiffusivity(ν=ν),
+kwargs_model = (closure = SmagorinskyLilly(),
                 advection = UpwindBiasedFifthOrder(),
                 tracers = nothing,
                 coriolis = nothing,
@@ -24,14 +22,14 @@ const κᵥₖ = 0.4 # van Karman's const
 const z0 = 0.02 # roughness, user defined in future?
 @inline drag_C(delta) = -(κᵥₖ ./ log(0.5*delta/z0)).^2 
 
-@inline τʸˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * v * (v^2 + w^2)^0.5
-@inline τᶻˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶠᵃᵃ) * w * (v^2 + w^2)^0.5
+@inline τʸˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶜᵃᵃ) * v * (v^2 + w^2)^0.5
+@inline τᶻˣ_BC_west(x, y, t, u, v, w) = drag_C(grid.Δxᶜᵃᵃ) * w * (v^2 + w^2)^0.5
 
-@inline τˣʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * u * (u^2 + w^2)^0.5
-@inline τᶻʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶠᵃ) * w * (u^2 + w^2)^0.5
+@inline τˣʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶜᵃ) * u * (u^2 + w^2)^0.5
+@inline τᶻʸ_BC_south(x, y, t, u, v, w) = drag_C(grid.Δyᵃᶜᵃ) * w * (u^2 + w^2)^0.5
 
-@inline τˣᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶠ) * u * (u^2 + v^2)^0.5
-@inline τʸᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶠ) * v * (u^2 + v^2)^0.5
+@inline τˣᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶜ) * u * (u^2 + v^2)^0.5
+@inline τʸᶻ_BC_bottom(x, y, t, u, v, w) = drag_C(grid.Δzᵃᵃᶜ) * v * (u^2 + v^2)^0.5
 
 @inline τʸˣ_BC_east(x, y, t, u, v, w) = -τʸˣ_BC_west(x, y, t, u, v, w)
 @inline τᶻˣ_BC_east(x, y, t, u, v, w) = -τᶻˣ_BC_west(x, y, t, u, v, w)
