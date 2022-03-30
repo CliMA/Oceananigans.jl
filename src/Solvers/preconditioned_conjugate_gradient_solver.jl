@@ -175,7 +175,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
         iterate!(x, solver, b, args...)
     end
 
-    fill_halo_regions!(x, solver.architecture) # blocking
+    fill_halo_regions!(x) # blocking
 
     return x
 end

@@ -4,14 +4,13 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
+using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
-dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
 
 xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
@@ -28,22 +27,36 @@ zdim(::Type{Nothing}) = ()
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
 
-function default_dimensions(output, grid, field_slicer)
-    Nx, Ny, Nz = size(grid)
+function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topo = topology(grid)
 
-    return Dict(
-        "xC" => parent(all_x_nodes(Center, grid))[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => parent(all_x_nodes(Face, grid))[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => parent(all_y_nodes(Center, grid))[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => parent(all_y_nodes(Face, grid))[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => parent(all_z_nodes(Center, grid))[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => parent(all_z_nodes(Face, grid))[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+    locs = Dict(
+                "xC" => (Center, Center, Center),
+                "xF" => (  Face, Center, Center),
+                "yC" => (Center, Center, Center),
+                "yF" => (Center,   Face, Center),
+                "zC" => (Center, Center, Center),
+                "zF" => (Center, Center,   Face),
+               )
+
+    indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
+
+    if !with_halos
+        indices = Dict(name => restrict_to_interior.(indices[name], locs[name], topo, size(grid))
+                       for name in keys(locs))
+    end
+
+    dims = Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
+                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
+                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
+                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
+                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
+                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
+
+    return dims
 end
 
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
-    Dict("particle_id" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
     "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
@@ -109,26 +122,25 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
+    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
-        filepath :: String
-         dataset :: D
-         outputs :: O
-        schedule :: T
-            mode :: String
-    field_slicer :: S
-      array_type :: A
-        previous :: Float64
-         verbose :: Bool
+mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    mode :: String
+    array_type :: A
+    previous :: Float64
+    verbose :: Bool
 end
 
 """
     NetCDFOutputWriter(model, outputs; filepath, schedule
                                    array_type = Array{Float32},
-                                 field_slicer = FieldSlicer(),
+                                      indices = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -151,11 +163,9 @@ Keyword arguments
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: Array{Float32}.
 
-- `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos,
-                  which can be done with the keyword `with_halos`.
-                  Has no effect on output that is not a field. `field_slicer = nothing` means
-                  no slicing occurs, so that all field data, including halo regions, is saved.
-                  Default: `FieldSlicer()`, which slices halo regions.
+- `indices`: TODO
+
+- `with_halos`: TODO
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
@@ -194,21 +204,19 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
-                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
+                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
 
@@ -217,14 +225,13 @@ simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filepath = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
-                       field_slicer = FieldSlicer(i=1, j=1))
+                       indices = (1, 1, :))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 
@@ -269,13 +276,13 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 """
 function NetCDFOutputWriter(model, outputs; filepath, schedule,
                                    array_type = Array{Float32},
-                                 field_slicer = FieldSlicer(),
+                                      indices = (:, :, :),
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -293,8 +300,11 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     # Default to create/clobber.
     isnothing(mode) && (mode = "c")
 
-    # We need to convert to a Dict with String keys if user provides a named tuple.
+    # TODO: This call to dictify is only necessary because "dictify" is hacked to help
+    # with LagrangianParticles output (see the end of the file).
+    # We shouldn't support this in the future; we should require users to 'name' LagrangianParticles output.
     outputs = dictify(outputs)
+    outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)
@@ -311,9 +321,9 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
     # schedule::AveragedTimeInterval
-    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
+    schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, model.grid, field_slicer)
+    dims = default_dimensions(outputs, model.grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
@@ -352,7 +362,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, array_type, 0.0, verbose)
 end
 
 #####
@@ -369,14 +379,6 @@ function define_output_variable!(dataset, output, name, array_type, compression,
     return nothing
 end
 
-""" Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
-    particle_fields = eltype(output.properties) |> fieldnames .|> string
-    for particle_field in particle_fields
-        defVar(dataset, particle_field, eltype(array_type),
-               ("particle_id", "time"), compression=compression)
-    end
-end
 
 """ Defines empty field variable. """
 define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
@@ -399,9 +401,9 @@ Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
-
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[name][colons..., time_index] = data
+    return nothing
 end
 
 function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
@@ -409,6 +411,8 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
     for (particle_field, vals) in pairs(data)
         ds[string(particle_field)][:, time_index] = vals
     end
+
+    return nothing
 end
 
 """
@@ -485,6 +489,23 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
               "├── filepath: ", ow.filepath, '\n',
               "├── dimensions: $dims", '\n',
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
-              "├── field slicer: ", summary(ow.field_slicer), '\n',
               "└── array type: ", show_array_type(ow.array_type))
 end
+
+#####
+##### Support / hacks for Lagrangian particles output
+#####
+
+""" Defines empty variable for particle trackting. """
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+    particle_fields = eltype(output.properties) |> fieldnames .|> string
+    for particle_field in particle_fields
+        defVar(dataset, particle_field, eltype(array_type),
+               ("particle_id", "time"), compression=compression)
+    end
+end
+
+dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
+
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, with_halos) =
+    Dict("particle_id" => collect(1:length(outputs["particles"])))

@@ -14,8 +14,10 @@ using Oceananigans.Fields
 using Oceananigans.Models
 
 using Oceananigans: AbstractOutputWriter
-using Oceananigans.Fields: OffsetArray, FieldSlicer
+using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
+
+using OffsetArrays
 
 import Oceananigans: write_output!
 
@@ -25,7 +27,7 @@ Base.close(ow::AbstractOutputWriter) = nothing
 include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("windowed_time_average.jl")
-include("time_average_outputs.jl")
+include("output_construction.jl")
 include("jld2_output_writer.jl")
 include("netcdf_output_writer.jl")
 include("checkpointer.jl")

@@ -47,7 +47,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
+SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0
 ```
 
 although they may be specified. By default, the background viscosity and diffusivity are assumed to
@@ -61,12 +61,10 @@ To use the constant anisotropic minimum dissipation (AMD) LES closure,
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = AnisotropicMinimumDissipation()
-AnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.08333333333333333
                         Buoyancy modification multiplier Cb: nothing
-                Background diffusivit(ies) for tracer(s), κ: 0.0
-             Background kinematic viscosity for momentum, ν: 0.0
 ```
 
 no parameters are required although they may be specified. By default, the background viscosity and diffusivity
@@ -81,5 +79,5 @@ viscosity ``\nu_z``, anytime and anywhere the background stratification becomes 
 julia> using Oceananigans
 
 julia> closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, background_κz = 1e-3)
-ConvectiveAdjustmentVerticalDiffusivity: (background_κz=0.001, convective_κz=1.0, background_νz=0.0, convective_νz=0.0)
+ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.001 convective_κz=1.0 background_νz=0.0 convective_νz=0.0)
 ```

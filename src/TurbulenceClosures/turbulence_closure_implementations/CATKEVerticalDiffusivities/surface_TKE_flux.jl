@@ -23,8 +23,8 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct SurfaceTKEFlux{FT}
-    Cᵂu★ :: FT = 3.62
-    CᵂwΔ :: FT = 1.31
+    Cᵂu★ :: FT = 4.56
+    CᵂwΔ :: FT = 4.46
 end
 
 #####
@@ -105,8 +105,7 @@ end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
-
-    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3)(), Center())
+    default_top_bc = default_prognostic_bc(topology(grid, 3)(), Center())
 
     user_bc_names = keys(user_bcs)
     u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : default_top_bc

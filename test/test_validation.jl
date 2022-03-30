@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 VALIDATION_DIR = "../validation/"
 EXPERIMENTS = ["stratified_couette_flow"]
 

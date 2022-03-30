@@ -1,11 +1,15 @@
 using Printf
 using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.Utils: prettysummary
+using Oceananigans.BoundaryConditions: bc_str
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
+
+const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
 
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
@@ -22,16 +26,22 @@ function Base.summary(field::Field)
     return string(prefix, suffix)
 end
 
-data_summary(field) = string("max=", scalar_summary(maximum(field)), ", ",
-                             "min=", scalar_summary(minimum(field)), ", ",
-                             "mean=", scalar_summary(mean(field)))
+data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
+                             "min=", prettysummary(minimum(field)), ", ",
+                             "mean=", prettysummary(mean(field)))
 
 function Base.show(io::IO, field::Field)
+
+    bcs = field.boundary_conditions
 
     prefix =
         string("$(summary(field))\n",
                "├── grid: ", summary(field.grid), '\n',
-               "├── boundary conditions: ", summary(field.boundary_conditions), '\n')
+               "├── boundary conditions: ", summary(bcs), '\n',
+               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+                     ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
+                     ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
+                     ", immersed: ", bc_str(bcs.immersed), '\n')
 
     middle = isnothing(field.operand) ? "" :
         string("├── operand: ", summary(field.operand), '\n',
@@ -49,8 +59,6 @@ Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
 Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
-
-const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
 
 function Base.show(io::IO, ft::FieldTuple)
     names = keys(ft)

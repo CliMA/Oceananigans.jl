@@ -1,8 +1,10 @@
 import CUDA
 
 import Oceananigans.BoundaryConditions:
-    fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
+    fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!,
+    _fill_west_halo!, _fill_east_halo!, _fill_south_halo!, _fill_north_halo!
 
+import Oceananigans.Fields: fill_halo_regions_field_tuple!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
 
 # These filling functions won't work so let's not use them.
@@ -11,11 +13,22 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; cubed_sphere_exchange=true, kwargs...)
+ _fill_west_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+ _fill_east_halo!(j, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+_fill_south_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+_fill_north_halo!(i, k, grid, c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
+
+function fill_halo_regions_field_tuple!(full_fields, grid::ConformalCubedSphereGrid, args...; kwargs...) 
+    for field in full_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+end
+
+function fill_halo_regions!(field::AbstractCubedSphereField, args...; cubed_sphere_exchange=true, kwargs...)
 
     for (i, face_field) in enumerate(faces(field))
         # Fill the top and bottom halos the usual way.
-        fill_halo_regions!(face_field, arch, get_face(args, i)...; kwargs...)
+        fill_halo_regions!(face_field, get_face(args, i)...; kwargs...)
 
         if cubed_sphere_exchange
             fill_west_halo!(face_field, field)
@@ -106,8 +119,8 @@ fill_horizontal_velocity_halos!(u, v, arch) = nothing
 function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField, arch)
 
     ## Fill the top and bottom halos.
-    fill_halo_regions!(u, arch, cubed_sphere_exchange=false)
-    fill_halo_regions!(v, arch, cubed_sphere_exchange=false)
+    fill_halo_regions!(u, cubed_sphere_exchange=false)
+    fill_halo_regions!(v, cubed_sphere_exchange=false)
 
     ## Now fill the horizontal halos.
 

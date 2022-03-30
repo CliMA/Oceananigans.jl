@@ -1,10 +1,18 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
+import Oceananigans.Fields: fill_halo_regions_field_tuple!
+
+using Oceananigans.BoundaryConditions:
+    fill_west_and_east_halo!, 
+    fill_south_and_north_halo!,
+    fill_bottom_and_top_halo!
+
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+
 
 #####
 ##### MPI tags for halo communication BCs
@@ -52,8 +60,14 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_location, args...; kwargs...)
+function fill_halo_regions_field_tuple!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+    for field in full_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+end
 
+function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_location, args...; kwargs...)
+    arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
     x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...; kwargs...)
@@ -72,6 +86,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_locati
     return nothing
 end
 
+
 #####
 ##### fill_west_and_east_halos!   }
 ##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
@@ -80,14 +95,12 @@ end
 
 for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    fill_side_halo! = Symbol("fill_$(side)_halo!")
-    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
+    fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
         function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
-            event_side = $fill_side_halo!(c, bc_side, child_architecture(arch), barrier, grid, args...; kwargs...)
-            event_opposite_side = $fill_opposite_side_halo!(c, bc_opposite_side, child_architecture(arch), barrier, grid, args...)
-            return event_side, event_opposite_side
+                event = $fill_both_halo!(c, bc_side, bc_opposite_side, child_architecture(arch), barrier, grid, args...; kwargs...)
+            return [event]
         end
     end
 end
@@ -98,6 +111,8 @@ end
 ##### fill_bottom_and_top_halos!  }
 #####
 
+const CBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
+
 for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     send_side_halo = Symbol("send_$(side)_halo")
@@ -106,8 +121,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC,
-                                   arch, barrier, grid, c_location, args...; kwargs...)
+        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, arch, 
+                                   barrier, grid, c_location, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
