@@ -309,9 +309,8 @@ end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
-    print(io, "├── Problem size = "  , solver.problem_size, '\n')
-    print(io, "├── Grid = "  , solver.grid, '\n')
-    print(io, "├── Solution method = ", solver.iterative_solver, '\n')
-    print(io, "└── Preconditioner  = ", solver.preconditioner_method)
+    print(io, "├── grid: ", summary(solver.grid), '\n')
+    print(io, "├── method: ", solver.iterative_solver, '\n')
+    print(io, "└── preconditioner: ", solver.preconditioner_method)
     return nothing
 end
