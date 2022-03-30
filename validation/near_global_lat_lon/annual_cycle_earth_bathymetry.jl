@@ -91,7 +91,7 @@ H = 3600.0
 # H = - minimum(bathymetry)
 
 # Uncomment for a flat bottom:
-bathymetry = - H .* (bathymetry .< -10)
+# bathymetry = - H .* (bathymetry .< -10)
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
@@ -236,7 +236,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds
 else
-    Δt = 20minutes
+    Δt = 5minutes
 end
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)

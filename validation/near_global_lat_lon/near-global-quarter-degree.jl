@@ -15,8 +15,6 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
-using Oceananigans.Advection: VelocityStencil
-
 @inline function visualize(field, lev, dims) 
     (dims == 1) && (idx = (lev, :, :))
     (dims == 2) && (idx = (:, lev, :))
@@ -234,7 +232,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()),
+                                    momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
@@ -297,6 +295,50 @@ S = model.tracers.S
 
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
+
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+                                                              schedule = TimeInterval(save_interval),
+                                                              prefix = output_prefix * "_surface",
+                                                              field_slicer = FieldSlicer(k=grid.Nz),
+                                                              force = true)
+
+# This is at -15 m
+simulation.output_writers[:below_surface_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                              schedule = TimeInterval(save_interval),
+                                                              prefix = output_prefix * "_below_surface",
+                                                              field_slicer = FieldSlicer(k=grid.Nz - 1),
+                                                              force = true)
+
+# This is at -861 m
+simulation.output_writers[:mid_domain_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_mid_domain",
+                                                            field_slicer = FieldSlicer(k=18),
+                                                            force = true)
+
+simulation.output_writers[:atlantic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_atlantic",
+                                                            field_slicer = FieldSlicer(i=625),
+                                                            force = true)
+
+simulation.output_writers[:pacific_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_pacific",
+                                                            field_slicer = FieldSlicer(i=100),
+                                                            force = true)
+
+simulation.output_writers[:equator_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_equator",
+                                                            field_slicer = FieldSlicer(j=300),
+                                                            force = true)
+
+simulation.output_writers[:north_tropic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_north_tropic",
+                                                            field_slicer = FieldSlicer(j=470),
+                                                            force = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
