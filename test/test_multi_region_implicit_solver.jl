@@ -57,7 +57,7 @@ end
 Lh = 100kilometers
 Lz = 400meters
 
-for arch in [GPU()] #archs
+for arch in archs
 
     free_surface   = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, maximum_iterations = 64 * 3)
     topology_types = (Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)
