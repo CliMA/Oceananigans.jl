@@ -94,3 +94,10 @@ function reconstruct_grid(mrg)
     topo    = topology(mrg)
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
+
+import Oceananigans.Grids: with_halo
+
+function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    new_grids = construct_regionally(with_halo, new_halo, mrg)
+    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
+end

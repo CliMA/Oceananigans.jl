@@ -25,15 +25,10 @@ architecture(solver::PreconditionedConjugateGradientSolver) = solver.architectur
 
 no_precondition!(args...) = nothing
 
-initialize_precondition_product(precondition, template_field) = similar(template_field)
-initialize_precondition_product(::Nothing, template_field) = nothing
+initialize_precondition_product(precondition, template_field) = deepcopy(template_field)
 
-maybe_precondition(::Nothing, ::Nothing, r, args...) = r
-
-function maybe_precondition(precondition!, z, r, args...)
-    precondition!(z, r, args...)
-    return z
-end
+maybe_precondition!(::Nothing, z, r, args...) = z .= r
+maybe_precondition!(precondition!, z, r, args...) = precondition!(z, r, args...)
     
 """
     PreconditionedConjugateGradientSolver(linear_operation;
@@ -184,27 +179,29 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 end
 
 @inline function subtract_residuals!(res, b, q) 
-    res .= b .- q
+    parent(res) .= parent(b) .- parent(q)
 end
 
 @inline function add_terms!(p, z, β)
-    p .= z .+ β .* p
+    parent(p) .= parent(z) .+ β .* parent(p)
 end
 
 @inline function scalar_add_subtract!(x, α, p, op)
-    x .= op.(x,  α .* p)
+    parent(x) .= op.(parent(x),  α .* parent(p))
 end
 
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
     q = solver.linear_operator_product
+    z = solver.preconditioner_product
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    z = r #maybe_precondition(solver.precondition!, solver.preconditioner_product, r, args...) 
+    fill_halo_regions!(r)
+    @apply_regionally maybe_precondition!(solver.precondition!, z, r, args...) 
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"

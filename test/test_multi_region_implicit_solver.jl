@@ -1,4 +1,3 @@
-using Revise
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
@@ -7,9 +6,10 @@ using Printf
 using Oceananigans.MultiRegion
 using LinearAlgebra, SparseArrays
 using Oceananigans.Solvers: constructors, unpack_constructors
+using Oceananigans.Grids: architecture
 using Oceananigans.Utils
 
-function geostrophic_adjustment_test(free_surface, grid, devices; regions = 1)
+function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     if architecture(grid) isa GPU
         devices = (0, 0)
@@ -57,19 +57,19 @@ end
 Lh = 100kilometers
 Lz = 400meters
 
-for arch in archs
+for arch in [GPU()] #archs
 
     free_surface   = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, maximum_iterations = 64 * 3)
     topology_types = (Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)
 
-    @testset "Testing multi region tracer advection" begin
+    @testset "Testing multi region implicit free surface" begin
         for topology_type in topology_types
             grid = RectilinearGrid(arch,
                         size = (64, 3, 1),
                         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
                         topology = topology_type)
 
-            ηs = geostrophic_adjustment_test(free_surface, grid)
+            ηs = geostrophic_adjustment_test(free_surface, grid);
             ηs = interior(ηs);
 
             for regions in [2, 4]
@@ -81,7 +81,7 @@ for arch in archs
                 for region in 1:regions
                     init = Int(size(ηs, 1) / regions) * (region - 1) + 1
                     fin  = Int(size(ηs, 1) / regions) * region
-                    @test all(Array(η[region]) .== Array(ηs)[init:fin, :, :])
+                    @test all(Array(η[region]) .≈ Array(ηs)[init:fin, :, :])
                 end
             end
         end

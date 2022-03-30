@@ -15,13 +15,13 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 const MultiRegionModel      = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Bottleneck is getregion!!! (there are type issues with FieldBoundaryConditions and with propertynames)
-@inline getregion(mr::AbstractModel, i)            = getname(mr)(Tuple(getregion(getproperty(mr, propertynames(mr)[idx]), i) for idx in 1:length(propertynames(mr)))...)
-@inline getregion(ts::AbstractTimeStepper, i)      = getname(ts)(Tuple(getregion(getproperty(ts, propertynames(ts)[idx]), i) for idx in 1:length(propertynames(ts)))...)
-@inline getregion(fs::AbstractFreeSurface, i)      = getname(fs)(Tuple(getregion(getproperty(fs, propertynames(fs)[idx]), i) for idx in 1:length(propertynames(fs)))...)
-@inline getregion(pv::PrescribedVelocityFields, i) = getname(pv)(Tuple(getregion(getproperty(pv, propertynames(pv)[idx]), i) for idx in 1:length(propertynames(pv)))...)
+@inline @inbounds getregion(mr::AbstractModel, i)            = getname(mr)(Tuple(getregion(getproperty(mr, propertynames(mr)[idx]), i) for idx in 1:length(propertynames(mr)))...)
+@inline @inbounds getregion(ts::AbstractTimeStepper, i)      = getname(ts)(Tuple(getregion(getproperty(ts, propertynames(ts)[idx]), i) for idx in 1:length(propertynames(ts)))...)
+@inline @inbounds getregion(fs::AbstractFreeSurface, i)      = getname(fs)(Tuple(getregion(getproperty(fs, propertynames(fs)[idx]), i) for idx in 1:length(propertynames(fs)))...)
+@inline @inbounds getregion(pv::PrescribedVelocityFields, i) = getname(pv)(Tuple(getregion(getproperty(pv, propertynames(pv)[idx]), i) for idx in 1:length(propertynames(pv)))...)
 
-@inline getregion(fs::ExplicitFreeSurface, i) =
-     ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)
+@inline @inbounds getregion(fs::ExplicitFreeSurface, i) =
+                    ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)
 
 getname(type) = typeof(type).name.wrapper
 
