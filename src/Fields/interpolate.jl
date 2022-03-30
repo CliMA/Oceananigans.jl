@@ -5,7 +5,7 @@ using CUDA: allowscalar
 
     allowscalar(true)
     y2 = searchsortedfirst(vec, val)
-    y1 = searchsortedlast(vec,  val)
+    y1 = searchsortedlast(vec, val)
     x2 = vec[y2]
     x1 = vec[y1]
     allowscalar(false)
