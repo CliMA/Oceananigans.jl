@@ -6,16 +6,17 @@ using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
 
-mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
+mutable struct HeptadiagonalIterativeSolver{G, R, S, L, D, M, P, PM, PS, I, T, F}
                        grid :: G
                problem_size :: R
+                   solution :: S
         matrix_constructors :: L
                    diagonal :: D
                      matrix :: M
              preconditioner :: P
       preconditioner_method :: PM
     preconditioner_settings :: PS
-           iterative_solver :: I
+          iterative_solver! :: I
                   tolerance :: T
                 previous_Δt :: F
          maximum_iterations :: Int
@@ -24,7 +25,7 @@ end
 """
     HeptadiagonalIterativeSolver(coeffs;
                                  grid,
-                                 iterative_solver = cg,
+                                 iterative_solver! = cg!,
                                  maximum_iterations = prod(size(grid)),
                                  tolerance = 1e-13,
                                  reduced_dim = (false, false, false), 
@@ -69,14 +70,13 @@ The diagonal term `- Az / (g * Δt²)` is added later on during the time steppin
 to allow for variable time step. It is updated only when the previous time step 
 is different (`Δt_previous != Δt`).
 
-Preconditioning is done through the incomplete LU factorization. 
-
-It works for GPU, but it relies on serial backward and forward substitution which are very
-heavy and destroy all the computational advantage, therefore it is switched off until a
-parallel backward/forward substitution is implemented. It is also updated based on the
-matrix when `Δt != Δt_previous`
+Preconditioning is done through the incomplete LU factorization on the CPU.
+On the GPU, given the impossibility of doing a (non-parallel) backward-forward substitution, different sparse
+approximation of the inverse matrices (with different settings and properties) are implemented as preconditioners 
+(see sparse_preconditioners.jl) 
+The preconditioner is updated when `Δt != Δt_previous`
     
-The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
+The iterative_solver! used can is to be chosen from the IterativeSolvers.jl package. 
 The default solver is a Conjugate Gradient (cg)
 
 ```julia
@@ -85,7 +85,7 @@ solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
 """
 function HeptadiagonalIterativeSolver(coeffs;
                                       grid,
-                                      iterative_solver = cg,
+                                      iterative_solver! = cg!,
                                       maximum_iterations = prod(size(grid)),
                                       tolerance = 1e-13,
                                       reduced_dim = (false, false, false), 
@@ -109,15 +109,18 @@ function HeptadiagonalIterativeSolver(coeffs;
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
+    solution = arch_array(arch, zeros(eltype(grid), prod(problem_size))) 
+    
     return HeptadiagonalIterativeSolver(grid,
                                  problem_size, 
+                                 solution, 
                                  matrix_constructors,
                                  diagonal,
                                  placeholder_matrix,
                                  preconditioner,
                                  preconditioner_method,
                                  settings,
-                                 iterative_solver, 
+                                 iterative_solver!, 
                                  tolerance,
                                  placeholder_timestep,
                                  maximum_iterations)
@@ -298,10 +301,10 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
                             solver.preconditioner_settings)
         solver.previous_Δt = Δt
     end
+
+    solver.iterative_solver!(solver.solution, solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
-    
-    set!(x, reshape(q, solver.problem_size...))
+    set!(x, reshape(solver.solution, solver.problem_size...))
     fill_halo_regions!(x) 
 
     return
@@ -311,7 +314,7 @@ function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
     print(io, "├── Problem size = "  , solver.problem_size, '\n')
     print(io, "├── Grid = "  , solver.grid, '\n')
-    print(io, "├── Solution method = ", solver.iterative_solver, '\n')
+    print(io, "├── Solution method = ", solver.iterative_solver!, '\n')
     print(io, "└── Preconditioner  = ", solver.preconditioner_method)
     return nothing
 end
