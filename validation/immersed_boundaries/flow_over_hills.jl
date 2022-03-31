@@ -9,10 +9,18 @@ end
 
 @inline (h::Hills)(x, y) = h.ϵ * (1 + sin(x))
 
-function hilly_simulation(Nx=64, Nz=Nx, ϵ=0.1, Re=1e4, N²=1e-2, bottom_drag=false,
-                          name="flow_over_hills.jld2")
+function hilly_simulation(;
+                          Nx = 64,
+                          Nz = Nx,
+                          ϵ = 0.1,
+                          Re = 1e4,
+                          N² = 1e-2,
+                          bottom_drag = false,
+                          architecture = CPU(),
+                          name = "flow_over_hills.jld2")
 
-    underlying_grid = RectilinearGrid(size = (Nx, Nz),
+    underlying_grid = RectilinearGrid(architecture,
+                                      size = (Nx, Nz),
                                       halo = (3, 3),
                                       x = (0, 2π),
                                       z = (0, 2π),
@@ -20,20 +28,21 @@ function hilly_simulation(Nx=64, Nz=Nx, ϵ=0.1, Re=1e4, N²=1e-2, bottom_drag=fa
 
     if ϵ > 0
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(Hills(ϵ)))
-    else
+    else # no hills
         grid = underlying_grid
     end
 
-    closure = ScalarDiffusivity(ν=1/Re, κ=1/Re)
+    closure = isfinite(Re) ? ScalarDiffusivity(ν=1/Re, κ=1/Re) : nothing
 
     if bottom_drag
         Δz = 2π / Nz
         z₀ = 0.02
-        Cᴰ = - (0.4 / log(Δz / 2z₀))^2
-        bottom_drag_func(x, y, z, t, u, Cᴰ) = - Cᴰ * u^2
+        κ = 0.4
+        Cᴰ = - (κ / log(Δz / 2z₀))^2
+        @inline bottom_drag_func(x, y, t, u, Cᴰ) = - Cᴰ * u^2
         u_bottom_bc = FluxBoundaryCondition(bottom_drag_func, field_dependencies=:u, parameters=Cᴰ)
         u_bcs = FieldBoundaryConditions(bottom=u_bottom_bc)
-        boundary_conditions = (; u=u_bcs)
+        boundary_conditions = (; u = u_bcs)
     else
         boundary_conditions = NamedTuple()
     end
@@ -44,7 +53,7 @@ function hilly_simulation(Nx=64, Nz=Nx, ϵ=0.1, Re=1e4, N²=1e-2, bottom_drag=fa
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())
 
-    bᵢ(x, y, z) = N² * z
+    bᵢ(x, y, z) = N² * z + 1e-9 * rand()
     set!(model, b=bᵢ, u=1)
 
     Δx = 2π / Nx
@@ -52,8 +61,7 @@ function hilly_simulation(Nx=64, Nz=Nx, ϵ=0.1, Re=1e4, N²=1e-2, bottom_drag=fa
     simulation = Simulation(model; Δt, stop_iteration=100)
 
     u, v, w = model.velocities
-    U = compute!(Field(Average(u, dims=(1, 2, 3))))
-    Uᵢ = U[1, 1, 1]
+    Uᵢ = mean(u)
 
     function progress(sim)
         δU = mean(u) / Uᵢ
@@ -63,6 +71,7 @@ function hilly_simulation(Nx=64, Nz=Nx, ϵ=0.1, Re=1e4, N²=1e-2, bottom_drag=fa
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
+    U = Average(u, dims=(1, 2, 3))
     ξ = ∂z(u) - ∂x(w)
 
     simulation.output_writers[:fields] =
@@ -82,17 +91,19 @@ function momentum_time_series(filepath)
 end
 
 name = "bottom_drag_reference"
-reference_sim = hilly_simulation(; Nx=1, Nz=64, ϵ=0, name)
+reference_sim = hilly_simulation(; Nx=64, Nz=64, ϵ=0, name, bottom_drag=true)
 run!(reference_sim)
 δU_ref, t_ref = momentum_time_series(name * ".jld2")
 
 experiments = []
 for ϵ = [0.05, 0.1, 0.2]
     name = string("flow_over_hills_height_", ϵ)
-    push!(experiment_names, (; ϵ, name))
+    push!(experiments, (; ϵ, name))
     simulation = hilly_simulation(; ϵ, name)
     run!(simulation)
 end
+
+using GLMakie
 
 fig = Figure()
 ax = Axis(fig[1, 1])
@@ -114,7 +125,6 @@ display(fig)
 ξ = FieldTimeSeries(filepath, "ξ")
 Nt = length(ξ.times)
 
-using GLMakie
 
 fig = Figure()
 slider = Slider(fig[2, 1], range=1:Nt, startvalue=1)
