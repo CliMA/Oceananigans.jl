@@ -234,7 +234,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds
 else
-    Δt = 5minutes
+    Δt = 20minutes
 end
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
