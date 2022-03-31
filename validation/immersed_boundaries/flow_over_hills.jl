@@ -140,9 +140,9 @@ display(fig)
 
 #=
 # Animate vorticity if you like
+filepath = experiments[end].name * ".jld2"
 ξ = FieldTimeSeries(filepath, "ξ")
 Nt = length(ξ.times)
-
 
 fig = Figure()
 slider = Slider(fig[2, 1], range=1:Nt, startvalue=1)
