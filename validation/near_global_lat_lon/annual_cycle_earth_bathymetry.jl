@@ -207,7 +207,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
-                                    tracers = (:T, ),
+                                    tracers = :T,
                                     closure = (vertical_closure, convective_adjustment)) 
 
 #####
