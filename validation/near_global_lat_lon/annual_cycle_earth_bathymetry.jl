@@ -266,7 +266,7 @@ T = model.tracers.T
 
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, η),
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
