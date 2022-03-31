@@ -31,7 +31,7 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir = ".", prefix = "particles_checkpoint")
 
-    return sim
+    return sim, jld2_filepath, nc_filepath
 end
 
 function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretched=false)
@@ -61,7 +61,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
     @test particles isa LagrangianParticles
 
-    sim = particle_tracking_simulation(; grid, particles, timestepper)
+    sim, _, _ = particle_tracking_simulation(; grid, particles, timestepper)
     model = sim.model
     run!(sim)
 
@@ -93,7 +93,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     particles = LagrangianParticles(particles; tracked_fields)
     @test particles isa LagrangianParticles
 
-    sim = particle_tracking_simulation(; grid, particles, timestepper, velocities)    
+    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper, velocities)    
     model = sim.model
     run!(sim)
 
