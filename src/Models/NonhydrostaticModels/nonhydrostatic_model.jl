@@ -173,7 +173,9 @@ function NonhydrostaticModel(;    grid,
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
     # Ensure `closure` describes all tracers
-    closure = with_tracers(tracernames(tracers), closure)
+    if !(isempty(tracers))
+      closure = with_tracers(tracernames(tracers), closure)
+    end
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
