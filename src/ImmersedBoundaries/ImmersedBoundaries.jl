@@ -37,7 +37,8 @@ using Oceananigans.Advection:
     advective_momentum_flux_Ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
-    advective_tracer_flux_z
+    advective_tracer_flux_z,
+    WENOVectorInvariant
 
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
@@ -158,12 +159,8 @@ all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
 function on_architecture(arch, ibg::ImmersedBoundaryGrid)
-    underlying_grid = on_architecture(arch, ibg.grid)
-
-    immersed_boundary = ibg.immersed_boundary isa AbstractArray ?
-        arch_array(arch, ibg.immersed_boundary) :
-        ibg.immersed_boundary
-
+    underlying_grid   = on_architecture(arch, ibg.grid)
+    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
 

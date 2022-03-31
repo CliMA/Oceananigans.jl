@@ -1,5 +1,19 @@
 using Oceananigans.Grids: Flat
 
+
+#####
+##### Base interpolation operators without grid
+#####
+
+@inline ℑxᶜᵃᵃ(i, j, k, u) = @inbounds 0.5 * (u[i,   j, k] + u[i+1, j, k])
+@inline ℑxᶠᵃᵃ(i, j, k, c) = @inbounds 0.5 * (c[i-1, j, k] + c[i,   j, k])
+
+@inline ℑyᵃᶜᵃ(i, j, k, v) = @inbounds 0.5 * (v[i, j,   k] + v[i,  j+1, k])
+@inline ℑyᵃᶠᵃ(i, j, k, c) = @inbounds 0.5 * (c[i, j-1, k] + c[i,  j,   k])
+
+@inline ℑzᵃᵃᶜ(i, j, k, w) = @inbounds 0.5 * (w[i, j,   k] + w[i, j, k+1])
+@inline ℑzᵃᵃᶠ(i, j, k, c) = @inbounds 0.5 * (c[i, j, k-1] + c[i, j,   k])
+
 #####
 ##### Base interpolation operators
 #####

@@ -48,7 +48,7 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...
     red_fields = Tuple(recursive_fill([], fields, ReducedField))
 
     for field in red_fields
-        fill_halo_regions!(field, args...; reduced_dims = reduced_dimensions(field), kwargs...)
+        fill_halo_regions!(field, args...; kwargs...)
     end
 
     full_fields = Tuple(recursive_fill([], fields, Field))
