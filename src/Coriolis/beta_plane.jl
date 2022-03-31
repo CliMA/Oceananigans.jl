@@ -52,8 +52,8 @@ end
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
 
 function Base.summary(βplane::BetaPlane{FT}) where FT 
-    fstr = scalar_summary(βplane.f₀)
-    βstr = scalar_summary(βplane.β)
+    fstr = prettysummary(βplane.f₀)
+    βstr = prettysummary(βplane.β)
     return "BetaPlane{$FT}(f₀=$fstr, β=$βstr)"
 end
 

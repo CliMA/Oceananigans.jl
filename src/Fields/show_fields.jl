@@ -1,5 +1,5 @@
 using Printf
-using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.Grids: size_summary
 using Oceananigans.Utils: prettysummary
 using Oceananigans.BoundaryConditions: bc_str
 
