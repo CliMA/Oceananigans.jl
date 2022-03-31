@@ -98,7 +98,7 @@ function solid_body_rotation_test(grid; regions = 1)
         time_step!(model, Δt)
     end
 
-    return merge(model.velocities, model.tracers, (η = model.free_surface.η))
+    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
 function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c) 
