@@ -207,7 +207,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
-                                    tracers = (:T, :S),
+                                    tracers = (:T, ),
                                     closure = (vertical_closure, convective_adjustment)) 
 
 #####
@@ -218,8 +218,6 @@ u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
 T .= -1
-S = model.tracers.S
-S .= 30
 
 #####
 ##### Simulation setup
@@ -264,10 +262,8 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 u, v, w = model.velocities
 
 T = model.tracers.T
-S = model.tracers.S
 η = model.free_surface.η
 
-output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
