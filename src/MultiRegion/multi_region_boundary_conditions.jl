@@ -77,7 +77,7 @@ end
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
     ## Can we take this off??
-    wait(dep)
+    # wait(dep)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -101,7 +101,7 @@ end
 function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
     ## Can we take this off??
-    wait(dep)
+    # wait(dep)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
