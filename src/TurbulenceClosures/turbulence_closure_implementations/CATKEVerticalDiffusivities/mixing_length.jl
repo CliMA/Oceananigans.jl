@@ -48,10 +48,6 @@ The Richardson-number dependent diffusivities are multiplied by the stability
 function
 
     1. ``σ(Ri) = σ⁻ * (1 + rσ * step(Ri, Riᶜ, Riʷ))``
-    3. ``σ(Ri) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, Riᶜ, Riʷ)``
-
-σ⁻ = σ₀
-rσ = (σ⁺ - σ⁻) / σ₀
 
 where ``σ₀``, ``Δσ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by
@@ -174,8 +170,15 @@ end
     return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
 end
 
-@inline step(x, c, w) = (1 + tanh(x / w - c)) / 2
+@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    FT = eltype(grid)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
+end
 
+@inline step(x, c, w) = (1 + tanh(x / w - c)) / 2
 @inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
 
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
