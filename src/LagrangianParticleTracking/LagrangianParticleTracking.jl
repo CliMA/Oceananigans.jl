@@ -80,6 +80,10 @@ end
 size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
 length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.properties)
 
+Base.summary(particles::LagrangianParticles) =
+    string(length(particles), " LagrangianParticles with eltype ", nameof(eltype(particles.properties)),
+           " and properties ", propertynames(particles.properties))
+
 function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
     particles = lagrangian_particles.properties
     Tparticle = nameof(eltype(particles))
