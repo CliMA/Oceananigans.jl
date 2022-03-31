@@ -26,12 +26,18 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz), halo=(3, 3, 3),
                        y = (-Ly/2, Lx/2),
                        z = (-24, 0))
 
+@info "Build a grid:"
+@show grid
+
 # 10 Lagrangian particles
 Nparticles = 10
-x₀ = Lx / 10 * rand(Nparticles)
-y₀ = Ly / 10 * rand(Nparticles)
-z₀ = - Lz / 10 * rand(Nparticles) .+ 3Lz / 5
+x₀ = Lx / 10 * (2rand(Nparticles) .- 1)
+y₀ = Ly / 10 * (2rand(Nparticles) .- 1)
+z₀ = - Lz / 10 * rand(Nparticles)
 particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, restitution=0)
+
+@info "Initialized Lagrangian particles"
+@show particles
 
 # Convection
 b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-8))
@@ -43,6 +49,9 @@ model = NonhydrostaticModel(; grid, particles,
                             buoyancy = BuoyancyTracer(),
                             closure = AnisotropicMinimumDissipation(),
                             boundary_conditions = (; b=b_bcs))
+
+@info "Constructed a model"
+@show model
 
 bᵢ(x, y, z) = 1e-5 * z + 1e-9 * rand()
 set!(model, b=bᵢ)
