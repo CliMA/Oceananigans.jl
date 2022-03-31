@@ -58,10 +58,10 @@ Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
-#=
-const FieldTuple = NamedTuple{S, <:NTuple{N, Field}} where {S, N}
+const FieldTuple = Tuple{Field, Vararg{Field}}
+const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
 
-function Base.show(io::IO, ft::FieldTuple)
+function Base.show(io::IO, ft::NamedFieldTuple)
     names = keys(ft)
     N = length(ft)
 
@@ -99,5 +99,4 @@ function Base.show(io::IO, ft::FieldTuple)
         print(io, "    └── grid: ", summary(field.grid))
     end
 end
-=#
 
