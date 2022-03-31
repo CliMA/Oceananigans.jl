@@ -98,7 +98,7 @@ function solid_body_rotation_test(grid; regions = 1)
         time_step!(model, Δt)
     end
 
-    return merge(model.velocities, model.tracers)
+    return merge(model.velocities, model.tracers, (η = model.free_surface.η))
 end
 
 function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c) 
@@ -135,7 +135,7 @@ end
 
 Nx = 32; Ny = 32
 
-for arch in archs
+for arch in [CPU()]
 
     grid_rect = RectilinearGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
@@ -169,9 +169,9 @@ for arch in archs
                 for region in 1:regions
                     init = Int(size(cs, 1) / regions) * (region - 1) + 1
                     fin  = Int(size(cs, 1) / regions) * region
-                    @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
-                    @test all(Array(d[region]) .== Array(ds)[init:fin, :, :])
-                    @test all(Array(e[region]) .== Array(es)[init:fin, :, :])
+                    @test all(Array(c[region]) .≈ Array(cs)[init:fin, :, :])
+                    @test all(Array(d[region]) .≈ Array(ds)[init:fin, :, :])
+                    @test all(Array(e[region]) .≈ Array(es)[init:fin, :, :])
                 end
             end
         end
@@ -179,29 +179,32 @@ for arch in archs
 
     @testset "Testing multi region solid body rotation" begin
         grid = grid_lat
-        us, vs, ws, cs = solid_body_rotation_test(grid)
+        us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
             
         us = interior(us);
         vs = interior(vs);
         ws = interior(ws);
         cs = interior(cs);
+        ηs = interior(ηs);
         
         for regions in [2, 4]
             @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c = solid_body_rotation_test(grid; regions=regions)
+            u, v, w, c, η = solid_body_rotation_test(grid; regions=regions)
 
             u = construct_regionally(interior, u)
             v = construct_regionally(interior, v)
             w = construct_regionally(interior, w)
             c = construct_regionally(interior, c)
+            η = construct_regionally(interior, η)
                 
             for region in 1:regions
                 init = Int(size(cs, 1) / regions) * (region - 1) + 1
                 fin  = Int(size(cs, 1) / regions) * region
-                @test all(Array(u[region]) .== Array(us)[init:fin, :, :])
-                @test all(Array(v[region]) .== Array(vs)[init:fin, :, :])
-                @test all(Array(w[region]) .== Array(ws)[init:fin, :, :])
-                @test all(Array(c[region]) .== Array(cs)[init:fin, :, :])
+                @test all(Array(u[region]) .≈ Array(us)[init:fin, :, :])
+                @test all(Array(v[region]) .≈ Array(vs)[init:fin, :, :])
+                @test all(Array(w[region]) .≈ Array(ws)[init:fin, :, :])
+                @test all(Array(c[region]) .≈ Array(cs)[init:fin, :, :])
+                @test all(Array(η[region]) .≈ Array(ηs)[init:fin, :, :])
             end
         end
     end
@@ -232,7 +235,7 @@ for arch in archs
                     for region in 1:regions
                         init = Int(size(grid, 1) / regions) * (region - 1) + 1
                         fin  = Int(size(grid, 1) / regions) * region
-                        @test all(Array(f[region])[1:(1+fin-init), :, :] .== Array(fs)[init:fin, :, :])
+                        @test all(Array(f[region])[1:(1+fin-init), :, :] .≈ Array(fs)[init:fin, :, :])
                     end
                 end
             end

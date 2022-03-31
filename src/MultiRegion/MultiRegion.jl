@@ -32,6 +32,8 @@ abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY
 
 abstract type AbstractPartition end
 
+getname(type) = typeof(type).name.wrapper
+
 include("multi_region_utils.jl")
 include("x_partitions.jl")
 include("multi_region_grid.jl")

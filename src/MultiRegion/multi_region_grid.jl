@@ -39,14 +39,14 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
 
     FT   = eltype(global_grid)
     
-    args = (Reference(global_grid), Reference(arch), local_topo, local_size, local_extent)
+    args = (Reference(global_grid), Reference(arch), local_topo, local_size, local_extent, Reference(partition), Iterate(1:length(partition)))
 
     region_grids = construct_regionally(construct_grid, args...)
 
     return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, region_grids, devices)
 end
 
-function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent)
+function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, args...)
     halo = halo_size(grid)
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo, topo)
@@ -54,7 +54,7 @@ function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent)
     return RectilinearGrid(child_arch, FT; size = size, halo = halo, topology = topo, extent...)
 end
 
-function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, extent)
+function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, extent, args...)
     halo = halo_size(grid)
     FT   = eltype(grid)
     lon, lat, z = extent
@@ -64,9 +64,9 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
                                  precompute_metrics = metrics_precomputed(grid))
 end
 
-function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, size, extent)
-    boundary = ibg.immersed_boundary
-    return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, size, extent), boundary)
+function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size, extent, partition, region)
+    boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, size(ibg), local_size, region, child_arch)
+    return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, local_size, extent), boundary)
 end
 
 getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
@@ -74,7 +74,7 @@ getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.ge
 const MRG = MultiRegionGrid
 
 @inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
-@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getfield(getindex(getfield(ibg, :region_grids), 1), property)
+@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(ibg, :region_grids), 1), property)
 @inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
 @inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
 @inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)

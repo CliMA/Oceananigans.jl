@@ -12,7 +12,7 @@ using Oceananigans.Utils
 function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     if architecture(grid) isa GPU
-        devices = (0, 0)
+        devices = (0, 1)
     else
         devices = nothing
     end
@@ -78,7 +78,7 @@ for arch in archs
                 
                 η = construct_regionally(interior, η)
                 
-                for region in 1:regions
+                for region in regions[end]:regions[end]
                     init = Int(size(ηs, 1) / regions) * (region - 1) + 1
                     fin  = Int(size(ηs, 1) / regions) * region
                     @test all(Array(η[region]) .≈ Array(ηs)[init:fin, :, :])

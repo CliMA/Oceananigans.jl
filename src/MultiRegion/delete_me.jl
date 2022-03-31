@@ -23,8 +23,6 @@ const MultiRegionModel      = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Abstra
 @inline @inbounds getregion(fs::ExplicitFreeSurface, i) =
                     ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)
 
-getname(type) = typeof(type).name.wrapper
-
 isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 

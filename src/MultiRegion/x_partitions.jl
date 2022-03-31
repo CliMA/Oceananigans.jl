@@ -1,4 +1,4 @@
-using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct XPartition{N} <: AbstractPartition
@@ -106,4 +106,12 @@ function inject_east_boundary(region, p::XPartition, global_bc)
         bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
     end
     return bc
+end
+
+partition_immersed_boundary(b, args...) = getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
+
+partition_global_array(a::Function, args...) = a
+function partition_global_array(a::AbstractArray, ::EqualXPartition, global_size, local_size, region, arch) 
+    idxs = default_indices(length(local_size)-1)
+    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs...])
 end
