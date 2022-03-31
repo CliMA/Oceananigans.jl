@@ -9,6 +9,7 @@ using StructArrays
 using Oceananigans.Grids
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
+using Oceananigans.Utils: prettysummary
 
 import Base: size, length, show
 
@@ -81,11 +82,16 @@ length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.
 
 function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
     particles = lagrangian_particles.properties
+    Tparticle = nameof(eltype(particles))
     properties = propertynames(particles)
     fields = lagrangian_particles.tracked_fields
-    print(io, "$(length(particles)) Lagrangian particles with\n",
-        "├── $(length(properties)) properties: $properties\n",
-        "└── $(length(fields)) tracked fields: $(propertynames(fields))")
+    Nparticles = length(particles)
+
+    print(io, Nparticles, " LagrangianParticles with eltype ", Tparticle, ":", '\n',
+        "├── ", length(properties), " properties: ", properties, '\n',
+        "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, '\n',
+        "├── ", length(fields), " tracked fields: ", propertynames(fields), '\n',
+        "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
 include("update_particle_properties.jl")
