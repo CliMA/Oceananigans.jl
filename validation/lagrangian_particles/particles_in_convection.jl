@@ -15,16 +15,14 @@ h(k) = (k - 1) / Nz
 ζ₀(k) = 1 + (h(k) - 1) / refinement
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
-# Vertically-stretched
-z(k) = Lz * (ζ₀(k) * Σ(k) - 1)
+# Vertically-stretched and uniform options
+z_stretched(k) = Lz * (ζ₀(k) * Σ(k) - 1)
+z_uniform = (-Lz, 0)
 
-# Vertically-uniform
-#z = (-24, 0)
-
-grid = RectilinearGrid(size = (Nx, Ny, Nz), halo=(3, 3, 3),
+grid = RectilinearGrid(; size = (Nx, Ny, Nz), halo=(3, 3, 3),
                        x = (-Lx/2, Lx/2),
                        y = (-Ly/2, Lx/2),
-                       z = (-24, 0))
+                       z = z_stretched)
 
 @info "Build a grid:"
 @show grid
