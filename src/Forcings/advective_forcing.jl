@@ -9,7 +9,7 @@ struct AdvectiveForcing{U, S, F, C}
 end
 
 """
-    AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
+AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
 
 Build a forcing term representing advection by the velocity field `u, v, w` with an advection `scheme`.
 
@@ -35,22 +35,39 @@ R = mean_particle_radius
 
 w_Stokes = - 2/9 * Δb / ν * R^2
 
-settling = AdvectiveForcing(WENO5(), w=w_Stokes)
+settling = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_Stokes)
+
+# output
+AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+├── u: ZeroField{Int64}
+├── v: ZeroField{Int64}
+└── w: -1.97096
 ```
 """
 function AdvectiveForcing(scheme=UpwindBiasedFifthOrder(); u=ZeroField(), v=ZeroField(), w=ZeroField())
     velocities = (; u, v, w)
     return AdvectiveForcing(velocities, scheme, nothing, nothing) # stub
 end
-    
+
 function regularize_forcing(af::AdvectiveForcing, field, field_name, model_field_names)
     kernel_function = field_name === :u ? div_𝐯u :
                       field_name === :v ? div_𝐯v :
                       field_name === :w ? div_𝐯w : div_Uc
-
+    
     return AdvectiveForcing(af.velocities, af.advection_scheme, kernel_function, field)
 end
 
 @inline (af::AdvectiveForcing)(i, j, k, grid, clock, model_fields) =
     af.advection_kernel_function(i, j, k, grid, af.advection_scheme, af.velocities, af.advected_field)
+
+Base.summary(af::AdvectiveForcing) = string("AdvectiveForcing with the ", nameof(typeof(af.advection_scheme)), " scheme")
+
+function Base.show(io::IO, af::AdvectiveForcing)
+    
+    print(io, summary(af), ":", '\n')
+
+    print(io, "├── u: ", prettysummary(af.velocities.u), '\n',
+              "├── v: ", prettysummary(af.velocities.v), '\n',
+              "└── w: ", prettysummary(af.velocities.w))
+end
 
