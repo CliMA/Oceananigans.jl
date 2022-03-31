@@ -3,23 +3,7 @@ using Statistics
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, mask_immersed_field!
 
-"""
-    Hills(ϵ)
-
-Return a representation of sinusoidal hills with period 2π
-and amplitude ϵ, such that
-
-```math
-h(x) = ϵ * (1 + sin(x) / 2)
-```
-
-where ``h`` is the elevation of the bottom.
-"""
-struct Hills{T}
-    ϵ :: T
-end
-
-@inline (h::Hills)(x, y) = h.ϵ * (1 + sin(x)) / 2
+@inline bottom_drag_func(x, y, t, u, Cᴰ) = - Cᴰ * u^2
 
 function hilly_simulation(;
                           Nx = 64,
@@ -31,7 +15,7 @@ function hilly_simulation(;
                           stop_time = 1,
                           save_interval = 0.1,
                           architecture = CPU(),
-                          name = "flow_over_hills.jld2")
+                          name = "flow_over_hills")
 
     underlying_grid = RectilinearGrid(architecture,
                                       size = (Nx, Nz),
@@ -41,7 +25,9 @@ function hilly_simulation(;
                                       topology = (Periodic, Flat, Bounded))
 
     if ϵ > 0
-        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(Hills(ϵ)))
+        x, y, z = nodes((Center, Center, Center), underlying_grid, reshape=true)
+        hills = @. ϵ * (1 + sin(x)) / 2
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hills))
     else # no hills
         grid = underlying_grid
     end
@@ -53,7 +39,6 @@ function hilly_simulation(;
         z₀ = 1e-4
         κ = 0.4
         Cᴰ = (κ / log(Δz / 2z₀))^2
-        @inline bottom_drag_func(x, y, t, u, Cᴰ) = - Cᴰ * u^2
         u_bottom_bc = FluxBoundaryCondition(bottom_drag_func, field_dependencies=:u, parameters=Cᴰ)
         u_bcs = FieldBoundaryConditions(bottom=u_bottom_bc)
         boundary_conditions = (; u = u_bcs)
@@ -78,13 +63,18 @@ function hilly_simulation(;
     u, v, w = model.velocities
     Uᵢ = mean(u)
 
+    wall_clock = Ref(time_ns())
+
     function progress(sim)
         δU = mean(u) / Uᵢ
-        @info @sprintf("Iter: %d, time: %.2e, δU: %.2e", iteration(sim), time(sim), δU)
+        elapsed = 1e-9 * (time_ns() - wall_clock[])
+        @info @sprintf("Iter: %d, time: %.2e, δU: %.2e, wall time: %s",
+                       iteration(sim), time(sim), δU, prettytime(elapsed))
+        wall_clock[] = time_ns()
         return nothing
     end
 
-    simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
     U = Average(u, dims=(1, 2, 3))
     ξ = ∂z(u) - ∂x(w)
@@ -108,16 +98,20 @@ function momentum_time_series(filepath)
     return δU, t
 end
 
-name = "bottom_drag_reference"
-reference_sim = hilly_simulation(; Nx=64, Nz=64, ϵ=0, name, bottom_drag=true)
+Nx = 256
+stop_time = 100.0
+reference_name = "bottom_drag_reference"
+#=
+reference_sim = hilly_simulation(; stop_time, Nx, ϵ=0, name=reference_name, bottom_drag=true)
 run!(reference_sim)
 δU_ref, t_ref = momentum_time_series(name * ".jld2")
+=#
 
 experiments = []
 for ϵ = [0.02, 0.05, 0.1]
     name = string("flow_over_hills_height_", ϵ)
     push!(experiments, (; ϵ, name))
-    simulation = hilly_simulation(; ϵ, name)
+    simulation = hilly_simulation(; stop_time, Nx, ϵ, name)
     run!(simulation)
 end
 
