@@ -28,7 +28,6 @@ using SparseArrays: fkeep!
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
-
 # We need to update the diagonal element each time the time step changes!!
 function update_diag!(constr, arch, problem_size, diag, Δt)   
     M = prod(problem_size)
@@ -39,14 +38,16 @@ function update_diag!(constr, arch, problem_size, diag, Δt)
     wait(event)
 
     constr = constructors(arch, M, (colptr, rowval, nzval))
+
+    return nothing
 end
 
 @kernel function _update_diag!(nzval, colptr, rowval, diag, Δt)
     col = @index(Global, Linear)
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
-       if rowval[idx] == col
-           map = idx 
+        if rowval[idx] == col
+            map = idx 
             break
         end
     end
@@ -62,10 +63,10 @@ end
             break
         end
     end
-    if nzval[map] == 0.0 
+    if nzval[map] == 0
         invdiag[col] = 0 
     else
-        invdiag[col] = 1.0 / nzval[map]
+        invdiag[col] = 1 / nzval[map]
     end
 end
 

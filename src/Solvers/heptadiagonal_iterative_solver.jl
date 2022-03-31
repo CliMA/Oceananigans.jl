@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array
+using Oceananigans.Architectures: architecture, arch_array, device_event
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
@@ -147,7 +147,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     #  - coeff_z are the coefficients in the z-direction (coefficents of ηᵢⱼₖ₋₁ and ηᵢⱼₖ₊₁)
     #  - periodic boundaries are stored in coeff_bound_
     
-    # position of diagonals for coefficients pos[1] and their boundary pos[2]
+    # Position of diagonals for coefficients pos[1] and their boundary pos[2]
     posx = (1, Nx-1)
     posy = (1, Ny-1) .* Nx
     posz = (1, Nz-1) .* Nx .* Ny
@@ -160,30 +160,26 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     coeff_bound_y = zeros(eltype(grid), M - posy[2])
     coeff_bound_z = zeros(eltype(grid), M - posz[2])
 
-    # initializing elements which vary during the simulation (as a function of Δt)
+    # Initialize elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
-    event = loop!(diag, D, N; dependencies=Event(Architectures.device(arch)))
+    event = loop!(diag, D, N; dependencies = device_event(arch))
     wait(event)
 
-    # filling elements which stay constant in time
-    fill_core_matrix!(coeff_d , coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
-    if dims[1]  
-        fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
-    end
-    if dims[2]
-        fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
-    end
-    if dims[3]
-        fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
-    end
+    # Fill matrix elements that stay constant in time
+    fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
 
-    sparse_matrix = spdiagm(0=>coeff_d,
-                      posx[1]=>coeff_x,      -posx[1]=>coeff_x,
-                      posx[2]=>coeff_bound_x,-posx[2]=>coeff_bound_x,
-                      posy[1]=>coeff_y,      -posy[1]=>coeff_y,
-                      posy[2]=>coeff_bound_y,-posy[2]=>coeff_bound_y,
-                      posz[1]=>coeff_z,      -posz[1]=>coeff_z,
-                      posz[2]=>coeff_bound_z,-posz[2]=>coeff_bound_z)
+    # Ensure that Periodic boundary conditions are satisifed
+    dims[1] && fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
+    dims[2] && fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
+    dims[3] && fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
+
+    sparse_matrix = spdiagm(0 => coeff_d,
+                      posx[1] => coeff_x,       -posx[1] => coeff_x,
+                      posx[2] => coeff_bound_x, -posx[2] => coeff_bound_x,
+                      posy[1] => coeff_y,       -posy[1] => coeff_y,
+                      posy[2] => coeff_bound_y, -posy[2] => coeff_bound_y,
+                      posz[1] => coeff_z,       -posz[1] => coeff_z,
+                      posz[2] => coeff_bound_z, -posz[2] => coeff_bound_z)
 
     ensure_diagonal_elements_are_present!(sparse_matrix)
 
@@ -194,8 +190,9 @@ end
 
 @kernel function _initialize_variable_diagonal!(diag, D, N)  
     i, j, k = @index(Global, NTuple)
+    # Calculate sparse index?
     t  = i + N[1] * (j - 1 + N[2] * (k - 1))
-    diag[t] = D[i, j, k]
+    @inbounds diag[t] = D[i, j, k]
 end
 
 function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
@@ -292,19 +289,25 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         constructors = deepcopy(solver.matrix_constructors)
         update_diag!(constructors, arch, solver.problem_size, solver.diagonal, Δt)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
-        solver.preconditioner = build_preconditioner(
-                            Val(solver.preconditioner_method),
-                            solver.matrix,
-                            solver.preconditioner_settings)
+
+        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
+                                                     solver.matrix,
+                                                     solver.preconditioner_settings)
+
         solver.previous_Δt = Δt
     end
     
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
+    q = solver.iterative_solver(solver.matrix,
+                                b,
+                                maxiter = solver.maximum_iterations,
+                                reltol = solver.tolerance,
+                                Pl = solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
+
     fill_halo_regions!(x) 
 
-    return
+    return nothing
 end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
@@ -312,5 +315,4 @@ function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "├── grid: ", summary(solver.grid), '\n')
     print(io, "├── method: ", solver.iterative_solver, '\n')
     print(io, "└── preconditioner: ", solver.preconditioner_method)
-    return nothing
 end
