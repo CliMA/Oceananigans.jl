@@ -49,7 +49,7 @@ coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme())
                                         Lφ = grid.Ly,
                                         φ₀ = 15)
 
-surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
+@inline surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
 
 surface_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress,
                                                parameters = surface_wind_stress_parameters)
