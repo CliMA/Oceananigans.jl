@@ -3,11 +3,23 @@ using Statistics
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, mask_immersed_field!
 
+"""
+    Hills(ϵ)
+
+Return a representation of sinusoidal hills with period 2π
+and amplitude ϵ, such that
+
+```math
+h(x) = ϵ * (1 + sin(x) / 2)
+```
+
+where ``h`` is the elevation of the bottom.
+"""
 struct Hills{T}
     ϵ :: T
 end
 
-@inline (h::Hills)(x, y) = h.ϵ * (1 + sin(x))
+@inline (h::Hills)(x, y) = h.ϵ * (1 + sin(x)) / 2
 
 function hilly_simulation(;
                           Nx = 64,
@@ -16,6 +28,8 @@ function hilly_simulation(;
                           Re = 1e4,
                           N² = 1e-2,
                           bottom_drag = false,
+                          stop_time = 1,
+                          save_interval = 0.1,
                           architecture = CPU(),
                           name = "flow_over_hills.jld2")
 
@@ -36,13 +50,14 @@ function hilly_simulation(;
 
     if bottom_drag
         Δz = 2π / Nz
-        z₀ = 0.02
+        z₀ = 1e-4
         κ = 0.4
-        Cᴰ = - (κ / log(Δz / 2z₀))^2
+        Cᴰ = (κ / log(Δz / 2z₀))^2
         @inline bottom_drag_func(x, y, t, u, Cᴰ) = - Cᴰ * u^2
         u_bottom_bc = FluxBoundaryCondition(bottom_drag_func, field_dependencies=:u, parameters=Cᴰ)
         u_bcs = FieldBoundaryConditions(bottom=u_bottom_bc)
         boundary_conditions = (; u = u_bcs)
+        @info string("Using a bottom drag with coefficient ", Cᴰ)
     else
         boundary_conditions = NamedTuple()
     end
@@ -58,7 +73,7 @@ function hilly_simulation(;
 
     Δx = 2π / Nx
     Δt = 0.1 * Δx
-    simulation = Simulation(model; Δt, stop_iteration=100)
+    simulation = Simulation(model; Δt, stop_time)
 
     u, v, w = model.velocities
     Uᵢ = mean(u)
@@ -76,9 +91,12 @@ function hilly_simulation(;
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U)),
-                         schedule = TimeInterval(0.1),
+                         schedule = TimeInterval(save_interval),
                          prefix = name,
                          force = true)
+
+    @info "Make a simulation:"
+    @show simulation
 
     return simulation
 end
@@ -96,7 +114,7 @@ run!(reference_sim)
 δU_ref, t_ref = momentum_time_series(name * ".jld2")
 
 experiments = []
-for ϵ = [0.05, 0.1, 0.2]
+for ϵ = [0.02, 0.05, 0.1]
     name = string("flow_over_hills_height_", ϵ)
     push!(experiments, (; ϵ, name))
     simulation = hilly_simulation(; ϵ, name)
