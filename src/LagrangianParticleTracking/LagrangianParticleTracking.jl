@@ -2,6 +2,7 @@ module LagrangianParticleTracking
 
 export LagrangianParticles, update_particle_properties!
 
+using Printf
 using Adapt
 using KernelAbstractions
 using StructArrays
@@ -20,6 +21,11 @@ struct Particle{T} <: AbstractParticle
     y :: T
     z :: T
 end
+
+Base.show(io::IO, p::Particle) = print(io, "Particle at (",
+                                       @sprintf("%-8s", prettysummary(p.x, true) * ", "),
+                                       @sprintf("%-8s", prettysummary(p.y, true) * ", "),
+                                       @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
 struct LagrangianParticles{P, R, T, D, Π}
         properties :: P

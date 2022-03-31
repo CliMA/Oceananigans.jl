@@ -395,7 +395,7 @@ Base.summary(::ZDirection) = "ZDirection"
 #####
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
 function domain_summary(topo, name, left, right)
@@ -404,8 +404,8 @@ function domain_summary(topo, name, left, right)
                                       "Bounded  "
 
     return string(topo_string, name, " ∈ [",
-                  scalar_summary(left), ", ",
-                  scalar_summary(right), interval)
+                  prettysummary(left), ", ",
+                  prettysummary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -414,7 +414,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     return string(prefix, padding, coordinate_summary(spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
+coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
-                                                       name, scalar_summary(minimum(parent(Δ))),
-                                                       name, scalar_summary(maximum(parent(Δ))))
+                                                       name, prettysummary(minimum(parent(Δ))),
+                                                       name, prettysummary(maximum(parent(Δ))))
