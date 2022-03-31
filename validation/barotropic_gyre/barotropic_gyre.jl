@@ -15,7 +15,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-using Oceananigans.TurbulenceClosures: HorizontalFormulation
 
 using Oceananigans.Utils: prettytime, hours, day, days, years
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
