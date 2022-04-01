@@ -32,7 +32,7 @@ set!(model, b=bᵢ, P=Pᵢ)
 simulation = Simulation(model; Δt, stop_iteration=0)
 
 b = model.tracers.b
-w_slip_op = 2/9 * (b - b_particle) / ν * R_particle^2
+w_slip_op = 2/9 * (b_particle - b) / ν * R_particle^2
 
 function compute_slip_velocity!(sim)
     w_slip .= w_slip_op
