@@ -12,7 +12,7 @@ using Oceananigans.Utils
 function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     if architecture(grid) isa GPU
-        devices = (0, 1)
+        devices = (0, 0)
     else
         devices = nothing
     end
