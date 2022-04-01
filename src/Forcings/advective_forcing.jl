@@ -58,7 +58,7 @@ function regularize_forcing(af::AdvectiveForcing, field, field_name, model_field
 end
 
 @inline (af::AdvectiveForcing)(i, j, k, grid, clock, model_fields) =
-    af.advection_kernel_function(i, j, k, grid, af.advection_scheme, af.velocities, af.advected_field)
+    - af.advection_kernel_function(i, j, k, grid, af.advection_scheme, af.velocities, af.advected_field)
 
 Base.summary(af::AdvectiveForcing) = string("AdvectiveForcing with the ", nameof(typeof(af.advection_scheme)), " scheme")
 
