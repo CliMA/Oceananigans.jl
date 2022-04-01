@@ -98,8 +98,9 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                     fft_based_implicit_free_surface_right_hand_side!,
                     rhs, grid, g, H, Δt, ∫ᶻQ, η,
                     dependencies = device_event(arch))
-
-    return event
+    
+     wait(device(arch), event)
+    return nothing
 end
 
 @kernel function fft_based_implicit_free_surface_right_hand_side!(rhs, grid, g, H, Δt, ∫ᶻQ, η)
