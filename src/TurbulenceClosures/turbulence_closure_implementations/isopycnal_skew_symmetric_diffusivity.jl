@@ -14,8 +14,10 @@ struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosur
 end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
+const ISSDVector = AbstractVector{<:ISSD}
+const FlavorOfISSD = Union{ISSD, ISSDVector}
+const issd_coefficient_loc = (Center, Center, Center)
 
-ISSDVector = AbstractVector{<:ISSD}
 
 """
     IsopycnalSkewSymmetricDiffusivity([FT=Float64;]
@@ -109,8 +111,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_skew)
-    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_symmetric)
+    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_skew)
+    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
@@ -138,8 +140,8 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_skew)
-    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_symmetric)
+    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_skew)
+    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
@@ -167,8 +169,8 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_skew)
-    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_symmetric)
+    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc,κ_skew)
+    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)

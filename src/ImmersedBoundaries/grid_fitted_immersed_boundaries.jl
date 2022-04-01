@@ -33,6 +33,22 @@ struct GridFittedBottom{B} <: AbstractGridFittedBoundary
     bottom :: B
 end
 
+function on_architecture(arch, b::GridFittedBoundary)
+    mask = b.mask isa AbstractArray ?
+        arch_array(arch, b.mask) :
+        b.mask
+
+    return GridFittedBoundary(mask)
+end
+
+function on_architecture(arch, b::GridFittedBottom)
+    bottom = b.bottom isa AbstractArray ?
+        arch_array(arch, b.bottom) :
+        b.bottom
+
+    return GridFittedBottom(bottom)
+end
+
 @inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom)
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
     return z < ib.bottom(x, y)
