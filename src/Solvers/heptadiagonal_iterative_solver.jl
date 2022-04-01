@@ -97,11 +97,11 @@ function HeptadiagonalIterativeSolver(coeffs;
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
-    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of - 1
+    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of 1
     # They will be recalculated before the first time step of the simulation
 
     placeholder_constructors = deepcopy(matrix_constructors)
-    update_diag!(placeholder_constructors, arch, problem_size, diagonal, 1.0)
+    update_diag!(placeholder_constructors, arch, prod(problem_size), diagonal, 1.0, 0)
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
     
@@ -290,7 +290,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     # update matrix and preconditioner if time step changes
     if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
-        update_diag!(constructors, arch, solver.problem_size, solver.diagonal, Δt)
+        update_diag!(constructors, arch, prod(solver.problem_size), solver.diagonal, Δt, 0)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
         solver.preconditioner = build_preconditioner(
                             Val(solver.preconditioner_method),

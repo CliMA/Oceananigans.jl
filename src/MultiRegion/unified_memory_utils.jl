@@ -3,28 +3,9 @@ using CUDA.CUSPARSE
 using Oceananigans
 using BenchmarkTools
 
-function unified_array(arr) 
-    buf = Mem.alloc(Mem.Unified, sizeof(arr))
-    vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
-    finalizer(vec) do _
-        Mem.free(buf)
-    end
-    copyto!(vec, arr)
-    return vec
-end
-
-unified_array(int::Int) = int
-
 using LinearAlgebra
 using SparseArrays
 import LinearAlgebra: mul!, ldiv!
-
-# function mul!(r, A::NTuple{N}, b) where N
-#     for i in 1:N
-#         CUDA.device!(i-1)
-#         mul!(r[i], A[i], b)
-#     end
-# end
 
 function mul!(r, A::NTuple{N}, b) where {N}
     r = reshape(r, :, N)
@@ -32,41 +13,29 @@ function mul!(r, A::NTuple{N}, b) where {N}
         @sync begin
            Threads.@spawn begin
             CUDA.device!(0)
-            # @show CUDA.stream(), CUDA.current_context()
             mul!(view(r, :, 1), A[1], b)
-            # @show "finished mul, $(CUDA.current_context())"
             end
             Threads.@spawn begin
                 CUDA.device!(1)
-                # @show CUDA.stream(), CUDA.current_context()
                 mul!(view(r, :, 2), A[2], b)
-                # @show "finished mul, $(CUDA.current_context())"
             end
             Threads.@spawn begin
                 CUDA.device!(2)
-                # @show CUDA.stream(), CUDA.current_context()
                 mul!(view(r, :, 3), A[3], b)
-                # @show "finished mul, $(CUDA.current_context())"
             end
         end
     end
 end
 
-# function mul3!(r, A::NTuple{N}, b, ::Val{L}) where {N, L}
-#     @inbounds for i in 1:N
-#         CUDA.device!(i-1)
-#         mul!(view(r, L*(i-1)+1:L*i), A[i], b)
-#     end
-# end
+function mul3!(r, A::NTuple{N}, b, ::Val{L}) where {N, L}
+    @inbounds for i in 1:N
+        CUDA.device!(i-1)
+        mul!(view(r, L*(i-1)+1:L*i), A[i], b)
+    end
+end
 
 import Oceananigans.Solvers: constructors, arch_sparse_matrix
 using Oceananigans.Utils
-
-struct Unified end
-
-@inline constructors(::Unified, A::SparseMatrixCSC)       = (unified_array(A.colptr), unified_array(A.rowval), unified_array(A.nzval),  (A.m, A.n))
-@inline arch_sparse_matrix(::Unified, A::SparseMatrixCSC) = CuSparseMatrixCSC(constructors(Unified(), A)...)
-@inline constructors(::GPU, A::SparseMatrixCSC)           = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
 
 using Oceananigans.Solvers: asymptotic_diagonal_inverse_preconditioner, SparseInversePreconditioner
 

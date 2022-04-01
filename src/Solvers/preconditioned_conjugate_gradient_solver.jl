@@ -2,7 +2,6 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
-using Oceananigans.Utils
 
 import Oceananigans.Architectures: architecture
 
@@ -25,10 +24,15 @@ architecture(solver::PreconditionedConjugateGradientSolver) = solver.architectur
 
 no_precondition!(args...) = nothing
 
-initialize_precondition_product(precondition, template_field) = deepcopy(template_field)
+initialize_precondition_product(precondition, template_field) = similar(template_field)
+initialize_precondition_product(::Nothing, template_field) = nothing
 
-maybe_precondition!(::Nothing, z, r, args...) = z .= r
-maybe_precondition!(precondition!, z, r, args...) = precondition!(z, r, args...)
+maybe_precondition(::Nothing, ::Nothing, r, args...) = r
+
+function maybe_precondition(precondition!, z, r, args...)
+    precondition!(z, r, args...)
+    return z
+end
     
 """
     PreconditionedConjugateGradientSolver(linear_operation;
@@ -81,9 +85,9 @@ function PreconditionedConjugateGradientSolver(linear_operation;
     grid = template_field.grid
 
     # Create work arrays for solver
-    linear_operator_product = deepcopy(template_field) # A*xᵢ = qᵢ
-    search_direction = deepcopy(template_field) # pᵢ
-            residual = deepcopy(template_field) # rᵢ
+    linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
+    search_direction = similar(template_field) # pᵢ
+            residual = similar(template_field) # rᵢ
 
     # Either nothing (no precondition) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner_method, template_field)
@@ -159,12 +163,10 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
     # q = A*x
     q = solver.linear_operator_product
-    
-    fill_halo_regions!(x)
-    @apply_regionally solver.linear_operation!(q, x, args...)
-    
+    solver.linear_operation!(q, x, args...)
+
     # r = b - A*x
-    @apply_regionally subtract_residuals!(solver.residual, b, q)
+    solver.residual .= b .- q
 
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
     @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
@@ -178,57 +180,39 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     return x
 end
 
-@inline function subtract_residuals!(res, b, q) 
-    parent(res) .= parent(b) .- parent(q)
-end
-
-@inline function add_terms!(p, z, β)
-    parent(p) .= parent(z) .+ β .* parent(p)
-end
-
-@inline function scalar_add_subtract!(x, α, p, op)
-    parent(x) .= op.(parent(x),  α .* parent(p))
-end
-
-@inline function copy_to!(x, y)
-    parent(x) .= parent(y)
-end
-
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
     q = solver.linear_operator_product
-    z = solver.preconditioner_product
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    fill_halo_regions!(r)
-    @apply_regionally maybe_precondition!(solver.precondition!, z, r, args...) 
+    z = maybe_precondition(solver.precondition!, solver.preconditioner_product, r, args...) 
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     if solver.iteration == 0
-        @apply_regionally copy_to!(p, z)
+        p .= z
     else
         β = ρ / solver.ρⁱ⁻¹
-        @apply_regionally add_terms!(p, z, β)
+        p .= z .+ β .* p
+
         @debug "PreconditionedConjugateGradientSolver $(solver.iteration), β: $β"
     end
 
     # q = A * p
-    fill_halo_regions!(p)
-    @apply_regionally solver.linear_operation!(q, p, args...)
+    solver.linear_operation!(q, p, args...)
     α = ρ / dot(p, q)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
         
-    @apply_regionally scalar_add_subtract!(x, α, p, +)
-    @apply_regionally scalar_add_subtract!(r, α, q, -)
+    x .+= α .* p
+    r .-= α .* q
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ

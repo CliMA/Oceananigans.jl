@@ -1,11 +1,13 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device
-import Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: device, device_event
+import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: fkeep!
+
+struct Unified end
 
 # Utils for sparse matrix manipulation
 
@@ -15,6 +17,7 @@ using SparseArrays: fkeep!
 @inline constructors(::GPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 @inline constructors(::CPU, n::Number, constr::Tuple) = (n, n, constr...)
 @inline constructors(::GPU, n::Number, constr::Tuple) = (constr..., (n, n))
+@inline constructors(::Unified, A::SparseMatrixCSC)   = (unified_array(GPU(), A.colptr), unified_array(GPU(), A.rowval), unified_array(GPU(), A.nzval),  (A.m, A.n))
 
 @inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
 @inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
@@ -23,28 +26,30 @@ using SparseArrays: fkeep!
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::GPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC) = SparseMatrixCSC(constructors(CPU(), A)...)
-@inline arch_sparse_matrix(::GPU, A::SparseMatrixCSC)   = CuSparseMatrixCSC(constructors(GPU(), A)...)
+@inline arch_sparse_matrix(::Unified, constr::Tuple)      = CuSparseMatrixCSC(constr...)
+@inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(constructors(CPU(), A)...)
+@inline arch_sparse_matrix(::GPU, A::SparseMatrixCSC)     = CuSparseMatrixCSC(constructors(GPU(), A)...)
+@inline arch_sparse_matrix(::Unified, A::SparseMatrixCSC) = CuSparseMatrixCSC(constructors(Unified(), A)...)
+
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
 # We need to update the diagonal element each time the time step changes!!
-function update_diag!(constr, arch, problem_size, diag, Δt)   
-    M = prod(problem_size)
+function update_diag!(constr, arch, M, diag, Δt, disp)   
     colptr, rowval, nzval = unpack_constructors(arch, constr)
    
     loop! = _update_diag!(device(arch), 256, M)
-    event = loop!(nzval, colptr, rowval, diag, Δt; dependencies=Event(device(arch)))
+    event = loop!(nzval, colptr, rowval, diag, Δt, disp; dependencies=device_event(arch))
     wait(event)
 
     constr = constructors(arch, M, (colptr, rowval, nzval))
 end
 
-@kernel function _update_diag!(nzval, colptr, rowval, diag, Δt)
+@kernel function _update_diag!(nzval, colptr, rowval, diag, Δt, disp)
     col = @index(Global, Linear)
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
-       if rowval[idx] == col
+       if rowval[idx] == col + disp
            map = idx 
             break
         end

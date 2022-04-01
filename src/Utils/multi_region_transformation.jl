@@ -86,29 +86,7 @@ function apply_regionally!(func!, args...; kwargs...)
         end
     end
 
-    sync_all_devices!(devs; blocking = true)
-end 
-
-# For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
-function threaded_apply_regionally!(func!, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
-
-    if isnothing(mra) 
-        devs = devices(mrk)
-    else
-        devs = devices(mra)
-    end
-   
-    @sync for (r, dev) in enumerate(devs)
-        Threads.@spawn begin
-            switch_device!(dev)
-            func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
-        end
-    end
-
-    sync_all_devices!(devs; blocking = true)
+    sync_all_devices!(devs)
 end 
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
@@ -132,25 +110,21 @@ function construct_regionally(constructor, args...; kwargs...)
     return MultiRegionObject(Tuple(res), devs)
 end
 
-function sync_all_devices!(devices; blocking = false)
+function sync_all_devices!(devices)
     @sync for dev in devices
         @async begin
             switch_device!(dev)
-            sync_device!(dev; blocking)
+            sync_device!(dev)
         end
     end
 end
 
-sync_device!(::CuDevice; blocking = false) = CUDA.synchronize(; blocking)
-sync_device!(a; kwargs...) = nothing
+sync_device!(::CuDevice) = CUDA.device_synchronize()
+sync_device!(dev)        = nothing
 
 macro apply_regionally(expr)
 
-    if (CUDA.has_cuda_gpu()) && (Threads.nthreads() >= length(CUDA.devices()))
-        apply_func! = :threaded_apply_regionally!
-    else
-        apply_func! = :apply_regionally!
-    end
+    apply_func! = :apply_regionally!
 
     if expr.head == :call
         func = expr.args[1]

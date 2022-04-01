@@ -46,8 +46,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accelera
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
@@ -95,17 +94,16 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         implicit_solver::PCGImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)
 
-    arch = architecture(rhs)
-    grid = rhs.grid
+    solver = implicit_solver.preconditioned_conjugate_gradient_solver
+    arch = architecture(solver)
+    grid = solver.grid
 
     event = launch!(arch, grid, :xy,
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
 		            dependencies = device_event(arch))
 
-    wait(device(arch), event)
-    
-    return nothing
+    return event
 end
 
 """ Compute the divergence of fluxes Qu and Qv. """
@@ -129,11 +127,15 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
 
+    fill_halo_regions!(ηⁿ⁺¹)
+
     event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
                     L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
+
+    fill_halo_regions!(L_ηⁿ⁺¹)
 
     return nothing
 end
@@ -199,11 +201,15 @@ function implicit_free_surface_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_
     grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_r)
 
+    fill_halo_regions!(r)
+
     event = launch!(arch, grid, :xy, _implicit_free_surface_precondition!,
                     P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
+
+    fill_halo_regions!(P_r)
 
     return nothing
 end

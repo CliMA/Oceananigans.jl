@@ -76,9 +76,6 @@ end
 
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
-    ## Can we take this off??
-    # wait(dep)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
@@ -100,9 +97,6 @@ end
 
 function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
-    ## Can we take this off??
-    # wait(dep)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]

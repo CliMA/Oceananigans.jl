@@ -1,7 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Architectures: device_event
-using Oceananigans.Utils: @apply_regionally, apply_regionally!, threaded_apply_regionally!
+using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT

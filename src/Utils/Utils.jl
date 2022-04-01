@@ -11,7 +11,7 @@ export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export instantiate
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule 
-export apply_regionally!, threaded_apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
+export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
 export isregional, getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
 
 import CUDA  # To avoid name conflicts

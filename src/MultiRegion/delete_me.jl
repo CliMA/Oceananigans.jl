@@ -31,10 +31,5 @@ devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 getdevice(mrm::MultiRegionModel, i)      = getdevice(mrm.grid, i)
 switch_region!(mrm::MultiRegionModel, i) = switch_region!(mrm.grid, i)
 
-function build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational_acceleration, settings)
-     default_method = :PreconditionedConjugateGradient
-     return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
-end
-
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)

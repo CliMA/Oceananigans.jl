@@ -107,7 +107,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     @apply_regionally compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
     fill_halo_regions!(∫ᶻQ, model.clock, fields(model))
 
-    @apply_regionally compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
+    compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()

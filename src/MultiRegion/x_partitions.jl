@@ -115,3 +115,4 @@ function partition_global_array(a::AbstractArray, ::EqualXPartition, global_size
     idxs = default_indices(length(local_size)-1)
     return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs...])
 end
+

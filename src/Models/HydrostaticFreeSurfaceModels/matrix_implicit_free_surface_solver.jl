@@ -14,9 +14,7 @@ The hepta-diagonal matrix iterative implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
-struct MatrixImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
-    vertically_integrated_lateral_areas :: V
+struct MatrixImplicitFreeSurfaceSolver{S, R}
     "The matrix iterative solver"
     matrix_iterative_solver :: S
     "The right hand side of the free surface evolution equation"
@@ -60,7 +58,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
     solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
                                           grid = grid, settings...)
 
-    return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitational_acceleration, settings) =
@@ -73,7 +71,6 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitati
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
 
     solver = implicit_free_surface_solver.matrix_iterative_solver
-
     solve!(η, solver, rhs, Δt)
 
     return nothing
@@ -91,8 +88,9 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                     implicit_linearized_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
 		            dependencies = device_event(arch))
-
-    return event
+    
+    wait(device(arch), event)
+    return nothing
 end
 
 # linearized right hand side

@@ -88,7 +88,7 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-function reconstruct_grid(mrg)
+function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
     extent  = reconstruct_extent(mrg, mrg.partition)
     topo    = topology(mrg)
