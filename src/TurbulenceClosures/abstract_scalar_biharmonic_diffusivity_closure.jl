@@ -15,14 +15,15 @@ const ASBD = AbstractScalarBiharmonicDiffusivity
 ##### Coefficient extractors
 #####
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K)) 
-@inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K))
+const ccc = (Center(), Center(), Center())
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, ccc, viscosity(closure, K)) 
+@inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, ccc, viscosity(closure, K))
+@inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, ccc, viscosity(closure, K))
+@inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, ccc, viscosity(closure, K))
 
-@inline κᶠᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity(closure, K, id))
+@inline κᶠᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
+@inline κᶜᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
+@inline κᶜᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
 
 #####
 ##### Stress divergences
