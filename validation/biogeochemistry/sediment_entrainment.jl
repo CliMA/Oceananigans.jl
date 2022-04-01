@@ -8,14 +8,14 @@ grid = RectilinearGrid(size=(64, 128), halo=(3, 3),
                        topology=(Periodic, Flat, Bounded))
 
 @inline u_drag(x, y, t, u, w, Cᵈ) = - Cᵈ * u * sqrt(u^2 + w^2)
-u_bottom_bc = FluxBoundaryCondition(u_drag, field_dependencies=(:u, :w), parameters=1e-2)
+u_bottom_bc = FluxBoundaryCondition(u_drag, field_dependencies=(:u, :w), parameters=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=u_bottom_bc)
 
 sediment_bottom_bc = ValueBoundaryCondition(1)
 sediment_bcs = FieldBoundaryConditions(bottom=sediment_bottom_bc)
 
 r_sediment = 1e-4 # "Fine sand"
-ρ_sediment = 1600 # kg m⁻³
+ρ_sediment = 1400 # kg m⁻³
 ρ_ocean = 1026 # kg m⁻³
 Δb = - 9.81 * (ρ_sediment - ρ_ocean) / ρ_ocean
 ν_molecular = 1.05e-6
@@ -27,7 +27,7 @@ model = NonhydrostaticModel(; grid,
                             timestepper = :RungeKutta3,
                             tracers = (:b, :sediment),
                             buoyancy = BuoyancyTracer(),
-                            closure = ScalarDiffusivity(ν=1e-4, κ=(b=1e-4, sediment=1e-3)),
+                            closure = ScalarDiffusivity(ν=1e-5, κ=(b=1e-5, sediment=1e-3)),
                             forcing = (; sediment = sinking),
                             boundary_conditions = (; u=u_bcs, sediment=sediment_bcs))
 
@@ -106,6 +106,7 @@ zero_sediment(sim) = sp .= max.(0, sp)
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ)),
                      schedule = TimeInterval(1.0),
+                     with_halos = false,
                      prefix = "sediment_entrainment",
                      force = true)
 
@@ -136,9 +137,9 @@ xs, ys, zs = nodes(st)
 sn = @lift interior(st[$n], :, 1, :)
 wn = @lift interior(wt[$n], :, 1, :)
 
-wlim = maximum(abs, wt) / 2
-ξlim = maximum(abs, ξt) / 2
-smax = maximum(st)
+wlim = maximum(abs, wt[Nt]) / 2
+ξlim = maximum(abs, ξt[Nt]) / 2
+smax = maximum(st[Nt])
 
 hm_ξ = heatmap!(ax_ξ, xξ, zξ, interior(ξn, :, 1, :), colormap=:redblue, colorrange=(-wlim, wlim))
 hm_w = heatmap!(ax_w, xw, zw, interior(wn, :, 1, :), colormap=:redblue, colorrange=(-wlim, wlim))
