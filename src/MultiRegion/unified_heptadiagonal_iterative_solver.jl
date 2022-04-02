@@ -61,11 +61,13 @@ function UnifiedDiagonalIterativeSolver(coeffs;
     placeholder_matrix  = []
     matrix_constructors = []
     diagonal            = []
-    for r in 1:M
+    
+    for (r, dev) in enumerate(mrg.devices)
+        switch_device!(dev)
         push!(placeholder_matrix, temp_matrix[n*(r-1)+1:n*r, :])
         push!(matrix_constructors, constructors(arch, placeholder_matrix[r]))
         push!(diagonal, unified_array(architecture(mrg), temp_diagonal[n*(r-1)+1:n*r]))
-        placeholder_matrix[r] = arch_sparse_matrix(arch, placeholder_matrix[r])
+        placeholder_matrix[r] = arch_sparse_matrix(architecture(mrg), placeholder_matrix[r])
     end
 
     return UnifiedDiagonalIterativeSolver(mrg,
@@ -98,12 +100,13 @@ end
 
 function solve!(x, solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
     
-    solver.solution .= x
+    prefetch_solver!(solver, architecture(solver.grid))
+    
     # @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), _linearize_multi_field!)
     # update matrix and preconditioner if time step changes
-    if Δt != solver.previous_Δt
-        update_solver!(solver, Δt)
-    end    
+    # if Δt != solver.previous_Δt
+    #     update_solver!(solver, Δt)
+    # end    
 
     # Initialize
     solver.iteration = 0
@@ -122,14 +125,13 @@ function solve!(x, solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
     # @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), _redistribute_linear_solution!)
     # fill_halo_regions!(x) # blocking
 
-    return solver.solution
+    return nothing
 end
 
 function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
     q = solver.matrix_product
     r = solver.residual
     p = solver.search_direction
-    n = solver.n
 
     z = r
     ρ = dot(z, r)
@@ -157,13 +159,29 @@ end
 
 @inline function unified_mul!(q, solver, x)
     for (idx, dev) in enumerate(solver.grid.devices)
-            switch_device!(dev)
+            # switch_device!(dev)
             @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
+    end
+    # for (idx, dev) in enumerate(solver.grid.devices)
+    #     sync_device!(dev)
+    # end
+end 
+
+@inline prefetch_solver!(solver, ::CPU) = nothing
+
+@inline function prefetch_solver!(solver, ::GPU)
+    bytes = sizeof(eltype(solver.grid)) * prod(solver.problem_size)
+    for (idx, dev) in enumerate(solver.grid.devices)
+        switch_device!(dev)
+        Mem.prefetch(solver.solution.storage.buffer,         bytes; device = dev)
+        Mem.prefetch(solver.matrix_product.storage.buffer,   bytes; device = dev)
+        Mem.prefetch(solver.residual.storage.buffer,         bytes; device = dev)
+        Mem.prefetch(solver.search_direction.storage.buffer, bytes; device = dev)
     end
     for (idx, dev) in enumerate(solver.grid.devices)
         sync_device!(dev)
     end
-end 
+end
 
 function Base.show(io::IO, solver::UnifiedDiagonalIterativeSolver)
     print(io, "Oceananigans-compatible preconditioned conjugate gradient solver.\n")
