@@ -142,7 +142,7 @@ function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptoti
         wait(dev, event)
     
         constr_new = (colptr, rowval, nzval)
-        Minv = arch_sparse_matrix(arch, constructors(arch, M, constr_new))
+        Minv = arch_sparse_matrix(arch, constructors(arch, M, M, constr_new))
     else
         D   = spdiagm(0=>diag(arch_sparse_matrix(CPU(), A)))
         D⁻¹ = spdiagm(0=>arch_array(CPU(), invdiag))

@@ -101,8 +101,7 @@ end
 
 function solve!(solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
     
-    arch = architecture(solver.grid)
-
+    # arch = architecture(solver.grid)
     # prefetch_solver!(solver, arch)
     
     # update matrix and preconditioner if time step changes
@@ -126,22 +125,6 @@ function solve!(solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
 
     return nothing
 end
-
-# @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), arch)
-# fill_halo_regions!(x) # blocking
-
-# function redistribute!(sol, x, grid, n, region, arch)
-#     loop! = _redistribute!(device(arch), 256, n)
-#     event = loop!(sol, x, grid, n, region * (n - 1); dependencies=device_event(arch))
-#     wait(event)
-# end
-# @kernel function _redistribute!()
-#     i, j = @index(Global, NTuple)
-#     Az   = Azᶜᶜᶜ(i, j, 1, grid)
-#     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-#     t = i + grid.Nx * (j - 1) + displacement
-#     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
-# end
 
 function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
     q = solver.matrix_product

@@ -291,7 +291,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     # update matrix and preconditioner if time step changes
     if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
-        M = prod(problem_size)
+        M = prod(solver.problem_size)
         update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
         solver.preconditioner = build_preconditioner(

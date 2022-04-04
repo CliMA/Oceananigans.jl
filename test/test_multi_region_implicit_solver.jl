@@ -59,7 +59,7 @@ Lz = 400meters
 
 for arch in archs
 
-    free_surface   = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, maximum_iterations = 64 * 3)
+    free_surface   = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, maximum_iterations = 64 * 3)
     topology_types = (Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)
 
     @testset "Testing multi region implicit free surface" begin
@@ -75,7 +75,6 @@ for arch in archs
             for regions in [2, 4]
                 @info "  Testing $regions partitions on $(topology_type) on the $arch"
                 η = geostrophic_adjustment_test(free_surface, grid, regions = regions)
-                
                 η = construct_regionally(interior, η)
                 
                 for region in regions[end]:regions[end]
