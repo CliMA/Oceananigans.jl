@@ -99,10 +99,6 @@ end
 
 simulation.callbacks[:plot] = Callback(update_plot!, IterationInterval(100))
 
-sp = parent(model.tracers.sediment)
-zero_sediment(sim) = sp .= max.(0, sp)
-#simulation.callbacks[:zero] = Callback(zero_sediment)
-
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ)),
                      schedule = TimeInterval(1.0),
@@ -123,11 +119,14 @@ wt = FieldTimeSeries(filepath, "w")
 Nt = length(wt.times)
 
 fig = Figure(resolution=(1600, 600))
-ax_ξ = Axis(fig[1, 1])
-ax_w = Axis(fig[1, 2])
-ax_s = Axis(fig[1, 3])
+ax_ξ = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Vorticity", aspect=2)
+ax_w = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)", title="Vertical velocity", aspect=2)
+ax_s = Axis(fig[1, 3], xlabel="x (m)", ylabel="z (m)", title="Sediment concentration", aspect=2)
 slider = Slider(fig[2, :], range=1:Nt, startvalue=1)
 n = slider.value
+
+title = @lift string("Sediment entrainment at t = ", prettytime(wt.times[$n]))
+Label(fig[0, :], title)
 
 xξ, yξ, zξ = nodes(ξt)
 xw, yw, zw = nodes(wt)
@@ -139,15 +138,15 @@ wn = @lift interior(wt[$n], :, 1, :)
 
 wlim = maximum(abs, wt[Nt]) / 2
 ξlim = maximum(abs, ξt[Nt]) / 2
-smax = maximum(st[Nt])
+slim = maximum(st[Nt]) / 4
 
-hm_ξ = heatmap!(ax_ξ, xξ, zξ, interior(ξn, :, 1, :), colormap=:redblue, colorrange=(-wlim, wlim))
-hm_w = heatmap!(ax_w, xw, zw, interior(wn, :, 1, :), colormap=:redblue, colorrange=(-wlim, wlim))
-hm_s = heatmap!(ax_s, xs, zs, interior(sn, :, 1, :), colormap=:haline, colorrange=(0, smax/2))
+hm_ξ = heatmap!(ax_ξ, xξ, zξ, ξn, colormap=:redblue, colorrange=(-wlim, wlim))
+hm_w = heatmap!(ax_w, xw, zw, wn, colormap=:redblue, colorrange=(-wlim, wlim))
+hm_s = heatmap!(ax_s, xs, zs, sn, colormap=:haline, colorrange=(0, slim))
 
 display(fig)
 
-record(fig, "sediment_entrainment.mp4", 1:Nt, framerate=24) do nn
+record(fig, "sediment_entrainment.mp4", 1:Nt, framerate=160) do nn
     n[] = nn
 end
 
