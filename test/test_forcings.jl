@@ -112,7 +112,7 @@ function relaxed_time_stepping(arch)
 end
 
 function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
 
     constant_slip = AdvectiveForcing(CenteredSecondOrder(), u=1)
 
