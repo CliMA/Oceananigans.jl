@@ -7,17 +7,14 @@ using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: fkeep!
 
-struct Unified end
-
 # Utils for sparse matrix manipulation
 
 @inline constructors(::CPU, A::SparseMatrixCSC) = (A.m, A.n, A.colptr, A.rowval, A.nzval)
 @inline constructors(::GPU, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
 @inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
 @inline constructors(::GPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
-@inline constructors(::CPU, n::Number, constr::Tuple) = (n, n, constr...)
-@inline constructors(::GPU, n::Number, constr::Tuple) = (constr..., (n, n))
-@inline constructors(::Unified, A::SparseMatrixCSC)   = (unified_array(GPU(), A.colptr), unified_array(GPU(), A.rowval), unified_array(GPU(), A.nzval),  (A.m, A.n))
+@inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
+@inline constructors(::GPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))
 
 @inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
 @inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
@@ -26,35 +23,33 @@ struct Unified end
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::GPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::Unified, constr::Tuple)      = CuSparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC)   = SparseMatrixCSC(constructors(CPU(), A)...)
 @inline arch_sparse_matrix(::GPU, A::SparseMatrixCSC)     = CuSparseMatrixCSC(constructors(GPU(), A)...)
-@inline arch_sparse_matrix(::Unified, A::SparseMatrixCSC) = CuSparseMatrixCSC(constructors(Unified(), A)...)
 
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
 
 # We need to update the diagonal element each time the time step changes!!
-function update_diag!(constr, arch, M, diag, Δt, disp)   
+function update_diag!(constr, arch, M, N, diag, Δt, disp)   
     colptr, rowval, nzval = unpack_constructors(arch, constr)
-   
-    loop! = _update_diag!(device(arch), 256, M)
+    loop! = _update_diag!(device(arch), min(256, M), M)
     event = loop!(nzval, colptr, rowval, diag, Δt, disp; dependencies=device_event(arch))
-    wait(event)
+    wait(device(arch), event)
 
-    constr = constructors(arch, M, (colptr, rowval, nzval))
+    constr = constructors(arch, M, N, (colptr, rowval, nzval))
 end
 
 @kernel function _update_diag!(nzval, colptr, rowval, diag, Δt, disp)
     col = @index(Global, Linear)
+    col = col + disp
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
-       if rowval[idx] == col + disp
+       if rowval[idx] + disp == col 
            map = idx 
             break
         end
     end
-    nzval[map] += diag[col] / Δt^2 
+    nzval[map] += diag[col - disp] / Δt^2 
 end
 
 @kernel function _get_inv_diag!(invdiag, colptr, rowval, nzval)

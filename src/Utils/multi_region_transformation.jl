@@ -78,7 +78,7 @@ function apply_regionally!(func!, args...; kwargs...)
     else
         devs = devices(mra)
     end
-   
+    
     @sync for (r, dev) in enumerate(devs)
         @async begin
             switch_device!(dev)
@@ -111,11 +111,9 @@ function construct_regionally(constructor, args...; kwargs...)
 end
 
 function sync_all_devices!(devices)
-    @sync for dev in devices
-        @async begin
-            switch_device!(dev)
-            sync_device!(dev)
-        end
+    for dev in devices
+        switch_device!(dev)
+        sync_device!(dev)
     end
 end
 

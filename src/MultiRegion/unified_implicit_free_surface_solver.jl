@@ -3,7 +3,6 @@ using Oceananigans.Operators
 using Oceananigans.Architectures
 using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: Field
-using Oceananigans.Solvers: Unified
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
              compute_vertically_integrated_lateral_areas!,
@@ -96,7 +95,29 @@ end
 function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolver, rhs, g, Δt)
 
     solver = implicit_free_surface_solver.matrix_iterative_solver
-    solve!(η, solver, rhs, Δt)
+    solve!(solver, rhs, Δt)
+
+    arch = architecture(solver)
+    grid = solver.grid
+    
+    @apply_regionally redistribute_lhs!(η, solver.solution, arch, grid, solver.n, Iterate(1:length(solver.grid)))
+    
+    fill_halo_regions!(η)
 
     return nothing
+end
+
+function redistribute_lhs!(η, sol, arch, grid, n, region)
+
+    event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region * (n-1), grid,
+		            dependencies = device_event(arch))
+
+    wait(device(arch), event)
+end
+
+# linearized right hand side
+@kernel function _redistribute_lhs!(η, sol, displacement, grid)
+    i, j = @index(Global, NTuple)
+    t = i + grid.Nx * (j - 1) + displacement
+    @inbounds η[i, j, 1] = sol[t]
 end

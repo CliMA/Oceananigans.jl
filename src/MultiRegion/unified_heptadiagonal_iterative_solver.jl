@@ -2,8 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: architecture, arch_array, unified_array, device
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
-using Oceananigans.Solvers: 
-                Unified,
+using Oceananigans.Solvers:
                 matrix_from_coefficients,
                 update_diag!, 
                 arch_sparse_matrix, 
@@ -46,7 +45,7 @@ function UnifiedDiagonalIterativeSolver(coeffs;
                                              reduced_dim = (false, false, false), 
                                              placeholder_timestep = -1.0)
 
-    arch = architecture(mrg) isa GPU ? Unified() : CPU()
+    arch = architecture(mrg) 
     temp_constructors, temp_diagonal, problem_size = matrix_from_coefficients(CPU(), grid, coeffs, reduced_dim)  
     temp_matrix = arch_sparse_matrix(CPU(), temp_constructors)
     N = prod(problem_size)
@@ -62,13 +61,14 @@ function UnifiedDiagonalIterativeSolver(coeffs;
     matrix_constructors = []
     diagonal            = []
     
-    for (r, dev) in enumerate(mrg.devices)
+    for (idx, dev) in enumerate(mrg.devices)
         switch_device!(dev)
-        push!(placeholder_matrix, temp_matrix[n*(r-1)+1:n*r, :])
-        push!(matrix_constructors, constructors(arch, placeholder_matrix[r]))
-        push!(diagonal, unified_array(architecture(mrg), temp_diagonal[n*(r-1)+1:n*r]))
-        placeholder_matrix[r] = arch_sparse_matrix(architecture(mrg), placeholder_matrix[r])
+        push!(placeholder_matrix, temp_matrix[n*(idx-1)+1:n*idx, :])
+        push!(matrix_constructors, constructors(arch, placeholder_matrix[idx]))
+        push!(diagonal, arch_array(arch, temp_diagonal[n*(idx-1)+1:n*idx]))
+        placeholder_matrix[idx] = arch_sparse_matrix(arch, placeholder_matrix[idx])
     end
+    sync_all_devices!(mrg.devices)
 
     return UnifiedDiagonalIterativeSolver(mrg,
                                           problem_size, 
@@ -89,24 +89,26 @@ end
 
 @inline function update_solver!(solver, Δt)
     arch = architecture(solver.grid)
-    constructors = deepcopy(solver.matrix_constructors)
-    for r in 1:length(solver.grid)
-        update_diag!(constructors[r], arch, solver.n, solver.diagonal[r], Δt, solver.n * (r - 1))
-        solver.matrix[r] = arch_sparse_matrix(arch, constructors[r])
+    for (idx, dev) in enumerate(solver.grid.devices)
+        switch_device!(dev)
+        constr = deepcopy(solver.matrix_constructors[idx])
+        update_diag!(constr, arch, solver.n, prod(solver.problem_size), solver.diagonal[idx], Δt, solver.n * (idx - 1))
+        solver.matrix[idx] = arch_sparse_matrix(arch, constr)
     end
-    sync_device!(solver.grid.devices[1])
+    sync_all_devices!(solver.grid.devices)
     solver.previous_Δt = Δt
 end
 
-function solve!(x, solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
+function solve!(solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
     
-    prefetch_solver!(solver, architecture(solver.grid))
+    arch = architecture(solver.grid)
+
+    # prefetch_solver!(solver, arch)
     
-    # @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), _linearize_multi_field!)
     # update matrix and preconditioner if time step changes
-    # if Δt != solver.previous_Δt
-    #     update_solver!(solver, Δt)
-    # end    
+    if Δt != solver.previous_Δt
+        update_solver!(solver, Δt)
+    end    
 
     # Initialize
     solver.iteration = 0
@@ -122,11 +124,24 @@ function solve!(x, solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
         iterate!(solver.solution, solver, args...)
     end
 
-    # @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), _redistribute_linear_solution!)
-    # fill_halo_regions!(x) # blocking
-
     return nothing
 end
+
+# @apply_regionally redistribute!(solver.solution, x, solver.grid, solver.n, Iterate(1:length(solver.grid)), arch)
+# fill_halo_regions!(x) # blocking
+
+# function redistribute!(sol, x, grid, n, region, arch)
+#     loop! = _redistribute!(device(arch), 256, n)
+#     event = loop!(sol, x, grid, n, region * (n - 1); dependencies=device_event(arch))
+#     wait(event)
+# end
+# @kernel function _redistribute!()
+#     i, j = @index(Global, NTuple)
+#     Az   = Azᶜᶜᶜ(i, j, 1, grid)
+#     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+#     t = i + grid.Nx * (j - 1) + displacement
+#     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
+# end
 
 function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
     q = solver.matrix_product
@@ -153,22 +168,25 @@ function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
-    
+    @show solver.iteration, solver.ρⁱ⁻¹
     return
 end
 
 @inline function unified_mul!(q, solver, x)
+    # bytes = sizeof(eltype(solver.grid)) * prod(solver.problem_size)
     for (idx, dev) in enumerate(solver.grid.devices)
-            # switch_device!(dev)
-            @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
+        switch_device!(dev)
+        # prefetch!(x, bytes, dev)
+        # prefetch!(q, bytes, dev)
+        @views q[solver.n*(idx-1)+1:solver.n*idx] = solver.matrix[idx] * x
     end
-    # for (idx, dev) in enumerate(solver.grid.devices)
-    #     sync_device!(dev)
-    # end
+    sync_all_devices!(solver.grid.devices)
 end 
 
-@inline prefetch_solver!(solver, ::CPU) = nothing
+@inline prefetch!(array, bytes, dev::CuDevice) = Mem.prefetch(array.storage.buffer, bytes; device = dev)
+@inline prefetch!(array, bytes, dev::CPU)      = nothing
 
+@inline prefetch_solver!(solver, ::CPU) = nothing
 @inline function prefetch_solver!(solver, ::GPU)
     bytes = sizeof(eltype(solver.grid)) * prod(solver.problem_size)
     for (idx, dev) in enumerate(solver.grid.devices)

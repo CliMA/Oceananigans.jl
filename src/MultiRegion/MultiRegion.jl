@@ -17,7 +17,7 @@ using OffsetArrays
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: Reference, Iterate
 
-using KernelAbstractions: Event, NoneEvent
+using KernelAbstractions: Event, NoneEvent, @kernel, @index
 
 import Base: show, length, size
 
