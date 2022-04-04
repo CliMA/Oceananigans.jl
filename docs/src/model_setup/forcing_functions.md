@@ -344,7 +344,7 @@ computes `w_slip` ever iteration:
 ```jldoctest sinking
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-model = NonhydrostaticModel(; grid, tracers=:P, forcing=(; P=sinking))
+model = NonhydrostaticModel(; grid, tracers=(:b, :P), forcing=(; P=sinking))
 simulation = Simulation(model; Δt=1, stop_iteration=100)
 
 # Build abstract operation for slip velocity
