@@ -20,6 +20,8 @@ devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
 getregion(mrg::MultiRegionGrid, i)  = getregion(mrg.region_grids, i)
 Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
+const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
+
 function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
     if length(partition) == 1
@@ -69,6 +71,9 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size,
     return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, local_size, extent), boundary)
 end
 
+partition_immersed_boundary(b, args...) = getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
+
+grids(mrg::MultiRegionGrid) = mrg.region_grids
 getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
 
 const MRG = MultiRegionGrid
@@ -92,7 +97,21 @@ function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
     extent  = reconstruct_extent(mrg, mrg.partition)
     topo    = topology(mrg)
+    switch_device!(mrg.devices[1])
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
+end
+
+function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
+                                                     mrg.partition, 
+                                                     construct_regionally(getproperty, mrg, :grid), 
+                                                     mrg.devices)
+
+    global_grid     = reconstruct_global_grid(underlying_mrg)
+    local_boundary  = construct_regionally(getproperty, mrg, :immersed_boundary)
+    local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
+    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(global_grid)))
+    return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
 
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)

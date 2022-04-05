@@ -75,13 +75,13 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
                                             
     for (adv, scheme) in enumerate(advection) 
         if adv == 2
-            scheme = WENO5(grid = grid)
+            scheme = WENO5(grid)
         end
         if adv == 3
-            scheme = WENO5(grid = grid, stretched_smoothness = true)
+            scheme = WENO5(grid, stretched_smoothness = true)
         end
         if adv == 4
-            scheme = WENO5(grid = grid, stretched_smoothness = true, zweno = true)
+            scheme = WENO5(grid, stretched_smoothness = true, zweno = true)
         end
 
         model = HydrostaticFreeSurfaceModel(        grid = grid,
@@ -151,13 +151,13 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
     for (adv, scheme) in enumerate(advection) 
 
         if adv == 2
-            scheme = WENO5(grid = grid)
+            scheme = WENO5(grid)
         end
         if adv == 3
-            scheme = WENO5(grid = grid, stretched_smoothness = true)
+            scheme = WENO5(grid, stretched_smoothness = true)
         end
         if adv == 4
-            scheme = WENO5(grid = grid, stretched_smoothness = true, zweno = true)
+            scheme = WENO5(grid, stretched_smoothness = true, zweno = true)
         end
 
         model = HydrostaticFreeSurfaceModel(        grid = grid,

@@ -111,9 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-mrg  = MultiRegionGrid(grid, partition = XPartition(3)  , devices = (0, 1, 2))
-
-local_size = construct_regionally(size, mrg)
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(3), devices = (0, 1, 2))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(3), devices = (0, 1, 2))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -237,7 +236,7 @@ free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -246,7 +245,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(grid = underlying_grid))
+                                    tracer_advection = WENO5(underlying_mrg))
 
 #####
 ##### Initial condition:
