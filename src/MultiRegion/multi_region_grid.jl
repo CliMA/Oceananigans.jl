@@ -107,10 +107,10 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) w
                                                      construct_regionally(getproperty, mrg, :grid), 
                                                      mrg.devices)
 
-    global_grid     = reconstruct_global_grid(underlying_mrg)
+    global_grid     = on_architecture(CPU(), reconstruct_global_grid(underlying_mrg))
     local_boundary  = construct_regionally(getproperty, mrg, :immersed_boundary)
     local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
-    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(global_grid)))
+    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(mrg)))
     return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
 
@@ -122,9 +122,13 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     return ma
 end
 
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, on_architecture
 
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(with_halo, new_halo, mrg)
     return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
 end
+
+import Oceananigans.OutputWriters: serializeproperty!
+
+serializeproperty!(file, location, mrg::MultiRegionGrid) = file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
