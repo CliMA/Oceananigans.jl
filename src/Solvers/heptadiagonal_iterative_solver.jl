@@ -1,10 +1,12 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array
+using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
+
+import Oceananigans.Grids: architecture
 
 mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                        grid :: G
@@ -124,6 +126,8 @@ function HeptadiagonalIterativeSolver(coeffs;
                                  maximum_iterations)
 end
 
+architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
+
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
@@ -131,6 +135,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ay = arch_array(CPU(), Ay)
     Az = arch_array(CPU(), Az)
     C  = arch_array(CPU(), C)
+    D  = arch_array(arch,  D)
 
     N = size(grid)
 

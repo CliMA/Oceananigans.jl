@@ -52,7 +52,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
     solver = UnifiedDiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
                                             grid = grid, mrg = mrg, settings...) :
     solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                            grid = grid, settings...)
+                                            grid = on_architecture(arch, grid), settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
 end
@@ -97,7 +97,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     solver = implicit_free_surface_solver.unified_pcg_solver
     
-    switch_device!(CUDA.device(solver.matrix_implicit_solver.matrix))
+    switch_device!(getdevice(solver.matrix_constructors[1]))
     sol = solve!(η, solver, rhs, Δt)
 
     arch = architecture(solver)
