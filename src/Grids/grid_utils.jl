@@ -127,8 +127,11 @@ one dimension of `topo`logy with `N` centered cells and
 @inline total_length(::Type{Center},  ::Type{Flat},    N, H=0) = N
 
 # Grid domains
-@inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline function domain(topo, N, ξ)
+    left = CUDA.@allowscalar ξ[1]
+    right = CUDA.@allowscalar topo === Flat ? ξ[1] : ξ[N+1]
+    return left, right
+end
 
 @inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
