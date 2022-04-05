@@ -140,8 +140,8 @@ function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
     end
 
     # q = A*x
-    α = unified_mul_and_dot!(q, solver, p, ρ)
-    # α = ρ / dot(p, q)
+    unified_mul!(q, solver, p)
+    α = ρ / dot(p, q)
 
     x .+= α .* p
     r .-= α .* q
