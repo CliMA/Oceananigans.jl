@@ -66,15 +66,14 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)
 
-    solver = implicit_solver.unified_pcg_solver
     grid   = ∫ᶻQ.u.grid
     M      = length(grid.partition)
-    @apply_regionally compute_regional_rhs!(rhs, solver, solver.grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), solver.grid.partition)
+    @apply_regionally compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), grid.partition)
 
     return nothing
 end
 
-function compute_regional_rhs!(rhs, solver, grid, g, Δt, ∫ᶻQ, η, region, partition)
+function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
     arch = architecture(grid)
     event = launch!(arch, grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,

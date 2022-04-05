@@ -95,6 +95,13 @@ function reconstruct_global_grid(mrg)
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
 
+function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
+    local_size = construct_regionally(size, mrg)
+    arch = architecture(mrg)
+    ma = construct_regionally(partition_global_array, a, mrg.partition, mrg, local_size, Iterate(1:length(mrg)), arch)
+    return ma
+end
+
 import Oceananigans.Grids: with_halo
 
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}

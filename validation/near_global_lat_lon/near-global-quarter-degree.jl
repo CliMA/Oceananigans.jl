@@ -5,6 +5,8 @@ using Plots
 using Oceananigans
 using Oceananigans.Units
 
+using Oceananigans.MultiRegion
+using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
@@ -94,11 +96,6 @@ S★ = file_salt["field"]
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 bathymetry = arch_array(arch, bathymetry)
-τˣ = arch_array(arch, - τˣ)
-τʸ = arch_array(arch, - τʸ)
-
-target_sea_surface_temperature = T★ = arch_array(arch, T★)
-target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 
 # Stretched faces taken from ECCO Version 4 (50 levels in the vertical)
 z_faces = file_z_faces["z_faces"][3:end]
@@ -113,6 +110,16 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+
+mrg  = MultiRegionGrid(grid, partition = XPartition(3)  , devices = (0, 1, 2))
+
+local_size = construct_regionally(size, mrg)
+
+τˣ = multi_region_object_from_array(- τˣ, mrg)
+τʸ = multi_region_object_from_array(- τʸ, mrg)
+
+target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
+target_sea_surface_salinity    = S★ = multi_region_object_from_array(S★, mrg)
 
 #####
 ##### Physics and model setup
@@ -251,8 +258,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = file_init["T"]
-S_init = file_init["S"]
+T_init = multi_region_object_from_array(file_init["T"], mrg)
+S_init = multi_region_object_from_array(file_init["S"], mrg)
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
