@@ -155,6 +155,8 @@ function on_architecture(arch, ibg::ImmersedBoundaryGrid)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
 
+isrectilinear(ibg::ImmersedBoundaryGrid) = isrectilinear(ibg.grid)
+
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")

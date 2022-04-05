@@ -179,7 +179,7 @@ function iterate!(x, solver, b, args...)
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...) 
+    z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"

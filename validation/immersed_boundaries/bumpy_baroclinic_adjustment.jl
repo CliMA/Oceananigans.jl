@@ -13,25 +13,15 @@ grid = RectilinearGrid(CPU(),
                        z = (-4kilometers, 0),
                        halo = (3, 3, 3))
 
-const Lz = grid.Lz
-
-# Uncomment to put a bump in the grid:
-# This will slow down the simulation because we will use a
-# matrix-based Poisson solver instead of the FFT-based solver.
-
-const width = 50kilometers
-@inline bump(x, y) = - Lz * (1 - 0.5 * exp(-(x^2 + y^2) / 2width^2))
-
-bump_field = Field{Center, Center, Nothing}(grid)
-set!(bump_field, bump)
-
-#grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(interior(bump_field, :, :, 1)))
+Lz = grid.Lz
+width = 50kilometers
+bump(x, y) = - Lz * (1 - 0.5 * exp(-(x^2 + y^2) / 2width^2))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
 
 #free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
-fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid.grid)
-#free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
+free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
+#free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 #free_surface = ImplicitFreeSurface()
 #free_surface = ExplicitFreeSurface()
 

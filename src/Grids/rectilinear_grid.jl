@@ -444,3 +444,5 @@ end
 
 @inline min_number_or_array(var) = var
 @inline min_number_or_array(var::AbstractVector) = minimum(parent(var))
+
+isrectilinear(::RectilinearGrid) = true

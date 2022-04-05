@@ -1,8 +1,10 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
+using Oceananigans.Architectures: device
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
@@ -29,10 +31,11 @@ architecture(solver::PCGImplicitFreeSurfaceSolver) =
 """
     PCGImplicitFreeSurfaceSolver(grid, settings)
 
-Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
+Return a solver based on a preconditioned conjugate gradient method for
+the elliptic equation
     
 ```math
-[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt)
+[∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt)
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
@@ -53,10 +56,12 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
-    # Set preconditioner to default preconditioner if not specified
-    #preconditioner = get(settings, :preconditioner, DiagonallyDominantPreconditioner())
-    preconditioner = get(settings, :preconditioner, nothing)
-    settings[:preconditioner] = preconditioner
+    # Default is fft for rectilinear, nothing if not.
+    if isrectilinear(grid)
+        settings[:preconditioner] = get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid))
+    else
+        settings[:preconditioner] = get(settings, :preconditioner, nothing)
+    end
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver
     right_hand_side = Field{Center, Center, Nothing}(grid)
@@ -92,8 +97,7 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     return η
 end
 
-function compute_implicit_free_surface_right_hand_side!(rhs,
-                                                        implicit_solver::PCGImplicitFreeSurfaceSolver,
+function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
@@ -157,7 +161,7 @@ vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 Return the left side of the "implicit η equation"
 
 ```math
-(∇ʰ⋅H∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = 1 / (g Δt) ∇ʰ ⋅ Q★ - 1 / (g Δt²) ηⁿ
+(∇ʰ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = 1 / (g Δt) ∇ʰ ⋅ Q★ - 1 / (g Δt²) ηⁿ
 ----------------------
         ≡ L_ηⁿ⁺¹
 ```
@@ -166,7 +170,7 @@ which is derived from the discretely summed barotropic mass conservation equatio
 and arranged in a symmetric form by multiplying by horizontal areas Az:
 
 ```
-δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Az ηⁿ⁺¹ = 1 / (gΔt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1 / gΔt² Az ηⁿ
+δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - Az ηⁿ⁺¹ / (g Δt²) = 1 / (g Δt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - Az ηⁿ / (g Δt²) 
 ```
 
 where  ̂ indicates a vertical integral, and                   
@@ -182,11 +186,60 @@ end
 ##### Preconditioners
 #####
 
-@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-    solver = preconditioner.fft_based_poisson_solver
-    solver.storage .= interior(r, :, :, 1)
-    return solve!(P_r, preconditioner, solver.storage, g, Δt)
+"""
+add to the rhs - H⁻¹ ∇H ⋅ ∇ηⁿ to the rhs...
+"""
+@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    poisson_solver = preconditioner.fft_poisson_solver
+    arch = architecture(poisson_solver)
+    grid = preconditioner.three_dimensional_grid
+    Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # Assume horizontal regularity
+    Lz = grid.Lz 
+
+    # Compute RHS
+    #poisson_solver.storage .= interior(r, :, :, 1) ./ (Lz * Az)
+    
+    mask_immersed_reduced_field_xy!(r, k=size(grid, 3))
+    
+    event = launch!(arch, grid, :xy,
+                    fft_preconditioner_right_hand_side!,
+                    poisson_solver.storage, r, η, grid, Az, Lz,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
+
+@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, η, grid, Az, Lz)
+    i, j = @index(Global, NTuple)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, 1] / (Lz * Az)
+end
+
+# TODO: make it so adding this term:
+#
+#   - ∇H_∇η(i, j, 1, grid, η) / H
+#
+# speeds up the convergence.
+#=
+@inline ∇H_∇η(i, j, k, grid, η) = zero(eltype(grid)) # fallback
+@inline depth(i, j, k, grid) = grid.Lz
+
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+
+# Assumes surface is z=0:
+@inline depth(i, j, k, ibg::GFBIBG) = @inbounds max(zero(eltype(ibg)), min(ibg.Lz, -ibg.immersed_boundary.bottom[i, j]))
+@inline ∂x_H_∂x_η(i, j, k, ibg, η) = ∂xᶠᶜᶜ(i, j, k, ibg, depth) * ∂xᶠᶜᶜ(i, j, k, ibg, η)
+@inline ∂y_H_∂y_η(i, j, k, ibg, η) = ∂yᶜᶠᶜ(i, j, k, ibg, depth) * ∂yᶜᶠᶜ(i, j, k, ibg, η)
+@inline ∇H_∇η(i, j, k, ibg::GFBIBG, η) = ℑxᶜᵃᵃ(i, j, k, ibg, ∂x_H_∂x_η, η) + ℑyᵃᶜᵃ(i, j, k, ibg, ∂y_H_∂y_η, η)
+
+@inline function H⁻¹_∇H_∇η(i, j, k, ibg::GFBIBG, η)
+    H = depth(i, j, k, ibg)
+    return ifelse(H == 0, zero(eltype(ibg)), ∇H_∇η(i, j, k, ibg, η) / H)
+end
+
+# The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
+=#
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
