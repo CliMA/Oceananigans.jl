@@ -1,30 +1,20 @@
 push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
-using BenchmarkTools
-using CUDA
-using DataDeps
-using Oceananigans
 using Benchmarks
-using Statistics
+
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
-# Need a grid
 
-ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
+using BenchmarkTools
+using CUDA
+using Oceananigans
+using Statistics
 
-dd = DataDep("cubed_sphere_510_grid",
-    "Conformal cubed sphere grid with 510×510 grid points on each face",
-    "https://engaging-web.mit.edu/~alir/cubed_sphere_grids/cs510/cubed_sphere_510_grid.jld2"
-)
-
-DataDeps.register(dd)
-
-# Benchmark function
-
+# Problem size
 Nx = 256
 Ny = 128
 
-function set_simple_divergent_velocity!(model)
+function set_divergent_velocity!(model)
     # Create a divergent velocity
     grid = model.grid
 
@@ -52,17 +42,30 @@ grids = Dict(
 )
 
 # Cubed sphere cases maybe worth considering eventually
+#=
+using DataDeps
+
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
+
+dd = DataDep("cubed_sphere_510_grid",
+    "Conformal cubed sphere grid with 510×510 grid points on each face",
+    "https://engaging-web.mit.edu/~alir/cubed_sphere_grids/cs510/cubed_sphere_510_grid.jld2"
+)
+
+DataDeps.register(dd)
+
 # (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
 # (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
+=#
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
     :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    :PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing), 
+    #:PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing), 
     :MatrixImplicitFreeSurfaceOrd2 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver), 
-    :MatrixImplicitFreeSurfaceOrd1 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 1,) ), 
-    :MatrixImplicitFreeSurfaceOrd0 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 0,) ), 
-    :MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = nothing),
+    #:MatrixImplicitFreeSurfaceOrd1 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 1,) ), 
+    #:MatrixImplicitFreeSurfaceOrd0 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 0,) ), 
+    #:MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = nothing),
     :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = :SparseInverse)
 )
 
@@ -70,14 +73,12 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
 
     grid = grids[(Arch, grid_type)]
 
-    model = HydrostaticFreeSurfaceModel(
-                      grid = grid,
-        momentum_advection = VectorInvariant(),
-              free_surface = free_surfaces[free_surface_type]
-    )
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                        momentum_advection = VectorInvariant(),
+                                        free_surface = free_surfaces[free_surface_type])
 
-    set_simple_divergent_velocity!(model)
-    Δt = accurate_cell_advection_timescale(grid, model.velocities) * 2
+    set_divergent_velocity!(model)
+    Δt = accurate_cell_advection_timescale(grid, model.velocities) / 2
     time_step!(model, Δt) # warmup
     
     trial = @benchmark begin
@@ -89,7 +90,8 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [GPU] : [CPU]
+#architectures = has_cuda() ? [GPU] : [CPU]
+architectures = [CPU]
 
 grid_types = [
     :RectilinearGrid,
@@ -99,20 +101,11 @@ grid_types = [
     # :ConformalCubedSphereGrid
 ]
 
-free_surface_types = [
-    :MatrixImplicitFreeSurfaceOrd0,
-    :MatrixImplicitFreeSurfaceOrd1,
-    :MatrixImplicitFreeSurfaceOrd2,
-    :ExplicitFreeSurface,
-    :MatrixImplicitFreeSurfaceNoPreconditioner,
-    :MatrixImplicitFreeSurfaceSparsePreconditioner,
-    :PCGImplicitFreeSurface,
-    :PCGImplicitFreeSurfaceNoPreconditioner
-]
-
+free_surface_types = collect(keys(free_surfaces))
+    
 # Run and summarize benchmarks
 print_system_info()
-suite = run_benchmarks(benchmark_hydrostatic_model; Architectures, grid_types, free_surface_types)
+suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, free_surface_types)
 
 df = benchmarks_dataframe(suite)
 benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
