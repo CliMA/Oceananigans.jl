@@ -140,9 +140,8 @@ function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
     end
 
     # q = A*x
-    unified_mul!(q, solver, p)
-
-    α = ρ / dot(p, q)
+    α = unified_mul_and_dot!(q, solver, p, ρ)
+    # α = ρ / dot(p, q)
 
     x .+= α .* p
     r .-= α .* q
@@ -158,6 +157,17 @@ end
         @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
     end
     sync_all_devices!(solver.grid.devices)
+end 
+
+@inline function unified_mul_and_dot!(q, solver, x, ρ)
+    α = 0
+    for (idx, dev) in enumerate(solver.grid.devices)
+        switch_device!(dev)
+        @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
+        α += dot(q[solver.n*(idx-1)+1:solver.n*idx], p[solver.n*(idx-1)+1:solver.n*idx]) 
+    end
+    sync_all_devices!(solver.grid.devices)
+    return ρ / α
 end 
 
 @inline prefetch!(array, bytes, dev::CuDevice) = Mem.prefetch(array.storage.buffer, bytes; device = dev)
