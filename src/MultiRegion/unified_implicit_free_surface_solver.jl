@@ -25,7 +25,7 @@ end
 architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
-function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_acceleration::Number, settings)
+function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_acceleration::Number, settings; multiple_devices = false)
     
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
@@ -48,10 +48,12 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
+    multiple_devices ?
     solver = UnifiedDiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                            grid = grid, mrg = mrg, settings...)
+                                            grid = grid, mrg = mrg, settings...) :
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
+                                            grid = grid, settings...)
 
-                        
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
 end
 
@@ -95,16 +97,13 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     solver = implicit_free_surface_solver.unified_pcg_solver
     
-    if Δt != solver.previous_Δt
-        update_solver!(solver, Δt)
-    end    
-
-    solve!(η, solver, rhs, Δt)
+    switch_device!(CUDA.device(solver.matrix_implicit_solver.matrix))
+    sol = solve!(η, solver, rhs, Δt)
 
     arch = architecture(solver)
     grid = solver.grid
     
-    @apply_regionally redistribute_lhs!(η, solver.solution, arch, grid, Iterate(1:length(grid)), grid.partition)
+    @apply_regionally redistribute_lhs!(η, sol, arch, grid, Iterate(1:length(grid)), grid.partition)
     
     fill_halo_regions!(η)
 

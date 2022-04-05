@@ -71,7 +71,10 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitati
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
 
     solver = implicit_free_surface_solver.matrix_iterative_solver
-    solve!(η, solver, rhs, Δt)
+    sol = solve!(η, solver, rhs, Δt)
+        
+    set!(η, reshape(sol, solver.problem_size...))
+    fill_halo_regions!(η) 
 
     return nothing
 end
