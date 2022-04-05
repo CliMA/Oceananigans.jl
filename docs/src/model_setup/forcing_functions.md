@@ -348,6 +348,7 @@ model = NonhydrostaticModel(; grid, tracers=(:b, :P), forcing=(; P=sinking))
 simulation = Simulation(model; Δt=1, stop_iteration=100)
 
 # Build abstract operation for slip velocity
+b_particle = - 1e-4 # relative buoyancy depends on reference density and initial buoyancy condition
 b = model.tracers.b
 R = 1e-3 # mean particle radius
 ν = 1.05e-6 # molecular kinematic viscosity of water
