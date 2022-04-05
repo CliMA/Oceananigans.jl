@@ -73,7 +73,6 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
-
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
     H = halo_size(grid)[1]
@@ -189,7 +188,19 @@ end
 
 #     return nothing
 # end
-  
+
+@inline @inbounds getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+
+@inline @inbounds getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
+    ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+                                           getregion(cf.parameters, i),
+                                           cf.field_dependencies,
+                                           cf.field_dependencies_indices,
+                                           cf.field_dependencies_interp)
+
+@inline @inbounds getregion(df::ContinuousBoundaryFunction, i) =
+    DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
+
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 
 validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing 
