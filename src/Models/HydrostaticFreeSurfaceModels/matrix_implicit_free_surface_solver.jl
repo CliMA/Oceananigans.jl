@@ -30,14 +30,14 @@ Return a the framework for solving the elliptic equation with one of the iterati
 with a sparse matrix formulation.
     
 ```math
-[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt) 
+[∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt) 
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration, settings)
+function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
     
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
@@ -56,15 +56,13 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
     settings[:maximum_iterations] = maximum_iterations
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-
-    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                          grid = grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitational_acceleration, settings) =
-    MatrixImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
+    MatrixImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 
 #####
 ##### Solve...

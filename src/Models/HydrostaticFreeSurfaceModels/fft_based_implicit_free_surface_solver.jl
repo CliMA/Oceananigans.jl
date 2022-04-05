@@ -16,19 +16,19 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
-    FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, settings)
+    FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acceleration=nothing)
 
 Return a solver based on the fast Fourier transform for the elliptic equation
     
 ```math
-[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt) ,
+[∇² - 1 / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g H Δt) - H⁻¹ ∇H ⋅ ∇ηⁿ
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n`, `ηⁿ`.
 """
-function FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, settings)
+function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acceleration=nothing)
 
     grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
@@ -37,9 +37,7 @@ function FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, 
     TX, TY, TZ = topology(grid)
     sz = Nx, Ny = (grid.Nx, grid.Ny)
     halo = (grid.Hx, grid.Hy)
-
-    domain = (x = x_domain(grid),
-              y = y_domain(grid))
+    domain = (x = x_domain(grid), y = y_domain(grid))
 
     # Reduce kwargs.
     # Either [1, 2], [1], or [2]
@@ -65,8 +63,8 @@ function FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, 
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FastFourierTransform}, grid, gravitational_acceleration, settings) =
-    FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, grid, settings, gravitational_acceleration) =
+    FFTImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 
 #####
 ##### Solve...
@@ -82,7 +80,7 @@ function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, 
     # solve! is blocking:
     solve!(η, solver, rhs, m)
 
-    return nothing
+    return η
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs,

@@ -103,15 +103,6 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, 
     end
 end
 
-function ImmersedBoundaryGrid(grid, ib)
-    @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-          "Help validate ImmersedBoundaryGrid by reporting any bugs " *
-          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues."
-    
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
-end
-
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))

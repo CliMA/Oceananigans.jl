@@ -4,7 +4,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo
 using Oceananigans.Fields: Field, ZReducedField
 
-import Oceananigans.Solvers: solve!
+import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
@@ -32,14 +32,14 @@ architecture(solver::PCGImplicitFreeSurfaceSolver) =
 Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
     
 ```math
-[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt) 
+[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt)
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration::Number, settings)
+function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
     ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
@@ -56,8 +56,9 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accelera
     settings[:maximum_iterations] = maximum_iterations
 
     # Set preconditioner to default preconditioner if not specified
-    preconditioner = get(settings, :preconditioner_method, implicit_free_surface_precondition!)
-    settings[:preconditioner_method] = preconditioner
+    #preconditioner = get(settings, :preconditioner, DiagonallyDominantPreconditioner())
+    preconditioner = get(settings, :preconditioner, nothing)
+    settings[:preconditioner] = preconditioner
 
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
                                                    template_field = right_hand_side,
@@ -66,8 +67,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accelera
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, gravitational_acceleration, settings) =
-    PCGImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settings, gravitational_acceleration) =
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
 
 #####
 ##### Solve...
@@ -87,7 +88,7 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
 
-    return nothing
+    return η
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs,
@@ -126,7 +127,6 @@ in an implicit time step for the free surface displacement `η`.
 function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
-
     fill_halo_regions!(ηⁿ⁺¹)
 
     event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
@@ -134,8 +134,6 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
-
-    fill_halo_regions!(L_ηⁿ⁺¹)
 
     return nothing
 end
@@ -158,7 +156,7 @@ vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 Return the left side of the "implicit η equation"
 
 ```math
-(∇ʰ⋅H∇ʰ - 1/gΔt²) ηⁿ⁺¹ = 1 / (gΔt) ∇ʰ ⋅ Q★ - 1 / (gΔt²) ηⁿ
+(∇ʰ⋅H∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = 1 / (g Δt) ∇ʰ ⋅ Q★ - 1 / (g Δt²) ηⁿ
 ----------------------
         ≡ L_ηⁿ⁺¹
 ```
@@ -179,8 +177,24 @@ where  ̂ indicates a vertical integral, and
     @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᶜ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, 1] / (g * Δt^2)
 end
 
+#####
+##### Preconditioners
+#####
+
+@inline precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
+    solve!(P_r, preconditioner, r, g, Δt)
+
+#####
+##### "Asymptotically diagonally-dominant" preconditioner
+#####
+
+struct DiagonallyDominantInversePreconditioner end
+
+@inline precondition!(P_r, ::DiagonallyDominantInversePreconditioner, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
+    diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+
 """
-    _implicit_free_surface_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 Return the diagonally dominant inverse preconditioner applied to the residuals consistently with
  `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` where `I` is the Identity matrix, D is the matrix
@@ -197,19 +211,17 @@ P_rᵢⱼ = rᵢⱼ / Acᵢⱼ - 1 / Acᵢⱼ ( Ax⁻ / Acᵢ₋₁ rᵢ₋₁�
 where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of 
 `ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁` and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
 """
-function implicit_free_surface_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+function diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_r)
 
     fill_halo_regions!(r)
 
-    event = launch!(arch, grid, :xy, _implicit_free_surface_precondition!,
+    event = launch!(arch, grid, :xy, _diagonally_dominant_precondition!,
                     P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
-
-    fill_halo_regions!(P_r)
 
     return nothing
 end
@@ -232,7 +244,7 @@ end
                             Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, 1] - 
                             Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, 1] ) 
 
-@kernel function _implicit_free_surface_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+@kernel function _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
     @inbounds P_r[i, j, 1] = heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
 end
