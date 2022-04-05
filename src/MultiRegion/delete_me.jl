@@ -12,7 +12,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels:
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 
-const MultiRegionModel      = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
+const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Bottleneck is getregion!!! (there are type issues with FieldBoundaryConditions and with propertynames)
 @inline @inbounds getregion(mr::AbstractModel, i)            = getname(mr)(Tuple(getregion(getproperty(mr, propertynames(mr)[idx]), i) for idx in 1:length(propertynames(mr)))...)

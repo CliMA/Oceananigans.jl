@@ -1,5 +1,6 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: CBC, PBC
+using Oceananigans.Fields: extract_field_data
 
 struct XPartition{N} <: AbstractPartition
     div :: N
@@ -111,8 +112,23 @@ end
 partition_immersed_boundary(b, args...) = getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
 partition_global_array(a::Function, args...) = a
+
 function partition_global_array(a::AbstractArray, ::EqualXPartition, global_size, local_size, region, arch) 
     idxs = default_indices(length(local_size)-1)
     return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs...])
 end
 
+function compact_data!(global_field, global_grid, data::MultiRegionObject, p::EqualXPartition)
+    Nx, Ny, Nz = size(global_grid)
+    n = Nx / length(p)
+    for r = 1:length(p)
+        init = Int(n * (r - 1) + 1)
+        fin  = Int(n * r)
+        global_field.data[init:fin, 1:Ny, 1:Nz] .= data[r]
+    end
+end
+
+@inline function displaced_xy_index(i, j, grid, region, p::EqualXPartition)
+    i′ = i + grid.Nx * (region - 1) 
+    return i′ + (j - 1) * grid.Nx * length(p)
+end

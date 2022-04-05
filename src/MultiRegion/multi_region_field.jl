@@ -13,6 +13,9 @@ import Oceananigans.BoundaryConditions:
                 FieldBoundaryConditions, 
                 regularize_field_boundary_conditions
 
+import Oceananigans.OutputWriters: 
+                fetch_output
+
 import Oceananigans.Grids: new_data
 import Base: fill!
 
@@ -24,6 +27,8 @@ const MultiRegionFunctionField{LX, LY, LZ, C, P, F, G} = FunctionField{LX, LY, L
 const MultiRegionFields = Union{MultiRegionField, MultiRegionFunctionField}
 const MultiRegionFieldsTuple{N, T} = NTuple{N, T} where {N, T<:MultiRegionFields}
 const MultiRegionFieldsNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:MultiRegionFieldsTuple}
+
+Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
 
 isregional(f::MultiRegionFields) = true
 
@@ -48,6 +53,17 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
         getregion(f.operand, i),
         getregion(f.status, i),
         getregion(f.boundary_buffers, i))
+
+function reconstruct_global_field(mrf::MultiRegionField)
+  global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
+  global_field = Field(location(mrf), global_grid)
+
+  data = construct_regionally(interior, mrf)
+  data = construct_regionally(Array, data)
+  compact_data!(global_field, global_grid, data, mrf.grid.partition)
+  
+  return global_field
+end
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 
@@ -95,7 +111,11 @@ function inject_regional_bcs(grid, region, partition, loc, args...;
   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
+function fetch_output(mrf::MultiRegionField, model)
+  field = reconstruct_global_field(mrf)
+  compute_at!(field, time(model))
+  return parent(field)
+end
 
 function Base.show(io::IO, field::MultiRegionField)
 

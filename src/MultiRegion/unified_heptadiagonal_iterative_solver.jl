@@ -11,6 +11,7 @@ using Oceananigans.Solvers:
                 iterating,
                 update_diag!
 
+import Oceananigans.Grids: architecture
 import Oceananigans.Solvers: solve!, iterate!
 
 ##########
@@ -87,6 +88,8 @@ function UnifiedDiagonalIterativeSolver(coeffs;
                                           n)
 end
 
+architecture(solver::UnifiedDiagonalIterativeSolver) = architecture(solver.grid)
+
 @inline function update_solver!(solver, Δt)
     arch = architecture(solver.grid)
     for (idx, dev) in enumerate(solver.grid.devices)
@@ -99,16 +102,11 @@ end
     solver.previous_Δt = Δt
 end
 
-function solve!(solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
+function solve!(x, solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
     
     # arch = architecture(solver.grid)
     # prefetch_solver!(solver, arch)
     
-    # update matrix and preconditioner if time step changes
-    if Δt != solver.previous_Δt
-        update_solver!(solver, Δt)
-    end    
-
     # Initialize
     solver.iteration = 0
 
@@ -123,7 +121,7 @@ function solve!(solver::UnifiedDiagonalIterativeSolver, b, Δt, args...)
         iterate!(solver.solution, solver, args...)
     end
 
-    return nothing
+    return solver.solution
 end
 
 function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
@@ -151,17 +149,13 @@ function iterate!(x, solver::UnifiedDiagonalIterativeSolver, args...)
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ
-    @show solver.iteration, solver.ρⁱ⁻¹
     return
 end
 
 @inline function unified_mul!(q, solver, x)
-    # bytes = sizeof(eltype(solver.grid)) * prod(solver.problem_size)
     for (idx, dev) in enumerate(solver.grid.devices)
         switch_device!(dev)
-        # prefetch!(x, bytes, dev)
-        # prefetch!(q, bytes, dev)
-        @views q[solver.n*(idx-1)+1:solver.n*idx] = solver.matrix[idx] * x
+        @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
     end
     sync_all_devices!(solver.grid.devices)
 end 

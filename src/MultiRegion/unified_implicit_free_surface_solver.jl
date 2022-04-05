@@ -6,7 +6,8 @@ using Oceananigans.Fields: Field
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
              compute_vertically_integrated_lateral_areas!,
-             compute_matrix_coefficients
+             compute_matrix_coefficients,
+             flux_div_xyᶜᶜᶜ
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
              build_implicit_step_solver,
@@ -64,19 +65,17 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::Un
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.unified_pcg_solver
-    M = length(grid.partition)
-    @apply_regionally compute_regional_rhs!(rhs, solver, g, Δt, ∫ᶻQ, η, Iterate(1:M))
+    M = length(solver.grid.partition)
+    @apply_regionally compute_regional_rhs!(rhs, solver, solver.grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), solver.grid.partition)
 
     return nothing
 end
 
-function compute_regional_rhs!(rhs, solver, g, Δt, ∫ᶻQ, η, region)
-    
-    arch = architecture(solver)
-    grid = solver.grid
+function compute_regional_rhs!(rhs, solver, grid, g, Δt, ∫ᶻQ, η, region, partition)
+    arch = architecture(grid)
     event = launch!(arch, grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η, region * (solver.n-1),
+                    rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
 		            dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -84,40 +83,45 @@ function compute_regional_rhs!(rhs, solver, g, Δt, ∫ᶻQ, η, region)
 end
 
 # linearized right hand side
-@kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, displacement)
+@kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
     i, j = @index(Global, NTuple)
     Az   = Azᶜᶜᶜ(i, j, 1, grid)
     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    t = i + grid.Nx * (j - 1) + displacement
+    t = displaced_xy_index(i, j, grid, region, partition)
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 
 function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolver, rhs, g, Δt)
 
-    solver = implicit_free_surface_solver.matrix_iterative_solver
-    solve!(solver, rhs, Δt)
+    solver = implicit_free_surface_solver.unified_pcg_solver
+    
+    if Δt != solver.previous_Δt
+        update_solver!(solver, Δt)
+    end    
+
+    solve!(η, solver, rhs, Δt)
 
     arch = architecture(solver)
     grid = solver.grid
     
-    @apply_regionally redistribute_lhs!(η, solver.solution, arch, grid, solver.n, Iterate(1:length(solver.grid)))
+    @apply_regionally redistribute_lhs!(η, solver.solution, arch, grid, Iterate(1:length(grid)), grid.partition)
     
     fill_halo_regions!(η)
 
     return nothing
 end
 
-function redistribute_lhs!(η, sol, arch, grid, n, region)
+function redistribute_lhs!(η, sol, arch, grid, region, partition)
 
-    event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region * (n-1), grid,
+    event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
 		            dependencies = device_event(arch))
 
     wait(device(arch), event)
 end
 
 # linearized right hand side
-@kernel function _redistribute_lhs!(η, sol, displacement, grid)
+@kernel function _redistribute_lhs!(η, sol, region, grid, partition)
     i, j = @index(Global, NTuple)
-    t = i + grid.Nx * (j - 1) + displacement
+    t = displaced_xy_index(i, j, grid, region, partition)
     @inbounds η[i, j, 1] = sol[t]
 end
