@@ -48,8 +48,6 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    right_hand_side = Field{Center, Center, Nothing}(grid)
-
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
@@ -59,6 +57,9 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     #preconditioner = get(settings, :preconditioner, DiagonallyDominantPreconditioner())
     preconditioner = get(settings, :preconditioner, nothing)
     settings[:preconditioner] = preconditioner
+
+    # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver
+    right_hand_side = Field{Center, Center, Nothing}(grid)
 
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
                                                    template_field = right_hand_side,
@@ -181,8 +182,11 @@ end
 ##### Preconditioners
 #####
 
-@inline precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
-    solve!(P_r, preconditioner, r, g, Δt)
+@inline function precondition!(P_r, preconditioner::FFTImplicitFreeSurfaceSolver, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    solver = preconditioner.fft_based_poisson_solver
+    solver.storage .= interior(r, :, :, 1)
+    return solve!(P_r, preconditioner, solver.storage, g, Δt)
+end
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner

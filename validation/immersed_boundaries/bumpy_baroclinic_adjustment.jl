@@ -28,10 +28,10 @@ set!(bump_field, bump)
 #grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(interior(bump_field, :, :, 1)))
 
-fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid.grid)
-#free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 #free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
-free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
+fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid.grid)
+#free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 #free_surface = ImplicitFreeSurface()
 #free_surface = ExplicitFreeSurface()
 
@@ -76,7 +76,9 @@ simulation = Simulation(model; Δt, stop_time=60days)
 
 for i = 1:10
     @time [time_step!(simulation) for j = 1:10]
-    @show simulation.model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.iteration
+    try
+        @show simulation.model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.iteration
+    catch; end
 end
 
 #wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=simulation.Δt)
