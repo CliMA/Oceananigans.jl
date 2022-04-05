@@ -114,7 +114,7 @@ end
 function advective_and_multiple_forcing(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
 
-    constant_slip = AdvectiveForcing(CenteredSecondOrder(), u=1)
+    constant_slip = AdvectiveForcing(UpwindBiasedFifthOrder(), w=1)
 
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
