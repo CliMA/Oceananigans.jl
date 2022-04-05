@@ -20,8 +20,8 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY
                 indices :: I
                   times :: χ
 
-    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ,
-                                            indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
+    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B,
+                                            times::χ, indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data) 
         return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, indices, times)
     end
@@ -104,13 +104,26 @@ function FieldTimeSeries(path, name, backend::InMemory;
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (location   = file["timeseries/$name/serialized/location"])
-    isnothing(grid)         && (grid       = file["serialized/grid"])
+
+    # These lines ensure that Oceananigans files generated prior to vXXX can still
+    # be loaded
+    try # to deserialize the grid
+        if isnothing(grid)
+            grid = file["serialized/grid"]
+        end
+    catch err # probably won't work if the grid was on GPU
+    end
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
     end
 
-    indices = file["timeseries/$name/serialized/indices"]
+    indices = try
+        file["timeseries/$name/serialized/indices"]
+    catch
+        (:, :, :)
+    end
+
     close(file)
 
     # Default to CPU if neither architecture nor grid is specified
