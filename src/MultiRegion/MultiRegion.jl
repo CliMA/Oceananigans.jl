@@ -42,6 +42,6 @@ include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
 include("unified_heptadiagonal_iterative_solver.jl")
 include("unified_implicit_free_surface_solver.jl")
-include("delete_me.jl")
+include("multi_region_models.jl")
 
 end #module

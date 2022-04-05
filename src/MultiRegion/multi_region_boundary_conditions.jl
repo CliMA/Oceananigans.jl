@@ -2,7 +2,12 @@ using Oceananigans.Architectures: arch_array, device_event
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 
-using Oceananigans.BoundaryConditions: CBCT, CBC
+using Oceananigans.BoundaryConditions: 
+            ContinuousBoundaryFunction, 
+            DiscreteBoundaryFunction, 
+            CBCT, 
+            CBC
+
 import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
 
 import Oceananigans.BoundaryConditions: 
@@ -189,6 +194,15 @@ end
 #     return nothing
 # end
 
+@inline @inbounds getregion(fc::FieldBoundaryConditions, i) = 
+        FieldBoundaryConditions(getregion(fc.west, i), 
+                                getregion(fc.east, i), 
+                                getregion(fc.south, i), 
+                                getregion(fc.north, i), 
+                                getregion(fc.bottom, i),
+                                getregion(fc.top, i),
+                                fc.immersed)
+
 @inline @inbounds getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline @inbounds getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
@@ -198,7 +212,7 @@ end
                                            cf.field_dependencies_indices,
                                            cf.field_dependencies_interp)
 
-@inline @inbounds getregion(df::ContinuousBoundaryFunction, i) =
+@inline @inbounds getregion(df::DiscreteBoundaryFunction, i) =
     DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC

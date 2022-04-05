@@ -67,7 +67,8 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::Un
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.unified_pcg_solver
-    M = length(solver.grid.partition)
+    grid   = ∫ᶻQ.u.grid
+    M      = length(grid.partition)
     @apply_regionally compute_regional_rhs!(rhs, solver, solver.grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), solver.grid.partition)
 
     return nothing
@@ -101,7 +102,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     sol = solve!(η, solver, rhs, Δt)
 
     arch = architecture(solver)
-    grid = solver.grid
+    grid = η.grid
     
     @apply_regionally redistribute_lhs!(η, sol, arch, grid, Iterate(1:length(grid)), grid.partition)
     

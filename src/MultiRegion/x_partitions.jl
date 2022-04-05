@@ -113,7 +113,7 @@ partition_immersed_boundary(b, args...) = getname(b)(partition_global_array(getp
 
 partition_global_array(a::Function, args...) = a
 
-function partition_global_array(a::AbstractArray, ::EqualXPartition, global_size, local_size, region, arch) 
+function partition_global_array(a::AbstractArray, ::EqualXPartition, grid, local_size, region, arch) 
     idxs = default_indices(length(local_size)-1)
     return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs...])
 end
