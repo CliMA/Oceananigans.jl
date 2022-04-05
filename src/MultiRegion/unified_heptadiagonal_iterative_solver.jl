@@ -160,14 +160,14 @@ end
 end 
 
 @inline function unified_mul_and_dot!(q, solver, x, ρ)
-    α = 0
+    α = []
     for (idx, dev) in enumerate(solver.grid.devices)
         switch_device!(dev)
         @views q[solver.n*(idx-1)+1:solver.n*idx] .= solver.matrix[idx] * x
-        α += dot(q[solver.n*(idx-1)+1:solver.n*idx], p[solver.n*(idx-1)+1:solver.n*idx]) 
+        push!(α, dot(q[solver.n*(idx-1)+1:solver.n*idx], p[solver.n*(idx-1)+1:solver.n*idx])) 
     end
     sync_all_devices!(solver.grid.devices)
-    return ρ / α
+    return ρ / sum(α)
 end 
 
 @inline prefetch!(array, bytes, dev::CuDevice) = Mem.prefetch(array.storage.buffer, bytes; device = dev)
