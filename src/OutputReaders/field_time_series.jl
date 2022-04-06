@@ -105,15 +105,6 @@ function FieldTimeSeries(path, name, backend::InMemory;
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (location   = file["timeseries/$name/serialized/location"])
 
-    # These lines ensure that Oceananigans files generated prior to vXXX can still
-    # be loaded
-    try # to deserialize the grid
-        if isnothing(grid)
-            grid = file["serialized/grid"]
-        end
-    catch err # probably won't work if the grid was on GPU
-    end
-
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
     end
@@ -124,14 +115,42 @@ function FieldTimeSeries(path, name, backend::InMemory;
         (:, :, :)
     end
 
-    close(file)
+    isnothing(grid) && (grid = file["serialized/grid"])
 
     # Default to CPU if neither architecture nor grid is specified
-    architecture = isnothing(architecture) ?
-        (isnothing(grid) ? CPU() : Architectures.architecture(grid)) :
-        architecture
+    architecture = isnothing(architecture) ? (isnothing(grid) ? CPU() : Architectures.architecture(grid)) : architecture
 
-    grid = on_architecture(architecture, grid)
+    # This should be removed in a month or two (4/5/2022).
+    grid = try
+        on_architecture(architecture, grid)
+    catch err # Likely, the grid has CuArrays in it...
+        if grid isa RectilinearGrid # we can try...
+            Nx = file["grid/Nx"]
+            Ny = file["grid/Ny"]
+            Nz = file["grid/Nz"]
+            Hx = file["grid/Hx"]
+            Hy = file["grid/Hy"]
+            Hz = file["grid/Hz"]
+            xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+            yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+            zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+            x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+            y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+            z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+            topo = topology(grid)
+
+            # Reduce for Flat dimensions
+            domain = NamedTuple((:x, :y, :z)[i] => (x, y, z)[i] for i=1:3 if topo[i] !== Flat)
+            size = Tuple((Nx, Ny, Nz)[i] for i=1:3 if topo[i] !== Flat)
+            halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
+
+            RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+        else
+            throw(err)
+        end
+    end
+
+    close(file)
 
     LX, LY, LZ = location
     time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices, boundary_conditions)
