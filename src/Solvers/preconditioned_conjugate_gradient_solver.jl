@@ -88,14 +88,16 @@ function PreconditionedConjugateGradientSolver(linear_operation;
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)
 
+    FT = eltype(grid)
+
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
                                                  linear_operation,
-                                                 reltol,
-                                                 abstol,
+                                                 FT(reltol),
+                                                 FT(abstol),
                                                  maxiter,
                                                  0,
-                                                 0.0,
+                                                 zero(FT),
                                                  linear_operator_product,
                                                  search_direction,
                                                  residual,
