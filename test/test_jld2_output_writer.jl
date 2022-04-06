@@ -22,7 +22,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                          with_halos = false,
                          dir = ".",
                          prefix = "test",
-                         force = true)
+                         overwrite_existing = true)
 
     run!(simulation)
 
@@ -57,7 +57,7 @@ function test_jld2_file_splitting(arch)
                           array_type = Array{Float64},
                           with_halos = true,
                           max_filesize = 200KiB,
-                          force = true)
+                          overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -110,7 +110,7 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
                                                           schedule = AveragedTimeInterval(4Δt, window=2Δt),
                                                           dir = ".",
                                                           prefix = "jld2_time_averaging_test",
-                                                          force = true)
+                                                          overwrite_existing = true)
 
     run!(simulation)
 
@@ -156,7 +156,7 @@ for arch in archs
                                                                   prefix = "vanilla_jld2_test",
                                                                   indices = (:, :, :),
                                                                   with_halos = false,
-                                                                  force = true)
+                                                                  overwrite_existing = true)
 
         simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
                                                               schedule = TimeInterval(1),
@@ -164,7 +164,7 @@ for arch in archs
                                                               with_halos = false,
                                                               dir = ".",
                                                               prefix = "sliced_jld2_test",
-                                                              force = true)
+                                                              overwrite_existing = true)
 
         u, v, w = model.velocities
 
@@ -176,7 +176,7 @@ for arch in archs
                                                                     with_halos = false,
                                                                     dir = ".",
                                                                     prefix = "sliced_funcs_jld2_test",
-                                                                    force = true)
+                                                                    overwrite_existing = true)
 
         u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
         v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]

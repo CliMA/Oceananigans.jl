@@ -464,7 +464,7 @@ function test_netcdf_function_output(arch)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; filepath=nc_filepath, mode="a",
+        NetCDFOutputWriter(model, outputs; filepath=nc_filepath, overwrite_existing=false,
                            schedule=IterationInterval(1), array_type=Array{Float64}, dimensions=dims, verbose=true,
                            global_attributes=global_attributes, output_attributes=output_attributes)
 

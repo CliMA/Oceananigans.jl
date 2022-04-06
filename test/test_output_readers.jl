@@ -37,7 +37,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          prefix = "test_3d_output_with_halos",
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     simulation.output_writers[:jld2_2d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
@@ -45,7 +45,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          indices = (:, :, grid.Nz),
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
@@ -54,7 +54,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          prefix = "test_1d_output_with_halos",
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     run!(simulation)
 

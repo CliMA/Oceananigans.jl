@@ -68,7 +68,7 @@ function test_dependency_adding(model)
     dimensions = Dict("time_average" => ("xF", "yC", "zC"))
 
     # JLD2 dependencies test
-    jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", prefix="test", force=true)
+    jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", prefix="test", overwrite_existing=true)
 
     windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
@@ -103,7 +103,7 @@ function test_windowed_time_averaging_simulation(model)
     jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
                                           prefix = jld_filename1,
-                                          force = true)
+                                          overwrite_existing = true)
 
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
@@ -157,8 +157,8 @@ function test_windowed_time_averaging_simulation(model)
 
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
                                                         schedule = AveragedTimeInterval(π, window=π),
-                                                          prefix = jld_filename2,
-                                                           force = true)
+                                                        prefix = jld_filename2,
+                                                        overwrite_existing = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))

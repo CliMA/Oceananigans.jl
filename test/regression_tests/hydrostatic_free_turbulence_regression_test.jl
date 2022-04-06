@@ -78,7 +78,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                                               dir = directory,
                                                          schedule = IterationInterval(stop_iteration),
                                                            prefix = output_prefix,
-                                                            force = true)
+                                                            overwrite_existing = true)
     end
    
 
