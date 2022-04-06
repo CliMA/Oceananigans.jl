@@ -37,7 +37,7 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
+function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
@@ -69,11 +69,8 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 #####
 
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
-
     solver = implicit_free_surface_solver.matrix_iterative_solver
-
     solve!(η, solver, rhs, Δt)
-
     return nothing
 end
 
