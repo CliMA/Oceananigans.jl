@@ -81,20 +81,16 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settin
 #####
 
 function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
-    #=
-    # Somehow take an explicit step first to produce an improved initial guess
-    # for η for the iterative solver.
-    event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-    wait(device(model.architecture), event)
-    =#
+    # Take explicit step first? We haven't found improvement from this yet, but perhaps it will
+    # help eventually.
+    #event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+    #wait(device(model.architecture), event)
 
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
 
     # solve!(x, solver, b, args...) solves A*x = b for x.
-    solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
-
-    return η
+    return solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
@@ -193,14 +189,9 @@ add to the rhs - H⁻¹ ∇H ⋅ ∇ηⁿ to the rhs...
     poisson_solver = preconditioner.fft_poisson_solver
     arch = architecture(poisson_solver)
     grid = preconditioner.three_dimensional_grid
-    Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # Assume horizontal regularity
+    Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # assume horizontal regularity
     Lz = grid.Lz 
 
-    # Compute RHS
-    #poisson_solver.storage .= interior(r, :, :, 1) ./ (Lz * Az)
-    
-    mask_immersed_reduced_field_xy!(r, k=size(grid, 3))
-    
     event = launch!(arch, grid, :xy,
                     fft_preconditioner_right_hand_side!,
                     poisson_solver.storage, r, η, grid, Az, Lz,
