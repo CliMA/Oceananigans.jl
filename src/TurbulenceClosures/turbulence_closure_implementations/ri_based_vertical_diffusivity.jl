@@ -13,6 +13,9 @@ struct RiBasedVerticalDiffusivity{TD, FT, LZ} <: AbstractScalarDiffusivity{TD, V
     coefficient_z_location :: LZ
 end
 
+RiBasedVerticalDiffusivity{TD}(ν₀::FT, Ri₀ν::FT, Riᵟν::FT, κ₀::FT, Ri₀κ::FT, Riᵟκ::FT, coefficient_z_location::LZ) where {TD, FT, LZ} =
+    RiBasedVerticalDiffusivity{TD, FT, LZ}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ, coefficient_z_location)
+
 """
     RiBasedVerticalDiffusivity([td=VerticallyImplicitTimeDiscretization(), FT=Float64] kwargs...)
 
@@ -43,12 +46,11 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     Riᵟκ = 1.0)
 
     TD = typeof(time_discretization)
-    LZ = typeof(coefficient_z_location)
+
     coefficient_z_location isa Face || coefficient_z_location isa Center ||
         error("coefficient_z_location is $LZ but must be `Face()` or `Center()`!")
 
-    return RiBasedVerticalDiffusivity{TD, FT, LZ}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ,
-                                                  coefficient_z_location)
+    return RiBasedVerticalDiffusivity{TD}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ, coefficient_z_location)
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
