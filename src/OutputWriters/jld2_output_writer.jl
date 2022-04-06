@@ -23,7 +23,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     including :: IN
     part :: Int
     max_filesize :: Float64
-    force :: Bool
+    overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
 end
@@ -37,7 +37,7 @@ noinit(args...) = nothing
                        with_halos = false,
                        array_type = Array{Float32},
                      max_filesize = Inf,
-                            force = false,
+               overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
                           verbose = false,
@@ -84,8 +84,8 @@ Keyword arguments
                     and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
                     Defaults to `Inf`.
 
-  - `force`: Remove existing files if their filenames conflict.
-             Default: `false`.
+  - `overwrite_existing`: Remove existing files if their filenames conflict.
+                          Default: `false`.
 
   ## Output file metadata management
 
@@ -164,7 +164,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                             with_halos = false,
                             array_type = Array{Float32},
                           max_filesize = Inf,
-                                 force = false,
+                    overwrite_existing = false,
                                   init = noinit,
                              including = default_included_properties(model),
                                verbose = false,
@@ -179,12 +179,12 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
 
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
+    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, force, verbose, jld2_kw)
+                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -234,13 +234,13 @@ function write_output!(writer::JLD2OutputWriter, model)
 
     # Catch an error that occurs when a simulation is initialized but not time-stepped:
     if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
-        if writer.force
+        if writer.overwrite_existing
             # Re-initialize file:
             rm(writer.filepath, force=true)
             initialize_jld2_file!(writer, model)
         else
             error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
-                  re-initialized. Use `force=true` when constructing JLD2OutputWriter to
+                  re-initialized. Use `overwrite_existing=true` when constructing JLD2OutputWriter to
                   replace any existing files and avoid this error.")
         end
     end
@@ -302,13 +302,13 @@ function start_next_file(model, writer::JLD2OutputWriter)
     if writer.part == 1
         part1_path = replace(writer.filepath, r".jld2$" => "_part1.jld2")
         verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
-        mv(writer.filepath, part1_path, force=writer.force)
+        mv(writer.filepath, part1_path, force=writer.overwrite_existing)
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.jld2$" => "part" * string(writer.part) * ".jld2")
-    writer.force && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)
