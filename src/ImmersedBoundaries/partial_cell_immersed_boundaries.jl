@@ -69,7 +69,21 @@ bottom_cell(i, j, k, ibg::PCIBG) = !is_immersed(i, j, k, ibg.grid, ibg.immersed_
     return ifelse(at_the_bottom, partial_Δz, full_Δz)
 end
 
+@inline function Δzᶜᶜᶠ(i, j, k, ibg::PCIBG)
+    just_above_bottom = bottom_cell(i, j, k-1, ibg)
+    zc = znode(c, c, c, i, j, k, ibg.grid)
+    zf = znode(c, c, f, i, j, k, ibg.grid)
+
+    full_Δz = Δzᶜᶜᶠ(i, j, k, ibg.grid)
+    partial_Δz = zc - zf + Δzᶜᶜᶜ(i, j, k-1, ibg) / 2
+
+    return ifelse(just_above_bottom, partial_Δz, full_Δz)
+end
+
 @inline Δzᶠᶜᶜ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶜ(i-1, j, k, ibg), Δzᶜᶜᶜ(i, j, k, ibg))
 @inline Δzᶜᶠᶜ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶜ(i, j-1, k, ibg), Δzᶜᶜᶜ(i, j, k, ibg))
-
-# TODO define Δzᶜᶜᶠ
+@inline Δzᶠᶠᶜ(i, j, k, ibg::PCIBG) = min(Δzᶠᶜᶜ(i, j-1, k, ibg), Δzᶠᶜᶜ(i, j, k, ibg))
+      
+@inline Δzᶠᶜᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i-1, j, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))
+@inline Δzᶜᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
+@inline Δzᶠᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
