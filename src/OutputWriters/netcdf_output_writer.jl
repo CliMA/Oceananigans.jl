@@ -131,7 +131,7 @@ mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     dataset :: D
     outputs :: O
     schedule :: T
-    mode :: String
+    overwrite_existing :: Bool
     array_type :: A
     previous :: Float64
     verbose :: Bool
@@ -144,7 +144,7 @@ end
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = nothing,
+                           overwrite_existing = false,
                                   compression = 0,
                                       verbose = false)
 
@@ -175,8 +175,9 @@ Keyword arguments
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
-- `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
-          documentation for more information on the `mode` option.
+- `overwrite_existing`: If false, NetCDFOutputWriter will be set to append to `filepath`. If true, NetCDFOutputWriter 
+                        will overwrite `filepath` if it exists or create it if it does not. 
+                        Default: false. See NCDatasets.jl documentation for more information about its `mode` option.
 
 - `compression`: Determines the compression level of data (0-9, default 0)
 
@@ -286,19 +287,25 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = nothing,
+                           overwrite_existing = false,
                                   compression = 0,
                                       verbose = false)
 
-    if isfile(filepath) && isnothing(mode)
-        @warn "$filepath already exists but no NetCDFOutputWriter mode was explicitly specified. " *
-              "Will default to mode = \"a\" to append to existing file. You might experience errors " *
-              "when writing output if the existing file belonged to a different simulation!"
-        mode = "a"
+    if isfile(filepath) && !overwrite_existing
+        @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file." *
+              "You might experience errors when writing output if the existing file belonged to a different simulation!"
+
+    elseif isfile(filepath) && overwrite_existing
+        @warn "$filepath already exists and `overwrite_existing = true`." *
+              "Please make sure this setup was intentional as file $filepath will be overwritten!"
+
+    elseif !isfile(filepath) && !overwrite_existing
+        @warn "File $filepath cannot be found nd `overwrite_existing = false`." *
+              "This may cause errors when creating $filepath"
+
     end
 
-    # Default to create/clobber.
-    isnothing(mode) && (mode = "c")
+    mode = overwrite_existing ? "c" : "a"
 
     # TODO: This call to dictify is only necessary because "dictify" is hacked to help
     # with LagrangianParticles output (see the end of the file).
@@ -362,7 +369,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
 end
 
 #####
