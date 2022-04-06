@@ -51,19 +51,17 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
-    # Set maximum iterations to Nx * Ny if not set
+    # Set some defaults
     settings = Dict{Symbol, Any}(settings)
-    maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
-    settings[:maximum_iterations] = maximum_iterations
+    settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
+    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
-    # Default is fft for rectilinear, nothing if not.
-    if isrectilinear(grid)
-        settings[:preconditioner] = get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid))
-    else
-        settings[:preconditioner] = get(settings, :preconditioner, nothing)
-    end
+    # FFT preconditioner for rectilinear grids, nothing otherwise.
+    settings[:preconditioner] = isrectilinear(grid) ?
+        get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
+        get(settings, :preconditioner, nothing)
 
-    # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver
+    # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
@@ -245,8 +243,8 @@ struct DiagonallyDominantInversePreconditioner end
     _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 Return the diagonally dominant inverse preconditioner applied to the residuals consistently with
- `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` where `I` is the Identity matrix, D is the matrix
-containing the diagonal of A, and A is the linear operator applied to η
+ `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` where `I` is the Identity matrix,
+A is the linear operator applied to η, and D is the diagonal of A.
 
 ```math
 P_r = M * r
@@ -280,17 +278,17 @@ end
 @inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶜ(i+1, j, 1, grid)
 @inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶜ(i, j+1, 1, grid)
 
-@inline Ac(i, j, grid, g, Δt, ax, ay) = - ( Ax⁻(i, j, grid, ax) 
-                                          + Ax⁺(i, j, grid, ax)
-                                          + Ay⁻(i, j, grid, ay)
-                                          + Ay⁺(i, j, grid, ay)
-                                          + Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2) )
+@inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) -
+                                          Ax⁺(i, j, grid, ax) -
+                                          Ay⁻(i, j, grid, ay) -
+                                          Ay⁺(i, j, grid, ay) - 
+                                          Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
-@inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - 
-                            Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, 1] -
-                            Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, 1] - 
-                            Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, 1] - 
-                            Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, 1] ) 
+@inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
+    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, 1] -
+                                                                Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, 1] - 
+                                                                Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, 1] - 
+                                                                Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, 1])
 
 @kernel function _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)

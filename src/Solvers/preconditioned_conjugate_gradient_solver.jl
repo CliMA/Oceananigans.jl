@@ -10,8 +10,9 @@ mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
                architecture :: A
                        grid :: G
           linear_operation! :: L
-                  tolerance :: T
-         maximum_iterations :: Int
+                     reltol :: T
+                     abstol :: T
+                    maxiter :: Int
                   iteration :: Int
                        ρⁱ⁻¹ :: T
     linear_operator_product :: F
@@ -32,8 +33,9 @@ initialize_precondition_product(::Nothing, template_field) = nothing
 """
     PreconditionedConjugateGradientSolver(linear_operation;
                                           template_field,
-                                          maximum_iterations = size(template_field.grid),
-                                          tolerance = 1e-13,
+                                          maxiter = size(template_field.grid),
+                                          reltol = sqrt(eps(eltype(template_field.grid))),
+                                          abstol = 0,
                                           preconditioner = nothing)
 
 Returns a PreconditionedConjugateGradientSolver that solves the linear equation
@@ -57,10 +59,10 @@ Arguments
                      `A*y` and stores the result in `p` for a "candidate solution `y`. `args...`
                      are optional positional arguments passed from `solve!(x, solver, b, args...)`.
 
-* `maximum_iterations`: Maximum number of iterations the solver may perform before exiting.
+* `maxiter`: Maximum number of iterations the solver may perform before exiting.
 
-* `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
-               `norm(A * x - b) < tolerance`.
+* `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
+                    The iteration stops when `norm(A * x - b) < tolerance`.
 
 * `preconditioner`: Object for which `precondition!(z, preconditioner, r, args...)`
                     computes `z = P * r`, where `r` is the residual. Typically `P`
@@ -70,8 +72,9 @@ See [`solve!`](@ref) for more information about the preconditioned conjugate-gra
 """
 function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
-                                               maximum_iterations = prod(size(template_field)),
-                                               tolerance = sqrt(eps(eltype(template_field.grid))),
+                                               maxiter = prod(size(template_field)),
+                                               reltol = sqrt(eps(eltype(template_field.grid))),
+                                               abstol = 0,
                                                preconditioner = nothing)
 
     arch = architecture(template_field)
@@ -88,8 +91,9 @@ function PreconditionedConjugateGradientSolver(linear_operation;
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
                                                  linear_operation,
-                                                 tolerance,
-                                                 maximum_iterations,
+                                                 reltol,
+                                                 abstol,
+                                                 maxiter,
                                                  0,
                                                  0.0,
                                                  linear_operator_product,
@@ -125,7 +129,7 @@ r = b - A(x)
 iteration  = 0
 
 Loop:
-     if iteration > maximum_iterations
+     if iteration > maxiter
         break
      end
 
@@ -160,10 +164,13 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     # r = b - A*x
     parent(solver.residual) .= parent(b) .- parent(q)
 
+    residual_norm = norm(solver.residual)
+    tolerance = max(solver.reltol * residual_norm, solver.abstol)
+
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
     @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
 
-    while iterating(solver)
+    while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
 
@@ -217,10 +224,10 @@ function iterate!(x, solver, b, args...)
     return nothing
 end
 
-function iterating(solver)
+function iterating(solver, tolerance)
     # End conditions
-    solver.iteration >= solver.maximum_iterations && return false
-    norm(solver.residual) <= solver.tolerance && return false
+    solver.iteration >= solver.maxiter && return false
+    norm(solver.residual) <= tolerance && return false
     return true
 end
 
@@ -230,7 +237,8 @@ function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
               "├── grid: ", summary(solver.grid),
               "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
               "├── preconditioner: ", prettysummary(solver.preconditioner), '\n',
-              "├── tolerance: ", prettysummary(solver.tolerance), '\n',
-              "└── maximum_iterations: ", solver.maximum_iterations)
+              "├── reltol: ", prettysummary(solver.reltol), '\n',
+              "├── abstol: ", prettysummary(solver.abstol), '\n',
+              "└── maxiter: ", solver.maxiter)
 end
 

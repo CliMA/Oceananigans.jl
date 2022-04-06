@@ -10,9 +10,7 @@ end
 
 function run_identity_operator_test(grid)
     b = CenterField(grid)
-
     solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b)
-
     initial_guess = solution = similar(b)
     set!(initial_guess, (x, y, z) -> rand())
 
@@ -35,7 +33,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
-    solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth)
+    solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)))
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
