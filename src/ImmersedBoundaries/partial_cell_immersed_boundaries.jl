@@ -10,16 +10,18 @@ import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
 ##### PartialCellBottom
 #####
 
+struct PartialCellBottom{B, E} <: AbstractGridFittedBoundary
+    bottom_height :: B
+    minimum_fractional_partial_Δz :: E
+end
+
 """
     PartialCellBottom(bottom, minimum_height)
 
 Return an immersed boundary...
 """
-
-struct PartialCellBottom{B, E} <: AbstractGridFittedBoundary
-    bottom_height :: B
-    minimum_fractional_partial_Δz :: E
-end
+PartialCellBottom(bottom_height; minimum_fractional_partial_Δz=0.1) =
+    PartialCellBottom(bottom_height, minimum_fractional_partial_Δz)
 
 @inline get_bottom_height(i, j, k, grid, bottom_height::AbstractArray) = @inbounds bottom_height[i, j]
 
