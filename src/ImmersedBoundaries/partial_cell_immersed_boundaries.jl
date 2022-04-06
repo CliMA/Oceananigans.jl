@@ -42,10 +42,8 @@ Criterion is h >= z - ϵ Δz
 @inline function is_immersed(i, j, k, underlying_grid, ib::PartialCellBottom)
     # Face node above current cell
     x, y, z = node(c, c, f, i, j, k+1, underlying_grid)
-    Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-    ϵ = ib.minimum_fractional_partial_Δz
     h = get_bottom_height(i, j, k, underlying_grid, ib.bottom_height)
-    return h >= z - ϵ * Δz
+    return h >= z
 end
 
 const PCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
