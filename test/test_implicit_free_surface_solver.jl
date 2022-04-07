@@ -41,7 +41,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
-                                                                           tolerance = 1e-15))
+                                                                           abstol=1e-15, reltol=0))
     
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, device_event(arch))
@@ -83,7 +83,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
-                                                                           tolerance = 1e-15))
+                                                                           abstol=1e-15, reltol=0))
     
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, device_event(arch))
@@ -140,7 +140,7 @@ end
         Δt = 900
 
         mat_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver,    tolerance=1e-15, maximum_iterations=128^3)
-        pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
+        pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, abstol=1e-15, reltol=0, maximum_iterations=128^3)
         fft_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
 
         pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
