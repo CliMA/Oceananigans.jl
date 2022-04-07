@@ -21,6 +21,7 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                   tolerance :: T
                 previous_Δt :: F
          maximum_iterations :: Int
+                    verbose :: Bool
 end
 
 """
@@ -93,7 +94,8 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       reduced_dim = (false, false, false), 
                                       placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
-                                      preconditioner_settings = nothing)
+                                      preconditioner_settings = nothing,
+                                      verbose = false)
 
     arch = architecture(grid)
 
@@ -123,7 +125,8 @@ function HeptadiagonalIterativeSolver(coeffs;
                                  iterative_solver, 
                                  tolerance,
                                  placeholder_timestep,
-                                 maximum_iterations)
+                                 maximum_iterations,
+                                 verbose)
 end
 
 architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
@@ -306,7 +309,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         solver.previous_Δt = Δt
     end
     
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
+    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose = solver.verbose)
 
     return q
 end

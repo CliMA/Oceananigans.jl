@@ -130,7 +130,7 @@ function run_poisson_equation_test(grid)
     return nothing
 end
 
-@testset "UnifiedIterativeSolver" begin
+@testset "Testing unified iterative Poisson solver" begin
     topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
 
     for arch in archs, topo in topologies

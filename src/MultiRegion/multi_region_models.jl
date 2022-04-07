@@ -32,9 +32,7 @@ WENO5(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO5, mr
 isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
-validate_tracer_advection(tracer_advection::Union{AbstractAdvectionScheme, MultiRegionObject}, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
-validate_tracer_advection(invalid_tracer_advection, grid::MultiRegionGrid)           = error("$invalid_tracer_advection is invalid tracer_advection!")
-validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid::MultiRegionGrid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
 
 isregional(mrm::MultiRegionModel)        = true
 devices(mrm::MultiRegionModel)           = devices(mrm.grid)

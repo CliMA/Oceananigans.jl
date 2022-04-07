@@ -97,6 +97,8 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
 
     solver = implicit_free_surface_solver.unified_pcg_solver
     
+    sync_all_devices!(η.grid.devices)
+
     switch_device!(getdevice(solver.matrix_constructors[1]))
     sol = solve!(η, solver, rhs, Δt)
 

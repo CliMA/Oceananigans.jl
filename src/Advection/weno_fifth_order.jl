@@ -136,7 +136,7 @@ Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Scheme
 Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation
     laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
-function WENO5(grid::AbstractGrid, FT::DataType=Float64; stretched_smoothness = false, zweno = false)
+function WENO5(grid, FT::DataType=Float64; stretched_smoothness = false, zweno = false)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 

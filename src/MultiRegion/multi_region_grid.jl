@@ -122,6 +122,8 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     return ma
 end
 
+multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
+
 import Oceananigans.Grids: with_halo, on_architecture
 
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}

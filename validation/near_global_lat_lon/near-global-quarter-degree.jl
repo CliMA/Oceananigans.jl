@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(3), devices = (0, 1, 2))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(3), devices = (0, 1, 2))
+underlying_mrg = underlying_grid; #MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
+mrg            = grid #MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -232,7 +232,8 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, verbose = true)
+# free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -243,9 +244,9 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
-                                    boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
+                                    # boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(underlying_mrg))
+                                    tracer_advection = WENO5(nothing))
 
 #####
 ##### Initial condition:
@@ -270,21 +271,24 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 10 #6minutes  # for initialization, then we can go up to 6 minutes?
 
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
+using Oceananigans.Utils 
+using Oceananigans.MultiRegion: reconstruct_global_field
+
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    η = model.free_surface.η
-    u = model.velocities.u
+    η = reconstruct_global_field(model.free_surface.η)
+    u = reconstruct_global_field(model.velocities.u)
     @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    maximum(abs, η), maximum(abs, u),
+                    maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
