@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 
 """ Take one time step with three forcing functions on u, v, w. """
@@ -112,13 +114,12 @@ function relaxed_time_stepping(arch)
 end
 
 function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
+    grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
 
     constant_slip = AdvectiveForcing(UpwindBiasedFifthOrder(), w=1)
 
     no_penetration = ImpenetrableBoundaryCondition()
-    slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
-                                       top=no_penetration, bottom=no_penetration)
+    slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
     velocity_field_slip = AdvectiveForcing(CenteredSecondOrder(), w=slip_velocity)
     simple_forcing(x, y, z, t) = 1
