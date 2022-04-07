@@ -10,7 +10,7 @@ end
 
 function run_identity_operator_test(grid)
     b = CenterField(grid)
-    solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b, reltol=0, abstol=10 * sqrt(eps(eltype(grid))))
+    solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
     initial_guess = solution = similar(b)
     set!(initial_guess, (x, y, z) -> rand())
 
