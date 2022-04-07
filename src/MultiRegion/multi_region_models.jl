@@ -18,8 +18,6 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
-WENO5(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO5, mrg, args...; kwargs...)
-
 # Bottleneck is getregion!!! (there are type issues with FieldBoundaryConditions and with propertynames)
 @inline @inbounds getregion(mr::AbstractModel, i)            = getname(mr)(Tuple(getregion(getproperty(mr, propertynames(mr)[idx]), i) for idx in 1:length(propertynames(mr)))...)
 @inline @inbounds getregion(ts::AbstractTimeStepper, i)      = getname(ts)(Tuple(getregion(getproperty(ts, propertynames(ts)[idx]), i) for idx in 1:length(propertynames(ts)))...)

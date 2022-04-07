@@ -111,7 +111,7 @@ topology_types = [topology_types[1]]
 archs = [Oceananigans.CPU(), Oceananigans.GPU()]
 archs = [archs[1]]
 
-free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surface];
+free_surfaces = [pcg_free_surface, matrix_free_surface];
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, arch = arch) for free_surface in free_surfaces, topology_type in topology_types, arch in archs];
 data = [run_and_analyze(sim) for sim in simulations];
 # run_and_analyze(simulations[3])
