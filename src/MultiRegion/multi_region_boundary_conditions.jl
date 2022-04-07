@@ -120,6 +120,48 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     return nothing
 end
 
+function fill_south_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+    
+    H = halo_size(grid)[2]
+    N = size(grid)[2]
+    s = neighbors[bc.condition.from_rank]
+    dst = buffers[bc.condition.rank].south.recv
+    
+    switch_device!(getdevice(s))
+    src = buffers[bc.condition.from_rank].north.send
+    src .= view(parent(s), :, N+1:N+H, :)
+    sync_device!(getdevice(s))
+
+    switch_device!(getdevice(c))
+    copyto!(dst, src)
+
+    p  = view(parent(c), :, 1:H, :)
+    p .= dst
+
+    return nothing
+end
+
+function fill_north_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+    
+    H = halo_size(grid)[2]
+    N = size(grid)[2]
+    n = neighbors[bc.condition.from_rank]
+    dst = buffers[bc.condition.rank].north.recv
+    
+    switch_device!(getdevice(n))
+    src = buffers[bc.condition.from_rank].south.send
+    src .= view(parent(n), :, H+1:2H, :)
+    sync_device!(getdevice(n))
+
+    switch_device!(getdevice(c))    
+    copyto!(dst, src)
+
+    p  = view(parent(c), :, N+H+1:N+2H, :)
+    p .= dst
+
+    return nothing
+end
+
 ## Tupled field boundary conditions for 
 
 # function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M

@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+underlying_mrg = underlying_grid # MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
+mrg            = grid            # MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -246,7 +246,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(nothing))
+                                    tracer_advection = WENO5())
 
 #####
 ##### Initial condition:
@@ -271,7 +271,7 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 10 #6minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
 
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
