@@ -76,9 +76,6 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.matrix_iterative_solver
-
-    @show solver
-
     grid = solver.grid
     arch = architecture(grid)
 
