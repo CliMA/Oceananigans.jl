@@ -2,6 +2,8 @@ struct MultipleForcings{N, F}
     forcings :: F
 end
 
+Base.getindex(mf::MultipleForcings, i) = mf.forcings[i]
+
 """
     MultipleForcings(forcings)
 
@@ -29,5 +31,25 @@ end
         total_forcing += nth_forcing(i, j, k, grid, clock, model_fields)
     end
     return total_forcing
+end
+
+Base.summary(mf::MultipleForcings) = string("MultipleForcings with ", length(mf.forcings), " forcing",
+                                            ifelse(length(mf.forcings) > 1, "s", ""))
+
+function Base.show(io::IO, mf::MultipleForcings)
+    start = summary(mf) * ":"
+
+    Nf = length(mf.forcings)
+    if Nf > 1
+        body = [string("├ ", prettysummary(f), '\n') for f in mf.forcings[1:end-1]]
+    else
+        body = []
+    end
+
+    push!(body, string("└ ", prettysummary(mf.forcings[end])))
+
+    print(io, start, '\n', body...)
+
+    return nothing
 end
 
