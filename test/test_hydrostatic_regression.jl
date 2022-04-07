@@ -61,32 +61,24 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
     @info "Running hydrostatic regression tests..."
 
     for arch in archs
-        longitude = ((-180, 180), (-160, 160))
-        latitude  = ((-60, 60),)
-        zcoord    = ((-90, 0),)
+        longitudes = [(-180, 180), (-160, 160)]
+        latitudes  = [(-60, 60)]
+        zs         = [(-90, 0)]
     
         explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                     solver_method = :PreconditionedConjugateGradient,
-                                                    tolerance = 1e-15)
+                                                    reltol = 0, abstol = 1e-15)
         
-            for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
-
-            lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
-
-            grid  = LatitudeLongitudeGrid(arch, 
-                                          size = N,
-                                     longitude = lon,
-                                      latitude = lat,
-                                             z = z,
-                                          halo = (2, 2, 2),
-                            precompute_metrics = comp)
+            for longitude in longitudes, latitudes in latitudes, z in zs, precompute_metrics in (true, false)
+                longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
+                grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
             for free_surface in [explicit_free_surface, implicit_free_surface]
                                     
-                # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
-                # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
-                if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
+                # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
+                # because "uses too much parameter space (maximum 0x1100 bytes)" error 
+                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) 
 
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
                     
