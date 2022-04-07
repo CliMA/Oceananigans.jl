@@ -89,7 +89,7 @@ end
     i, j = @index(Global, NTuple)
     Az   = Azᶜᶜᶜ(i, j, 1, grid)
     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    t = displaced_xy_index(i, j, grid, region, partition)
+    t    = displaced_xy_index(i, j, grid, region, partition)
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 

@@ -57,6 +57,8 @@ getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
         getregion(f.status, i),
         getregion(f.boundary_buffers, i))
 
+@inline reconstruct_global_field(f::AbstractField) = f
+
 function reconstruct_global_field(mrf::MultiRegionField)
   global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
   global_field = Field(location(mrf), global_grid)
