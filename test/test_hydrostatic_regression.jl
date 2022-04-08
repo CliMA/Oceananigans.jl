@@ -70,7 +70,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                                     solver_method = :PreconditionedConjugateGradient,
                                                     reltol = 0, abstol = 1e-15)
         
-            for longitude in longitudes, latitudes in latitudes, z in zs, precompute_metrics in (true, false)
+            for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false)
                 longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
                 grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
