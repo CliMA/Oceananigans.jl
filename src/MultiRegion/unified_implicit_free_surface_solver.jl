@@ -59,7 +59,6 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
     return UnifiedImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
     UnifiedImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational_acceleration, settings) =

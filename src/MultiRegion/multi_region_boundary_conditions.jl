@@ -11,10 +11,14 @@ using Oceananigans.BoundaryConditions:
 import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
 
 import Oceananigans.BoundaryConditions: 
+            fill_halo_regions!,
+            fill_west_and_east_halo!,
+            fill_south_and_north_halo!,
+            fill_bottom_and_top_halo!,
             fill_west_halo!, 
             fill_east_halo!, 
-            fill_halo_regions!,
-            fill_west_and_east_halo!
+            fill_south_halo!,
+            fill_north_halo!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 

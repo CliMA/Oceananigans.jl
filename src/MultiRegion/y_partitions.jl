@@ -14,8 +14,6 @@ end
 
 const EqualYPartition = YPartition{<:Number}
 
-isequal(p::EqualYPartition) = true
-
 length(p::EqualYPartition) = p.div
 length(p::YPartition)      = length(p.div)
 
@@ -88,6 +86,9 @@ function reconstruct_extent(mrg, p::YPartition)
     return (; x = x, y = y, z = z)
 end
 
+inject_west_boundary(region, p::YPartition, bc) = bc 
+inject_east_boundary(region, p::YPartition, bc) = bc
+
 function inject_south_boundary(region, p::YPartition, global_bc) 
     if region == 1
         typeof(global_bc) <: Union{CBC, PBC} ?  
@@ -109,9 +110,6 @@ function inject_north_boundary(region, p::YPartition, global_bc)
     end
     return bc
 end
-
-inject_west_boundary(region, p::YPartition, bc) = bc 
-inject_east_boundary(region, p::YPartition, bc) = bc
 
 function partition_global_array(a::AbstractArray, ::EqualYPartition, grid, local_size, region, arch) 
     idxs = default_indices(length(size(a)))

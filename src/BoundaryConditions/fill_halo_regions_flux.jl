@@ -118,7 +118,7 @@ for side in [:east, :west, :north, :south, :top, :bottom]
     fill_flux_halo! = Symbol(:fill_flux_, side, :_halo!)
     @eval begin
         @inline function $fill_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...)
-            event = launch!(arch, grid, :yz, $fill_flux_halo!,   c, grid; dependencies=dep, kwargs...)
+            event = launch!(arch, grid, :yz, $fill_flux_halo!, c, grid; dependencies=dep, kwargs...)
             wait(device(arch), event)
         end
     end

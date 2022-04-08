@@ -14,12 +14,6 @@ using Oceananigans.Solvers:
 import Oceananigans.Grids: architecture
 import Oceananigans.Solvers: solve!, iterate!
 
-##########
-##########
-##########  Have to fix the Diag element!!!!
-##########
-##########
-
 mutable struct UnifiedDiagonalIterativeSolver{G, Dev, R, L, D, M, P, F, T, B}
                        grid :: G
                     devices :: Dev

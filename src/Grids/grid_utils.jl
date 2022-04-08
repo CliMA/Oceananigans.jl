@@ -400,11 +400,10 @@ scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false
 dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
 function domain_summary(topo, name, left, right)
-    interval = (topo isa Periodic) ||
-               (topo isa RightConnected) ||
-               (topo isa FullyConnected) ? ")" : "]"
-    topo_string = topo isa Periodic ? "Periodic      " :
-                  topo isa Bounded ? "Bounded        " :
+    interval = (topo isa Bounded) ||
+               (topo isa LeftConnected) ? "]" : ")"
+    topo_string = topo isa Periodic ? "Periodic " :
+                  topo isa Bounded ? "Bounded " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   "RightConnected "
