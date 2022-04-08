@@ -5,6 +5,10 @@ import Statistics.dot
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 
+####
+#### Reductions are still veeeery slow on MultiRegionGrids. Avoid as much as possible!
+####
+
 # Allocating reductions
 for reduction in reductions
     @eval begin
@@ -27,8 +31,9 @@ end
 
 Statistics.mean(c::MultiRegionField; kwargs...) = Statistics.mean(identity, c; kwargs...)
 
-validate_reduction_location!(loc, p)            = nothing
-validate_reduction_location!(loc, ::XPartition) = loc[1] == Nothing && error("Partial reductions across X with XPartition not supported yet")
+validate_reduction_location!(loc, p) = nothing
+validate_reduction_location!(loc, ::XPartition) = loc[1] == Nothing && error("Partial reductions across X with XPartition are not supported yet")
+validate_reduction_location!(loc, ::YPartition) = loc[2] == Nothing && error("Partial reductions across Y with YPartition are not supported yet")
 
 collect_data(f::NTuple{N, <:Field}) where N = Tuple(f[i].data for i in 1:N)
 collect_bcs(f::NTuple{N, <:Field})  where N = Tuple(f[i].boundary_conditions for i in 1:N)

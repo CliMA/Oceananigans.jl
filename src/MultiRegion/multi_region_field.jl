@@ -33,7 +33,6 @@ isregional(f::MultiRegionFields) = true
 devices(f::MultiRegionFields) = devices(f.grid)
 switch_device!(f::MultiRegionFields, i) = switch_device!(f.grid, i)
 getdevice(f::MultiRegionFields, i) = getdevice(f.grid, i)
-regions(f::MultiRegionField) = 1:length(f.data)
 
 getregion(f::MultiRegionFunctionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
   FunctionField{LX, LY, LZ}(

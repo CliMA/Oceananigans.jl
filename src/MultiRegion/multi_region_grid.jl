@@ -41,7 +41,13 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
 
     FT   = eltype(global_grid)
     
-    args = (Reference(global_grid), Reference(arch), local_topo, local_size, local_extent, Reference(partition), Iterate(1:length(partition)))
+    args = (Reference(global_grid), 
+            Reference(arch), 
+            local_topo, 
+            local_size,
+            local_extent, 
+            Reference(partition), 
+            Iterate(1:length(partition)))
 
     region_grids = construct_regionally(construct_grid, args...)
 
@@ -71,27 +77,8 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size,
     return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, local_size, extent), boundary)
 end
 
-partition_immersed_boundary(b, args...) = getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
-
-grids(mrg::MultiRegionGrid) = mrg.region_grids
-getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
-
-const MRG = MultiRegionGrid
-
-@inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
-@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(ibg, :region_grids), 1), property)
-@inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
-@inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
-@inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
-
-Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
-    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
-              "├── grids: $(summary(mrg.region_grids[1])) \n",
-              "├── partitioning: $(summary(mrg.partition)) \n",
-              "└── devices: $(devices(mrg))")
-
-Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
-    "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
+partition_immersed_boundary(b, args...) = 
+    getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
 function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
@@ -113,12 +100,14 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) w
     local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
     local_array     = construct_regionally(getinterior, local_array, mrg)
     global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(mrg)))
-    return ImmersedBoundaryGrid(global_grid, global_boundary)
+    return on_architecture(architecture(mrg), ImmersedBoundaryGrid(global_grid, global_boundary))
 end
 
 getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.Ny]
 getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
 getinterior(func::Function, grid) = func
+
+multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
 
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
@@ -127,8 +116,6 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     ma   = construct_regionally(partition_global_array, a, mrg.partition, mrg, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
-
-multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
 
 import Oceananigans.Grids: with_halo, on_architecture
 
@@ -143,6 +130,27 @@ function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT,
     return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
 end
 
-import Oceananigans.OutputWriters: serializeproperty!
+Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
+    "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-serializeproperty!(file, location, mrg::MultiRegionGrid) = file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
+Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
+    print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
+              "├── grids: $(summary(mrg.region_grids[1])) \n",
+              "├── partitioning: $(summary(mrg.partition)) \n",
+              "└── devices: $(devices(mrg))")
+
+#### 
+#### Utilitites that aren't used anywhere at the moment
+####
+
+grids(mrg::MultiRegionGrid) = mrg.region_grids
+
+getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
+
+const MRG = MultiRegionGrid
+
+@inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
+@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(ibg, :region_grids), 1), property)
+@inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
+@inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
+@inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)

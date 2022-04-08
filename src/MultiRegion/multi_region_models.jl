@@ -1,6 +1,6 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
+using Oceananigans.TimeSteppers: AbstractTimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans: prognostic_fields, fields
@@ -14,7 +14,6 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels:
                         validate_tracer_advection
 
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
-
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 

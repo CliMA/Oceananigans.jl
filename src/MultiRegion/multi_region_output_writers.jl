@@ -23,3 +23,6 @@ function fetch_output(mrf::MultiRegionField, model)
     serializeproperty!(file, location * "/boundary_conditions", p.boundary_conditions)
   end
   
+  function serializeproperty!(file, location, mrg::MultiRegionGrid) 
+    file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
+  end
