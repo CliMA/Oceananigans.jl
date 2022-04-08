@@ -106,13 +106,19 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) w
                                                      mrg.partition, 
                                                      construct_regionally(getproperty, mrg, :grid), 
                                                      mrg.devices)
-
+                                                     
     global_grid     = on_architecture(CPU(), reconstruct_global_grid(underlying_mrg))
-    local_boundary  = construct_regionally(getproperty, mrg, :immersed_boundary)
+    cpu_mrg         = on_architecture(CPU(), mrg)
+    local_boundary  = construct_regionally(getproperty, cpu_mrg, :immersed_boundary)
     local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
+    local_array     = construct_regionally(getinterior, local_array, mrg)
     global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(mrg)))
     return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
+
+getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.Ny]
+getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
+getinterior(func::Function, grid) = func
 
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
@@ -129,6 +135,12 @@ import Oceananigans.Grids: with_halo, on_architecture
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(with_halo, new_halo, mrg)
     return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
+end
+
+function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    new_grids = construct_regionally(on_architecture, CPU(), mrg)
+    devices   = Tuple(CPU() for i in 1:length(mrg))  
+    return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
 end
 
 import Oceananigans.OutputWriters: serializeproperty!

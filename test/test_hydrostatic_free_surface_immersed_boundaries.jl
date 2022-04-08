@@ -130,7 +130,7 @@ using Oceananigans.TurbulenceClosures
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
             model = HydrostaticFreeSurfaceModel(; grid,
-                                                free_surface = ImplicitFreeSurface(),
+                                                free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
                                                 buoyancy = nothing,
                                                 tracers = nothing,
                                                 closure = nothing)

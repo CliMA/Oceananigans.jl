@@ -14,7 +14,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     Lz = 400meters
 
     grid = RectilinearGrid(arch,
-        size = (64, 3, 1),
+        size = (8, 3, 1),
         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
         topology = topology)
 
@@ -48,8 +48,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     g = model.free_surface.gravitational_acceleration
     η = model.free_surface.η
 
-
-    η₀ = coriolis.f * U * L / g # geostrohpic free surface amplitude
+    η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude
 
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
@@ -72,12 +71,11 @@ function run_and_analyze(simulation)
     Δt = simulation.Δt
 
     f = simulation.model.free_surface
-    # @views u₀ = interior(reconstruct_global_field(u))[:, 1, 1]
-    # @views v₀ = interior(reconstruct_global_field(v))[:, 1, 1]
-    # @views η₀ = interior(reconstruct_global_field(η))[:, 1, 1]
 
     if f isa SplitExplicitFreeSurface
         solver_method = "SplitExplicitFreeSurface"
+    elseif f isa ExplicitFreeSurface
+        solver_method = "ExplicitFreeSurfaceSolver"
     else
         solver_method = string(simulation.model.free_surface.solver_method)
     end
@@ -90,7 +88,7 @@ function run_and_analyze(simulation)
     else
         simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, u, v, w),
             schedule = TimeInterval(Δt),
-            prefix = "solution_$(solver_method)_multigrid",
+            prefix = "solution_$(solver_method)",
             force = true)
     end
 
@@ -103,33 +101,25 @@ function run_and_analyze(simulation)
 
     run!(simulation)
 
-    # @views u₁ = interior(reconstruct_global_field(u))[:, 1, 1]
-    # @views v₁ = interior(reconstruct_global_field(v))[:, 1, 1]
-    # @views η₁ = interior(reconstruct_global_field(η))[:, 1, 1]
-
-    # @show mean(Array(η₀))
-    # @show mean(Array(η₁))
-
-    # Δη = Array(η₁) - Array(η₀)
-
-    return nothing #(; η₀, η₁, Δη, u₀, u₁, v₀, v₁)
+    return nothing 
 end
 
 # fft_based_free_surface = ImplicitFreeSurface()
 pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient);
 matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver);
 splitexplicit_free_surface = SplitExplicitFreeSurface()
+explicit_free_surface = ExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 topology_types = [topology_types[1]]
 
 archs = [Oceananigans.CPU(), Oceananigans.GPU()]
-archs = [archs[1]]
+archs = [archs[2]]
 
-free_surfaces = [pcg_free_surface, matrix_free_surface, matrix_free_surface];
+free_surfaces = [matrix_free_surface, matrix_free_surface] #, matrix_free_surface];
 
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, multi_region, arch = arch) 
-              for (free_surface, multi_region) in zip(free_surfaces, (false, false, true)), 
+              for (free_surface, multi_region) in zip(free_surfaces, (false, true)), 
               topology_type in topology_types, 
               arch in archs];
 
@@ -141,15 +131,14 @@ using GLMakie
 using JLD2
 
 file1 = jldopen("solution_PreconditionedConjugateGradientImplicitFreeSurfaceSolver.jld2")
-file2 = jldopen("solution_MatrixImplicitFreeSurfaceSolver.jld2")
-file3 = jldopen("solution_MatrixImplicitFreeSurfaceSolver_multigrid.jld2")
+file2 = jldopen("solution_ExplicitFreeSurfaceSolver.jld2")
+file3 = jldopen("solution_ExplicitFreeSurfaceSolver_multigrid.jld2")
 
 grid = file1["serialized/grid"]
 
 x = grid.xᶜᵃᵃ[1:grid.Nx]
 xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
 y = grid.yᵃᶜᵃ[1:grid.Ny]
-
 
 iterations = parse.(Int, keys(file1["timeseries/t"]))
 iterations = iterations[1:200]
@@ -179,15 +168,15 @@ axislegend(ax1,
     ["Initial Condition", "PCG", "Matrix", "Split-Explicit"])
 ylims!(ax1, (-5e-4, 5e-3))
 
-u0 = Array(file1["timeseries/3/"*string(0)])[:, mid, 1]
-xf = length(u0) == length(xf) ? xf : x
-ulines1 = lines!(ax2, xf, u1, color = :red)
-ulines2 = lines!(ax2, xf, u2, color = :blue)
-ulines3 = lines!(ax2, xf, u3, color = :orange)
-axislegend(ax2,
-    [ulines1, ulines2, ulines3],
-    ["PCG", "Matrix", "Split-Explicit"])
-ylims!(ax2, (-2e-4, 2e-4))
+# u0 = Array(file1["timeseries/3/"*string(0)])[:, mid, 1]
+# xf = length(u0) == length(xf) ? xf : x
+# ulines1 = lines!(ax2, xf, u1, color = :red)
+# ulines2 = lines!(ax2, xf, u2, color = :blue)
+# ulines3 = lines!(ax2, xf, u3, color = :orange)
+# axislegend(ax2,
+#     [ulines1, ulines2, ulines3],
+#     ["PCG", "Matrix", "Split-Explicit"])
+# ylims!(ax2, (-2e-4, 2e-4))
 GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate = 12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i

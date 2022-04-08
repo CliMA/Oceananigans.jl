@@ -114,23 +114,24 @@ end
 partition_global_array(a::Function, args...) = a
 
 function partition_global_array(a::AbstractArray, ::EqualXPartition, grid, local_size, region, arch) 
-    idxs = default_indices(length(local_size)-1)
-    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs...])
+    idxs = default_indices(length(size(a)))
+    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
-const FunctionMRO = MultiRegionObject{<:Tuple{Vararg{<:Function}}}
-const ArrayMRO    = MultiRegionObject{<:Tuple{Vararg{<:AbstractArray}}}
+const FunctionMRO     = MultiRegionObject{<:Tuple{Vararg{<:Function}}}
+const ArrayMRO{T, N}  = MultiRegionObject{<:Tuple{Vararg{<:AbstractArray{T, N}}}} where {T, N}
 
 reconstruct_global_array(ma::FunctionMRO, args...) = ma.regions[1]
 
-function reconstruct_global_array(ma::ArrayMRO, p::EqualXPartition, global_grid, arch)
-    Nx, Ny, Nz = size(global_grid)
-    arr_out = new_data(eltype(global_grid), global_grid, (Center, Center, Center))
-    n = Nx / length(p)
+function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, global_grid, arch) where {T, N}
+    dims = size(global_grid)[1:N]
+    idxs = default_indices(length(dims))
+    arr_out = zeros(eltype(global_grid), dims...)
+    n = dims[1] / length(p)
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
-        arr_out[init:fin, :, :] .= arch_array(CPU(), ma[r])
+        arr_out[init:fin, idxs[2:end]...] .= arch_array(CPU(), ma[r])
     end
 
     return arch_array(arch, arr_out)
@@ -142,11 +143,13 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
-        interior(global_field)[init:fin, :, :] .= data[r]
+        interior(global_field)[init:fin, :, :] .= data[r][1:fin-init+1, :, :]
     end
+    fill_halo_regions!(global_field)
 end
 
-@inline function displaced_xy_index(i, j, grid, region, p::EqualXPartition)
+@inline function displaced_xy_index(i, j, grid, region, p::XPartition)
     i′ = i + grid.Nx * (region - 1) 
-    return i′ + (j - 1) * grid.Nx * length(p)
+    t  = i′ + (j - 1) * grid.Nx * length(p)
+    return t
 end

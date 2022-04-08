@@ -17,7 +17,8 @@ import Oceananigans.Solvers: solve!
 
 import Oceananigans.Architectures: architecture
 
-struct UnifiedImplicitFreeSurfaceSolver{S, R}
+struct UnifiedImplicitFreeSurfaceSolver{A, S, R}
+    vertically_integrated_areas :: A
     unified_pcg_solver :: S
     right_hand_side :: R
 end
@@ -37,7 +38,8 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-
+    fill_halo_regions!(vertically_integrated_lateral_areas)
+    
     arch = architecture(mrg) 
     right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
 
@@ -54,7 +56,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
     solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
                                             grid = on_architecture(arch, grid), settings...)
 
-    return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
+    return UnifiedImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
 
@@ -62,6 +64,8 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegi
     UnifiedImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
     UnifiedImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)   
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
+    throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)
@@ -106,7 +110,7 @@ function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolv
     grid = η.grid
     
     @apply_regionally redistribute_lhs!(η, sol, arch, grid, Iterate(1:length(grid)), grid.partition)
-    
+
     fill_halo_regions!(η)
 
     return nothing
