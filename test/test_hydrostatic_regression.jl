@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 
-function show_hydrostatic_test(grid, free_surface, comp) 
+function show_hydrostatic_test(grid, free_surface, precompute_metrics) 
 
     typeof(grid) <: XRegLatLonGrid ? gx = :regular : gx = :stretched
     typeof(grid) <: YRegLatLonGrid ? gy = :regular : gy = :stretched
@@ -11,7 +11,7 @@ function show_hydrostatic_test(grid, free_surface, comp)
     arch = grid.architecture
     free_surface_str = string(typeof(free_surface).name.wrapper)
     
-    strc = "$(comp ? ", metrics are precomputed" : "")"
+    strc = "$(precompute_metrics ? ", metrics are precomputed" : "")"
 
     testset_str = "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
     info_str    =  "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
@@ -80,7 +80,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                 # because "uses too much parameter space (maximum 0x1100 bytes)" error 
                 if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) 
 
-                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
+                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)
                     
                     @testset "$testset_str" begin
                         @info "$info_str"
