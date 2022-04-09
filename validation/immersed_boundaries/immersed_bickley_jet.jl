@@ -124,7 +124,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                              schedule = TimeInterval(output_time_interval),
                              prefix = output_name,
                              field_slicer = nothing,
-                             force = true)
+                             overwrite_existing = true)
 
         @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
