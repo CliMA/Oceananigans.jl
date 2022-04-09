@@ -29,10 +29,13 @@ end
 # The magic
 @inline function (mf::MultipleForcings{N})(i, j, k, grid, clock, model_fields) where N
     total_forcing = zero(eltype(grid))
+    forcings = mf.forcings
     ntuple(Val(N)) do n
         Base.@_inline_meta
-        nth_forcing = mf.forcings[n]
-        total_forcing += nth_forcing(i, j, k, grid, clock, model_fields)
+        @inbounds begin
+            nth_forcing = forcings[n]
+            total_forcing += nth_forcing(i, j, k, grid, clock, model_fields)
+        end
     end
     return total_forcing
 end
