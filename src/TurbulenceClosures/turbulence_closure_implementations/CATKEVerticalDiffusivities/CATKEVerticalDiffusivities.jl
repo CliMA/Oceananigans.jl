@@ -139,7 +139,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     Kᵘ = CenterField(grid, boundary_conditions=bcs.Kᵘ)
     Kᶜ = CenterField(grid, boundary_conditions=bcs.Kᶜ)
     Kᵉ = CenterField(grid, boundary_conditions=bcs.Kᵉ)
-    Lᵉ = CenterField(grid, boundary_conditions=nothing)
+    Lᵉ = CenterField(grid) #, boundary_conditions=nothing)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities = NamedTuple(name => name === :e ? Kᵉ : Kᶜ for name in tracer_names)
