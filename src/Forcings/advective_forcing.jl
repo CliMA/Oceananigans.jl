@@ -44,7 +44,7 @@ settling = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_Stokes)
 AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: -1.97096
+└── w: ConstantField(-1.97096)
 ```
 """
 function AdvectiveForcing(scheme=UpwindBiasedFifthOrder(); u=ZeroField(), v=ZeroField(), w=ZeroField())
