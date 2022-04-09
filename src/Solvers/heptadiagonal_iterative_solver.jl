@@ -110,17 +110,17 @@ function HeptadiagonalIterativeSolver(coeffs;
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
     return HeptadiagonalIterativeSolver(grid,
-                                 problem_size, 
-                                 matrix_constructors,
-                                 diagonal,
-                                 placeholder_matrix,
-                                 preconditioner,
-                                 preconditioner_method,
-                                 settings,
-                                 iterative_solver, 
-                                 tolerance,
-                                 placeholder_timestep,
-                                 maximum_iterations)
+                                        problem_size, 
+                                        matrix_constructors,
+                                        diagonal,
+                                        placeholder_matrix,
+                                        preconditioner,
+                                        preconditioner_method,
+                                        settings,
+                                        iterative_solver, 
+                                        tolerance,
+                                        placeholder_timestep,
+                                        maximum_iterations)
 end
 
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
@@ -292,13 +292,16 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         constructors = deepcopy(solver.matrix_constructors)
         update_diag!(constructors, arch, solver.problem_size, solver.diagonal, Δt)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
-        solver.preconditioner = build_preconditioner(
-                            Val(solver.preconditioner_method),
-                            solver.matrix,
-                            solver.preconditioner_settings)
+
+        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
+                                                     solver.matrix,
+                                                     solver.preconditioner_settings)
+
         solver.previous_Δt = Δt
     end
     
+    #q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose=true)
+    #q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, verbose=true)
     q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
@@ -309,9 +312,9 @@ end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
-    print(io, "├── Problem size = "  , solver.problem_size, '\n')
-    print(io, "├── Grid = "  , solver.grid, '\n')
-    print(io, "├── Solution method = ", solver.iterative_solver, '\n')
-    print(io, "└── Preconditioner  = ", solver.preconditioner_method)
+    print(io, "├── Problem size: "  , solver.problem_size, '\n')
+    print(io, "├── Grid: "  , solver.grid, '\n')
+    print(io, "├── Solution method: ", solver.iterative_solver, '\n')
+    print(io, "└── Preconditioner: ", solver.preconditioner_method)
     return nothing
 end
