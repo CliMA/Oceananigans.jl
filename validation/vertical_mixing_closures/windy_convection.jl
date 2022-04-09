@@ -97,6 +97,7 @@ ax_e = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z")
 
 xlims!(ax_b, -grid.Lz * N², 0)
 xlims!(ax_u, -1.0, 1.0)
+xlims!(ax_e, -1e-4, 3e-3)
 
 colors = [:black, :blue, :red, :orange]
 
