@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures:
     RiBasedVerticalDiffusivity,
     CATKEVerticalDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
-    ExplicitTimeDiscretization,
+    ExplicitTimeDiscretization
 
 #####
 ##### Setup simulation

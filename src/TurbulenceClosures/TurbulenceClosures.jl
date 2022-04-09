@@ -93,6 +93,11 @@ include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
 
+# Miscellaneous utilities
+include("diffusivity_fields.jl")
+include("turbulence_closure_diagnostics.jl")
+include("vertically_implicit_diffusion_solver.jl")
+
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
 
@@ -111,11 +116,6 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
-
-# Miscellaneous utilities
-include("diffusivity_fields.jl")
-include("turbulence_closure_diagnostics.jl")
-include("vertically_implicit_diffusion_solver.jl")
 
 #####
 ##### Some value judgements here
