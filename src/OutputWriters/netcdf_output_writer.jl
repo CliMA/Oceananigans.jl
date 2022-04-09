@@ -287,22 +287,27 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                           overwrite_existing = false,
+                           overwrite_existing = nothing,
                                   compression = 0,
                                       verbose = false)
 
-    if isfile(filepath) && !overwrite_existing
-        @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file." *
-              "You might experience errors when writing output if the existing file belonged to a different simulation!"
+    if isnothing(overwrite_existing)
+        if isfile(filepath)
+            overwrite_existing = false
+        else
+            overwrite_existing = true
+        end
+    else
 
-    elseif isfile(filepath) && overwrite_existing
-        @warn "$filepath already exists and `overwrite_existing = true`." *
-              "Please make sure this setup was intentional as file $filepath will be overwritten!"
+        if isfile(filepath) && !overwrite_existing
+            @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
+                  "You might experience errors when writing output if the existing file belonged to a different simulation!"
 
-    elseif !isfile(filepath) && !overwrite_existing
-        @warn "File $filepath cannot be found nd `overwrite_existing = false`." *
-              "This may cause errors when creating $filepath"
+        elseif isfile(filepath) && overwrite_existing
+            @warn "$filepath already exists and `overwrite_existing = true`. " *
+                  "Please make sure this setup was intentional as file $filepath will be overwritten!"
 
+        end
     end
 
     mode = overwrite_existing ? "c" : "a"
