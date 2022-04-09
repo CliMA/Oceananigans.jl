@@ -6,7 +6,8 @@ using Printf
 using Oceananigans.TurbulenceClosures:
     RiBasedVerticalDiffusivity,
     CATKEVerticalDiffusivity,
-    ConvectiveAdjustmentVerticalDiffusivity
+    ConvectiveAdjustmentVerticalDiffusivity,
+    ExplicitTimeDiscretization,
 
 #####
 ##### Setup simulation
@@ -25,6 +26,7 @@ b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 closures_to_run = [RiBasedVerticalDiffusivity(),
+                   CATKEVerticalDiffusivity(ExplicitTimeDiscretization()),
                    CATKEVerticalDiffusivity(),
                    convective_adjustment]
 
@@ -39,7 +41,7 @@ for closure in closures_to_run
     bᵢ(x, y, z) = N² * z
     set!(model, b = bᵢ)
 
-    simulation = Simulation(model, Δt=30, stop_time=4days)
+    simulation = Simulation(model, Δt=1, stop_time=12hours)
 
     closurename = string(nameof(typeof(closure)))
 

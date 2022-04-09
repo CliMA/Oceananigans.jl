@@ -30,6 +30,7 @@ import Oceananigans.TurbulenceClosures:
     add_closure_specific_boundary_conditions,
     calculate_diffusivities!,
     DiffusivityFields,
+    linear_implicit_coefficient,
     viscosity,
     diffusivity,
     diffusive_flux_x,
@@ -51,11 +52,11 @@ function CATKEVerticalDiffusivity{TD}(Cᴰ:: CD,
     return CATKEVerticalDiffusivity{TD, CD, CL, CQ}(Cᴰ, mixing_length, surface_TKE_flux)
 end
 
-const CATKEVD = CATKEVerticalDiffusivity
+const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 
 # Support for "ManyIndependentColumnMode"
-const CATKEVDArray = AbstractArray{<:CATKEVD}
-const FlavorOfCATKE = Union{CATKEVD, CATKEVDArray}
+const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
+const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 
 function with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
@@ -138,11 +139,12 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     Kᵘ = CenterField(grid, boundary_conditions=bcs.Kᵘ)
     Kᶜ = CenterField(grid, boundary_conditions=bcs.Kᶜ)
     Kᵉ = CenterField(grid, boundary_conditions=bcs.Kᵉ)
+    Lᵉ = CenterField(grid, boundary_conditions=nothing)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities = NamedTuple(name => name === :e ? Kᵉ : Kᶜ for name in tracer_names)
 
-    return (; Kᵘ, Kᶜ, Kᵉ, _tupled_tracer_diffusivities)
+    return (; Kᵘ, Kᶜ, Kᵉ, Lᵉ, _tupled_tracer_diffusivities)
 end        
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
@@ -175,8 +177,11 @@ end
         diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
         diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
         diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Lᵉ[i, j, k] = implicit_dissipation_term(i, j, k, grid, closure_ij, args...)
     end
 end
+
+@inline linear_implicit_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VerticallyImplicitTimeDiscretization}, K) = @inbounds K.Lᵉ[i, j, k]
 
 @inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(max(zero(eltype(grid)), e[i, j, k]))
 
