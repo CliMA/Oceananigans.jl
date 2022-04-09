@@ -1,6 +1,10 @@
+using Adapt
+
 struct MultipleForcings{N, F}
     forcings :: F
 end
+
+Adapt.adapt_structure(to, mf::MultipleForcings) = MultipleForcings(adapt(to, mf.forcings))
 
 Base.getindex(mf::MultipleForcings, i) = mf.forcings[i]
 

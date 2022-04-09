@@ -1,5 +1,6 @@
 using Oceananigans.Advection: UpwindBiasedFifthOrder, div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
+using Adapt
 
 maybe_constant_field(u) = u
 maybe_constant_field(u::Number) = ConstantField(u)
@@ -12,7 +13,7 @@ struct AdvectiveForcing{U, S, F, C}
 end
 
 """
-AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
+    AdvectiveForcing(scheme=UpwindBiasedFifthOrder(), u=ZeroField(), v=ZeroField(), w=ZeroField())
 
 Build a forcing term representing advection by the velocity field `u, v, w` with an advection `scheme`.
 
@@ -74,4 +75,10 @@ function Base.show(io::IO, af::AdvectiveForcing)
               "├── v: ", prettysummary(af.velocities.v), '\n',
               "└── w: ", prettysummary(af.velocities.w))
 end
+
+Adapt.adapt_structure(to, af::AdvectiveForcing) =
+    AdvectiveForcing(adapt(to, af.velocities),
+                     adapt(to, af.advection_scheme),
+                     adapt(to, af.advection_kernel_function),
+                     adapt(to, af.advected_field))
 
