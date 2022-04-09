@@ -304,8 +304,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                   "You might experience errors when writing output if the existing file belonged to a different simulation!"
 
         elseif isfile(filepath) && overwrite_existing
-            @warn "$filepath already exists and `overwrite_existing = true`. " *
-                  "Please make sure this setup was intentional as file $filepath will be overwritten!"
+            @warn "Overwriting existing $filepath."
 
         end
     end
