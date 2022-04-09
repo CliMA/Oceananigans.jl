@@ -293,7 +293,7 @@ u, v, w = model.velocities # unpack velocity `Field`s
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
                                                       schedule = TimeInterval(4hours),
                                                         prefix = "eady_turbulence",
-                                                         force = true)
+                                                         overwrite_existing = true)
 nothing # hide
 
 # All that's left is to press the big red button:

@@ -108,7 +108,7 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
     JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
-                     schedule=IterationInterval(100), force = true)
+                     schedule=IterationInterval(100), overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 

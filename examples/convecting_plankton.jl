@@ -183,7 +183,7 @@ simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(20minutes),
                      prefix = "convecting_plankton",
-                     force = true)
+                     overwrite_existing = true)
 
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,

@@ -150,7 +150,7 @@ saved_output_filename = saved_output_prefix * ".jld2"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
                                                       prefix = saved_output_prefix,
-                                                      force = true)
+                                                      overwrite_existing = true)
 nothing # hide
 
 # Ready to press the big red button:

@@ -216,7 +216,7 @@ simulation.output_writers[:slices] =
                            prefix = "ocean_wind_mixing_and_convection",
                           indices = (:, grid.Ny/2, :),
                          schedule = TimeInterval(1minute),
-                            force = true)
+                            overwrite_existing = true)
 
 # We're ready:
 
