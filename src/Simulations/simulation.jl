@@ -139,6 +139,9 @@ function reset!(sim::Simulation)
     sim.model.clock.time = 0.0
     sim.model.clock.iteration = 0
     sim.model.clock.stage = 1
+    sim.stop_iteration = Inf
+    sim.stop_time = Inf
+    sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
