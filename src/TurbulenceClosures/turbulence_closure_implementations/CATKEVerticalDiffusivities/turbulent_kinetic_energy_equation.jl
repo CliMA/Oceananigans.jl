@@ -27,26 +27,34 @@ end
     return - κᶻ_ijk * N²
 end
 
-# This term will be treated implicitly
 const VITD = VerticallyImplicitTimeDiscretization
+
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
 
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, tracer_bcs) =
-    @inbounds abs(tracers.e[i, j, k]) * implicit_dissipation_term(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, clock, tracer_bcs)
-
-@inline implicit_dissipation_term(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(eltype(grid))
-
-@inline function implicit_dissipation_term(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, clock, tracer_bcs)
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
-    @inbounds eⁱʲᵏ = e[i, j, k]
-    ẽ¹² = sqrt(abs(eⁱʲᵏ))
+    @inbounds e⁺ = abs(e[i, j, k])
 
     ℓ = TKE_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
     Cᴰ = closure.Cᴰ
 
-    return Cᴰ * ẽ¹² / ℓ
+    # Note:
+    #   * because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
+    #
+    #   * then      L e = - ϵ
+    #                   = - Cᴰ e³² / ℓ
+    #
+    #   * and thus    L = - Cᴰ √e / ℓ
+    
+    return - Cᴰ * sqrt(e⁺) / ℓ
 end
+
+# Fallbacks for explicit time discretization
+@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, args...) =
+    @inbounds - tracers.e[i, j, k] * implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...)
+
+@inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(eltype(grid))
 
 #####
 ##### For closure tuples...

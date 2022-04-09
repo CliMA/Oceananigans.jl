@@ -65,16 +65,16 @@ end
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
     one(eltype(grid)) -
-        maybe_tupled_linear_implicit_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                 maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                 maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+        Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
-@inline maybe_tupled_linear_implicit_coefficient(args...) = linear_implicit_coefficient(args...)
+@inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
 
 # Default
-@inline linear_implicit_coefficient(i, j, k, grid, closure, args...) = zero(eltype(grid))
+@inline implicit_linear_coefficient(i, j, k, grid, closure, args...) = zero(eltype(grid))
 
 #####
 ##### Solver constructor

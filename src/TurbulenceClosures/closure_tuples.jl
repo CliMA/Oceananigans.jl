@@ -18,8 +18,8 @@ end
 ##### Kernel functions
 #####
 
-funcs     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_linear_implicit_term]
-alt_funcs = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :linear_implicit_term]
+funcs     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_implicit_linear_term]
+alt_funcs = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :implicit_linear_term]
 
 for (f, alt_f) in zip(funcs, alt_funcs)
     @eval begin

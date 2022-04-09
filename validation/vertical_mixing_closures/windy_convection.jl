@@ -25,13 +25,14 @@ Qᵘ = -1e-3
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-closures_to_run = [RiBasedVerticalDiffusivity(),
-                   CATKEVerticalDiffusivity(ExplicitTimeDiscretization()),
+closures_to_run = [
+                   #CATKEVerticalDiffusivity(ExplicitTimeDiscretization()),
                    CATKEVerticalDiffusivity(),
-                   convective_adjustment]
+                   RiBasedVerticalDiffusivity(),
+                   convective_adjustment,
+                   ]   
 
 for closure in closures_to_run
-
 
     model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
                                         tracers = (:b, :e),
@@ -41,7 +42,7 @@ for closure in closures_to_run
     bᵢ(x, y, z) = N² * z
     set!(model, b = bᵢ)
 
-    simulation = Simulation(model, Δt=1, stop_time=12hours)
+    simulation = Simulation(model, Δt=10minute, stop_time=48hours)
 
     closurename = string(nameof(typeof(closure)))
 
@@ -66,6 +67,7 @@ end
 b_ts = []
 u_ts = []
 v_ts = []
+e_ts = []
 
 for closure in closures_to_run
     closurename = string(nameof(typeof(closure)))
@@ -74,6 +76,7 @@ for closure in closures_to_run
     push!(b_ts, FieldTimeSeries(filepath, "b"))
     push!(u_ts, FieldTimeSeries(filepath, "u"))
     push!(v_ts, FieldTimeSeries(filepath, "v"))
+    push!(e_ts, FieldTimeSeries(filepath, "e"))
 end
 
 b1 = first(b_ts)
@@ -88,28 +91,33 @@ n = slider.value
 
 buoyancy_label = @lift "Buoyancy at t = " * prettytime(b1.times[$n])
 velocities_label = @lift "Velocities at t = " * prettytime(b1.times[$n])
+TKE_label = @lift "Turbulent kinetic energy t = " * prettytime(b1.times[$n])
 ax_b = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z")
 ax_u = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z")
+ax_e = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z")
 
 xlims!(ax_b, -grid.Lz * N², 0)
 xlims!(ax_u, -1.0, 1.0)
 
-colors = [:black, :blue, :red]
+colors = [:black, :blue, :red, :orange]
 
 for (i, closure) in enumerate(closures_to_run)
     bn = @lift interior(b_ts[i][$n], 1, 1, :)
     un = @lift interior(u_ts[i][$n], 1, 1, :)
     vn = @lift interior(v_ts[i][$n], 1, 1, :)
+    en = @lift interior(e_ts[i][$n], 1, 1, :)
     
     closurename = string(nameof(typeof(closure)))
 
     lines!(ax_b, bn, z, label=closurename, color=colors[i])
     lines!(ax_u, un, z, label="u, " * closurename, color=colors[i])
     lines!(ax_u, vn, z, label="v, " * closurename, linestyle=:dash, color=colors[i])
+    lines!(ax_e, en, z, label="e, " * closurename, linestyle=:dash, color=colors[i])
 end
 
 axislegend(ax_b, position=:lb)
 axislegend(ax_u, position=:rb)
+axislegend(ax_e, position=:rb)
 
 display(fig)
 
