@@ -192,9 +192,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid_type = typeof(grid).name.wrapper
                 free_surface_type = typeof(free_surface).name.wrapper
                 test_label = "[$arch, $grid_type, $topo, $free_surface_type]"                
-                @testset "Time-stepping HydrostaticFreeSurfaceModels with different grids $test_label" begin
-                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with different grids $test_label..."
-                    @test time_step_hydrostatic_model_works(grid, free_surface=free_surface)
+                @testset "Time-stepping HydrostaticFreeSurfaceModels with various grids $test_label" begin
+                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with various grids $test_label..."
+                    @test time_step_hydrostatic_model_works(grid; free_surface)
                 end
             end
         end

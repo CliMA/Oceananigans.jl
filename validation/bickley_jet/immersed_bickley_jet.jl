@@ -20,7 +20,7 @@ using Oceananigans.TurbulenceClosures
 
 CUDA.device!(1)
 
-using .BickleyJet: set_bickley_jet!
+include("bickley_utils.jl")
 
 """
     run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
@@ -32,9 +32,7 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
                            momentum_advection = VectorInvariant())
 
-    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
-                           x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
-                           topology = (Periodic, Periodic, Bounded))
+    grid = bickley_grid(; arch, Nh, halo=(4, 4, 4))
     
     @inline toplft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
     @inline botlft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
@@ -103,8 +101,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         JLD2OutputWriter(model, outputs,
                                 schedule = TimeInterval(output_time_interval),
                                 prefix = experiment_name,
-                                overwrite_existing = true)
-
+                                force = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
