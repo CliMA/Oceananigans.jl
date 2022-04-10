@@ -177,7 +177,7 @@ c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = = "some_more_data.jld2",
+                                                          filename = "some_more_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
@@ -195,7 +195,7 @@ to a file called `some_more_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     filename = = "some_more_averaged_data.jld2",
+                                                     filename = "some_more_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
@@ -252,7 +252,7 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = = "even_more_averaged_velocity_data.jld2",
+                                                          filename = "even_more_averaged_velocity_data.jld2",
                                                           schedule = AveragedTimeInterval(4years, window=1year, stride=2))
 
 # output
