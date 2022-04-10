@@ -31,7 +31,7 @@ end
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; prefix, schedule,
+    JLD2OutputWriter(model, outputs; filename, schedule,
                               dir = ".",
                           indices = (:, :, :),
                        with_halos = false,
@@ -57,7 +57,7 @@ Keyword arguments
 
   ## Filenaming
 
-  - `prefix` (required): Descriptive filename prefixed to all output files.
+  - `filename` (required): Descriptive filename including extension.
 
   - `dir`: Directory to save output to.
            Default: "." (current working directory).
@@ -128,7 +128,7 @@ c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_data",
+                                                          filename = "some_data",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
@@ -146,7 +146,7 @@ to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     prefix = "some_averaged_data",
+                                                     filename = "some_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
@@ -158,7 +158,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 """
-function JLD2OutputWriter(model, outputs; prefix, schedule,
+function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
                             with_halos = false,
@@ -178,7 +178,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     mkpath(dir)
-    filepath = joinpath(dir, prefix * ".jld2")
+    filepath = joinpath(dir, filename)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
