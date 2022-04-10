@@ -128,7 +128,7 @@ c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = "some_data",
+                                                          filename = "some_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
@@ -146,7 +146,7 @@ to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     filename = "some_averaged_data",
+                                                     filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
