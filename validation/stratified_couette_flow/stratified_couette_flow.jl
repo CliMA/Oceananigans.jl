@@ -188,7 +188,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
        :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
 
     field_writer =
-        JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
+        JLD2OutputWriter(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
                          init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
                          overwrite_existing=true, verbose=true)
 
@@ -212,7 +212,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     :kappaT => κavg)
 
     profile_writer =
-        JLD2OutputWriter(model, profiles, dir=base_dir, prefix=prefix * "_profiles",
+        JLD2OutputWriter(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
                          init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
                          overwrite_existing=true, verbose=true)
 
@@ -230,7 +230,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :Nu     => model -> Nu(model))
 
     statistics_writer =
-        JLD2OutputWriter(model, statistics, dir=base_dir, prefix=prefix * "_statistics",
+        JLD2OutputWriter(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
                          init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
                          overwrite_existing=true, verbose=true)
 

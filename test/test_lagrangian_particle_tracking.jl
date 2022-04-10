@@ -54,7 +54,7 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     jld2_filepath = "test_particles.jld2"
     sim.output_writers[:particles_jld2] =
         JLD2OutputWriter(model, (; particles=model.particles),
-                         prefix="test_particles", schedule=IterationInterval(1))
+                         filename=jld2_filepath, schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
