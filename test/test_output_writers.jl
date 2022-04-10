@@ -94,15 +94,15 @@ end
 
 function test_windowed_time_averaging_simulation(model)
 
-    jld_filename1 = "test_windowed_time_averaging1"
-    jld_filename2 = "test_windowed_time_averaging2"
+    jld_filename1 = "test_windowed_time_averaging1.jld2"
+    jld_filename2 = "test_windowed_time_averaging2.jld2"
 
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
     jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
-                                          prefix = jld_filename1,
+                                          filename = jld_filename1,
                                           overwrite_existing = true)
 
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
@@ -157,7 +157,7 @@ function test_windowed_time_averaging_simulation(model)
 
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
                                                         schedule = AveragedTimeInterval(π, window=π),
-                                                        prefix = jld_filename2,
+                                                        filename = jld_filename2,
                                                         overwrite_existing = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
@@ -172,8 +172,8 @@ function test_windowed_time_averaging_simulation(model)
 
     rm(nc_filepath1)
     rm(nc_filepath2)
-    rm(jld_filename1 * ".jld2")
-    rm(jld_filename2 * ".jld2")
+    rm(jld_filename1)
+    rm(jld_filename2)
 
     return nothing
 end
