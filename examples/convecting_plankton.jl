@@ -182,7 +182,7 @@ outputs = (w = model.velocities.w,
 simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(20minutes),
-                     prefix = "convecting_plankton",
+                     filename = "convecting_plankton.jld2",
                      overwrite_existing = true)
 
 # !!! info "Using multiple output writers"

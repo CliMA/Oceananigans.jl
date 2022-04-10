@@ -107,7 +107,7 @@ plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
+    JLD2OutputWriter(model, model.tracers, filename = "one_dimensional_diffusion.jld2",
                      schedule=IterationInterval(100), overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,

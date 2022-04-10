@@ -212,7 +212,7 @@ fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusi
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, fields_to_output,
                      schedule = TimeInterval(output_interval),
-                     prefix = "langmuir_turbulence_fields",
+                     filename = "langmuir_turbulence_fields.jld2",
                      overwrite_existing = true)
 
 # ### An "averages" writer
@@ -232,7 +232,7 @@ wv = Average(w * v, dims=(1, 2))
 simulation.output_writers[:averages] =
     JLD2OutputWriter(model, (; U, V, B, wu, wv),
                      schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                     prefix = "langmuir_turbulence_averages",
+                     filename = "langmuir_turbulence_averages.jld2",
                      overwrite_existing = true)
 
 # ## Running the simulation
