@@ -113,7 +113,7 @@ function test_thermal_bubble_netcdf_output(arch)
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
     isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
     nc_sliced_writer = NetCDFOutputWriter(model, outputs,
-                                          filepath = nc_sliced_filepath,
+                                          filename = nc_sliced_filepath,
                                           schedule = IterationInterval(10),
                                           array_type = Array{Float32},
                                           indices = indices,
@@ -266,7 +266,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                                   filepath = nc_filepath,
+                                   filename = nc_filepath,
                                    schedule = IterationInterval(10),
                                    with_halos = true)
 
@@ -534,7 +534,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, nc_outputs,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = horizontal_average_nc_filepath,
+                           filename = horizontal_average_nc_filepath,
                            schedule = TimeInterval(10Δt),
                            dimensions = nc_dimensions)
 
@@ -550,7 +550,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, single_nc_output,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = single_time_average_nc_filepath,
+                           filename = single_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
                            dimensions = single_nc_dimension)
 
@@ -558,7 +558,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, nc_outputs,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = multiple_time_average_nc_filepath,
+                           filename = multiple_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
                            dimensions = nc_dimensions)
 
@@ -689,7 +689,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     simulation.output_writers[:fields] =
         NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filepath = nc_filepath,
+                             filename = nc_filepath,
                              schedule = IterationInterval(1),
                            array_type = Array{Float64},
                               verbose = true)
@@ -743,7 +743,7 @@ function test_netcdf_regular_lat_lon_grid_output(arch)
 
     simulation.output_writers[:fields] =
         NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filepath = nc_filepath,
+                             filename = nc_filepath,
                              schedule = IterationInterval(1),
                            array_type = Array{Float64},
                               verbose = true)
