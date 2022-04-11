@@ -3,15 +3,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Oceananigans: prognostic_fields, fields
 using Oceananigans.Advection: AbstractAdvectionScheme
 
 import Oceananigans.Simulations: new_time_step
-
-import Oceananigans.Diagnostics: accurate_advection_timescale
+import Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
-                        HydrostaticFreeSurfaceModel,
                         build_implicit_step_solver,
                         validate_tracer_advection
 

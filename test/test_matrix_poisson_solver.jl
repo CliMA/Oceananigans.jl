@@ -37,9 +37,9 @@ function run_identity_operator_test(grid)
     initial_guess = solution = CenterField(grid)
     set!(initial_guess, (x, y, z) -> rand())
     
-    solve!(initial_guess, solver, b, 1.0)
+    sol = solve!(initial_guess, solver, b, 1.0)
 
-    b = reshape(b, size(grid)...)
+    b = reshape(sol, size(grid)...)
 
     @test norm(interior(solution) .- b) .< solver.tolerance
 end
@@ -95,8 +95,10 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
-    solve!(ϕ_solution, solver, rhs, 1.0)
-
+    sol = solve!(ϕ_solution, solver, rhs, 1.0)
+    set!(ϕ_solution, reshape(sol, solver.problem_size...))
+    fill_halo_regions!(ϕ_solution) 
+    
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
     calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)

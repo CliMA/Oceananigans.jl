@@ -109,5 +109,7 @@ function on_architecture(arch, b::GridFittedBoundary)
     return GridFittedBoundary(mask)
 end
 
+
 @inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
+Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))     
 

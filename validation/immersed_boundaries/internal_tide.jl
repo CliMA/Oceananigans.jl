@@ -1,7 +1,8 @@
 using Printf
 using CUDA
 using Oceananigans
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.MultiRegion
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using LinearAlgebra
 
@@ -33,19 +34,19 @@ grid = RectilinearGrid(GPU(), size=(512, 256),
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
-@inline show_name(t) = t isa Explicit ? "explicit" : "implicit"
+@inline show_name(t) = t isa ExplicitFreeSurface ? "explicit" : "implicit"
 
 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
-
+mrg_with_bump  = MultiRegionGrid(grid_with_bump, partition=XPartition(2), devices=(0, 1))
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-for time_stepper in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization)
+for free_surface in (ExplicitFreeSurface, ImplicitFreeSurface)
     
-    model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
+    model = HydrostaticFreeSurfaceModel(grid = mrg_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
-                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                        closure = ScalarDiffusivity(time_stepper, ν=1e-2, κ=1e-2),
+                                        free_surface = free_surface(gravitational_acceleration=10),
+                                        closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = FPlane(f=sqrt(0.5)),
@@ -64,12 +65,9 @@ for time_stepper in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretiz
     
     simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
-    serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
-
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                         schedule = TimeInterval(0.1),
-                                                        prefix = "internal_tide_$(show_name(time_stepper))",
-                                                        init = serialize_grid,
+                                                        prefix = "internal_tide_$(show_name(free_surface))",
                                                         force = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
