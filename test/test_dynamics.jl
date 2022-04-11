@@ -537,6 +537,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)])
             append!(grids, [RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded)),
                             RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+
+            # Closure tuple.
+            closure_tuple = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1/2, κ=1/2),
+                             VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1/2, κ=1/2))
+            push!(coords, z)
+            push!(fieldnames, fieldnames[end])
+            push!(closures, closure_tuple)
+            push!(grids, grids[end])
                                
             # Immersed grid cases
             immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch,

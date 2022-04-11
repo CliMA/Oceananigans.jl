@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Architectures: device_event
@@ -41,7 +43,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
-                                                                           tolerance = 1e-15))
+                                                                           abstol=1e-15, reltol=0))
     
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
@@ -83,7 +85,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
-                                                                           tolerance = 1e-15))
+                                                                           tolerance=1e-15))
     
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, device_event(arch))
@@ -119,6 +121,7 @@ end
 
 @testset "Implicit free surface solver tests" begin
     for arch in archs
+        A = typeof(arch)
 
         rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
                                                  x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
@@ -128,20 +131,23 @@ end
                                                    longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
 
         for grid in (rectilinear_grid, lat_lon_grid)
-            @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
+            G = string(nameof(typeof(grid)))
+            @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
             run_pcg_implicit_free_surface_solver_tests(arch, grid)
             
-            @info "Testing Matrix implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
+            @info "Testing Matrix implicit free surface solver [$A, $G]..."
             run_matrix_implicit_free_surface_solver_tests(arch, grid)
         end
 
-        @info "Testing implicit free surface solvers compared to FFT [$(typeof(arch))]..."
+        @info "Testing implicit free surface solvers compared to FFT [$A]..."
 
-        Δt = 900
+        mat_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
+                                               tolerance=1e-15, maximum_iterations=128^3)
 
-        mat_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver,    tolerance=1e-15, maximum_iterations=128^3)
-        pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
-        fft_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
+        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               abstol=1e-15, reltol=0, maxiter=128^3)
+
+        fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
         pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
@@ -159,6 +165,7 @@ end
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
         
+        Δt = 900
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             implicit_free_surface_step!(m.free_surface, m, Δt, 1.5, device_event(arch))

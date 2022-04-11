@@ -423,4 +423,3 @@ coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s",
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
                                                        name, scalar_summary(minimum(parent(Δ))),
                                                        name, scalar_summary(maximum(parent(Δ))))
-

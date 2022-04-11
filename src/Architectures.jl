@@ -106,8 +106,9 @@ arch_array(::GPU, a::CuArray) = a
 
 arch_array(arch, a::AbstractRange) = a
 arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
-arch_array(arch, ::Nothing) = nothing
-arch_array(arch, a::Number) = a
+arch_array(arch, ::Nothing)   = nothing
+arch_array(arch, a::Number)   = a
+arch_array(arch, a::Function) = a
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a

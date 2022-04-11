@@ -302,10 +302,11 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         M = prod(solver.problem_size)
         update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
-        solver.preconditioner = build_preconditioner(
-                            Val(solver.preconditioner_method),
-                            solver.matrix,
-                            solver.preconditioner_settings)
+
+        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
+                                                     solver.matrix,
+                                                     solver.preconditioner_settings)
+
         solver.previous_Δt = Δt
     end
     
@@ -316,9 +317,9 @@ end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
-    print(io, "├── Problem size = "  , solver.problem_size, '\n')
-    print(io, "├── Grid = "  , solver.grid, '\n')
-    print(io, "├── Solution method = ", solver.iterative_solver, '\n')
-    print(io, "└── Preconditioner  = ", solver.preconditioner_method)
+    print(io, "├── Problem size: "  , solver.problem_size, '\n')
+    print(io, "├── Grid: "  , solver.grid, '\n')
+    print(io, "├── Solution method: ", solver.iterative_solver, '\n')
+    print(io, "└── Preconditioner: ", solver.preconditioner_method)
     return nothing
 end

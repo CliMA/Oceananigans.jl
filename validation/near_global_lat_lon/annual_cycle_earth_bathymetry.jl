@@ -124,8 +124,6 @@ vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretizatio
                                      ν = νz, κ = κz)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
-background_diffusivity = (horizontal_closure, vertical_closure)
                                        
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
@@ -177,8 +175,25 @@ v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, para
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 # Linear bottom drag:
-μ         = Δz_bottom / 10days
-μ_forcing = 10days
+μ = Δz_bottom / 10days
+# μ_forcing = 10days
+
+# @inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
+#     u = @inbounds fields.u[i, j, k]
+#     return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
+#                   - μ * u,
+#                  zero(eltype(grid)))
+# end
+
+# @inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
+#     v = @inbounds fields.v[i, j, k]
+#     return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
+#                   - μ * v,
+#                  zero(eltype(grid)))
+# end
+
+# Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
+# Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -188,7 +203,7 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
-                                   preconditioner_settings = (ε = 0.01, nzrel = 6))
+                                   preconditioner_settings = (ε = 0.01, nzrel = 10))
 
 free_surface = ExplicitFreeSurface()
 
@@ -196,13 +211,14 @@ equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     free_surface = free_surface,
-                                    momentum_advection = VectorInvariant(),
-                                    tracer_advection = WENO5(underlying_grid),
+                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()),
+                                    tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
-                                    tracers = (:T, :S),
-                                    closure = (background_diffusivity..., convective_adjustment))
+                                    tracers = :T,
+                                    closure = (vertical_closure, convective_adjustment)) 
+
 #####
 ##### Initial condition:
 #####
@@ -210,9 +226,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
 u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
-@apply_regionally fill!(T, -1)
-S = model.tracers.S
-@apply_regionally fill!(S, 30)
+T .= -1
 
 #####
 ##### Simulation setup
@@ -243,13 +257,13 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 u, v, w = model.velocities
-T, S = model.tracers
+
+T = model.tracers.T
 η = model.free_surface.η
 
-output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, η),
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
@@ -258,7 +272,6 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T,
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        cleanup = true,
                                                         force = true)
 
 # Let's goo!
@@ -279,13 +292,15 @@ run!(simulation)
 #### Visualize solution
 ####
 
-using GLMakie
+using GLMakie, JLD2
+
+output_prefix = "annual_cycle_global_lat_lon_128_60_18_temp"
 
 surface_file = jldopen(output_prefix * "_surface.jld2")
 
 iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
-iter = Node(0)
+iter = Observable(0)
 
 ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
 ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
@@ -298,7 +313,7 @@ u = @lift ui($iter)
 v = @lift vi($iter)
 T = @lift Ti($iter)
 
-max_η = 4
+max_η = 2
 min_η = - max_η
 max_u = 0.2
 min_u = - max_u

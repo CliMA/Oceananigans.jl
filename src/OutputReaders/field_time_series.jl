@@ -20,8 +20,8 @@ struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY
                 indices :: I
                   times :: χ
 
-    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ,
-                                            indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
+    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B,
+                                            times::χ, indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data) 
         return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, indices, times)
     end
@@ -34,10 +34,11 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 #####
 
 """
-    FieldTimeSeries{LX, LY, LZ}(grid, times, boundary_conditions=nothing)
+    FieldTimeSeries{LX, LY, LZ}(grid, times, [FT=eltype(grid);]
+                                indices = (:, :, :),
+                                boundary_conditions = nothing)
 
-Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
-`boundary_conditions`, and initialized with zeros of `eltype(grid)`.
+Return a `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :),
@@ -69,8 +70,8 @@ Keyword arguments
 - `backend`: `InMemory()` to load data into a 4D array or `OnDisk()` to lazily load data from disk
              when indexing into `FieldTimeSeries`.
 
-- `grid`: A grid to associated with data, in the case that the native grid
-          was not serialized properly.
+- `grid`: A grid to associated with data, in the case that the native grid was not serialized
+          properly.
 
 - `iterations`: Iterations to load. Defaults to all iterations found in the file.
 
@@ -103,21 +104,53 @@ function FieldTimeSeries(path, name, backend::InMemory;
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (location   = file["timeseries/$name/serialized/location"])
-    isnothing(grid)         && (grid       = file["serialized/grid"])
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
     end
 
-    indices = file["timeseries/$name/serialized/indices"]
-    close(file)
+    indices = try
+        file["timeseries/$name/serialized/indices"]
+    catch
+        (:, :, :)
+    end
+
+    isnothing(grid) && (grid = file["serialized/grid"])
 
     # Default to CPU if neither architecture nor grid is specified
-    architecture = isnothing(architecture) ?
-        (isnothing(grid) ? CPU() : Architectures.architecture(grid)) :
-        architecture
+    architecture = isnothing(architecture) ? (isnothing(grid) ? CPU() : Architectures.architecture(grid)) : architecture
 
-    grid = on_architecture(architecture, grid)
+    # This should be removed in a month or two (4/5/2022).
+    grid = try
+        on_architecture(architecture, grid)
+    catch err # Likely, the grid has CuArrays in it...
+        if grid isa RectilinearGrid # we can try...
+            Nx = file["grid/Nx"]
+            Ny = file["grid/Ny"]
+            Nz = file["grid/Nz"]
+            Hx = file["grid/Hx"]
+            Hy = file["grid/Hy"]
+            Hz = file["grid/Hz"]
+            xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+            yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+            zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+            x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+            y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+            z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+            topo = topology(grid)
+
+            # Reduce for Flat dimensions
+            domain = NamedTuple((:x, :y, :z)[i] => (x, y, z)[i] for i=1:3 if topo[i] !== Flat)
+            size = Tuple((Nx, Ny, Nz)[i] for i=1:3 if topo[i] !== Flat)
+            halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
+
+            RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+        else
+            throw(err)
+        end
+    end
+
+    close(file)
 
     LX, LY, LZ = location
     time_series = FieldTimeSeries{LX, LY, LZ}(grid, times; indices, boundary_conditions)
@@ -142,10 +175,14 @@ end
 #####
 
 """
-    Field(path::String, name::String, iter; grid=nothing)
+    Field(location, path, name, iter;
+          grid = nothing,
+          architecture = nothing,
+          indices = (:, :, :),
+          boundary_conditions = nothing)
 
-Load a Field saved in JLD2 file at `path`, with `name` and at `iter`ation.
-`grid` is loaded from `path` if not specified.
+Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
+Unless specified, the `grid` is loaded from `path`.
 """
 function Field(location, path::String, name::String, iter;
                grid = nothing,
@@ -306,7 +343,3 @@ function Base.show(io::IO, fts::FieldTimeSeries)
 
     return print(io, prefix, suffix)
 end
-
-#####
-##### Reductions
-#####
