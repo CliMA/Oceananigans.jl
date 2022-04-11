@@ -166,9 +166,10 @@ Keyword arguments
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: Array{Float32}.
 
-- `indices`: TODO
+- `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
+             includes the full fields.
 
-- `with_halos`: TODO
+- `with_halos`: Boolean defining whether or not to include halos in the outputs.
 
 - `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
 
