@@ -10,6 +10,7 @@ struct FieldBoundaryBuffers{W, E, S, N}
 end
 
 FieldBoundaryBuffers() = FieldBoundaryBuffers(nothing, nothing, nothing, nothing)
+FieldBoundaryBuffers(grid, data, ::Missing) = nothing
 
 function FieldBoundaryBuffers(grid, data, boundary_conditions)
 
