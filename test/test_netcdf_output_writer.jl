@@ -20,7 +20,8 @@ function test_DateTime_netcdf_output(arch)
 
     filepath = "test_DateTime.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); filepath,
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+                                                         filename = filepath,
                                                          schedule = IterationInterval(1))
 
     run!(simulation)
@@ -53,7 +54,8 @@ function test_TimeDate_netcdf_output(arch)
 
     filepath = "test_TimeDate.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); filepath,
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+                                                         filename = filepath,
                                                          schedule = IterationInterval(1))
 
     run!(simulation)
@@ -101,7 +103,7 @@ function test_thermal_bubble_netcdf_output(arch)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
     isfile(nc_filepath) && rm(nc_filepath)
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10), verbose=true)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filepath, schedule=IterationInterval(10), verbose=true)
     push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
@@ -374,7 +376,7 @@ function test_netcdf_function_output(arch)
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; filepath=nc_filepath,
+        NetCDFOutputWriter(model, outputs; filename=nc_filepath,
                            schedule=TimeInterval(Δt), dimensions=dims, array_type=Array{Float64}, verbose=true,
                            global_attributes=global_attributes, output_attributes=output_attributes)
 
@@ -464,7 +466,7 @@ function test_netcdf_function_output(arch)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; filepath=nc_filepath, overwrite_existing=false,
+        NetCDFOutputWriter(model, outputs; filename=nc_filepath, overwrite_existing=false,
                            schedule=IterationInterval(1), array_type=Array{Float64}, dimensions=dims, verbose=true,
                            global_attributes=global_attributes, output_attributes=output_attributes)
 
@@ -648,12 +650,12 @@ function test_netcdf_output_alignment(arch)
 
     test_filename1 = "test_output_alignment1.nc"
     simulation.output_writers[:stuff] =
-        NetCDFOutputWriter(model, model.velocities, filepath=test_filename1,
+        NetCDFOutputWriter(model, model.velocities, filename=test_filename1,
                            schedule=TimeInterval(7.3))
 
     test_filename2 = "test_output_alignment2.nc"
     simulation.output_writers[:something] =
-        NetCDFOutputWriter(model, model.tracers, filepath=test_filename2,
+        NetCDFOutputWriter(model, model.tracers, filename=test_filename2,
                            schedule=TimeInterval(3.0))
 
     run!(simulation)
