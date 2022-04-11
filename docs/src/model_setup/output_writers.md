@@ -48,8 +48,8 @@ passing it a dictionary of (label, field) pairs and any indices for slicing if y
 
 ### Examples
 
-Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
-to separate NetCDF files:
+Saving the u velocity field and temperature fields as full 3D fields, surface 2D slices, and
+1D columns to separate NetCDF files:
 
 ```jldoctest netcdf1
 using Oceananigans
@@ -76,13 +76,14 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
-                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
+                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 
 # output
-ERROR: UndefVarError: FieldSlicer not defined
-Stacktrace:
- [1] top-level scope
-   @ none:1
+NetCDFOutputWriter scheduled on TimeInterval(1 minute):
+├── filepath: ./another_surface_xy_slice.nc
+├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
+├── 2 outputs: (c, u)
+└── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
@@ -90,13 +91,14 @@ simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filename = "another_averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
-                       field_slicer = FieldSlicer(i=1, j=1))
+                       indices = (1, 1, :))
 
 # output
-ERROR: UndefVarError: FieldSlicer not defined
-Stacktrace:
- [1] top-level scope
-   @ none:1
+NetCDFOutputWriter scheduled on TimeInterval(1 minute):
+├── filepath: ./another_averaged_z_profile.nc
+├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+└── array type: Array{Float32}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
