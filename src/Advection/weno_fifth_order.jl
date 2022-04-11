@@ -161,8 +161,10 @@ function WENO5(coeffs = nothing, FT = Float64;
                zweno = true, 
                vector_invariant = nothing)
     
-    !(grid isa Nothing) && FT = eltype(grid)
-    
+    if !(grid isa Nothing) 
+        FT = eltype(grid)
+    end
+
     weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
 
     if coeffs isa Nothing
@@ -192,7 +194,6 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
         metrics      = return_metrics(grid)
         dirsize      = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
 
-        FT       = eltype(grid)
         arch     = architecture(grid)
         new_grid = with_halo((4, 4, 4), grid)
 
