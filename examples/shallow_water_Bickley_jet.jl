@@ -138,7 +138,7 @@ perturbation_norm(args...) = norm(v)
 # Output every `t = 1.0`.
 
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                        filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc"),
+                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc"),
                                                         schedule = TimeInterval(1),
                                                         overwrite_existing = true)
 
@@ -146,7 +146,7 @@ simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
 # Output every time step.
 
 simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                        filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc"),
+                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc"),
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; perturbation_norm = ()),
                                                         overwrite_existing = true)
