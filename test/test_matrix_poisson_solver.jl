@@ -19,8 +19,6 @@ function identity_operator!(b, x)
 end
 
 function run_identity_operator_test(grid)
-    arch = architecture(grid)
-
     N = size(grid)
     M = prod(N)
 
@@ -32,16 +30,11 @@ function run_identity_operator_test(grid)
 
     solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
-    fill!(b, rand())
+    b .= rand(length(b))
 
-    initial_guess = solution = CenterField(grid)
-    set!(initial_guess, (x, y, z) -> rand())
-    
-    sol = solve!(initial_guess, solver, b, 1.0)
+    sol = solve!(b, solver, b, 1.0)
 
-    b = reshape(sol, size(grid)...)
-
-    @test norm(interior(solution) .- b) .< solver.tolerance
+    @test norm(sol .- b) .< solver.tolerance
 end
 
 @kernel function _multiply_by_volume!(r, grid)
