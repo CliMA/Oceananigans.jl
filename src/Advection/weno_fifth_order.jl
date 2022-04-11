@@ -228,24 +228,18 @@ function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
 end
 
 Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF} =
-     WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
-               typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ)), VI, WF}(
-        Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-        Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
+     WENO5{VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
+                   Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
+                   Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
+                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
+                   Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
+                   Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
+                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
 
