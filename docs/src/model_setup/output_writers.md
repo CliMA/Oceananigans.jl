@@ -67,7 +67,7 @@ simulation.output_writers[:field_writer] =
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: more_fields.nc
+├── filepath: ./more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
 └── array type: Array{Float32}
