@@ -77,7 +77,7 @@ function solid_body_rotation_test(grid; regions = 1)
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         tracers = :c,
-                                        tracer_advection = WENO5(grid),
+                                        tracer_advection = WENO5(),
                                         buoyancy = nothing,
                                         closure = nothing)
 
