@@ -15,7 +15,7 @@ so that the code runs as fast as possible for the configuration chosen by the us
 two-dimensional setups to complex three-dimensional simulations --- and so that as much code
 as possible is shared between the different architectures, models, and grids.
 
-Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu).
+Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
 
 ## Getting help
 
