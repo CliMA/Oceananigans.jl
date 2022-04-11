@@ -13,8 +13,27 @@ struct RiBasedVerticalDiffusivity{TD, FT, LZ} <: AbstractScalarDiffusivity{TD, V
     coefficient_z_location :: LZ
 end
 
+RiBasedVerticalDiffusivity{TD}(ν₀::FT, Ri₀ν::FT, Riᵟν::FT, κ₀::FT, Ri₀κ::FT, Riᵟκ::FT, coefficient_z_location::LZ) where {TD, FT, LZ} =
+    RiBasedVerticalDiffusivity{TD, FT, LZ}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ, coefficient_z_location)
+
 """
-    RiBasedVerticalDiffusivity
+    RiBasedVerticalDiffusivity([td=VerticallyImplicitTimeDiscretization(), FT=Float64] kwargs...)
+
+Returns a closure that estimates the vertical viscosity and diffusivity
+from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
+a decreasing function of the Richardson number.
+
+Keyword Arguments
+=========
+
+* ν₀ (Float64 parameter): Convective adjustment viscosity. Default: 0.01
+* Ri₀ν (Float64 parameter): Ri threshold for decreasing viscosity. Default: -0.5
+* Riᵟν (Float64 parameter): Width over which Ri decreases to 0. Default: 1.0
+* κ₀ (Float64 parameter): Convective adjustment diffusivity for tracers. Default: 0.1
+* Ri₀κ (Float64 parameter): Ri threshold for decreasing viscosity. Default: -0.5
+* Riᵟκ (Float64 parameter): Width over which Ri decreases to 0. Default: 1.0
+* coefficient_z_location (Face() or Center()): The vertical location of the diffusivity and viscosity.
+                                               Default: Face().
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
@@ -27,12 +46,11 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     Riᵟκ = 1.0)
 
     TD = typeof(time_discretization)
-    LZ = typeof(coefficient_z_location)
+
     coefficient_z_location isa Face || coefficient_z_location isa Center ||
         error("coefficient_z_location is $LZ but must be `Face()` or `Center()`!")
 
-    return RiBasedVerticalDiffusivity{TD, FT, LZ}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ,
-                                                  coefficient_z_location)
+    return RiBasedVerticalDiffusivity{TD}(ν₀, Ri₀ν, Riᵟν, κ₀, Ri₀κ, Riᵟκ, coefficient_z_location)
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
@@ -48,6 +66,8 @@ const FlavorOfRBVD{LZ} = Union{RBVD{LZ}, RBVDArray{LZ}} where LZ
 
 @inline viscosity_location(::FlavorOfRBVD{LZ}) where LZ = (Center(), Center(), LZ())
 @inline diffusivity_location(::FlavorOfRBVD{LZ}) where LZ = (Center(), Center(), LZ())
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
@@ -57,9 +77,6 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD{LZ}) w
     ν = Field{Center, Center, LZ}(grid)
     return (; κ, ν)
 end
-
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
 

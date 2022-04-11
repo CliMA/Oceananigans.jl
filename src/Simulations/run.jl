@@ -120,6 +120,7 @@ function time_step!(sim::Simulation)
         else
             @warn "Simulation stopped during initialization."
         end
+
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
         time_step!(sim.model, Δt)
@@ -161,7 +162,6 @@ Initialize a simulation:
 - Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
-
 """
 function initialize_simulation!(sim)
     @info "Initializing simulation..."
