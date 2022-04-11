@@ -232,7 +232,7 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, verbose = true)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, verbose=true)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -245,7 +245,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5())
+                                    tracer_advection = WENO5(grid = underlying_mrg))
 
 #####
 ##### Initial condition:
@@ -272,7 +272,7 @@ fill_halo_regions!(S)
 
 Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_iteration=1) #stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
@@ -324,7 +324,6 @@ run!(simulation, pickup = pickup_file)
 @info """
 
     Simulation took $(prettytime(simulation.run_wall_time))
-    Background diffusivity: $background_diffusivity
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """

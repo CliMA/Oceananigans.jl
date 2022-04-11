@@ -5,6 +5,7 @@
 using OffsetArrays
 using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: arch_array, architecture
+using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 import Base: show
 
@@ -155,6 +156,10 @@ Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Scheme
 Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation
     laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
+
+WENO5(grid, coeffs, FT; stretched_smoothness = false, zweno = true, vector_invariant = nothing) = 
+    WENO5(coeffs, FT; grid = grid, stretched_smoothness = false, zweno = true, vector_invariant = nothing)
+
 function WENO5(coeffs = nothing, FT = Float64; 
                grid = nothing, 
                stretched_smoothness = false, 
@@ -228,18 +233,13 @@ function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
 end
 
 Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF} =
-     WENO5{VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
-                   Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
-                   Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
-                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
-                   Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
-                   Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
-                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
+     WENO5{VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
+                   scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
 
@@ -334,9 +334,8 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
         stencil = retrieve_left_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
-        # horrible but have to do this for GPU execution (broadcast doesn't work apparently)
         result = 0
-        for j = 1:3
+        @unroll for j = 1:3
             result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
         end
     end
@@ -348,9 +347,8 @@ end
         stencil = retrieve_right_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
-        # horrible but have to do this for GPU execution (broadcast doesn't work apparently sum(ψ.*(wᵢᵢ.*ψ.+wᵢⱼ.*dagger(ψ))) )
         result = 0
-        for j = 1:3
+        @unroll for j = 1:3
             result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
         end
     end

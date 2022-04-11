@@ -147,5 +147,16 @@ macro apply_regionally(expr)
         return quote
             $(esc(new_expr))
         end
+    elseif expr.head == :(=)
+        ret = expr.args[1]
+        exp = expr.args[2]
+        func = exp.args[1]
+        args = exp.args[2:end]
+        multi_region = quote
+            $ret = construct_regionally($func, $(args...))
+        end
+        return quote
+            $(esc(multi_region))
+        end
     end
 end
