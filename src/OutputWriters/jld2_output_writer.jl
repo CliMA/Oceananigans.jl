@@ -171,6 +171,9 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
+    # Enforce that extensions need to be `jld2`
+    @assert filename[end-4:end] == ".jld2" "`filename` needs to have `.jld2` extension"
+
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
