@@ -90,6 +90,40 @@ function test_dependency_adding(model)
     return nothing
 end
 
+function test_creating_and_appending(model, output_writer)
+
+    simulation = Simulation(model, Δt=1, stop_iteration=5)
+    output = fields(model)
+    filename = "test_caa.h"
+
+    # Create a simulation with `overwrite_existing = true` and run it
+    simulation.output_writers[:writer] = output_writer(model, output,
+                                                       filename = filename,
+                                                       schedule = IterationInterval(1),
+                                                       overwrite_existing = true)
+    run!(simulation)
+
+    # Test if file was crated
+    @test isfile(filename)
+
+    # Extend simulation and run it with `overwrite_existing = false`
+    simulation.stop_iteration = 10
+    simulation.output_writers[:writer].overwrite_existing = false
+    run!(simulation)
+
+    # Test that length is what we expected
+    if output_writer isa NetCDFOutputWriter
+        ds = NCDataset(filename)
+        time_length = length(ds["time"])
+    else
+    end
+    @test time_length == 10
+
+    rm(filename)
+
+    return nothing
+end
+
 #####
 ##### Test time averaging of output
 #####
@@ -193,6 +227,11 @@ end
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
+        @info "Testing that writers create file and append to it properly"
+        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+            @test test_creating_and_appending(model, output_writer)
+        end
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
