@@ -403,7 +403,7 @@ function domain_summary(topo, name, left, right)
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
     topo_string = topo isa Periodic ? "Periodic " :
-                  topo isa Bounded ? "Bounded " :
+                  topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   "RightConnected "

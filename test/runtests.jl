@@ -118,7 +118,6 @@ include("dependencies_for_runtests.jl")
         @testset "Multi Region tests" begin
             include("test_multi_region_advection_diffusion.jl")
             include("test_multi_region_implicit_solver.jl")
-            include("test_multi_region_poisson_solver.jl")
         end
     end
 
