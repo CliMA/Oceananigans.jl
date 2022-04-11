@@ -57,6 +57,19 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectio
     C3₀ :: FT
     C3₁ :: FT 
     C3₂ :: FT
+    
+    function WENO5{VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                           coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                           coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                           smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
+                           smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
+                           smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
+                           C3₀::FT, C3₁ :: FT, C3₂::FT) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF}
+
+            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                           smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
+                                                           C3₀, C3₁, C3₂)
+    end
 end
 
 """
@@ -148,14 +161,9 @@ function WENO5(coeffs = nothing, FT = Float64;
                zweno = true, 
                vector_invariant = nothing)
     
-    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness)
-
-    XT = typeof(weno_coefficients[1])
-    YT = typeof(weno_coefficients[3])
-    ZT = typeof(weno_coefficients[5])
-    XS = typeof(weno_coefficients[7])
-    YS = typeof(weno_coefficients[9])
-    ZS = typeof(weno_coefficients[11])
+    !(grid isa Nothing) && FT = eltype(grid)
+    
+    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
 
     if coeffs isa Nothing
         C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
@@ -165,10 +173,10 @@ function WENO5(coeffs = nothing, FT = Float64;
 
     VI = typeof(vector_invariant)
 
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(weno_coefficients..., C3₀, C3₁, C3₂)
+    return WENO5{VI, zweno}(weno_coefficients..., C3₀, C3₁, C3₂)
 end
 
-function compute_stretched_weno_coefficients(grid, stretched_smoothness)
+function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
