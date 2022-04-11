@@ -9,6 +9,10 @@ reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Bas
 #### Reductions are still veeeery slow on MultiRegionGrids. Avoid as much as possible!
 ####
 
+####
+#### Non allocating reductions are not implemented as of now
+####
+
 # Allocating reductions
 for reduction in reductions
     @eval begin
@@ -17,8 +21,8 @@ for reduction in reductions
             if mr.regions isa NTuple{<:Any, <:Number}
                 return $(reduction)([r for r in mr.regions]) 
             else
-                FT   = eltype(mr.regions[1])
-                loc  = location(mr.regions[1])
+                FT   = eltype(first(mr.regions))
+                loc  = location(first(mr.regions))
                 validate_reduction_location!(loc, c.grid.partition)
                 mrg  = MultiRegionGrid{FT, loc[1], loc[2], loc[3]}(architecture(c), c.grid.partition, MultiRegionObject(collect_grid(mr.regions), devices(mr)), devices(mr))
                 data = MultiRegionObject(collect_data(mr.regions), devices(mr))

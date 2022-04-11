@@ -97,20 +97,19 @@ Implicitly step forward η.
 ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
     implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
 
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
-    η = free_surface.η
-    g = free_surface.gravitational_acceleration
-    rhs = free_surface.implicit_step_solver.right_hand_side
-    ∫ᶻQ = free_surface.barotropic_volume_flux
+function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocity_events=NoneEvent())
+    η      = free_surface.η
+    g      = free_surface.gravitational_acceleration
+    rhs    = free_surface.implicit_step_solver.right_hand_side
+    ∫ᶻQ    = free_surface.barotropic_volume_flux
     solver = free_surface.implicit_step_solver
-    arch = model.architecture
+    arch   = model.architecture
 
-    # Wait for predictor velocity update step to complete.
-    @apply_regionally local_mask_velocities!(model.velocities, arch)
-    fill_halo_regions!(model.velocities, model.clock, fields(model))
+    # Wait velocity events to finish
+    wait(device(arch), velocity_events)
 
     # Compute right hand side of implicit free surface equation
-    @apply_regionally compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
+    @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
     fill_halo_regions!(∫ᶻQ)
 
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
@@ -127,7 +126,8 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     return NoneEvent()
 end
 
-function local_mask_velocities!(velocities, arch)
+function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
+    compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
 end

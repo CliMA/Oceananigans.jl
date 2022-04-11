@@ -1,6 +1,7 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
+using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
@@ -22,7 +23,6 @@ function run_identity_operator_test(grid)
     N = size(grid)
     M = prod(N)
 
-    b = zeros(grid, M)
     A = zeros(grid, N...)
     D = zeros(grid, N...)
     C = zeros(grid, N...)
@@ -30,7 +30,7 @@ function run_identity_operator_test(grid)
 
     solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
-    b .= rand(length(b))
+    b = arch_array(architecture(grid), rand(M))
 
     sol = solve!(b, solver, b, 1.0)
 

@@ -122,7 +122,7 @@ end
         Δt = 900
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
-            implicit_free_surface_step!(m.free_surface, m, Δt, 1.5, device_event(arch))
+            implicit_free_surface_step!(m.free_surface, m, Δt, 1.5)
         end
 
         mat_η = mat_model.free_surface.η
