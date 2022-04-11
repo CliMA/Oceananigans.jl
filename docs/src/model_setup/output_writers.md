@@ -63,7 +63,7 @@ simulation = Simulation(model, Δt=12, stop_time=3600)
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="more_fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
@@ -75,7 +75,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="another_surface_xy_slice.nc",
+    NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
                        schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
@@ -88,7 +88,7 @@ Stacktrace:
 ```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
-                       filepath = "another_averaged_z_profile.nc",
+                       filename = "another_averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        field_slicer = FieldSlicer(i=1, j=1))
 
@@ -130,12 +130,12 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filepath="some_things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filename="some_things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: some_things.nc
+├── filepath: ./some_things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float32}
