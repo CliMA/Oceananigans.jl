@@ -55,13 +55,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             
             implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5)
 
-            η = model.free_surface.η
-
-            fs = model.free_surface
-            vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
-            ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
-            ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
-
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)
         end

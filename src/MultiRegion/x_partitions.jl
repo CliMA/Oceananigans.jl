@@ -118,6 +118,12 @@ function partition_global_array(a::AbstractArray, ::EqualXPartition, grid, local
     return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
+function partition_global_array(a::OffsetArray, ::EqualXPartition, grid, local_size, region, arch) 
+    idxs    = default_indices(length(size(a)))
+    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
+end
+
 const FunctionMRO     = MultiRegionObject{<:Tuple{Vararg{<:Function}}}
 const ArrayMRO{T, N}  = MultiRegionObject{<:Tuple{Vararg{<:AbstractArray{T, N}}}} where {T, N}
 

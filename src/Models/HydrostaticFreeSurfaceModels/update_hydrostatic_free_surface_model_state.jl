@@ -21,16 +21,16 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     # No Masking for the moment: Remember to apply masking!!
-    fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     @apply_regionally begin
         update_state_actions!(model)
     end
 
-    fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
-    fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
-    fill_halo_regions!(model.pressure.pHY′, model.architecture)
+    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+    fill_halo_regions!(model.pressure.pHY′)
     
     return nothing
 end
