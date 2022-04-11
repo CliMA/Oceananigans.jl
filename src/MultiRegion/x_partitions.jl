@@ -131,7 +131,7 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, global
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
-        arr_out[init:fin, idxs[2:end]...] .= arch_array(CPU(), ma[r])
+        arr_out[init:fin, idxs[2:end]...] .= arch_array(CPU(), ma[r])[1:fin-init+1, idxs[2:end]...]
     end
 
     return arch_array(arch, arr_out)

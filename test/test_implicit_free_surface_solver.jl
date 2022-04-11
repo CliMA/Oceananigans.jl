@@ -88,7 +88,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
                                                                            tolerance=1e-15))
     
     set_simple_divergent_velocity!(model)
-    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, device_event(arch))
+    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
 
     η = model.free_surface.η
     @info "Matrix implicit free surface solver test, norm(η_mat): $(norm(η)), maximum(abs, η_mat): $(maximum(abs, η))"

@@ -28,6 +28,8 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
         return global_grid
     end
 
+    @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
+
     arch    = devices isa Nothing ? CPU() : GPU()
     devices = validate_devices(partition, devices)
     devices = assign_devices(partition, devices)
