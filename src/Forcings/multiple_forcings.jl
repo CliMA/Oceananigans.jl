@@ -26,7 +26,18 @@ function regularize_forcing(forcing_tuple::Tuple, field, field_name, model_field
     return MultipleForcings(forcings)
 end
 
-# The magic
+@inline function (mf::MultipleForcings{1})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields)
+@inline function (mf::MultipleForcings{2})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[2](i, j, k, grid, clock, model_fields)
+@inline function (mf::MultipleForcings{3})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[2](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[3](i, j, k, grid, clock, model_fields)
+@inline function (mf::MultipleForcings{4})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[2](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[3](i, j, k, grid, clock, model_fields) +
+                                                                                 mf.forcings[4](i, j, k, grid, clock, model_fields)
+
+# The magic (which doesn't seem to work on GPU now)
 @inline function (mf::MultipleForcings{N})(i, j, k, grid, clock, model_fields) where N
     total_forcing = zero(eltype(grid))
     forcings = mf.forcings
