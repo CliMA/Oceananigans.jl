@@ -5,6 +5,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.MultiRegion
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using LinearAlgebra
+using Adapt
 
 function boundary_clustered(N, L, ini)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
@@ -34,16 +35,16 @@ grid = RectilinearGrid(GPU(), size=(512, 256),
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
-@inline show_name(t) = t isa ExplicitFreeSurface ? "explicit" : "implicit"
+@inline show_name(t) = t() isa ExplicitFreeSurface ? "explicit" : "implicit"
 
 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 mrg_with_bump  = MultiRegionGrid(grid_with_bump, partition=XPartition(2), devices=(0, 1))
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-for free_surface in (ImplicitFreeSurface, )
+for free_surface in (ExplicitFreeSurface, )
     
-    model = HydrostaticFreeSurfaceModel(grid = mrg_with_bump,
+    model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
                                         free_surface = free_surface(gravitational_acceleration=10),
                                         closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),

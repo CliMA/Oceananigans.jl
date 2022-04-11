@@ -101,7 +101,7 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) w
     local_boundary  = construct_regionally(getproperty, cpu_mrg, :immersed_boundary)
     local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
     local_array     = construct_regionally(getinterior, local_array, mrg)
-    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, global_grid, architecture(mrg)))
+    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, architecture(mrg)))
     return on_architecture(architecture(mrg), ImmersedBoundaryGrid(global_grid, global_boundary))
 end
 

@@ -123,11 +123,12 @@ const ArrayMRO{T, N}  = MultiRegionObject{<:Tuple{Vararg{<:AbstractArray{T, N}}}
 
 reconstruct_global_array(ma::FunctionMRO, args...) = ma.regions[1]
 
-function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, global_grid, arch) where {T, N}
-    dims = size(global_grid)[1:N]
-    idxs = default_indices(length(dims))
-    arr_out = zeros(eltype(global_grid), dims...)
-    n = dims[1] / length(p)
+function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, arch) where {T, N}
+    local_size = size(first(ma.regions))
+    global_Nx  = local_size[1] * length(p)
+    idxs = default_indices(length(local_size))
+    arr_out = zeros(eltype(first(ma.regions)), global_Nx, local_size[2:end]...)
+    n = local_size[1]
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)

@@ -75,50 +75,6 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     return nothing
 end
 
-function run_matrix_implicit_free_surface_solver_tests(arch, grid)
-
-    Δt = 900
-    Nx = grid.Nx
-    Ny = grid.Ny
-
-    # Create a model
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        momentum_advection = nothing,
-                                        free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
-                                                                           tolerance=1e-15))
-    
-    set_simple_divergent_velocity!(model)
-    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
-
-    η = model.free_surface.η
-    @info "Matrix implicit free surface solver test, norm(η_mat): $(norm(η)), maximum(abs, η_mat): $(maximum(abs, η))"
-
-    # Extract right hand side "truth"
-    right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
-
-    # Compute left hand side "solution"
-    g = g_Earth
-    η = model.free_surface.η
-    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
-    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
-
-    left_hand_side = Field{Center, Center, Nothing}(grid)
-    implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-
-    # Compare
-    extrema_tolerance = 1e-9
-    std_tolerance = 1e-9
-
-    CUDA.@allowscalar begin
-        # Note: `right_hand_side` is not a Field but an Array/CuArray
-        @test maximum(abs, interior(left_hand_side) .- reshape(right_hand_side, (Nx, Ny, 1))) < extrema_tolerance
-        @test std(interior(left_hand_side) .- reshape(right_hand_side, (Nx, Ny, 1))) < std_tolerance
-    end
-
-    return nothing
-end
-
-
 @testset "Implicit free surface solver tests" begin
     for arch in archs
         A = typeof(arch)
@@ -135,8 +91,6 @@ end
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
             run_pcg_implicit_free_surface_solver_tests(arch, grid)
             
-            @info "Testing Matrix implicit free surface solver [$A, $G]..."
-            run_matrix_implicit_free_surface_solver_tests(arch, grid)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."

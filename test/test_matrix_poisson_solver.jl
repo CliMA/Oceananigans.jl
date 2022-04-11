@@ -34,7 +34,7 @@ function run_identity_operator_test(grid)
 
     sol = solve!(b, solver, b, 1.0)
 
-    @test norm(sol .- b) .< solver.tolerance
+    @test norm(Array(sol) .- Array(b)) .< solver.tolerance
 end
 
 @kernel function _multiply_by_volume!(r, grid)

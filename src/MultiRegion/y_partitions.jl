@@ -116,15 +116,16 @@ function partition_global_array(a::AbstractArray, ::EqualYPartition, grid, local
     return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
 end
 
-function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, global_grid, arch) where {T, N}
-    dims = size(global_grid)[1:N]
-    idxs = default_indices(length(dims))
-    arr_out = zeros(eltype(global_grid), dims...)
-    n = dims[2] / length(p)
+function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
+    local_size = size(first(ma.regions))
+    global_Nx  = local_size[2] * length(p)
+    idxs = default_indices(length(local_size))
+    arr_out = zeros(eltype(first(ma.regions)), global_Nx, local_size[2:end]...)
+    n = local_size[2]
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
-        arr_out[idxs[1], init:fin, idxs[3:end]...] .= arch_array(CPU(), ma[r])
+        arr_out[idxs[1], init:fin, idxs[3:end]...] .= arch_array(CPU(), ma[r])[idxs[1], 1:fin-init+1, idxs[3:end]...]
     end
 
     return arch_array(arch, arr_out)
