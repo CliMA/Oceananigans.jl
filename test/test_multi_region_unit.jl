@@ -1,5 +1,5 @@
 using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: reconstruct_global_grid, getname
+using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getname
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary
 
 devices(::CPU, num) = nothing
@@ -26,6 +26,21 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                 mrg = MultiRegionGrid(ibg, partition = P(regions), devices = devices(arch, regions))
 
                 @test reconstruct_global_grid(mrg) == ibg
+            end
+
+            for Field_type in [CenterField, XFaceField, YFaceField]
+                par_field = Field_type(mrg)
+                ser_field = Field_type(grid)
+
+                set!(ser_field, (x, y, z) -> x)
+                @apply_regionally set!(par_field, (x, y, z) -> x)
+
+                fill_halo_regions!(ser_field)
+                fill_halo_regions!(par_field)
+
+                rec_field = reconstruct_global_field(par_field)
+
+                @test rec_field.data.parent == ser_field.data.parent
             end
         end
     end
