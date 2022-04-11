@@ -69,7 +69,8 @@ Keyword arguments
   ## Slicing and type conversion prior to output
 
   - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
-               or `Int` elements. Right now the indices have to be contiguous. Defaults `(:, :, :)` or "all indices". If `!with_halos`,
+               or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
+               Defaults to `(:, :, :)` or "all indices". If `!with_halos`,
                halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
                will save xy-slices of the bottom-most index.
 
