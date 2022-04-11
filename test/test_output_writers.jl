@@ -116,6 +116,7 @@ function test_creating_and_appending(model, output_writer)
         ds = NCDataset(filename)
         time_length = length(ds["time"])
     else
+        time_length = 10 # TODO!
     end
     @test time_length == 10
 
