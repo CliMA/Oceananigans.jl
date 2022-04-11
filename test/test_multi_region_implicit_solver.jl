@@ -1,6 +1,5 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 using Statistics
 using Printf
 using Oceananigans.MultiRegion

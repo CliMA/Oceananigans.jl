@@ -26,27 +26,28 @@ struct MatrixImplicitFreeSurfaceSolver{S, R}
     matrix_iterative_solver :: S
     "The right hand side of the free surface evolution equation"
     right_hand_side :: R
+end
 
-    function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
-        
-        # Initialize vertically integrated lateral face areas
-        ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-        ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
-        vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-    
-        compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    
-        arch = architecture(grid)
-        right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
-    
-        # Set maximum iterations to Nx * Ny if not set
-        settings = Dict{Symbol, Any}(settings)
-        maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
-        settings[:maximum_iterations] = maximum_iterations
-    
-        coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-        solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
+    # Initialize vertically integrated lateral face areas
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+
+    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
+
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+
+    arch = architecture(grid)
+    right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
+
+    # Set maximum iterations to Nx * Ny if not set
+    settings = Dict{Symbol, Any}(settings)
+    maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
+    settings[:maximum_iterations] = maximum_iterations
+
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side)
 end

@@ -6,7 +6,9 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans: prognostic_fields, fields
 using Oceananigans.Advection: AbstractAdvectionScheme
 
-import Oceananigans.Advection: WENO5
+import Oceananigans.Simulations: new_time_step
+
+import Oceananigans.Diagnostics: accurate_advection_timescale
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
                         HydrostaticFreeSurfaceModel,
@@ -38,3 +40,13 @@ switch_region!(mrm::MultiRegionModel, i) = switch_region!(mrm.grid, i)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
+
+function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
+      Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
+      return minimum(Δt.regions)
+end
+
+function new_time_step(old_Δt, wizard, model::MultiRegionModel)
+      Δt = construct_regionally(new_time_step, old_Δt, wizard, model)
+      return minimum(Δt.regions)
+end
