@@ -148,6 +148,28 @@ function WENO5(coeffs = nothing, FT = Float64;
                zweno = true, 
                vector_invariant = nothing)
     
+    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness)
+
+    XT = typeof(weno_coefficients[1])
+    YT = typeof(weno_coefficients[3])
+    ZT = typeof(weno_coefficients[5])
+    XS = typeof(weno_coefficients[7])
+    YS = typeof(weno_coefficients[9])
+    ZS = typeof(weno_coefficients[11])
+
+    if coeffs isa Nothing
+        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
+    else
+        C3₀, C3₁, C3₂ = FT.(coeffs)
+    end
+
+    VI = typeof(vector_invariant)
+
+    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(weno_coefficients..., C3₀, C3₁, C3₂)
+end
+
+function compute_stretched_weno_coefficients(grid, stretched_smoothness)
+    
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
     if grid isa Nothing
@@ -165,31 +187,15 @@ function WENO5(coeffs = nothing, FT = Float64;
         FT       = eltype(grid)
         arch     = architecture(grid)
         new_grid = with_halo((4, 4, 4), grid)
-       
+
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
             @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
             @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
         end
     end
 
-    XT = typeof(coeff_xᶠᵃᵃ)
-    YT = typeof(coeff_yᵃᶠᵃ)
-    ZT = typeof(coeff_zᵃᵃᶠ)
-    XS = typeof(smooth_xᶠᵃᵃ)
-    YS = typeof(smooth_yᵃᶠᵃ)
-    ZS = typeof(smooth_zᵃᵃᶠ)
-
-    if coeffs isa Nothing
-        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
-    else
-        C3₀, C3₁, C3₂ = FT.(coeffs)
-    end
-
-    VI = typeof(vector_invariant)
-
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                                        smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
-                                                        C3₀, C3₁, C3₂)
+    return (coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+            smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
 end
 
 return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
