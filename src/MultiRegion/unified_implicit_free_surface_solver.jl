@@ -17,8 +17,7 @@ import Oceananigans.Solvers: solve!
 
 import Oceananigans.Architectures: architecture
 
-struct UnifiedImplicitFreeSurfaceSolver{A, S, R}
-    vertically_integrated_areas :: A
+struct UnifiedImplicitFreeSurfaceSolver{S, R}
     unified_pcg_solver :: S
     right_hand_side :: R
 end
@@ -26,7 +25,7 @@ end
 architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
     architecture(solver.preconditioned_conjugate_gradient_solver)
 
-function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_acceleration::Number, settings; multiple_devices = false)
+function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravitational_acceleration::Number; multiple_devices = false)
     
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
@@ -56,14 +55,14 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, gravitational_ac
     solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
                                             grid = on_architecture(arch, grid), settings...)
 
-    return UnifiedImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
+    return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
-    UnifiedImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
-build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
-    UnifiedImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)   
-build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, gravitational_acceleration, settings) =
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
+    UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
+    UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)   
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver,

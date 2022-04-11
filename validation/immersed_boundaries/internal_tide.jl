@@ -41,7 +41,7 @@ mrg_with_bump  = MultiRegionGrid(grid_with_bump, partition=XPartition(2), device
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-for free_surface in (ExplicitFreeSurface, ImplicitFreeSurface)
+for free_surface in (ImplicitFreeSurface, )
     
     model = HydrostaticFreeSurfaceModel(grid = mrg_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
