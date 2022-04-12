@@ -293,7 +293,7 @@ As an example, consider a model for sediment settling at a constant rate:
 ```jldoctest
 using Oceananigans
 
-r_sediment = 1e-4 # "Fine sand"
+r_sediment = 1e-4 # [m] "Fine sand"
 ρ_sediment = 1200 # kg m⁻³
 ρ_ocean = 1026 # kg m⁻³
 Δb = 9.81 * (ρ_ocean - ρ_sediment) / ρ_ocean m s⁻²
