@@ -3,6 +3,8 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
+using Oceananigans.TurbulenceClosures
+
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
@@ -26,8 +28,8 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tra
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
 # TEMP
-auxiliary_prognostic_names(closure) = ()
-auxiliary_prognostic_fields(closure) = NamedTuple()
+auxiliary_prognostic_names(args...) = ()
+auxiliary_prognostic_fields(args...) = NamedTuple()
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, U, C, Φ, K, AF, APF} <: AbstractModel{TS}

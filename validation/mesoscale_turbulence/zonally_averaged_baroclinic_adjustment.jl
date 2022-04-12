@@ -1,9 +1,6 @@
-ENV["GKSwstype"] = "100"
-
 using Printf
 using Statistics
 using Random
-using JLD2
 
 using Oceananigans
 using Oceananigans.Units
@@ -47,16 +44,10 @@ coriolis = BetaPlane(latitude = -45)
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
 vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
-
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
 diffusive_closures = (vertical_closure, horizontal_closure)
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 0.0)
-
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                                                 κ_symmetric = 900,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
@@ -66,7 +57,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 @info "Building a model..."
 
-closures = (diffusive_closures..., convective_adjustment, gent_mcwilliams_diffusivity)
+closures = (diffusive_closures..., gent_mcwilliams_diffusivity)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
@@ -141,7 +132,6 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-
 #####
 ##### Output
 #####
@@ -172,7 +162,6 @@ outputs = merge(fields(model), (; Rb))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      field_slicer = nothing,
                                                       prefix = filename * "_fields",
                                                       force = true)
 

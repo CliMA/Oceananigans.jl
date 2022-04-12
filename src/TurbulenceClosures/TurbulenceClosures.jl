@@ -103,8 +103,8 @@ include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
+include("abstract_skew_symmetric_diffusivity.jl")
 include("closure_tuples.jl")
-include("isopycnal_rotation_tensor_components.jl")
 
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
