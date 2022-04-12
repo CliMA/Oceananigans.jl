@@ -161,7 +161,7 @@ for arch in archs
 
             for regions in [2, 4], P in [XPartititon, YPartition]
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
+                c, d, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
                 d = interior(reconstruct_global_field(d))
@@ -186,7 +186,7 @@ for arch in archs
         
         for regions in [2, 4], P in [XPartititon, YPartition]
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-            u, v, w, c, η = solid_body_rotation_test(grid; regions=regions)
+            u, v, w, c, η = solid_body_rotation_test(grid; P = P, regions=regions)
 
             u = interior(reconstruct_global_field(u))
             v = interior(reconstruct_global_field(v))
@@ -222,7 +222,7 @@ for arch in archs
                 for regions in [2, 4], P in [XPartititon, YPartition]
                     @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
 
-                    f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
+                    f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)
                     f = interior(reconstruct_global_field(f))
 
                     @test all(f .≈ fs)
