@@ -20,13 +20,12 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
-    # No Masking for the moment: Remember to apply masking!!
+    @apply_regionally masking_actions!(model)
+
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
-    @apply_regionally begin
-        update_state_actions!(model)
-    end
+    @apply_regionally update_state_actions!(model)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
@@ -35,14 +34,16 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     return nothing
 end
 
-function update_state_actions!(model) 
-    # Mask immersed fields
+# Mask immersed fields
+function masking_actions!(model)
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))
-    
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
+end
+
+function update_state_actions!(model) 
     compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)

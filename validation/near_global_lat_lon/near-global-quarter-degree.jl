@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = underlying_grid #MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
-mrg            = grid #MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -232,7 +232,7 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, verbose=true)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -282,12 +282,12 @@ using Oceananigans.MultiRegion: reconstruct_global_field
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    η = reconstruct_global_field(model.free_surface.η)
-    u = reconstruct_global_field(model.velocities.u)
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹", 
+    # η = reconstruct_global_field(model.free_surface.η)
+    # u = reconstruct_global_field(model.velocities.u)
+    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", #, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹", 
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    maximum(abs, u), maximum(abs, η),
+                    # maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
