@@ -76,7 +76,7 @@ compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
+free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 

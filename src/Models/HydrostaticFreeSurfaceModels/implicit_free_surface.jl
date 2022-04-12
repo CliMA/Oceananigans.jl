@@ -60,7 +60,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes

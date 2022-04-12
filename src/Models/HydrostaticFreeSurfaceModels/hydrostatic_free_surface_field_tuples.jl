@@ -12,7 +12,7 @@ end
 function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracer_names)
     u = XFaceField(grid)
     v = YFaceField(grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     tracers = TracerFields(tracer_names, grid)
 
     return merge((u=u, v=v, η=η), tracers)

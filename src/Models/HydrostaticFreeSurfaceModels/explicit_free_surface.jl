@@ -30,7 +30,7 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
 #####
 
 function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     return ExplicitFreeSurface(η, g)
