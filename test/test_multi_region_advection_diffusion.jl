@@ -14,14 +14,14 @@ function Δ_min(grid)
     return min(Δx_min, Δy_min)
 end
 
-function solid_body_tracer_advection_test(grid; regions = 1)
+function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     if architecture(grid) isa GPU
         devices = (0, 0)
     else
         devices = nothing
     end
-    mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     if grid isa RectilinearGrid
         L = 0.1
@@ -61,14 +61,14 @@ function solid_body_tracer_advection_test(grid; regions = 1)
     return model.tracers
 end
 
-function solid_body_rotation_test(grid; regions = 1)
+function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
     if architecture(grid) isa GPU
         devices = (0, 0)
     else
         devices = nothing
     end
-    mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
@@ -102,7 +102,7 @@ function solid_body_rotation_test(grid; regions = 1)
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
-function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c) 
+function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, field_name = :c) 
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     if architecture(grid) isa GPU
@@ -110,7 +110,7 @@ function diffusion_cosine_test(grid; regions = 1, closure, field_name = :c)
     else
         devices = nothing
     end
-    mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         coriolis = nothing,
@@ -148,7 +148,7 @@ for arch in archs
     grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
                                         radius = 1, latitude = (-80, 80),
-                                        longitude = (-180, 180), z = (-1, 0))
+                                        longitude = (-160, 160), z = (-1, 0))
 
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
@@ -159,8 +159,8 @@ for arch in archs
             ds = Array(interior(ds));
             es = Array(interior(es));
 
-            for regions in [2, 4]
-                @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
+            for regions in [2, 4], P in [XPartititon, YPartition]
+                @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
                 c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
 
                 c = interior(reconstruct_global_field(c))
@@ -184,8 +184,8 @@ for arch in archs
         cs = Array(interior(cs));
         ηs = Array(interior(ηs));
         
-        for regions in [2, 4]
-            @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
+        for regions in [2, 4], P in [XPartititon, YPartition]
+            @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c, η = solid_body_rotation_test(grid; regions=regions)
 
             u = interior(reconstruct_global_field(u))
@@ -219,8 +219,8 @@ for arch in archs
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
                 fs = Array(interior(fs));
 
-                for regions in [2, 4]
-                    @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper) on the $arch"
+                for regions in [2, 4], P in [XPartititon, YPartition]
+                    @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
 
                     f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
                     f = interior(reconstruct_global_field(f))
