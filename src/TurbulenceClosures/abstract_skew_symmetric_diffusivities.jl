@@ -62,7 +62,7 @@ taper_factor_ccc(i, j, k, grid, args...) = one(eltype(grid))
 @inline function diffusive_flux_x(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
-    closure = getclosure(closure, i, j)
+    closure = getclosure(i, j, closure)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
@@ -90,7 +90,7 @@ end
 @inline function diffusive_flux_y(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
-    closure = getclosure(closure, i, j)
+    closure = getclosure(i, j, closure)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
@@ -118,7 +118,7 @@ end
 @inline function diffusive_flux_z(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
-    closure = getclosure(closure, i, j)
+    closure = getclosure(i, j, closure)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
