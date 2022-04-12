@@ -89,6 +89,7 @@ function Base.show(io::IO, s::Simulation)
     return print(io, "Simulation of ", modelstr, '\n',
                      "├── Next time step: $(prettytime(s.Δt))", '\n',
                      "├── Elapsed wall time: $(prettytime(s.run_wall_time))", '\n',
+                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
                      "├── Stop time: $(prettytime(s.stop_time))", '\n',
                      "├── Stop iteration : $(s.stop_iteration)", '\n',
                      "├── Wall time limit: $(s.wall_time_limit)", '\n',
@@ -141,6 +142,7 @@ function reset!(sim::Simulation)
     sim.stop_iteration = Inf
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
+    sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
     reset!(sim.model.timestepper)
