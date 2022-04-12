@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 """
     abstract type AbstractSkewSymmetricDiffusivity{Tapering} end
 
@@ -19,6 +21,9 @@ struct FluxTapering{FT}
 end
 
 const FluxTaperedASSD = AbstractSkewSymmetricDiffusivity{FluxTapering}
+
+Base.summary(ft::FluxTapering) = string("FluxTapering(max_slope=", prettysummary(ft.max_slope), ")")
+Base.show(io::IO, ft::FluxTapering) = print(io, summary(ft))
 
 """
     taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) 
@@ -160,6 +165,9 @@ Abstract supertype for an isopycnal rotation model.
 """
 abstract type AbstractIsopycnalTensor end
 
+#=
+# Note: this is not implemented yet
+
 """
     struct IsopycnalTensor{FT} <: AbstractIsopycnalTensor
 
@@ -179,8 +187,9 @@ Then, the components of the isopycnal rotation tensor are:
 where `slope² = slope_x² + slope_y²`.
 """
 struct IsopycnalTensor{FT} <: AbstractIsopycnalTensor
-    minimum_bz :: FT
+    min_∂z_b :: FT
 end
+=#
 
 """
     struct SmallSlopeIsopycnalTensor{FT} <: AbstractIsopycnalTensor
@@ -202,18 +211,21 @@ rotation tensor are:
 where `slope² = slope_x² + slope_y²`.
 """
 struct SmallSlopeIsopycnalTensor{FT} <: AbstractIsopycnalTensor
-    minimum_bz :: FT
+    min_∂z_b :: FT
 end
 
-SmallSlopeIsopycnalTensor(; minimum_bz = 0) = SmallSlopeIsopycnalTensor(minimum_bz)
+SmallSlopeIsopycnalTensor(; min_∂z_b = 0) = SmallSlopeIsopycnalTensor(min_∂z_b)
+
+Base.summary(it::SmallSlopeIsopycnalTensor) = string("SmallSlopeIsopycnalTensor(min_∂z_b=", prettysummary(it.min_∂z_b),  ")")
+Base.show(io::IO, it::SmallSlopeIsopycnalTensor) = print(io, summary(it))
 
 # Default
-@inline isopycnal_tensor(closure) = SmallSlopeIsopycnalTensor(1e-3)
+@inline isopycnal_tensor(closure) = SmallSlopeIsopycnalTensor(0)
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, isopycnals::SmallSlopeIsopycnalTensor) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
     bz = ∂zᶠᶜᶜ(i, j, k, grid, ℑxzᶠᵃᶠ, buoyancy_perturbation, buoyancy.model, tracers)
-    bz = max(bz, isopycnals.minimum_bz)
+    bz = max(bz, isopycnals.min_∂z_b)
     
     slope_x = - bx / bz
     
@@ -223,7 +235,7 @@ end
 @inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, isopycnals::SmallSlopeIsopycnalTensor) where FT
     bx = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᵃᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    bz = max(bz, isopycnals.minimum_bz)
+    bz = max(bz, isopycnals.min_∂z_b)
     
     slope_x = - bx / bz
     
@@ -233,7 +245,7 @@ end
 @inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, isopycnals::SmallSlopeIsopycnalTensor) where FT
     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
     bz = ∂zᶜᶠᶜ(i, j, k, grid, ℑyzᵃᶠᶠ, buoyancy_perturbation, buoyancy.model, tracers)
-    bz = max(bz, isopycnals.minimum_bz)
+    bz = max(bz, isopycnals.min_∂z_b)
     
     slope_y = - by / bz
     
@@ -243,7 +255,7 @@ end
 @inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, isopycnals::SmallSlopeIsopycnalTensor) where FT
     by = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᵃᶠᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    bz = max(bz, isopycnals.minimum_bz)
+    bz = max(bz, isopycnals.min_∂z_b)
     
     slope_y = - by / bz
     
@@ -254,7 +266,7 @@ end
     bx = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᵃᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᵃᶠᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    bz = max(bz, isopycnals.minimum_bz)
+    bz = max(bz, isopycnals.min_∂z_b)
 
     slope_x = - bx / bz
     slope_y = - by / bz

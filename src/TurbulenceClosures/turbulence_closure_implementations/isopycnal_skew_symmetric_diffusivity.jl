@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractSkewSymmetricDiffusivity{L}
                     κ_skew :: K
                κ_symmetric :: S
@@ -69,8 +71,20 @@ calculate_diffusivities!(diffusivity_fields, closure::FlavorOfISSD, model) = not
 ##### Show
 #####
 
-Base.show(io::IO, closure::ISSD) =
-    print(io, "IsopycnalSkewSymmetricDiffusivity: " *
-              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
-              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
+function Base.summary(closure::ISSD)
+    L = nameof(typeof(closure.slope_limiter))
+    return string("IsopycnalSkewSymmetricDiffusivity{$L}(",
+                  "κ_symmetric=", prettysummary(closure.κ_symmetric), ", ",
+                  "κ_skew=", prettysummary(closure.κ_skew), ")")
+end
               
+function Base.show(io::IO, closure::ISSD)
+    L = nameof(typeof(closure.slope_limiter))
+
+    print(io, "IsopycnalSkewSymmetricDiffusivity{$L}:", '\n',
+              "├── κ_symmetric: ", prettysummary(closure.κ_symmetric), '\n',
+              "├── κ_skew: ", prettysummary(closure.κ_skew), '\n',
+              "├── isopycnal_tensor: ", prettysummary(closure.isopycnal_tensor), '\n',
+              "└── slope_limiter: ", prettysummary(closure.slope_limiter))
+end
+
