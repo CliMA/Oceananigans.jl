@@ -80,11 +80,9 @@ function apply_regionally!(func!, args...; kwargs...)
         devs = devices(mra)
     end
     
-    @sync for (r, dev) in enumerate(devs)
-        @async begin
-            switch_device!(dev)
-            func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
-        end
+    for (r, dev) in enumerate(devs)
+        switch_device!(dev)
+        func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
     sync_all_devices!(devs)

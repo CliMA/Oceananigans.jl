@@ -9,7 +9,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
     for arch in archs
 
         region_num   = [2, 4, 5]
-        partitioning = [XPartition]
+        partitioning = [XPartition, YPartition]
 
         grids = [LatitudeLongitudeGrid(arch, size=(20, 20, 1), latitude=collect(range(-80, 80, length=21)), 
                                                             longitude=(-180, 180), z=(0, 1)),
@@ -21,7 +21,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                                GridFittedBoundary(arch_array(arch, [false for i in 1:20, j in 1:20, k in 1:1]))]
         
         for grid in grids, P in partitioning, regions in region_num
-            @info "Testing multi region $(getname(grid)) on $regions $P"
+            @info "Testing multi region $(getname(grid)) on $regions $(P)s"
             mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices(arch, regions))
             @test reconstruct_global_grid(mrg) == grid
 
@@ -33,7 +33,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             end
 
             for Field_type in [CenterField, XFaceField, YFaceField]
-                @info "Testing multi region $(Field_type) on $regions $P"
+                @info "Testing multi region $(Field_type) on $regions $(P)s"
 
                 par_field = Field_type(mrg)
                 ser_field = Field_type(grid)
