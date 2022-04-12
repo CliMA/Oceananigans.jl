@@ -272,7 +272,7 @@ fill_halo_regions!(S)
 
 Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_iteration=1) #stop_time = Nyears*years)
 
 start_time = [time_ns()]
 

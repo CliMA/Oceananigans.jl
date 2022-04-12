@@ -65,7 +65,7 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectio
                            smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
                            smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
                            smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                           C3₀::FT, C3₁ :: FT, C3₂::FT) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF}
+                           C3₀::FT, C3₁::FT, C3₂::FT) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF}
 
             return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
                                                            smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
