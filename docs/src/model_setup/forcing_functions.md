@@ -309,7 +309,7 @@ AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
 └── w: ConstantField(-0.00352102)
 ```
 
-The first argument to `AdvectiveForcing` is the advection scheme (here `WENO5()`).
+The first argument to `AdvectiveForcing` is the advection scheme (here `UpwindBiasedFifthOrder()`).
 The three keyword arguments specify the `u`, `v`, and `w` components of the separate
 slip velocity field. The default for each `u, v, w` is `ZeroField`.
 
