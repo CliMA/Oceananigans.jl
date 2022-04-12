@@ -350,7 +350,7 @@ simulation = Simulation(model; Δt=1, stop_iteration=100)
 b_particle = - 1e-4 # relative buoyancy depends on reference density and initial buoyancy condition
 b = model.tracers.b
 R = 1e-3 # [m] mean particle radius
-ν = 1.05e-6 # molecular kinematic viscosity of water
+ν = 1.05e-6 # [m² s⁻¹] molecular kinematic viscosity of water
 w_slip_op = 2/9 * (b - b_particle) / ν * R^2 # Stokes terminal velocity
 
 function compute_slip_velocity!(sim)
