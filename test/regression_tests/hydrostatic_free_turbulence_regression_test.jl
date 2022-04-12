@@ -76,9 +76,9 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         outputs   = (; u, v, w, η)
         simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                               dir = directory,
-                                                         schedule = IterationInterval(stop_iteration),
-                                                         filename = output_filename,
-                                                            overwrite_existing = true)
+                                                              schedule = IterationInterval(stop_iteration),
+                                                              filename = output_filename,
+                                                              overwrite_existing = true)
     end
    
 
