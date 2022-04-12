@@ -2,7 +2,6 @@
 const c = Center()
 const f = Face()
 
-
 function build_condition(Topo, side, dim) 
     if Topo == :Bounded 
         return :(($side < 1) | ($side > grid.$dim))

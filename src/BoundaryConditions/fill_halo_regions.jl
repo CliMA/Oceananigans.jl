@@ -59,11 +59,10 @@ function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, b
    
     for task = 1:3
         barrier = device_event(arch)
-
         fill_halo!  = fill_halos![task]
         bc_left     = boundary_conditions_array_left[task]
         bc_right    = boundary_conditions_array_right[task]
-
+        
         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
 
         wait(device(arch), events)

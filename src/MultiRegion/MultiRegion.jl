@@ -26,7 +26,8 @@ import Oceananigans.Utils:
                 switch_device!,
                 devices,
                 isregional,
-                getregion
+                getregion,
+                sync_all_devices!
 
 abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 

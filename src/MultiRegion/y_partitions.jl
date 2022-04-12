@@ -118,9 +118,9 @@ end
 
 function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
     local_size = size(first(ma.regions))
-    global_Nx  = local_size[2] * length(p)
+    global_Ny  = local_size[2] * length(p)
     idxs = default_indices(length(local_size))
-    arr_out = zeros(eltype(first(ma.regions)), global_Nx, local_size[2:end]...)
+    arr_out = zeros(eltype(first(ma.regions)), local_size[1], global_Ny, local_size[3:end]...)
     n = local_size[2]
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)

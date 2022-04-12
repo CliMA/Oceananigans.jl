@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = YPartition(2), devices = (0, 1))
+mrg            = MultiRegionGrid(grid,            partition = YPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -282,12 +282,12 @@ using Oceananigans.MultiRegion: reconstruct_global_field
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    # η = reconstruct_global_field(model.free_surface.η)
-    # u = reconstruct_global_field(model.velocities.u)
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", #, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹", 
+    η = getregion(model.free_surface.η, 2)
+    u = getregion(model.velocities.u, 2)
+
+    @info @sprintf("Time: % 12s, iteration: %d,  wall time: %s", # max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, 
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    # maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()

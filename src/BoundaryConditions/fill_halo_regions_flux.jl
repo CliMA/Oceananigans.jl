@@ -113,11 +113,16 @@ end
 ##### Kernel launchers for flux boundary conditions
 #####
 
-for side in [:east, :west, :north, :south, :top, :bottom]
-    fill_halo!      = Symbol(:fill_, side, :_halo!)
-    fill_flux_halo! = Symbol(:fill_flux_, side, :_halo!)
-    @eval begin
-        @inline $fill_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
-                launch!(arch, grid, :yz, $fill_flux_halo!, c, grid; dependencies=dep, kwargs...)
-    end
-end
+fill_west_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :yz, fill_flux_west_halo!, c, grid; dependencies=dep, kwargs...)
+fill_east_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :yz, fill_flux_east_halo!, c, grid; dependencies=dep, kwargs...)
+fill_south_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xz, fill_flux_south_halo!, c, grid; dependencies=dep, kwargs...)
+fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xz, fill_flux_north_halo!, c, grid; dependencies=dep, kwargs...)
+fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xy, fill_flux_bottom_halo!, c, grid; dependencies=dep, kwargs...)
+fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xy, fill_flux_top_halo!, c, grid; dependencies=dep, kwargs...)
+

@@ -1,5 +1,6 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
+using Oceananigans.Grids: AbstractGrid
 import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
@@ -109,6 +110,9 @@ function construct_regionally(constructor, args...; kwargs...)
 
     return MultiRegionObject(Tuple(res), devs)
 end
+
+sync_all_devices!(grid::AbstractGrid)    = nothing
+sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
 
 function sync_all_devices!(devices)
     for dev in devices

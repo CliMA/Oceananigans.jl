@@ -16,6 +16,7 @@ isregional(mrg::MultiRegionGrid)        = true
 getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
 switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
 devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
+sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
 
 getregion(mrg::MultiRegionGrid, i)  = getregion(mrg.region_grids, i)
 Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)

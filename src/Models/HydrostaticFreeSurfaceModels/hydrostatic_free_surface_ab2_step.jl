@@ -21,8 +21,30 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     
     @apply_regionally wait(device(model.architecture), prognostic_field_events)
     
+    ## Synchronize the execution?
+    sync_all_devices!(model.grid)
+
     return nothing
 end
+
+# function blocking_local_ab2_step!(model, Δt, χ)
+
+#     if model.free_surface isa SplitExplicitFreeSurface
+#         sefs = model.free_surface
+#         u, v, _ = model.velocities
+#         barotropic_mode!(sefs.state.U, sefs.state.V, model.grid, u, v)
+#     end
+
+#     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
+#     explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
+    
+#     prognostic_field_events = MultiEvent(tuple(explicit_velocity_step_events...,
+#         explicit_tracer_step_events...))
+
+#     wait(device(model.architecture), prognostic_field_events)
+
+#     return ([NoneEvent(), NoneEvent()], [NoneEvent(), NoneEvent()])
+# end
 
 function local_ab2_step!(model, Δt, χ)
 

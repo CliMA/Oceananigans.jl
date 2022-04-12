@@ -30,9 +30,10 @@ Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
 
 isregional(f::MultiRegionFields) = true
 
-devices(f::MultiRegionFields) = devices(f.grid)
+devices(f::MultiRegionFields)           = devices(f.grid)
 switch_device!(f::MultiRegionFields, i) = switch_device!(f.grid, i)
-getdevice(f::MultiRegionFields, i) = getdevice(f.grid, i)
+getdevice(f::MultiRegionFields, i)      = getdevice(f.grid, i)
+sync_all_devices!(f::MultiRegionFields) = sync_all_devices!(devices(f.grid))
 
 getregion(f::MultiRegionFunctionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
   FunctionField{LX, LY, LZ}(
