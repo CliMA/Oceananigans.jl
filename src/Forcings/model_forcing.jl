@@ -28,7 +28,7 @@ regularize_forcing(::Nothing, field::AbstractField, field_name, model_field_name
 """
     model_forcing(model_fields; forcings...)
 
-Return a NamedTuple of forcing functions for each field in `model_fields`, wrapping
+Return a `NamedTuple` of forcing functions for each field in `model_fields`, wrapping
 forcing functions in `ContinuousForcing`s and ensuring that `ContinuousForcing`s are
 located correctly for each field.
 """
