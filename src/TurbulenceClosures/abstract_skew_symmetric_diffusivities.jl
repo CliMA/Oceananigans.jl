@@ -3,9 +3,12 @@
 
 Abstract type for skew-symmetric diffusivities with tapering.
 """
-abstract type AbstractSkewSymmetricDiffusivity{Tapering} end
+abstract type AbstractSkewSymmetricDiffusivity{Tapering} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization} end
 
-const ASSD = AbstractSkewSymmetricDiffusivity
+const OneASSD = AbstractSkewSymmetricDiffusivity
+const ManyASSD = AbstractVector{<:OneASSD}
+const ASSD = Union{OneASSD, ManyASSD}
+const assd_coefficient_loc = (Center, Center, Center)
 
 #####
 ##### Tapering
@@ -54,13 +57,14 @@ taper_factor_ccc(i, j, k, grid, args...) = one(eltype(grid))
 @inline function diffusive_flux_x(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
+    closure = getclosure(closure, i, j)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
     c = tracers[id]
 
-    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_skew)
-    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, assd_coefficient_loc, κ_skew)
+    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, assd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
@@ -78,17 +82,17 @@ taper_factor_ccc(i, j, k, grid, args...) = one(eltype(grid))
 end
 
 # defined at cfc
-@inline function diffusive_flux_y(i, j, k, grid, closure::
+@inline function diffusive_flux_y(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
+    closure = getclosure(closure, i, j)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
-
     c = tracers[id]
 
-    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_skew)
-    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, assd_coefficient_loc, κ_skew)
+    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, assd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
@@ -100,23 +104,23 @@ end
 
     ϵ = taper_factor_ccc(i, j, k, grid, closure, buoyancy, tracers)
 
-    return - ϵ * (           κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-                             κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                                κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
                   (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 
 # defined at ccf
-@inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::ASSD, K, ::Val{id},
+@inline function diffusive_flux_z(i, j, k, grid, closure::ASSD, K, ::Val{id},
                                   velocities, tracers, clock, buoyancy) where id
 
+    closure = getclosure(closure, i, j)
     κ_skew = skew_diffusivity(closure, id, K)
     κ_symmetric = symmetric_diffusivity(closure, id, K)
     isopycnals = isopycnal_tensor(closure)
     c = tracers[id]
 
-    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc,κ_skew)
-    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, assd_coefficient_loc, κ_skew)
+    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, assd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)

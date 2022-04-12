@@ -101,9 +101,9 @@ include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
-include("abstract_scalar_diffusivity_closure.jl")
-include("abstract_scalar_biharmonic_diffusivity_closure.jl")
-include("abstract_skew_symmetric_diffusivity.jl")
+include("abstract_scalar_diffusivities.jl")
+include("abstract_scalar_biharmonic_diffusivities.jl")
+include("abstract_skew_symmetric_diffusivities.jl")
 include("closure_tuples.jl")
 
 # Implementations:

@@ -69,31 +69,30 @@ end
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
-    )
+                                  auxiliary_fields = NamedTuple())
 
 Construct an hydrostatic model with a free surface on `grid`.
 
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
-    architecture (CPU/GPU) that the model is solve is inferred from the architecture of the grid.
-  - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
-  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
-  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-  - `coriolis`: Parameters for the background rotation rate of the model.
-  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-  - `free_surface`: The free surface model.
-  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-               preallocated `CenterField`s.
-  - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
-  - `velocities`: The model velocities. Default: `nothing`.
-  - `pressure`: Hydrostatic pressure field. Default: `nothing`.
-  - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+    * `grid`               : (required) The resolution and discrete geometry on which `model` is solved. The
+                              architecture (CPU/GPU) that the model is solve is inferred from the architecture of the grid.
+    * `momentum_advection` : The scheme that advects velocities. See `Oceananigans.Advection`.
+    * `tracer_advection`   : The scheme that advects tracers. See `Oceananigans.Advection`.
+    * `buoyancy`           : The buoyancy model. See `Oceananigans.BuoyancyModels`.
+    * `coriolis`           : Parameters for the background rotation rate of the model.
+    * `forcing`            : `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+    * `free_surface`       : The free surface model.
+    * `closure`            : The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+    * `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+    * `tracers`            : A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+                             preallocated `CenterField`s.
+    * `particles`          : Lagrangian particles to be advected with the flow. Default: `nothing`.
+    * `velocities`         : The model velocities. Default: `nothing`.
+    * `pressure`           : Hydrostatic pressure field. Default: `nothing`.
+    * `diffusivity_fields` : Diffusivity fields. Default: `nothing`.
+    * `auxiliary_fields`   : `NamedTuple` of auxiliary fields. Default: `nothing`.
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -180,7 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = FreeSurface(free_surface, velocities, grid)
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers, aux_prognostics)
+    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
     # Instantiate timestepper if not already instantiated

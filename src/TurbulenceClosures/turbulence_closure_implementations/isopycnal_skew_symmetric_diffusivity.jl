@@ -1,4 +1,4 @@
-struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
+struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractSkewSymmetricDiffusivity{L}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M
@@ -16,8 +16,6 @@ end
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 const ISSDVector = AbstractVector{<:ISSD}
 const FlavorOfISSD = Union{ISSD, ISSDVector}
-const issd_coefficient_loc = (Center, Center, Center)
-
 
 """
     IsopycnalSkewSymmetricDiffusivity([FT=Float64;]

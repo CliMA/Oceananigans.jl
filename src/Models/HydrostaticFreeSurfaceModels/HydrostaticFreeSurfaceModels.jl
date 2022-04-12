@@ -64,16 +64,16 @@ Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.
 Returns a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
-    hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers, model.auxiliary_prognostic_fields)
+    hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
 
-@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers, aux) = merge((u = velocities.u,
-                                                                                       v = velocities.v,
-                                                                                       η = free_surface.η),
-                                                                                       tracers, aux)
+@inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
+                                                                                  v = velocities.v,
+                                                                                  η = free_surface.η),
+                                                                                  tracers)
 
-@inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers, aux) = merge((u = velocities.u,
-                                                                                    v = velocities.v),
-                                                                                    tracers, aux)
+@inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
+                                                                               v = velocities.v),
+                                                                               tracers)
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing

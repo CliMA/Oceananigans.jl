@@ -140,14 +140,14 @@ Redi_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = (b=0, c=0),
                                                      κ_symmetric = (b=1, c=0),
                                                      slope_limiter = gerdes_koberle_willebrand_tapering)
 
+#=
 dependencies = (Redi_diffusivity,
-                model.tracers.b,
-                Val(1),
-                model.clock,
                 model.diffusivity_fields,
+                Val(1),
+                model.velocities,
                 model.tracers,
-                model.buoyancy,
-                model.velocities)
+                model.clock,
+                model.buoyancy)
 
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
@@ -159,6 +159,9 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 Rb = Field(∇_q_op)
 
 outputs = merge(fields(model), (; Rb))
+=#
+
+outputs = fields(model)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
