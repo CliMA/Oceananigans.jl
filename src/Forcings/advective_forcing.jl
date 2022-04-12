@@ -37,7 +37,7 @@ ocean_molecular_kinematic_viscosity = 1.05e-6  # m² s⁻¹
 ν = ocean_molecular_kinematic_viscosity
 R = mean_particle_radius
 
-w_Stokes = - 2/9 * Δb / ν * R^2
+w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
 
 settling = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_Stokes)
 
