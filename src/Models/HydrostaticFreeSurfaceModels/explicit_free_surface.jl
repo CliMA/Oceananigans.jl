@@ -53,7 +53,7 @@ end
 ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
 
-function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, field_events) 
+function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events) 
     
     free_surface_event = launch!(model.architecture, model.grid, :xy,
                                 _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
