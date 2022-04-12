@@ -88,10 +88,10 @@ function test_thermal_bubble_netcdf_output(arch)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
-    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
-    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
-    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    i1, i2 = round(Int, Nx/4) - model.tracers.T.data.offsets[1], round(Int, 3Nx/4) - model.tracers.T.data.offsets[1]
+    j1, j2 = round(Int, Ny/4) - model.tracers.T.data.offsets[2], round(Int, 3Ny/4) - model.tracers.T.data.offsets[2]
+    k1, k2 = round(Int, Nz/4) - model.tracers.T.data.offsets[3], round(Int, 3Nz/4) - model.tracers.T.data.offsets[3]
+    CUDA.@allowscalar model.tracers.T.data.parent[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     outputs = Dict("v" => model.velocities.v,
                    "u" => model.velocities.u,
@@ -259,10 +259,10 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
-    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
-    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
-    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    i1, i2 = round(Int, Nx/4) - model.tracers.T.data.offsets[1], round(Int, 3Nx/4) - model.tracers.T.data.offsets[1]
+    j1, j2 = round(Int, Ny/4) - model.tracers.T.data.offsets[2], round(Int, 3Ny/4) - model.tracers.T.data.offsets[2]
+    k1, k2 = round(Int, Nz/4) - model.tracers.T.data.offsets[3], round(Int, 3Nz/4) - model.tracers.T.data.offsets[3]
+    CUDA.@allowscalar model.tracers.T.data.parent[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),

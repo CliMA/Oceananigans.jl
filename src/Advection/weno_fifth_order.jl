@@ -157,11 +157,11 @@ Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for
     laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
 
-WENO5(grid, coeffs, FT; stretched_smoothness = false, zweno = true, vector_invariant = nothing) = 
-    WENO5(coeffs, FT; grid = grid, stretched_smoothness = false, zweno = true, vector_invariant = nothing)
+WENO5(grid, FT::DataType=Float64; kwargs...) = WENO5(FT; grid = grid, kwargs...)
 
-function WENO5(coeffs = nothing, FT = Float64; 
+function WENO5(FT::DataType = Float64; 
                grid = nothing, 
+               coeffs = nothing,
                stretched_smoothness = false, 
                zweno = true, 
                vector_invariant = nothing)

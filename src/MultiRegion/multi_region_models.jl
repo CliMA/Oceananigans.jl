@@ -40,7 +40,7 @@ switch_region!(mrm::MultiRegionModel, i) = switch_region!(mrm.grid, i)
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
-WENO5(grid::MultiRegionGrid, coeffs, FT; kwargs...) = compute_regionally(WENO5, grid, coeffs, FT; kwargs...)
+WENO5(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO5, mrg, args...; kwargs...)
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
       Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
