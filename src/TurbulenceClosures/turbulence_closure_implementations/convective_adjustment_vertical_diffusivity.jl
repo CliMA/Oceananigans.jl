@@ -82,7 +82,7 @@ const CAVDArray = AbstractArray{<:CAVD}
 const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
 with_tracers(tracers, closure::FlavorOfCAVD) = closure
-DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
+diffusivity_fields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
 @inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν

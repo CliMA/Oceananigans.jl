@@ -72,7 +72,7 @@ const FlavorOfRBVD{LZ} = Union{RBVD{LZ}, RBVDArray{LZ}} where LZ
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD{LZ}) where LZ
+function diffusivity_fields(grid, tracer_names, bcs, closure::FlavorOfRBVD{LZ}) where LZ
     κ = Field{Center, Center, LZ}(grid)
     ν = Field{Center, Center, LZ}(grid)
     return (; κ, ν)

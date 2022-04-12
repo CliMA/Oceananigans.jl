@@ -17,7 +17,7 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    DiffusivityFields,
+    diffusivity_fields,
     calculate_diffusivities!,
 
     ∇_dot_qᶜ,
@@ -42,6 +42,7 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
+using Oceananigans.Fields: validate_field_tuple_grid
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -84,6 +85,18 @@ end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
+#####
+##### Diffusivity fields
+#####
+
+diffusivity_fields(diffusivities::NamedTuple, grid, tracer_names, bcs, closure) =
+    validate_field_tuple_grid("diffusivities", diffusivities, grid)
+
+diffusivity_fields(::Nothing, grid, tracer_names, bcs, closure) =
+    diffusivity_fields(grid, tracer_names, bcs, closure)
+
+diffusivity_fields(grid, tracer_names, bcs, closure) = nothing
+
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
@@ -113,7 +126,6 @@ include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Miscellaneous utilities
-include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
 include("vertically_implicit_diffusion_solver.jl")
 

@@ -350,10 +350,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### DiffusivityFields
+##### diffusivity_fields
 #####
 
-function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
+function diffusivity_fields(grid, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

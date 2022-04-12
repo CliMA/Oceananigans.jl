@@ -29,7 +29,7 @@ import Oceananigans.TurbulenceClosures:
     validate_closure,
     add_closure_specific_boundary_conditions,
     calculate_diffusivities!,
-    DiffusivityFields,
+    diffusivity_fields,
     viscosity,
     diffusivity,
     diffusive_flux_x,
@@ -127,7 +127,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
+function diffusivity_fields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
                                Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),

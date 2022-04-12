@@ -13,7 +13,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
@@ -179,7 +179,8 @@ function NonhydrostaticModel(;    grid,
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
     pressures          = PressureFields(pressures,  grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = TurbulenceClosures.diffusivity_fields(diffusivity_fields, grid, tracernames(tracers),
+                                                               boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(arch, grid)
@@ -212,7 +213,7 @@ architecture(model::NonhydrostaticModel) = model.architecture
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
 #####
 ##### Note: ignores tuples, including tuples of Symbols (tracer names) and
-##### tuples of DiffusivityFields (which occur for tupled closures)
+##### tuples of diffusivity_fields (which occur for tupled closures)
 #####
 
 extract_boundary_conditions(::Nothing) = NamedTuple()

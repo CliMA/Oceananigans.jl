@@ -86,3 +86,7 @@ const VITD = VerticallyImplicitTimeDiscretization
     combine_time_discretizations(combine_time_discretizations(d1, d2), other_discs...)
 
 @inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)
+
+diffusivity_fields(grid, tracer_names, bcs, closure_tuple::Tuple) =
+    Tuple(diffusivity_fields(grid, tracer_names, bcs, closure) for closure in closure_tuple)
+
