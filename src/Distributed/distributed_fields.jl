@@ -4,7 +4,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     arch = architecture(grid)
     new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity)
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = FieldBoundaryBuffers(nothing, nothing, nothing, nothing)
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
 

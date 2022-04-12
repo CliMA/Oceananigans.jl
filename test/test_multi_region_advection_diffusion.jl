@@ -1,4 +1,5 @@
 using Oceananigans.MultiRegion
+using Oceananigans.MultiRegion: reconstruct_global_field
 using Oceananigans.Grids: min_Δx, min_Δy
 using Oceananigans.Operators: hack_cosd
 
@@ -70,7 +71,7 @@ function solid_body_rotation_test(grid; regions = 1)
     mrg = MultiRegionGrid(grid, partition = XPartition(regions), devices = devices)
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 0)
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         momentum_advection = VectorInvariant(),
@@ -154,25 +155,21 @@ for arch in archs
         
             cs, ds, es = solid_body_tracer_advection_test(grid)
             
-            cs = interior(cs);
-            ds = interior(ds);
-            es = interior(es);
+            cs = Array(interior(cs));
+            ds = Array(interior(ds));
+            es = Array(interior(es));
 
             for regions in [2, 4]
                 @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
                 c, d, e = solid_body_tracer_advection_test(grid; regions=regions)
 
-                c = construct_regionally(interior, c)
-                d = construct_regionally(interior, d)
-                e = construct_regionally(interior, e)
-                
-                for region in 1:regions
-                    init = Int(size(cs, 1) / regions) * (region - 1) + 1
-                    fin  = Int(size(cs, 1) / regions) * region
-                    @test all(Array(c[region]) .≈ Array(cs)[init:fin, :, :])
-                    @test all(Array(d[region]) .≈ Array(ds)[init:fin, :, :])
-                    @test all(Array(e[region]) .≈ Array(es)[init:fin, :, :])
-                end
+                c = interior(reconstruct_global_field(c))
+                d = interior(reconstruct_global_field(d))
+                e = interior(reconstruct_global_field(e))
+
+                @test all(c .≈ cs)
+                @test all(d .≈ ds)
+                @test all(e .≈ es)
             end
         end
     end
@@ -181,31 +178,27 @@ for arch in archs
         grid = grid_lat
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
             
-        us = interior(us);
-        vs = interior(vs);
-        ws = interior(ws);
-        cs = interior(cs);
-        ηs = interior(ηs);
+        us = Array(interior(us));
+        vs = Array(interior(vs));
+        ws = Array(interior(ws));
+        cs = Array(interior(cs));
+        ηs = Array(interior(ηs));
         
         for regions in [2, 4]
             @info "  Testing $regions partitions on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c, η = solid_body_rotation_test(grid; regions=regions)
 
-            u = construct_regionally(interior, u)
-            v = construct_regionally(interior, v)
-            w = construct_regionally(interior, w)
-            c = construct_regionally(interior, c)
-            η = construct_regionally(interior, η)
+            u = interior(reconstruct_global_field(u))
+            v = interior(reconstruct_global_field(v))
+            w = interior(reconstruct_global_field(w))
+            c = interior(reconstruct_global_field(c))
+            η = interior(reconstruct_global_field(η))
                 
-            for region in 1:regions
-                init = Int(size(cs, 1) / regions) * (region - 1) + 1
-                fin  = Int(size(cs, 1) / regions) * region
-                @test all(Array(u[region]) .≈ Array(us)[init:fin, :, :])
-                @test all(Array(v[region]) .≈ Array(vs)[init:fin, :, :])
-                @test all(Array(w[region]) .≈ Array(ws)[init:fin, :, :])
-                @test all(Array(c[region]) .≈ Array(cs)[init:fin, :, :])
-                @test all(Array(η[region]) .≈ Array(ηs)[init:fin, :, :])
-            end
+            @test all(u .≈ us)
+            @test all(v .≈ vs)
+            @test all(w .≈ ws)
+            @test all(c .≈ cs)
+            @test all(η .≈ ηs)
         end
     end
 
@@ -224,19 +217,15 @@ for arch in archs
             for closure in [diff₂, diff₄]
 
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
-                fs = interior(fs);
+                fs = Array(interior(fs));
 
                 for regions in [2, 4]
                     @info "  Testing diffusion of $fieldname on $regions partitions with $(typeof(closure).name.wrapper) on the $arch"
 
                     f = diffusion_cosine_test(grid; closure, field_name = fieldname, regions = regions)
-                    f = construct_regionally(interior, f)
+                    f = interior(reconstruct_global_field(f))
 
-                    for region in 1:regions
-                        init = Int(size(grid, 1) / regions) * (region - 1) + 1
-                        fin  = Int(size(grid, 1) / regions) * region
-                        @test all(Array(f[region])[1:(1+fin-init), :, :] .≈ Array(fs)[init:fin, :, :])
-                    end
+                    @test all(f .≈ fs)
                 end
             end
         end

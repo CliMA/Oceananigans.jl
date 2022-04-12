@@ -50,8 +50,10 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
+function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) 
+    @apply_regionally prognostic_field_events = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
+    return prognostic_field_events
+end
 
 function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events) 
     
