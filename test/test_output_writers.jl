@@ -94,13 +94,16 @@ function test_creating_and_appending(model, output_writer)
 
     simulation = Simulation(model, Δt=1, stop_iteration=5)
     output = fields(model)
-    filename = "test_caa.h"
+
+    # The extension for JLD2OutputWriter needs to be `.jld2`, but `NetCDFOutputWriter` takes any
+    # extension, so we use .jld2 for both here for simplicity's sake
+    filename = "test_caa.jld2"
 
     # Create a simulation with `overwrite_existing = true` and run it
     simulation.output_writers[:writer] = output_writer(model, output,
                                                        filename = filename,
                                                        schedule = IterationInterval(1),
-                                                       overwrite_existing = true)
+                                                       overwrite_existing = true, verbose=true)
     run!(simulation)
 
     # Test if file was crated
@@ -112,13 +115,15 @@ function test_creating_and_appending(model, output_writer)
     run!(simulation)
 
     # Test that length is what we expected
-    if output_writer isa NetCDFOutputWriter
+    if output_writer === NetCDFOutputWriter
         ds = NCDataset(filename)
         time_length = length(ds["time"])
-    else
-        time_length = 10 # TODO!
+    elseif output_writer === JLD2OutputWriter
+        ds = jldopen(filename)
+        time_length = length(keys(ds["timeseries/t"]))
     end
-    @test time_length == 10
+    close(ds)
+    @test time_length == 11
 
     rm(filename)
 
@@ -223,16 +228,20 @@ end
     @info "Testing output writers..."
 
     for arch in archs
+
+        @info "Testing that writers create file and append to it properly"
+        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+            grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
+            model = NonhydrostaticModel(grid=grid)
+            test_creating_and_appending(model, output_writer)
+        end
+
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
-        @info "Testing that writers create file and append to it properly"
-        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
-            @test test_creating_and_appending(model, output_writer)
-        end
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
