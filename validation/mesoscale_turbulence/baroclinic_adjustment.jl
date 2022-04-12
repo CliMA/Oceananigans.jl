@@ -48,10 +48,8 @@ coriolis = BetaPlane(latitude = -45)
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, ν = νz, κ = κz)
-
+diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
@@ -137,26 +135,26 @@ end
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 
-slicers = (west = FieldSlicer(i=1),
-           east = FieldSlicer(i=grid.Nx),
-           south = FieldSlicer(j=1),
-           north = FieldSlicer(j=grid.Ny),
-           bottom = FieldSlicer(k=1),
-           top = FieldSlicer(k=grid.Nz))
+Nx, Ny, Nz = size(grid)
+
+side_indices = (west   = (1,   :,  :),
+                east   = (Nx,  :,  :),
+                south  = (:,   1,  :),
+                north  = (:,  Ny,  :),
+                bottom = (:,   :,  1),
+                top    = (:,   :, Nz))
 
 for side in keys(slicers)
-    field_slicer = slicers[side]
+    indices = side_indices[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
+    simulation.output_writers[side] = JLD2OutputWriter(model, fields(model); indices,
                                                        schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
                                                        prefix = filename * "_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      field_slicer = nothing,
                                                       prefix = filename * "_fields",
                                                       force = true)
 
