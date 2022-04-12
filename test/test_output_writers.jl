@@ -227,6 +227,7 @@ end
 @testset "Output writers" begin
     @info "Testing output writers..."
 
+    topo = (Periodic, Periodic, Bounded)
     for arch in archs
 
         @info "Testing that writers create file and append to it properly"
@@ -237,7 +238,6 @@ end
         end
 
         # Some tests can reuse this same grid and model.
-        topo = (Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
