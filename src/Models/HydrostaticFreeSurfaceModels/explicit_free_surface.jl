@@ -50,18 +50,17 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ) =
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
+    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
 
-function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) 
+function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, field_events) 
     
-    event = launch!(model.architecture, model.grid, :xy,
-                    _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
-                    model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
-                    dependencies = device_event(model.architecture))
+    free_surface_event = launch!(model.architecture, model.grid, :xy,
+                                _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
+                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
+                                dependencies = device_event(model.architecture))
 
-    wait(device(model.architecture), event)
-    return nothing
+    return MultiEvent(tuple(prognostic_field_events[1]..., prognostic_field_events[2]..., free_surface_event))
 end
 
 #####

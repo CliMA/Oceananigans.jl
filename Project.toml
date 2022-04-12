@@ -39,6 +39,8 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 [compat]
 Adapt = "^3"
 CUDA = "3.8"
+CUDAKernels = "^0.3.3"
+KernelAbstractions = "^0.8"
 Crayons = "^4"
 CubedSphere = "0.1, 0.2"
 DocStringExtensions = "^0.8"

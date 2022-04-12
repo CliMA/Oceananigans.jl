@@ -272,7 +272,7 @@ fill_halo_regions!(S)
 
 Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_iteration=1) #stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
@@ -284,10 +284,10 @@ function progress(sim)
 
     η = reconstruct_global_field(model.free_surface.η)
     u = reconstruct_global_field(model.velocities.u)
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", # max(|η|): %.2e m, max(|u|): %.2e ms⁻¹", 
+    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹", 
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    # maximum(abs, u), maximum(abs, η),
+                    maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()

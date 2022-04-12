@@ -94,10 +94,10 @@ end
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
+ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
+    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events)
 
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocity_events=NoneEvent())
+function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, prognostic_field_events)
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side
@@ -105,11 +105,8 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
 
-    # Wait velocity events to finish
-    wait(device(arch), velocity_events)
-
     # Compute right hand side of implicit free surface equation
-    @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
+    @apply_regionally prognostic_field_events = local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch, prognostic_field_events)
     fill_halo_regions!(∫ᶻQ)
 
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
@@ -123,11 +120,13 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     fill_halo_regions!(η)
     
-    return NoneEvent()
+    return prognostic_field_events
 end
 
-function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
+function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch, prognostic_field_events)
+    wait(device(arch), MultiEvent(tuple(prognostic_field_events[1]...)))
     masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+    return MultiEvent(tuple(prognostic_field_events[2]...))
 end
