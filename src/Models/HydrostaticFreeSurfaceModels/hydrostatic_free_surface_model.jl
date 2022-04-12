@@ -25,25 +25,30 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tra
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
+# TEMP
+auxiliary_prognostic_names(closure) = ()
+auxiliary_prognostic_fields(closure) = NamedTuple()
+
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, U, C, Φ, K, AF, APF} <: AbstractModel{TS}
   
-          architecture :: A        # Computer `Architecture` on which `Model` is run
-                  grid :: G        # Grid of physical points on which `Model` is solved
-                 clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-             advection :: V        # Advection scheme for tracers
-              buoyancy :: B        # Set of parameters for buoyancy model
-              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-          free_surface :: S        # Free surface parameters and fields
-               forcing :: F        # Container for forcing functions defined by the user
-               closure :: E        # Diffusive 'turbulence closure' for all model fields
-             particles :: P        # Particle set for Lagrangian tracking
-            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-               tracers :: C        # Container for tracer fields
-              pressure :: Φ        # Container for hydrostatic pressure
-    diffusivity_fields :: K        # Container for turbulent diffusivities
-           timestepper :: TS       # Object containing timestepper fields and parameters
-      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+                   architecture :: A        # Computer `Architecture` on which `Model` is run
+                           grid :: G        # Grid of physical points on which `Model` is solved
+                          clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+                      advection :: V        # Advection scheme for tracers
+                       buoyancy :: B        # Set of parameters for buoyancy model
+                       coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+                   free_surface :: S        # Free surface parameters and fields
+                        forcing :: F        # Container for forcing functions defined by the user
+                        closure :: E        # Diffusive 'turbulence closure' for all model fields
+                      particles :: P        # Particle set for Lagrangian tracking
+                     velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+                        tracers :: C        # Container for tracer fields
+                       pressure :: Φ        # Container for hydrostatic pressure
+             diffusivity_fields :: K        # Container for turbulent diffusivities
+                    timestepper :: TS       # Object containing timestepper fields and parameters
+               auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+    auxiliary_prognostic_fields :: APF      # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -142,7 +147,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :η, tracernames(tracers)...)
+    prognostic_field_names = (:u, :v, :η, tracernames(tracers)..., auxiliary_prognostic_names(closure)...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
@@ -165,10 +170,15 @@ function HydrostaticFreeSurfaceModel(; grid,
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    aux_prognostics    = auxiliary_prognostic_fields(closure, boundary_conditions, grid)
 
     validate_velocity_boundary_conditions(velocities)
 
     free_surface = FreeSurface(free_surface, velocities, grid)
+
+    # Regularize forcing for model tracer and velocity fields.
+    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers, aux_prognostics)
+    forcing = model_forcing(model_fields; forcing...)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
@@ -177,9 +187,6 @@ function HydrostaticFreeSurfaceModel(; grid,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
 
-    # Regularize forcing for model tracer and velocity fields.
-    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
-    forcing = model_forcing(model_fields; forcing...)
 
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
 
@@ -193,7 +200,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, velocities, tracers,
-                                        pressure, diffusivity_fields, timestepper, auxiliary_fields)
+                                        pressure, diffusivity_fields, timestepper, auxiliary_fields, aux_prognostics)
 
     update_state!(model)
 
