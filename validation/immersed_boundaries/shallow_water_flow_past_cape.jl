@@ -58,7 +58,7 @@ simulation.output_writers[:fields] =
                      schedule = TimeInterval(0.1),
                      prefix = "flow_past_cape",
                      field_slicer = nothing,
-                     force = true)
+                     overwrite_existing = true)
 
 run!(simulation)
 
