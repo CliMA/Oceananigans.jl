@@ -283,9 +283,12 @@ using Oceananigans.MultiRegion: reconstruct_global_field
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    @info @sprintf("Time: % 12s, iteration: %d,  wall time: %s", # max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, 
+    u = model.velocities.u
+    η = model.free_surface.η
+
+    @info @sprintf("Time: % 12s, iteration: %d,  wall time: %s, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration,
+                    sim.model.clock.iteration, maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()

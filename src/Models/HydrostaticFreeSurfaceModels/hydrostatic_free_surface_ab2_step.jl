@@ -54,8 +54,8 @@ function local_ab2_step!(model, Δt, χ)
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
     explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
     
-    prognostic_field_events = (explicit_velocity_step_events,
-        explicit_tracer_step_events)
+    prognostic_field_events = (tuple(explicit_velocity_step_events...),
+        tuple(explicit_tracer_step_events...))
 
     return prognostic_field_events
 end
