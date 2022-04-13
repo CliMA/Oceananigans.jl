@@ -57,7 +57,7 @@ Keyword arguments
 
   ## Filenaming
 
-  - `filename` (required): Descriptive filename including extension.
+  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path.
 
   - `dir`: Directory to save output to.
            Default: "." (current working directory).
@@ -172,8 +172,8 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    # Enforce that extensions need to be `jld2`
-    filename[end-4:end] == ".jld2" || throw(ArgumentError("`filename` needs to have `.jld2` extension"))
+    extension_warning(filename, ".jld2")
+    base_filepath = filename * ".jld2"
 
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
@@ -182,7 +182,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     mkpath(dir)
-    filepath = joinpath(dir, filename)
+    filepath = joinpath(dir, base_filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
