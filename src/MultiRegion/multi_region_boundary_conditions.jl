@@ -100,6 +100,10 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
+#####
+##### Single fill_halo! for Communicating boundary condition 
+#####
+    
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
     wait(device(arch), dep)
@@ -192,82 +196,84 @@ function fill_north_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args.
     return nothing
 end
 
-## Tupled field boundary conditions for 
-
-# function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
+#####
+##### Tupled fill_halo! for Communicating boundary condition 
+#####
     
-#     ## Can we take this off??
-#     wait(dep)
+function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
     
-#     H = halo_size(grid)[1]
-#     N = size(grid)[1]
-
-#     dst = []
-#     src = []
-#     for n in M
-#         push!(dst, buffers[n][bc[n].condition.rank].west...)
-#         push!(src, buffers[n][bc[n].condition.from_rank].west...)
-#     end
+    ## Can we take this off??
+    wait(dep)
     
-#     switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
+    H = halo_size(grid)[1]
+    N = size(grid)[1]
+
+    dst = []
+    src = []
+    for n in M
+        push!(dst, buffers[n][bc[n].condition.rank].west...)
+        push!(src, buffers[n][bc[n].condition.from_rank].west...)
+    end
     
-#     @sync for n in 1:M
-#         @async begin
-#             w = neighbors[n][bc[n].condition.from_rank]
-#             src[n] .= parent(w)[N+1:N+H, :, :]
-#         end
-#     end
-#     sync_device!(getdevice(src[1]))
-
-#     switch_device!(getdevice(c[1]))
-#     copyto!(dst, src)
-
-#     @sync for n in 1:M
-#         @async begin
-#             p  = view(parent(c[n]), 1:H, :, :)
-#             p .= dst[n]
-#         end
-#     end
-
-#     return nothing
-# end
-
-# function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
+    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
     
-#     ## Can we take this off??
-#     wait(dep)
+    @sync for n in 1:M
+        @async begin
+            w = neighbors[n][bc[n].condition.from_rank]
+            src[n] .= parent(w)[N+1:N+H, :, :]
+        end
+    end
+    sync_device!(getdevice(src[1]))
+
+    switch_device!(getdevice(c[1]))
+    copyto!(dst, src)
+
+    @sync for n in 1:M
+        @async begin
+            p  = view(parent(c[n]), 1:H, :, :)
+            p .= dst[n]
+        end
+    end
+
+    return nothing
+end
+
+function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
     
-#     H = halo_size(grid)[1]
-#     N = size(grid)[1]
-
-#     dst = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
-
-#     switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
-#     src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
+    ## Can we take this off??
+    wait(dep)
     
-#     @sync for n in 1:M
-#         @async begin
-#             e = neighbors[n][bc[n].condition.from_rank]
-#             src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
-#         end
-#     end
+    H = halo_size(grid)[1]
+    N = size(grid)[1]
 
-#     sync_device!(getdevice(src[1]))
+    dst = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
+
+    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
+    src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
     
-#     switch_device!(getdevice(c[1]))
-#     copyto!(dst, src)
-#     @sync for n in 1:M
-#         @async begin
-#             p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
-#             p .= dst[n, :, :, :]
-#         end
-#     end
+    @sync for n in 1:M
+        @async begin
+            e = neighbors[n][bc[n].condition.from_rank]
+            src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
+        end
+    end
 
-#     return nothing
-# end
+    sync_device!(getdevice(src[1]))
+    
+    switch_device!(getdevice(c[1]))
+    copyto!(dst, src)
+    @sync for n in 1:M
+        @async begin
+            p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
+            p .= dst[n, :, :, :]
+        end
+    end
+
+    return nothing
+end
 
 #####
-##### MultiRegion boudary condition utils
+##### MultiRegion boundary condition utils
 #####
 
 @inline @inbounds getregion(fc::FieldBoundaryConditions, i) = 
