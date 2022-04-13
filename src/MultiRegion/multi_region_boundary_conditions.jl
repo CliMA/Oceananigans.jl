@@ -52,24 +52,24 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 ##### fill_halo_regions! for a MultiRegionObject
 #####
 
-fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
-    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
+# fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
+#     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-# function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
-#     arch = architecture(mrg)
+    arch = architecture(mrg)
 
-#     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
+    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
     
-#     for task = 1:3
-#         barrier = device_event(arch)
-#         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-#                           c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
-#                           args...; kwargs...)
-#     end
+    for task = 1:3
+        barrier = device_event(arch)
+        apply_regionally!(fill_halo_event!, task, halo_tuple, 
+                          c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+                          args...; kwargs...)
+    end
 
-#     return nothing
-# end
+    return nothing
+end
 
 #####
 ##### fill_halo! for Communicating boundary condition 

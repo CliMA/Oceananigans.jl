@@ -221,7 +221,7 @@ for arch in archs
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
                 fs = Array(interior(fs));
 
-                for regions in [2, 4], P in [XPartition, YPartition]
+                for regions in [2, 4], P in partitioning
                     @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
 
                     f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)
