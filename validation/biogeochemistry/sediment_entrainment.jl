@@ -14,7 +14,7 @@ u_bcs = FieldBoundaryConditions(bottom=u_bottom_bc)
 sediment_bottom_bc = ValueBoundaryCondition(1)
 sediment_bcs = FieldBoundaryConditions(bottom=sediment_bottom_bc)
 
-r_sediment = 1e-4 # "Fine sand"
+r_sediment = 1e-4 # m (Fine sand)
 ρ_sediment = 1400 # kg m⁻³
 ρ_ocean = 1026 # kg m⁻³
 Δb = - 9.81 * (ρ_sediment - ρ_ocean) / ρ_ocean
