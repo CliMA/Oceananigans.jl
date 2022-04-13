@@ -5,12 +5,14 @@ using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.BoundaryConditions: 
             ContinuousBoundaryFunction, 
             DiscreteBoundaryFunction, 
+            permute_boundary_conditions,
+            fill_halo_event!,
             CBCT, 
             CBC
 
 import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
 
-import Oceananigans.BoundaryConditions: 
+import Oceananigans.BoundaryConditions:
             fill_halo_regions!,
             fill_west_and_east_halo!,
             fill_south_and_north_halo!,
@@ -31,9 +33,6 @@ import Oceananigans.BoundaryConditions:
     end
 end
 
-# @inline fill_halo_regions_field_tuple!(full_fields, grid::MultiRegionGrid, args...; kwargs...) =
-#     fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
-
 function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
@@ -48,9 +47,25 @@ end
 
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
-fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
-    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
+# fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
+    # apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
+function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+
+    arch = architecture(mrg)
+
+    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
+    
+    for task = 1:3
+        barrier = device_event(arch)
+        apply_regionally!(fill_halo_event!, task, halo_tuple, 
+                          c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+                          args...; kwargs...)
+    end
+
+    return nothing
+end
+    
 ## Fill communicating boundary condition halos
 for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_both_halo! = Symbol(:fill_, lside, :_and_, rside, :_halo!)

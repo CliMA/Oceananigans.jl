@@ -1,4 +1,5 @@
 using OffsetArrays: OffsetArray
+using Oceananigans.Utils
 using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -34,6 +35,26 @@ function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, b
 
     arch = architecture(grid)
 
+    halo_tuple = permute_boundary_conditions(boundary_conditions)
+   
+    for task = 1:3
+        barrier = device_event(arch)
+        fill_halo_event!(task, halo_tuple, c, arch, barrier, grid, args...; kwargs...)
+    end
+
+    return nothing
+end
+
+function fill_halo_event!(task, halo_tuple, c, arch, barrier, grid, args...; kwargs...)
+    fill_halo! = halo_tuple[1][task]
+    bc_left    = halo_tuple[2][task]
+    bc_right   = halo_tuple[3][task]
+    event      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+end
+
+function permute_boundary_conditions(boundary_conditions)
+
     fill_halos! = [
         fill_west_and_east_halo!,
         fill_south_and_north_halo!,
@@ -56,19 +77,8 @@ function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, b
     fill_halos! = fill_halos![perm]
     boundary_conditions_array_left  = boundary_conditions_array_left[perm]
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
-   
-    for task = 1:3
-        barrier = device_event(arch)
-        fill_halo!  = fill_halos![task]
-        bc_left     = boundary_conditions_array_left[task]
-        bc_right    = boundary_conditions_array_right[task]
-        
-        events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
 
-        wait(device(arch), events)
-    end
-
-    return nothing
+    return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
 
 @inline validate_event(::Nothing) = NoneEvent()

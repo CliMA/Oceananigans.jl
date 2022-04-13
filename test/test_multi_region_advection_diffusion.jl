@@ -148,7 +148,7 @@ for arch in archs
     grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
                                         radius = 1, latitude = (-80, 80),
-                                        longitude = (-160, 160), z = (-1, 0))
+                                        longitude = (-180, 180), z = (-1, 0))
 
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
@@ -167,9 +167,9 @@ for arch in archs
                 d = interior(reconstruct_global_field(d))
                 e = interior(reconstruct_global_field(e))
 
-                @test all(c .≈ cs)
-                @test all(d .≈ ds)
-                @test all(e .≈ es)
+                @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
+                @test all(isapprox(d, ds, atol=1e-20, rtol = 1e-15))
+                @test all(isapprox(e, es, atol=1e-20, rtol = 1e-15))
             end
         end
     end
@@ -194,11 +194,11 @@ for arch in archs
             c = interior(reconstruct_global_field(c))
             η = interior(reconstruct_global_field(η))
                 
-            @test all(u .≈ us)
-            @test all(v .≈ vs)
-            @test all(w .≈ ws)
-            @test all(c .≈ cs)
-            @test all(η .≈ ηs)
+            @test all(isapprox(u, us, atol=1e-20, rtol = 1e-15))
+            @test all(isapprox(v, vs, atol=1e-20, rtol = 1e-15))
+            @test all(isapprox(w, ws, atol=1e-20, rtol = 1e-15))
+            @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
+            @test all(isapprox(η, ηs, atol=1e-20, rtol = 1e-15))
         end
     end
 
@@ -225,7 +225,7 @@ for arch in archs
                     f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)
                     f = interior(reconstruct_global_field(f))
 
-                    @test all(f .≈ fs)
+                    @test all(isapprox(f, fs, atol=1e-20, rtol = 1e-15))
                 end
             end
         end

@@ -25,7 +25,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             @test reconstruct_global_grid(mrg) == grid
 
             for Field_type in [CenterField, XFaceField, YFaceField]
-                @info "Testing multi region $(Field_type) on $regions $(P)s"
+                @info "Testing multi region $(Field_type) on $(getname(grid)) on $regions $(P)s"
 
                 par_field = Field_type(mrg)
                 ser_field = Field_type(grid)
@@ -42,6 +42,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             end
 
             for immersed_boundary in immersed_boundaries
+                @info "Testing multi region immersed boundaries on $(getname(grid)) on $regions $(P)s"
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
                 mrg = MultiRegionGrid(ibg, partition = P(regions), devices = devices(arch, regions))
 
