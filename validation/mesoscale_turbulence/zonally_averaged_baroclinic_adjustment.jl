@@ -22,7 +22,7 @@ Nz = 40
 
 save_fields_interval = 0.5day
 stop_time = 60days
-Δt₀ = 5minutes
+Δt₀ = 1minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture;
@@ -38,12 +38,13 @@ coriolis = BetaPlane(latitude = -45)
 
 𝒜 = Δz/Δy   # Grid cell aspect ratio.
 
-κh = 0.1    # [m² s⁻¹] horizontal diffusivity
-νh = 0.1    # [m² s⁻¹] horizontal viscosity
-κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
-νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
+κh = 0.1  # [m² s⁻¹] horizontal diffusivity
+νh = 0.1  # [m² s⁻¹] horizontal viscosity
+κz = 1e-2 # [m² s⁻¹] vertical diffusivity
+νz = 1e-2 # [m² s⁻¹] vertical viscosity
 
-vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
+vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1)
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 diffusive_closures = (vertical_closure, horizontal_closure)
 
@@ -57,7 +58,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 @info "Building a model..."
 
-closures = (diffusive_closures..., gent_mcwilliams_diffusivity)
+closures = (vertical_closure, horizontal_closure, convective_adjustment, gent_mcwilliams_diffusivity)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
@@ -108,29 +109,29 @@ set!(model, b=bᵢ, c=cᵢ)
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10minutes)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # add progress callback
-wall_clock = [time_ns()]
+wall_clock = Ref(time_ns())
 
-function print_progress(sim)
+function progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
-            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            prettytime(1e-9 * (time_ns() - wall_clock[])),
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
 
-    wall_clock[1] = time_ns()
+    wall_clock[] = time_ns()
     
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 #####
 ##### Output
@@ -174,8 +175,6 @@ run!(simulation, pickup=false)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
-#=
-
 #####
 ##### Visualize
 #####
@@ -189,7 +188,7 @@ filepath = filename * "_fields.jld2"
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
-rt = FieldTimeSeries(filepath, "Rb")
+#rt = FieldTimeSeries(filepath, "Rb")
 
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
@@ -207,21 +206,23 @@ Nt = length(times)
 un(n) = interior(ut[n])[1, :, :]
 bn(n) = interior(bt[n])[1, :, :]
 cn(n) = interior(ct[n])[1, :, :]
-rn(n) = interior(rt[n])[1, :, :]
+
+#rn(n) = interior(rt[n])[1, :, :]
+#@show max_r = maximum(abs, rn(Nt))
+#@show min_r = - max_r
 
 @show min_c = 0
 @show max_c = 1
 @show max_u = maximum(abs, un(Nt))
 min_u = - max_u
 
-@show max_r = maximum(abs, rn(Nt))
-@show min_r = - max_r
+slider = Slider(fig[3, 1], range=1:Nt, startvalue=1)
+n = slider.value
 
-n = Node(1)
-u = @lift un($n)
-b = @lift bn($n)
-c = @lift cn($n)
-r = @lift rn($n)
+u = @lift interior(ut[$n], 1, :, :)
+b = @lift interior(bt[$n], 1, :, :)
+c = @lift interior(ct[$n], 1, :, :)
+#r = @lift rn($n)
 
 ax = Axis(fig[1, 1], title="Zonal velocity")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
@@ -233,10 +234,12 @@ hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[2, 2], hm)
 
+#=
 ax = Axis(fig[3, 1], title="R(b)")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm)
+=#
 
 title_str = @lift "Baroclinic adjustment with GM at t = " * prettytime(times[$n])
 ax_t = fig[0, :] = Label(fig, title_str)
@@ -248,4 +251,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     n[] = i
 end
 
-=#
