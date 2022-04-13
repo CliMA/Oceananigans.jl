@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.Units
 using Oceananigans.BoundaryConditions: fill_halo_regions!, ImpenetrableBoundaryCondition
 using Printf
 using GLMakie
