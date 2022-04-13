@@ -233,28 +233,28 @@ function Base.summary(grid::LatitudeLongitudeGrid)
                   " and ", metric_computation)
 end
 
-Base.show(io::IO, grid::LatitudeLongitudeGrid) = "Latitude Longitude Grid"
+function Base.show(io::IO, grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
 
-# function Base.show(io::IO, grid::LatitudeLongitudeGrid)
-#     TX, TY, TZ = topology(grid)
+    λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
+    φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
+    z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
-#     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
-#     φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
-#     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+    x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
+    y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
+    z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-#     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
-#     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
-#     z_summary = domain_summary(TZ(), "z", z₁, z₂)
+    longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    # x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
-    # y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
-    # z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
-#     print(io, summary(grid), '\n',
-#           "├── ", x_summary, '\n',
-#           "├── ", y_summary, '\n',
-#           "└── ", z_summary)
-# end
+    print(io, summary(grid), '\n',
+          "├── ", x_summary, '\n',
+          "├── ", y_summary, '\n',
+          "└── ", z_summary)
+end
 
 # Node by node
 @inline xnode(::Face,   i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]

@@ -62,6 +62,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
   data = construct_regionally(Array, data)
   compact_data!(global_field, global_grid, data, mrf.grid.partition)
   
+  fill_halo_regions!(global_field)
   return global_field
 end
 

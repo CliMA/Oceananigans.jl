@@ -61,6 +61,23 @@ function divide_direction(x::AbstractArray, p::EqualXPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
+partition_global_array(a::Function, args...) = a
+
+function partition_global_array(a::AbstractArray, ::EqualXPartition, local_size, region, arch) 
+    idxs = default_indices(length(size(a)))
+    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
+end
+
+function partition_global_array(a::OffsetArray, ::EqualXPartition, local_size, region, arch) 
+    idxs    = default_indices(length(size(a)))
+    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
+end
+
+####
+#### Global reconstruction utils
+####
+
 function reconstruct_size(mrg, p::XPartition)
     Ny = mrg.region_grids[1].Ny
     Nz = mrg.region_grids[1].Nz
@@ -78,50 +95,12 @@ function reconstruct_extent(mrg, p::XPartition)
              cpu_face_constructor_x(mrg.region_grids.regions[length(p)])[end])
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regions[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regions)
+        for (idx, grid) in enumerate(mrg.region_grids.regions[2:end])
             switch_device!(mrg.devices[idx])
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end
     return (; x = x, y = y, z = z)
-end
-
-inject_south_boundary(region, p::XPartition, bc) = bc
-inject_north_boundary(region, p::XPartition, bc) = bc
-
-function inject_west_boundary(region, p::XPartition, global_bc) 
-    if region == 1
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
-                bc = global_bc
-    else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
-    end
-    return bc
-end
-
-function inject_east_boundary(region, p::XPartition, global_bc) 
-    if region == length(p)
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
-                bc = global_bc
-    else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
-    end
-    return bc
-end
-
-partition_global_array(a::Function, args...) = a
-
-function partition_global_array(a::AbstractArray, ::EqualXPartition, grid, local_size, region, arch) 
-    idxs = default_indices(length(size(a)))
-    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
-end
-
-function partition_global_array(a::OffsetArray, ::EqualXPartition, grid, local_size, region, arch) 
-    idxs    = default_indices(length(size(a)))
-    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
-    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 const FunctionMRO     = MultiRegionObject{<:Tuple{Vararg{<:Function}}}
@@ -154,6 +133,39 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
     end
     fill_halo_regions!(global_field)
 end
+
+#####
+##### Boundary specific Utils
+#####
+
+inject_south_boundary(region, p::XPartition, bc) = bc
+inject_north_boundary(region, p::XPartition, bc) = bc
+
+function inject_west_boundary(region, p::XPartition, global_bc) 
+    if region == 1
+        typeof(global_bc) <: Union{CBC, PBC} ?  
+                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
+                bc = global_bc
+    else
+        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
+    end
+    return bc
+end
+
+function inject_east_boundary(region, p::XPartition, global_bc) 
+    if region == length(p)
+        typeof(global_bc) <: Union{CBC, PBC} ?  
+                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
+                bc = global_bc
+    else
+        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
+    end
+    return bc
+end
+
+####
+#### Global index flattening
+####
 
 @inline function displaced_xy_index(i, j, grid, region, p::XPartition)
     i′ = i + grid.Nx * (region - 1) 

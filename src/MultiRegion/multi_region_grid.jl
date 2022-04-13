@@ -76,7 +76,7 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
 end
 
 function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size, extent, partition, region)
-    boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, ibg, local_size, region, child_arch)
+    boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, local_size, region, child_arch)
     return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, local_size, extent), boundary)
 end
 

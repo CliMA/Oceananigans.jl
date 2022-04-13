@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = YPartition(2), devices = (0, 1))
+mrg            = MultiRegionGrid(grid,            partition = YPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -232,7 +232,8 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+# free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -270,7 +271,7 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 60 #minutes  # for initialization, then we can go up to 6 minutes?
 
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 

@@ -8,7 +8,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
 @testset "Testing multi region grids" begin
     for arch in archs
 
-        region_num   = [2, 4, 5]
+        region_num   = [2, 4]
         partitioning = [XPartition, YPartition]
 
         grids = [LatitudeLongitudeGrid(arch, size=(20, 20, 1), latitude=collect(range(-80, 80, length=21)), 

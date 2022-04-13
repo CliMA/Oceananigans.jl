@@ -61,6 +61,21 @@ function divide_direction(x::AbstractArray, p::EqualYPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
+function partition_global_array(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
+    idxs = default_indices(length(size(a)))
+    return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
+end
+
+function partition_global_array(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
+    idxs    = default_indices(length(size(a)))
+    offsets = (0, a.offsets[2], Tuple(0 for i in 1:length(idxs)-2)...)
+    return arch_array(arch, OffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))
+end
+
+####
+#### Global reconstruction utils
+####
+
 function reconstruct_size(mrg, p::YPartition)
     Nx = mrg.region_grids[1].Nx
     Ny = sum([grid.Ny for grid in mrg.region_grids.regions]) 
@@ -78,42 +93,12 @@ function reconstruct_extent(mrg, p::YPartition)
              cpu_face_constructor_y(mrg.region_grids.regions[length(p)])[end])
     else
         y = [cpu_face_constructor_y(mrg.region_grids.regions[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regions)
+        for (idx, grid) in enumerate(mrg.region_grids.regions[2:end])
             switch_device!(mrg.devices[idx])
-            x = [x..., cpu_face_constructor_y(grid)[2:end]...]
+            y = [y..., cpu_face_constructor_y(grid)[2:end]...]
         end
     end
     return (; x = x, y = y, z = z)
-end
-
-inject_west_boundary(region, p::YPartition, bc) = bc 
-inject_east_boundary(region, p::YPartition, bc) = bc
-
-function inject_south_boundary(region, p::YPartition, global_bc) 
-    if region == 1
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
-                bc = global_bc
-    else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
-    end
-    return bc
-end
-
-function inject_north_boundary(region, p::YPartition, global_bc) 
-    if region == length(p)
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
-                bc = global_bc
-    else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
-    end
-    return bc
-end
-
-function partition_global_array(a::AbstractArray, ::EqualYPartition, grid, local_size, region, arch) 
-    idxs = default_indices(length(size(a)))
-    return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
 end
 
 function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
@@ -140,6 +125,39 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
         interior(global_field)[:, init:fin, :] .= data[r][:, 1:fin-init+1, :]
     end
 end
+
+#####
+##### Boundary specific Utils
+#####
+
+inject_west_boundary(region, p::YPartition, bc) = bc 
+inject_east_boundary(region, p::YPartition, bc) = bc
+
+function inject_south_boundary(region, p::YPartition, global_bc) 
+    if region == 1
+        typeof(global_bc) <: Union{CBC, PBC} ?  
+                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
+                bc = global_bc
+    else
+        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
+    end
+    return bc
+end
+
+function inject_north_boundary(region, p::YPartition, global_bc) 
+    if region == length(p)
+        typeof(global_bc) <: Union{CBC, PBC} ?  
+                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
+                bc = global_bc
+    else
+        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
+    end
+    return bc
+end
+
+####
+#### Global index flattening
+####
 
 @inline function displaced_xy_index(i, j, grid, region, p::YPartition)
     j′ = j + grid.Ny * (region - 1) 
