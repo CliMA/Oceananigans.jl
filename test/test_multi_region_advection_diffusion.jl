@@ -169,9 +169,9 @@ for arch in archs
                 d = interior(reconstruct_global_field(d))
                 e = interior(reconstruct_global_field(e))
 
-                @test all(isapprox(c, cs, atol=1e-20, rtol = 1e-15))
-                @test all(isapprox(d, ds, atol=1e-20, rtol = 1e-15))
-                @test all(isapprox(e, es, atol=1e-20, rtol = 1e-15))
+                @test all(c .≈ cs)
+                @test all(d .≈ ds)
+                @test all(e .≈ es)
             end
         end
     end
@@ -227,7 +227,7 @@ for arch in archs
                     f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)
                     f = interior(reconstruct_global_field(f))
 
-                    @test all(isapprox(f, fs, atol=1e-20, rtol = 1e-15))
+                    @test all(f .≈ fs)
                 end
             end
         end

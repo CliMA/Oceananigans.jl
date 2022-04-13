@@ -20,9 +20,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     prognostic_field_events = ab2_step_free_surface!(model.free_surface, model, Δt, χ, prognostic_field_events)
     
     @apply_regionally wait(device(model.architecture), prognostic_field_events)
-    
-    ## Synchronize the execution?
-    sync_all_devices!(model.grid)
 
     return nothing
 end
