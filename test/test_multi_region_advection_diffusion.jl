@@ -148,7 +148,7 @@ for arch in archs
     grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
                                         radius = 1, latitude = (-80, 80),
-                                        longitude = (-160, 160), z = (-1, 0))
+                                        longitude = (-180, 180), z = (-1, 0))
 
     partitioning = [XPartition]
     
@@ -177,7 +177,11 @@ for arch in archs
     end
 
     @testset "Testing multi region solid body rotation" begin
-        grid = grid_lat
+        grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+                                     halo = (3, 3, 3),
+                                     radius = 1, latitude = (-80, 80),
+                                     longitude = (-160, 160), z = (-1, 0))
+
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
             
         us = Array(interior(us));
