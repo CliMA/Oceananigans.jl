@@ -47,24 +47,33 @@ end
 
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
-# fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
-    # apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+#####
+##### fill_halo_regions! for a MultiRegionObject
+#####
 
-    arch = architecture(mrg)
+fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
+    apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
+# function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+
+#     arch = architecture(mrg)
+
+#     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
     
-    for task = 1:3
-        barrier = device_event(arch)
-        apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
-                          args...; kwargs...)
-    end
+#     for task = 1:3
+#         barrier = device_event(arch)
+#         apply_regionally!(fill_halo_event!, task, halo_tuple, 
+#                           c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+#                           args...; kwargs...)
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
+
+#####
+##### fill_halo! for Communicating boundary condition 
+#####
     
 ## Fill communicating boundary condition halos
 for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
@@ -256,6 +265,10 @@ end
 
 #     return nothing
 # end
+
+#####
+##### MultiRegion boudary condition utils
+#####
 
 @inline @inbounds getregion(fc::FieldBoundaryConditions, i) = 
         FieldBoundaryConditions(getregion(fc.west, i), 

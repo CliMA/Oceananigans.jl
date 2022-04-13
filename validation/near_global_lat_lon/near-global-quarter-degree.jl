@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = YPartition(2), devices = (0, 1))
-mrg            = MultiRegionGrid(grid,            partition = YPartition(2), devices = (0, 1))
+underlying_mrg = underlying_grid #MultiRegionGrid(underlying_grid, partition = YPartition(2), devices = (0, 1))
+mrg            = grid #MultiRegionGrid(grid,            partition = YPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)

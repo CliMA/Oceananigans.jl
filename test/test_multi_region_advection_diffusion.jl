@@ -148,8 +148,10 @@ for arch in archs
     grid_lat = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                         halo = (3, 3, 3),
                                         radius = 1, latitude = (-80, 80),
-                                        longitude = (-180, 180), z = (-1, 0))
+                                        longitude = (-160, 160), z = (-1, 0))
 
+    partitioning = [XPartition]
+    
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
         
@@ -159,7 +161,7 @@ for arch in archs
             ds = Array(interior(ds));
             es = Array(interior(es));
 
-            for regions in [2, 4], P in [XPartition, YPartition]
+            for regions in [2, 4], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
                 c, d, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
 
@@ -184,7 +186,7 @@ for arch in archs
         cs = Array(interior(cs));
         ηs = Array(interior(ηs));
         
-        for regions in [2, 4], P in [XPartition, YPartition]
+        for regions in [2, 4], P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c, η = solid_body_rotation_test(grid; P = P, regions=regions)
 
