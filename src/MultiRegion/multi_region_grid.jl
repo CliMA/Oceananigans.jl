@@ -116,7 +116,7 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
     arch = architecture(mrg)
     a    = arch_array(CPU(), a)
-    ma   = construct_regionally(partition_global_array, a, mrg.partition, mrg, local_size, Iterate(1:length(mrg)), arch)
+    ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
 
