@@ -203,9 +203,9 @@ v_tot = Field(v + model.background_fields.velocities.v)
 fields = (; u, v_tot, w, b_tot, ω_y)
 
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, fields, 
-                                                        filepath = joinpath(@__DIR__, "out.tilted_bbl.nc"),
+                                                        filename = joinpath(@__DIR__, "out.tilted_bbl.nc"),
                                                         schedule = TimeInterval(20minutes),
-                                                        mode = "c")
+                                                        overwrite_existing = true)
 
 # Now we just run it!
 

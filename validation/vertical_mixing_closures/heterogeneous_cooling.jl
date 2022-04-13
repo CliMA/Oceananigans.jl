@@ -68,7 +68,7 @@ for side in keys(indices)
                          schedule = TimeInterval(10minutes),
                          prefix = "heterogeneous_cooling_" * side,
                          indices,
-                         force = true)
+                         overwrite_existing = true)
 end
 =#
 
@@ -76,7 +76,7 @@ simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers);
                      schedule = TimeInterval(5minutes),
                      prefix = "heterogeneous_cooling",
-                     force = true)
+                     overwrite_existing = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities

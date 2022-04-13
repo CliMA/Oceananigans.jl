@@ -219,7 +219,7 @@ output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(10day),
                                                       prefix = output_prefix,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 # Let's goo!
 run!(simulation)

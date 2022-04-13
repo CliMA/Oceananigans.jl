@@ -6,22 +6,22 @@ using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
-      schedule :: T
-           dir :: String
-        prefix :: String
+    schedule :: T
+    dir :: String
+    prefix :: String
     properties :: P
-         force :: Bool
-       verbose :: Bool
-       cleanup :: Bool
+    overwrite_existing :: Bool
+    verbose :: Bool
+    cleanup :: Bool
 end
 
 """
     Checkpointer(model; schedule,
-                        dir = ".",
-                     prefix = "checkpoint",
-                      force = false,
-                    verbose = false,
-                    cleanup = false,
+                 dir = ".",
+                 prefix = "checkpoint",
+                 overwrite_existing = false,
+                 verbose = false,
+                 cleanup = false,
                  properties = [:architecture, :grid, :clock, :coriolis,
                                :buoyancy, :closure, :velocities, :tracers,
                                :timestepper, :particles]
@@ -52,7 +52,7 @@ Keyword arguments
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
 
-- `force`: Remove existing files if their filenames conflict. Default: `false`.
+- `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
@@ -63,11 +63,11 @@ Keyword arguments
 - `properties`: List of model properties to checkpoint. Some are required.
 """
 function Checkpointer(model; schedule,
-                             dir = ".",
-                          prefix = "checkpoint",
-                           force = false,
-                         verbose = false,
-                         cleanup = false,
+                      dir = ".",
+                      prefix = "checkpoint",
+                      overwrite_existing = false,
+                      verbose = false,
+                      cleanup = false,
                       properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :timestepper, :particles])
 
@@ -93,7 +93,7 @@ function Checkpointer(model; schedule,
 
     mkpath(dir)
 
-    return Checkpointer(schedule, dir, prefix, properties, force, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
 end
 
 #####

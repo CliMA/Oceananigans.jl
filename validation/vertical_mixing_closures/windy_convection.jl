@@ -47,7 +47,7 @@ for closure in closures_to_run
         JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                          schedule = TimeInterval(10minutes),
                          prefix = "windy_convection_" * closurename,
-                         force = true)
+                         overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim))
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
