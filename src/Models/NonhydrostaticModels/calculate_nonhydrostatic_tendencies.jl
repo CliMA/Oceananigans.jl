@@ -21,22 +21,8 @@ function calculate_tendencies!(model::NonhydrostaticModel)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_interior_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.grid,
-                                               model.advection,
-                                               model.coriolis,
-                                               model.buoyancy,
-                                               model.stokes_drift,
-                                               model.closure,
-                                               model.background_fields,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.pressures.pHY′,
-                                               model.diffusivity_fields,
-                                               model.forcing,
-                                               model.clock)
-
+    calculate_interior_tendency_contributions!(model)
+                                               
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
@@ -50,21 +36,23 @@ function calculate_tendencies!(model::NonhydrostaticModel)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(tendencies,
-                                                    arch,
-                                                    grid,
-                                                    advection,
-                                                    coriolis,
-                                                    buoyancy,
-                                                    stokes_drift,
-                                                    closure,
-                                                    background_fields,
-                                                    velocities,
-                                                    tracers,
-                                                    hydrostatic_pressure,
-                                                    diffusivities,
-                                                    forcings,
-                                                    clock)
+function calculate_interior_tendency_contributions!(model)
+
+    tendencies           = model.timestepper.Gⁿ
+    arch                 = model.architecture
+    grid                 = model.grid
+    advection            = model.advection
+    coriolis             = model.coriolis
+    buoyancy             = model.buoyancy
+    stokes_drift         = model.stokes_drift
+    closure              = model.closure
+    background_fields    = model.background_fields
+    velocities           = model.velocities
+    tracers              = model.tracers
+    hydrostatic_pressure = model.pressures.pHY′
+    diffusivities        = model.diffusivity_fields
+    forcings             = model.forcing
+    clock                = model.clock
 
     workgroup, worksize = work_layout(grid, :xyz)
 
@@ -75,27 +63,78 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, stokes_drift, closure,
-                                    buoyancy, background_fields, velocities, tracers, diffusivities,
-                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
+    Gu_event = calculate_Gu_kernel!(tendencies.u,
+                                    grid,
+                                    advection,
+                                    coriolis,
+                                    stokes_drift,
+                                    closure,
+                                    velocities.u.boundary_conditions.immersed,
+                                    buoyancy,
+                                    background_fields,
+                                    velocities,
+                                    tracers,
+                                    diffusivities,
+                                    forcings,
+                                    hydrostatic_pressure,
+                                    clock,
+                                    dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, stokes_drift, closure,
-                                    buoyancy, background_fields, velocities, tracers, diffusivities,
-                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
+    Gv_event = calculate_Gv_kernel!(tendencies.v
+                                    grid,
+                                    advection,
+                                    coriolis,
+                                    stokes_drift,
+                                    closure,
+                                    velocities.v.boundary_conditions.immersed,
+                                    buoyancy,
+                                    background_fields,
+                                    velocities,
+                                    tracers,
+                                    diffusivities,
+                                    forcings,
+                                    hydrostatic_pressure,
+                                    clock,
+                                    dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, stokes_drift, closure,
-                                    buoyancy, background_fields, velocities, tracers, diffusivities,
-                                    forcings, clock, dependencies=barrier)
+    Gw_event = calculate_Gw_kernel!(tendencies.w
+                                    grid,
+                                    advection,
+                                    coriolis,
+                                    stokes_drift,
+                                    closure,
+                                    velocities.w.boundary_conditions.immersed,
+                                    buoyancy,
+                                    background_fields,
+                                    velocities,
+                                    tracers,
+                                    diffusivities,
+                                    forcings,
+                                    hydrostatic_pressure,
+                                    clock,
+                                    dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, buoyancy,
-                                        background_fields, velocities, tracers, diffusivities,
-                                        forcing, clock, dependencies=barrier)
+        Gc_event = calculate_Gc_kernel!(c_tendency,
+                                        grid,
+                                        Val(tracer_index),
+                                        advection,
+                                        closure,
+                                        c_immersed_bc,
+                                        buoyancy,
+                                        background_fields,
+                                        velocities,
+                                        tracers,
+                                        diffusivities,
+                                        forcing,
+                                        clock,
+                                        dependencies=barrier)
 
         push!(events, Gc_event)
     end

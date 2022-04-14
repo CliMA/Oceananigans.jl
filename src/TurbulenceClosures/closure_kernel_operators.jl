@@ -123,3 +123,11 @@ const f = Face()
 @inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, c, f, c)
 @inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, c, c, f)
 
+#####
+##### Immersed flux divergences
+#####
+
+@inline ∂ⱼ_τ₁ⱼ_immersed(i, j, k, grid, args...) = zero(eltype(grid))
+@inline ∂ⱼ_τ₂ⱼ_immersed(i, j, k, grid, args...) = zero(eltype(grid))
+@inline ∂ⱼ_τ₃ⱼ_immersed(i, j, k, grid, args...) = zero(eltype(grid))
+@inline ∇_dot_qᶜ(i, j, k, grid, args...) = zero(eltype(grid))
