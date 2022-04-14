@@ -173,7 +173,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                jld2_kw = Dict{Symbol, Any}())
 
     mkpath(dir)
-    filename = auto_extension(filename, "jld2")
+    filename = auto_extension(filename, ".jld2")
     filepath = joinpath(dir, filename)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
     
