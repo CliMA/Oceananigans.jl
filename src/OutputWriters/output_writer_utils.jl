@@ -147,11 +147,10 @@ show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 """
     auto_extension(filename, ext)                                                             
 
-Return `filename * ext` if filename does not end in ".ext"`. Otherwise return `filename`.
+If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext) 
-    dotext = string(".", ext)                                                               
-    Next = length(dotext)
-    filename[end-Next+1:end] == dotext || (filename *= ext)
+    Next = length(ext)
+    filename[end-Next+1:end] == ext || (filename *= ext)
     return filename
 end
