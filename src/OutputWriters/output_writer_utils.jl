@@ -144,9 +144,14 @@ output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 
-function extension_warning(filename, ext)
-    dot_index = findlast('.', filename)
-    base_filepath = filename * ext
-    !isnothing(dot_index) && @warn("A '.' was detected in $filename. The full filename will be $base_filepath.")
-    return nothing
+"""
+    auto_extension(filename, ext)                                                             
+
+Return `filename` with `ext` appended if `ext` is not detected.
+"""
+function auto_extension(filename, ext)                                                             
+    idot = findlast('.', filename)
+    detected_ext = isnothing(idot) ? "" : filename[idot+1:end]                                                                
+    detected_ext == ext || (filename *= ext)
+    return filename
 end
