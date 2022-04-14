@@ -70,6 +70,7 @@ import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh
 @unary -
+@unary +
 
 @binary +
 @binary -
