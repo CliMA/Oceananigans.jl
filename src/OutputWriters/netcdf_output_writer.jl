@@ -297,9 +297,8 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                       verbose = false)
 
     mkpath(dir)
-    extension_warning(filename, ".nc")
-    base_filepath = filename * ".nc"
-    filepath = joinpath(dir, base_filepath)
+    filename = auto_extension(filename, ".nc")
+    filepath = joinpath(dir, filename)
 
     if isnothing(overwrite_existing)
         if isfile(filepath)
