@@ -51,7 +51,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 end
 
 # Fallbacks for explicit time discretization
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, args...) =
+@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...) =
     @inbounds - tracers.e[i, j, k] * implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...)
 
 @inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(eltype(grid))
