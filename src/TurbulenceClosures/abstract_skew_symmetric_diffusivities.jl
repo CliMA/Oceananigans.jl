@@ -75,6 +75,7 @@ taper_factor_ccc(i, j, k, grid, args...) = one(eltype(grid))
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
+    # 11 and 12 will change for more general tensors
     R₁₁ = one(eltype(grid))
     R₁₂ = zero(eltype(grid))
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, isopycnals)
@@ -103,6 +104,7 @@ end
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
+    # 21 and 22 will change for more general tensors
     R₂₁ = zero(eltype(grid))
     R₂₂ = one(eltype(grid))
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)

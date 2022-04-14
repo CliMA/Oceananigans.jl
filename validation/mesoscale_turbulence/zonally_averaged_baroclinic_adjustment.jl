@@ -17,12 +17,12 @@ architecture = CPU()
 Ly = 1000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 
-Ny = 128
-Nz = 40
+Ny = 64
+Nz = 24
 
 save_fields_interval = 0.5day
 stop_time = 60days
-Δt₀ = 1minutes
+Δt₀ = 5minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture;
@@ -34,19 +34,14 @@ grid = RectilinearGrid(architecture;
 
 coriolis = BetaPlane(latitude = -45)
 
-Δy, Δz = Ly/Ny, Lz/Nz
-
-𝒜 = Δz/Δy   # Grid cell aspect ratio.
-
-κh = 0.1  # [m² s⁻¹] horizontal diffusivity
-νh = 0.1  # [m² s⁻¹] horizontal viscosity
+κh = 1e4  # [m² s⁻¹] horizontal diffusivity
+νh = 1e4  # [m² s⁻¹] horizontal viscosity
 κz = 1e-2 # [m² s⁻¹] vertical diffusivity
 νz = 1e-2 # [m² s⁻¹] vertical viscosity
 
-vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=100)
+vertical_diffusivity = VerticalScalarDiffusivity(κ=1e-2)
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1)
-horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-diffusive_closures = (vertical_closure, horizontal_closure)
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
@@ -58,7 +53,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 @info "Building a model..."
 
-closures = (vertical_closure, horizontal_closure, convective_adjustment, gent_mcwilliams_diffusivity)
+closures = (vertical_diffusivity, horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
