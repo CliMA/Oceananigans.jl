@@ -172,8 +172,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    extension_warning(filename, ".jld2")
-    base_filepath = filename * ".jld2"
+    base_filepath = auto_extension(filename, ".jld2")
 
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
