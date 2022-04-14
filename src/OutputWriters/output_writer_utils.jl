@@ -147,11 +147,11 @@ show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 """
     auto_extension(filename, ext)                                                             
 
-Return `filename` with `ext` appended if `ext` is not detected.
+Return `filename * ext` if filename does not end in ".ext"`. Otherwise return `filename`.
 """
-function auto_extension(filename, ext)                                                             
-    idot = findlast('.', filename)
-    detected_ext = isnothing(idot) ? "" : filename[idot+1:end]                                                                
-    detected_ext == ext || (filename *= ext)
+function auto_extension(filename, ext) 
+    dotext = string(".", ext)                                                               
+    Next = length(dotext)
+    filename[end-Next+1:end] == dotext || (filename *= ext)
     return filename
 end
