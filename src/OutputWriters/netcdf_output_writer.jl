@@ -157,7 +157,7 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): Descriptive filename. ".nc" is appended to `filename` in the file path.
+- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
