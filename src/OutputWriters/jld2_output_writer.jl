@@ -57,10 +57,10 @@ Keyword arguments
 
   ## Filenaming
 
-  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path.
+  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path
+                           if `filename` does not end in ".jld2".
 
-  - `dir`: Directory to save output to.
-           Default: "." (current working directory).
+  - `dir`: Directory to save output to. Default: "." (current working directory).
 
   ## Output frequency and time-averaging
 
