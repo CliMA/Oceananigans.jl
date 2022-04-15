@@ -3,9 +3,15 @@ using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
+using Oceananigans.BoundaryConditions: FBC
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal
+
+import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
+                                        immersed_∂ⱼ_τ₂ⱼ,
+                                        immersed_∂ⱼ_τ₃ⱼ,
+                                        immersed_∇_dot_qᶜ
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
@@ -109,5 +115,40 @@ function on_architecture(arch, b::GridFittedBoundary)
     return GridFittedBoundary(mask)
 end
 
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
+@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) =
+    ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
+
+######
+###### Flux divergences.
+######
+#
+# args... = v_immersed_bc, closure, diffusivities, velocities, tracers, clock, buoyancy)
+#
+#
+
+immersed_τ₁ⱼ_east(i, j, k, grid, args...) = zero(eltype(grid))
+immersed_τ₁ⱼ_east(i, j, k, grid, u_immersed_bc::FBC, clock, model_fields, closure) = ubc.condition(i, j, k, grid, clock...)
+
+@inline function immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid::GFIBG, u_bc, clock, model_fields, closure)
+    east_flux   = immersed_τ₁ⱼ_east(i, j, k, args...)
+    west_flux   = immersed_τ₁ⱼ_west(i, j, k, args...)
+    south_flux  = immersed_τ₁ⱼ_south(i, j, k, args...)
+    north_flux  = immersed_τ₁ⱼ_north(i, j, k, args...)
+    top_flux    = immersed_τ₁ⱼ_top(i, j, k, args...)
+    bottom_flux = immersed_τ₁ⱼ_bottom(i, j, k, args...)
+    return 0
+end
+
+@inline function immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid::GFIBG, args...)
+    return 0
+end
+
+@inline function immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid::GFIBG, args...)
+    return 0
+end
+
+@inline function immresed_∇_dot_qᶜ(i, j, k, grid::GFIBG, args...)
+
+    return 0
+end
 

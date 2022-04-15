@@ -53,6 +53,9 @@ function calculate_interior_tendency_contributions!(model)
     diffusivities        = model.diffusivity_fields
     forcings             = model.forcing
     clock                = model.clock
+    u_immersed_bc        = velocities.u.boundary_conditions.immersed
+    v_immersed_bc        = velocities.v.boundary_conditions.immersed
+    w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
     workgroup, worksize = work_layout(grid, :xyz)
 
@@ -63,13 +66,14 @@ function calculate_interior_tendency_contributions!(model)
 
     barrier = Event(device(arch))
 
+
     Gu_event = calculate_Gu_kernel!(tendencies.u,
                                     grid,
                                     advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
-                                    velocities.u.boundary_conditions.immersed,
+                                    u_immersed_bc, 
                                     buoyancy,
                                     background_fields,
                                     velocities,
@@ -80,13 +84,13 @@ function calculate_interior_tendency_contributions!(model)
                                     clock,
                                     dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v
+    Gv_event = calculate_Gv_kernel!(tendencies.v,
                                     grid,
                                     advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
-                                    velocities.v.boundary_conditions.immersed,
+                                    v_immersed_bc, 
                                     buoyancy,
                                     background_fields,
                                     velocities,
@@ -97,20 +101,19 @@ function calculate_interior_tendency_contributions!(model)
                                     clock,
                                     dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(tendencies.w
+    Gw_event = calculate_Gw_kernel!(tendencies.w,
                                     grid,
                                     advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
-                                    velocities.w.boundary_conditions.immersed,
+                                    w_immersed_bc, 
                                     buoyancy,
                                     background_fields,
                                     velocities,
                                     tracers,
                                     diffusivities,
                                     forcings,
-                                    hydrostatic_pressure,
                                     clock,
                                     dependencies=barrier)
 
