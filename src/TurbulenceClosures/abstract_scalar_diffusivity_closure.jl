@@ -5,33 +5,35 @@ Abstract type for closures with *isotropic* diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
+abstract type AbstractDiffusivityFormulation end
+
 """
     struct ThreeDimensionalFormulation end
 
 Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
 """
-struct ThreeDimensionalFormulation end
+struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalFormulation end
 
 Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
-struct HorizontalFormulation end
+struct HorizontalFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct HorizontalDivergenceFormulation end
 
 Specifies viscosity for "divergence damping". Has no effect on tracers.
 """
-struct HorizontalDivergenceFormulation end
+struct HorizontalDivergenceFormulation <: AbstractDiffusivityFormulation end
 
 """
     struct VerticalFormulation end
 
 Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 """
-struct VerticalFormulation end
+struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
     viscosity(closure, diffusivities)
