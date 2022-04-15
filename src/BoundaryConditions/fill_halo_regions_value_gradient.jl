@@ -12,7 +12,7 @@ using Oceananigans.Operators: Δx, Δy, Δz
 @inline  left_gradient(bc::VBC, c¹, Δ, i, j, args...) = ( c¹ - getbc(bc, i, j, args...) ) / (Δ/2)
 @inline right_gradient(bc::VBC, cᴺ, Δ, i, j, args...) = ( getbc(bc, i, j, args...) - cᴺ ) / (Δ/2)
 
-instantiate(L) = L()
+@inline instantiate(L) = L()
 
 function _fill_west_halo!(j, k, grid, c, bc::Union{VBC, GBC}, loc, args...)
 
