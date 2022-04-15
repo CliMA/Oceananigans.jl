@@ -53,8 +53,8 @@ function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...
 
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
     reduced_fields  = filter(f -> f isa ReducedField && !isnothing(f.boundary_conditions), flattened)
-    ordinary_fields = filter(f -> f isa Field        && !isnothing(f.boundary_conditions), flattened)
-    
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField) && !isnothing(f.boundary_conditions), flattened)
+
     # Fill halo regions for reduced fields
     for field in reduced_fields
         fill_halo_regions!(field, args...; kwargs...)
