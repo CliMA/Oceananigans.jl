@@ -11,16 +11,23 @@ Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = tuplify(a)
+    tupled = Tuple(tuplify(ai) for ai in a)
     flattened = flatten_tuple(tupled)
 
-    # Implementation of "unique" for tuples that uses === comparison, rather than ==
+    if !all(f isa Field for f in flattened)
+        @show nameof(typeof(a))
+        for f in flattened
+            @show nameof(typeof(f))
+        end
+    end
+
+    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
     seen = []
     return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
 end
 
 # Utility for extracting values from nested NamedTuples
-@inline tuplify(a::NamedTuple) = Tuple(tuplify(b) for b in values(a))
+@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
 @inline tuplify(a) = a
 
 # Outer-inner form
@@ -48,12 +55,13 @@ Fill halo regions for all `fields`. The algorithm:
     4. In every direction, the halo regions in each of the remaining Field tuple
        are filled simultaneously.
 """
-function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
-    flattened = flattened_unique_values(fields)
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+    flattened = flattened_unique_values(maybe_nested_tuple)
 
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    reduced_fields  = filter(f -> f isa ReducedField && !isnothing(f.boundary_conditions), flattened)
-    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField) && !isnothing(f.boundary_conditions), flattened)
+    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
+    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
 
     # Fill halo regions for reduced fields
     for field in reduced_fields
@@ -71,7 +79,6 @@ end
 
 tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
     fill_halo_regions!(data.(fields), boundary_conditions.(fields), grid, args...; kwargs...)
-
 
 #####
 ##### Tracer names

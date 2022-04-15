@@ -300,9 +300,9 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 boundary_conditions(not_field) = nothing
 
 function boundary_conditions(f::Field)
-    if f.indices === (:, :, :) # default boundary conditions
+    if f.indices === default_indices(3) # default boundary conditions
         return f.boundary_conditions
-    else
+    else # filter boundary conditions in windowed directions
         return FieldBoundaryConditions(f.indices, f.boundary_conditions)
     end
 end
