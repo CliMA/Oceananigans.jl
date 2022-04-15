@@ -5,38 +5,48 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDi
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
-@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+"""
+    conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux, args...) = ifelse(solid_interface(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
 
-@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+Return either
+
+    i) `ib_flux` if the cell interface located at `(Center, Center, Center)` is a solid boundary, or
+    ii) `intrinsic_flux` otherwise.
+
+This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
+"""
+@inline conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_ffc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(f, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_fcf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(f, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_cff(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, f, f, i, j, k, ibg), ib_flux, intrinsic_flux)
+
+@inline conditional_flux_fcc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(f, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_cfc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_ccf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
 
 #####
-##### Advective fluxes
+##### Diffusive fluxes
 #####
 
 # ccc, ffc, fcf
- @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, args...)
- @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, args...)
- @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, args...)
+@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_ux(i, j, k, ibg, args...))
+@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_uy(i, j, k, ibg, args...))
+@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_uz(i, j, k, ibg, args...))
  
  # ffc, ccc, cff
- @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, args...)
- @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, args...)
- @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, args...)
- 
+@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_vx(i, j, k, ibg, args...))
+@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_vy(i, j, k, ibg, args...))
+@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_vz(i, j, k, ibg, args...))
+
  # fcf, cff, ccc
- @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, args...)
- @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, args...)
- @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, args...)
+@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_wx(i, j, k, ibg, args...))
+@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_wy(i, j, k, ibg, args...))
+@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_wz(i, j, k, ibg, args...))
 
 # fcc, cfc, ccf
-@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
-@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, diffusive_flux_y, args...)
-@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, diffusive_flux_z, args...)
+@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_x(i, j, k, ibg, args...))
+@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_y(i, j, k, ibg, args...))
+@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_z(i, j, k, ibg, args...))
 
 #####
 ##### Advective fluxes
@@ -44,43 +54,43 @@ const ATD = AbstractTimeDiscretization
 
 # dx(uu), dy(vu), dz(wu)
 # ccc,    ffc,    fcf
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Uu, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Vu, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Wu, args...)
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Uu(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Vu(i, j, k, ibg, args...)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Wu(i, j, k, ibg, args...)
 
 # dx(uv), dy(vv), dz(wv)
 # ffc,    ccc,    cff
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Uv, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Vv, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Wv, args...)
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Uv(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Vv(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Wv(i, j, k, ibg, args...))
 
 # dx(uw), dy(vw), dz(ww)
 # fcf,    cff,    ccc
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Uw, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Vw, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Ww, args...)
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Uw(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Vw(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Ww(i, j, k, ibg, args...))
 
-   @inline _advective_tracer_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, advective_tracer_flux_x, args...)
-   @inline _advective_tracer_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, advective_tracer_flux_y, args...)
-   @inline _advective_tracer_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, advective_tracer_flux_z, args...)
+@inline _advective_tracer_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, zero(eltype(ibg)), advective_tracer_flux_x(i, j, ibg, args...))
+@inline _advective_tracer_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), advective_tracer_flux_y(i, j, ibg, args...))
+@inline _advective_tracer_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), advective_tracer_flux_z(i, j, ibg, args...))
 
 #####
-##### "Boundary-aware" interpolation
+##### "Boundary-aware" reconstruct
 #####
-##### Don't interpolate dead cells.
+##### Don't reconstruct with immersed cells!
 #####
 
 @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i - 1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i + 1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i-1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i+1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j-1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j+1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j, k-1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k+1, ibg)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i - 2, j, k, ibg) | solid_node(i - 1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i + 1, j, k, ibg) | solid_node(i + 2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j - 2, k, ibg) | solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg) | solid_node(i, j + 2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k - 2, ibg) | solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg) | solid_node(i, j, k + 2, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i-2, j, k, ibg) | solid_node(i-1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i+1, j, k, ibg) | solid_node(i+2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j-2, k, ibg) | solid_node(i, j-1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j+1, k, ibg) | solid_node(i, j+2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k-2, ibg) | solid_node(i, j, k-1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k+1, ibg) | solid_node(i, j, k+2, ibg)
 
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
