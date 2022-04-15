@@ -270,12 +270,12 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T,
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
-                                                              force = true)
+                                                              overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

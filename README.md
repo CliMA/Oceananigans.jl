@@ -54,6 +54,8 @@ Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that c
 
 We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
 
+Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+
 ## Contents
 
 * [Installation instructions](#installation-instructions)

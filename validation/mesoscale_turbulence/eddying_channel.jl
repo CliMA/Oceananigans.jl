@@ -268,7 +268,7 @@ averaged_outputs = (; v′b′, w′b′, B, U)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1years),
                                                         prefix = filename,
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 slicers = (west = FieldSlicer(i=1),
            east = FieldSlicer(i=grid.Nx),
@@ -284,19 +284,19 @@ for side in keys(slicers)
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
                                                        prefix = filename * "_$(side)_slice",
-                                                       force = true)
+                                                       overwrite_existing = true)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(save_fields_interval),
                                                      prefix = filename * "_zonal_average",
-                                                     force = true)
+                                                     overwrite_existing = true)
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
                                                         prefix = filename * "_averages",
                                                         verbose = true,
-                                                        force = true)
+                                                        overwrite_existing = true)
 =#
 
 @info "Running the simulation..."

@@ -174,7 +174,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
                                                       prefix = filename * "_fields",
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 @info "Running the simulation..."
 

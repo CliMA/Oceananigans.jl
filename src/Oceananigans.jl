@@ -38,7 +38,7 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask,
+    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,

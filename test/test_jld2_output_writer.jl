@@ -21,8 +21,8 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                          indices = (1:2, 1:4, :),
                          with_halos = false,
                          dir = ".",
-                         prefix = "test",
-                         force = true)
+                         filename = "test.jld2",
+                         overwrite_existing = true)
 
     run!(simulation)
 
@@ -50,14 +50,14 @@ function test_jld2_file_splitting(arch)
 
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
-                          prefix = "test",
+                          filename = "test.jld2",
                           schedule = IterationInterval(1),
                           init = fake_bc_init,
                           including = [:grid],
                           array_type = Array{Float64},
                           with_halos = true,
                           max_filesize = 200KiB,
-                          force = true)
+                          overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -109,8 +109,8 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4Δt, window=2Δt),
                                                           dir = ".",
-                                                          prefix = "jld2_time_averaging_test",
-                                                          force = true)
+                                                          filename = "jld2_time_averaging_test.jld2",
+                                                          overwrite_existing = true)
 
     run!(simulation)
 
@@ -153,18 +153,18 @@ for arch in archs
         simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                                   schedule = TimeInterval(1),
                                                                   dir = ".",
-                                                                  prefix = "vanilla_jld2_test",
+                                                                  filename = "vanilla_jld2_test.jld2",
                                                                   indices = (:, :, :),
                                                                   with_halos = false,
-                                                                  force = true)
+                                                                  overwrite_existing = true)
 
         simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
                                                               schedule = TimeInterval(1),
                                                               indices = (1:2, 1:4, :),
                                                               with_halos = false,
                                                               dir = ".",
-                                                              prefix = "sliced_jld2_test",
-                                                              force = true)
+                                                              filename = "sliced_jld2_test.jld2",
+                                                              overwrite_existing = true)
 
         u, v, w = model.velocities
 
@@ -175,8 +175,8 @@ for arch in archs
                                                                     indices = (1:2, 1:4, :),
                                                                     with_halos = false,
                                                                     dir = ".",
-                                                                    prefix = "sliced_funcs_jld2_test",
-                                                                    force = true)
+                                                                    filename = "sliced_funcs_jld2_test.jld2",
+                                                                    overwrite_existing = true)
 
         u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
         v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
