@@ -146,7 +146,7 @@ end
 fill_west_and_east_halo!(c, west_bc, east_bc, loc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, :yz, _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, args...; dependencies=dep, kwargs...)
 
-fill_south_and_north_halo!(c, south_bc, north_bc, arch, dep, grid, args...; kwargs...) = 
+fill_south_and_north_halo!(c, south_bc, north_bc, loc, arch, dep, grid, args...; kwargs...) = 
     launch!(arch, grid, :xz, _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, args...; dependencies=dep, kwargs...)
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, arch, dep, grid, args...; kwargs...) =
