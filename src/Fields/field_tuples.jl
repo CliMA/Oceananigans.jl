@@ -14,13 +14,6 @@ flattened into a single tuple, with duplicate entries removed.
     tupled = Tuple(tuplify(ai) for ai in a)
     flattened = flatten_tuple(tupled)
 
-    if !all(f isa Field for f in flattened)
-        @show nameof(typeof(a))
-        for f in flattened
-            @show nameof(typeof(f))
-        end
-    end
-
     # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
     seen = []
     return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
