@@ -71,7 +71,7 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
 end
 
 tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
-    fill_halo_regions!(data.(fields), boundary_conditions.(fields), grid, args...; kwargs...)
+    fill_halo_regions!(data.(fields), boundary_conditions.(fields), location.(fields), grid, args...; kwargs...)
 
 #####
 ##### Tracer names
