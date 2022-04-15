@@ -297,8 +297,17 @@ Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
-boundary_conditions(field) = nothing
-boundary_conditions(f::Field) = f.boundary_conditions
+boundary_conditions(not_field) = nothing
+
+function boundary_conditions(f::Field)
+    if f.indices === default_indices(3) # default boundary conditions
+        return f.boundary_conditions
+    else # filter boundary conditions in windowed directions
+        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
+    end
+end
+
+data(field::Field) = field.data
 
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
