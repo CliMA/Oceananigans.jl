@@ -54,7 +54,7 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom)
+@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
     return @inbounds z < ib.bottom[i, j]
 end
@@ -115,6 +115,6 @@ function on_architecture(arch, b::GridFittedBoundary)
     return GridFittedBoundary(mask)
 end
 
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) =
+@inline immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary) =
     ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
 
