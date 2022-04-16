@@ -131,7 +131,7 @@ end
 ##### Note: this may not work with Flat dimensions.
 #####
 
-@inline function ib_flux_divergence(i, j, k, ibg::GFIBG, bc, loc, c, closure, K, id, args...)
+@inline function immersed_flux_divergence(i, j, k, ibg::GFIBG, bc, loc, c, closure, K, id, args...)
     q̃ᵂ =   west_ib_flux(i, j, k, ibg, bc.west,   loc, c, closure, K, id, args...)
     q̃ᴱ =   east_ib_flux(i, j, k, ibg, bc.east,   loc, c, closure, K, id, args...)
     q̃ˢ =  south_ib_flux(i, j, k, ibg, bc.south,  loc, c, closure, K, id, args...)
@@ -155,14 +155,14 @@ end
 end
 
 @inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, args...) =
-    ib_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, args...)
+    immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, args...)
 
 @inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, ibg::GFIBG, U, v_bc::IBC, closure, K, args...) =
-    ib_flux_divergence(i, j, k, ibg, v_bc, (c, f, c), U.v, closure, K, nothing, args...)
+    immersed_flux_divergence(i, j, k, ibg, v_bc, (c, f, c), U.v, closure, K, nothing, args...)
 
 @inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, ibg::GFIBG, U, w_bc::IBC, closure, K, args...) =
-    ib_flux_divergence(i, j, k, ibg, w_bc, (c, c, f), U.w, closure, K, nothing, args...)
+    immersed_flux_divergence(i, j, k, ibg, w_bc, (c, c, f), U.w, closure, K, nothing, args...)
 
 @inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, args...) =
-    ib_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
+    immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
 
