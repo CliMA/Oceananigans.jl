@@ -27,8 +27,10 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
 end
 
 # Finally, the true fill_halo!
+const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
+
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc::Tuple, grid, args...; kw...)
 
     arch = architecture(grid)
 
@@ -56,13 +58,11 @@ function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, b
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
    
     for task = 1:3
-        barrier = device_event(arch)
-
-        fill_halo!  = fill_halos![task]
-        bc_left     = boundary_conditions_array_left[task]
-        bc_right    = boundary_conditions_array_right[task]
-
-        events      = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
+        barrier    = device_event(arch)
+        fill_halo! = fill_halos![task]
+        bc_left    = boundary_conditions_array_left[task]
+        bc_right   = boundary_conditions_array_right[task]
+        events     = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kw...)
        
         wait(device(arch), events)
     end
@@ -126,8 +126,8 @@ end
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
         @inbounds begin
-            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc, args...)
-            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc, args...)
+            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], args...)
+            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], args...)
         end
     end
 end
@@ -138,7 +138,7 @@ end
         Base.@_inline_meta
         @inbounds begin
             _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
-            _fill_top_halo!(i, j, grid, c[n], top_bc[n], loc[n], args...)
+               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
         end
     end
 end
