@@ -29,6 +29,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
 end
 
 noinit(args...) = nothing
+ext(::Type{JLD2OutputWriter}) = ".jld2"
 
 """
     JLD2OutputWriter(model, outputs; filename, schedule,

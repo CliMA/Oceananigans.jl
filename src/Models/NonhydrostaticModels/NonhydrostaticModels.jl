@@ -29,7 +29,7 @@ PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
 PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
+PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 #####
 ##### NonhydrostaticModel definition

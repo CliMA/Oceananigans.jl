@@ -227,7 +227,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, tracer_index, diffusivities, clock, model_fields)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 

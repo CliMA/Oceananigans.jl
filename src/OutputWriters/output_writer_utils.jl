@@ -1,8 +1,7 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Fields: AbstractField
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction
+using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
+using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
@@ -10,100 +9,112 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 ##### Output writer utilities
 #####
 
-convert_to_arch(::CPU, a) = a
-convert_to_arch(::GPU, a) = CuArray(a)
+"""
+    ext(ow)
 
-ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implemented.")
+Return the file extension for the output writer or output
+writer type `ow`.
+"""
+ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
+ext(ow::AbstractOutputWriter) = ext(typeof(fw))
 
-# When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
-# converts Julia objects to language-agnostic objects.
-saveproperty!(file, location, p::Union{Number, Array}) = file[location] = p
-saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
-saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
-saveproperty!(file, location, p::Function) = nothing
+# TODO: add example to docstring below
 
-saveproperty!(file, location, p::Tuple) =
-    [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
+"""
+    saveproperty!(file, address, obj)
 
-saveproperty!(file, location, p) =
-    [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
+Save data in `obj` to `file[address]` in a "languate-agnostic" way,
+thus primarily consisting of arrays and numbers, absent Julia-specific types
+or other data that can _only_ be interpreted by Julia.
+"""
+saveproperty!(file, address, obj) = _saveproperty!(file, address, obj)
 
-saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, p.grid)
+# Generic implementation: recursively unwrap an object.
+_saveproperty!(file, address, obj) = [saveproperty!(file, address * "/$prop", getproperty(obj, prop)) for prop in propertynames(obj)]
+
+# Some specific things
+saveproperty!(file, address, p::Union{Number, Array}) = file[address] = p
+saveproperty!(file, address, p::AbstractRange)        = file[address] = collect(p)
+saveproperty!(file, address, p::AbstractArray)        = file[address] = Array(parent(p))
+saveproperty!(file, address, p::Function)             = nothing
+saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
+saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
 
 # Special saveproperty! so boundary conditions are easily readable outside julia.
-function saveproperty!(file, location, bcs::FieldBoundaryConditions)
+function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
         bc = getproperty(bcs, endpoint)
-        file[location * "/$endpoint/type"] = bc_str(bc)
+        file[address * "/$endpoint/type"] = bc_str(bc)
 
         if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            file[location * "/$boundary/condition"] = missing
+            file[address * "/$boundary/condition"] = missing
         else
-            file[location * "/$boundary/condition"] = bc.condition
+            file[address * "/$boundary/condition"] = bc.condition
         end
     end
 end
 
-saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+"""
+    serializeproperty!(file, address, obj)
 
-# When checkpointing, `serializeproperty!` is used, which serializes objects
-# unless they need to be converted (basically CuArrays only).
-serializeproperty!(file, location, p) = (file[location] = p)
-serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
-serializeproperty!(file, location, p::Function) = nothing
-serializeproperty!(file, location, p::ContinuousBoundaryFunction) = nothing
+Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
+`CuArray` to `Array` so data can be loaded on any architecture,
+and not attempting to serialize objects that generally aren't
+deserializable, like `Function`.
+"""
+serializeproperty!(file, address, p)                = file[address] = p
+serializeproperty!(file, address, p::AbstractArray) = saveproperty!(file, address, p)
 
-# Serializing grids:
-serializeproperty!(file, location, grid::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
+const CantSerializeThis = Union{Function,
+                                ContinuousBoundaryFunction,
+                                DiscreteBoundaryFunction}
 
-function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
-    # TODO: convert immersed boundary grid to array representation in order to save.
-    # Note: when we support array representations of immersed boundaries, we should save those too.
-    @warn "Cannot serialize ImmersedBoundaryGrid; serializing underlying grid instead."
-    serializeproperty!(file, location, p.grid)
-    return nothing
-end
+serializeproperty!(file, address, p::CantSerializeThis) = nothing
 
-function serializeproperty!(file, location, p::FieldBoundaryConditions)
+# Convert to CPU please!
+# TODO: use on_architecture for more stuff?
+serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
+
+function serializeproperty!(file, address, p::FieldBoundaryConditions)
+    # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
+    # rather than punting with `missing` instead.
     if has_reference(Function, p)
-        file[location] = missing
+        file[address] = missing
     else
-        file[location] = p
+        file[address] = p
     end
 end
 
-function serializeproperty!(file, location, p::Field{LX, LY, LZ}) where {LX, LY, LZ}
-    serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
-    serializeproperty!(file, location * "/data", parent(p))
-    serializeproperty!(file, location * "/boundary_conditions", p.boundary_conditions)
+function serializeproperty!(file, address, f::Field)
+    serializeproperty!(file, address * "/location", instantiated_location(f))
+    serializeproperty!(file, address * "/data", parent(f))
+    serializeproperty!(file, address * "/indices", indices(f))
+    serializeproperty!(file, address * "/boundary_conditions", boundary_conditions(f))
+    return nothing
 end
 
 # Special serializeproperty! for AB2 time stepper struct used by the checkpointer so
 # it only saves the fields and not the tendency BCs or χ value (as they can be
 # constructed by the `Model` constructor).
-function serializeproperty!(file, location, ts::RungeKutta3TimeStepper)
-    serializeproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    serializeproperty!(file, location * "/G⁻", ts.G⁻)
+function serializeproperty!(file, address, ts::RungeKutta3TimeStepper)
+    serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
+    serializeproperty!(file, address * "/G⁻", ts.G⁻)
     return nothing
 end
 
-function serializeproperty!(file, location, ts::QuasiAdamsBashforth2TimeStepper)
-    serializeproperty!(file, location * "/Gⁿ", ts.Gⁿ)
-    serializeproperty!(file, location * "/G⁻", ts.G⁻)
-    serializeproperty!(file, location * "/previous_Δt", ts.previous_Δt)
+function serializeproperty!(file, address, ts::QuasiAdamsBashforth2TimeStepper)
+    serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
+    serializeproperty!(file, address * "/G⁻", ts.G⁻)
+    serializeproperty!(file, address * "/previous_Δt", ts.previous_Δt)
     return nothing
 end
 
-serializeproperty!(file, location, p::NamedTuple) =
-    [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in keys(p)]
+serializeproperty!(file, address, p::NamedTuple) = [serializeproperty!(file, address * "/$subp", getproperty(p, subp)) for subp in keys(p)]
+serializeproperty!(file, address, s::StructArray) = (file[address] = replace_storage(Array, s))
+serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(file, address, p.properties)
 
-serializeproperty!(file, location, s::StructArray) = (file[location] = replace_storage(Array, s))
-
-serializeproperty!(file, location, p::LagrangianParticles) =
-    serializeproperty!(file, location, p.properties)
-
-serializeproperties!(file, structure, ps) =
-    [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 
 # Don't check arrays because we don't need that noise.
 has_reference(T, ::AbstractArray{<:Number}) = false

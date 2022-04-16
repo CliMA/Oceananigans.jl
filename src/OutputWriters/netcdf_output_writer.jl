@@ -9,6 +9,19 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
+mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    overwrite_existing :: Bool
+    array_type :: A
+    previous :: Float64
+    verbose :: Bool
+end
+
+ext(::Type{NetCDFOutputWriter}) = ".nc"
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
@@ -119,22 +132,6 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
         "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
 
     return nothing
-end
-
-"""
-    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
-
-An output writer for writing to NetCDF files.
-"""
-mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
-    filepath :: String
-    dataset :: D
-    outputs :: O
-    schedule :: T
-    overwrite_existing :: Bool
-    array_type :: A
-    previous :: Float64
-    verbose :: Bool
 end
 
 """
