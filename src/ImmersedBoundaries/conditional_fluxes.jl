@@ -6,7 +6,7 @@ const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
 """
-    conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux, args...) = ifelse(boundary_node(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+    conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux, args...) = ifelse(peripheral_node(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
 
 Return either
 
@@ -15,14 +15,14 @@ Return either
 
 This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
 """
-@inline conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
-@inline conditional_flux_ffc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(f, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
-@inline conditional_flux_fcf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(f, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
-@inline conditional_flux_cff(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(c, f, f, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_ccc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(c, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_ffc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(f, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_fcf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(f, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_cff(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(c, f, f, i, j, k, ibg), ib_flux, intrinsic_flux)
 
-@inline conditional_flux_fcc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(f, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
-@inline conditional_flux_cfc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(c, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
-@inline conditional_flux_ccf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(boundary_node(c, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_fcc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(f, c, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_cfc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(c, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
+@inline conditional_flux_ccf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(peripheral_node(c, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
 
 
 const C = Center

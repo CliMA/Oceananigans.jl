@@ -27,7 +27,7 @@ const FullBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
                                                         (k < 1) | (k > grid.Nz)
 
 @inline external_node(LX, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid)
-@inline boundary_node(LX, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid)
+@inline peripheral_node(LX, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid)
 
 @inline external_node(::Face, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid) & external_node(i-1, j, k, grid)
 @inline external_node(LX, ::Face, LZ, i, j, k, grid) = external_node(i, j, k, grid) & external_node(i, j-1, k, grid)
@@ -39,15 +39,13 @@ const FullBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
 @inline external_node(::Face, ::Face, ::Face, i, j, k, grid) = external_node(c, f, f, i, j, k, grid) & external_node(c, f, f, i-1, j, k, grid)
 
-@inline boundary_node(::Face, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i-1, j, k, grid)
-@inline boundary_node(LX, ::Face, LZ, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i, j-1, k, grid)
-@inline boundary_node(LX, LY, ::Face, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i, j, k-1, grid)
+@inline peripheral_node(::Face, LY, LZ, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i-1, j, k, grid)
+@inline peripheral_node(LX, ::Face, LZ, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i, j-1, k, grid)
+@inline peripheral_node(LX, LY, ::Face, i, j, k, grid) = external_node(i, j, k, grid) | external_node(i, j, k-1, grid)
 
-@inline boundary_node(::Face, ::Face, LZ, i, j, k, grid) = boundary_node(c, f, c, i, j, k, grid) | boundary_node(c, f, c, i-1, j, k, grid)
-@inline boundary_node(::Face, LY, ::Face, i, j, k, grid) = boundary_node(c, c, f, i, j, k, grid) | boundary_node(c, c, f, i-1, j, k, grid)
-@inline boundary_node(LX, ::Face, ::Face, i, j, k, grid) = boundary_node(c, f, c, i, j, k, grid) | boundary_node(c, f, c, i, j, k-1, grid)
+@inline peripheral_node(::Face, ::Face, LZ, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i-1, j, k, grid)
+@inline peripheral_node(::Face, LY, ::Face, i, j, k, grid) = peripheral_node(c, c, f, i, j, k, grid) | peripheral_node(c, c, f, i-1, j, k, grid)
+@inline peripheral_node(LX, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i, j, k-1, grid)
 
-@inline boundary_node(::Face, ::Face, ::Face, i, j, k, grid) = boundary_node(c, f, f, i, j, k, grid) | boundary_node(c, f, f, i-1, j, k, grid)
-
-# TODO: better name for boundary_node (define boundary_node as nodes that are actually _on_ the boundary)
+@inline peripheral_node(::Face, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, f, i, j, k, grid) | peripheral_node(c, f, f, i-1, j, k, grid)
 

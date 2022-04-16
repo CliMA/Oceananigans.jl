@@ -3,11 +3,11 @@ const c = Center()
 const f = Face()
 
 using Oceananigans.AbstractOperations: GridMetricOperation
-import Oceananigans.Grids: external_node, boundary_node
+import Oceananigans.Grids: external_node, peripheral_node
 
 """
     `external_node` returns true only if a location is completely immersed
-    `boundary_node` returns true if a location is partially immersed
+    `peripheral_node` returns true if a location is partially immersed
         
     as an example (in a 1D immersed grid) :
 
@@ -17,14 +17,14 @@ import Oceananigans.Grids: external_node, boundary_node
    f     c     f     c
   i-1   i-1    i     i
 
-     `boundary_node(f, c, c, i, 1, 1, grid) = true`
+     `peripheral_node(f, c, c, i, 1, 1, grid) = true`
      `external_node(f, c, c, i, 1, 1, grid) = false`
 
-     `external_node(Center(), Center(), Center(), args...) == boundary_node(Center(), Center(), Center(), args...)` as 
+     `external_node(Center(), Center(), Center(), args...) == peripheral_node(Center(), Center(), Center(), args...)` as 
      `Center(), Center(), Center()` can be only either fully immersed or not at all 
 
       `is_immersed_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
-      which is true only when `external_node = false` and `boundary_node = true` (as the case of the face at `i` above)
+      which is true only when `external_node = false` and `peripheral_node = true` (as the case of the face at `i` above)
 """
 @inline external_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) | external_node(i, j, k, ibg.grid)
 
