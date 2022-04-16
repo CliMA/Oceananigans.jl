@@ -15,7 +15,7 @@ function hilly_simulation(;
                           stop_time = 1,
                           save_interval = 0.1,
                           architecture = CPU(),
-                          filename = "flow_over_hills.jld2")
+                          filename = "flow_over_hills")
 
     underlying_grid = RectilinearGrid(architecture,
                                       size = (Nx, Nz),
@@ -89,14 +89,17 @@ function hilly_simulation(;
                          filename,
                          overwrite_existing = true)
 
-    @info "Make a simulation:"
-    @show simulation
+    @info "Made a simulation of"
+    @show model
+
+    @info "The x-velocity is"
+    @show model.velocities.u
 
     return simulation
 end
 
-function momentum_time_series(filepath)
-    U = FieldTimeSeries(filepath, "U")
+function momentum_time_series(filename)
+    U = FieldTimeSeries(filename * ".jld2", "U")
     t = U.times
     δU = [U[1, 1, 1, n] / U[1, 1, 1, 1] for n=1:length(t)]
     return δU, t
@@ -104,13 +107,23 @@ end
 
 Nx = 64
 stop_time = 10.0
-reference_name = "bottom_drag_reference.jld2"
-reference_sim = hilly_simulation(; stop_time, Nx, ϵ=0, name=reference_name, boundary_condition=:no_slip)
+
+reference_name = "hills_reference"
+reference_sim = hilly_simulation(; stop_time, Nx, ϵ=0.0, filename=reference_name, boundary_condition=:no_slip)
 run!(reference_sim)
+δU_reference, t_reference = momentum_time_series(reference_name)
+
+no_slip_name = "hills_no_slip"
+no_slip_sim = hilly_simulation(; stop_time, Nx, ϵ=0.1, filename=no_slip_name, boundary_condition=:no_slip)
+run!(no_slip_sim)
+δU_no_slip, t_no_slip = momentum_time_series(no_slip_name)
+
+free_slip_name = "hills_free_slip"
+free_slip_sim = hilly_simulation(; stop_time, Nx, ϵ=0.1, filename=free_slip_name, boundary_condition=:free_slip)
+run!(free_slip_sim)
+δU_free_slip, t_free_slip = momentum_time_series(free_slip_name)
 
 #=
-δU_ref, t_ref = momentum_time_series(name * ".jld2")
-
 experiments = []
 for ϵ = [0.02, 0.05, 0.1]
     name = string("flow_over_hills_height_", ϵ)

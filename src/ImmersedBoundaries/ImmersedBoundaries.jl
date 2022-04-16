@@ -1,15 +1,16 @@
 module ImmersedBoundaries
 
-export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
        
 using Adapt
 
 using Oceananigans.Grids
-using Oceananigans.Grids: size_summary, peripheral_node
 using Oceananigans.Operators
 using Oceananigans.Fields
 using Oceananigans.Utils
+
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
+using Oceananigans.Grids: size_summary, exterior_node, peripheral_node
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -81,8 +82,6 @@ import Oceananigans.TurbulenceClosures:
     νᶠᶠᶜ,
     νᶜᶠᶠ,
     νᶠᶜᶠ
-
-export AbstractImmersedBoundary
 
 """
     abstract type AbstractImmersedBoundary

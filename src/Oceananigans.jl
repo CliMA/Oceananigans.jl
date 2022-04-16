@@ -23,6 +23,9 @@ export
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
+    # Immersed boundaries
+    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom,
+
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
@@ -228,6 +231,7 @@ using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
+using .ImmersedBoundaries
 using .Distributed
 using .Models
 using .TimeSteppers

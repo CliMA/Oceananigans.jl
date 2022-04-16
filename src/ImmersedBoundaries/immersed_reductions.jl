@@ -3,10 +3,10 @@ using Oceananigans.Fields: AbstractField
 import Oceananigans.AbstractOperations: ConditionalOperation, get_condition, truefunc
 import Oceananigans.Fields: condition_operand, conditional_length
 
-# ###
-# ###  reduction operations involving immersed boundary grids exclude the immersed region 
-# ### (we exclude also the values on the faces of the immersed boundary with `solid_interface`)
-# ###
+#####
+##### Reduction operations involving immersed boundary grids exclude the immersed periphery,
+##### which includes both external nodes and nodes on the immersed interface.
+#####
 
 struct NotImmersed{F} <: Function
     func :: F
@@ -24,6 +24,6 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
 @inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
     LX, LY, LZ = location(co)
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
+    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(LX(), LY(), LZ(), i, j, k, ibg))
 end 
 

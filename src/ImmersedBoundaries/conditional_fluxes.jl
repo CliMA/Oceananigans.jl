@@ -88,13 +88,13 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i-1, j, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i+1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i, j-1, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j+1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i, j, k-1, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j, k+1, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_cell(i-1, j, k, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i+1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_cell(i, j-1, k, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i, j+1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_cell(i, j, k-1, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i, j, k+1, ibg)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i-2, j, k, ibg) | exterior_node(i-1, j, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i+1, j, k, ibg) | exterior_node(i+2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i, j-2, k, ibg) | exterior_node(i, j-1, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j+1, k, ibg) | exterior_node(i, j+2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i, j, k-2, ibg) | exterior_node(i, j, k-1, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j, k+1, ibg) | exterior_node(i, j, k+2, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_cell(i-2, j, k, ibg) | exterior_cell(i-1, j, k, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i+1, j, k, ibg) | exterior_cell(i+2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_cell(i, j-2, k, ibg) | exterior_cell(i, j-1, k, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i, j+1, k, ibg) | exterior_cell(i, j+2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_cell(i, j, k-2, ibg) | exterior_cell(i, j, k-1, ibg) | exterior_cell(i, j, k, ibg) | exterior_cell(i, j, k+1, ibg) | exterior_cell(i, j, k+2, ibg)
 
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 

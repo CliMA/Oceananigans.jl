@@ -79,6 +79,6 @@ end
 
 # And flat!
 
-@inline δx_Ax_q(i, j, k, grid::XFlatGrid, args...) = zero(eltype(grid))
-@inline δy_Ay_q(i, j, k, grid::YFlatGrid, args...) = zero(eltype(grid))
-@inline δz_Az_q(i, j, k, grid::ZFlatGrid, args...) = zero(eltype(grid))
+@inline δx_Ax_q(i, j, k, grid::XFlatGrid, args...) = zero(grid)
+@inline δy_Ay_q(i, j, k, grid::YFlatGrid, args...) = zero(grid)
+@inline δz_Az_q(i, j, k, grid::ZFlatGrid, args...) = zero(grid)

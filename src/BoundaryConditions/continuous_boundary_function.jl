@@ -3,6 +3,9 @@ using Oceananigans.Utils: tupleit, user_function_arguments
 import Oceananigans: location
 import Oceananigans.Utils: prettysummary
 
+struct LeftBoundary end
+struct RightBoundary end
+
 """
     struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
 
@@ -13,7 +16,7 @@ user-defined function, parameters, field dependencies, indices of the field depe
 in `model_fields`, and interpolation operators for interpolating `model_fields` to the
 location at which the boundary condition is applied.
 """
-struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ}
+struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
                           func :: F
                     parameters :: P
             field_dependencies :: D
@@ -27,13 +30,13 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ}
         return new{Nothing, Nothing, Nothing, Nothing, F, P, D, Nothing, Nothing}(func, parameters, field_dependencies, nothing, nothing)
     end
 
-    function ContinuousBoundaryFunction{X, Y, Z, I}(func::F,
+    function ContinuousBoundaryFunction{X, Y, Z, S}(func::F,
                                                     parameters::P,
                                                     field_dependencies::D,
                                                     field_dependencies_indices::N,
-                                                    field_dependencies_interp::ℑ) where {X, Y, Z, I, F, P, D, ℑ, N}
+                                                    field_dependencies_interp::ℑ) where {X, Y, Z, S, F, P, D, ℑ, N}
 
-        return new{X, Y, Z, I, F, P, D, N, ℑ}(func, parameters, field_dependencies, field_dependencies_indices, field_dependencies_interp)
+        return new{X, Y, Z, S, F, P, D, N, ℑ}(func, parameters, field_dependencies, field_dependencies_indices, field_dependencies_interp)
     end
 end
 
@@ -66,7 +69,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       topo, loc, dim, I, prognostic_field_names) where C
+                                       topo, loc, dim, Side, prognostic_field_names) where C
 
     boundary_func = bc.condition
 
@@ -77,52 +80,83 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
                                                      boundary_func.field_dependencies,
                                                      prognostic_field_names)
 
-    regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, I}(boundary_func.func,
-                                                                          boundary_func.parameters,
-                                                                          boundary_func.field_dependencies,
-                                                                          indices, interps)
+    regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, Side}(boundary_func.func,
+                                                                             boundary_func.parameters,
+                                                                             boundary_func.field_dependencies,
+                                                                             indices, interps)
 
     return BoundaryCondition(C, regularized_boundary_func)
 end
 
-@inline boundary_index(i) = ifelse(i == 1, 1, i + 1) # convert near-boundary Center() index into boundary Face() index
+@inline domain_boundary_indices(::LeftBoundary, N) = 1, 1
+@inline domain_boundary_indices(::RightBoundary, N) = N, N + 1
+
+@inline cell_boundary_index(::LeftBoundary, i) = i
+@inline cell_boundary_index(::RightBoundary, i) = i + 1
 
 #####
-##### Kernel functions
+##### Kernel functions for "primitive grid" boundary conditions
 #####
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i}, j, k, grid, clock, model_fields, args...) where {LY, LZ, i}
+@inline function getbc(bc::ContinuousBoundaryFunction{Nothing, LY, LZ, S}, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+    i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    i′ = boundary_index(i)
-
-    return bc.func(ynode(Face(), LY(), LZ(), i′, j, k, grid),
-                   znode(Face(), LY(), LZ(), i′, j, k, grid),
-                   clock.time, args...)
+    y = ynode(Face(), LY(), LZ(), i′, j, k, grid)
+    z = znode(Face(), LY(), LZ(), i′, j, k, grid)
+    return bc.func(y, z, clock.time, args...)
+                   
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j}, i, k, grid, clock, model_fields, args...) where {LX, LZ, j}
+@inline function getbc(bc::ContinuousBoundaryFunction{LX, Nothing, LZ, S}, i::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+    j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    j′ = boundary_index(j)
-
-    return bc.func(xnode(LX(), Face(), LZ(), i, j′, k, grid),
-                   znode(LX(), Face(), LZ(), i, j′, k, grid),
-                   clock.time, args...)
+    x = xnode(LX(), Face(), LZ(), i, j′, k, grid)
+    z = znode(LX(), Face(), LZ(), i, j′, k, grid)
+    return bc.func(x, z, clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, LY, Nothing, k}, i, j, grid, clock, model_fields, args...) where {LX, LY, k}
+@inline function getbc(bc::ContinuousBoundaryFunction{LX, LY, Nothing, S}, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+    k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    k′ = boundary_index(k)
-
-    return bc.func(xnode(LX(), LY(), Face(), i, j, k′, grid),
-                   ynode(LY(), LY(), Face(), i, j, k′, grid),
-                   clock.time, args...)
+    x = xnode(LX(), LY(), Face(), i, j, k′, grid)
+    y = ynode(LY(), LY(), Face(), i, j, k′, grid)
+    return bc.func(x, y, clock.time, args...)
 end
+
+#####
+##### For immersed boundary conditions
+#####
+
+# Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
+@inline function getbc(bc::ContinuousBoundaryFunction{Nothing, LY, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+    i′ = cell_boundary_index(S(), i)
+    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    x, y, z = node(Face(), LY(), LZ(), i′, j, k, grid)
+    return bc.func(x, y, z, clock.time, args...)
+end
+
+# Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
+@inline function getbc(bc::ContinuousBoundaryFunction{LX, Nothing, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+    j′ = cell_boundary_index(S(), j)
+    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    x, y, z = node(LX(), Face(), LZ(), i, j′, k, grid)
+    return bc.func(x, y, z, clock.time, args...)
+end
+
+# Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
+@inline function getbc(bc::ContinuousBoundaryFunction{LX, LY, Nothing, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+    k′ = cell_boundary_index(S(), k)
+    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    x, y, z = node(LX(), LY(), Face(), i, j, k′, grid)
+    return bc.func(x, y, z, clock.time, args...)
+end
+
+#####
+##### Utils
+#####
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::ContinuousBoundaryFunction) = BoundaryCondition(Classification(), condition)
@@ -135,8 +169,8 @@ end
 
 prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
     
-Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, I}) where {LX, LY, LZ, I} =
-    ContinuousBoundaryFunction{LX, LY, LZ, I}(Adapt.adapt(to, bf.func),
+Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
+    ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
                                               Adapt.adapt(to, bf.parameters),
                                               nothing,
                                               Adapt.adapt(to, bf.field_dependencies_indices),

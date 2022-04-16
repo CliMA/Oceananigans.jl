@@ -1,4 +1,5 @@
-using Oceananigans.BoundaryConditions: Flux, Value, flip, BoundaryCondition, getbc
+using Oceananigans.BoundaryConditions: Flux, Value, flip, BoundaryCondition, ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, h_diffusivity, z_diffusivity
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
@@ -20,13 +21,12 @@ Return an ImmersedBoundaryCondition with conditions on individual
 cell `interfaces ∈ (west, east, south, north, bottom, top)`
 between the fluid and immersed boundary.
 """
-function ImmersedBoundaryCondition(;
-                                   west = nothing,
-                                   east = nothing,
-                                   south = nothing,
-                                   north = nothing,
-                                   bottom = nothing,
-                                   top = nothing)
+function ImmersedBoundaryCondition(; west = nothing,
+                                     east = nothing,
+                                     south = nothing,
+                                     north = nothing,
+                                     bottom = nothing,
+                                     top = nothing)
 
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
@@ -165,4 +165,27 @@ end
 
 @inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, args...) =
     immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
+
+#####
+##### Regularizing ContinuousBoundaryFunction
+#####
+
+"""
+    regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
+                                           topo, loc, dim, I, prognostic_field_names) where C
+"""
+function regularize_immersed_boundary_condition(bc::BoundaryCondition{<:Any, <:ContinuousBoundaryFunction},
+                                                grid, loc, field_name, prognostic_field_names)
+
+    topo = topology(grid)
+
+    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 1, RightBoundary, prognostic_field_names)
+    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 3, RightBoundary, prognostic_field_names)
+
+    return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
+end
 

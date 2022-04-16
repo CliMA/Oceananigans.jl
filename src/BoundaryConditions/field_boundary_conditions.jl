@@ -162,12 +162,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     topo = topology(grid)
     loc = assumed_field_location(field_name)
     
-    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, 1,       prognostic_names)
-    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, grid.Nx, prognostic_names)
-    south    = regularize_boundary_condition(bcs.south,  topo, loc, 2, 1,       prognostic_names)
-    north    = regularize_boundary_condition(bcs.north,  topo, loc, 2, grid.Ny, prognostic_names)
-    bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, 1,       prognostic_names)
-    top      = regularize_boundary_condition(bcs.top,    topo, loc, 3, grid.Nz, prognostic_names)
+    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, LeftBoundary,  prognostic_names)
+    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, RightBoundary, prognostic_names)
+    south    = regularize_boundary_condition(bcs.south,  topo, loc, 2, LeftBoundary,  prognostic_names)
+    north    = regularize_boundary_condition(bcs.north,  topo, loc, 2, RightBoundary, prognostic_names)
+    bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, LeftBoundary,  prognostic_names)
+    top      = regularize_boundary_condition(bcs.top,    topo, loc, 3, RightBoundary, prognostic_names)
 
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
