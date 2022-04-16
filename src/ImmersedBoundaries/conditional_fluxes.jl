@@ -95,46 +95,46 @@ const F = Face
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = external_node(i-1, j, k, ibg) | external_node(i, j, k, ibg) | external_node(i+1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = external_node(i, j-1, k, ibg) | external_node(i, j, k, ibg) | external_node(i, j+1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = external_node(i, j, k-1, ibg) | external_node(i, j, k, ibg) | external_node(i, j, k+1, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i-1, j, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i+1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i, j-1, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j+1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = exterior_node(i, j, k-1, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j, k+1, ibg)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = external_node(i-2, j, k, ibg) | external_node(i-1, j, k, ibg) | external_node(i, j, k, ibg) | external_node(i+1, j, k, ibg) | external_node(i+2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = external_node(i, j-2, k, ibg) | external_node(i, j-1, k, ibg) | external_node(i, j, k, ibg) | external_node(i, j+1, k, ibg) | external_node(i, j+2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = external_node(i, j, k-2, ibg) | external_node(i, j, k-1, ibg) | external_node(i, j, k, ibg) | external_node(i, j, k+1, ibg) | external_node(i, j, k+2, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i-2, j, k, ibg) | exterior_node(i-1, j, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i+1, j, k, ibg) | exterior_node(i+2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i, j-2, k, ibg) | exterior_node(i, j-1, k, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j+1, k, ibg) | exterior_node(i, j+2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = exterior_node(i, j, k-2, ibg) | exterior_node(i, j, k-1, ibg) | exterior_node(i, j, k, ibg) | exterior_node(i, j, k+1, ibg) | exterior_node(i, j, k+2, ibg)
 
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return external_node(c, f, c, i, j, k, ibg)     |       
-           external_node(c, f, c, i-3, j, k, ibg)   | external_node(c, f, c, i+3, j, k, ibg) |
-           external_node(c, f, c, i-2, j, k, ibg)   | external_node(c, f, c, i+2, j, k, ibg) |
-           external_node(c, f, c, i-1, j, k, ibg)   | external_node(c, f, c, i+1, j, k, ibg) | 
-           external_node(f, c, c, i, j, k, ibg)     |
-           external_node(f, c, c, i-2, j, k, ibg)   | external_node(f, c, c, i+2, j, k, ibg) |
-           external_node(f, c, c, i-1, j, k, ibg)   | external_node(f, c, c, i+1, j, k, ibg) |
-           external_node(f, c, c, i-2, j+1, k, ibg) | external_node(f, c, c, i+2, j+1, k, ibg) |
-           external_node(f, c, c, i-1, j+1, k, ibg) | external_node(f, c, c, i+1, j+1, k, ibg) |
-           external_node(f, c, c, i, j+1, k, ibg) 
+    return exterior_node(c, f, c, i, j, k, ibg)     |       
+           exterior_node(c, f, c, i-3, j, k, ibg)   | exterior_node(c, f, c, i+3, j, k, ibg) |
+           exterior_node(c, f, c, i-2, j, k, ibg)   | exterior_node(c, f, c, i+2, j, k, ibg) |
+           exterior_node(c, f, c, i-1, j, k, ibg)   | exterior_node(c, f, c, i+1, j, k, ibg) | 
+           exterior_node(f, c, c, i, j, k, ibg)     |
+           exterior_node(f, c, c, i-2, j, k, ibg)   | exterior_node(f, c, c, i+2, j, k, ibg) |
+           exterior_node(f, c, c, i-1, j, k, ibg)   | exterior_node(f, c, c, i+1, j, k, ibg) |
+           exterior_node(f, c, c, i-2, j+1, k, ibg) | exterior_node(f, c, c, i+2, j+1, k, ibg) |
+           exterior_node(f, c, c, i-1, j+1, k, ibg) | exterior_node(f, c, c, i+1, j+1, k, ibg) |
+           exterior_node(f, c, c, i, j+1, k, ibg) 
 end
 
 @inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
-    return external_node(f, c, c, i, j, k, ibg)     | 
-           external_node(f, c, c, i, j+3, k, ibg)   | external_node(f, c, c, i, j+3, k, ibg) |
-           external_node(f, c, c, i, j+2, k, ibg)   | external_node(f, c, c, i, j+2, k, ibg) |
-           external_node(f, c, c, i, j+1, k, ibg)   | external_node(f, c, c, i, j+1, k, ibg) |     
-           external_node(c, f, c, i, j, k, ibg)     | 
-           external_node(c, f, c, i, j-2, k, ibg)   | external_node(c, f, c, i, j+2, k, ibg) |
-           external_node(c, f, c, i, j-1, k, ibg)   | external_node(c, f, c, i, j+1, k, ibg) | 
-           external_node(c, f, c, i+1, j-2, k, ibg) | external_node(c, f, c, i+1, j+2, k, ibg) |
-           external_node(c, f, c, i+1, j-1, k, ibg) | external_node(c, f, c, i+1, j+1, k, ibg) |
-           external_node(c, f, c, i+1, j, k, ibg) 
+    return exterior_node(f, c, c, i, j, k, ibg)     | 
+           exterior_node(f, c, c, i, j+3, k, ibg)   | exterior_node(f, c, c, i, j+3, k, ibg) |
+           exterior_node(f, c, c, i, j+2, k, ibg)   | exterior_node(f, c, c, i, j+2, k, ibg) |
+           exterior_node(f, c, c, i, j+1, k, ibg)   | exterior_node(f, c, c, i, j+1, k, ibg) |     
+           exterior_node(c, f, c, i, j, k, ibg)     | 
+           exterior_node(c, f, c, i, j-2, k, ibg)   | exterior_node(c, f, c, i, j+2, k, ibg) |
+           exterior_node(c, f, c, i, j-1, k, ibg)   | exterior_node(c, f, c, i, j+1, k, ibg) | 
+           exterior_node(c, f, c, i+1, j-2, k, ibg) | exterior_node(c, f, c, i+1, j+2, k, ibg) |
+           exterior_node(c, f, c, i+1, j-1, k, ibg) | exterior_node(c, f, c, i+1, j+1, k, ibg) |
+           exterior_node(c, f, c, i+1, j, k, ibg) 
 end
 
 # Takes forever to compile, but works.
-# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> external_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
-# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> external_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
-# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> external_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
+# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> exterior_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
+# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> exterior_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
+# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> exterior_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
 
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
