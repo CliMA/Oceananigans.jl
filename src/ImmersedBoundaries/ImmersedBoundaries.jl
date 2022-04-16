@@ -192,6 +192,10 @@ As well as
 """
 @inline exterior_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | exterior_cell(i, j, k, ibg.underlying_grid)
 
+# Isolate periphery of the immersed boundary
+@inline immersed_peripheral_node(LX, LY, LZ, i, j, k, ibg::IBG) =  peripheral_node(LX, LY, LZ, i, j, k, ibg) &
+                                                                  !peripheral_node(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+
 #####
 ##### Utilities
 #####
