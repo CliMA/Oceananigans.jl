@@ -157,7 +157,7 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): File name to save output to.
+- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
@@ -297,6 +297,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                       verbose = false)
 
     mkpath(dir)
+    filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
 
     if isnothing(overwrite_existing)
