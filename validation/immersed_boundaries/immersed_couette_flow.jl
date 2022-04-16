@@ -14,19 +14,13 @@ underlying_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bo
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
 c_immersed_bc = ValueBoundaryCondition(1)
-c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc)
-
-#c_top_bc = ValueBoundaryCondition(-1)
-#c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc, top=c_top_bc)
-#c_bcs = FieldBoundaryConditions(top=c_top_bc)
+c_top_bc = ValueBoundaryCondition(-1)
+c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc, top=c_top_bc)
 
 u_drag_func(i, j, k, grid, clock, model_fields) = - 1e-3 * model_fields.u[i, j, k]^2
-u_immersed_bc = ValueBoundaryCondition(0)
-u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc)
-
-#u_top_bc = ValueBoundaryCondition(2)
-#u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
-#u_bcs = FieldBoundaryConditions(top=u_top_bc)
+u_immersed_bc = ValueBoundaryCondition(-1)
+u_top_bc = ValueBoundaryCondition(1)
+u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
 
 model = NonhydrostaticModel(; grid,
                             advection = nothing,
@@ -35,7 +29,7 @@ model = NonhydrostaticModel(; grid,
                             closure = VerticalScalarDiffusivity(; ν, κ),
                             boundary_conditions = (u=u_bcs, c=c_bcs))
 
-set!(model, u = (x, y, z) -> z - 0.1)
+#set!(model, u = 0(x, y, z) -> z - 0.1)
 
 simulation = Simulation(model, Δt=1e-4, stop_iteration=1000)
 
@@ -73,3 +67,6 @@ lines!(axu, un, z)
 
 display(fig)
 
+record(fig, "immersed_couette_flow.mp4", 1:Nt, framerate=24) do nn
+    n[] = nn
+end

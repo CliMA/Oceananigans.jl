@@ -12,9 +12,9 @@ Calculates the divergence ∇·𝐔 of a vector field 𝐔 = (u, v, w),
 which will end up at the cell centers `ccc`.
 """
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
+    return 1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+                                      δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
+                                      δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 end
 
 """
@@ -62,17 +62,17 @@ end
     Ayᵂ = Ay(i, jˢ, k, grid, LX, LY, LZ)
 
     jᴺ = index_right(j, LY)
-    Ayᴺ = Ax(i, jᴺ, k, grid, LX, LY, LZ)
+    Ayᴺ = Ay(i, jᴺ, k, grid, LX, LY, LZ)
 
     return Ayᴺ * qᴺ - Ayˢ * qˢ
 end
 
 @inline function δz_Az_q(i, j, k, grid, (LX, LY, LZ), qᴮ, qᵀ)
     kᴮ = index_left(k, LZ)
-    Azᴮ = Ay(i, j, kᴮ, grid, LX, LY, LZ)
+    Azᴮ = Az(i, j, kᴮ, grid, LX, LY, LZ)
 
     kᵀ = index_right(k, LZ)
-    Azᵀ = Ax(i, j, kᵀ, grid, LX, LY, LZ)
+    Azᵀ = Az(i, j, kᵀ, grid, LX, LY, LZ)
 
     return Azᵀ * qᵀ - Azᴮ * qᴮ
 end
