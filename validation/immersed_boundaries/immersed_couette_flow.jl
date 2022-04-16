@@ -13,20 +13,27 @@ underlying_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bo
 @inline bottom_height(x, y) = 0.1
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
-b_immersed_bc = FluxBoundaryCondition(1)
+c_immersed_bc = ValueBoundaryCondition(1)
+c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc)
+
+#c_top_bc = ValueBoundaryCondition(-1)
+#c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc, top=c_top_bc)
+#c_bcs = FieldBoundaryConditions(top=c_top_bc)
+
 u_drag_func(i, j, k, grid, clock, model_fields) = - 1e-3 * model_fields.u[i, j, k]^2
 u_immersed_bc = ValueBoundaryCondition(0)
-u_top_bc = ValueBoundaryCondition(1)
+u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc)
 
-b_bcs = FieldBoundaryConditions(immersed=b_immersed_bc)
-u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
+#u_top_bc = ValueBoundaryCondition(2)
+#u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
+#u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
 model = NonhydrostaticModel(; grid,
                             advection = nothing,
                             timestepper = :RungeKutta3,
                             tracers = :c,
                             closure = VerticalScalarDiffusivity(; ν, κ),
-                            boundary_conditions = (u=u_bcs, b=b_bcs))
+                            boundary_conditions = (u=u_bcs, c=c_bcs))
 
 set!(model, u = (x, y, z) -> z - 0.1)
 
