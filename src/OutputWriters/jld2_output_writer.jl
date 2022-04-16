@@ -58,10 +58,10 @@ Keyword arguments
 
   ## Filenaming
 
-  - `filename` (required): Descriptive filename including extension.
+  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path
+                           if `filename` does not end in ".jld2".
 
-  - `dir`: Directory to save output to.
-           Default: "." (current working directory).
+  - `dir`: Directory to save output to. Default: "." (current working directory).
 
   ## Output frequency and time-averaging
 
@@ -173,18 +173,16 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    # Enforce that extensions need to be `jld2`
-    filename[end-4:end] == ".jld2" || throw(ArgumentError("`filename` needs to have `.jld2` extension"))
-
+    mkpath(dir)
+    filename = auto_extension(filename, ".jld2")
+    filepath = joinpath(dir, filename)
+    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
+    
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)
-
-    mkpath(dir)
-    filepath = joinpath(dir, filename)
-    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
