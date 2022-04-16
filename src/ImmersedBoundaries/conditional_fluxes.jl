@@ -24,6 +24,17 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 @inline conditional_flux_cfc(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, f, c, i, j, k, ibg), ib_flux, intrinsic_flux)
 @inline conditional_flux_ccf(i, j, k, ibg::IBG, ib_flux, intrinsic_flux) = ifelse(solid_interface(c, c, f, i, j, k, ibg), ib_flux, intrinsic_flux)
 
+
+const C = Center
+const F = Face
+@inline conditional_flux(i, j, k, ibg, ::C, ::C, ::C, args...) = conditional_flux_ccc(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::F, ::F, ::C, args...) = conditional_flux_ffc(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::F, ::C, ::F, args...) = conditional_flux_fcf(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::C, ::F, ::F, args...) = conditional_flux_cff(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::F, ::C, ::C, args...) = conditional_flux_fcc(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::C, ::F, ::C, args...) = conditional_flux_cfc(i, j, k, ibg, args...)
+@inline conditional_flux(i, j, k, ibg, ::C, ::C, ::F, args...) = conditional_flux_ccf(i, j, k, ibg, args...)
+
 #####
 ##### Diffusive fluxes
 #####
@@ -55,8 +66,8 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 # dx(uu), dy(vu), dz(wu)
 # ccc,    ffc,    fcf
 @inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Uu(i, j, k, ibg, args...))
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Vu(i, j, k, ibg, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Wu(i, j, k, ibg, args...)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Vu(i, j, k, ibg, args...))
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(eltype(ibg)), advective_momentum_flux_Wu(i, j, k, ibg, args...))
 
 # dx(uv), dy(vv), dz(wv)
 # ffc,    ccc,    cff

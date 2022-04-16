@@ -11,11 +11,11 @@ function hilly_simulation(;
                           ϵ = 0.1,
                           Re = 1e4,
                           N² = 1e-2,
-                          bottom_drag = false,
+                          boundary_condition = :no_slip,
                           stop_time = 1,
                           save_interval = 0.1,
                           architecture = CPU(),
-                          name = "flow_over_hills")
+                          filename = "flow_over_hills.jld2")
 
     underlying_grid = RectilinearGrid(architecture,
                                       size = (Nx, Nz),
@@ -34,7 +34,11 @@ function hilly_simulation(;
 
     closure = isfinite(Re) ? ScalarDiffusivity(ν=1/Re, κ=1/Re) : nothing
 
-    if bottom_drag
+    if boundary_condition == :no_slip
+        no_slip = ValueBoundaryCondition(0)
+        u_bcs = FieldBoundaryConditions(top=no_slip, bottom=no_slip, immersed=no_slip)
+        boundary_conditions = (; u = u_bcs)
+    elseif boundary_condition == :bottom_drag
         Δz = 2π / Nz
         z₀ = 1e-4
         κ = 0.4
@@ -80,10 +84,10 @@ function hilly_simulation(;
     ξ = ∂z(u) - ∂x(w)
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U)),
+        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U));
                          schedule = TimeInterval(save_interval),
-                         prefix = name,
-                         force = true)
+                         filename,
+                         overwrite_existing = true)
 
     @info "Make a simulation:"
     @show simulation
@@ -98,14 +102,14 @@ function momentum_time_series(filepath)
     return δU, t
 end
 
-Nx = 256
-stop_time = 100.0
-reference_name = "bottom_drag_reference"
-#=
-reference_sim = hilly_simulation(; stop_time, Nx, ϵ=0, name=reference_name, bottom_drag=true)
+Nx = 64
+stop_time = 10.0
+reference_name = "bottom_drag_reference.jld2"
+reference_sim = hilly_simulation(; stop_time, Nx, ϵ=0, name=reference_name, boundary_condition=:no_slip)
 run!(reference_sim)
+
+#=
 δU_ref, t_ref = momentum_time_series(name * ".jld2")
-=#
 
 experiments = []
 for ϵ = [0.02, 0.05, 0.1]
@@ -132,7 +136,6 @@ axislegend(ax)
 
 display(fig)
 
-#=
 # Animate vorticity if you like
 filepath = experiments[end].name * ".jld2"
 ξ = FieldTimeSeries(filepath, "ξ")
@@ -146,15 +149,14 @@ title = @lift @sprintf("Vorticity in flow over hills at t = %.2e", ξ.times[$n])
 ax = Axis(fig[1, 1]; title)
 ξn = @lift interior(ξ[$n], :, 1, :)
 
-#=
 masked_ξn = @lift begin
     ξn = ξ[$n]
     mask_immersed_field!(ξn, NaN)
     interior(ξn, :, 1, :)
 end
-=#
 
 heatmap!(ax, ξn)
 
 display(fig)
 =#
+

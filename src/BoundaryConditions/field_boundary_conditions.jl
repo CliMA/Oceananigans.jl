@@ -125,6 +125,21 @@ end
 ##### Boundary condition "regularization"
 #####
 
+regularize_immersed_boundary_condition(ibc::ZFBC, args...) = ibc # default
+
+# Friendly warning?
+function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
+    msg = """
+          $field_name was assigned an immersed $ibc, but this is not supported on
+          $(summary(grid))
+          The immersed boundary condition on $field_name will have no effect.
+          """
+
+    @warn msg
+
+    return nothing
+end
+
 regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, args...) =
     default_prognostic_bc(topo[dim](), loc[dim]())
 
@@ -154,10 +169,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, 1,       prognostic_names)
     top      = regularize_boundary_condition(bcs.top,    topo, loc, 3, grid.Nz, prognostic_names)
 
-    # Eventually we could envision supporting ContinuousForcing-style boundary conditions
-    # for the immersed boundary condition, which would benefit from regularization.
-    # But for now we don't regularize the immersed boundary condition.
-    immersed = bcs.immersed
+    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
