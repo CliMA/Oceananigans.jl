@@ -91,8 +91,8 @@ for location in (:upper_, :lower_)
 
         @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
             return ifelse(immersed_ivd_solid_interface(LX, LY, LZ, i, j, k, ibg),
-                          zero(eltype(ibg.grid)),
-                          $func(i, j, k, ibg.grid, closure, K, id, LX, LY, LZ, clock, Δt, κz))
+                          zero(eltype(ibg.underlying_grid)),
+                          $func(i, j, k, ibg.underlying_grid, closure, K, id, LX, LY, LZ, clock, Δt, κz))
         end
     end
 end

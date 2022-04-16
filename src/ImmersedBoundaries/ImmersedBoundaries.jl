@@ -90,11 +90,16 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
+#####
+##### ImmersedBoundaryGrid
+#####
+
 struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
-    grid :: G
+    underlying_grid :: G
     immersed_boundary :: I
     
+    # Internal interface
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
         FT = eltype(grid)
         arch = architecture(grid)
@@ -106,17 +111,16 @@ end
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
-@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :grid), property)
+@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
-@inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
+@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid}) = getfield(ibg, :underlying_grid)
 
-@inline architecture(ibg::IBG) = architecture(ibg.grid)
+@inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
+    ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary))
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
-
+with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
@@ -130,40 +134,36 @@ end
 function show(io::IO, g::ImmersedBoundaryGrid)
     return print(io, "ImmersedBoundaryGrid on: \n",
                      "    architecture: $(g.architecture)\n",
-                     "            grid: $(summary(g.grid))\n",
+                     "            grid: $(summary(g.underlying_grid))\n",
                      "   with immersed: ", typeof(g.immersed_boundary))
 end
 
-@inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.grid)
-@inline φᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid) = φᶠᶠᵃ(i, j, k, ibg.grid)
+#####
+##### Utilities
+#####
 
-@inline xnode(LX, i, ibg::ImmersedBoundaryGrid) = xnode(LX, i, ibg.grid)
-@inline ynode(LY, j, ibg::ImmersedBoundaryGrid) = ynode(LY, j, ibg.grid)
-@inline znode(LZ, k, ibg::ImmersedBoundaryGrid) = znode(LZ, k, ibg.grid)
+@inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
+@inline φᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline xnode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = xnode(LX, LY, LZ, i, j, k, ibg.grid)
-@inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
-@inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
+@inline xnode(LX, i, ibg::ImmersedBoundaryGrid) = xnode(LX, i, ibg.underlying_grid)
+@inline ynode(LY, j, ibg::ImmersedBoundaryGrid) = ynode(LY, j, ibg.underlying_grid)
+@inline znode(LZ, k, ibg::ImmersedBoundaryGrid) = znode(LZ, k, ibg.underlying_grid)
 
-all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
-all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
-all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
+@inline xnode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = xnode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+
+all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.underlying_grid)
+all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.underlying_grid)
+all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.underlying_grid)
 
 function on_architecture(arch, ibg::ImmersedBoundaryGrid)
-    underlying_grid   = on_architecture(arch, ibg.grid)
+    underlying_grid   = on_architecture(arch, ibg.underlying_grid)
     immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
 
-isrectilinear(ibg::ImmersedBoundaryGrid) = isrectilinear(ibg.grid)
-
-include("immersed_grid_metrics.jl")
-include("grid_fitted_immersed_boundaries.jl")
-include("conditional_fluxes.jl")
-include("immersed_boundary_condition.jl")
-include("conditional_derivatives.jl")
-include("mask_immersed_field.jl")
-include("immersed_reductions.jl")
+isrectilinear(ibg::ImmersedBoundaryGrid) = isrectilinear(ibg.underlying_grid)
 
 #####
 ##### Diffusivities (for VerticallyImplicit)
@@ -180,8 +180,16 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(exterior_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
+            ifelse(exterior_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
     end
 end
+
+include("immersed_grid_metrics.jl")
+include("grid_fitted_immersed_boundaries.jl")
+include("conditional_fluxes.jl")
+include("immersed_boundary_condition.jl")
+include("conditional_derivatives.jl")
+include("mask_immersed_field.jl")
+include("immersed_reductions.jl")
 
 end # module

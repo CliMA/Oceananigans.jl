@@ -26,7 +26,7 @@ import Oceananigans.Grids: exterior_node, peripheral_node
       `immersed_cell_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
       which is true only when `exterior_node = false` and `peripheral_node = true` (as the case of the face at `i` above)
 """
-@inline exterior_node(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg.grid, ibg.immersed_boundary) | exterior_node(i, j, k, ibg.grid)
+@inline exterior_node(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary) | exterior_node(i, j, k, ibg.underlying_grid)
 
 # Defining all the metrics for Immersed Boundaries
 
@@ -36,17 +36,17 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
         metric = Symbol(operator, dir, LX, LY, LZ)
         @eval begin
             import Oceananigans.Operators: $metric
-            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.grid)
+            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.underlying_grid)
         end
     end
 
     volume = Symbol(:V, LX, LY, LZ)
     @eval begin
         import Oceananigans.Operators: $volume
-        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.grid)
+        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.underlying_grid)
     end
 end
 
-@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.grid)
-@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.grid)
+@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 

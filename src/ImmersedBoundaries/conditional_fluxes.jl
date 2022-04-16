@@ -156,8 +156,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $second_order_interp(i, j, k, ibg.grid, ψ),
-                           $interp(i, j, k, ibg.grid, scheme, ψ))
+                           $second_order_interp(i, j, k, ibg.underlying_grid, ψ),
+                           $interp(i, j, k, ibg.underlying_grid, scheme, ψ))
             end
             if ξ == :z
                 @eval begin
@@ -166,8 +166,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $second_order_interp(i, j, k, ibg.grid, ∂z, u),
-                            $interp(i, j, k, ibg.grid, scheme, ∂z, VI, u))
+                            $second_order_interp(i, j, k, ibg.underlying_grid, ∂z, u),
+                            $interp(i, j, k, ibg.underlying_grid, scheme, ∂z, VI, u))
                 end
             else    
                 @eval begin
@@ -176,8 +176,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                                $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
-                                $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
+                                $second_order_interp(i, j, k, ibg.underlying_grid, ζ, u, v),
+                                $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VI, u, v))
                 end    
             end
         end
@@ -194,7 +194,7 @@ for bias in (:left_biased, :right_biased)
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
                $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
-               $interp(i, j, k, ibg.grid, scheme, ζ, VelocityStencil, u, v))
+               $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VelocityStencil, u, v))
         end
     end
 end

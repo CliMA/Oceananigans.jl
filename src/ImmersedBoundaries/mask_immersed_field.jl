@@ -5,8 +5,8 @@ using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(X) = X()
 
-mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
+mask_immersed_field!(field::Field, value=zero(eltype(field.underlying_grid))) =
+    mask_immersed_field!(field, field.underlying_grid, location(field), value)
 
 mask_immersed_field!(field, grid, loc, value) = NoneEvent()
 
@@ -21,8 +21,8 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(eltype(field.grid)); k) =
-    mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(eltype(field.underlying_grid)); k) =
+    mask_immersed_reduced_field_xy!(field, field.underlying_grid, location(field), value; k)
 
 mask_immersed_reduced_field_xy!(::Nothing, args...; kwargs...) = NoneEvent()
 
