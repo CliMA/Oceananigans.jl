@@ -80,35 +80,35 @@ regularize_immersed_boundary_condition(ibc::IBC, ibg::GFIBG, loc, field_name, ar
 @inline function left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return - 2 * κ * (cᵇ - cⁱʲᵏ) / Δ
+    return - 2 * κ * (cⁱʲᵏ - cᵇ) / Δ
 end
 
 @inline function right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return - 2 * κ * (cⁱʲᵏ - cᵇ) / Δ
+    return - 2 * κ * (cᵇ - cⁱʲᵏ) / Δ
 end
 
 @inline function west_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(index_right(i, LX), j, k, ibg, LX, LY, LZ)
+    Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
     return left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
 end
 
 @inline function east_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)
+    Δ = Δx(index_right(i, LX), j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
     return right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
 end
 
 @inline function south_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, index_right(j, LY), k, ibg, LX, LY, LZ)
+    Δ = Δy(i, index_left(j, LY), k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
     return left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
 end
 
 @inline function north_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, index_left(j, LY), k, ibg, LX, LY, LZ)
+    Δ = Δy(i, index_right(j, LY), k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
     return right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
 end

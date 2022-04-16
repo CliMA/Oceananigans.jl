@@ -3,11 +3,11 @@ const c = Center()
 const f = Face()
 
 using Oceananigans.AbstractOperations: GridMetricOperation
-import Oceananigans.Grids: solid_node, solid_interface
+import Oceananigans.Grids: external_node, boundary_node
 
 """
-    `solid_node` returns true only if a location is completely immersed
-    `solid_interface` returns true if a location is partially immersed
+    `external_node` returns true only if a location is completely immersed
+    `boundary_node` returns true if a location is partially immersed
         
     as an example (in a 1D immersed grid) :
 
@@ -17,21 +17,16 @@ import Oceananigans.Grids: solid_node, solid_interface
    f     c     f     c
   i-1   i-1    i     i
 
-     `solid_interface(f, c, c, i, 1, 1, grid) = true`
-     `solid_node(f, c, c, i, 1, 1, grid)      = false`
+     `boundary_node(f, c, c, i, 1, 1, grid) = true`
+     `external_node(f, c, c, i, 1, 1, grid) = false`
 
-     `solid_node(Center(), Center(), Center(), args...) == solid_interface(Center(), Center(), Center(), args...)` as 
+     `external_node(Center(), Center(), Center(), args...) == boundary_node(Center(), Center(), Center(), args...)` as 
      `Center(), Center(), Center()` can be only either fully immersed or not at all 
 
-     `solid_interface` is used in `GridMetricOperation` to assess the grid metric value. 
-     `metric = ifelse(solid_interface, 0.0, metric)` eliminating values inside the immersed domain and values lying on the
-      immersed boundary from the reduction
-
       `is_immersed_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
-      which is true only when `solid_node = false` and `solid_interface = true` (as the case of the face at `i` above)
+      which is true only when `external_node = false` and `boundary_node = true` (as the case of the face at `i` above)
 """
-
-@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) | solid_node(i, j, k, ibg.grid)
+@inline external_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) | external_node(i, j, k, ibg.grid)
 
 # Defining all the metrics for Immersed Boundaries
 
@@ -54,3 +49,4 @@ end
 
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.grid)
+

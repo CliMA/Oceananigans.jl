@@ -180,7 +180,7 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(solid_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
+            ifelse(external_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
     end
 end
 
