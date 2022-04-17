@@ -1,7 +1,7 @@
 module HydrostaticFreeSurfaceModels
 
 export
-    HydrostaticFreeSurfaceModel, VectorInvariant,
+    HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
@@ -33,9 +33,9 @@ include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
 include("compute_vertically_integrated_variables.jl")
+include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
-include("fft_based_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
@@ -79,7 +79,6 @@ displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 include("barotropic_pressure_correction.jl")
-include("hydrostatic_free_surface_advection.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("calculate_hydrostatic_free_surface_tendencies.jl")
 include("update_hydrostatic_free_surface_model_state.jl")

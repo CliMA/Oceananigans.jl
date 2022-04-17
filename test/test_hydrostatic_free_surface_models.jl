@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
-using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
@@ -192,9 +192,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid_type = typeof(grid).name.wrapper
                 free_surface_type = typeof(free_surface).name.wrapper
                 test_label = "[$arch, $grid_type, $topo, $free_surface_type]"                
-                @testset "Time-stepping HydrostaticFreeSurfaceModels with different grids $test_label" begin
-                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with different grids $test_label..."
-                    @test time_step_hydrostatic_model_works(grid, free_surface=free_surface)
+                @testset "Time-stepping HydrostaticFreeSurfaceModels with various grids $test_label" begin
+                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with various grids $test_label..."
+                    @test time_step_hydrostatic_model_works(grid; free_surface)
                 end
             end
         end
@@ -207,8 +207,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for coriolis in (nothing,
-                         HydrostaticSphericalCoriolis(scheme=VectorInvariantEnergyConserving()),
-                         HydrostaticSphericalCoriolis(scheme=VectorInvariantEnstrophyConserving()))
+                         HydrostaticSphericalCoriolis(scheme=EnergyConservingScheme()),
+                         HydrostaticSphericalCoriolis(scheme=EnstrophyConservingScheme()))
 
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @test time_step_hydrostatic_model_works(lat_lon_sector_grid, coriolis=coriolis)

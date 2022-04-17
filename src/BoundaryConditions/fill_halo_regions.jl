@@ -15,7 +15,6 @@ fill_halo_regions!(::Nothing, args...) = nothing
 Fill halo regions for each field in the tuple `fields` according to their boundary
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
-
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 

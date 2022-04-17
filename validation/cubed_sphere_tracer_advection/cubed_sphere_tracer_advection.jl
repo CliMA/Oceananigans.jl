@@ -149,7 +149,7 @@ function cubed_sphere_tracer_advection(; face_number, α)
         JLD2OutputWriter(model, outputs,
             schedule = TimeInterval(1hour),
               prefix = "cubed_sphere_tracer_advection_face$(face_number)_alpha$α",
-              force = true)
+              overwrite_existing = true)
 
     run!(simulation)
 

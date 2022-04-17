@@ -270,14 +270,14 @@ outputs = merge(fields(model), (; vb, wb, ∇_q))
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(5years),
                                                         prefix = filename,
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
                                                       prefix = filename,
                                                       field_slicer = nothing,
                                                       verbose = false,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 @info "Running the simulation..."
 
