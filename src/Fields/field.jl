@@ -157,7 +157,7 @@ function Field(loc::Tuple,
 end
     
 Field(z::ZeroField; kw...) = z
-Field(f::Field) = f # hmm...
+Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
     CenterField(grid; kw...)
@@ -297,8 +297,17 @@ Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
-boundary_conditions(field) = nothing
-boundary_conditions(f::Field) = f.boundary_conditions
+boundary_conditions(not_field) = nothing
+
+function boundary_conditions(f::Field)
+    if f.indices === default_indices(3) # default boundary conditions
+        return f.boundary_conditions
+    else # filter boundary conditions in windowed directions
+        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
+    end
+end
+
+data(field::Field) = field.data
 
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
@@ -648,16 +657,23 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
-        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    else
-        maybe_filtered_bcs = field.boundary_conditions
+    # To correctly fill the halo regions of fields with non-default indices, we'd have to
+    # offset indices in the fill halo regions kernels.
+    # For now we punt and don't support filling halo regions on windowed fields.
+    # Note that `FieldBoundaryConditions` _can_ filter boundary conditions in
+    # windowed directions:
+    #
+    #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
+    #  
+    # which will be useful for implementing halo filling for windowed fields in the future.
+    if field.indices isa typeof(default_indices(3))
+        fill_halo_regions!(field.data,
+                           field.boundary_conditions,
+                           field.grid,
+                           args...;
+                           reduced_dimensions = reduced_dims,
+                           kwargs...)
     end
 
-    return fill_halo_regions!(field.data,
-                              maybe_filtered_bcs,
-                              field.grid,
-                              args...;
-                              reduced_dimensions = reduced_dims,
-                              kwargs...)
+    return nothing
 end

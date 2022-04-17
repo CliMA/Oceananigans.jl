@@ -105,7 +105,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
                              schedule = TimeInterval(output_time_interval),
                              prefix = data_path,
                              field_slicer = nothing,
-                             force = true)
+                             overwrite_existing = true)
 
     @info "Running a simulation of an steady state cylinder..."
 

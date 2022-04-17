@@ -54,7 +54,8 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-Set{Any} with 8 elements:
+Set{Any} with 9 elements:
+  :+
   :sqrt
   :square_it
   :cos

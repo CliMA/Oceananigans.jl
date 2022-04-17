@@ -39,11 +39,9 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     arch = architecture(grid)
 
-    eigenvalues = (
-        λx = arch_array(arch, λx),
-        λy = arch_array(arch, λy),
-        λz = arch_array(arch, λz)
-    )
+    eigenvalues = (λx = arch_array(arch, λx),
+                   λy = arch_array(arch, λy),
+                   λz = arch_array(arch, λz))
 
     storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
