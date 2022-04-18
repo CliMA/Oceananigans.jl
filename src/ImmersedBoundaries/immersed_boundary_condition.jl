@@ -220,7 +220,6 @@ end
 
 =#
 
-#=
 @inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, args...) =
     immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, args...)
 
@@ -232,7 +231,6 @@ end
 
 @inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, args...) =
     immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
-=#
 
 #####
 ##### Regularizing ContinuousBoundaryFunction
