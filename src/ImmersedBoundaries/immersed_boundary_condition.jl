@@ -67,72 +67,71 @@ end
 
 # Harder in some ways... ValueBoundaryCondition...
 const VBC = BoundaryCondition{Value}
+const GBC = BoundaryCondition{Gradient}
 const ASD = AbstractScalarDiffusivity
 
-# Well, this part is easy anyways
-regularize_immersed_boundary_condition(ibc::Union{VBC, FBC}, ibg::GFIBG, loc, field_name, args...) =
-    ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+# "Gradient" utility for Value or Gradient boundary conditions
+@inline right_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
+@inline left_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
 
-# Of course this is just fine!
-const ZFBC = BoundaryCondition{Flux, Nothing}
-regularize_immersed_boundary_condition(ibc::ZFBC, ibg::GFIBG, args...) = ibc # don't convert to ImmersedBoundaryCondition
-@inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, args...) = zero(ibg) # compiler hint
-
-# Don't blame us, the user gave us this crazy boundary condition!
-regularize_immersed_boundary_condition(ibc::IBC, ibg::GFIBG, loc, field_name, args...) = ibc
-
-@inline function left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+@inline function right_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return - 2 * κ * (cⁱʲᵏ - cᵇ) / Δ
+    return 2 * (cᵇ - cⁱʲᵏ) / Δ
 end
 
-@inline function right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+@inline function left_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return - 2 * κ * (cᵇ - cⁱʲᵏ) / Δ
+    return 2 * (cⁱʲᵏ - cᵇ) / Δ
 end
+
+# Metric and index gymnastics for the 6 facets of the cube
 
 @inline function west_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
-    return left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 @inline function east_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_right(i, LX), j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
-    return right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 @inline function south_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δy(i, index_left(j, LY), k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
-    return left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 @inline function north_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δy(i, index_right(j, LY), k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
-    return right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 @inline function bottom_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δz(i, j, index_left(k, LZ), ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
-    return left_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 @inline function top_ib_flux(i, j, k, ibg, bc::VBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δz(i, j, index_right(k, LZ), ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
-    return right_ib_flux_value_bc(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
 end
 
 #####
 ##### Immersed flux divergence
-#####
-##### Note: this may not work with Flat dimensions.
 #####
 
 @inline function immersed_flux_divergence(i, j, k, ibg::GFIBG, bc, loc, c, closure, K, id, args...)
@@ -156,6 +155,53 @@ end
 
     return div(i, j, k, ibg, loc, qᵂ, qᴱ, qˢ, qᴺ, qᴮ, qᵀ)
 end
+
+@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, args...) =
+    immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, args...)
+
+@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, ibg::GFIBG, U, v_bc::IBC, closure, K, args...) =
+    immersed_flux_divergence(i, j, k, ibg, v_bc, (c, f, c), U.v, closure, K, nothing, args...)
+
+@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, ibg::GFIBG, U, w_bc::IBC, closure, K, args...) =
+    immersed_flux_divergence(i, j, k, ibg, w_bc, (c, c, f), U.w, closure, K, nothing, args...)
+
+@inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, args...) =
+    immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
+
+#####
+##### Boundary condition "regularization"
+#####
+
+# Of course this is just fine! Let's do nothing.
+const ZFBC = BoundaryCondition{Flux, Nothing}
+regularize_immersed_boundary_condition(bc::ZFBC, ibg::GFIBG, args...) = bc # don't convert to ImmersedBoundaryCondition
+@inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, args...) = zero(ibg) # compiler hint
+
+# Convert certain non-immersed boundary conditions to immersed boundary conditions
+regularize_immersed_boundary_condition(ibc::Union{VBC, FBC}, ibg::GFIBG, loc, field_name, args...) =
+    ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+
+"""
+    regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
+                                           topo, loc, dim, I, prognostic_field_names) where C
+"""
+function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+
+    topo = topology(grid)
+
+    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   topo, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   topo, loc, 1, RightBoundary, prognostic_field_names)
+    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  topo, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  topo, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, topo, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    topo, loc, 3, RightBoundary, prognostic_field_names)
+
+    return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
+end
+
+#####
+##### Alternative implementation for immersed flux divergence
+#####
 
 #=
 # Another idea...
@@ -219,38 +265,4 @@ end
 
 =#
 
-@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, args...) =
-    immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, args...)
-
-@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, ibg::GFIBG, U, v_bc::IBC, closure, K, args...) =
-    immersed_flux_divergence(i, j, k, ibg, v_bc, (c, f, c), U.v, closure, K, nothing, args...)
-
-@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, ibg::GFIBG, U, w_bc::IBC, closure, K, args...) =
-    immersed_flux_divergence(i, j, k, ibg, w_bc, (c, c, f), U.w, closure, K, nothing, args...)
-
-@inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, args...) =
-    immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, args...)
-
-#####
-##### Regularizing ContinuousBoundaryFunction
-#####
-
-"""
-    regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                           topo, loc, dim, I, prognostic_field_names) where C
-"""
-function regularize_immersed_boundary_condition(bc::BoundaryCondition{<:Any, <:ContinuousBoundaryFunction},
-                                                grid, loc, field_name, prognostic_field_names)
-
-    topo = topology(grid)
-
-    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 1, LeftBoundary,  prognostic_field_names)
-    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 1, RightBoundary, prognostic_field_names)
-    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 2, LeftBoundary,  prognostic_field_names)
-    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 2, RightBoundary, prognostic_field_names)
-    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 3, LeftBoundary,  prognostic_field_names)
-    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc, topo, loc, 3, RightBoundary, prognostic_field_names)
-
-    return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
-end
 
