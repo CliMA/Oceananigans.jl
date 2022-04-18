@@ -74,10 +74,10 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 #### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 ####
 
-@inline immersed_ivd_solid_interface(LX, LY, ::Center, i, j, k, ibg) = solid_interface(LX, LY, Face(), i, j, k+1, ibg)
-@inline immersed_ivd_solid_interface(LX, LY, ::Face, i, j, k, ibg)   = solid_interface(LX, LY, Center(), i, j, k, ibg)
+@inline immersed_ivd_peripheral_node(LX, LY, ::Center, i, j, k, ibg) = immersed_peripheral_node(LX, LY, Face(), i, j, k+1, ibg)
+@inline immersed_ivd_peripheral_node(LX, LY, ::Face, i, j, k, ibg)   = immersed_peripheral_node(LX, LY, Center(), i, j, k, ibg)
 
-# extending the upper and lower diagonal functions of the batched tridiagonal solver
+# Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
 for location in (:upper_, :lower_)
     immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
@@ -91,7 +91,7 @@ for location in (:upper_, :lower_)
                 $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
         @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
-            return ifelse(immersed_ivd_solid_interface(ℓx, ℓy, ℓz, i, j, k, ibg),
+            return ifelse(immersed_ivd_peripheral_node(ℓx, ℓy, ℓz, i, j, k, ibg),
                           zero(eltype(ibg.underlying_grid)),
                           $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
         end
