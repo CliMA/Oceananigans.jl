@@ -104,29 +104,32 @@ const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBounda
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+    cbf = bc.condition
     i, i′ = domain_boundary_indices(S(), grid.Nx)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     y = ynode(Face(), LY(), LZ(), i′, j, k, grid)
     z = znode(Face(), LY(), LZ(), i′, j, k, grid)
-    return bc.func(y, z, clock.time, args...)
+    return cbf.func(y, z, clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
 @inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+    cbf = bc.condition
     j, j′ = domain_boundary_indices(S(), grid.Ny)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     x = xnode(LX(), Face(), LZ(), i, j′, k, grid)
     z = znode(LX(), Face(), LZ(), i, j′, k, grid)
-    return bc.func(x, z, clock.time, args...)
+    return cbf.func(x, z, clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
 @inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+    cbf = bc.condition
     k, k′ = domain_boundary_indices(S(), grid.Nz)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     x = xnode(LX(), LY(), Face(), i, j, k′, grid)
     y = ynode(LY(), LY(), Face(), i, j, k′, grid)
-    return bc.func(x, y, clock.time, args...)
+    return cbf.func(x, y, clock.time, args...)
 end
 
 #####
@@ -135,26 +138,29 @@ end
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
 @inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+    cbf = bc.condition
     i′ = cell_boundary_index(S(), i)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     x, y, z = node(Face(), LY(), LZ(), i′, j, k, grid)
-    return bc.func(x, y, z, clock.time, args...)
+    return cbf.func(x, y, z, clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
 @inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+    cbf = bc.condition
     j′ = cell_boundary_index(S(), j)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     x, y, z = node(LX(), Face(), LZ(), i, j′, k, grid)
-    return bc.func(x, y, z, clock.time, args...)
+    return cbf.func(x, y, z, clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
 @inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+    cbf = bc.condition
     k′ = cell_boundary_index(S(), k)
-    args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
+    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     x, y, z = node(LX(), LY(), Face(), i, j, k′, grid)
-    return bc.func(x, y, z, clock.time, args...)
+    return cbf.func(x, y, z, clock.time, args...)
 end
 
 #####
