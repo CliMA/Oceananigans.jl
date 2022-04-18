@@ -206,13 +206,8 @@ function set!(model, filepath::AbstractString)
         # Validate the grid
         checkpointed_grid = file["grid"]
 
-	if model.grid isa ImmersedBoundaryGrid
-            model.grid.grid == checkpointed_grid || 
-            error("The grid associated with $filepath and the underlying `ImmersedBoundaryGrid.grid` are not the same!")
-        else
-         model.grid == checkpointed_grid ||
+        model.grid == checkpointed_grid ||
              error("The grid associated with $filepath and model.grid are not the same!")
-	end
 
         model_fields = fields(model)
 
