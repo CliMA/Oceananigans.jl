@@ -131,11 +131,12 @@ function Base.summary(grid::ImmersedBoundaryGrid)
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-function show(io::IO, g::ImmersedBoundaryGrid)
-    return print(io, "ImmersedBoundaryGrid on: \n",
-                     "    architecture: $(g.architecture)\n",
-                     "            grid: $(summary(g.underlying_grid))\n",
-                     "   with immersed: ", typeof(g.immersed_boundary))
+function show(io::IO, ibg::ImmersedBoundaryGrid)
+    print(io, summary(ibg), ":", '\n',
+              "├── immersed_boundary: ", summary(ibg.immersed_boundary), '\n',
+              "├── underlying_grid: ", summary(ibg.underlying_grid), '\n')
+
+    return show(io, ibg.underlying_grid, false)
 end
 
 #####
@@ -203,6 +204,7 @@ const IBG = ImmersedBoundaryGrid
 const c = Center()
 const f = Face()
 
+@inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 @inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 

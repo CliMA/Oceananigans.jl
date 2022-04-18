@@ -4,7 +4,6 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDi
 
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
-ipn = immersed_peripheral_node
 
 """
     conditional_flux(i, j, k, ibg::IBG, ℓx, ℓy, ℓz, qᴮ, qᴵ, nc)
@@ -16,17 +15,18 @@ Return either
 
 This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
 """
-@inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ, nc=ipn) = ifelse(nc(ℓx, ℓy, ℓz, i, j, k, ibg), qᴮ, qᴵ)
+@inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) =
+    ifelse(immersed_peripheral_node(ℓx, ℓy, ℓz, i, j, k, ibg), qᴮ, qᴵ)
 
 # Conveniences
-@inline conditional_flux_ccc(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, c, c, c, qᴮ, qᴵ, nc)
-@inline conditional_flux_ffc(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, f, f, c, qᴮ, qᴵ, nc)
-@inline conditional_flux_fcf(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, f, c, f, qᴮ, qᴵ, nc)
-@inline conditional_flux_cff(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, c, f, f, qᴮ, qᴵ, nc)
+@inline conditional_flux_ccc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, c, c, qᴮ, qᴵ)
+@inline conditional_flux_ffc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, f, f, c, qᴮ, qᴵ)
+@inline conditional_flux_fcf(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, f, c, f, qᴮ, qᴵ)
+@inline conditional_flux_cff(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, f, f, qᴮ, qᴵ)
 
-@inline conditional_flux_fcc(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, f, c, c, qᴮ, qᴵ, nc)
-@inline conditional_flux_cfc(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, c, f, c, qᴮ, qᴵ, nc)
-@inline conditional_flux_ccf(i, j, k, ibg::IBG, qᴮ, qᴵ, nc=ipn) = conditional_flux(i, j, k, ibg, c, c, f, qᴮ, qᴵ, nc)
+@inline conditional_flux_fcc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, f, c, c, qᴮ, qᴵ)
+@inline conditional_flux_cfc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, f, c, qᴮ, qᴵ)
+@inline conditional_flux_ccf(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, c, f, qᴮ, qᴵ)
 
 #####
 ##### Diffusive fluxes

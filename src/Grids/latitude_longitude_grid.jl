@@ -233,7 +233,7 @@ function Base.summary(grid::LatitudeLongitudeGrid)
                   " and ", metric_computation)
 end
 
-function Base.show(io::IO, grid::LatitudeLongitudeGrid)
+function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
@@ -250,10 +250,13 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid)
     y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
-    print(io, summary(grid), '\n',
-          "├── ", x_summary, '\n',
-          "├── ", y_summary, '\n',
-          "└── ", z_summary)
+    if withsummary
+        print(io, summary(grid), '\n')
+    end
+
+    return print(io, "├── ", x_summary, '\n',
+                     "├── ", y_summary, '\n',
+                     "└── ", z_summary)
 end
 
 # Node by node
