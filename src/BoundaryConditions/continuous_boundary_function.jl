@@ -98,18 +98,21 @@ end
 ##### Kernel functions for "primitive grid" boundary conditions
 #####
 
+const XBoundaryFunction{LY, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{Nothing, LY, LZ, S}} where {LY, LZ, S}
+const YBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
+const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, LY, Nothing, S}} where {LX, LY, S}
+
 # Return ContinuousBoundaryFunction on east or west boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{Nothing, LY, LZ, S}, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+@inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     y = ynode(Face(), LY(), LZ(), i′, j, k, grid)
     z = znode(Face(), LY(), LZ(), i′, j, k, grid)
     return bc.func(y, z, clock.time, args...)
-                   
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, Nothing, LZ, S}, i::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+@inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     x = xnode(LX(), Face(), LZ(), i, j′, k, grid)
@@ -118,7 +121,7 @@ end
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, LY, Nothing, S}, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+@inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     x = xnode(LX(), LY(), Face(), i, j, k′, grid)
@@ -131,7 +134,7 @@ end
 #####
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::ContinuousBoundaryFunction{Nothing, LY, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+@inline function getbc(bc::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     x, y, z = node(Face(), LY(), LZ(), i′, j, k, grid)
@@ -139,7 +142,7 @@ end
 end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, Nothing, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+@inline function getbc(bc::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     x, y, z = node(LX(), Face(), LZ(), i, j′, k, grid)
@@ -147,7 +150,7 @@ end
 end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
-@inline function getbc(bc::ContinuousBoundaryFunction{LX, LY, Nothing, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+@inline function getbc(bc::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
     x, y, z = node(LX(), LY(), Face(), i, j, k′, grid)

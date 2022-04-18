@@ -6,26 +6,27 @@ using GLMakie
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 
+# Monin-Obukhov drag coefficient
+z₀ = 1e-4 # Charnock roughness
+κ = 0.4 # Von Karman constant
+Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
+
 @inline bottom_drag_u(x, y, t, u, w, Cᴰ) = - Cᴰ * u * sqrt(u^2 + w^2)
 @inline bottom_drag_w(x, y, t, u, w, Cᴰ) = - Cᴰ * w * sqrt(u^2 + w^2)
 
-function hilly_simulation(;
-                          Nx = 64,
-                          Nz = Nx,
-                          h = 0.1,
-                          Re = 1e4,
-                          N² = 1e-2,
-                          boundary_condition = :no_slip,
-                          stop_time = 1,
-                          save_interval = 0.1,
-                          architecture = CPU(),
-                          filename = "flow_over_hills")
+function hilly_simulation(; Nx = 64,
+                            Nz = Nx,
+                            h = 0.1,
+                            Re = 1e4,
+                            N² = 1e-2,
+                            boundary_condition = :no_slip,
+                            stop_time = 1,
+                            save_interval = 0.1,
+                            architecture = CPU(),
+                            filename = "flow_over_hills")
 
-    underlying_grid = RectilinearGrid(architecture,
-                                      size = (Nx, Nz),
-                                      halo = (3, 3),
-                                      x = (0, 2π),
-                                      z = (0, 1),
+    underlying_grid = RectilinearGrid(architecture, size = (Nx, Nz), halo = (3, 3),
+                                      x = (0, 2π), z = (0, 1),
                                       topology = (Periodic, Flat, Bounded))
 
     if h > 0
@@ -43,13 +44,10 @@ function hilly_simulation(;
         boundary_conditions = (; u = u_bcs)
     elseif boundary_condition == :bottom_drag
         Δz = 2π / Nz
-        z₀ = 1e-4
-        κ = 0.4
-        Cᴰ = (κ / log(Δz / 2z₀))^2
         u_drag_bc = FluxBoundaryCondition(bottom_drag_u, field_dependencies=(:u, :w), parameters=Cᴰ)
         w_drag_bc = FluxBoundaryCondition(bottom_drag_w, field_dependencies=(:u, :w), parameters=Cᴰ)
         u_bcs = FieldBoundaryConditions(bottom=u_drag_bc, immersed=u_drag_bc)
-        w_bcs = FieldBoundaryConditions(bottom=w_drag_bc, immersed=w_drag_bc)
+        w_bcs = FieldBoundaryConditions(immersed=w_drag_bc)
         boundary_conditions = (; u = u_bcs, w = w_bcs)
         @info string("Using a bottom drag with coefficient ", Cᴰ)
     else
@@ -62,9 +60,10 @@ function hilly_simulation(;
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())
 
-    hᵋ = 0.1
-    ∂z_ψᵋ(x, z) = 4π * sin(4x) * cos(4π * z) * exp(-(z - h)^2 / 2hᵋ^2)
-    ∂x_ψᵋ(x, z) = 4  * cos(4x) * sin(4π * z) * exp(-(z - h)^2 / 2hᵋ^2)
+    # Steady flow + perturbations
+    δh = 0.1
+    ∂z_ψᵋ(x, z) = 4π * sin(4x) * cos(4π * z) * exp(-(z - h)^2 / 2δh^2)
+    ∂x_ψᵋ(x, z) = 4  * cos(4x) * sin(4π * z) * exp(-(z - h)^2 / 2δh^2)
     bᵢ(x, y, z) = N² * z + 1e-9 * rand()
     uᵢ(x, y, z) = 1.0 + ∂z_ψᵋ(x, z)
     wᵢ(x, y, z) = - ∂x_ψᵋ(x, z)
@@ -125,10 +124,11 @@ end
 Nx = 64
 stop_time = 100.0
 
-#reference_name = "hills_reference_$Nx"
-#reference_sim = hilly_simulation(; stop_time, Nx, h=0.0, filename=reference_name, boundary_condition=:no_slip)
-#run!(reference_sim)
-#δU_reference, t_reference = momentum_time_series(reference_name)
+#=
+reference_name = "hills_reference_$Nx"
+reference_sim = hilly_simulation(; stop_time, Nx, h=0.0, filename=reference_name, boundary_condition=:no_slip)
+run!(reference_sim)
+δU_reference, t_reference = momentum_time_series(reference_name)
 
 free_slip_name = "hills_free_slip_$Nx"
 free_slip_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=free_slip_name, boundary_condition=:free_slip)
@@ -139,6 +139,12 @@ no_slip_name = "hills_no_slip_$Nx"
 no_slip_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=no_slip_name, boundary_condition=:no_slip)
 run!(no_slip_sim)
 δU_no_slip, t_no_slip = momentum_time_series(no_slip_name)
+=#
+
+bottom_drag_name = "hills_bottom_drag_$Nx"
+bottom_drag_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=bottom_drag_name, boundary_condition=:bottom_drag)
+run!(bottom_drag_sim)
+δU_bottom_drag, t_bottom_drag = momentum_time_series(bottom_drag_name)
 
 ξr = FieldTimeSeries("hills_reference_$Nx.jld2", "ξ")
 ξn = FieldTimeSeries("hills_no_slip_$Nx.jld2", "ξ")
@@ -158,19 +164,20 @@ U₀ = Ur[1, 1, 1, 1]
 x, y, z = nodes(ξr)
 
 ξmax = maximum(abs, ξf)
-ξlim = ξmax / 10
+ξlim = ξmax / 50
 
-fig = Figure(resolution=(1200, 800))
-ax1 = Axis(fig[2, 1:3], xlabel="x", ylabel="z", title="Reference")
-ax2 = Axis(fig[3, 1:3], xlabel="x", ylabel="z", title="No-slip")
-ax3 = Axis(fig[4, 1:3], xlabel="x", ylabel="z", title="Free-slip")
-slider = Slider(fig[5, 1:4], range=1:Nt, startvalue=1)
+fig = Figure(resolution=(2400, 1200))
+ax1 = Axis(fig[2, 2:4], aspect=2π, xlabel="x", ylabel="z", title="Reference")
+ax2 = Axis(fig[3, 2:4], aspect=2π, xlabel="x", ylabel="z", title="No-slip")
+ax3 = Axis(fig[4, 2:4], aspect=2π, xlabel="x", ylabel="z", title="Free-slip")
+slider = Slider(fig[5, 2:4], range=1:Nt, startvalue=1)
 n = slider.value
 
-axu = Axis(fig[2:4, 4], xlabel="t", ylabel="Total momentum")
-lines!(axu, t, Ur)
-lines!(axu, t, Un)
-lines!(axu, t, Uf)
+axu = Axis(fig[2:4, 5], xlabel="t", ylabel="Total momentum")
+lines!(axu, t, δUr, label="Reference")
+lines!(axu, t, δUn, label="No-slip")
+lines!(axu, t, δUf, label="Free-slip")
+axislegend(axu, position=:lb)
 
 tn = @lift t[$n]
 min_δU = min(minimum(δUr), minimum(δUn), minimum(δUf))
@@ -179,9 +186,9 @@ vlines!(axu, tn, ymin=min_δU, ymax=1.0)
 title = @lift string("Flow over hills at t = ", prettysummary(t[$n]))
 Label(fig[1, 1:4], title)
 
-ξrⁿ = interior(ξr[$n], :, 1, :)
+ξrⁿ = @lift interior(ξr[$n], :, 1, :)
 
-ξnⁿ @lift begin
+ξnⁿ = @lift begin
     ξnn = ξn[$n]
     mask_immersed_field!(ξnn, NaN)
     interior(ξnn, :, 1, :)
@@ -195,7 +202,9 @@ end
 
 heatmap!(ax1, x, z, ξrⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
 heatmap!(ax2, x, z, ξnⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
-heatmap!(ax3, x, z, ξfⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
+hmξ = heatmap!(ax3, x, z, ξfⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
+
+cb = Colorbar(fig[2:4, 1], vertical=true, flipaxis=true, label="Vorticity, ∂z(u) - ∂x(w)")
 
 display(fig)
 

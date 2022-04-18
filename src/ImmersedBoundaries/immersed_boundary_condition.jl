@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: Flux, Value, flip, BoundaryCondition, ContinuousBoundaryFunction
-using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, flip, BoundaryCondition, ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition, LeftBoundary, RightBoundary
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, h_diffusivity, z_diffusivity
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
@@ -17,6 +17,26 @@ end
 const IBC = ImmersedBoundaryCondition
 
 bc_str(::IBC) = "ImmersedBoundaryCondition"
+
+function Base.summary(ibc::IBC)
+    return string(bc_str(ibc), " with ",
+                  "west=", bc_str(ibc.west), ", ",
+                  "east=", bc_str(ibc.east), ", ",
+                  "south=", bc_str(ibc.south), ", ",
+                  "north=", bc_str(ibc.north), ", ",
+                  "bottom=", bc_str(ibc.bottom), ", ",
+                  "top=", bc_str(ibc.top))
+end
+
+function Base.show(io::IO, ibc::IBC)
+    return print(io, "ImmersedBoundaryCondition:", '\n',
+                     "├── west: ", summary(ibc.west), '\n',
+                     "├── east: ", summary(ibc.east), '\n',
+                     "├── south: ", summary(ibc.south), '\n',
+                     "├── north: ", summary(ibc.north), '\n',
+                     "├── bottom: ", summary(ibc.bottom), '\n',
+                     "└── top: ", summary(ibc.top))
+end
 
 """
     ImmersedBoundaryCondition(; interfaces...)
@@ -178,8 +198,10 @@ regularize_immersed_boundary_condition(bc::ZFBC, ibg::GFIBG, args...) = bc # don
 @inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, args...) = zero(ibg) # compiler hint
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
-regularize_immersed_boundary_condition(ibc::Union{VBC, FBC}, ibg::GFIBG, loc, field_name, args...) =
-    ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::GFIBG, loc, field_name, args...)
+    ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+    regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...) 
+end
 
 """
     regularize_immersed_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},

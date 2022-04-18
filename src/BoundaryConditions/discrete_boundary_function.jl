@@ -49,3 +49,4 @@ Base.summary(bf::DiscreteBoundaryFunction) = string("DiscreteBoundaryFunction ",
 
 Adapt.adapt_structure(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(Adapt.adapt(to, bf.func),
                                                                                    Adapt.adapt(to, bf.parameters))
+
