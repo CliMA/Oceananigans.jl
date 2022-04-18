@@ -43,7 +43,8 @@ function hilly_simulation(; Nx = 64,
     if boundary_condition == :no_slip
         no_slip = ValueBoundaryCondition(0)
         u_bcs = FieldBoundaryConditions(bottom=no_slip, immersed=no_slip)
-        boundary_conditions = (; u = u_bcs)
+        w_bcs = FieldBoundaryConditions(immersed=no_slip)
+        boundary_conditions = (; u = u_bcs, w = w_bcs)
     elseif boundary_condition == :bottom_drag
         Δz = 1 / Nz
         Δx = 2π / Nz
