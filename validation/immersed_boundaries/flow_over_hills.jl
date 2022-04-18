@@ -13,6 +13,8 @@ Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
 
 @inline bottom_drag_u(x, y, t, u, w, Cᴰ) = - Cᴰ * u * sqrt(u^2 + w^2)
 @inline bottom_drag_w(x, y, t, u, w, Cᴰ) = - Cᴰ * w * sqrt(u^2 + w^2)
+@inline bottom_drag_u(x, y, z, t, u, w, Cᴰ) = - Cᴰ * u * sqrt(u^2 + w^2)
+@inline bottom_drag_w(x, y, z, t, u, w, Cᴰ) = - Cᴰ * w * sqrt(u^2 + w^2)
 
 function hilly_simulation(; Nx = 64,
                             Nz = Nx,
@@ -43,13 +45,14 @@ function hilly_simulation(; Nx = 64,
         u_bcs = FieldBoundaryConditions(bottom=no_slip, immersed=no_slip)
         boundary_conditions = (; u = u_bcs)
     elseif boundary_condition == :bottom_drag
-        Δz = 2π / Nz
-        u_drag_bc = FluxBoundaryCondition(bottom_drag_u, field_dependencies=(:u, :w), parameters=Cᴰ)
-        w_drag_bc = FluxBoundaryCondition(bottom_drag_w, field_dependencies=(:u, :w), parameters=Cᴰ)
+        Δz = 1 / Nz
+        Δx = 2π / Nz
+        u_drag_bc = FluxBoundaryCondition(bottom_drag_u, field_dependencies=(:u, :w), parameters=Cᴰ(Δz))
+        w_drag_bc = FluxBoundaryCondition(bottom_drag_w, field_dependencies=(:u, :w), parameters=Cᴰ(Δx))
         u_bcs = FieldBoundaryConditions(bottom=u_drag_bc, immersed=u_drag_bc)
         w_bcs = FieldBoundaryConditions(immersed=w_drag_bc)
         boundary_conditions = (; u = u_bcs, w = w_bcs)
-        @info string("Using a bottom drag with coefficient ", Cᴰ)
+        @info string("Using a bottom drag with coefficient ", Cᴰ(Δz))
     else
         boundary_conditions = NamedTuple()
     end
@@ -95,8 +98,11 @@ function hilly_simulation(; Nx = 64,
     U = Average(u, dims=(1, 2, 3))
     ξ = ∂z(u) - ∂x(w)
 
+    ke = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
+    KE = Average(ke, dims=(1, 2, 3))
+
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U));
+        JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ, U, KE));
                          schedule = TimeInterval(save_interval),
                          with_halos = true,
                          filename,
@@ -114,97 +120,84 @@ function hilly_simulation(; Nx = 64,
     return simulation
 end
 
-function momentum_time_series(filename)
-    U = FieldTimeSeries(filename * ".jld2", "U")
-    t = U.times
-    δU = [U[1, 1, 1, n] / U[1, 1, 1, 1] for n=1:length(t)]
-    return δU, t
-end
+#####
+##### Run them!
+#####
 
-Nx = 64
+Nx = 128
 stop_time = 100.0
 
-#=
-reference_name = "hills_reference_$Nx"
-reference_sim = hilly_simulation(; stop_time, Nx, h=0.0, filename=reference_name, boundary_condition=:no_slip)
-run!(reference_sim)
-δU_reference, t_reference = momentum_time_series(reference_name)
+experiments = ["reference", "no_slip", "free_slip", "bottom_drag"]
+Nexp = length(experiments)
 
-free_slip_name = "hills_free_slip_$Nx"
-free_slip_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=free_slip_name, boundary_condition=:free_slip)
-run!(free_slip_sim)
-δU_free_slip, t_free_slip = momentum_time_series(free_slip_name)
+for exp in experiments
+    filename = "hills_$(exp)_$Nx"
+    h = exp == "reference" ? 0.0 : 0.2
+    reference_sim = hilly_simulation(; stop_time, Nx, filename, h, boundary_condition=Symbol(exp))
+    run!(reference_sim)
+end
 
-no_slip_name = "hills_no_slip_$Nx"
-no_slip_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=no_slip_name, boundary_condition=:no_slip)
-run!(no_slip_sim)
-δU_no_slip, t_no_slip = momentum_time_series(no_slip_name)
-=#
+#####
+##### Plot results
+#####
 
-bottom_drag_name = "hills_bottom_drag_$Nx"
-bottom_drag_sim = hilly_simulation(; stop_time, Nx, h=0.2, filename=bottom_drag_name, boundary_condition=:bottom_drag)
-run!(bottom_drag_sim)
-δU_bottom_drag, t_bottom_drag = momentum_time_series(bottom_drag_name)
+ξ  = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "ξ")  for exp in experiments)
+U  = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "U")  for exp in experiments)
+KE = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "KE") for exp in experiments)
 
-ξr = FieldTimeSeries("hills_reference_$Nx.jld2", "ξ")
-ξn = FieldTimeSeries("hills_no_slip_$Nx.jld2", "ξ")
-ξf = FieldTimeSeries("hills_free_slip_$Nx.jld2", "ξ")
-t = ξf.times
-Nt = length(t)
+t = ξ["reference"].times
+Nt = 201 #length(t)
+t = t[1:Nt]
+δU_series(U) = [(U[1, 1, 1, n] - U[1, 1, 1, 1]) / U[1, 1, 1, 1] for n = 1:Nt]
+δK_series(K) = [(K[1, 1, 1, n] - K[1, 1, 1, 1]) / K[1, 1, 1, 1] for n = 1:Nt]
+δU = Dict(exp => δU_series(u) for (exp, u) in U)
+δKE = Dict(exp => δK_series(k) for (exp, k) in KE)
 
-Ur = FieldTimeSeries("hills_reference_$Nx.jld2", "U")
-Un = FieldTimeSeries("hills_no_slip_$Nx.jld2", "U")
-Uf = FieldTimeSeries("hills_free_slip_$Nx.jld2", "U")
+fig = Figure(resolution=(1800, 1200))
+ax = Dict(exp => Axis(fig[i+1, 2:4], aspect=2π, xlabel="x", ylabel="z", title=exp)
+          for (i, exp) in enumerate(experiments))
 
-U₀ = Ur[1, 1, 1, 1]
-δUr = [(Ur[1, 1, 1, n] - U₀) / U₀ for n = 1:Nt]
-δUn = [(Un[1, 1, 1, n] - U₀) / U₀ for n = 1:Nt]
-δUf = [(Uf[1, 1, 1, n] - U₀) / U₀ for n = 1:Nt]
+axu = Axis(fig[2:3, 5], xlabel="t", ylabel="Total momentum")
+axe = Axis(fig[4:5, 5], xlabel="t", ylabel="Total kinetic energy")
 
-x, y, z = nodes(ξr)
-
-ξmax = maximum(abs, ξf)
-ξlim = ξmax / 50
-
-fig = Figure(resolution=(2400, 1200))
-ax1 = Axis(fig[2, 2:4], aspect=2π, xlabel="x", ylabel="z", title="Reference")
-ax2 = Axis(fig[3, 2:4], aspect=2π, xlabel="x", ylabel="z", title="No-slip")
-ax3 = Axis(fig[4, 2:4], aspect=2π, xlabel="x", ylabel="z", title="Free-slip")
-slider = Slider(fig[5, 2:4], range=1:Nt, startvalue=1)
+slider = Slider(fig[Nexp+2, 2:4], range=1:Nt, startvalue=1)
 n = slider.value
 
-axu = Axis(fig[2:4, 5], xlabel="t", ylabel="Total momentum")
-lines!(axu, t, δUr, label="Reference")
-lines!(axu, t, δUn, label="No-slip")
-lines!(axu, t, δUf, label="Free-slip")
+# Title
+title = @lift string("Flow over hills at t = ", prettysummary(t[$n]))
+Label(fig[1, 1:5], title)
+
+# Vorticity heatmaps
+ξi(ξ) = @lift begin
+    ξn = ξ[$n]
+    mask_immersed_field!(ξn, NaN)
+    interior(ξn, :, 1, :)
+end
+
+ξⁱ = Dict(exp => ξi(ξ[exp]) for exp in experiments)
+x, y, z = nodes(ξ["reference"])
+ξmax = maximum(abs, ξ["reference"])
+ξlim = ξmax / 50
+
+hm = Dict(exp => heatmap!(ax[exp], x, z, ξⁱ[exp], colorrange=(-ξlim, ξlim), colormap=:redblue)
+          for exp in experiments)
+
+cb = Colorbar(fig[2:5, 1], hm["reference"], vertical=true, flipaxis=true, label="Vorticity, ∂z(u) - ∂x(w)")
+
+# Momentum and energy plots
+for exp in experiments
+    lines!(axu, t, δU[exp], label=exp)
+    lines!(axe, t, δKE[exp], label=exp)
+end
+
 axislegend(axu, position=:lb)
+axislegend(axe, position=:rt)
 
 tn = @lift t[$n]
-min_δU = min(minimum(δUr), minimum(δUn), minimum(δUf))
+min_δU = minimum(minimum(δ) for δ in values(δU))
+min_δK = minimum(minimum(δ) for δ in values(δKE))
 vlines!(axu, tn, ymin=min_δU, ymax=1.0)
-
-title = @lift string("Flow over hills at t = ", prettysummary(t[$n]))
-Label(fig[1, 1:4], title)
-
-ξrⁿ = @lift interior(ξr[$n], :, 1, :)
-
-ξnⁿ = @lift begin
-    ξnn = ξn[$n]
-    mask_immersed_field!(ξnn, NaN)
-    interior(ξnn, :, 1, :)
-end
-
-ξfⁿ = @lift begin
-    ξfn = ξf[$n]
-    mask_immersed_field!(ξfn, NaN)
-    interior(ξfn, :, 1, :)
-end
-
-heatmap!(ax1, x, z, ξrⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
-heatmap!(ax2, x, z, ξnⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
-hmξ = heatmap!(ax3, x, z, ξfⁿ, colorrange=(-ξlim, ξlim), colormap=:redblue) 
-
-cb = Colorbar(fig[2:4, 1], vertical=true, flipaxis=true, label="Vorticity, ∂z(u) - ∂x(w)")
+vlines!(axe, tn, ymin=min_δK, ymax=1.0)
 
 display(fig)
 
