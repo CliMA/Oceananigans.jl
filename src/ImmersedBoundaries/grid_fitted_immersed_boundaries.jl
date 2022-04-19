@@ -50,8 +50,9 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-function ImmersedBoundaryGrid(grid, ib::GridFittedBottom{<:AbstractArray})
+function ImmersedBoundaryGrid(grid, ib::GridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
+    # TODO: check size
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
