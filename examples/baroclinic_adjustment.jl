@@ -185,13 +185,13 @@ for side in keys(slicers)
     simulation.output_writers[side] = JLD2OutputWriter(model, (; b, u);
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices,
-                                                       prefix = filename * "_$(side)_slice",
+                                                       filename = filename * "_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);
                                                      schedule = TimeInterval(save_fields_interval),
-                                                     prefix = filename * "_zonal_average",
+                                                     filename = filename * "_zonal_average",
                                                      force = true)
 
 # Now let's run!
