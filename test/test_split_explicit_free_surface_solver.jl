@@ -11,7 +11,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         Nx, Ny, Nz = 128, 64, 16
         Lx = Ly = Lz = 2π
 
-        grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+        grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0), halo=(1, 1, 1))
 
         sefs = SplitExplicitFreeSurface(grid)
 
@@ -96,12 +96,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             U_exact = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             η_exact = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
 
-            err1 = maximum(abs.(U_computed - U_exact))
-            err2 = maximum(abs.(η_computed - η_exact))
-
-            @test err1 < 1e-3
-            @test err2 < 1e-6
-
+            @test maximum(abs.(U_computed - U_exact)) < 1e-3
+            @test maximum(abs.(η_computed - η_exact)) < 1e-6
         end
 
         @testset "Averaging / Do Nothing test " begin
@@ -149,23 +145,15 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
             η̅_computed = Array(η̅.data.parent)[2:Nx+1, 2:Ny+1]
 
-            err1 = maximum(abs.(U_computed .- U_avg))
-            err2 = maximum(abs.(η_computed .- η_avg))
-            err3 = maximum(abs.(V_computed .- V_avg))
-
-            err4 = maximum(abs.(U̅_computed .- U_avg))
-            err5 = maximum(abs.(η̅_computed .- η_avg))
-            err6 = maximum(abs.(V̅_computed .- V_avg))
-
             tolerance = eps(100.0)
-            @test err1 < tolerance
-            @test err2 < tolerance
-            @test err3 < tolerance
 
-            @test err4 < tolerance
-            @test err5 < tolerance
-            @test err6 < tolerance
+            @test maximum(abs.(U_computed .- U_avg)) < tolerance
+            @test maximum(abs.(η_computed .- η_avg)) < tolerance
+            @test maximum(abs.(V_computed .- V_avg)) < tolerance
 
+            @test maximum(abs.(U̅_computed .- U_avg)) < tolerance
+            @test maximum(abs.(η̅_computed .- η_avg)) < tolerance
+            @test maximum(abs.(V̅_computed .- V_avg)) < tolerance
         end
 
 
@@ -252,21 +240,15 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             U̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(U.data.parent)[2:Nx+1, 2:Ny+1] .+ gu_c * T / 2
             V̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T / 2
 
-            errU = maximum(abs.(U_computed - U_exact)) / maximum(abs.(U_exact))
-            errV = maximum(abs.(V_computed - V_exact)) / maximum(abs.(V_exact))
-            errη = maximum(abs.(η_computed - η_exact)) / maximum(abs.(η_exact))
+            tolerance = 1e-2
 
-            errU̅ = maximum(abs.(U̅_computed - U̅_exact))
-            errV̅ = maximum(abs.(V̅_computed - V̅_exact))
-            errη̅ = maximum(abs.(η̅_computed - η̅_exact))
+            @test maximum(abs.(U_computed - U_exact)) / maximum(abs.(U_exact)) < tolerance
+            @test maximum(abs.(V_computed - V_exact)) / maximum(abs.(V_exact)) < tolerance
+            @test maximum(abs.(η_computed - η_exact)) / maximum(abs.(η_exact)) < tolerance
 
-            @test errU < 1e-2
-            @test errV < 1e-2
-            @test errη < 2e-2
-
-            @test errU̅ < 1e-2
-            @test errV̅ < 1e-2
-            @test errη̅ < 1e-2
+            @test maximum(abs.(U̅_computed - U̅_exact)) < tolerance
+            @test maximum(abs.(V̅_computed - V̅_exact)) < tolerance
+            @test maximum(abs.(η̅_computed - η̅_exact)) < tolerance
         end
     end # end of architecture loop
 
