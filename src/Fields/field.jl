@@ -669,6 +669,7 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     if field.indices isa typeof(default_indices(3))
         fill_halo_regions!(field.data,
                            field.boundary_conditions,
+                           instantiated_location(field),
                            field.grid,
                            args...;
                            reduced_dimensions = reduced_dims,
