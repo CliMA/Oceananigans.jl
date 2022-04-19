@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = underlying_grid #MultiRegionGrid(underlying_grid, partition = YPartition(2), devices = (0, 1))
-mrg            = grid #MultiRegionGrid(grid,            partition = YPartition(2), devices = (0, 1))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -286,9 +286,10 @@ function progress(sim)
     u = sim.model.velocities.u
     η = sim.model.free_surface.η
 
-    @info @sprintf("Time: % 12s, iteration: %d,  wall time: %s, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m", 
+    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", 
+                    #"Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u), maximum(abs, η),
+                    sim.model.clock.iteration, #maximum(abs, u), maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()

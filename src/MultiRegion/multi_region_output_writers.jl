@@ -1,3 +1,5 @@
+using Oceananigans.Fields: compute_at!
+
 import Oceananigans.OutputWriters: 
                         fetch_output,
                         construct_output,
