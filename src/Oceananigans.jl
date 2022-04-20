@@ -10,14 +10,14 @@ end
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, CUDAGPU, ROCMGPU,
 
     # Logging
     OceananigansLogger,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
+    Periodic, Bounded, Flat,
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
@@ -28,8 +28,8 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    Centered, CenteredSecondOrder, CenteredFourthOrder, 
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder,
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
@@ -110,7 +110,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
+    MultiRegionGrid, XPartition,
     ConformalCubedSphereGrid,
 
     # Utils
@@ -121,6 +121,7 @@ using Logging
 using Statistics
 using LinearAlgebra
 using CUDA
+using AMDGPU
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -264,6 +265,13 @@ function __init__()
 
         CUDA.allowscalar(false)
     end
-end
+    if AMDGPU.has_rocm_gpu()
+        @debug "ROCM-enabled GPU(s) detected:"
+        for (id, agent) in enumerate(AMDGPU.get_agents(:gpu))
+            @debug "$id: $(agent.name)"
+        end
 
+        AMDGPU.allowscalar(false)
+    end
+end
 end # module

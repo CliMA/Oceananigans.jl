@@ -9,6 +9,9 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 ##### Output writer utilities
 #####
 
+convert_to_arch(::CPU, a) = a
+convert_to_arch(::CUDAGPU, a) = CuArray(a)
+convert_to_arch(::ROCMGPU, a) = ROCArray(a)
 """
     ext(ow)
 
@@ -156,11 +159,11 @@ output_averaging_schedule(output) = nothing # fallback
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 
 """
-    auto_extension(filename, ext)                                                             
+    auto_extension(filename, ext)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
-function auto_extension(filename, ext) 
+function auto_extension(filename, ext)
     Next = length(ext)
     filename[end-Next+1:end] == ext || (filename *= ext)
     return filename
