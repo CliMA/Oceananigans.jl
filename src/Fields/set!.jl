@@ -1,10 +1,11 @@
 using CUDA
 using CUDAKernels
+using AMDGPU
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: device, CUDAGPU, ROCMGPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -18,7 +19,7 @@ end
 set!(u::Field, v) = u .= v # fallback
 
 function set!(u::Field, f::Function)
-    if architecture(u) isa GPU
+    if architecture(u) isa CUDAGPU || architecture(u) isa ROCMGPU
         cpu_grid = on_architecture(CPU(), u.grid)
         u_cpu = Field(location(u), cpu_grid)
         f_field = field(location(u), f, cpu_grid)
@@ -32,7 +33,7 @@ function set!(u::Field, f::Function)
     return u
 end
 
-function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
+function set!(u::Field, f::Union{Array, CuArray, ROCArray, OffsetArray})
     f = arch_array(architecture(u), f)
     u .= f
     return u

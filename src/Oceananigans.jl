@@ -10,7 +10,7 @@ end
 
 export
     # Architectures
-    CPU, GPU,
+    CPU, CUDAGPU, ROCMGPU,
 
     # Logging
     OceananigansLogger,
@@ -114,6 +114,7 @@ using Statistics
 using LinearAlgebra
 
 using CUDA
+using AMDGPU
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -255,6 +256,13 @@ function __init__()
 
         CUDA.allowscalar(false)
     end
-end
+    if AMDGPU.has_rocm_gpu()
+        @debug "ROCM-enabled GPU(s) detected:"
+        for (id, agent) in enumerate(AMDGPU.get_agents(:gpu))
+            @debug "$id: $(agent.name)"
+        end
 
+        AMDGPU.allowscalar(false)
+    end
+end
 end # module

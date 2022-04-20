@@ -1,4 +1,5 @@
 import Adapt
+using AMDGPU
 
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
@@ -128,10 +129,23 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
 
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
-validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
+validate_boundary_condition_architecture(::CuArray, ::CUDAGPU, bc, side) = nothing
+validate_boundary_condition_architecture(::ROCArray, ::ROCMGPU, bc, side) = nothing
 
 validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
     throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
-validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+validate_boundary_condition_architecture(::CuArray, ::ROCMGPU, bc, side) =
+    throw(ArgumentError("$side $bc must use `ROCArray` rather than `CuArray` on ROCMGPU architectures!"))
+
+validate_boundary_condition_architecture(::Array, ::CUDAGPU, bc, side) =
+    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on CUDAGPU architectures!"))
+
+validate_boundary_condition_architecture(::Array, ::ROCMGPU, bc, side) =
+    throw(ArgumentError("$side $bc must use `ROCArray` rather than `Array` on ROCMGPU architectures!"))
+
+validate_boundary_condition_architecture(::ROCArray, ::CUDAGPU, bc, side) =
+    throw(ArgumentError("$side $bc must use `CuArray` rather than `ROCArray` on CUDAGPU architectures!"))
+
+validate_boundary_condition_architecture(::ROCArray, ::CPU, bc, side) =
+    throw(ArgumentError("$side $bc must use `Array` rather than `ROCArray` on CPU architectures!"))
