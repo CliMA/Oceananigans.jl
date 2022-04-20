@@ -27,8 +27,8 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 closures_to_run = [
                    CATKEVerticalDiffusivity(),
-                   RiBasedVerticalDiffusivity(),
-                   convective_adjustment,
+                   #RiBasedVerticalDiffusivity(),
+                   #convective_adjustment,
                    ]   
 
 for closure in closures_to_run
@@ -48,7 +48,7 @@ for closure in closures_to_run
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                          schedule = TimeInterval(10minutes),
-                         prefix = "windy_convection_" * closurename,
+                         filename = "windy_convection_" * closurename,
                          overwrite_existing = true)
 
     progress(sim) = @info string("Iter: ", iteration(sim), " t: ", prettytime(sim))
