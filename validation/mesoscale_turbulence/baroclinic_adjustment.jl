@@ -151,14 +151,14 @@ for side in keys(slicers)
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
                                                        prefix = filename * "_$(side)_slice",
-                                                       force = true)
+                                                       overwrite_existing = true)
 end
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
                                                       prefix = filename * "_fields",
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 B = AveragedField(model.tracers.b, dims=1)
 C = AveragedField(model.tracers.c, dims=1)
@@ -169,7 +169,7 @@ W = AveragedField(model.velocities.w, dims=1)
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
                                                      schedule = TimeInterval(save_fields_interval),
                                                      prefix = filename * "_zonal_average",
-                                                     force = true)
+                                                     overwrite_existing = true)
 
 @info "Running the simulation..."
 

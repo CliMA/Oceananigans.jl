@@ -23,7 +23,7 @@ using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: compute_at!, recursive_fill
+import Oceananigans.Fields: compute_at!
 
 #####
 ##### Basic functionality
@@ -35,7 +35,6 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
-@inline recursive_fill(filtered_fields, ::AbstractOperation,  Type) = nothing
 
 architecture(a::AbstractOperation) = architecture(a.grid)
 
@@ -70,6 +69,7 @@ import Base: sqrt, sin, cos, exp, tanh, abs, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh abs
 @unary -
+@unary +
 
 @binary +
 @binary -

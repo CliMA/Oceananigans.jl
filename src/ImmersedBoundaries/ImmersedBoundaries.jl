@@ -37,7 +37,8 @@ using Oceananigans.Advection:
     advective_momentum_flux_Ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
-    advective_tracer_flux_z
+    advective_tracer_flux_z,
+    WENOVectorInvariant
 
 import Base: show, summary
 import Oceananigans.Grids: architecture, on_architecture, with_halo
@@ -101,15 +102,6 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, 
     end
 end
 
-function ImmersedBoundaryGrid(grid, ib)
-    @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-          "Help validate ImmersedBoundaryGrid by reporting any bugs " *
-          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues."
-    
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
-end
-
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
@@ -156,14 +148,12 @@ all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
 function on_architecture(arch, ibg::ImmersedBoundaryGrid)
-    underlying_grid = on_architecture(arch, ibg.grid)
-
-    immersed_boundary = ibg.immersed_boundary isa AbstractArray ?
-        arch_array(arch, ibg.immersed_boundary) :
-        ibg.immersed_boundary
-
+    underlying_grid   = on_architecture(arch, ibg.grid)
+    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
+
+isrectilinear(ibg::ImmersedBoundaryGrid) = isrectilinear(ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")

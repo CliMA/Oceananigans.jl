@@ -12,9 +12,7 @@ end
     Reduction(reduce!, operand; dims)
 
 Return a `Reduction` of `operand` with `reduce!`, along `dims`. Note that `Reduction`
-expects a `reduce!` operation that works in-place.
-
-Field elements for which `condition(i ,j ,k) == true` are masked with a `mask`.
+expects `reduce!` to operate in-place.
 
 Example
 =======
@@ -75,7 +73,7 @@ function compute!(field::ReducedComputedField, time=nothing)
     reduction = field.operand
     compute_at!(reduction.operand, time)
     reduction.reduce!(field, reduction.operand)
-    return nothing
+    return field
 end
 
 #####

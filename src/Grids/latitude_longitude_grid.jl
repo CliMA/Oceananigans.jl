@@ -90,7 +90,7 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
                           radius = R_Earth,
                           topology = nothing,
                           precompute_metrics = true,
-                          halo = (1, 1, 1))
+                          halo = nothing)
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.
@@ -126,7 +126,7 @@ Keyword arguments
                         on-the-fly during a simulation.
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
-          the physical interior.
+          the physical interior. The default is 3 halo cells in every direction.
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
@@ -137,7 +137,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                radius = R_Earth,
                                topology = nothing,
                                precompute_metrics = true,
-                               halo = (1, 1, 1))
+                               halo = nothing)
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
         validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
@@ -524,3 +524,37 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
+
+
+#####
+##### Get minima of grid
+#####
+
+function min_Δx(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+        return grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(min_number_or_array(grid.Δλᶜᵃᵃ))
+    end
+end
+
+function min_Δy(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.radius * deg2rad(min_number_or_array(grid.Δφᵃᶜᵃ))
+    end
+end
+
+function min_Δz(grid::LatitudeLongitudeGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return min_number_or_array(grid.Δzᵃᵃᶜ)
+    end
+end
+

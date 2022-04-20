@@ -94,8 +94,8 @@ s = sqrt(u^2 + v^2)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
                                                       schedule = TimeInterval(2),
-                                                      prefix = "two_dimensional_turbulence",
-                                                      force = true)
+                                                      filename = "two_dimensional_turbulence.jld2",
+                                                      overwrite_existing = true)
 
 # ## Running the simulation
 #

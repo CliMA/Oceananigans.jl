@@ -1,5 +1,5 @@
 using Oceananigans.Coriolis: Ω_Earth
-using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)
@@ -54,19 +54,19 @@ function instantiate_ntbetaplane_2(FT)
 end
 
 function instantiate_hydrostatic_spherical_coriolis1(FT)
-    coriolis = HydrostaticSphericalCoriolis(FT, scheme=VectorInvariantEnergyConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnergyConservingScheme())
     @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.scheme isa VectorInvariantEnergyConserving
+    @test coriolis.scheme isa EnergyConservingScheme
 
-    coriolis = HydrostaticSphericalCoriolis(FT, scheme=VectorInvariantEnstrophyConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConservingScheme())
     @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.scheme isa VectorInvariantEnstrophyConserving
+    @test coriolis.scheme isa EnstrophyConservingScheme
 end
 
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa VectorInvariantEnergyConserving # default
+    @test coriolis.scheme isa EnergyConservingScheme # default
 end
 
 @testset "Coriolis" begin

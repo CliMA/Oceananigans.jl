@@ -73,7 +73,9 @@ Taking the divergence of fractional step equation and requiring that
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^{n+1} = 0`` yields a Poisson equation 
 for the kinematic pressure ``p_{\rm{non}}`` at time-step ``n+1``:
 ```math
+    \begin{equation}
     \nabla^2 p_{\rm{non}}^{n+1} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^{\star}}{\Delta t} \, .
+    \end{equation}
 ```
 With ``\boldsymbol{v}^\star`` and ``p_{\rm{non}}`` in hand, ``\boldsymbol{v}^{n+1}`` is then 
 computed via the fractional step equation.
@@ -87,7 +89,9 @@ Tracers are stepped forward explicitly via
 ```
 where 
 ```math
+    \begin{equation}
     G_c \equiv - \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c + F_c \, ,
+    \end{equation}
 ```
 and the same forward Euler or Adams-Bashforth scheme as for the explicit evaluation of the time-integral of
 ``\boldsymbol{G}_u`` is used to evaluate the integral of ``G_c``.
