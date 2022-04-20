@@ -27,8 +27,8 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 closures_to_run = [
                    CATKEVerticalDiffusivity(),
-                   #RiBasedVerticalDiffusivity(),
-                   #convective_adjustment,
+                   RiBasedVerticalDiffusivity(),
+                   convective_adjustment,
                    ]   
 
 for closure in closures_to_run
