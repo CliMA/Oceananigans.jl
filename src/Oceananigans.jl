@@ -35,10 +35,10 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, Reduction, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, location,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask,
+    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
