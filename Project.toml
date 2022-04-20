@@ -4,6 +4,7 @@ authors = ["Climate Modeling Alliance and contributors"]
 version = "0.74.0"
 
 [deps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
