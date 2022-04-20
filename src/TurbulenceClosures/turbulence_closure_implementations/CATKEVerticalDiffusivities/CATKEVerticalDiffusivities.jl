@@ -131,9 +131,9 @@ end
 
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
-    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Face)),
+                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Face)),
+                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Face)))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
@@ -148,6 +148,9 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     return (; Kᵘ, Kᶜ, Kᵉ, Lᵉ, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
+
+@inline viscosity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
