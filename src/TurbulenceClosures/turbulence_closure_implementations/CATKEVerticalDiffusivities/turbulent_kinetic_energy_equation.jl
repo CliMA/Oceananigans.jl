@@ -16,13 +16,13 @@
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     νᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᵘ)
-    return νᶻ_ijk * (∂z_u² + ∂z_v²)
+    return νᶻ * (∂z_u² + ∂z_v²)
 end
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return - κᶻ_ijk * N²
+    return - κᶻ * N²
 end
 
 const VITD = VerticallyImplicitTimeDiscretization
