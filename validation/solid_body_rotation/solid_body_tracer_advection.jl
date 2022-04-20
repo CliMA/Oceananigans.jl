@@ -16,10 +16,11 @@
 using Oceananigans
 using Oceananigans.Grids
 
-using Oceananigans.Coriolis:
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnergyConserving,
-    VectorInvariantEnstrophyConserving
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
+
+using Oceananigans.Advection:
+    EnergyConservingScheme,
+    EnstrophyConservingScheme
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -115,7 +116,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                           schedule = TimeInterval(super_rotation_period / 20),
                                                           prefix = output_prefix,
-                                                          force = true)
+                                                          overwrite_existing = true)
 
     run!(simulation)
 

@@ -34,7 +34,7 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
 # We have no halos to fill
-fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+@inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
 architecture(a::AbstractOperation) = architecture(a.grid)
 
@@ -69,6 +69,7 @@ import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh
 @unary -
+@unary +
 
 @binary +
 @binary -
@@ -90,4 +91,3 @@ push!(operators, :*)
 push!(multiary_operators, :*)
 
 end # module
-

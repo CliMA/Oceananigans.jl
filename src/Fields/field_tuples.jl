@@ -1,10 +1,86 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
-# TODO: This code belongs in the Models module
+#####
+##### `fill_halo_regions!` for tuples of `Field`
+#####
+
+"""
+    flattened_unique_values(a::NamedTuple)
+
+Return values of the (possibly nested) `NamedTuple` `a`,
+flattened into a single tuple, with duplicate entries removed.
+"""
+@inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
+    tupled = Tuple(tuplify(ai) for ai in a)
+    flattened = flatten_tuple(tupled)
+
+    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
+    seen = []
+    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+end
+
+# Utility for extracting values from nested NamedTuples
+@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a) = a
+
+# Outer-inner form
+@inline flatten_tuple(a::Tuple) = tuple(inner_flatten_tuple(a[1])..., inner_flatten_tuple(a[2:end])...)
+@inline flatten_tuple(a::Tuple{<:Any}) = tuple(inner_flatten_tuple(a[1])...)
+
+@inline inner_flatten_tuple(a) = tuple(a)
+@inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
+@inline inner_flatten_tuple(a::Tuple{}) = ()
+
+"""
+    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
+
+Fill halo regions for all `fields`. The algorithm:
+
+    1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+       duplicate entries to avoid "repeated" halo filling.
+    
+    2. Filters fields into two categories:
+        i. ReducedFields with non-trivial boundary conditions;
+        ii. Fields with non-trivial boundary conditions.
+    
+    3. Halo regions for every `ReducedField` are filled independently.
+    
+    4. In every direction, the halo regions in each of the remaining Field tuple
+       are filled simultaneously.
+"""
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+    flattened = flattened_unique_values(maybe_nested_tuple)
+
+    # Sort fields into ReducedField and Field with non-nothing boundary conditions
+    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
+    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
+
+    # Fill halo regions for reduced fields
+    for field in reduced_fields
+        fill_halo_regions!(field, args...; kwargs...)
+    end
+
+    # Fill the rest
+    if !isempty(ordinary_fields)
+        grid = first(ordinary_fields).grid
+        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
+    end
+
+    return nothing
+end
+
+tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
+    fill_halo_regions!(data.(fields),
+                       boundary_conditions.(fields),
+                       instantiated_location.(fields),
+                       grid, args...; kwargs...)
 
 #####
 ##### Tracer names
 #####
+
+# TODO: This code belongs in the Models module
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
 has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]

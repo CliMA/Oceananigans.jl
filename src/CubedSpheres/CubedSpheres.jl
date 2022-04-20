@@ -175,7 +175,7 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
 
     wait(device(arch), MultiEvent(events))
 
-    fill_halo_regions!(comp, arch)
+    fill_halo_regions!(comp)
 
     return comp
 end

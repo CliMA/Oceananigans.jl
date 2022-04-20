@@ -255,8 +255,8 @@ T_init = file_init["T"]
 S_init = file_init["S"]
 
 set!(model, T=T_init, S=S_init)
-fill_halo_regions!(T, arch)
-fill_halo_regions!(S, arch)
+fill_halo_regions!(T)
+fill_halo_regions!(S)
 
 @info "model initialized"
 
@@ -300,50 +300,50 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T,
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               field_slicer = FieldSlicer(k=grid.Nz),
-                                                              force = true)
+                                                              overwrite_existing = true)
 
 # This is at -15 m
 simulation.output_writers[:below_surface_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_below_surface",
                                                               field_slicer = FieldSlicer(k=grid.Nz - 1),
-                                                              force = true)
+                                                              overwrite_existing = true)
 
 # This is at -861 m
 simulation.output_writers[:mid_domain_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                             schedule = TimeInterval(save_interval),
                                                             prefix = output_prefix * "_mid_domain",
                                                             field_slicer = FieldSlicer(k=18),
-                                                            force = true)
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:atlantic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                             schedule = TimeInterval(save_interval),
                                                             prefix = output_prefix * "_atlantic",
                                                             field_slicer = FieldSlicer(i=625),
-                                                            force = true)
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:pacific_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                             schedule = TimeInterval(save_interval),
                                                             prefix = output_prefix * "_pacific",
                                                             field_slicer = FieldSlicer(i=100),
-                                                            force = true)
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:equator_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                             schedule = TimeInterval(save_interval),
                                                             prefix = output_prefix * "_equator",
                                                             field_slicer = FieldSlicer(j=300),
-                                                            force = true)
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:north_tropic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
                                                             schedule = TimeInterval(save_interval),
                                                             prefix = output_prefix * "_north_tropic",
                                                             field_slicer = FieldSlicer(j=470),
-                                                            force = true)
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

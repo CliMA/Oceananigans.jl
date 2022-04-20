@@ -20,7 +20,6 @@ end
   VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
 HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
 
-
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
 """
@@ -66,8 +65,8 @@ function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F}) where {F
     return ScalarBiharmonicDiffusivity{F}(closure.ν, κ)
 end
 
-@inline viscosity(closure::ScalarBiharmonicDiffusivity, args...) = closure.ν
-@inline diffusivity(closure::ScalarBiharmonicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
+@inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
+@inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 

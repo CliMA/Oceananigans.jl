@@ -250,10 +250,13 @@ all_z_nodes(::Type{Nothing}, grid) = 1:1
     xnodes(loc, grid, reshape=false)
 
 Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the x-direction. For `Bounded` directions,
-`Face` nodes include the boundary points. `reshape=false` will
-return a 1D array while `reshape=true` will return a 3D array
-with size Nx×1×1.
+on `grid` in the ``x``-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
+
+Keyword argument
+================
+- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
+  `reshape=true` the output is a 3D array with size `Nx×1×1`.
 
 See `znodes` for examples.
 """
@@ -269,11 +272,13 @@ end
     ynodes(loc, grid, reshape=false)
 
 Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the y-direction. For `Bounded` directions,
-`Face` nodes include the boundary points. `reshape=false` will
-return a 1D array while `reshape=true` will return a 3D array
-with size 1×Ny×1.
+on `grid` in the ``y``-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
 
+Keyword argument
+================
+- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
+  `reshape=true` the output is a 3D array with size `1×Ny×1`.
 
 See [`znodes`](@ref) for examples.
 """
@@ -289,11 +294,13 @@ end
     znodes(loc, grid, reshape=false)
 
 Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the z-direction. For `Bounded` directions,
-`Face` nodes include the boundary points. `reshape=false` will
-return a 1D array while `reshape=true` will return a 3D array
-with size 1×1×Nz.
+on `grid` in the ``z``-direction. For `Bounded` directions,
+`Face` nodes include the boundary points.
 
+Keyword argument
+================
+- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
+  `reshape=true` the output is a 3D array with size `1×1×Nz`.
 
 Examples
 ========
@@ -301,7 +308,7 @@ Examples
 ```jldoctest znodes
 julia> using Oceananigans
 
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
                                                  topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Center, horz_periodic_grid)
@@ -403,9 +410,9 @@ function domain_summary(topo, name, left, right)
     topo_string = topo isa Periodic ? "Periodic " :
                                       "Bounded  "
 
-    prefix = string(topo_string, name, " ∈ [",
-                    scalar_summary(left), ", ",
-                    scalar_summary(right), interval)
+    return string(topo_string, name, " ∈ [",
+                  scalar_summary(left), ", ",
+                  scalar_summary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -418,4 +425,3 @@ coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s",
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
                                                        name, scalar_summary(minimum(parent(Δ))),
                                                        name, scalar_summary(maximum(parent(Δ))))
-

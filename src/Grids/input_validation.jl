@@ -53,7 +53,7 @@ end
 # This is easily changed but many of the tests will fail so this situation needs to be 
 # cleaned up.
 function validate_halo(TX, TY, TZ, ::Nothing)
-    halo = Tuple(1 for i = 1:topological_tuple_length(TX, TY, TZ))
+    halo = Tuple(3 for i = 1:topological_tuple_length(TX, TY, TZ))
     return validate_halo(TX, TY, TZ, halo)
 end
 

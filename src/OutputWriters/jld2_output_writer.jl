@@ -23,7 +23,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     including :: IN
     part :: Int
     max_filesize :: Float64
-    force :: Bool
+    overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
 end
@@ -31,13 +31,13 @@ end
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; prefix, schedule,
+    JLD2OutputWriter(model, outputs; filename, schedule,
                               dir = ".",
                           indices = (:, :, :),
                        with_halos = false,
                        array_type = Array{Float32},
                      max_filesize = Inf,
-                            force = false,
+               overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
                           verbose = false,
@@ -57,10 +57,10 @@ Keyword arguments
 
   ## Filenaming
 
-  - `prefix` (required): Descriptive filename prefixed to all output files.
+  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path
+                           if `filename` does not end in ".jld2".
 
-  - `dir`: Directory to save output to.
-           Default: "." (current working directory).
+  - `dir`: Directory to save output to. Default: "." (current working directory).
 
   ## Output frequency and time-averaging
 
@@ -69,7 +69,8 @@ Keyword arguments
   ## Slicing and type conversion prior to output
 
   - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
-               or `Int` elements. Defaults `(:, :, :)` or "all indices". If `!with_halos`,
+               or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
+               Defaults to `(:, :, :)` or "all indices". If `!with_halos`,
                halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
                will save xy-slices of the bottom-most index.
 
@@ -84,8 +85,8 @@ Keyword arguments
                     and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
                     Defaults to `Inf`.
 
-  - `force`: Remove existing files if their filenames conflict.
-             Default: `false`.
+  - `overwrite_existing`: Remove existing files if their filenames conflict.
+                          Default: `false`.
 
   ## Output file metadata management
 
@@ -128,7 +129,7 @@ c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_data",
+                                                          filename = "some_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
@@ -146,7 +147,7 @@ to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     prefix = "some_averaged_data",
+                                                     filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
@@ -158,33 +159,34 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 """
-function JLD2OutputWriter(model, outputs; prefix, schedule,
+function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
                             with_halos = false,
                             array_type = Array{Float32},
                           max_filesize = Inf,
-                                 force = false,
+                    overwrite_existing = false,
                                   init = noinit,
                              including = default_included_properties(model),
                                verbose = false,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
+    mkpath(dir)
+    filename = auto_extension(filename, ".jld2")
+    filepath = joinpath(dir, filename)
+    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
+    
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    mkpath(dir)
-    filepath = joinpath(dir, prefix * ".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
-
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, force, verbose, jld2_kw)
+                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -234,13 +236,13 @@ function write_output!(writer::JLD2OutputWriter, model)
 
     # Catch an error that occurs when a simulation is initialized but not time-stepped:
     if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
-        if writer.force
+        if writer.overwrite_existing
             # Re-initialize file:
             rm(writer.filepath, force=true)
             initialize_jld2_file!(writer, model)
         else
             error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
-                  re-initialized. Use `force=true` when constructing JLD2OutputWriter to
+                  re-initialized. Use `overwrite_existing=true` when constructing JLD2OutputWriter to
                   replace any existing files and avoid this error.")
         end
     end
@@ -302,13 +304,13 @@ function start_next_file(model, writer::JLD2OutputWriter)
     if writer.part == 1
         part1_path = replace(writer.filepath, r".jld2$" => "_part1.jld2")
         verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
-        mv(writer.filepath, part1_path, force=writer.force)
+        mv(writer.filepath, part1_path, force=writer.overwrite_existing)
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.jld2$" => "part" * string(writer.part) * ".jld2")
-    writer.force && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)
