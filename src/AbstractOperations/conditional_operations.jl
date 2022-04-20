@@ -57,7 +57,7 @@ julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── func: typeof(cos)
 ├── condition: typeof(f)
 └── mask: 10

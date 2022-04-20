@@ -94,20 +94,18 @@ function test_creating_and_appending(model, output_writer)
 
     simulation = Simulation(model, Δt=1, stop_iteration=5)
     output = fields(model)
-
-    # The extension for JLD2OutputWriter needs to be `.jld2`, but `NetCDFOutputWriter` takes any
-    # extension, so we use .jld2 for both here for simplicity's sake
-    filename = "test_caa.jld2"
+    filename = "test_creating_and_appending"
 
     # Create a simulation with `overwrite_existing = true` and run it
-    simulation.output_writers[:writer] = output_writer(model, output,
-                                                       filename = filename,
-                                                       schedule = IterationInterval(1),
-                                                       overwrite_existing = true, verbose=true)
+    simulation.output_writers[:writer] = writer = output_writer(model, output,
+                                                                filename = filename,
+                                                                schedule = IterationInterval(1),
+                                                                overwrite_existing = true, verbose=true)
     run!(simulation)
 
     # Test if file was crated
-    @test isfile(filename)
+    filepath = writer.filepath
+    @test isfile(filepath)
 
     # Extend simulation and run it with `overwrite_existing = false`
     simulation.stop_iteration = 10
@@ -116,16 +114,16 @@ function test_creating_and_appending(model, output_writer)
 
     # Test that length is what we expected
     if output_writer === NetCDFOutputWriter
-        ds = NCDataset(filename)
+        ds = NCDataset(filepath)
         time_length = length(ds["time"])
     elseif output_writer === JLD2OutputWriter
-        ds = jldopen(filename)
+        ds = jldopen(filepath)
         time_length = length(keys(ds["timeseries/t"]))
     end
     close(ds)
     @test time_length == 11
 
-    rm(filename)
+    rm(filepath)
 
     return nothing
 end
