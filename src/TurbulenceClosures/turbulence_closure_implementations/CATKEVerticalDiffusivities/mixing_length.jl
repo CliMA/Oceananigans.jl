@@ -145,7 +145,7 @@ end
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
     # Strictly positive TKE
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, tracers.e)
     
     # "Sheared convection number"
     α = S * Qᵇ / e⁺
