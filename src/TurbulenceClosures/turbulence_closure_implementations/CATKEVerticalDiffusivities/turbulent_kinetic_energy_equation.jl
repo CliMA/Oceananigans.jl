@@ -15,14 +15,12 @@
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    νᶻ = diffusivities.Kᵘ
-    νᶻ_ijk = @inbounds νᶻ[i, j, k]
+    νᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᵘ)
     return νᶻ_ijk * (∂z_u² + ∂z_v²)
 end
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    κᶻ = diffusivities.Kᶜ
-    κᶻ_ijk = @inbounds κᶻ[i, j, k]
+    κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶻ_ijk * N²
 end
@@ -36,7 +34,7 @@ const VITD = VerticallyImplicitTimeDiscretization
     FT = eltype(grid)
     @inbounds e⁺ = abs(e[i, j, k])
 
-    ℓ = TKE_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓ = ℑzᵃᵃᶜ(i, j, k, grid, TKE_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
     Cᴰ = closure.Cᴰ
 
     # Note:
