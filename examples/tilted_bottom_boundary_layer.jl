@@ -176,7 +176,7 @@ total_v = v + V∞
 
 outputs = (; u, total_v, w, total_b, ω_y)
 
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs, 
+simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
                                                         filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
                                                         schedule = TimeInterval(20minutes),
                                                         overwrite_existing = true)
