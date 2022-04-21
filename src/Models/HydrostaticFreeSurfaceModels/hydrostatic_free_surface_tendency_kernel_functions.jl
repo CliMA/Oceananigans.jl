@@ -63,7 +63,7 @@ implicitly during time-stepping.
                                                               advection,
                                                               coriolis,
                                                               closure,
-                                                              u_immersed_bc,
+                                                              v_immersed_bc,
                                                               velocities,
                                                               free_surface,
                                                               tracers,
