@@ -1,8 +1,9 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Architectures: device
-using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂yᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
+using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
@@ -17,6 +18,14 @@ struct ImplicitFreeSurface{E, G, B, I, M, S}
     solver_method :: M
     solver_settings :: S
 end
+
+Base.show(io::IO, fs::ImplicitFreeSurface) =
+    print(io, "ImplicitFreeSurface with ", fs.solver_method, '\n',
+              "├─ grid: ", summary(fs.η.grid), '\n',
+              "├─ η: ", summary(fs.η), '\n',
+              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), '\n',
+              "├─ implicit_step_solver: ", nameof(typeof(fs.implicit_step_solver)), '\n', # TODO: implement summary for solvers
+              "└─ settings: ", fs.solver_settings)
 
 """
     ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
@@ -59,10 +68,12 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
     barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
-    solver_method = free_surface.solver_method
-    solver = build_implicit_step_solver(Val(solver_method), grid, gravitational_acceleration, free_surface.solver_settings)
+    user_solver_method = free_surface.solver_method # could be = :Default
+    solver = build_implicit_step_solver(Val(user_solver_method), grid, free_surface.solver_settings, gravitational_acceleration)
+    solver_method = nameof(typeof(solver))
 
-    return ImplicitFreeSurface(η, gravitational_acceleration,
+    return ImplicitFreeSurface(η,
+                               gravitational_acceleration,
                                barotropic_volume_flux,
                                solver,
                                solver_method,
@@ -72,9 +83,9 @@ end
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
-function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
-    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
+function build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration)
+    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :HeptadiagonalIterativeSolver
+    return build_implicit_step_solver(Val(default_method), grid, settings, gravitational_acceleration)
 end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -114,7 +125,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
-    fill_halo_regions!(η, arch)
+    fill_halo_regions!(η)
     
     return NoneEvent()
 end

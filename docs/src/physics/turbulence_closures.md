@@ -25,9 +25,9 @@ Each tracer may have a unique diffusivity ``\kappa``.
 
 ## Constant anisotropic diffusivity
 
-In Oceananigans.jl, a constant anisotropic diffusivity implies a constant tensor
+A constant anisotropic diffusivity implies a constant tensor
 diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
@@ -38,15 +38,16 @@ and diffusive flux divergence
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
                                     + \kappa_{v} \partial_z^2 \right ] c \, ,
 ```
-in terms of the horizontal viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_v``.
 
-## Constant anisotropic biharmonic diffusivity
+## Scalar biharmonic diffusivity
 
-In Oceananigans.jl, a constant anisotropic biharmonic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+A constant biharmonic diffusivity implies a constant tensor diffusivity ``\nu_{j k}`` and
+stress``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero components
+``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
+
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
@@ -57,16 +58,16 @@ and diffusive flux divergence
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
                                     + \kappa_{v} \partial_z^4 \right ] c \, ,
 ```
-in terms of the horizontal biharmonic viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical biharmonic viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal biharmonic viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical biharmonic viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_z``.
 
 ## Smagorinsky-Lilly turbulence closure
 
 In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
-\tau_{ij} = \nu_e \Sigma_{ij} \, ,
+\tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
 ```
 where ``\Sigma_{ij} = \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the resolved
 strain rate.
@@ -97,7 +98,7 @@ where ``\Delta x``, ``\Delta y``, and ``\Delta z`` are the grid spacing in the
 
 The effect of subgrid turbulence on tracer mixing is also modeled diffusively via
 ```math
-\boldsymbol{q}_c = \kappa_e \boldsymbol{\nabla} c \, ,
+\boldsymbol{q}_c = - \kappa_e \boldsymbol{\nabla} c \, ,
 ```
 where the eddy diffusivity ``\kappa_e`` is
 ```math
@@ -108,12 +109,11 @@ Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
 
-Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by
-[Verstappen18](@cite) and described and tested by [Vreugdenhil18](@cite).
-The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
-In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms
-of eddy viscosity and diffusivity *predictors*
-``\nu_e^\dagger`` and ``\kappa_e^\dagger``, such that
+The anisotropic minimum dissipation (AMD) model proposed by [Verstappen18](@cite) and was
+described and tested by [Vreugdenhil18](@cite). The AMD model uses an eddy diffusivity hypothesis
+similar the Smagorinsky-Lilly model. In the AMD model, the eddy viscosity and diffusivity for each
+tracer are defined in terms of eddy viscosity and diffusivity *predictors* ``\nu_e^\dagger`` and ``\kappa_e^\dagger``,
+such that
 ```math
     \nu_e = \max \left ( 0, \nu_e^\dagger \right ) + \nu
     \quad \text{and} \quad
@@ -124,7 +124,7 @@ constant isotropic background viscosity and diffusivities for each tracer. The e
 predictor is
 ```math
     \begin{equation}
-    \nu_e^\dagger = -C \Delta_f^2
+    \nu_e^\dagger = C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
@@ -136,7 +136,7 @@ while the eddy diffusivity predictor for tracer ``c`` is
 ```math
     \begin{equation}
     \label{eq:kappa-dagger}
-    \kappa_e^\dagger = -C \Delta_f^2
+    \kappa_e^\dagger = C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
         {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
@@ -173,5 +173,8 @@ By default we use the model constants ``C=1/12`` and ``C_b=0``.
 ## Convective adjustment vertical diffusivity
 
 This closure aims to model the enhanced mixing that occurs due to convection.
-At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid is gravitationally neutral or stable with `∂z(b) >= 0`, or (ii) `convective_νz` and `convective_κz` if `∂z(b) >= 0`.
+At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and
+applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid
+is gravitationally neutral or stable with ``∂b/∂z ≥ 0``, or (ii) `convective_νz` and `convective_κz` if ``∂b/∂z < 0``.
+
 This closure is a plausible model for convection if `convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.

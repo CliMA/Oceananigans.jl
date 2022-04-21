@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Γᶠᶠᵃ, ζ₃ᶠᶠᵃ
+using Oceananigans.Operators: Γᶠᶠᶜ, ζ₃ᶠᶠᶜ
 
 function diagnose_velocities_from_streamfunction(ψ, arch, grid)
     ψᶠᶠᶜ = Field{Face, Face,   Center}(grid)
@@ -57,8 +57,8 @@ for arch in archs
         u_faces = [get_face(u_field, f) for f in 1:Nf]
         v_faces = [get_face(v_field, f) for f in 1:Nf]
 
-        circulation(i, j, f) = Γᶠᶠᵃ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
-        vorticity(i, j, f) = ζ₃ᶠᶠᵃ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
+        circulation(i, j, f) = Γᶠᶠᶜ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
+        vorticity(i, j, f) = ζ₃ᶠᶠᶜ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
 
         CUDA.allowscalar(true)
 

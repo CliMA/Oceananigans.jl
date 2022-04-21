@@ -84,17 +84,19 @@ function Simulation(model; Δt,
                      false)
 end
 
-Base.show(io::IO, s::Simulation) =
-    print(io, "Simulation{$(typeof(s.model).name){$(Base.typename(typeof(s.model.architecture))), $(eltype(s.model.grid))}}\n",
-              "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration)", '\n',
-              "├── Next time step: $(prettytime(s.Δt))", '\n',
-              "├── Elapsed wall time: $(prettytime(s.run_wall_time))", '\n',
-              "├── Stop time: $(prettytime(s.stop_time))", '\n',
-              "├── Stop iteration : $(s.stop_iteration)", '\n',
-              "├── Wall time limit: $(s.wall_time_limit)", '\n',
-              "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n',
-              "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", '\n',
-              "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+function Base.show(io::IO, s::Simulation)
+    modelstr = summary(s.model)
+    return print(io, "Simulation of ", modelstr, '\n',
+                     "├── Next time step: $(prettytime(s.Δt))", '\n',
+                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", '\n',
+                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+                     "├── Stop time: $(prettytime(s.stop_time))", '\n',
+                     "├── Stop iteration : $(s.stop_iteration)", '\n',
+                     "├── Wall time limit: $(s.wall_time_limit)", '\n',
+                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n',
+                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", '\n',
+                     "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+end
 
 #####
 ##### Utilities
@@ -119,7 +121,7 @@ iteration(sim::Simulation) = sim.model.clock.iteration
 
 Return `sim.model.clock.time` as a prettily formatted string."
 """
-prettytime(sim::Simulation) = prettytime(time(sim))
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim))
 
 """
     run_wall_time(sim::Simulation)
@@ -140,6 +142,7 @@ function reset!(sim::Simulation)
     sim.stop_iteration = Inf
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
+    sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true
     reset!(sim.model.timestepper)

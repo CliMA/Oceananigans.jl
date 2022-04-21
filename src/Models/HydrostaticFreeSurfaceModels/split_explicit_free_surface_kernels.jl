@@ -14,14 +14,14 @@ using Oceananigans.Operators
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᵃ(i, j, 1, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᵃ(i, j, 1, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶜ(i, j, 1, grid, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶜ(i, j, 1, grid, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
     i, j = @index(Global, NTuple)
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᵃ(i, j, 1, grid, U, V)
+    @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᶜ(i, j, 1, grid, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1] +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1] +=  velocity_weight * V[i, j, 1]
@@ -36,7 +36,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     vel_weight = settings.velocity_weights[substep_index]
     η_weight   = settings.free_surface_weights[substep_index]
 
-    fill_halo_regions!(η, arch)
+    fill_halo_regions!(η)
 
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
@@ -45,8 +45,8 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     wait(device(arch), event)
 
     # U, V has been updated thus need to refill halo
-    fill_halo_regions!(U, arch)
-    fill_halo_regions!(V, arch)
+    fill_halo_regions!(U)
+    fill_halo_regions!(V)
 
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
             grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight,
@@ -78,8 +78,8 @@ function barotropic_mode!(U, V, grid, u, v)
     sum!(V, v * Δz)
 
     arch = architecture(grid)
-    fill_halo_regions!(U, arch)
-    fill_halo_regions!(V, arch)
+    fill_halo_regions!(U)
+    fill_halo_regions!(V)
 end
 
 function set_average_to_zero!(free_surface_state)
@@ -168,7 +168,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
-    fill_halo_regions!(η, arch)
+    fill_halo_regions!(η)
 
     return NoneEvent()
 end

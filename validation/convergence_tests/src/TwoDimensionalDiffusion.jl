@@ -36,7 +36,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     closure = IsotropicDiffusivity(κ=1))
+                                     closure = ScalarDiffusivity(κ=1))
 
     set!(model, c = (x, y, z) -> c(x, y, 0))
 
@@ -44,7 +44,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     if output
         simulation.output_writers[:fields] =
-            JLD2OutputWriter(model, model.tracers; dir = dir, force = true, field_slicer = nothing,
+            JLD2OutputWriter(model, model.tracers; dir = dir, overwrite_existing = true, field_slicer = nothing,
                              prefix = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
                              schedule = TimeInterval(stop_iteration * Δt / 10))
     end

@@ -1,11 +1,7 @@
 module ImmersedBoundaries
 
-export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom, 
-       solid_node, solid_interface, is_immersed_boundary,
-       is_x_immersed_boundary⁺, is_x_immersed_boundary⁻,
-       is_y_immersed_boundary⁺, is_y_immersed_boundary⁻,
-       is_z_immersed_boundary⁺, is_z_immersed_boundary⁻
-
+export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom
+       
 using Adapt
 
 using Oceananigans.Grids
@@ -41,7 +37,8 @@ using Oceananigans.Advection:
     advective_momentum_flux_Ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
-    advective_tracer_flux_z
+    advective_tracer_flux_z,
+    WENOVectorInvariant
 
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
@@ -87,7 +84,7 @@ import Oceananigans.TurbulenceClosures:
 export AbstractImmersedBoundary
 
 """
-AbstractImmersedBoundary
+    abstract type AbstractImmersedBoundary
 
 Abstract supertype for immersed boundary grids.
 """
@@ -104,15 +101,6 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, 
         Arch = typeof(arch)
         return new{FT, TX, TY, TZ, G, I, Arch}(arch, grid, ib)
     end
-end
-
-function ImmersedBoundaryGrid(grid, ib)
-    @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-          "Help validate ImmersedBoundaryGrid by reporting any bugs " *
-          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues."
-    
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -162,23 +150,22 @@ all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
 function on_architecture(arch, ibg::ImmersedBoundaryGrid)
-    underlying_grid = on_architecture(arch, ibg.grid)
-
-    immersed_boundary = ibg.immersed_boundary isa AbstractArray ?
-        arch_array(arch, ibg.immersed_boundary) :
-        ibg.immersed_boundary
-
+    underlying_grid   = on_architecture(arch, ibg.grid)
+    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
+
+isrectilinear(ibg::ImmersedBoundaryGrid) = isrectilinear(ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
+include("conditional_derivatives.jl")
 include("mask_immersed_field.jl")
-include("immersed_fields_reductions.jl")
+include("immersed_reductions.jl")
 
 #####
-##### Diffusivities (for VerticallyImplicitTimeDiscretization)
+##### Diffusivities (for VerticallyImplicit)
 ##### (the diffusivities on the immersed boundaries are kept)
 #####
 

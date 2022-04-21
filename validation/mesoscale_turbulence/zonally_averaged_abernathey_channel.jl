@@ -8,6 +8,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 #####
 ##### Grid
@@ -113,7 +114,7 @@ const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures
 using Oceananigans.Fields: TracerFields, FunctionField
 
 tracers = TracerFields(tuple(:b), architecture, grid)
@@ -133,9 +134,12 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
 ν = Field(ν_op)
 
-closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
-                                 time_discretization = VerticallyImplicitTimeDiscretization())
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+
+closure = (horizontal_closure, vertical_closure)
+                                       
 model = NonhydrostaticModel(architecture,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
@@ -255,13 +259,13 @@ outputs = merge(model.velocities, model.tracers)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(10day),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 try
     run!(simulation, pickup=false)

@@ -13,11 +13,11 @@ function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
     velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
     wait(device(model.architecture), MultiEvent(velocity_masking_events))
 
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
 
-    fill_halo_regions!(model.pressures.pNHS, model.architecture)
+    fill_halo_regions!(model.pressures.pNHS)
 
     return nothing
 end
@@ -34,9 +34,9 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 @kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᵃ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᵃ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.w[i, j, k] -= ∂zᵃᵃᶠ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHS) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."

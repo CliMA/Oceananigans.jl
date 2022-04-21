@@ -36,9 +36,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             # now set equal to zero
             set_average_to_zero!(sefs.state)
             # don't forget the ghost points
-            fill_halo_regions!(η̅, arch)
-            fill_halo_regions!(U̅, arch)
-            fill_halo_regions!(V̅, arch)
+            fill_halo_regions!(η̅)
+            fill_halo_regions!(U̅)
+            fill_halo_regions!(V̅)
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
             @test all(Array(U̅.data.parent .== 0.0))

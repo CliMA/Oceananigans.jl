@@ -3,7 +3,8 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Fields: FieldStatus, reduced_dimensions
+using Oceananigans.Grids: default_indices
+using Oceananigans.Fields: FieldStatus, reduced_dimensions, validate_indices
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -32,19 +33,22 @@ recompute_safely (Bool): whether or not to _always_ "recompute" `f` if `f` is
 """
 function Field(operand::AbstractOperation;
                data = nothing,
+               indices = default_indices(3),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
                recompute_safely = true)
 
     grid = operand.grid
+    loc = location(operand)
+    indices = validate_indices(indices, loc, grid)
 
     if isnothing(data)
-        data = new_data(grid, location(operand))
+        data = new_data(grid, loc, indices)
         recompute_safely = false
     end
 
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(location(operand), grid, data, boundary_conditions, operand, status)
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
 """
@@ -57,22 +61,24 @@ function compute!(comp::ComputedField, time=nothing)
     compute_at!(comp.operand, time)
 
     arch = architecture(comp)
-    
-    event = launch!(arch, comp.grid, :xyz, _compute!, comp.data, comp.operand;
-                    include_right_boundaries = true,
-                    location = location(comp),
-                    reduced_dimensions = reduced_dimensions(comp))
-
+    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
     wait(device(arch), event)
 
-    fill_halo_regions!(comp, arch)
+    fill_halo_regions!(comp)
 
     return comp
 end
 
-"""Compute an `operand` and store in `data`."""
-@kernel function _compute!(data, operand)
-    i, j, k = @index(Global, NTuple)
-    @inbounds data[i, j, k] = operand[i, j, k]
-end
+@inline offset_compute_index(::Colon, i) = i
+@inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
 
+"""Compute an `operand` and store in `data`."""
+@kernel function _compute!(data, operand, index_ranges)
+    i, j, k = @index(Global, NTuple)
+
+    i′ = offset_compute_index(index_ranges[1], i)
+    j′ = offset_compute_index(index_ranges[2], j)
+    k′ = offset_compute_index(index_ranges[3], k)
+
+    @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
+end

@@ -3,7 +3,7 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractTurbulenceClosure{TD}
+struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     convective_κz :: CK
     convective_νz :: CN
     background_κz :: BK
@@ -17,17 +17,24 @@ struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractTu
         return new{TD, CK, CN, BK, BN}(convective_κz, convective_νz, background_κz, background_νz)
     end
 end
-                                       
+
 """
-    ConvectiveAdjustmentVerticalDiffusivity([FT=Float64;]
+    ConvectiveAdjustmentVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                             convective_κz = 0,
                                             convective_νz = 0,
                                             background_κz = 0,
-                                            background_νz = 0,
-                                            time_discretization = VerticallyImplicitTimeDiscretization())
+                                            background_νz = 0)
 
-The one positional argument determines the floating point type of the free parameters
-of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
+Return a convective adjustment vertical diffusivity closure that applies different values of diffusivity and/or viscosity depending
+whether the region is statically stable (positive or zero buoyancy gradient) or statically unstable (negative buoyancy gradient).
+
+Arguments
+=========
+
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`;
+                         default `VerticallyImplicitTimeDiscretization()`.
+
+* `FT`: Float type; default `Float64`.
 
 Keyword arguments
 =================
@@ -42,18 +49,27 @@ Keyword arguments
 
 * `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
-* `time_discretization`: Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> cavd = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1)
+ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.0 convective_κz=1 background_νz=0.0 convective_νz=0.0)
+```
 """
-function ConvectiveAdjustmentVerticalDiffusivity(FT = Float64;
+function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
-                                                 background_νz = zero(FT),
-                                                 time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
+                                                 background_νz = zero(FT))
 
-    return ConvectiveAdjustmentVerticalDiffusivity{TD}(convective_κz, convective_νz,
-                                                       background_κz, background_νz)
+    return ConvectiveAdjustmentVerticalDiffusivity{typeof(time_discretization)}(convective_κz, convective_νz,
+                                                                                background_κz, background_νz)
 end
+
+ConvectiveAdjustmentVerticalDiffusivity(FT::DataType; kwargs...) = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kwargs...)
 
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
@@ -63,29 +79,16 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
 # Support for "ManyIndependentColumnMode"
 const CAVDArray = AbstractArray{<:CAVD}
+const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
-with_tracers(tracers, closure::CAVD{TD}) where TD =
-    ConvectiveAdjustmentVerticalDiffusivity{TD}(closure.convective_κz,
-                                                closure.convective_νz,
-                                                closure.background_κz,
-                                                closure.background_νz)
+with_tracers(tracers, closure::FlavorOfCAVD) = closure
+DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
+@inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
+@inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
+@inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
 
-function with_tracers(tracers, closure_array::CAVDArray)
-    arch = architecture(closure_array)
-    Ex, Ey = size(closure_array)
-    return arch_array(arch, [with_tracers(tracers, closure_array[i, j]) for i=1:Ex, j=1:Ey])
-end
-
-# Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
-    ## If we can get away with only precomputing the "stability" of a cell:
-    # data = new_data(Bool, arch, grid, (Center, Center, Center))
-    κ = CenterField(grid)
-    ν = CenterField(grid)
-    return (; κ, ν)
-end       
-
-function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
 
     arch = model.architecture
     grid = model.grid
@@ -109,10 +112,9 @@ end
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
-    closure_ij = get_closure_ij(i, j, closure)
+    closure_ij = getclosure(i, j, closure)
 
-    stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) & 
-                  is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 
     @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
                                                 closure_ij.background_κz,
@@ -132,93 +134,14 @@ end
 =#
 
 #####
-##### Fluxes
-#####
-
-const VITD = VerticallyImplicitTimeDiscretization
-const ATD = AbstractTimeDiscretization
-
-@inline viscous_flux_ux(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-
-@inline diffusive_flux_x(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
-
-@inline viscous_flux_ux(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-
-@inline diffusive_flux_x(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-
-#####
-##### Diffusivity
-#####
-
-const etd = ExplicitTimeDiscretization()
-
-@inline z_boundary_adj(k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}) = k == 1 | k == grid.Nz+1
-@inline z_boundary_adj(k, grid) = false
-
-@inline z_diffusivity(closure::Union{CAVD, CAVDArray}, c_idx, diffusivities, args...) = diffusivities.κ
-
-@inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, args...)
-    κ = κᶜᶜᶠ(i, j, k, grid, clock, diffusivities.κ)
-    return - κ * ∂zᵃᵃᶠ(i, j, k, grid, c)
-end
-
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
-    explicit_flux_z = diffusive_flux_z(i, j, k, grid, etd, closure, args...)
-    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
-end
- 
-#####
-##### Viscosity
-#####
-
-@inline z_viscosity(closure::Union{CAVD, CAVDArray}, diffusivities, args...) = diffusivities.ν
-
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
-    explicit_flux_z = viscous_flux_uz(i, j, k, grid, etd, closure, args...)
-    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
-end
-
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
-    explicit_flux_z = viscous_flux_vz(i, j, k, grid, etd, closure, args...)
-    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
-end
-
-@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
-    explicit_flux_z = viscous_flux_wz(i, j, k, grid, etd, closure, args...)
-    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
-end
-
-@inline function viscous_flux_uz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
-    ν = νᶠᶜᶠ(i, j, k, grid, clock, diffusivities.ν)
-    return - ν * ∂zᶠᶜᶠ(i, j, k, grid, velocities.u)
-end
-
-@inline function viscous_flux_vz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
-    ν = νᶜᶠᶠ(i, j, k, grid, clock, diffusivities.ν)
-    return - ν * ∂zᶜᶠᶠ(i, j, k, grid, velocities.v)
-end
-
-@inline function viscous_flux_wz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
-    ν = νᶜᶜᶜ(i, j, k, grid, clock, diffusivities.ν)
-    return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
-end
-
-#####
 ##### Show
 #####
-Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) =
-    print(io, "ConvectiveAdjustmentVerticalDiffusivity: " *
-              "(background_κz=$(closure.background_κz), convective_κz=$(closure.convective_κz), " *
-              "background_νz=$(closure.background_νz), convective_νz=$(closure.convective_νz)" * ")")
+
+function Base.summary(closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) where TD
+    return string("ConvectiveAdjustmentVerticalDiffusivity{$TD}" *
+        "(background_κz=", prettysummary(closure.background_κz), " convective_κz=", prettysummary(closure.convective_κz),
+        " background_νz=", prettysummary(closure.background_νz), " convective_νz=", prettysummary(closure.convective_νz), ")")
+end
+
+Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) = print(io, summary(closure))
+

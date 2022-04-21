@@ -1,16 +1,15 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
-using Oceananigans.Fields: interior_copy
-using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
+using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
 function calc_∇²!(∇²ϕ, ϕ, grid)
     arch = architecture(grid)
-    fill_halo_regions!(ϕ, arch)
+    fill_halo_regions!(ϕ)
     event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     wait(event)
-    fill_halo_regions!(∇²ϕ, arch)
+    fill_halo_regions!(∇²ϕ)
     return nothing
 end
 
@@ -80,7 +79,7 @@ function run_poisson_equation_test(grid)
     # Initialize zero-mean "truth" solution with random numbers
     set!(ϕ_truth, (x, y, z) -> rand())
     parent(ϕ_truth) .-= mean(ϕ_truth)
-    fill_halo_regions!(ϕ_truth, arch)
+    fill_halo_regions!(ϕ_truth)
 
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
@@ -88,7 +87,8 @@ function run_poisson_equation_test(grid)
     
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
-    rhs = interior_copy(rhs)[:]
+    rhs = copy(interior(rhs))
+    rhs = reshape(rhs, length(rhs))
     weights = compute_poisson_weights(grid)
     solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 

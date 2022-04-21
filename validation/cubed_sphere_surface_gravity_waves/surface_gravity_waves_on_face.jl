@@ -37,8 +37,8 @@ const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
-constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
+variable_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
+constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh₀)
 
 ## Model setup
 
@@ -111,7 +111,7 @@ output_prefix = grid isa LatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1hour),
                                                       prefix = output_prefix,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

@@ -8,8 +8,8 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 @inline half_g_h²(i, j, k, grid, h, g) = @inbounds 1/2 * g * h[i, j, k]^2
 
-@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂xᶠᶜᵃ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
-@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂yᶜᶠᵃ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
 
 """
 Compute the tendency for the x-directional transport, uh

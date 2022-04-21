@@ -45,7 +45,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     run!(ensemble_simulation)
 
     for i = 1:2, j = 1:2 
-        @info "Testing IsotropicDiffusivity ensemble member ($i, $j)..."
+        @info "Testing ScalarDiffusivity ensemble member ($i, $j)..."
         @test parent(ensemble_model.tracers.c)[i, j, :] == parent(models[i, j].tracers.c)[1, 1, :]
     end 
 
@@ -56,9 +56,6 @@ end
     Nz = 2 
     Hz = 1 
     grid = RectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
-
-    #coriolises = [FPlane(f=0.0) FPlane(f=0.5)
-    #              FPlane(f=1.0) FPlane(f=1.1)]
 
     coriolises = [FPlane(f=1.0) FPlane(f=1.0)
                   FPlane(f=1.0) FPlane(f=1.1)]

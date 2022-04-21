@@ -12,32 +12,49 @@
 # Unlike the above, this fallback for dissipation is generically correct (we only want to compute dissipation once)
 @inline dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs) = zero(eltype(grid))
 
-@inline function shear_production(i, j, k, grid, closure::Union{CATKEVD, CATKEVDArray}, velocities, diffusivities)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.v)
+@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
+    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     νᶻ = diffusivities.Kᵘ
     νᶻ_ijk = @inbounds νᶻ[i, j, k]
     return νᶻ_ijk * (∂z_u² + ∂z_v²)
 end
 
-@inline function buoyancy_flux(i, j, k, grid, closure::Union{CATKEVD, CATKEVDArray}, velocities, tracers, buoyancy, diffusivities)
+@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
     κᶻ = diffusivities.Kᶜ
     κᶻ_ijk = @inbounds κᶻ[i, j, k]
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶻ_ijk * N²
 end
 
-@inline function dissipation(i, j, k, grid, closure::Union{CATKEVD, CATKEVDArray}, velocities, tracers, buoyancy, clock, tracer_bcs)
+const VITD = VerticallyImplicitTimeDiscretization
+
+@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
+
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
-    @inbounds eⁱʲᵏ = e[i, j, k]
-    ẽ³² = sqrt(abs(eⁱʲᵏ^3))
+    @inbounds e⁺ = abs(e[i, j, k])
 
     ℓ = TKE_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
     Cᴰ = closure.Cᴰ
 
-    return Cᴰ * ẽ³² / ℓ
+    # Note:
+    #   * because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
+    #
+    #   * then      L e = - ϵ
+    #                   = - Cᴰ e³² / ℓ
+    #
+    #   * and thus    L = - Cᴰ √e / ℓ
+    
+    return - Cᴰ * sqrt(e⁺) / ℓ
 end
+
+# Fallbacks for explicit time discretization
+@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...) =
+    @inbounds - tracers.e[i, j, k] * implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...)
+
+@inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(eltype(grid))
 
 #####
 ##### For closure tuples...

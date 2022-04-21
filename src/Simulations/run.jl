@@ -24,7 +24,6 @@ end
 
 function schedule_aligned_Δt(sim, aligned_Δt)
     clock = sim.model.clock
-
     activities = collect_scheduled_activities(sim)
 
     for activity in activities
@@ -121,6 +120,7 @@ function time_step!(sim::Simulation)
         else
             @warn "Simulation stopped during initialization."
         end
+
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
         time_step!(sim.model, Δt)
@@ -162,7 +162,6 @@ Initialize a simulation:
 - Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
-
 """
 function initialize_simulation!(sim)
     @info "Initializing simulation..."
@@ -179,9 +178,22 @@ function initialize_simulation!(sim)
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
         reset!(sim.model.timestepper)
-        [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
-        [callback(sim)                for callback in values(sim.callbacks)]
-        [write_output!(writer, model) for writer in values(sim.output_writers)]
+
+        # Initialize schedules and run diagnostics, callbacks, and output writers
+        for diag in values(sim.diagnostics)
+            diag.schedule(sim.model)
+            run_diagnostic!(diag, model)
+        end
+
+        for callback in values(sim.callbacks)
+            callback.schedule(model)
+            callback(sim)
+        end
+
+        for writer in values(sim.output_writers)
+            writer.schedule(sim.model)
+            write_output!(writer, model)
+        end
     end
 
     sim.initialized = true

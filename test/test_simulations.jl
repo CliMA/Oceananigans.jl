@@ -8,9 +8,10 @@ using Dates: DateTime
 
 function wall_time_step_wizard_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    Δx = grid.Δxᶜᵃᵃ
+
     model = NonhydrostaticModel(grid=grid)
 
-    Δx = grid.Δxᶜᵃᵃ
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
@@ -37,6 +38,15 @@ function wall_time_step_wizard_tests(arch)
     wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0, max_Δt=3.99)
     Δt = new_time_step(Δt, wizard, model)
     @test Δt ≈ 3.99
+
+
+    model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1))
+    diff_CFL = 0.45
+
+    wizard = TimeStepWizard(cfl=Inf, diffusive_cfl=diff_CFL, max_change=Inf, min_change=0)
+    Δt = new_time_step(Δt, wizard, model)
+    @test Δt ≈ diff_CFL * Δx^2 / model.closure.ν
+
 
     grid_stretched = RectilinearGrid(arch, 
                                     size = (1, 1, 1),
