@@ -1,11 +1,11 @@
 # Defining all the First order derivatives for the immersed boundaries
 
-@inline conditional_x_derivative_f(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(c, LY, LZ, i, j, k, ibg) | exterior_node(c, LY, LZ, i-1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_x_derivative_c(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(f, LY, LZ, i, j, k, ibg) | exterior_node(f, LY, LZ, i+1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_y_derivative_f(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(LX, c, LZ, i, j, k, ibg) | exterior_node(LX, c, LZ, i, j-1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_y_derivative_c(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(LX, f, LZ, i, j, k, ibg) | exterior_node(LX, f, LZ, i, j+1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_z_derivative_f(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(LX, LY, c, i, j, k, ibg) | exterior_node(LX, LY, c, i, j, k-1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_z_derivative_c(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(exterior_node(LX, LY, f, i, j, k, ibg) | exterior_node(LX, LY, f, i, j, k+1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_x_derivative_f(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(c, LY, LZ, i, j, k, ibg) | inactive_node(c, LY, LZ, i-1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_x_derivative_c(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(f, LY, LZ, i, j, k, ibg) | inactive_node(f, LY, LZ, i+1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_y_derivative_f(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, c, LZ, i, j, k, ibg) | inactive_node(LX, c, LZ, i, j-1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_y_derivative_c(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, f, LZ, i, j, k, ibg) | inactive_node(LX, f, LZ, i, j+1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_z_derivative_f(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, LY, c, i, j, k, ibg) | inactive_node(LX, LY, c, i, j, k-1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_z_derivative_c(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, LY, f, i, j, k, ibg) | inactive_node(LX, LY, f, i, j, k+1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
 
 ∂xᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, c, i, j, k, ibg, ∂xᶠᶜᶜ, args...)
 ∂xᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ, args...)

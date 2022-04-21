@@ -10,7 +10,7 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, exterior_node, peripheral_node
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -45,7 +45,7 @@ import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
-import Oceananigans.Grids: exterior_cell
+import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
@@ -156,7 +156,7 @@ is not part of the prognostic state.
     immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
 
 """
-    exterior_cell(i, j, k, ibg::IBG)
+    inactive_cell(i, j, k, ibg::IBG)
 
 Return true if a cell is either immersed or outside the `Bounded` domain.
         
@@ -182,15 +182,15 @@ i-1          i
 
 We then have
 
-    * `exterior_node(f, c, c, i, 1, 1, grid) = false`
+    * `inactive_node(f, c, c, i, 1, 1, grid) = false`
 
 As well as
 
-    * `exterior_node(c, c, c, i,   1, 1, grid) = false`
-    * `exterior_node(c, c, c, i-1, 1, 1, grid) = true`
-    * `exterior_node(f, c, c, i-1, 1, 1, grid) = true`
+    * `inactive_node(c, c, c, i,   1, 1, grid) = false`
+    * `inactive_node(c, c, c, i-1, 1, 1, grid) = true`
+    * `inactive_node(f, c, c, i-1, 1, 1, grid) = true`
 """
-@inline exterior_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | exterior_cell(i, j, k, ibg.underlying_grid)
+@inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 
 # Isolate periphery of the immersed boundary
 @inline immersed_peripheral_node(LX, LY, LZ, i, j, k, ibg::IBG) =  peripheral_node(LX, LY, LZ, i, j, k, ibg) &
@@ -243,7 +243,7 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(exterior_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
     end
 end
 

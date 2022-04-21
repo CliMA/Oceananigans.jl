@@ -241,8 +241,8 @@ function immersed_flux_x(i, j, k, ibg, bc, loc, c, closure, K, id, args...)
     qᴱ = east_ib_flux(i, j, k, ibg, bc.east, loc, c, closure, K, id, args...)
 
     LX, LY, LZ = loc
-    west_boundary = immersed_peripheral_node(flip(LX), LY, LZ, i, j, k, ibg) & !exterior_node(LX, LY, LZ, i, j, k, ibg)
-    east_boundary = immersed_peripheral_node(flip(LX), LY, LZ, i, j, k, ibg) & !exterior_node(LX, LY, LZ, i-1, j, k, ibg)
+    west_boundary = immersed_peripheral_node(flip(LX), LY, LZ, i, j, k, ibg) & !inactive_node(LX, LY, LZ, i, j, k, ibg)
+    east_boundary = immersed_peripheral_node(flip(LX), LY, LZ, i, j, k, ibg) & !inactive_node(LX, LY, LZ, i-1, j, k, ibg)
 
     return ifelse(west_boundary, qᵂ, zero(ibg)) + ifelse(east_boundary, qᴱ, zero(ibg))
 end
@@ -252,8 +252,8 @@ function immersed_flux_y(i, j, k, ibg, bc, loc, c, closure, K, id, args...)
     qᴺ = north_ib_flux(i, j, k, ibg, bc.north, loc, c, closure, K, id, args...)
 
     LX, LY, LZ = loc
-    south_boundary = immersed_peripheral_node(LX, flip(LY), LZ, i, j, k, ibg) & !exterior_node(LX, LY, LZ, i, j, k, ibg)
-    north_boundary = immersed_peripheral_node(LX, flip(LY), LZ, i, j, k, ibg) & !exterior_node(LX, LY, LZ, i, j-1, k, ibg)
+    south_boundary = immersed_peripheral_node(LX, flip(LY), LZ, i, j, k, ibg) & !inactive_node(LX, LY, LZ, i, j, k, ibg)
+    north_boundary = immersed_peripheral_node(LX, flip(LY), LZ, i, j, k, ibg) & !inactive_node(LX, LY, LZ, i, j-1, k, ibg)
 
     return ifelse(south_boundary, qˢ, zero(ibg)) + ifelse(north_boundary, qᴺ, zero(ibg))
 end
@@ -263,8 +263,8 @@ function immersed_flux_z(i, j, k, ibg, bc, loc, c, closure, K, id, args...)
     qᵀ =    top_ib_flux(i, j, k, ibg, bc.top,    loc, c, closure, K, id, args...)
 
     LX, LY, LZ = loc
-    bottom_boundary = immersed_peripheral_node(LX, LY, flip(LZ), i, j, k, ibg) & !exterior_node(LX, LY, LZ, i, j, k, ibg)
-    top_boundary    = immersed_peripheral_node(LX, LY, flip(LZ), i, j, k, ibg) & !exterior_node(LX, LY, LZ, i, j, k-1, ibg)
+    bottom_boundary = immersed_peripheral_node(LX, LY, flip(LZ), i, j, k, ibg) & !inactive_node(LX, LY, LZ, i, j, k, ibg)
+    top_boundary    = immersed_peripheral_node(LX, LY, flip(LZ), i, j, k, ibg) & !inactive_node(LX, LY, LZ, i, j, k-1, ibg)
 
     return ifelse(bottom_boundary, qᴮ, zero(ibg)) + ifelse(top_boundary, qᵀ, zero(ibg))
 end
