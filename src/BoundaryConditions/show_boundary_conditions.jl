@@ -1,7 +1,7 @@
 import Base: show
 using Oceananigans.Utils: prettysummary
 
-const DFBC = DefaultPrognosticFieldBoundaryCondition
+const DFBC = DefaultBoundaryCondition
 
 bc_str(::FBC)     = "Flux"
 bc_str(::PBC)     = "Periodic"
@@ -15,7 +15,6 @@ bc_str(::Nothing) = "Nothing"
 #####
 ##### BoundaryCondition
 #####
-
 
 Base.summary(bc::DFBC) = string("DefaultBoundaryCondition")
 Base.summary(bc::PBC) = string("PeriodicBoundaryCondition")
