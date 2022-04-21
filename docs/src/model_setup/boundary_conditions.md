@@ -20,7 +20,7 @@ DocTestSetup = quote
 end
 ```
 
-```jldoctest
+```jldoctest bcsintro
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(16, 16, 16), x=(0, 2π), y=(0, 1), z=(0, 1), topology=(Periodic, Bounded, Bounded))
@@ -36,7 +36,7 @@ ValueBoundaryCondition: 0
 A "no-slip" boundary condition that velocity components tangential to `Bounded`
 directions decay to `0` at the boundary, leading to a viscous loss of momentum.
 
-```jldoctest
+```jldoctest bcsintro
 julia> no_slip_field_bcs = FieldBoundaryConditions(no_slip_bc);
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=no_slip_field_bcs, v=no_slip_field_bcs, w=no_slip_field_bcs))
@@ -72,7 +72,7 @@ because the `x`-topology of the grid is `Periodic`.
 To specify no-slip boundary conditions on every `Bounded` direction _except_
 the surface, we write
 
-```jldoctest
+```jldoctest bcsintro
 julia> free_slip_surface_bcs = FieldBoundaryConditions(no_slip_bc, top=FluxBoundaryCondition(nothing));
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=free_slip_surface_bcs, v=free_slip_surface_bcs, w=no_slip_field_bcs));
@@ -481,5 +481,4 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
-
 
