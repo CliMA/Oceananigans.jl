@@ -138,7 +138,7 @@ so that `ImpenetrableBoundaryCondition` is only used for _additional_ velocity c
 that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].
 
 Finally, note that `Periodic` boundary conditions are internally enforced for `Periodic` directions,
-and `DefaultBoundaryConditions` may exist before boundary conditions are "materialized" by a model.
+and `DefaultBoundaryCondition`s may exist before boundary conditions are "materialized" by a model.
 
 ## Default boundary conditions
 
@@ -362,16 +362,16 @@ we write
 julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition
-├── east: DefaultBoundaryCondition
-├── south: DefaultBoundaryCondition
-├── north: DefaultBoundaryCondition
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── bottom: GradientBoundaryCondition: 0.01
 ├── top: ValueBoundaryCondition: 20
-└── immersed: DefaultBoundaryCondition
+└── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ```
 
-If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
+If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultBoundaryCondition`
 is converted to `PeriodicBoundaryCondition` inside the model's constructor, before assigning the
 boundary conditions to temperature `T`.
 
