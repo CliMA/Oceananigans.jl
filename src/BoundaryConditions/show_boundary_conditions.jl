@@ -16,7 +16,7 @@ bc_str(::Nothing) = "Nothing"
 ##### BoundaryCondition
 #####
 
-Base.summary(bc::DFBC) = string("DefaultBoundaryCondition")
+Base.summary(bc::DFBC) = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
 Base.summary(bc::PBC) = string("PeriodicBoundaryCondition")
 Base.summary(bc::OBC) = string("OpenBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::FBC) = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
