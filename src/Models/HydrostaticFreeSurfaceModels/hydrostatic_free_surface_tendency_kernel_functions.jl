@@ -4,6 +4,7 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation
@@ -25,6 +26,7 @@ implicitly during time-stepping.
                                                               advection,
                                                               coriolis,
                                                               closure,
+                                                              u_immersed_bc,
                                                               velocities,
                                                               free_surface,
                                                               tracers,
@@ -42,6 +44,7 @@ implicitly during time-stepping.
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
+             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -60,6 +63,7 @@ implicitly during time-stepping.
                                                               advection,
                                                               coriolis,
                                                               closure,
+                                                              u_immersed_bc,
                                                               velocities,
                                                               free_surface,
                                                               tracers,
@@ -77,6 +81,7 @@ implicitly during time-stepping.
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
+             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -94,6 +99,7 @@ where `c = C[tracer_index]`.
                                                           val_tracer_index::Val{tracer_index},
                                                           advection,
                                                           closure,
+                                                          c_immersed_bc,
                                                           buoyancy,
                                                           velocities,
                                                           free_surface,
@@ -110,6 +116,7 @@ where `c = C[tracer_index]`.
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -139,6 +146,7 @@ end
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
                                                                closure,
+                                                               e_immersed_bc,
                                                                buoyancy,
                                                                velocities,
                                                                free_surface,
@@ -154,6 +162,7 @@ end
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + shear_production(i, j, k, grid, closure, velocities, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
