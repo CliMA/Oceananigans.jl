@@ -31,8 +31,9 @@ function hilly_simulation(; Nx = 64,
                                       x = (0, 2π), z = (0, 1),
                                       topology = (Periodic, Flat, Bounded))
 
+    min_Δz = 1 / 32
     if h > 0
-        hills(x, y) = h * (1 + sin(x)) / 2
+        hills(x, y) = h * (1 + sin(x)) / 2 + 2min_Δz # ensure that the bottom boundary is immersed
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hills))
     else # no hills
         grid = underlying_grid
@@ -115,8 +116,10 @@ function hilly_simulation(; Nx = 64,
     @info "The grid is"
     @show model.grid
 
-    @info "The x-velocity immersed boundary condition is"
+    @info "The x-velocity immersed and bottom boundary conditions are"
+    @show boundary_condition
     @show model.velocities.u.boundary_conditions.immersed
+    @show model.velocities.u.boundary_conditions.bottom
 
     return simulation
 end
@@ -133,8 +136,9 @@ Nexp = length(experiments)
 
 for exp in experiments
     filename = "hills_$(exp)_$Nx"
-    h = exp == "reference" ? 0.0 : 0.2
-    reference_sim = hilly_simulation(; stop_time, Nx, filename, h, boundary_condition=Symbol(exp))
+    h = exp == "reference" ? 0.0 : 0.1
+    boundary_condition = exp == "reference" ? :no_slip : Symbol(exp)
+    reference_sim = hilly_simulation(; stop_time, Nx, filename, h, boundary_condition)
     run!(reference_sim)
 end
 

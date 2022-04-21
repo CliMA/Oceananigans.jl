@@ -1,5 +1,6 @@
 using Oceananigans.BoundaryConditions: Flux, Value, Gradient, flip, BoundaryCondition, ContinuousBoundaryFunction
 using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition, LeftBoundary, RightBoundary
+using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, h_diffusivity, z_diffusivity
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
@@ -199,6 +200,9 @@ regularize_immersed_boundary_condition(ibc::ZFBC, ibg::GFIBG, args...) = ibc # k
 
 # Compiler hint
 @inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, clock, fields) = zero(ibg)
+
+regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::GFIBG, loc, field_name, args...) =
+    regularize_immersed_boundary_condition(default.boundary_condition, ibg, loc, field_name, args...)
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
 function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::GFIBG, loc, field_name, args...)
