@@ -46,13 +46,13 @@ function Reduction(avg::Average, field::AbstractField; condition = nothing, mask
 end
 
 """
-    Average(field; dims=:)
+    Average(field::AbstractField; condition = nothing, mask = 0, dims=:)
 
 Return `Reduction` representing a spatial average of `field` over `dims`.
 
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
-Over dimensions of variable spacing, `field` is multipled by the
+Over dimensions of variable spacing, `field` is multiplied by the
 appropriate grid length, area or volume, and divided by the total
 spatial extent of the interval.
 """
@@ -79,4 +79,3 @@ Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reductio
 
 Base.summary(r::Reduction{<:Average}) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 Base.summary(r::Reduction{<:Integral}) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
-                                             

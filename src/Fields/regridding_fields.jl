@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
-using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
@@ -26,11 +26,11 @@ using Oceananigans
 Nz, Lz = 2, 1.0
 topology = (Flat, Flat, Bounded)
 
-input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology)
+input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology, halo=1)
 input_field = CenterField(input_grid)
 input_field[1, 1, 1:Nz] = [2, 3]
 
-output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology, halo=1)
 output_field = CenterField(output_grid)
 
 regrid!(output_field, input_field)
@@ -40,10 +40,10 @@ output_field[1, 1, :]
 # output
 4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
  0.0
- 2.333333333333334
+ 2.333333333333333
  3.0
  0.0
-```
+ ```
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
@@ -100,7 +100,7 @@ end
 
         # Add contribution from all full cells in the integration range
         @unroll for k_src = k₋_src:k₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᵃᵃᶜ(i_src, j_src, k_src, source_grid)
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
         zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
@@ -113,7 +113,7 @@ end
         # Add contribution to integral from fractional top part
         @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
 
-        @inbounds target_field[i, j, k] /= Δzᵃᵃᶜ(i, j, k, target_grid)
+        @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 

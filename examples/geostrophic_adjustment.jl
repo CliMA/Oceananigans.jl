@@ -43,9 +43,7 @@ coriolis = FPlane(f=1e-4)
 #
 # We use `grid` and `coriolis` to build a simple `HydrostaticFreeSurfaceModel`,
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
-                                    free_surface = ImplicitFreeSurface())
+model = HydrostaticFreeSurfaceModel(; grid, coriolis, free_surface = ImplicitFreeSurface())
 
 # ## A geostrophic adjustment initial value problem
 #
@@ -81,10 +79,10 @@ set!(model, v=vᵍ, η=ηⁱ)
 # We pick a time-step that resolves the surface dynamics,
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-
 wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
+Δt = 0.1wave_propagation_time_scale
 
-simulation = Simulation(model, Δt = 0.1wave_propagation_time_scale, stop_iteration = 1000)
+simulation = Simulation(model; Δt, stop_iteration = 1000) 
 
 # ## Output
 #
@@ -94,9 +92,8 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = IterationInterval(10),
-                                                      prefix = "geostrophic_adjustment",
-                                                      field_slicer = nothing,
-                                                      force = true)
+                                                      filename = "geostrophic_adjustment.jld2",
+                                                      overwrite_existing = true)
 
 run!(simulation)
 
@@ -111,25 +108,26 @@ v_timeseries = FieldTimeSeries("geostrophic_adjustment.jld2", "v")
 
 xη = xw = xv = xnodes(v_timeseries)
 xu = xnodes(u_timeseries)
-
 t = u_timeseries.times
 
 anim = @animate for i = 1:length(t)
 
-    u = interior(u_timeseries[i])[:, 1, 1]
-    v = interior(v_timeseries[i])[:, 1, 1]
-    η = interior(η_timeseries[i])[:, 1, 1]
+    u = interior(u_timeseries[i], :, 1, 1)
+    v = interior(v_timeseries[i], :, 1, 1)
+    η = interior(η_timeseries[i], :, 1, 1)
 
     titlestr = @sprintf("Geostrophic adjustment at t = %.1f hours", t[i] / hours)
+    label = ""
+    linewidth = 2
 
-    u_plot = plot(xu / kilometers, u, linewidth = 2,
-                  label = "", xlabel = "x (km)", ylabel = "u (m s⁻¹)", ylims = (-2e-3, 2e-3))
+    u_plot = plot(xu / kilometers, u; linewidth, label,
+                  xlabel = "x (km)", ylabel = "u (m s⁻¹)", ylims = (-2e-3, 2e-3))
 
-    v_plot = plot(xv / kilometers, v, linewidth = 2, title = titlestr,
-                  label = "", xlabel = "x (km)", ylabel = "v (m s⁻¹)", ylims = (-U, U))
+    v_plot = plot(xv / kilometers, v; linewidth, label, title = titlestr,
+                  xlabel = "x (km)", ylabel = "v (m s⁻¹)", ylims = (-U, U))
 
-    η_plot = plot(xη / kilometers, η, linewidth = 2,
-                  label = "", xlabel = "x (km)", ylabel = "η (m)", ylims = (-η₀/10, 2η₀))
+    η_plot = plot(xη / kilometers, η; linewidth, label,
+                  xlabel = "x (km)", ylabel = "η (m)", ylims = (-η₀/10, 2η₀))
 
     plot(v_plot, u_plot, η_plot, layout = (3, 1), size = (800, 600))
 end

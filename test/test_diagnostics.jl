@@ -1,4 +1,3 @@
-using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
 
@@ -9,14 +8,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
           grid = RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
-       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν)
+       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
 )
 
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
           grid = RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
-       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν)
+       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
 )
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)

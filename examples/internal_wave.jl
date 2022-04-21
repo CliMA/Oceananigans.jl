@@ -58,7 +58,7 @@ model = NonhydrostaticModel(
                  grid = grid,
             advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,
-              closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
+              closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
              coriolis = coriolis,
               tracers = :b,
     background_fields = (b=B,), # `background_fields` is a `NamedTuple`
@@ -128,8 +128,8 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           schedule = IterationInterval(1),
-                                                            prefix = "internal_wave",
-                                                             force = true)
+                                                          filename = "internal_wave.jld2",
+                                                          overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
@@ -137,31 +137,21 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load snapshots of the data and use it to make contour
+# To visualize the solution, we load a FieldTimeSeries of w and make contour
 # plots of vertical velocity.
 
-using JLD2, Printf, Plots
+using Printf, Plots
 
-# We use coordinate arrays appropriate for the vertical velocity field,
-
-x, y, z = nodes(model.velocities.w)
-nothing # hide
-
-# open the jld2 file with the data,
-
-file = jldopen(simulation.output_writers[:velocities].filepath)
-
-## Extracts a vector of `iterations` at which data was saved.
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+x, y, z = nodes(w_timeseries)
 
 # and makes an animation with Plots.jl:
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
     @info "Drawing frame $i from iteration $iter..."
 
-    w = file["timeseries/w/$iter"][:, 1, :]
-    t = file["timeseries/t/$iter"]
+    w = interior(w_timeseries[i], :, 1, :)
 
     contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
                       levels = range(-1e-8, stop=1e-8, length=10),

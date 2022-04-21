@@ -12,6 +12,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures
 using Oceananigans.Grids: xnode, ynode, znode
 
 using Random
@@ -148,8 +149,12 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
 
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+
+diffusive_closure = (horizontal_closure, vertical_closure)
+                                       
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
@@ -173,7 +178,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     #closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
-                                    closure = (catke, horizontal_diffusivity, gent_mcwilliams_diffusivity),
+                                    closure = (catke, diffusive_closure..., gent_mcwilliams_diffusivity),
                                     tracers = (:b, :e, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
@@ -265,14 +270,14 @@ outputs = merge(fields(model), (; vb, wb, ∇_q))
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(5years),
                                                         prefix = filename,
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
                                                       prefix = filename,
                                                       field_slicer = nothing,
                                                       verbose = false,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 @info "Running the simulation..."
 

@@ -3,6 +3,7 @@ const c = Center()
 const f = Face()
 
 using Oceananigans.AbstractOperations: GridMetricOperation
+import Oceananigans.Grids: solid_node, solid_interface
 
 """
     `solid_node` returns true only if a location is completely immersed
@@ -30,88 +31,26 @@ using Oceananigans.AbstractOperations: GridMetricOperation
       which is true only when `solid_node = false` and `solid_interface = true` (as the case of the face at `i` above)
 """
 
-# fallback for not-immersed grid
-@inline solid_node(i, j, k, grid)     = false
-@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
+@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary) | solid_node(i, j, k, ibg.grid)
 
-@inline solid_node(LX, LY, LZ, i, j, k, ibg)      = solid_node(i, j, k, ibg)
-@inline solid_interface(LX, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg)
+# Defining all the metrics for Immersed Boundaries
 
-@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j-1, k, ibg)
-@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j, k-1, ibg)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    for dir in (:x, :y, :z), operator in (:Δ, :A)
+    
+        metric = Symbol(operator, dir, LX, LY, LZ)
+        @eval begin
+            import Oceananigans.Operators: $metric
+            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.grid)
+        end
+    end
 
-@inline solid_node(::Face, ::Face, LZ, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i-1, j, k, ibg)
-@inline solid_node(::Face, LY, ::Face, i, j, k, ibg) = solid_node(c, c, f, i, j, k, ibg) & solid_node(c, c, f, i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i, j, k-1, ibg)
-
-@inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) & solid_node(c, f, f, i-1, j, k, ibg)
-
-@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i-1, j, k, ibg)
-@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j-1, k, ibg)
-@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j, k-1, ibg)
-
-@inline solid_interface(::Face, ::Face, LZ, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i-1, j, k, ibg)
-@inline solid_interface(::Face, LY, ::Face, i, j, k, ibg) = solid_interface(c, c, f, i, j, k, ibg) | solid_interface(c, c, f, i-1, j, k, ibg)
-@inline solid_interface(LX, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i, j, k-1, ibg)
-
-@inline solid_interface(::Face, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, f, i, j, k, ibg) | solid_interface(c, f, f, i-1, j, k, ibg)
-
-@inline is_immersed_boundary(LX, LY, LZ, i, j, k, ibg) = solid_interface(LX, LY, LZ, i, j, k, ibg) & !solid_node(LX, LY, LZ, i, j, k, ibg)
-
-@inline is_x_immersed_boundary⁺(::Face, LY, LZ, i, j, k, ibg) =  solid_node(i-1, j, k, ibg) & !solid_node(i, j, k, ibg)
-@inline is_y_immersed_boundary⁺(LX, ::Face, LZ, i, j, k, ibg) =  solid_node(i, j-1, k, ibg) & !solid_node(i, j, k, ibg)
-@inline is_z_immersed_boundary⁺(LX, LY, ::Face, i, j, k, ibg) =  solid_node(i, j, k-1, ibg) & !solid_node(i, j, k, ibg)
-
-@inline is_x_immersed_boundary⁻(::Face, LY, LZ, i, j, k, ibg) = !solid_node(i-1, j, k, ibg) &  solid_node(i, j, k, ibg)
-@inline is_y_immersed_boundary⁻(LX, ::Face, LZ, i, j, k, ibg) = !solid_node(i, j-1, k, ibg) &  solid_node(i, j, k, ibg)
-@inline is_z_immersed_boundary⁻(LX, LY, ::Face, i, j, k, ibg) = !solid_node(i, j, k-1, ibg) &  solid_node(i, j, k, ibg)
-
-for metric in (
-               :Δxᶜᶜᵃ,
-               :Δxᶜᶠᵃ,
-               :Δxᶠᶠᵃ,
-               :Δxᶠᶜᵃ,
-
-               :Δyᶜᶜᵃ,
-               :Δyᶜᶠᵃ,
-               :Δyᶠᶠᵃ,
-               :Δyᶠᶜᵃ,
-
-               :Δzᵃᵃᶜ,
-               :Δzᵃᵃᶠ,
-               :Δzᶠᶜᶜ,
-               :Δzᶜᶠᶜ,
-               :Δzᶠᶜᶠ,
-               :Δzᶜᶠᶠ,
-
-               :Azᶜᶜᵃ,
-               :Azᶜᶠᵃ,
-               :Azᶠᶠᵃ,
-               :Azᶠᶜᵃ,
-
-               :Axᶜᶜᶜ, 
-               :Axᶠᶜᶜ,
-               :Axᶠᶠᶜ,
-               :Axᶜᶠᶜ,
-               :Axᶠᶜᶠ,
-               :Axᶜᶜᶠ,
-               
-               :Ayᶜᶜᶜ,
-               :Ayᶜᶠᶜ,
-               :Ayᶠᶜᶜ,
-               :Ayᶠᶠᶜ,
-               :Ayᶜᶠᶠ,
-               :Ayᶜᶜᶠ,
-
-               :Vᶜᶜᶜ, 
-               :Vᶠᶜᶜ,
-               :Vᶜᶠᶜ,
-               :Vᶜᶜᶠ,
-              )
-
+    volume = Symbol(:V, LX, LY, LZ)
     @eval begin
-        import Oceananigans.Operators: $metric
-        @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
+        import Oceananigans.Operators: $volume
+        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.grid)
     end
 end
+
+@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.grid)
+@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.grid)

@@ -24,7 +24,7 @@ model = NonhydrostaticModel(
                              timestepper = :RungeKutta3,
                                     grid = immersed_grid,
                                  tracers = (:b),
-                                 closure = IsotropicDiffusivity(ν=ν, κ=κ),
+                                 closure = ScalarDiffusivity(ν=ν, κ=κ),
                                 buoyancy = BuoyancyTracer())
 
 set!(model, b=1, u=0, v=0, w=0)

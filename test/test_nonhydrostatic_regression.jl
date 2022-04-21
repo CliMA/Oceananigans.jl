@@ -57,8 +57,11 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                 run_rayleigh_benard_regression_test(arch, grid_type)
             end
 
-            for closure in (AnisotropicMinimumDissipation(ν=1.05e-6, κ=1.46e-7), SmagorinskyLilly(C=0.23, Cb=1, Pr=1, ν=1.05e-6, κ=1.46e-7))
-                closurename = string(typeof(closure).name.wrapper)
+            amd_closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+            smag_closure = (SmagorinskyLilly(C=0.23, Cb=1, Pr=1), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+
+            for closure in (amd_closure, smag_closure)
+                closurename = string(typeof(first(closure)).name.wrapper)
                 @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
                     @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
                     run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)

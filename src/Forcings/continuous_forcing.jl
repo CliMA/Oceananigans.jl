@@ -140,8 +140,8 @@ Base.show(io::IO, forcing::ContinuousForcing{Nothing, Nothing, Nothing, P}) wher
 
 Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
     ContinuousForcing{LX, LY, LZ}(Adapt.adapt(to, forcing.func),
-                               Adapt.adapt(to, forcing.parameters),
-                               nothing,
-                               Adapt.adapt(to, forcing.field_dependencies_indices),
-                               Adapt.adapt(to, forcing.field_dependencies_interp))
+                                  Adapt.adapt(to, forcing.parameters),
+                                  nothing,
+                                  Adapt.adapt(to, forcing.field_dependencies_indices),
+                                  Adapt.adapt(to, forcing.field_dependencies_interp))
 

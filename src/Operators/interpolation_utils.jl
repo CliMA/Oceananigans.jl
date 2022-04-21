@@ -8,8 +8,10 @@ interpolation_code(from, to) = interpolation_code(to)
 
 interpolation_code(::Type{Face}) = :ᶠ
 interpolation_code(::Type{Center}) = :ᶜ
+interpolation_code(::Type{Nothing}) = :ᶜ
 interpolation_code(::Face) = :ᶠ
 interpolation_code(::Center) = :ᶜ
+interpolation_code(::Nothing) = :ᶜ
 
 # Intercept non-interpolations
 interpolation_code(from::L, to::L) where L = :ᵃ

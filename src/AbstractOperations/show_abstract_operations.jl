@@ -12,7 +12,7 @@ operation_name(op::GridMetricOperation)  = string(op.metric)
 
 function show_interp(op)
     op_str = string(op)
-    if op_str[1:8] == "identity"
+    if length(op_str) >= 8 && op_str[1:8] == "identity"
         return "identity"
     else
         return op_str
@@ -63,8 +63,7 @@ function tree_show(multiary::MultiaryOperation, depth, nesting)
 
     out = string(multiary.op, " at ", show_location(LX, LY, LZ), '\n',
         ntuple(i -> padding * "├── " * tree_show(multiary.args[i], depth+1, nesting+1) * '\n', Val(N-1))...,
-                    padding * "└── " * tree_show(multiary.args[N], depth+1, nesting)
-                )
+                    padding * "└── " * tree_show(multiary.args[N], depth+1, nesting))
     return out
 end
 

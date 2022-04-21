@@ -24,7 +24,8 @@ export
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
     BoundaryCondition,
@@ -34,10 +35,10 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, Reduction, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, location,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask,
+    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
@@ -51,14 +52,17 @@ export
     UniformStokesDrift,
 
     # Turbulence closures
-    IsotropicDiffusivity,
-    AnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
+    ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
+    ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
-    HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -72,7 +76,7 @@ export
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
+    HydrostaticSphericalCoriolis, 
     PrescribedVelocityFields,
 
     # Time stepping
@@ -87,7 +91,7 @@ export
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
     AndSchedule, OrSchedule,
 

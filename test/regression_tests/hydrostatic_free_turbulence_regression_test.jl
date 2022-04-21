@@ -4,8 +4,8 @@ using Oceananigans.Fields: FunctionField
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
+using Oceananigans.TurbulenceClosures
 
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
@@ -17,7 +17,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                           momentum_advection = VectorInvariant(),
                                 free_surface = free_surface,
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e+5, κh=1e+4))
+                                     closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
     
     #####
     ##### Imposing initial conditions:
@@ -67,7 +67,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
     x_topology_str = string(topology(grid, 1))
-    output_prefix = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$free_surface_str"
+    output_filename = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$(free_surface_str).jld2"
 
     if regenerate_data
         @warn "Generating new data for the Hydrostatic regression test."
@@ -76,9 +76,9 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         outputs   = (; u, v, w, η)
         simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                               dir = directory,
-                                                         schedule = IterationInterval(stop_iteration),
-                                                           prefix = output_prefix,
-                                                            force = true)
+                                                              schedule = IterationInterval(stop_iteration),
+                                                              filename = output_filename,
+                                                              overwrite_existing = true)
     end
    
 
@@ -94,7 +94,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     )
 
     if !regenerate_data
-        datadep_path = "regression_test_data/" * output_prefix * ".jld2"
+        datadep_path = "regression_test_data/" * output_filename
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 

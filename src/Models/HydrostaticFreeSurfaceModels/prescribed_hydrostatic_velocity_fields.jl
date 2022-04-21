@@ -48,7 +48,7 @@ PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y
 PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
 
 function PrescribedField(X, Y, Z, f::Field, grid; kwargs...)
-    fill_halo_regions!(f, architecture(f))
+    fill_halo_regions!(f)
     return f
 end
 

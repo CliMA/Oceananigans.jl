@@ -1,29 +1,6 @@
 using Adapt
 using Oceananigans.Operators
 
-# Define aliases for some spacings and areas at all locations.
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-
-    x_spacing_alias = Symbol(:Δx, LX, LY, LZ)
-    y_spacing_alias = Symbol(:Δy, LX, LY, LZ)
-    z_spacing_alias = Symbol(:Δz, LX, LY, LZ)
-
-    z_area_alias = Symbol(:Az, LX, LY, LZ)
-
-    x_spacing_function = Symbol(:Δx, LX, LY, :ᵃ)
-    y_spacing_function = Symbol(:Δy, LX, LY, :ᵃ)
-    z_spacing_function = Symbol(:Δz, :ᵃᵃ, LZ)
-
-    z_area_function = Symbol(:Az, LX, LY, :ᵃ)
-
-    @eval begin
-        const $x_spacing_alias = $x_spacing_function
-        const $y_spacing_alias = $y_spacing_function
-        const $z_spacing_alias = $z_spacing_function
-        const $z_area_alias = $z_area_function
-    end
-end
-
 abstract type AbstractGridMetric end
 
 struct XSpacingMetric <: AbstractGridMetric end 
@@ -71,11 +48,11 @@ julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField
 
 julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── Δzᵃᵃᶜ at (Center, Center, Center)
+    └── Δzᶜᶜᶜ at (Center, Center, Center)
 
 julia> c .= 1;
 
@@ -111,7 +88,7 @@ julia> c .= 1;
 
 julia> c_dV = c * volume
 BinaryOperation at (Center, Center, Center)
-├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU

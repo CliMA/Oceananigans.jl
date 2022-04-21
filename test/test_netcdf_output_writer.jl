@@ -13,13 +13,16 @@ using Oceananigans: Clock
 function test_DateTime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(grid=grid, clock=clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
-    simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
+    simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
 
     filepath = "test_DateTime.nc"
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+    isfile(filepath) && rm(filepath)
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+                                                         filename = filepath,
+                                                         schedule = IterationInterval(1))
 
     run!(simulation)
 
@@ -44,14 +47,16 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(grid=grid, clock=clock,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
 
     filepath = "test_TimeDate.nc"
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+    isfile(filepath) && rm(filepath)
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+                                                         filename = filepath,
+                                                         schedule = IterationInterval(1))
 
     run!(simulation)
 
@@ -79,10 +84,8 @@ function test_thermal_bubble_netcdf_output(arch)
 
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
+    model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -99,18 +102,24 @@ function test_thermal_bubble_netcdf_output(arch)
                    "S" => model.tracers.S)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10), verbose=true)
+    isfile(nc_filepath) && rm(nc_filepath)
+    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filepath, schedule=IterationInterval(10), verbose=true)
     push!(simulation.output_writers, nc_writer)
 
-    i_slice = 1:2:10
+    i_slice = 1:10
     j_slice = 13
     k_slice = 9:11
-    field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
+    indices = (i_slice, j_slice, k_slice)
     j_slice = j_slice:j_slice  # So we can correctly index with it for later tests.
 
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
-    nc_sliced_writer = NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, schedule=IterationInterval(10),
-                                          array_type=Array{Float32}, field_slicer=field_slicer, verbose=true)
+    isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
+    nc_sliced_writer = NetCDFOutputWriter(model, outputs,
+                                          filename = nc_sliced_filepath,
+                                          schedule = IterationInterval(10),
+                                          array_type = Array{Float32},
+                                          indices = indices,
+                                          verbose = true)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
@@ -246,10 +255,8 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     topo = (Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(grid=grid, closure=closure,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
+    model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -261,9 +268,9 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                                   filepath=nc_filepath,
-                                   schedule=IterationInterval(10),
-                                   field_slicer=FieldSlicer(with_halos=true))
+                                   filename = nc_filepath,
+                                   schedule = IterationInterval(10),
+                                   with_halos = true)
 
     push!(simulation.output_writers, nc_writer)
 
@@ -369,7 +376,7 @@ function test_netcdf_function_output(arch)
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; filepath=nc_filepath,
+        NetCDFOutputWriter(model, outputs; filename=nc_filepath,
                            schedule=TimeInterval(Δt), dimensions=dims, array_type=Array{Float64}, verbose=true,
                            global_attributes=global_attributes, output_attributes=output_attributes)
 
@@ -459,7 +466,7 @@ function test_netcdf_function_output(arch)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; filepath=nc_filepath, mode="a",
+        NetCDFOutputWriter(model, outputs; filename=nc_filepath, overwrite_existing=false,
                            schedule=IterationInterval(1), array_type=Array{Float64}, dimensions=dims, verbose=true,
                            global_attributes=global_attributes, output_attributes=output_attributes)
 
@@ -529,7 +536,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, nc_outputs,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = horizontal_average_nc_filepath,
+                           filename = horizontal_average_nc_filepath,
                            schedule = TimeInterval(10Δt),
                            dimensions = nc_dimensions)
 
@@ -545,7 +552,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, single_nc_output,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = single_time_average_nc_filepath,
+                           filename = single_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
                            dimensions = single_nc_dimension)
 
@@ -553,7 +560,7 @@ function test_netcdf_time_averaging(arch)
         NetCDFOutputWriter(model, nc_outputs,
                            array_type = Array{Float64},
                            verbose = true,
-                           filepath = multiple_time_average_nc_filepath,
+                           filename = multiple_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
                            dimensions = nc_dimensions)
 
@@ -643,12 +650,12 @@ function test_netcdf_output_alignment(arch)
 
     test_filename1 = "test_output_alignment1.nc"
     simulation.output_writers[:stuff] =
-        NetCDFOutputWriter(model, model.velocities, filepath=test_filename1,
+        NetCDFOutputWriter(model, model.velocities, filename=test_filename1,
                            schedule=TimeInterval(7.3))
 
     test_filename2 = "test_output_alignment2.nc"
     simulation.output_writers[:something] =
-        NetCDFOutputWriter(model, model.tracers, filepath=test_filename2,
+        NetCDFOutputWriter(model, model.tracers, filename=test_filename2,
                            schedule=TimeInterval(3.0))
 
     run!(simulation)
@@ -684,7 +691,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     simulation.output_writers[:fields] =
         NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filepath = nc_filepath,
+                             filename = nc_filepath,
                              schedule = IterationInterval(1),
                            array_type = Array{Float64},
                               verbose = true)
@@ -738,7 +745,7 @@ function test_netcdf_regular_lat_lon_grid_output(arch)
 
     simulation.output_writers[:fields] =
         NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filepath = nc_filepath,
+                             filename = nc_filepath,
                              schedule = IterationInterval(1),
                            array_type = Array{Float64},
                               verbose = true)

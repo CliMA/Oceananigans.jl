@@ -54,6 +54,8 @@ Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that c
 
 We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
 
+Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+
 ## Contents
 
 * [Installation instructions](#installation-instructions)
@@ -112,7 +114,7 @@ model = NonhydrostaticModel(
             grid = RectilinearGrid(CPU(); topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          tracers = (:T, :S),
         buoyancy = SeawaterBuoyancy(),
-         closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 )
 
 # Set a temperature perturbation with a Gaussian profile located at the center.
@@ -125,7 +127,7 @@ simulation = Simulation(model, Δt=10, stop_iteration=5000)
 run!(simulation)
 ```
 
-By changing `architecture = CPU()` to `architecture = GPU()` the example will run on a CUDA-enabled Nvidia GPU!
+By changing the first positional argument of `RectilinearGrid` from `CPU()` to `GPU()` the example will run on a CUDA-enabled Nvidia GPU!
 
 You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 
