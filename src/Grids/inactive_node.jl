@@ -43,6 +43,10 @@ associated with an "active" cell.
 
 For `Face` locations, this means the node is surrounded by `inactive_cell`s:
 the interfaces of "active" cells are _not_ `inactive_node`.
+
+For `Center` locations, this means the direction is `Bounded` and that the
+cell or interface centered on the location is completely outside the active
+region of the grid.
 """
 @inline inactive_node(LX, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
 
