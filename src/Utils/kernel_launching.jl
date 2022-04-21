@@ -2,12 +2,39 @@
 ##### Utilities for launching kernels
 #####
 
-using CUDA
 using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
-const MAX_THREADS_PER_BLOCK = 256
+flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
+
+function heuristic_workgroup(Wx, Wy, Wz=nothing)
+
+    workgroup = Wx == 1 && Wy == 1 ?
+
+                    # One-dimensional column models:
+                    (1, 1) :
+
+                Wx == 1 ?
+
+                    # Two-dimensional y-z slice models:
+                    (1, min(256, Wy)) :
+
+                Wy == 1 ?
+
+                    # Two-dimensional x-z slice models:
+                    (1, min(256, Wx)) :
+
+                    # Three-dimensional models
+                    (16, 16)
+
+    return workgroup
+end
+
+function work_layout(grid, worksize::Tuple; kwargs...)
+    workgroup = heuristic_workgroup(worksize...)
+    return workgroup, worksize
+end
 
 """
     work_layout(grid, dims; include_right_boundaries=false, location=nothing)
@@ -22,34 +49,18 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
 
-    Nx, Ny, Nz = size(grid)
+    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
+    Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
 
-    workgroup = Nx == 1 && Ny == 1 ?
+    workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
 
-                    # One-dimensional column models:
-                    (1, 1) :
-
-                Nx == 1 ?
-
-                    # Two-dimensional y-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, Ny)) :
-
-                Ny == 1 ?
-
-                    # Two-dimensional x-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, Nx)) :
-
-                    # Three-dimensional models
-                    (Int(√MAX_THREADS_PER_BLOCK), Int(√MAX_THREADS_PER_BLOCK))
-
-    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : (Nx, Ny, Nz)
-
-    worksize = dims == :xyz ? (Nx′, Ny′, Nz′) :
-               dims == :xy  ? (Nx′, Ny′) :
-               dims == :xz  ? (Nx′, Nz′) :
-               dims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $dims"))
+    # Drop omitted dimemsions
+    worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
+               workdims == :xy  ? (Nx′, Ny′) :
+               workdims == :xz  ? (Nx′, Nz′) :
+               workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
 
     return workgroup, worksize
 end
@@ -65,19 +76,27 @@ Returns an `event` token associated with the `kernel!` launch.
 The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
 that must complete before `kernel!` is launched.
 """
-function launch!(arch, grid, dims, kernel!, args...; 
-                 dependencies = nothing, include_right_boundaries = false,
-                 location = nothing, kwargs...)
+function launch!(arch, grid, workspec, kernel!, kernel_args...;
+                 dependencies = nothing,
+                 include_right_boundaries = false,
+                 reduced_dimensions = (),
+                 location = nothing,
+                 kwargs...)
 
-    workgroup, worksize = work_layout(grid, dims,
+    workgroup, worksize = work_layout(grid, workspec,
                                       include_right_boundaries = include_right_boundaries,
-                                                      location = location)
+                                      reduced_dimensions = reduced_dimensions,
+                                      location = location)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(args...; dependencies=dependencies, kwargs...)
+    event = loop!(kernel_args...; dependencies=dependencies)
 
     return event
 end
+
+# When dims::Val
+@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
+    launch!(arch, grid, workspec, args...; kwargs...)

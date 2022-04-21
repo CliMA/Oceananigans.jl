@@ -1,23 +1,25 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using SeawaterPolynomials
 using Benchmarks
 
 # Benchmark function
 
 function benchmark_equation_of_state(Arch, EOS)
-    grid = RegularCartesianGrid(size=(192, 192, 192), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state=EOS())
-    model = IncompressibleModel(architecture=Arch(), grid=grid, buoyancy=buoyancy)
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid, buoyancy=buoyancy)
 
     time_step!(model, 1) # warmup
 
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -38,7 +40,7 @@ benchmarks_pretty_table(df, title="Equation of state benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, :EquationsOfState, by=string)
-    benchmarks_pretty_table(df_Δ, title="Equation of state CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Equation of state CPU to GPU speedup")
 end
 
 for Arch in Architectures
@@ -47,4 +49,3 @@ for Arch in Architectures
     sort!(df_arch, :EquationsOfState, by=string)
     benchmarks_pretty_table(df_arch, title="Equation of state relative performance ($Arch)")
 end
-

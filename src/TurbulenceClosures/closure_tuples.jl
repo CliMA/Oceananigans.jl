@@ -1,33 +1,88 @@
 #####
-##### 'Tupled closure' implementation.
-#####
-##### For now, we have hacked an implementation for tuples of two closures.
-##### We cannot do the case of arbitrary closure tuples until we figure out how to
-##### obtain the length of a closure tuple at compile-time on the GPU.
+##### 'Tupled closure' implementation: 1-tuple, 2-tuple, and then n-tuple by induction
 #####
 
-# Stress divergences
-
-for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
-    @eval begin
-        @inline $stress_div(i, j, k, grid::AbstractGrid, clock, closures::Tuple{C1, C2}, U, Ks) where {C1, C2} = (
-                $stress_div(i, j, k, grid, clock, closures[1], U, Ks[1])
-              + $stress_div(i, j, k, grid, clock, closures[2], U, Ks[2]))
+function closure_summary(closures::Tuple, padchar="│")
+    Nclosures = length(closures)
+    if Nclosures == 1
+        return string("Tuple with 1 closure:", '\n',
+                      "$padchar   └── ", summary(closures[1]))
+    else
+        return string("Tuple with $Nclosures closures:", '\n',
+         Tuple(string("$padchar   ├── ", summary(c), '\n') for c in closures[1:end-1])...,
+                      "$padchar   └── ", summary(closures[end]))
     end
 end
 
-# Tracer flux divergences
+#####
+##### Kernel functions
+#####
 
-@inline ∇_κ_∇c(i, j, k, grid::AbstractGrid, clock, closures::Tuple{C1, C2}, c, iᶜ, Ks, C, buoyancy) where {C1, C2} = (
-        ∇_κ_∇c(i, j, k, grid, clock, closures[1], c, iᶜ, Ks[1], C, buoyancy)
-      + ∇_κ_∇c(i, j, k, grid, clock, closures[2], c, iᶜ, Ks[2], C, buoyancy))
+funcs     = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :maybe_tupled_ivd_upper_diagonal, :maybe_tupled_ivd_lower_diagonal, :maybe_tupled_implicit_linear_term]
+alt_funcs = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ, :ivd_upper_diagonal, :ivd_lower_diagonal, :implicit_linear_term]
 
-# Utilities for closures
+for (f, alt_f) in zip(funcs, alt_funcs)
+    @eval begin
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any}, Ks, args...) =
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
 
-function calculate_diffusivities!(Ks, arch, grid, closures::Tuple, args...)
-    for (α, closure) in enumerate(closures)
-        @inbounds K = Ks[α]
-        calculate_diffusivities!(K, arch, grid, closure, args...)
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...))
+
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...))
+
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $alt_f(i, j, k, grid, closures[4], Ks[4], args...))
+
+        @inline $f(i, j, k, grid, closures::Tuple, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
+    end
+end
+
+#####
+##### Utilities
+#####
+
+with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+
+function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...)
+    for (α, closure) in enumerate(closure_tuple)
+        @inbounds diffusivity_fields = diffusivity_fields_tuple[α]
+        calculate_diffusivities!(diffusivity_fields, closure, args...)
     end
     return nothing
 end
+
+function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, args...)
+    # So the last closure in the tuple has the say...
+    for closure in closure_tuple
+        bcs = add_closure_specific_boundary_conditions(closure, bcs, args...)
+    end
+    return bcs
+end
+
+#####
+##### Compiler-inferrable time_discretization for tuples
+#####
+
+const ETD = ExplicitTimeDiscretization
+const VITD = VerticallyImplicitTimeDiscretization
+
+@inline combine_time_discretizations(disc) = disc
+@inline combine_time_discretizations(::ETD, ::VITD)  = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VITD, ::ETD)  = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::VITD, ::VITD) = VerticallyImplicitTimeDiscretization()
+@inline combine_time_discretizations(::ETD, ::ETD)   = ExplicitTimeDiscretization()
+
+@inline combine_time_discretizations(d1, d2, other_discs...) =
+    combine_time_discretizations(combine_time_discretizations(d1, d2), other_discs...)
+
+@inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)

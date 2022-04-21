@@ -1,37 +1,43 @@
 using Printf
 using JLD2
 using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval, pretty_filesize
+using Oceananigans.Models
+using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
+using Oceananigans.Fields: boundary_conditions, indices
+
+default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
 
 An output writer for writing to JLD2 files.
 """
-mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
-              filepath :: String
-               outputs :: O
-              schedule :: T
-          field_slicer :: FS
-            array_type :: D
-                  init :: IF
-             including :: IN
-                  part :: Int
-          max_filesize :: Float64
-                 force :: Bool
-               verbose :: Bool
-               jld2_kw :: KW
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+    filepath :: String
+    outputs :: O
+    schedule :: T
+    array_type :: D
+    init :: IF
+    including :: IN
+    part :: Int
+    max_filesize :: Float64
+    overwrite_existing :: Bool
+    verbose :: Bool
+    jld2_kw :: KW
 end
 
 noinit(args...) = nothing
 
 """
-    JLD2OutputWriter(model, outputs; prefix, schedule,
+    JLD2OutputWriter(model, outputs; filename, schedule,
                               dir = ".",
-                     field_slicer = FieldSlicer(),
+                          indices = (:, :, :),
+                       with_halos = false,
                        array_type = Array{Float32},
                      max_filesize = Inf,
-                            force = false,
+               overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
                           verbose = false,
@@ -49,64 +55,67 @@ functions, or callable objects.
 Keyword arguments
 =================
 
-    ## Filenaming
+  ## Filenaming
 
-    - `prefix` (required): Descriptive filename prefixed to all output files.
-    
-    - `dir`: Directory to save output to.
-             Default: "." (current working directory).
+  - `filename` (required): Descriptive filename. ".jld2" is appended to `filename` in the file path
+                           if `filename` does not end in ".jld2".
 
-    ## Output frequency and time-averaging
-    
-    - `schedule` (required): `AbstractSchedule` that determines when output is saved.
-    
-    ## Slicing and type conversion prior to output
+  - `dir`: Directory to save output to. Default: "." (current working directory).
 
-    - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
-                      Has no effect on output that is not a field. `field_slicer = nothing` means
-                      no slicing occurs, so that all field data, including halo regions, is saved.
-                      Default: FieldSlicer(), which slices halo regions.
+  ## Output frequency and time-averaging
 
-    - `array_type`: The array type to which output arrays are converted to prior to saving.
-                    Default: Array{Float32}.
+  - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
-    ## File management
+  ## Slicing and type conversion prior to output
 
-    - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
-                      and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
-                      Defaults to `Inf`.
-    
-    - `force`: Remove existing files if their filenames conflict.
+  - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
+               or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
+               Defaults to `(:, :, :)` or "all indices". If `!with_halos`,
+               halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
+               will save xy-slices of the bottom-most index.
+
+  - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
+
+  - `array_type`: The array type to which output arrays are converted to prior to saving.
+                  Default: `Array{Float32}`.
+
+  ## File management
+
+  - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
+                    and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
+                    Defaults to `Inf`.
+
+  - `overwrite_existing`: Remove existing files if their filenames conflict.
+                          Default: `false`.
+
+  ## Output file metadata management
+
+  - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
+            Default: `noinit(args...) = nothing`.
+
+  - `including`: List of model properties to save with every file.
+                 Default: `[:grid, :coriolis, :buoyancy, :closure]`
+
+  ## Miscellaneous keywords
+
+  - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
                Default: `false`.
 
-    ## Output file metadata management
-    
-    - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
-              Default: `noinit(args...) = nothing`.
-    
-    - `including`: List of model properties to save with every file.
-                   Default: `[:grid, :coriolis, :buoyancy, :closure]`
+  - `part`: The starting part number used if `max_filesize` is finite.
+            Default: 1.
 
-    ## Miscellaneous keywords
-
-    - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
-                 Default: `false`.
-    
-    - `part`: The starting part number used if `max_filesize` is finite.
-              Default: 1.
-    
-    - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
+  - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 
 Example
 =======
 
-Write out 3D fields for w and T and a horizontal average:
+Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average:
 
 ```jldoctest jld2_output_writer
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
+using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -116,76 +125,127 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
+c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_data",
+                                                          filename = "some_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_data.jld2
-├── 3 outputs: (:u, :v, :w)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 3 outputs: (u, v, w)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of temperature `T` every 1 hour of simulation time
+and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
-simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
-                                                     prefix = "some_averaged_data",
+simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
+                                                     filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
 """
-function JLD2OutputWriter(model, outputs; prefix, schedule,
+function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
-                          field_slicer = FieldSlicer(),
+                               indices = (:, :, :),
+                            with_halos = false,
                             array_type = Array{Float32},
                           max_filesize = Inf,
-                                 force = false,
+                    overwrite_existing = false,
                                   init = noinit,
-                             including = [:grid, :coriolis, :buoyancy, :closure],
+                             including = default_included_properties(model),
                                verbose = false,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
 
-    # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
-    
     mkpath(dir)
-    filepath = joinpath(dir, prefix * ".jld2")
-    force && isfile(filepath) && rm(filepath, force=true)
+    filename = auto_extension(filename, ".jld2")
+    filepath = joinpath(dir, filename)
+    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
+    
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
+                         for name in keys(outputs))
 
+    # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
+    schedule, outputs = time_average_outputs(schedule, outputs, model)
+
+    initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+    
+    return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
+                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
+end
+
+function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
             saveproperties!(file, model, including)
+
+            # Serialize properties in `including`.
+            for property in including
+                serializeproperty!(file, "serialized/$property", getproperty(model, property))
+            end
+
+            # Serialize the location and boundary conditions of each output.
+            for (i, (field_name, field)) in enumerate(pairs(outputs))
+                file["timeseries/$field_name/serialized/location"] = location(field)
+                file["timeseries/$field_name/serialized/indices"] = indices(field)
+                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
+            end
         end
-    catch
-        @warn "Could not initialize $filepath: data may already be initialized."
+    catch err
+        @warn """Initialization of $filepath failed because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
-                            array_type, init, including, part, max_filesize,
-                            force, verbose, jld2_kw)
+    return nothing
+end
+
+initialize_jld2_file!(writer::JLD2OutputWriter, model) =
+    initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
+
+function iteration_zero_exists(filepath)
+    file = jldopen(filepath, "r")
+
+    zero_exists = try
+        t₀ = file["timeseries/t/0"]
+        true
+    catch
+        false
+    finally
+        close(file)
+    end
+
+    return zero_exists
 end
 
 function write_output!(writer::JLD2OutputWriter, model)
+
+    # Catch an error that occurs when a simulation is initialized but not time-stepped:
+    if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
+        if writer.overwrite_existing
+            # Re-initialize file:
+            rm(writer.filepath, force=true)
+            initialize_jld2_file!(writer, model)
+        else
+            error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
+                  re-initialized. Use `overwrite_existing=true` when constructing JLD2OutputWriter to
+                  replace any existing files and avoid this error.")
+        end
+    end
 
     verbose = writer.verbose
 
@@ -205,13 +265,11 @@ function write_output!(writer::JLD2OutputWriter, model)
     verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
 
     start_time, old_filesize = time_ns(), filesize(path)
-
     jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-
     end_time, new_filesize = time_ns(), filesize(path)
 
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                              prettytime((start_time - end_time) / 1e9),
+                              prettytime((end_time - start_time) / 1e9),
                               pretty_filesize(new_filesize),
                               pretty_filesize(new_filesize - old_filesize))
 
@@ -246,32 +304,32 @@ function start_next_file(model, writer::JLD2OutputWriter)
     if writer.part == 1
         part1_path = replace(writer.filepath, r".jld2$" => "_part1.jld2")
         verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
-        mv(writer.filepath, part1_path, force=writer.force)
+        mv(writer.filepath, part1_path, force=writer.overwrite_existing)
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.jld2$" => "part" * string(writer.part) * ".jld2")
-    writer.force && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
-    jldopen(writer.filepath, "a+"; writer.jld2_kw...) do file
-        writer.init(file, model)
-        saveproperties!(file, model, writer.including)
-    end
-
+    initialize_jld2_file!(writer, model)
+    
     return nothing
 end
+
+Base.summary(ow::JLD2OutputWriter) =
+    string("JLD2OutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
 function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
+    Noutputs = length(ow.outputs)
 
-    print(io, "JLD2OutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
-        "├── filepath: $(ow.filepath)", '\n',
-        "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
-        "├── array type: ", show_array_type(ow.array_type), '\n',
-        "├── including: ", ow.including, '\n',
-        "└── max filesize: ", pretty_filesize(ow.max_filesize))
+    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
+              "├── filepath: $(ow.filepath)", '\n',
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
+              "├── array type: ", show_array_type(ow.array_type), '\n',
+              "├── including: ", ow.including, '\n',
+              "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end

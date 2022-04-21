@@ -1,39 +1,53 @@
 module Fields
 
-export
-    Face, Cell,
-    AbstractField, Field,
-    CellField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField, ComputedField, BackgroundField,
-    interior, interiorparent, data,
-    xnode, ynode, znode, location,
-    set!, compute!, @compute,
-    VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
-    interpolate
+export Face, Center
+export AbstractField, Field, Average, Integral, Reduction, field
+export CenterField, XFaceField, YFaceField, ZFaceField
+export BackgroundField
+export interior, data, xnode, ynode, znode, location
+export set!, compute!, @compute, regrid!
+export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
+export interpolate
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
-Base.zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
-Base.zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
-Base.zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
-
-include("new_data.jl")
 include("abstract_field.jl")
-include("field.jl")
-include("zero_field.jl")
-include("reduced_field.jl")
-include("averaged_field.jl")
-include("computed_field.jl")
-include("pressure_field.jl")
+include("constant_field.jl")
 include("function_field.jl")
-include("set!.jl")
-include("tracer_names.jl")
-include("validate_field_tuple_grid.jl")
+include("field.jl")
+include("field_reductions.jl")
+include("regridding_fields.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
-include("show_fields.jl")
 include("interpolate.jl")
+include("show_fields.jl")
+include("broadcasting_abstract_fields.jl")
 
+"""
+    field(loc, a, grid)
+
+Build a field from `a` at `loc` and on `grid`.
+"""
+function field(loc, a::AbstractArray, grid)
+    f = Field(loc, grid)
+    a = arch_array(architecture(grid), a)
+    try
+        copyto!(parent(f), a)
+    catch
+        f .= a
+    end
+    return f
 end
+
+field(loc, a::Function, grid) = FunctionField(loc, a, grid)
+
+function field(loc, f::Field, grid)
+    loc === location(f) && grid === f.grid && return f
+    error("Cannot construct field at $loc and on $grid from $f")
+end
+
+include("set!.jl")
+
+end # module

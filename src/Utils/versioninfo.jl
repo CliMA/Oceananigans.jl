@@ -1,11 +1,10 @@
 using Pkg
 using InteractiveUtils
-using CUDA
 using Oceananigans.Architectures
 
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
-    @hascuda begin
+    if CUDA.has_cuda()
         gpu_name = CUDA.device() |> CUDA.name
         s = s * "  GPU: $gpu_name\n"
     end
@@ -32,7 +31,8 @@ function oceananigans_versioninfo()
         return "Oceananigans v$(project.version) (DEVELOPMENT BRANCH)"
     end
 
-    @warn "Could not determine Oceananigans version info."
+    # TODO: Get version name by parsing Project.toml via Base.find_package ?
+    # @warn "Could not determine Oceananigans version info."
 
     return ""
 end

@@ -6,7 +6,7 @@ convergence of `Oceananigans` time stepping algorithms and spatial discretiation
 To instantiate the convergence test environment, run
 
 ```
-julia -e 'using Pkg; Pkg.activate(pwd()); Pkg.instantiate(); Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))'
+julia -e 'using Pkg; Pkg.activate(pwd()); Pkg.instantiate(); Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..", "..")))'
 ```
 
 ## Time stepping convergence tests

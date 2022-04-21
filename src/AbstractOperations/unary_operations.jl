@@ -1,25 +1,20 @@
 const unary_operators = Set()
 
-"""
-    UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a unary operation on an `AbstractField`; or a function
-`f(x)` with on argument acting on `x::AbstractField`.
-"""
-struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-     arg :: A
-       ▶ :: I
+struct UnaryOperation{LX, LY, LZ, O, A, I, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+    op :: O
+    arg :: A
+    ▶ :: I
     grid :: G
 
-    """
-        UnaryOperation{X, Y, Z}(op, arg, ▶, grid)
+    @doc """
+        UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
 
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function UnaryOperation{X, Y, Z}(op, arg, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(op), typeof(arg), typeof(▶), typeof(grid)}(op, arg, ▶, grid)
+    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::I, grid::G) where {LX, LY, LZ, O, A, I, G}
+        T = eltype(grid)
+        return new{LX, LY, LZ, O, A, I, G, T}(op, arg, ▶, grid)
     end
 end
 
@@ -35,6 +30,9 @@ function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
     return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
 end
+
+# Recompute location of unary operation
+@inline at(loc, υ::UnaryOperation) = υ.op(loc, at(loc, υ.arg))
 
 """
     @unary op1 op2 op3...
@@ -56,24 +54,25 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-Set{Any} with 7 elements:
+Set{Any} with 9 elements:
+  :+
   :sqrt
   :square_it
   :cos
   :exp
+  :interpolate_identity
   :-
   :tanh
   :sin
 
-julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
-UnaryOperation at (Cell, Cell, Cell)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+UnaryOperation at (Center, Center, Center)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
-    square_it at (Cell, Cell, Cell) via identity
-    └── Field located at (Cell, Cell, Cell)
+    square_it at (Center, Center, Center) via identity
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro unary(ops...)
@@ -113,22 +112,19 @@ macro unary(ops...)
 end
 
 #####
-##### Architecture inference for UnaryOperation
-#####
-
-architecture(υ::UnaryOperation) = architecture(υ.arg)
-
-#####
 ##### Nested computations
 #####
 
-compute!(υ::UnaryOperation) = compute!(υ.arg)
+compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 
 #####
 ##### GPU capabilities
 #####
 
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
-    UnaryOperation{X, Y, Z}(Adapt.adapt(to, unary.op), Adapt.adapt(to, unary.arg),
-                            Adapt.adapt(to, unary.▶), unary.grid)
+Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
+                               Adapt.adapt(to, unary.arg),
+                               Adapt.adapt(to, unary.▶),
+                               Adapt.adapt(to, unary.grid))
+

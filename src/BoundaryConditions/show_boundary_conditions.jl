@@ -1,42 +1,45 @@
-import Oceananigans: short_show
+import Base: show
+using Oceananigans.Utils: prettysummary
+
+const DFBC = DefaultPrognosticFieldBoundaryCondition
+
+bc_str(::FBC)     = "Flux"
+bc_str(::PBC)     = "Periodic"
+bc_str(::OBC)     = "Open"
+bc_str(::VBC)     = "Value"
+bc_str(::GBC)     = "Gradient"
+bc_str(::ZFBC)    = "ZeroFlux"
+bc_str(::DFBC)    = "Default"
+bc_str(::Nothing) = "Nothing"
 
 #####
 ##### BoundaryCondition
 #####
 
-print_condition(n::Union{Nothing, Number}) = "$n"
-print_condition(A::AbstractArray) = "$(Base.dims2string(size(A))) $(typeof(A))"
-print_condition(bf::Union{DiscreteBoundaryFunction, ContinuousBoundaryFunction}) = print_condition(bf.func)
 
-function print_condition(f::Function)
-    ms = methods(f).ms
-    length(ms) == 1 && return "$(ms[1])"
-    return "$(ms)"
-end
+Base.summary(bc::DFBC) = string("DefaultBoundaryCondition")
+Base.summary(bc::PBC) = string("PeriodicBoundaryCondition")
+Base.summary(bc::OBC) = string("OpenBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::FBC) = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::VBC) = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::GBC) = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
 
-Base.show(io::IO, bc::BC{C, T}) where {C, T} =
-    print(io, "BoundaryCondition: type=$C, condition=$(print_condition(bc.condition))")
+show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 
 #####
 ##### FieldBoundaryConditions
 #####
 
-bctype_str(::FBC)  = "Flux"
-bctype_str(::PBC)  = "Periodic"
-bctype_str(::NFBC) = "NormalFlow"
-bctype_str(::VBC)  = "Value"
-bctype_str(::GBC)  = "Gradient"
-bctype_str(::ZFBC) = "ZeroFlux"
-
-short_show(fbcs::FieldBoundaryConditions) =
-    string("x=(west=$(bctype_str(fbcs.x.left)), east=$(bctype_str(fbcs.x.right))), ",
-           "y=(south=$(bctype_str(fbcs.y.left)), north=$(bctype_str(fbcs.y.right))), ",
-           "z=(bottom=$(bctype_str(fbcs.z.left)), top=$(bctype_str(fbcs.z.right)))")
-
+Base.summary(fbcs::FieldBoundaryConditions) = "FieldBoundaryConditions"
+    
 show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
-    string("Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions", '\n',
-           padding, "├── x: ", typeof(bcs.x), '\n',
-           padding, "├── y: ", typeof(bcs.y), '\n',
-           padding, "└── z: ", typeof(bcs.z))
+    string("Oceananigans.FieldBoundaryConditions, with boundary conditions", '\n',
+           padding, "├── west: ",     summary(bcs.west), '\n',
+           padding, "├── east: ",     summary(bcs.east), '\n',
+           padding, "├── south: ",    summary(bcs.south), '\n',
+           padding, "├── north: ",    summary(bcs.north), '\n',
+           padding, "├── bottom: ",   summary(bcs.bottom), '\n',
+           padding, "├── top: ",      summary(bcs.top), '\n',
+           padding, "└── immersed: ", summary(bcs.immersed))
 
 Base.show(io::IO, fieldbcs::FieldBoundaryConditions) = print(io, show_field_boundary_conditions(fieldbcs))

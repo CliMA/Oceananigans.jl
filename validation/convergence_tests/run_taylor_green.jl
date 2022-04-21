@@ -1,9 +1,11 @@
+pushfirst!(LOAD_PATH, joinpath("..", ".."))
+
+using CUDA
 using Oceananigans
 
-include("ConvergenceTests/ConvergenceTests.jl")
+using ConvergenceTests.DoublyPeriodicTaylorGreen: setup_and_run
 
-using .ConvergenceTests.DoublyPeriodicTaylorGreen: setup_and_run
-
+arch = CUDA.has_cuda() ? GPU() : CPU()
 Nx = [8, 16, 32, 64, 128]
 stop_time = 0.25
 
@@ -14,5 +16,5 @@ Nt = round(Int, stop_time / Δt)
 Δt = stop_time / Nt
 
 for N in Nx
-    setup_and_run(Nx=N, Δt=Δt, stop_iteration=Nt)
+    setup_and_run(architecture=arch, Nx=N, Δt=Δt, stop_iteration=Nt)
 end

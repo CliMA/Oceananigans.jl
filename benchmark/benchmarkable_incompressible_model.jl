@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -15,8 +17,8 @@ SUITE = BenchmarkGroup()
 for Arch in Architectures, N in Ns
     @info "Setting up benchmark: ($Arch, $N)..."
 
-    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid)
+    grid = RectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
+    model = NonhydrostaticModel(Arch(); grid)
 
     time_step!(model, 1) # warmup
 

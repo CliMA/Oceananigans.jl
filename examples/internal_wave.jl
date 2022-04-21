@@ -8,18 +8,20 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
-# that's periodic in ``(x, y, z)``:
+# that's periodic in ``(x, z)`` and is `Flat` in ``y``:
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
-                            topology=(Periodic, Periodic, Periodic))
+grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
+                       topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters
 #
@@ -30,15 +32,13 @@ grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π
 coriolis = FPlane(f=0.2)
 
 # On an `FPlane`, the domain is idealized as rotating at a constant rate with
-# rotation period `2π/f`. `coriolis` is passed to `IncompressibleModel` below.
+# rotation period `2π/f`. `coriolis` is passed to `NonhydrostaticModel` below.
 # Our units are arbitrary.
 
 # We use Oceananigans' `background_fields` abstraction to define a background
 # buoyancy field `B(z) = N^2 * z`, where `z` is the vertical coordinate
 # and `N` is the "buoyancy frequency". This means that the modeled buoyancy field
 # perturbs the basic state `B(z)`.
-
-using Oceananigans.Fields: BackgroundField
 
 ## Background fields are functions of `x, y, z, t`, and optional parameters.
 ## Here we have one parameter, the buoyancy frequency
@@ -49,18 +49,16 @@ N = 1 ## buoyancy frequency
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
-# and `B` to the `IncompressibleModel` constructor.
+# and `B` to the `NonhydrostaticModel` constructor.
 # We add a small amount of `IsotropicDiffusivity` to keep the model stable
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
-  
-using Oceananigans.Advection
 
-model = IncompressibleModel(
-                 grid = grid, 
+model = NonhydrostaticModel(
+                 grid = grid,
             advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,
-              closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
+              closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
              coriolis = coriolis,
               tracers = :b,
     background_fields = (b=B,), # `background_fields` is a `NamedTuple`
@@ -92,7 +90,7 @@ f = coriolis.f
 ω = sqrt(ω²)
 nothing # hide
 
-# We define a Gaussian envelope for the wave packet so that we can 
+# We define a Gaussian envelope for the wave packet so that we can
 # observe wave propagation.
 
 ## Some Gaussian parameters
@@ -125,15 +123,13 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
 simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
-                        
-# and add an output writer that saves the vertical velocity field every two iterations:
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
+# and add an output writer that saves the vertical velocity field every two iterations:
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           schedule = IterationInterval(1),
-                                                            prefix = "internal_wave",
-                                                             force = true)
+                                                          filename = "internal_wave.jld2",
+                                                          overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
@@ -141,31 +137,21 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load snapshots of the data and use it to make contour
+# To visualize the solution, we load a FieldTimeSeries of w and make contour
 # plots of vertical velocity.
 
-using JLD2, Printf, Plots, Oceananigans.Grids
+using Printf, Plots
 
-# We use coordinate arrays appropriate for the vertical velocity field,
-
-x, y, z = nodes(model.velocities.w)
-nothing # hide
-
-# open the jld2 file with the data,
-
-file = jldopen(simulation.output_writers[:velocities].filepath)
-
-## Extracts a vector of `iterations` at which data was saved.
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+x, y, z = nodes(w_timeseries)
 
 # and makes an animation with Plots.jl:
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
     @info "Drawing frame $i from iteration $iter..."
 
-    w = file["timeseries/w/$iter"][:, 1, :]
-    t = file["timeseries/t/$iter"]
+    w = interior(w_timeseries[i], :, 1, :)
 
     contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
                       levels = range(-1e-8, stop=1e-8, length=10),
@@ -180,4 +166,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-gif(anim, "internal_wave.gif", fps = 8) # hide
+mp4(anim, "internal_wave.mp4", fps = 8) # hide

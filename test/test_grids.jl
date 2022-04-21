@@ -1,192 +1,614 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Grids: total_extent
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
-##### Grid utilities and such
+##### Regular rectilinear grids
 #####
 
-function test_xnode_ynode_znode_are_correct(FT, N=3)
+function test_regular_rectilinear_correct_size(FT)
+    grid = RectilinearGrid(CPU(), FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
 
-    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
-                                topology=(Periodic, Periodic, Bounded))
+    @test grid.Nx == 4
+    @test grid.Ny == 6
+    @test grid.Nz == 8
 
-    @test xnode(Cell, 2, grid) ≈ FT(π/2)
-    @test ynode(Cell, 2, grid) ≈ FT(π/2)
-    @test znode(Cell, 2, grid) ≈ FT(π/2)
-
-    @test xnode(Face, 2, grid) ≈ FT(π/3)
-    @test ynode(Face, 2, grid) ≈ FT(π/3)
-    @test znode(Face, 2, grid) ≈ FT(π/3)
-
-    @test xC(2, grid) == xnode(Cell, 2, grid)
-    @test yC(2, grid) == ynode(Cell, 2, grid)
-    @test zC(2, grid) == znode(Cell, 2, grid)
-
-    @test xF(2, grid) == xnode(Face, 2, grid)
-    @test yF(2, grid) == ynode(Face, 2, grid)
-    @test zF(2, grid) == znode(Face, 2, grid)
+    # Checking ≈ as the grid could be storing Float32 values.
+    @test grid.Lx ≈ 2π
+    @test grid.Ly ≈ 4π
+    @test grid.Lz ≈ 9π
 
     return nothing
 end
 
-#####
-##### Regular Cartesian grids
-#####
+function test_regular_rectilinear_correct_extent(FT)
+    grid = RectilinearGrid(CPU(), FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
 
-function regular_cartesian_correct_size(FT)
-    grid = RegularCartesianGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
+    @test grid.Lx ≈ 1
+    @test grid.Ly ≈ 2π
+    @test grid.Lz ≈ 4
 
-    # Checking ≈ as the grid could be storing Float32 values.
-    return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
-            grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
+    return nothing
 end
 
-function regular_cartesian_correct_extent(FT)
-    grid = RegularCartesianGrid(FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
-    return (grid.Lx ≈ 1 && grid.Ly ≈ 2π  && grid.Lz ≈ 4)
+function test_regular_rectilinear_correct_coordinate_lengths(FT)
+    grid = RectilinearGrid(CPU(), FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
+                                  topology=(Periodic, Bounded, Bounded))
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
+    @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
+    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.xᶠᵃᵃ) == Nx + 2Hx
+    @test length(grid.yᵃᶠᵃ) == Ny + 2Hy + 1
+    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+
+    return nothing
 end
 
-function regular_cartesian_correct_coordinate_lengths(FT)
-    grid = RegularCartesianGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
-                                topology=(Periodic, Bounded, Bounded))
+function test_regular_rectilinear_correct_halo_size(FT)
+    grid = RectilinearGrid(CPU(), FT, size=(4, 6, 8), extent=(2π, 4π, 9π), halo=(1, 2, 3))
 
-    return (
-            length(grid.xC) == 4 &&
-            length(grid.yC) == 5 &&
-            length(grid.zC) == 6 &&
-            length(grid.xF) == 4 &&
-            length(grid.yF) == 6 &&
-            length(grid.zF) == 7
-           )
+    @test grid.Hx == 1
+    @test grid.Hy == 2
+    @test grid.Hz == 3
+
+    return nothing
 end
 
-function regular_cartesian_correct_halo_size(FT)
-    grid = RegularCartesianGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π), halo=(1, 2, 3))
-    return (grid.Hx == 1  && grid.Hy == 2  && grid.Hz == 3)
-end
-
-function regular_cartesian_correct_halo_faces(FT)
-    N, H, L = 4, 1, 2.0
+function test_regular_rectilinear_correct_halo_faces(FT)
+    N = 4
+    H = 1
+    L = 2.0
     Δ = L / N
-    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
-    return grid.xF[0] == - H * Δ && grid.yF[0] == - H * Δ && grid.zF[0] == - H * Δ
+
+    topo = (Periodic, Bounded, Bounded)
+    grid = RectilinearGrid(CPU(), FT, topology=topo, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+
+    @test grid.xᶠᵃᵃ[0] == - H * Δ
+    @test grid.yᵃᶠᵃ[0] == - H * Δ
+    @test grid.zᵃᵃᶠ[0] == - H * Δ
+
+    @test grid.xᶠᵃᵃ[N+1] == L  # Periodic
+    @test grid.yᵃᶠᵃ[N+2] == L + H * Δ
+    @test grid.zᵃᵃᶠ[N+2] == L + H * Δ
+
+    return nothing
 end
 
-function regular_cartesian_correct_first_cells(FT)
-    N, H, L = 4, 1, 4.0
+function test_regular_rectilinear_correct_first_cells(FT)
+    N = 4
+    H = 1
+    L = 4.0
     Δ = L / N
-    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
-    return grid.xC[1] == Δ/2 && grid.yC[1] == Δ/2 && grid.zC[1] == Δ/2
+
+    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+
+    @test grid.xᶜᵃᵃ[1] == Δ/2
+    @test grid.yᵃᶜᵃ[1] == Δ/2
+    @test grid.zᵃᵃᶜ[1] == Δ/2
+
+    return nothing
 end
 
-function regular_cartesian_correct_end_faces(FT)
-    N, L = 4, 2.0
+function test_regular_rectilinear_correct_end_faces(FT)
+    N = 4
+    L = 2.0
     Δ = L / N
-    grid = RegularCartesianGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
-                                topology=(Periodic, Bounded, Bounded))
-    return grid.xF[end] == L && grid.yF[end] == L + Δ && grid.zF[end] == L + Δ
+
+    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
+                                  topology=(Periodic, Bounded, Bounded))
+
+    @test grid.xᶠᵃᵃ[N+1] == L
+    @test grid.yᵃᶠᵃ[N+2] == L + Δ
+    @test grid.zᵃᵃᶠ[N+2] == L + Δ
+
+    return nothing
 end
 
-function regular_cartesian_ranges_have_correct_length(FT)
+function test_regular_rectilinear_ranges_have_correct_length(FT)
     Nx, Ny, Nz = 8, 9, 10
     Hx, Hy, Hz = 1, 2, 1
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
-                                topology=(Bounded, Bounded, Bounded))
+    grid = RectilinearGrid(CPU(), FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
+                                  topology=(Bounded, Bounded, Bounded))
 
-    return (length(grid.xC) == Nx + 2Hx && length(grid.xF) == Nx + 1 + 2Hx &&
-            length(grid.yC) == Ny + 2Hy && length(grid.yF) == Ny + 1 + 2Hy &&
-            length(grid.zC) == Nz + 2Hz && length(grid.zF) == Nz + 1 + 2Hz)
+    @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
+    @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
+    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.xᶠᵃᵃ) == Nx + 1 + 2Hx
+    @test length(grid.yᵃᶠᵃ) == Ny + 1 + 2Hy
+    @test length(grid.zᵃᵃᶠ) == Nz + 1 + 2Hz
+
+    return nothing
 end
 
 # See: https://github.com/climate-machine/Oceananigans.jl/issues/480
-function regular_cartesian_no_roundoff_error_in_ranges(FT)
-    Nx, Ny, Nz, Hz = 1, 1, 64, 1
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
-    return length(grid.zC) == Nz + 2Hz && length(grid.zF) == Nz + 1 + 2Hz
+function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
+    Nx = Ny = 1
+    Nz = 64
+    Hz = 1
+
+    grid = RectilinearGrid(CPU(), FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
+
+    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+
+    return nothing
 end
 
-function regular_cartesian_grid_properties_are_same_type(FT)
-    grid = RegularCartesianGrid(FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
-    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy, grid.Δz], FT)) &&
-           all(eltype.([grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
+function test_regular_rectilinear_grid_properties_are_same_type(FT)
+    grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+
+    @test grid.Lx isa FT
+    @test grid.Ly isa FT
+    @test grid.Lz isa FT
+    @test grid.Δxᶠᵃᵃ isa FT
+    @test grid.Δyᵃᶠᵃ isa FT
+    @test grid.Δzᵃᵃᶠ isa FT
+
+    @test eltype(grid.xᶠᵃᵃ) == FT
+    @test eltype(grid.yᵃᶠᵃ) == FT
+    @test eltype(grid.zᵃᵃᶠ) == FT
+    @test eltype(grid.xᶜᵃᵃ) == FT
+    @test eltype(grid.yᵃᶜᵃ) == FT
+    @test eltype(grid.zᵃᵃᶜ) == FT
+
+    return nothing
+end
+
+function test_xnode_ynode_znode_are_correct(FT)
+    N = 3
+    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
+                                  topology=(Periodic, Periodic, Bounded))
+
+    @test xnode(Center(), 2, grid) ≈ FT(π/2)
+    @test ynode(Center(), 2, grid) ≈ FT(π/2)
+    @test znode(Center(), 2, grid) ≈ FT(π/2)
+
+    @test xnode(Face(), 2, grid) ≈ FT(π/3)
+    @test ynode(Face(), 2, grid) ≈ FT(π/3)
+    @test znode(Face(), 2, grid) ≈ FT(π/3)
+
+    return nothing
+end
+
+function test_regular_rectilinear_constructor_errors(FT)
+    @test isbitstype(typeof(RectilinearGrid(CPU(), FT, size=(16, 16, 16), extent=(1, 1, 1))))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32,), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 64), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32, 16), extent=(1, 1, 1))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32.0), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(20.1, 32, 32), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, nothing, 32), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, "32", 32), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32), extent=(1, nothing, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32), extent=(1, "1", 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1.0, 1, 1))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), y=[1, 2])
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), z=(-π, π))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=1, y=2, z=3)
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
+
+    @test_throws ArgumentError RectilinearGrid(CPU(), FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+
+    return nothing
+end
+
+function flat_size_regular_rectilinear_grid(FT; topology, size, extent)
+    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    return grid.Nx, grid.Ny, grid.Nz
+end
+
+function flat_halo_regular_rectilinear_grid(FT; topology, size, halo, extent)
+    grid = RectilinearGrid(CPU(), FT; size=size, halo=halo, topology=topology, extent=extent)
+    return grid.Hx, grid.Hy, grid.Hz
+end
+
+function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
+    grid = RectilinearGrid(CPU(), FT; size=size, topology=topology, extent=extent)
+    return grid.Lx, grid.Ly, grid.Lz
+end
+
+function test_flat_size_regular_rectilinear_grid(FT)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
+
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
+
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 3, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 3, 0)
+
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
+
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Periodic), size=2, extent=1) == (1, 1, 1)
+
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) == (1, 1, 1)
+
+    return nothing
+end
+
+function test_grid_equality(arch)
+    topo = (Periodic, Periodic, Bounded)
+    Nx, Ny, Nz = 4, 7, 9
+    grid1 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
+    grid2 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
+    grid3 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
+
+    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
+end
+
+function test_grid_equality_over_architectures()
+    grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+    grid_gpu = RectilinearGrid(GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+
+    return grid_cpu == grid_gpu
 end
 
 #####
 ##### Vertically stretched grids
 #####
 
-function correct_constant_grid_spacings(FT)
-    grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 1), zF=collect(0:16))
-    return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
+function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
+    grid = RectilinearGrid(arch, FT, size=(1, 1, 16), x=(0,1), y=(0,1), z=collect(0:16))
+
+    @test grid.Lx isa FT
+    @test grid.Ly isa FT
+    @test grid.Lz isa FT
+    @test grid.Δxᶠᵃᵃ isa FT
+    @test grid.Δyᵃᶠᵃ isa FT
+
+    @test eltype(grid.xᶠᵃᵃ) == FT
+    @test eltype(grid.xᶜᵃᵃ) == FT
+    @test eltype(grid.yᵃᶠᵃ) == FT
+    @test eltype(grid.yᵃᶜᵃ) == FT
+    @test eltype(grid.zᵃᵃᶠ) == FT
+    @test eltype(grid.zᵃᵃᶜ) == FT
+
+    @test eltype(grid.Δzᵃᵃᶜ) == FT
+    @test eltype(grid.Δzᵃᵃᶠ) == FT
+
+    return nothing
 end
 
-function correct_quadratic_grid_spacings(FT)
-    Nx = Ny = Nz = 16
-    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz),
-                                            x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
+    grid = RectilinearGrid(arch, FT, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
-     zF(k) = (k-1)^2
-     zC(k) = (k^2 + (k-1)^2) / 2
-    ΔzF(k) = k^2 - (k-1)^2
-    ΔzC(k) = 2k - 2
+    ArrayType = array_type(arch)
+    @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.zᵃᵃᶜ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
 
-     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
-
-    # Note that ΔzC[1, 1, 1] involves a halo point, which is not directly determined by
-    # the user-supplied zF
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
-
-    return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
+    return nothing
 end
 
-function correct_tanh_grid_spacings(FT)
-    Nx = Ny = Nz = 16
+function test_correct_constant_grid_spacings(FT, Nz)
+    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz))
 
+    @test all(grid.Δzᵃᵃᶜ .== 1)
+    @test all(grid.Δzᵃᵃᶠ .== 1)
+
+    return nothing
+end
+
+function test_correct_quadratic_grid_spacings(FT, Nz)
+    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+
+     zᵃᵃᶠ(k) = (k-1)^2
+     zᵃᵃᶜ(k) = (k^2 + (k-1)^2) / 2
+    Δzᵃᵃᶠ(k) = k^2 - (k-1)^2
+    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k) - zᵃᵃᶜ(k-1)
+
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
+    # the user-supplied zᵃᵃᶠ
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
+
+    return nothing
+end
+
+function test_correct_tanh_grid_spacings(FT, Nz)
     S = 3  # Stretching factor
+    zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
+    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
-    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k) + zᵃᵃᶠ(k+1)) / 2
+    Δzᵃᵃᶠ(k) = zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
+    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
 
-     zC(k) = (zF(k) + zF(k+1)) / 2
-    ΔzF(k) = zF(k+1) - zF(k)
-    ΔzC(k) = zC(k) - zC(k-1)
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
+    # the user-supplied zᵃᵃᶠ
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
 
-     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
-
-    # See correct_quadratic_grid_spacings for an explanation of this test component
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
-
-   return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
+   return nothing
 end
 
-function vertically_stretched_grid_properties_are_same_type(FT)
-    Nx, Ny, Nz = 16, 16, 16
-    grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), zF=collect(0:16))
-    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
-           all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
+#####
+##### Latitude-longitude grid tests
+#####
+
+function test_basic_lat_lon_bounded_domain(FT)
+    Nλ = Nφ = 18
+    Hλ = Hφ = 1
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
+
+    @test topology(grid) == (Bounded, Bounded, Bounded)
+
+    @test grid.Nx == Nλ
+    @test grid.Ny == Nφ
+    @test grid.Nz == 1
+
+    @test grid.Lx == 180
+    @test grid.Ly == 90
+    @test grid.Lz == 1
+
+    @test grid.Δλᶠᵃᵃ == 10
+    @test grid.Δφᵃᶠᵃ == 5
+    @test grid.Δzᵃᵃᶜ == 1
+    @test grid.Δzᵃᵃᶠ == 1
+
+    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+
+    @test grid.λᶠᵃᵃ[1] == -90
+    @test grid.λᶠᵃᵃ[Nλ+1] == 90
+
+    @test grid.φᵃᶠᵃ[1] == -45
+    @test grid.φᵃᶠᵃ[Nφ+1] == 45
+
+    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλᶠᵃᵃ
+    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλᶠᵃᵃ
+
+    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφᵃᶠᵃ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφᵃᶠᵃ
+
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
+
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+
+    return nothing
 end
 
-function flat_size_regular_cartesian_grid(FT; topology, size, extent)
-    grid = RegularCartesianGrid(FT; size=size, topology=topology, extent=extent)
-    return grid.Nx, grid.Ny, grid.Nz
+function test_basic_lat_lon_periodic_domain(FT)
+    Nλ = 36
+    Nφ = 32
+    Hλ = Hφ = 1
+
+    grid = LatitudeLongitudeGrid(CPU(), FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
+
+    @test topology(grid) == (Periodic, Bounded, Bounded)
+
+    @test grid.Nx == Nλ
+    @test grid.Ny == Nφ
+    @test grid.Nz == 1
+
+    @test grid.Lx == 360
+    @test grid.Ly == 160
+    @test grid.Lz == 1
+
+    @test grid.Δλᶠᵃᵃ == 10
+    @test grid.Δφᵃᶠᵃ == 5
+    @test grid.Δzᵃᵃᶜ == 1
+    @test grid.Δzᵃᵃᶠ == 1
+
+    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
+    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
+
+    @test grid.λᶠᵃᵃ[1] == -180
+    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
+
+    @test grid.φᵃᶠᵃ[1] == -80
+    @test grid.φᵃᶠᵃ[Nφ+1] == 80
+
+    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλᶠᵃᵃ
+    @test grid.λᶠᵃᵃ[Nλ+1] == 180
+
+    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφᵃᶠᵃ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφᵃᶠᵃ
+
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
+
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
+
+    return nothing
 end
 
-function flat_halo_regular_cartesian_grid(FT; topology, size, halo, extent)
-    grid = RegularCartesianGrid(FT; size=size, halo=halo, topology=topology, extent=extent)
-    return grid.Hx, grid.Hy, grid.Hz
+function test_basic_lat_lon_general_grid(FT)
+
+    (Nλ, Nφ, Nz) = size = (24, 16, 16)
+    (Hλ, Hφ, Hz) = halo = ( 1,  1,  1)
+
+    lat = (-80,   80)
+    lon = (-180, 180) 
+    zᵣ  = (-100,   0)
+
+    Λ₁  = (lat[1], lon[1], zᵣ[1])
+    Λₙ  = (lat[2], lon[2], zᵣ[2])
+
+    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁ 
+    
+    grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+
+    @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
+
+    Δz = grid_reg.Δzᵃᵃᶜ
+    zₛ = -Lz:Δz:0
+
+    grid_str = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zₛ)
+
+    @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
+        
+    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
+    
+    @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
+    
+    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz 
+
+    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ) 
+    @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
+    @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
+    @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
+    @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
+    @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
+
+    @test sum(grid_str.Δzᵃᵃᶜ) == grid_reg.Δzᵃᵃᶜ * length(grid_str.Δzᵃᵃᶜ)
+    @test sum(grid_str.Δzᵃᵃᶠ) == grid_reg.Δzᵃᵃᶠ * length(grid_str.Δzᵃᵃᶠ)
+
+    return nothing
 end
 
-function flat_extent_regular_cartesian_grid(FT; topology, size, extent)
-    grid = RegularCartesianGrid(FT; size=size, topology=topology, extent=extent)
-    return grid.Lx, grid.Ly, grid.Lz
+function test_lat_lon_precomputed_metrics(FT, arch)
+
+    Nλ, Nφ, Nz = N = (4, 2, 3)
+    Hλ, Hφ, Hz = H = (1, 1, 1)
+
+    latreg  = (-80,   80)
+    lonreg  = (-180, 180)
+    lonregB = (-160, 160)
+
+    zreg   = (-1,     0)
+
+    latstr  = [-80, 0, 80]
+    lonstr  = [-180, -30, 10, 40, 180]
+    lonstrB = [-160, -30, 10, 40, 160]
+    zstr    = collect(0:Nz)
+
+    latitude  = (latreg, latstr)
+    longitude = (lonreg, lonstr, lonregB, lonstrB)
+    zcoord    = (zreg,     zstr)
+
+    CUDA.allowscalar(true)
+
+    # grid with pre computed metrics vs metrics computed on the fly
+    for lat in latitude
+        for lon in longitude
+            for z in zcoord
+                println("$lat, $lon, $z")
+                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
+                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+    
+                @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δyᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶜᵃ(i, j, 1, grid_pre) ≈ Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+            end 
+        end
+    end
+
+    CUDA.allowscalar(false)
+
 end
 
+#####
+##### Conformal cubed sphere face grid
+#####
+
+function test_cubed_sphere_face_array_size(FT)
+    grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+
+    @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test size(grid.φᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    return nothing
+end
 
 #####
 ##### Test the tests
@@ -197,30 +619,29 @@ end
 
     @testset "Grid utils" begin
         @info "  Testing grid utilities..."
+
         @test total_extent(Periodic, 1, 0.2, 1.0) == 1.2
         @test total_extent(Bounded, 1, 0.2, 1.0) == 1.4
-        for FT in float_types
-            test_xnode_ynode_znode_are_correct(FT)
-        end
     end
 
-    @testset "Regular Cartesian grid" begin
-        @info "  Testing regular Cartesian grid..."
+    @testset "Regular rectilinear grid" begin
+        @info "  Testing regular rectilinear grid..."
 
         @testset "Grid initialization" begin
             @info "    Testing grid initialization..."
 
             for FT in float_types
-                @test regular_cartesian_correct_size(FT)
-                @test regular_cartesian_correct_extent(FT)
-                @test regular_cartesian_correct_coordinate_lengths(FT)
-                @test regular_cartesian_correct_halo_size(FT)
-                @test regular_cartesian_correct_halo_faces(FT)
-                @test regular_cartesian_correct_first_cells(FT)
-                @test regular_cartesian_correct_end_faces(FT)
-                @test regular_cartesian_ranges_have_correct_length(FT)
-                @test regular_cartesian_no_roundoff_error_in_ranges(FT)
-                @test regular_cartesian_grid_properties_are_same_type(FT)
+                test_regular_rectilinear_correct_size(FT)
+                test_regular_rectilinear_correct_extent(FT)
+                test_regular_rectilinear_correct_coordinate_lengths(FT)
+                test_regular_rectilinear_correct_halo_size(FT)
+                test_regular_rectilinear_correct_halo_faces(FT)
+                test_regular_rectilinear_correct_first_cells(FT)
+                test_regular_rectilinear_correct_end_faces(FT)
+                test_regular_rectilinear_ranges_have_correct_length(FT)
+                test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
+                test_regular_rectilinear_grid_properties_are_same_type(FT)
+                test_xnode_ynode_znode_are_correct(FT)
             end
         end
 
@@ -228,48 +649,7 @@ end
             @info "    Testing grid constructor errors..."
 
             for FT in float_types
-                @test isbitstype(typeof(RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1))))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32,), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 64), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32, 16), extent=(1, 1, 1))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32.0), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(20.1, 32, 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, nothing, 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, "32", 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), extent=(1, nothing, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), extent=(1, "1", 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1.0, 1, 1))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=2)
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), y=[1, 2])
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), z=(-π, π))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=1, y=2, z=3)
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
-
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
-                
-                @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+                test_regular_rectilinear_constructor_errors(FT)
             end
         end
 
@@ -277,65 +657,164 @@ end
             @info "    Testing construction of grids with Flat dimensions..."
 
             for FT in float_types
-                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+                test_flat_size_regular_rectilinear_grid(FT)
+            end
+        end
 
-                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+        @testset "Grid equality" begin
+            @info "    Testing grid equality operator (==)..."
+            
+            for arch in archs
+                test_grid_equality(arch)
+            end
 
-                @test flat_size_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
-                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
-
-                @test flat_size_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
-
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
-
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
-
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
-
-                @test flat_halo_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
-
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (0, 1, 1)
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 0, 1)
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 0)
-
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 0, 0)
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) == (0, 1, 0)
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Flat, Periodic), size=2, extent=1) == (0, 0, 1)
-
-                @test flat_extent_regular_cartesian_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) == (0, 0, 0)
+            if CUDA.has_cuda()
+                test_grid_equality_over_architectures()
             end
         end
 
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
-        grid = RegularCartesianGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
-        show(grid); println();
-        @test grid isa RegularCartesianGrid
+        
+        grid = RectilinearGrid(CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
+
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::RectilinearGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+        
+        @test grid isa RectilinearGrid
     end
 
-    @testset "Vertically stretched Cartesian grid" begin
-        @info "  Testing vertically stretched Cartesian grid..."
+    @testset "Vertically stretched rectilinear grid" begin
+        @info "  Testing vertically stretched rectilinear grid..."
 
-        @testset "Grid initialization" begin
-            @info "    Testing grid initialization..."
+        for arch in archs, FT in float_types
+            @testset "Vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]" begin
+                @info "    Testing vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]..."
 
-            for FT in float_types
-                @test correct_constant_grid_spacings(FT)
-                @test correct_quadratic_grid_spacings(FT)
-                @test correct_tanh_grid_spacings(FT)
-                @test vertically_stretched_grid_properties_are_same_type(FT)
+                test_vertically_stretched_grid_properties_are_same_type(FT, arch)
+
+                zᵃᵃᶠ1 = collect(0:10).^2
+                zᵃᵃᶠ2 = [1, 3, 5, 10, 15, 33, 50]
+                for zᵃᵃᶠ in [zᵃᵃᶠ1, zᵃᵃᶠ2]
+                    test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
+                end
             end
+
+            @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
+                @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
+                for Nz in [16, 17]
+                    test_correct_constant_grid_spacings(FT, Nz)
+                    test_correct_quadratic_grid_spacings(FT, Nz)
+                    test_correct_tanh_grid_spacings(FT, Nz)
+                end
+            end
+
+            # Testing show function
+            Nz = 20
+            grid = RectilinearGrid(arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+            
+            @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+                true
+            catch err
+                println("error in show(::RectilinearGrid)")
+                println(sprint(showerror, err))
+                false
+            end
+            
+            @test grid isa RectilinearGrid
+        end
+    end
+
+    @testset "Latitude-longitude grid" begin
+        @info "  Testing general latitude-longitude grid..."
+
+        for FT in float_types
+            test_basic_lat_lon_bounded_domain(FT)
+            test_basic_lat_lon_periodic_domain(FT)
+            test_basic_lat_lon_general_grid(FT)
+        end
+
+        @info "  Testing precomputed metrics on latitude-longitude grid..."
+        for arch in archs, FT in float_types
+            test_lat_lon_precomputed_metrics(FT, arch)
+        end
+
+        # Testing show function for regular grid
+        grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
+    
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::LatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa LatitudeLongitudeGrid
+
+        # Testing show function for stretched grid
+        grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
+
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::LatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa LatitudeLongitudeGrid
+    end
+
+    @testset "Conformal cubed sphere face grid" begin
+        @info "  Testing conformal cubed sphere face grid..."
+
+        for FT in float_types
+            test_cubed_sphere_face_array_size(Float64)
+        end
+
+        # Testing show function
+        grid = ConformalCubedSphereFaceGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+    
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere face grid from file" begin
+        @info "  Testing conformal cubed sphere face grid construction from file..."
+
+        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+
+        for face in 1:6
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa ConformalCubedSphereFaceGrid
         end
     end
 end

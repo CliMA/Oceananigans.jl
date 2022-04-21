@@ -14,8 +14,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, Plots"
+# ```
 
 # ## Using `Oceananigans.jl`
 #
@@ -27,39 +29,36 @@ using Oceananigans
 #
 # ## Instantiating and configuring a model
 #
-# A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
+# A core Oceananigans type is `NonhydrostaticModel`. We build a `NonhydrostaticModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
-# Below, we build a Cartesian grid with 128 grid points in the `z`-direction, where `z`
-# spans from `z = -0.5` to `z = 0.5`,
+# Below, we build a rectilinear grid with 128 regularly-spaced grid points in
+# the `z`-direction, where `z` spans from `z = -0.5` to `z = 0.5`,
 
-grid = RegularCartesianGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
+grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# We next specify a model with an `IsotropicDiffusivity`, which models either
+# The default topology is `(Periodic, Periodic, Bounded)`. In this example we're
+# trying to solve a one-dimensional problem, so we assign `Flat` to the
+# `x` and `y` topologies. We excise halos and avoid interpolation or differencing
+# in `Flat` directions, saving computation and memory.
+#
+# We next specify a model with an `ScalarDiffusivity`, which models either
 # molecular or turbulent diffusion,
 
-closure = IsotropicDiffusivity(κ=1.0)
+closure = ScalarDiffusivity(κ=1)
 
-# We finally pass these two ingredients to `IncompressibleModel`,
+# We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = IncompressibleModel(grid=grid, closure=closure)
+model = NonhydrostaticModel(grid=grid, closure=closure, buoyancy=nothing, tracers=:T)
 
-# Our simple `grid` and `model` use a number of defaults:
-#
-#   * The default `grid` topology is periodic in `x, y` and bounded in `z`.
-#   * The default `Model` has no-flux (insulating and stress-free) boundary conditions on
-#     non-periodic boundaries for velocities `u, v, w` and tracers.
-#   * The default `Model` has two tracers: temperature `T`, and salinity `S`.
-#   * The default `Model` uses a `SeawaterBuoyancy` model with a `LinearEquationOfState`.
-#     However, buoyancy is not active in the simulation we run below.
+# By default, `NonhydrostaticModel` has no-flux (insulating and stress-free) boundary conditions on
+# all fields.
 #
 # Next, we `set!` an initial condition on the temperature field,
 # `model.tracers.T`. Our objective is to observe the diffusion of a Gaussian.
 
 width = 0.1
-
 initial_temperature(x, y, z) = exp(-z^2 / (2width^2))
-
 set!(model, T=initial_temperature)
 
 # ## Visualizing model data
@@ -69,27 +68,22 @@ set!(model, T=initial_temperature)
 # To see the new data in `model.tracers.T`, we plot it:
 
 using Plots
-using Oceananigans.Grids: znodes # for obtaining the z-coordinates of model.tracers.T
 
+linewidth = 2
 z = znodes(model.tracers.T)
 
-T_plot = plot(interior(model.tracers.T)[1, 1, :], z,
-              linewidth = 2,
-              label = "t = 0",
-              xlabel = "Temperature (ᵒC)",
-              ylabel = "z")
+T_plot = plot(interior(model.tracers.T, 1, 1, :), z; linewidth,
+              label = "t = 0", xlabel = "Temperature (ᵒC)", ylabel = "z")
 
-# The function `interior` above extracts a `view` of the physical interior points
-# of `model.tracers.T`. This is useful because `model.tracers.T` also contains "halo" points
-# that lie outside the physical domain (halo points are used to set boundary conditions
-# during time-stepping).
-
+# The function `interior` above extracts a `view` of `model.tracers.T` over the
+# physical points (excluding halos) at `(1, 1, :)`.
+#
 # ## Running a `Simulation`
 #
 # Next we set-up a `Simulation` that time-steps the model forward and manages output.
 
 ## Time-scale for diffusion across a grid cell
-diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
+diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.T
 
 simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
 
@@ -104,8 +98,8 @@ run!(simulation)
 
 using Printf
 
-plot!(T_plot, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
-      label=@sprintf("t = %.3f", model.clock.time))
+label = @sprintf("t = %.3f", model.clock.time)
+plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
@@ -113,8 +107,8 @@ plot!(T_plot, interior(model.tracers.T)[1, 1, :], z, linewidth=2,
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
-                     schedule=IterationInterval(100), force = true)
+    JLD2OutputWriter(model, model.tracers, filename = "one_dimensional_diffusion.jld2",
+                     schedule=IterationInterval(100), overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 
@@ -126,19 +120,13 @@ run!(simulation)
 # iterations we ended up saving at, and plot the evolution of the
 # temperature profile in a loop over the iterations.
 
-using JLD2
+T = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
 
-file = jldopen(simulation.output_writers[:temperature].filepath)
+anim = @animate for (i, t) in enumerate(T.times)
+    Ti = interior(T[i], 1, 1, :)
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
-
-anim = @animate for (i, iter) in enumerate(iterations)
-
-    T = file["timeseries/T/$iter"][1, 1, :]
-    t = file["timeseries/t/$iter"]
-
-    plot(T, z, linewidth=2, title=@sprintf("t = %.3f", t),
+    plot(Ti, z; linewidth, title=@sprintf("t = %.3f", t),
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
-gif(anim, "one_dimensional_diffusion.gif", fps = 15) # hide
+mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide

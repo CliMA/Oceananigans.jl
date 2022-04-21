@@ -29,13 +29,13 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_simulation(N, advection_scheme)
     L = 2000
     topology = (Periodic, Flat, Bounded)
-    grid = RegularCartesianGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
+    grid = RectilinearGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                grid = grid,
         timestepper = :RungeKutta3,
           advection = advection_scheme,
-            closure = IsotropicDiffusivity(ν=0, κ=0)
+            closure = ScalarDiffusivity(ν=0, κ=0)
     )
 
     x₀, z₀ = L/2, -L/2
@@ -62,7 +62,7 @@ function print_progress(simulation)
     u_max = maximum(abs, interior(model.velocities.u))
     w_max = maximum(abs, interior(model.velocities.w))
     T_min, T_max = extrema(interior(model.tracers.T))
-    CFL = max(u_max, w_max) * simulation.Δt / min(model.grid.Δx, model.grid.Δz)
+    CFL = max(u_max, w_max) * simulation.Δt / min(model.grid.Δxᶜᵃᵃ, model.grid.Δzᵃᵃᶜ)
 
     i, t = model.clock.iteration, model.clock.time
     @info @sprintf("[%06.2f%%] i: %d, t: %.4f, U_max: (%.2e, %.2e), T: (min=%.5f, max=%.5f), CFL: %.4f",

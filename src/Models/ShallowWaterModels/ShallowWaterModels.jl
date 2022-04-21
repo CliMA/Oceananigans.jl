@@ -1,11 +1,14 @@
 module ShallowWaterModels
 
+export ShallowWaterModel
+
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
-import Oceananigans.Models: fields
+import Oceananigans: fields, prognostic_fields
+import Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 #####
 ##### ShallowWaterModel definition
@@ -25,13 +28,15 @@ include("show_shallow_water_model.jl")
 Returns a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers`.
 """
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
+prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")
 include("calculate_shallow_water_tendencies.jl")
 include("update_shallow_water_state.jl")
+include("shallow_water_advection_operators.jl")
+include("shallow_water_cell_advection_timescale.jl")
 
-# These files can be removed when rk3_substep! and store_tendencies! are generalized:
-include("rk3_substep_shallow_water_model.jl")
-include("store_shallow_water_tendencies.jl")
+# No support for particle advection yet.
+update_particle_properties!(model::ShallowWaterModel, Δt) = nothing
 
 end # module

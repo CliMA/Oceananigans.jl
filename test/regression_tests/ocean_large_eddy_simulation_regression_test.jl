@@ -1,8 +1,8 @@
-using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
 
-function run_ocean_large_eddy_simulation_regression_test(arch, closure)
-    name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
+function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
+    name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)
 
     spinup_steps = 10000
       test_steps = 10
@@ -14,23 +14,28 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     ∂T∂z = 0.005    # Initial vertical temperature gradient
 
     # Grid
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(16, 16, 16))
+    N = L = 16
+    if grid_type == :regular
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L), halo=(1, 1, 1))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-L, 0, length=N+1)
+        grid = RectilinearGrid(arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF, halo=(1, 1, 1))
+    end
 
     # Boundary conditions
-    u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
-    T_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵀ),
-                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
-    S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
+    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵘ))
+    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵀ), bottom = BoundaryCondition(Gradient, ∂T∂z))
+    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
+
+    equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = IncompressibleModel(
-             architecture = arch,
-                     grid = grid,
-                 coriolis = FPlane(f=1e-4),
-                 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
-                  closure = closure,
-      boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
-    )
+    model = NonhydrostaticModel(; grid, 
+                                coriolis = FPlane(f=1e-4),
+                                buoyancy = SeawaterBuoyancy(; equation_of_state),
+                                tracers = (:T, :S),
+                                closure = closure,
+                                boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)
@@ -68,7 +73,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     #### Regression test
     ####
 
-    initial_filename = joinpath(dirname(@__FILE__), "data", name * "_iteration$spinup_steps.jld2")
+    datadep_path = "regression_test_data/" * name * "_iteration$spinup_steps.jld2"
+    initial_filename = @datadep_str datadep_path
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
@@ -96,20 +102,22 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     model.clock.iteration = spinup_steps
 
     update_state!(model)
+    model.timestepper.previous_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(@__DIR__, "data", name * "_iteration$(spinup_steps+test_steps).jld2")
+    datadep_path = "regression_test_data/" * name * "_iteration$(spinup_steps+test_steps).jld2"
+    final_filename = @datadep_str datadep_path
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                   T = Array(interior(model.tracers.T)),
-                   S = Array(interior(model.tracers.S)))
+    test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                     v = Array(interior(model.velocities.v)),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                     T = Array(interior(model.tracers.T)),
+                                     S = Array(interior(model.tracers.S)))
 
     correct_fields = (u = Array(interior(solution₁.u, model.grid)),
                       v = Array(interior(solution₁.v, model.grid)),

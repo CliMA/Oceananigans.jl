@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -6,15 +8,15 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_time_stepper(Arch, N, TimeStepper)
-    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid, timestepper=TimeStepper)
+    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid, timestepper=TimeStepper)
 
     time_step!(model, 1) # warmup
 
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -36,7 +38,7 @@ benchmarks_pretty_table(df, title="Time stepping benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:TimeSteppers, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Time stepping CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Time stepping CPU to GPU speedup")
 end
 
 for Arch in Architectures
@@ -45,4 +47,3 @@ for Arch in Architectures
     sort!(df_arch, :TimeSteppers, by=string)
     benchmarks_pretty_table(df_arch, title="Time stepping relative performance ($Arch)")
 end
-

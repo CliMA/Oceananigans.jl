@@ -1,4 +1,7 @@
+using Oceananigans.Operators
+
 tracer_diffusivities(tracers, κ::Union{Number, Function}) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
+tracer_diffusivities(tracers, ::Nothing) = nothing
 
 function tracer_diffusivities(tracers, κ::NamedTuple)
 
@@ -9,10 +12,20 @@ function tracer_diffusivities(tracers, κ::NamedTuple)
     return κ
 end
 
-convert_diffusivity(T, κ::Number) = convert(T, κ)
-convert_diffusivity(T, κ::NamedTuple) = convert(NamedTuple{propertynames(κ), NTuple{length(κ), T}}, κ)
+convert_diffusivity(FT, κ::Number; kw...) = convert(FT, κ)
 
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
+function convert_diffusivity(FT, κ; discrete_form=false)
+    discrete_form && return DiscreteDiffusionFunction(κ)
+    return κ
+end
+    
+function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false)
+    κ_names = propertynames(κ)
+    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form) for κi in κ))
+end
+
+@inline geo_mean_Δᶠ(i, j, k, grid::AbstractGrid) =
+    cbrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid))
 
 @kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, U, C)
     i, j, k = @index(Global, NTuple)

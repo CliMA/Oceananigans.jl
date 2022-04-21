@@ -1,43 +1,102 @@
-import Base: show
-import Oceananigans: short_show
+using Printf
+using Oceananigans.Grids: size_summary, scalar_summary
+using Oceananigans.Utils: prettysummary
+using Oceananigans.BoundaryConditions: bc_str
 
 location_str(::Type{Face})    = "Face"
-location_str(::Type{Cell})    = "Cell"
+location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
+show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
+show_location(field::AbstractField) = show_location(location(field)...)
 
-show_location(X, Y, Z) = "($(location_str(X)), $(location_str(Y)), $(location_str(Z)))"
+function Base.summary(field::Field)
+    LX, LY, LZ = location(field)
+    prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
 
-show_location(field::AbstractField{X, Y, Z}) where {X, Y, Z} = show_location(X, Y, Z)
+    grid_name = typeof(field.grid).name.wrapper
+    reduced_dims = reduced_dimensions(field)
 
-short_show(m::Missing) = "$m"
+    suffix = reduced_dims === () ?
+        string(" on ", grid_name, " on ", summary(architecture(field))) :
+        string(" reduced over dims = ", reduced_dims,
+               " on ", grid_name, " on ", summary(architecture(field)))
 
-short_show(field::Field) = string("Field located at ", show_location(field))
+    return string(prefix, suffix)
+end
 
-short_show(field::AveragedField) = string("AveragedField over dims=$(field.dims) located at ", show_location(field), " of ", short_show(field.operand))
-short_show(field::ComputedField) = string("ComputedField located at ", show_location(field), " of ", short_show(field.operand))
+data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
+                             "min=", prettysummary(minimum(field)), ", ",
+                             "mean=", prettysummary(mean(field)))
 
-show(io::IO, field::Field) =
-    print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))\n",
-          "└── boundary conditions: $(short_show(field.boundary_conditions))")
+function Base.show(io::IO, field::Field)
 
-show_status(::Nothing) = "nothing"
-show_status(status) = "time=$(status.time)"
+    bcs = field.boundary_conditions
 
-show(io::IO, field::AveragedField) =
-    print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))", '\n',
-          "├── dims: $(field.dims)", '\n',
-          "├── operand: $(short_show(field.operand))", '\n',
-          "└── status: ", show_status(field.status), '\n')
+    prefix =
+        string("$(summary(field))\n",
+               "├── grid: ", summary(field.grid), '\n',
+               "├── boundary conditions: ", summary(bcs), '\n',
+               "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
+                     ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
+                     ", bottom: ", bc_str(bcs.bottom), ", top: ", bc_str(bcs.top),
+                     ", immersed: ", bc_str(bcs.immersed), '\n')
 
-show(io::IO, field::ComputedField) =
-    print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))", '\n',
-          "├── operand: $(short_show(field.operand))", '\n',
-          "└── status: ", show_status(field.status), '\n')
+    middle = isnothing(field.operand) ? "" :
+        string("├── operand: ", summary(field.operand), '\n',
+               "├── status: ", summary(field.status), '\n')
 
-short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
+    suffix = string("└── data: ", summary(field.data), '\n',
+                    "    └── ", data_summary(field))
+
+    print(io, prefix, middle, suffix)
+end
+
+Base.summary(status::FieldStatus) = "time=$(status.time)"
+
+Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
+Base.show(io::IO, z::ZeroField) = print(io, summary(z))
+
+Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
+
+const FieldTuple = Tuple{Field, Vararg{Field}}
+const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
+
+function Base.show(io::IO, ft::NamedFieldTuple)
+    names = keys(ft)
+    N = length(ft)
+
+    grid = first(ft).grid
+    all_same_grid = true
+    for field in ft
+        if field.grid !== grid
+            all_same_grid = false
+        end
+    end
+
+    print(io, "NamedTuple with ", N, " Fields ")
+
+    if all_same_grid
+        print(io, "on ", summary(grid), ":\n")
+    else
+        print(io, "on different grids:", '\n')
+    end
+
+    for name in names[1:end-1]
+        field = ft[name]
+        print(io, "├── $name: ", summary(field), '\n')
+
+        if !all_same_grid
+            print(io, "│   └── grid: ", summary(field.grid), '\n')
+        end
+    end
+
+    name = names[end]
+    field = ft[name]
+    print(io, "└── $name: ", summary(field))
+
+    if !all_same_grid
+        print(io, '\n')
+        print(io, "    └── grid: ", summary(field.grid))
+    end
+end
+

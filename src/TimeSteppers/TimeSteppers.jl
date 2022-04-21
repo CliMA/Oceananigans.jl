@@ -9,13 +9,14 @@ export
 
 using CUDA
 using KernelAbstractions
-using Oceananigans: AbstractModel
-using Oceananigans.Architectures: @hascuda, device
+using Oceananigans: AbstractModel, prognostic_fields
+using Oceananigans.Architectures: device
 using Oceananigans.Fields: TendencyFields
+using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """
-    AbstractTimeStepper
+    abstract type AbstractTimeStepper
 
 Abstract supertype for time steppers.
 """
@@ -29,15 +30,17 @@ Returns a timestepper with name `name`, instantiated with `args...`.
 Example
 =======
 
+```julia
 julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
+```
 """
-function TimeStepper(name::Symbol, args...)
+function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return eval(Expr(:call, fullname, args...))
+    return @eval $fullname($args...; $kwargs...)
 end
 
 # Fallback
-TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
+TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
 function update_state! end
 function calculate_tendencies! end
@@ -45,9 +48,12 @@ function calculate_tendencies! end
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing
 
+reset!(timestepper) = nothing
+
 include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
+include("correct_immersed_tendencies.jl")
 
 end # module

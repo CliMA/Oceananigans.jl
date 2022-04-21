@@ -1,68 +1,82 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-#####
 ##### Kernels that ensure 'no-flux' from second- and fourth-order diffusion operators.
+##### Kernel functions that ensure 'no-flux' from second- and fourth-order diffusion operators.
 ##### Note that flux divergence associated with a flux boundary condition is added
 ##### in a separate step.
 #####
+##### We implement two sets of kernel functions: one for filling one boundary at a time, and
+##### a second that fills both boundaries at the same as a performance optimization.
+#####
 
-@kernel function _fill_west_halo!(c, ::FBC, H, N)
+#####
+##### Low-level functions that set data
+#####
+
+@inline _fill_flux_west_halo!(i, j, k, grid, c) = @inbounds c[1-i, j, k] = c[i, j, k]
+@inline _fill_flux_east_halo!(i, j, k, grid, c) = @inbounds c[grid.Nx+i, j, k] = c[grid.Nx+1-i, j, k]
+
+@inline _fill_flux_south_halo!(i, j, k, grid, c) = @inbounds c[i, 1-j, k] = c[i, j, k]
+@inline _fill_flux_north_halo!(i, j, k, grid, c) = @inbounds c[i, grid.Ny+j, k] = c[i, grid.Ny+1-j, k]
+
+@inline _fill_flux_bottom_halo!(i, j, k, grid, c) = @inbounds c[i, j, 1-k] = c[i, j, k]
+@inline _fill_flux_top_halo!(i, j, k, grid, c)    = @inbounds c[i, j, grid.Nz+k] = c[i, j, grid.Nz+1-k]
+
+#####
+#####
+##### Combined halo filling functions
+#####
+
+@inline _fill_west_halo!(j, k, grid, c, ::FBC, args...)   =   _fill_flux_west_halo!(1, j, k, grid, c)
+@inline _fill_east_halo!(j, k, grid, c, ::FBC, args...)   =   _fill_flux_east_halo!(1, j, k, grid, c)
+@inline _fill_south_halo!(i, k, grid, c, ::FBC, args...)  =  _fill_flux_south_halo!(i, 1, k, grid, c)
+@inline _fill_north_halo!(i, k, grid, c, ::FBC, args...)  =  _fill_flux_north_halo!(i, 1, k, grid, c)
+@inline _fill_bottom_halo!(i, j, grid, c, ::FBC, args...) = _fill_flux_bottom_halo!(i, j, 1, grid, c)
+@inline _fill_top_halo!(i, j, grid, c, ::FBC, args...)    =    _fill_flux_top_halo!(i, j, 1, grid, c)
+
+#####
+##### Single halo filling kernels
+#####
+
+#=
+@kernel function fill_flux_west_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
-    @unroll for i in 1:H
-        @inbounds c[1-i, j, k] = c[i, j, k]
-    end
+    _fill_flux_west_halo!(1, j, k, grid, c)
 end
 
-@kernel function _fill_south_halo!(c, ::FBC, H, N)
+@kernel function fill_flux_south_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
-    @unroll for j in 1:H
-        @inbounds c[i, 1-j, k] = c[i, j, k]
-    end
+    _fill_flux_south_halo!(i, 1, k, grid, c)
 end
 
-@kernel function _fill_bottom_halo!(c, ::FBC, H, N)
+@kernel function fill_flux_bottom_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
-    @unroll for k in 1:H
-        @inbounds c[i, j, 1-k] = c[i, j, k]
-    end
+    _fill_flux_bottom_halo!(i, j, 1, grid, c)
 end
 
-@kernel function _fill_east_halo!(c, ::FBC, H, N)
+@kernel function fill_flux_east_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
-    @unroll for i in 1:H
-        @inbounds c[N+i, j, k] = c[N+1-i, j, k]
-    end
+    _fill_flux_east_halo!(1, j, k, grid, c)
 end
 
-@kernel function _fill_north_halo!(c, ::FBC, H, N)
+@kernel function fill_flux_north_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
-    @unroll for j in 1:H
-        @inbounds c[i, N+j, k] = c[i, N+1-j, k]
-    end
+    _fill_flux_north_halo!(i, 1, k, grid, c)
 end
 
-@kernel function _fill_top_halo!(c, ::FBC, H, N)
+@kernel function fill_flux_top_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
-    @unroll for k in 1:H
-        @inbounds c[i, j, N+k] = c[i, j, N+1-k]
-    end
+    _fill_flux_top_halo!(i, j, 1, grid, c)
 end
 
 #####
 ##### Kernel launchers for flux boundary conditions
 #####
 
-  fill_west_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid.Hx, grid.Nx, dependencies=dep)
-  fill_east_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid.Hx, grid.Nx, dependencies=dep)
- fill_south_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid.Hy, grid.Ny, dependencies=dep)
- fill_north_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid.Hy, grid.Ny, dependencies=dep)
-fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid.Hz, grid.Nz, dependencies=dep)
-   fill_top_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid.Hz, grid.Nz, dependencies=dep)
-
-
+  fill_west_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, fill_flux_west_halo!,   c, grid; dependencies=dep, kwargs...)
+  fill_east_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, fill_flux_east_halo!,   c, grid; dependencies=dep, kwargs...)
+ fill_south_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, fill_flux_south_halo!,  c, grid; dependencies=dep, kwargs...)
+ fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, fill_flux_north_halo!,  c, grid; dependencies=dep, kwargs...)
+fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_bottom_halo!, c, grid; dependencies=dep, kwargs...)
+   fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_top_halo!,    c, grid; dependencies=dep, kwargs...)
+=#
