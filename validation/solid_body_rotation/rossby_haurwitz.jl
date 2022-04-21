@@ -121,7 +121,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                         schedule = TimeInterval(40Δt),
                                                         prefix = "rh_$(prefix)_Nx$(Nx)",
-                                                        force = true)
+                                                        overwrite_existing = true)
     run!(simulation)
 
     return simulation.output_writers[:fields].filepath

@@ -106,6 +106,9 @@ include("abstract_scalar_biharmonic_diffusivities.jl")
 include("abstract_skew_symmetric_diffusivities.jl")
 include("closure_tuples.jl")
 
+# Implicit closure terms (diffusion + linear terms)
+include("vertically_implicit_diffusion_solver.jl")
+
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
 
@@ -127,7 +130,6 @@ using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Miscellaneous utilities
 include("turbulence_closure_diagnostics.jl")
-include("vertically_implicit_diffusion_solver.jl")
 
 #####
 ##### Some value judgements here

@@ -113,7 +113,7 @@ Keyword arguments
 *Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
 
 - `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
-          the physical interior for each non-`Flat` direction.
+          the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.
 
 The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
 indicating the left and right endpoints of each dimensions, e.g. `x = (-π, π)` or via
@@ -155,7 +155,7 @@ Examples
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
-32×32×32 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+32×32×32 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.03125
 ├── Periodic y ∈ [0.0, 2.0)  regularly spaced with Δy=0.0625
 └── Bounded  z ∈ [-3.0, 0.0] regularly spaced with Δz=0.09375
@@ -167,7 +167,7 @@ julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-32×32×16 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+32×32×16 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 8.0)          regularly spaced with Δx=0.25
 ├── Periodic y ∈ [-10.0, 10.0)       regularly spaced with Δy=0.625
 └── Bounded  z ∈ [-3.14159, 3.14159] regularly spaced with Δz=0.392699
@@ -179,9 +179,9 @@ julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10),
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
-32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 1×1×0 halo
-├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [0.0, 12.5664) regularly spaced with Δy=0.392699
+32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [7.20145e-17, 12.5664) regularly spaced with Δy=0.392699
 └── Flat z
 ```
 
@@ -191,7 +191,7 @@ julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Period
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
-1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×1 halo
+1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
 └── Bounded  z ∈ [-128.0, 0.0] regularly spaced with Δz=0.5
@@ -212,7 +212,7 @@ julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / ta
 
 julia> grid = RectilinearGrid(size = (32, 32, Nz), x = (0, 64),
                               y = (0, 64), z = hyperbolically_spaced_faces)
-32×32×24 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+32×32×24 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 64.0)   regularly spaced with Δx=2.0
 ├── Periodic y ∈ [0.0, 64.0)   regularly spaced with Δy=2.0
 └── Bounded  z ∈ [-32.0, -0.0] variably spaced with min(Δz)=0.682695, max(Δz)=1.83091
@@ -240,7 +240,7 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               x = (0, Lx),
                               y = chebychev_nodes,
                               z = hyperbolically_spaced_faces)
-32×30×24 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 1×1×1 halo
+32×30×24 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 200.0)  regularly spaced with Δx=6.25
 ├── Bounded  y ∈ [-50.0, 50.0] variably spaced with min(Δy)=0.273905, max(Δy)=5.22642
 └── Bounded  z ∈ [-32.0, -0.0] variably spaced with min(Δz)=0.682695, max(Δz)=1.83091

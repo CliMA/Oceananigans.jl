@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.6.5"
+  JULIA_VERSION: "1.6.6"
   JULIA_MINOR_VERSION: "1.6"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
