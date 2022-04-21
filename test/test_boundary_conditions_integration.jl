@@ -26,7 +26,7 @@ end
 function test_nonhydrostatic_flux_budget(grid, name, side, L)
     
     flux = FT(π)
-    direction = side ∈ (:west, :south, :bottom) ? 1 : -1
+    direction = side ∈ (:west, :south, :bottom, :immersed) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
