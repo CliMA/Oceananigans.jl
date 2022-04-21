@@ -4,6 +4,7 @@ import Oceananigans: tracer_tendency_kernel_function
 using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
+using Oceananigans.Fields: immersed_boundary_condition
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -58,8 +59,8 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     grid = model.grid
     arch = architecture(grid)
 
-    u_immersed_bc = velocities.u.boundary_conditions.immersed
-    v_immersed_bc = velocities.v.boundary_conditions.immersed
+    u_immersed_bc = immersed_boundary_condition(velocities.u)
+    v_immersed_bc = immersed_boundary_condition(velocities.v)
 
     start_momentum_kernel_args = (grid,
                                   model.advection.momentum,
@@ -130,7 +131,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
-        @inbounds c_immersed_bc= model.tracers[tracer_name].boundary_conditions.immersed
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
         Gc_event = launch!(arch, grid, :xyz,
