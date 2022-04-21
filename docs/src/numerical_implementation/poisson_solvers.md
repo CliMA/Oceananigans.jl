@@ -42,7 +42,7 @@ where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, 
 solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
 ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
-eigenvalues ``\lambda_x``, ``\lambda_y``, and ``\lambda_z`` satisfying the discrete form of Poisson's equation with
+eigenvalues ``\lambda^x``, ``\lambda^y``, and ``\lambda^z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
 ```math
@@ -53,9 +53,9 @@ The eigenvalues are given by [Schumann88](@cite) and can also be tediously deriv
 discrete Fourier transform into \eqref{eq:poisson-spectral}:
 ```math
 \begin{align}
-    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \, , \\
-    \lambda^y_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \, , \\
-    \lambda^z_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1 \, ,
+    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1) \pi}{N_x}  \right ], \quad i=0, 1, \dots, N_x-1 \, , \\
+    \lambda^y_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1) \pi}{N_y}  \right ], \quad j=0, 1, \dots, N_y-1 \, , \\
+    \lambda^z_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1) \pi}{2N_z} \right ], \quad k=0, 1, \dots, N_z-1 \, ,
 \end{align}
 ```
 where ``\lambda^x`` and ``\lambda^y`` correspond to periodic boundary conditions in the horizontal and ``\lambda^z`` to
