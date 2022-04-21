@@ -7,7 +7,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 
 # Monin-Obukhov drag coefficient
-z₀ = 1e-4 # Charnock roughness
+z₀ = 1e-2 # Charnock roughness
 κ = 0.4 # Von Karman constant
 Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
 
@@ -19,7 +19,7 @@ Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
 function hilly_simulation(; Nx = 64,
                             Nz = Nx,
                             h = 0.1,
-                            Re = 1e4,
+                            Re = 1e3,
                             N² = 1e-2,
                             boundary_condition = :no_slip,
                             stop_time = 1,
@@ -140,7 +140,7 @@ function filename(exp, Nx, h)
 end
 
 for exp in experiments
-    h = exp == "reference" ? 0.0 : 0.1
+    h = exp == "reference" ? 0.0 : 0.3
     boundary_condition = exp == "reference" ? :no_slip : Symbol(exp)
     reference_sim = hilly_simulation(; stop_time, Nx, filename=filename(exp, Nx, h), h, boundary_condition)
     run!(reference_sim)
@@ -150,7 +150,7 @@ end
 ##### Plot results
 #####
 
-h = 0.1
+h = 0.3
 ξ  = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "ξ")  for exp in experiments)
 U  = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "U")  for exp in experiments)
 KE = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "KE") for exp in experiments)
