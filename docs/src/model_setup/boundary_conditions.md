@@ -266,7 +266,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: DefaultBoundaryCondition
 ├── bottom: GradientBoundaryCondition: 0.01
 ├── top: ValueBoundaryCondition: 20
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: DefaultBoundaryCondition
 ```
 
 If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
