@@ -97,7 +97,7 @@ end
 
 function run_field_interpolation_tests(FT, arch)
 
-    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
+    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
 
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)
@@ -213,6 +213,7 @@ end
                     field_sz = test_field_sizes[t]
                     parent_sz = test_parent_sizes[t]
                     f_view = view(f, indices...)
+                    f_sliced = Field(f; indices)
                     @test size(f_view) == field_sz
                     @test size(parent(f_view)) == parent_sz
                 end

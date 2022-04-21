@@ -80,15 +80,15 @@ function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
 end
 
 function test_immersed_diffusion(Nz, z, time_discretization)
-    closure = ScalarDiffusivity(time_discretization, κ = 1)
+    closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
     
     Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
-    immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=closure, model_kwargs...)
+    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure, model_kwargs...)
 
     initial_temperature(x, y, z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)
@@ -108,8 +108,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     return all(c_full .≈ c_immersed)
 end
 
-function test_immersed_diffusion_3D(Nz, z, time_discretization)
-
+function test_3D_immersed_diffusion(Nz, z, time_discretization)
     closure = VerticalScalarDiffusivity(time_discretization, ν = 1, κ = 1)
 
     # Bathymetry
@@ -449,7 +448,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         for fieldname in fieldnames
                             @info "    [$timestepper, $td, $closurename] " *
-                                  "Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+                                  "Testing $fieldname budget in a $topology domain with scalar diffusion..."
                             @test test_ScalarDiffusivity_budget(fieldname, model)
                         end
                     end
@@ -538,6 +537,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)])
             append!(grids, [RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded)),
                             RectilinearGrid(arch, size=N, z=(0, L), topology=(Flat, Flat, Bounded))])
+
+            # Closure tuple.
+            closure_tuple = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1/2, κ=1/2),
+                             VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1/2, κ=1/2))
+            push!(coords, z)
+            push!(fieldnames, fieldnames[end])
+            push!(closures, closure_tuple)
+            push!(grids, grids[end])
                                
             # Immersed grid cases
             immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch,
@@ -603,7 +610,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing gaussian immersed diffusion for " *
                       "[$time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]..."
                 @test test_immersed_diffusion(Nz, z_coord, time_discretization)
-                @test test_immersed_diffusion_3D(Nz, z_coord, time_discretization)
+                @test test_3D_immersed_diffusion(Nz, z_coord, time_discretization)
             end
         end
     end

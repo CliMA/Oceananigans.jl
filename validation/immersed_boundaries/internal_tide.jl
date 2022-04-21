@@ -70,7 +70,7 @@ for time_stepper in (ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretiz
                                                         schedule = TimeInterval(0.1),
                                                         prefix = "internal_tide_$(show_name(time_stepper))",
                                                         init = serialize_grid,
-                                                        force = true)
+                                                        overwrite_existing = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 

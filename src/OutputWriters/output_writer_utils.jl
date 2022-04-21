@@ -1,4 +1,5 @@
 using StructArrays: StructArray, replace_storage
+using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: AbstractField
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction
@@ -16,10 +17,10 @@ ext(fw::AbstractOutputWriter) = throw("Extension for $(typeof(fw)) is not implem
 
 # When saving stuff to disk like a JLD2 file, `saveproperty!` is used, which
 # converts Julia objects to language-agnostic objects.
-saveproperty!(file, location, p::Union{Number,Array}) = file[location] = p
+saveproperty!(file, location, p::Union{Number, Array}) = file[location] = p
 saveproperty!(file, location, p::AbstractRange) = file[location] = collect(p)
 saveproperty!(file, location, p::AbstractArray) = file[location] = Array(parent(p))
-saveproperty!(file, location, p::Function) = @warn "Cannot save Function property into $location"
+saveproperty!(file, location, p::Function) = nothing
 
 saveproperty!(file, location, p::Tuple) =
     [saveproperty!(file, location * "/$i", p[i]) for i in 1:length(p)]
@@ -36,7 +37,6 @@ function saveproperty!(file, location, bcs::FieldBoundaryConditions)
         file[location * "/$endpoint/type"] = bc_str(bc)
 
         if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
             file[location * "/$boundary/condition"] = missing
         else
             file[location * "/$boundary/condition"] = bc.condition
@@ -50,20 +50,22 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 # unless they need to be converted (basically CuArrays only).
 serializeproperty!(file, location, p) = (file[location] = p)
 serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
-serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
-serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
+serializeproperty!(file, location, p::Function) = nothing
+serializeproperty!(file, location, p::ContinuousBoundaryFunction) = nothing
+
+# Serializing grids:
+serializeproperty!(file, location, grid::AbstractGrid) = file[location] = on_architecture(CPU(), grid)
 
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
+    # TODO: convert immersed boundary grid to array representation in order to save.
     # Note: when we support array representations of immersed boundaries, we should save those too.
     @warn "Cannot serialize ImmersedBoundaryGrid; serializing underlying grid instead."
-    file[location] = p.grid
+    serializeproperty!(file, location, p.grid)
     return nothing
 end
 
 function serializeproperty!(file, location, p::FieldBoundaryConditions)
     if has_reference(Function, p)
-        @warn "Cannot serialize $location as it contains functions. Will replace with missing. " *
-              "Function boundary conditions must be restored manually."
         file[location] = missing
     else
         file[location] = p
@@ -141,3 +143,14 @@ end
 output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
+
+"""
+    auto_extension(filename, ext)                                                             
+
+If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
+"""
+function auto_extension(filename, ext) 
+    Next = length(ext)
+    filename[end-Next+1:end] == ext || (filename *= ext)
+    return filename
+end

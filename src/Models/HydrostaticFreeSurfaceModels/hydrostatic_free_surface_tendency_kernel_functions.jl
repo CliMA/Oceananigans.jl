@@ -4,9 +4,9 @@ using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
-using Oceananigans.Advection: div_Uc
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation, TKETracerIndex
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation
 
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -41,7 +41,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -76,7 +76,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
              + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -109,7 +109,7 @@ where `c = C[tracer_index]`.
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -149,13 +149,11 @@ end
                                                                forcing,
                                                                clock) where tracer_index
 
-    tke_index = TKETracerIndex(tracer_index)
     @inbounds e = tracers[tracer_index]
-
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, e, tke_index, clock, diffusivities, tracers, buoyancy, velocities)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
              + shear_production(i, j, k, grid, closure, velocities, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)

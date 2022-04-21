@@ -81,16 +81,16 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 # Random noise
 ψ★ = Field(Face, Face, Center, model.architecture, model.grid)
 set!(ψ★, (x, y, z) -> rand())
-fill_halo_regions!(ψ★, model.architecture)
+fill_halo_regions!(ψ★)
 
 # Zonal wind
 step(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
 polar_mask(y) = step(y, -5, 60) * step(y, 5, -60)
 zonal_ψ(y) = (cosd(4y)^3 + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
 
-ψ̄ = Field(Face, Face, Center, model.architecture, model.grid)
+ψ̄ = Field((Face, Face, Center), model.grid)
 set!(ψ̄, (x, y, z) -> zonal_ψ(y))
-fill_halo_regions!(ψ̄, model.architecture)
+fill_halo_regions!(ψ̄)
 
 ψ_total = 40 * ψ★ + Ny * ψ̄
 
@@ -219,7 +219,7 @@ output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(10day),
                                                       prefix = output_prefix,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 # Let's goo!
 run!(simulation)

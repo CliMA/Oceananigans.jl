@@ -28,6 +28,6 @@
 
     # Not a corner
     else
-        return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+        return δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
     end
 end

@@ -3,34 +3,35 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensionalFormulation}
+struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
      C :: FT
     Cb :: FT
     Pr :: P
-     ν :: FT
-     κ :: K
 
-    function SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ) where {TD, FT}
-        Pr = convert_diffusivity(FT, Pr)
-         κ = convert_diffusivity(FT, κ)
-        return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
+    function SmagorinskyLilly{TD, FT}(C, Cb, Pr) where {TD, FT}
+        Pr = convert_diffusivity(FT, Pr; discrete_form=false)
+        P = typeof(Pr)
+        return new{TD, FT, P}(C, Cb, Pr)
     end
 end
 
+@inline viscosity(::SmagorinskyLilly, K) = K.νₑ
+@inline diffusivity(::SmagorinskyLilly, K, ::Val{id}) where id = K.κₑ[id]
+
 """
-    SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1, ν=0, κ=0)
+    SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
 
 ```
-νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²) + ν
+νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
 ```
 
 and an eddy diffusivity of the form
 
 ```
-κₑ = (νₑ - ν) / Pr + κ
+κₑ = νₑ / Pr
 ```
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
@@ -45,10 +46,6 @@ Keyword arguments
           Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
   - `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
           tracer, or a `NamedTuple` with fields for each tracer individually.
-  - `ν`: Constant background viscosity for momentum.
-  - `κ`: Constant background diffusivity for tracer. Can either be a single number
-         applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
-         tracer.
   - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
                            which integrates the terms involving only ``z``-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
@@ -68,13 +65,12 @@ Lilly, D. K. "The representation of small-scale turbulence in numerical simulati
 """
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
-SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0) =
-    SmagorinskyLilly{typeof(time_discretization), FT}(C, Cb, Pr, ν, κ)
+SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
+        SmagorinskyLilly{TD, FT}(C, Cb, Pr)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-     κ = tracer_diffusivities(tracers, closure.κ)
-    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr, closure.ν, κ)
+    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr)
 end
 
 """
@@ -106,7 +102,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
-    return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
+    return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²)
 end
 
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
@@ -195,8 +191,8 @@ end
             )
 end
 
-Base.show(io::IO, closure::SmagorinskyLilly) =
-    print(io, "SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr), ν=$(closure.ν), κ=$(closure.κ)")
+Base.summary(closure::SmagorinskyLilly) = string("SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr)")
+Base.show(io::IO, closure::SmagorinskyLilly) = print(io, summary(closure))
 
 #####
 ##### For closures that only require an eddy viscosity νₑ field.
@@ -214,9 +210,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
 
     for i = 1:length(tracer_names)
         Pr = closure.Pr[i]
-        κ = closure.κ[i]
-        ν = closure.ν
-        κₑ_op = (νₑ - ν) / Pr + κ
+        κₑ_op = νₑ / Pr
         push!(κₑ_ops, κₑ_op)
     end
 

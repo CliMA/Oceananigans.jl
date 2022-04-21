@@ -159,7 +159,7 @@ julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) fo
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
     plus_or_times at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU

@@ -13,11 +13,11 @@ function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
     velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
     wait(device(model.architecture), MultiEvent(velocity_masking_events))
 
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
 
-    fill_halo_regions!(model.pressures.pNHS, model.architecture)
+    fill_halo_regions!(model.pressures.pNHS)
 
     return nothing
 end
