@@ -55,7 +55,7 @@ bottom_cell(i, j, k, ibg::PCIBG) = !is_immersed(i, j, k, ibg.grid, ibg.immersed_
 @inline function Δzᶜᶜᶜ(i, j, k, ibg::PCIBG)
     underlying_grid = ibg.grid
     ib = ibg.immersed_boundary
-    # Get node at face above
+    # Get node at face above and defining nodes on c,c,f
     x, y, z = node(c, c, f, i, j, k+1, underlying_grid)
 
     # Get bottom height and fractional Δz parameter
