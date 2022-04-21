@@ -23,28 +23,15 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     return success
 end
 
-function test_nonhydrostatic_flux_budget(arch, name, side, topo)
-
-    FT = Float64
-    Lx = 0.3
-    Ly = 0.4
-    Lz = 0.5
-
-    grid = RectilinearGrid(arch, FT,
-                                  size = (1, 1, 1),
-                                  x = (0, Lx),
-                                  y = (0, Ly),
-                                  z = (0, Lz),
-                                  topology = topo)
-
+function test_nonhydrostatic_flux_budget(grid, name, side, L)
+    
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
-    model_bcs = (; name => field_bcs)
+    boundary_conditions = (; name => field_bcs)
 
-    model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
-                                closure=nothing, tracers=:c)
+    model = NonhydrostaticModel(; grid, boundary_conditions, tracers=:c)
                                 
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
@@ -53,10 +40,7 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     simulation = Simulation(model, Δt = 1.0, stop_iteration = 1)
     run!(simulation)
 
-    mean_ϕ = CUDA.@allowscalar field[1, 1, 1]
-
-    L = side ∈ (:west, :east) ? Lx :
-        side ∈ (:south, :north) ? Ly : Lz
+    mean_ϕ = mean(field)
 
     # budget: L * ∂<ϕ>/∂t = -Δflux = -flux / L (left) + flux / L (right)
     # therefore <ϕ> = flux * t / L
@@ -126,8 +110,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                               field_dependent_function_bc(C, FT, ArrayType),
                                               parameterized_field_dependent_function_bc(C, FT, ArrayType),
                                               discrete_function_bc(C, FT, ArrayType),
-                                              parameterized_discrete_function_bc(C, FT, ArrayType)
-                                             )
+                                              parameterized_discrete_function_bc(C, FT, ArrayType))
 
 @testset "Boundary condition integration tests" begin
     @info "Testing boundary condition integration into NonhydrostaticModel..."
@@ -230,31 +213,52 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
     @testset "Budgets with Flux boundary conditions" begin
         for arch in archs
-            @info "  Testing budgets with Flux boundary conditions [$(typeof(arch))]..."
+            A = typeof(arch)
+            @info "  Testing budgets with Flux boundary conditions [$A]..."
 
-            topo = (Periodic, Bounded, Bounded)
-            for name in (:u, :c), side in (:north, :south, :top, :bottom)
-                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
+            Lx = 0.3
+            Ly = 0.4
+            Lz = 0.5
+
+            bottom(x, y) = 0
+            ib = GridFittedBottom(bottom)
+            grid_kw = (size = (1, 1, 3), x = (0, Lx), y = (0, Ly))
+            grids_to_test(topology) = [RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...),
+                                       ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)]
+
+            for grid in grids_to_test((Periodic, Periodic, Bounded))
+                for name in (:u, :c)
+                    for (side, L) in zip((:north, :south, :top, :bottom, :immersed), (Ly, Ly, Lz, Lz, Lz))
+                        @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
+                        @test test_nonhydrostatic_flux_budget(grid, name, side, L)
+                    end
+                end
             end
 
-            topo = (Bounded, Periodic, Bounded)
-            for name in (:v, :c), side in (:east, :west, :top, :bottom)
-                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
+            for grid in grids_to_test((Bounded, Periodic, Bounded))
+                for name in (:v, :c)
+                    for (side, L) in zip((:east, :west, :top, :bottom, :immersed), (Lx, Lx, Lz, Lz, Lz))
+                        @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
+                        @test test_nonhydrostatic_flux_budget(grid, name, side, L)
+                    end
+                end
             end
 
-            topo = (Bounded, Bounded, Periodic)
-            for name in (:w, :c), side in (:east, :west, :north, :south)
-                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
+            for grid in grids_to_test((Bounded, Bounded, Periodic))
+                for name in (:w, :c)
+                    for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
+                        @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
+                        @test test_nonhydrostatic_flux_budget(grid, name, side, L)
+                    end
+                end
             end
         end
     end
 
     @testset "Custom diffusivity boundary conditions" begin
         for arch in archs, FT in (Float64,) #float_types
-            @info "  Testing flux budgets with diffusivity boundary conditions [$(typeof(arch)), $FT]..."
+            A = typeof(arch)
+            @info "  Testing flux budgets with diffusivity boundary conditions [$A, $FT]..."
             @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
         end
     end
