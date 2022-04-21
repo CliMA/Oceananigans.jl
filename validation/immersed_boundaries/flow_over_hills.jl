@@ -112,11 +112,11 @@ function hilly_simulation(; Nx = 64,
     @info "Made a simulation of"
     @show model
 
-    @info "The x-velocity is"
-    @show model.velocities.u
-
     @info "The grid is"
     @show model.grid
+
+    @info "The x-velocity immersed boundary condition is"
+    @show model.velocities.u.boundary_conditions.immersed
 
     return simulation
 end
@@ -125,8 +125,8 @@ end
 ##### Run them!
 #####
 
-Nx = 128
-stop_time = 100.0
+Nx = 32
+stop_time = 20.0
 
 experiments = ["reference", "no_slip", "free_slip", "bottom_drag"]
 Nexp = length(experiments)
@@ -147,7 +147,7 @@ U  = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "U")  for exp in exper
 KE = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "KE") for exp in experiments)
 
 t = ξ["reference"].times
-Nt = 201 #length(t)
+Nt = length(t)
 t = t[1:Nt]
 δU_series(U) = [(U[1, 1, 1, n] - U[1, 1, 1, 1]) / U[1, 1, 1, 1] for n = 1:Nt]
 δK_series(K) = [(K[1, 1, 1, n] - K[1, 1, 1, 1]) / K[1, 1, 1, 1] for n = 1:Nt]

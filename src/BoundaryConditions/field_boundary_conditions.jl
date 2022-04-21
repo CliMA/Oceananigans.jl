@@ -125,17 +125,17 @@ end
 ##### Boundary condition "regularization"
 #####
 
-regularize_immersed_boundary_condition(ibc::ZFBC, args...) = ibc # default
-
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    msg = """
-          $field_name was assigned an immersed $ibc, but this is not supported on
-          $(summary(grid))
-          The immersed boundary condition on $field_name will have no effect.
+    if !(ibc isa ZFBC)
+        msg = """
+              $field_name was assigned an immersed $ibc, but this is not supported on
+              $(summary(grid))
+              The immersed boundary condition on $field_name will have no effect.
           """
 
-    @warn msg
+        @warn msg
+    end
 
     return nothing
 end
