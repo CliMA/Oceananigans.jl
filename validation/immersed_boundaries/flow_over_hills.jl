@@ -136,7 +136,7 @@ Nexp = length(experiments)
 
 for exp in experiments
     filename = "hills_$(exp)_$Nx"
-    h = exp == "reference" ? 0.0 : 0.1
+    h = exp == "reference" ? 0.0 : 0.2
     boundary_condition = exp == "reference" ? :no_slip : Symbol(exp)
     reference_sim = hilly_simulation(; stop_time, Nx, filename, h, boundary_condition)
     run!(reference_sim)
