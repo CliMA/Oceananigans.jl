@@ -294,7 +294,7 @@ function test_grid_equality_over_architectures()
     if CUDA.has_cuda()
         grid_gpu = RectilinearGrid(CUDAGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
     elseif AMDGPU.has_rocm_gpu()
-        grid_gpu = RectilinearGrid(AMDGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+        grid_gpu = RectilinearGrid(ROCMGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
     end
     return grid_cpu == grid_gpu
 end
@@ -556,6 +556,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     zcoord    = (zreg,     zstr)
 
     CUDA.allowscalar(true)
+    AMDGPU.allowscalar(true)
 
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
@@ -579,6 +580,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     end
 
     CUDA.allowscalar(false)
+    AMDGPU.allowscalar(false)
 
 end
 
@@ -726,9 +728,11 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-            CUDA.allowscalar(false)           
+            CUDA.allowscalar(false)
+            AMDGPU.allowscalar(false)
             show(grid); println()
             CUDA.allowscalar(true)
+            AMDGPU.allowscalar(true)
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
