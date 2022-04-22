@@ -41,6 +41,13 @@ for (f, alt_f) in zip(funcs, alt_funcs)
                   + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
                   + $alt_f(i, j, k, grid, closures[4], Ks[4], args...))
 
+    @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+                    $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
+                  + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
+                  + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
+                  + $alt_f(i, j, k, grid, closures[4], Ks[4], args...)
+                  + $alt_f(i, j, k, grid, closures[5], Ks[5], args...))
+
         @inline $f(i, j, k, grid, closures::Tuple, Ks, args...) = (
                     $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
                   + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
