@@ -13,6 +13,7 @@
 
 ##### Only for regular grids (FX == FY == FZ <: Number) 
 ##### and vertically stretched grids (FX == FY <: Number)
+using AMDGPU
 
 const Regular             = RegRectilinearGrid
 const VerticallyStretched = HRegRectilinearGrid
@@ -48,8 +49,18 @@ function plan_backward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, p
     return CUDA.CUFFT.plan_ifft!(A, dims)
 end
 
-plan_backward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
-plan_forward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
+function plan_forward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+    length(dims) == 0 && return nothing
+    return AMDGPU.rocFFT.plan_fft!(A, dims)
+end
+
+function plan_backward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
+    length(dims) == 0 && return nothing
+    return AMDGPU.rocFFT.plan_ifft(A, dims)
+end
+
+plan_backward_transform(A::Union{Array, CuArray, ROCArray}, ::Flat, args...) = nothing
+plan_forward_transform(A::Union{Array, CuArray, ROCArray}, ::Flat, args...) = nothing
 
 batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),

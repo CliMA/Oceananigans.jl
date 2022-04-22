@@ -261,7 +261,7 @@ end
                 end
             end
 
-            if arch isa GPU
+            if arch isa CUDAGPU || arch isa AMDGPU
                 wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                     top=FluxBoundaryCondition(zeros(FT, N[1], N[2])))
                 @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
