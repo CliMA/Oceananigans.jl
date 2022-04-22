@@ -1,5 +1,7 @@
 import Oceananigans.Fields: set!
 
+using Oceananigans.TimeSteppers: update_state!
+
 function set!(model::ShallowWaterModel; kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.solution)
@@ -11,5 +13,8 @@ function set!(model::ShallowWaterModel; kwargs...)
         end
         set!(ϕ, value)
     end
+
+    update_state!(model)
+    
     return nothing
 end

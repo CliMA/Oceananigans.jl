@@ -1,5 +1,5 @@
 """
-    NonTraditionalBetaPlane{FT} <: AbstractRotation
+    struct NonTraditionalBetaPlane{FT} <: AbstractRotation
 
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
@@ -25,21 +25,26 @@ end
 
 """
     NonTraditionalBetaPlane(FT=Float64;
-        fz=nothing, fy=nothing, β=nothing, γ=nothing,
-        rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+                            fz=nothing, fy=nothing, β=nothing, γ=nothing,
+                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three
-parameters `rotation_rate`, `latitude`, and `radius` that specify the rotation rate
-and radius of a planet, and the central latitude (where y = 0) at which the
+The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
+`rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate
+and radius of a planet, and the central latitude (where ``y = 0``) at which the
 non-traditional `β`-plane approximation is to be made.
+
+If `fz`, `fy`, `β`, and `γ` are not specified, they are calculated from `rotation_rate`, 
+`latitude`, and `radius` according to the relations `fz = 2 * rotation_rate * sind(latitude)`,
+`fy = 2 * rotation_rate * cosd(latitude)`, `β = 2 * rotation_rate * cosd(latitude) / radius`,
+and `γ = - 4 * rotation_rate * sind(latitude) / radius`.
 
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """
 function NonTraditionalBetaPlane(FT=Float64;
-        fz=nothing, fy=nothing, β=nothing, γ=nothing,
-        rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+                                 fz=nothing, fy=nothing, β=nothing, γ=nothing,
+                                 rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-    Ω, φ, R =  rotation_rate, latitude, radius
+    Ω, φ, R = rotation_rate, latitude, radius
 
     use_f = !all(isnothing.((fz, fy, β, γ))) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
@@ -50,10 +55,10 @@ function NonTraditionalBetaPlane(FT=Float64;
     end
 
     if use_planet_parameters
-        fz =  2Ω*sind(φ)
-        fy =  2Ω*cosd(φ)
-        β  =  2Ω*cosd(φ)/R
-        γ  = -4Ω*sind(φ)/R
+        fz =  2Ω * sind(φ)
+        fy =  2Ω * cosd(φ)
+        β  =  2Ω * cosd(φ) / R
+        γ  = -4Ω * sind(φ) / R
     end
 
     return NonTraditionalBetaPlane{FT}(fz, fy, β, γ, R)
@@ -64,19 +69,21 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
-    @inbounds (  two_Ωʸ(coriolis, grid.yC[j], grid.zC[k]) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-               - two_Ωᶻ(coriolis, grid.yC[j], grid.zC[k]) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+    @inbounds (  two_Ωʸ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶜ[k]) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
+               - two_Ωᶻ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶜ[k]) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds  two_Ωᶻ(coriolis, grid.yF[k], grid.zC[k]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+    @inbounds  two_Ωᶻ(coriolis, grid.yᵃᶠᵃ[k], grid.zᵃᵃᶜ[k]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds -two_Ωʸ(coriolis, grid.yC[j], grid.zF[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+    @inbounds -two_Ωʸ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶠ[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
-Base.show(io::IO, β_plane::NonTraditionalBetaPlane{FT}) where FT =
-    print(io, "NonTraditionalBetaPlane{$FT}: ",
-          @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e, R = %.2e",
+Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
+    string("NonTraditionalBetaPlane{$FT}",
+           @sprintf("(fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e, R = %.2e)",
                    β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ, β_plane.R))
+
+Base.show(io::IO, β_plane::NonTraditionalBetaPlane) = print(io, summary(β_plane))

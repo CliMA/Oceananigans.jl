@@ -2,48 +2,57 @@
 ##### Horizontal Laplacians
 #####
 
-@inline function ∇²hᶜᶜᵃ(i, j, k, grid, c)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᵃᵃ, c) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᵃᶠᵃ, c))
+@inline function ∇²hᶜᶜᶜ(i, j, k, grid, c)
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c))
 end
 
-@inline function ∇²hᶠᶜᵃ(i, j, k, grid, u)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_∂xᶜᵃᵃ, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᵃᶠᵃ, u))
+@inline function ∇²hᶠᶜᶜ(i, j, k, grid, u)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_∂xᶜᶜᶜ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶠᶠᶜ, u))
 end
 
-@inline function ∇²hᶜᶠᵃ(i, j, k, grid, u)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᵃᵃ, u) +
-                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᵃᶜᵃ, u))
+@inline function ∇²hᶜᶠᶜ(i, j, k, grid, v)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
 end
 
-@inline ∇²hᶜᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶠᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶠᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶜᶠᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶠᵃ(i, j, k, grid, F, args...)
-
-#####
-##### 3D Laplacian
-#####
+@inline function ∇²hᶜᶜᶠ(i, j, k, grid, w)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
+end
 
 """
-    ∇²(i, j, k, grid, c)
+    ∇²ᶜᶜᶜ(i, j, k, grid, c)
 
-Calculates the Laplacian of c via
+Calculates the Laplacian of `c` via
 
-    1/V * [δxᶜᵃᵃ(Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(Az * ∂zᵃᵃᶠ(c))]
+```
+1/V * [δxᶜᵃᵃ(Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(Az * ∂zᵃᵃᶠ(c))]
+```
 
 which will end up at the location `ccc`.
 """
-@inline function ∇²(i, j, k, grid, c)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᵃᵃ, c) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᵃᶠᵃ, c) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_∂zᵃᵃᶠ, c))
+@inline function ∇²ᶜᶜᶜ(i, j, k, grid, c)
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c))
 end
 
-#####
-##### Horizontal biharmonic operators
-#####
+@inline function ∇²ᶠᶜᶜ(i, j, k, grid, u)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_∂xᶜᶜᶜ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶠᶠᶜ, u) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶠᶜᶠ, u))
+end
 
-@inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
-@inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)
-@inline ∇⁴hᶜᶠᵃ(i, j, k, grid, c) = ∇²hᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᵃ, c)
+@inline function ∇²ᶜᶠᶜ(i, j, k, grid, v)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_∂zᶜᶠᶠ, v))
+end
+
+@inline function ∇²ᶜᶜᶠ(i, j, k, grid, w)
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶜᶠ, w) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_∂yᶜᶠᶠ, w) +
+                                    δzᵃᵃᶠ(i, j, k, grid, Az_∂zᶜᶜᶜ, w))
+end

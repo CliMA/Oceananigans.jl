@@ -52,7 +52,7 @@ y_ζ_Ghia = [0.0000, 0.0625, 0.1250, 0.1875, 0.2500, 0.3125, 0.3750, 0.4375, 0.5
 }
 
 def plot_lid_driven_cavity_frame(Re, n):
-    ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc")
+    ds = xr.open_dataset(f"lid_driven_cavity_Re{Re}.nc", decode_times=False)
     Ny = ds.yC.size
     Nz = ds.zC.size
 

@@ -1,7 +1,11 @@
+"""
+Main module for `Oceananigans.jl` -- a Julia software for fast, friendly, flexible,
+data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
+"""
 module Oceananigans
 
-if VERSION < v"1.5"
-    error("This version of Oceananigans.jl requires Julia v1.5 or newer.")
+if VERSION < v"1.6"
+    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
 end
 
 export
@@ -12,70 +16,106 @@ export
     OceananigansLogger,
 
     # Grids
+    Center, Face,
     Periodic, Bounded, Flat,
-    RegularCartesianGrid, VerticallyStretchedCartesianGrid,
+    RectilinearGrid, 
+    LatitudeLongitudeGrid,
+    ConformalCubedSphereFaceGrid,
+    xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Value, Gradient, NormalFlow,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
-    CoordinateBoundaryConditions, FieldBoundaryConditions,
-    UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
-    TracerBoundaryConditions, PressureBoundaryConditions,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FieldBoundaryConditions,
 
     # Fields and field manipulation
-    Field, CellField, XFaceField, YFaceField, ZFaceField,
-    BackgroundField, interior, set!,
+    Field, CenterField, XFaceField, YFaceField, ZFaceField,
+    Average, Integral, Reduction, BackgroundField,
+    interior, set!, compute!, regrid!, location,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask,
+    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
-    # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    # BuoyancyModels and equations of state
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
+    LinearEquationOfState, TEOS10,
+    BuoyancyField,
 
-    # Surface waves via Craik-Leibovich equations
-    SurfaceWaves,
+    # Surface wave Stokes drift via Craik-Leibovich equations
+    UniformStokesDrift,
 
     # Turbulence closures
-    IsotropicDiffusivity, AnisotropicDiffusivity,
-    AnisotropicBiharmonicDiffusivity,
-    ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    VerticalScalarDiffusivity,
+    HorizontalScalarDiffusivity,
+    ScalarDiffusivity,
+    VerticalScalarBiharmonicDiffusivity,
+    HorizontalScalarBiharmonicDiffusivity,
+    ScalarBiharmonicDiffusivity,
+    SmagorinskyLilly,
+    AnisotropicMinimumDissipation,
+    ConvectiveAdjustmentVerticalDiffusivity,
+    IsopycnalSkewSymmetricDiffusivity,
+    VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalModel, Clock,
+    NonhydrostaticModel,
+    HydrostaticFreeSurfaceModel,
+    ShallowWaterModel,
+    PressureField,
+    fields,
+
+    # Hydrostatic free surface model stuff
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
+    HydrostaticSphericalCoriolis, 
+    PrescribedVelocityFields,
 
     # Time stepping
-    time_step!, TimeStepWizard,
+    Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!,
+    Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    erroring_NaNChecker!,
+
+    # Diagnostics
+    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer, restore_from_checkpoint,
+    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
+    AndSchedule, OrSchedule,
 
-    # Misc.
-    fields
+    # Output readers
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
-# Standard library modules
+    # Abstract operations
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+
+    # Cubed sphere
+    ConformalCubedSphereGrid,
+
+    # Utils
+    prettytime
+
+
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
 
-# Third-party modules
 using CUDA
 using Adapt
+using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
@@ -124,57 +164,79 @@ abstract type AbstractOutputWriter end
 function run_diagnostic! end
 function write_output! end
 function location end
+function instantiated_location end
 function tupleit end
-function short_show end
 
 function fields end
+function prognostic_fields end
+function tracer_tendency_kernel_function end
 
 #####
 ##### Include all the submodules
 #####
 
+# Basics
 include("Architectures.jl")
+include("Units.jl")
 include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
-include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("AbstractOperations/AbstractOperations.jl")
+include("Advection/Advection.jl")
+include("Solvers/Solvers.jl")
+include("Distributed/Distributed.jl")
+
+# Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
-include("Buoyancy/Buoyancy.jl")
-include("SurfaceWaves.jl")
+include("BuoyancyModels/BuoyancyModels.jl")
+include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
-include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
+
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
+
+# Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
+include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
-include("AbstractOperations/AbstractOperations.jl")
+
+# Abstractions for distributed and multi-region models
+include("CubedSpheres/CubedSpheres.jl")
 
 #####
-##### Re-export stuff from submodules
+##### Needed so we can export names from sub-modules at the top-level
 #####
 
 using .Logger
 using .Architectures
 using .Utils
+using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .Buoyancy
-using .SurfaceWaves
+using .BuoyancyModels
+using .StokesDrift
 using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
+using .Distributed
 using .Models
 using .TimeSteppers
+using .Diagnostics
+using .OutputWriters
+using .OutputReaders
 using .Simulations
+using .AbstractOperations
+using .CubedSpheres
 
 function __init__()
     threads = Threads.nthreads()
@@ -185,7 +247,7 @@ function __init__()
         FFTW.set_num_threads(4*threads)
     end
 
-    @hascuda begin
+    if CUDA.has_cuda()
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
             @debug "$dev: $(CUDA.name(dev))"

@@ -1,13 +1,14 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export Δx, Δy, Δz, Ax, Ay, Az, volume
+export Average, Integral, KernelFunctionOperation
+export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 using Base: @propagate_inbounds
 
 import Adapt
 using CUDA
-
-using Oceananigans.Architectures: @hascuda
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -21,45 +22,54 @@ using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: data, compute!
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Fields: compute_at!
 
 #####
 ##### Basic functionality
 #####
 
-"""
-    AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G}
+abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
-Represents an operation performed on grid of type `G` at locations `X`, `Y`, and `Z`.
-"""
-abstract type AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G} end
+const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
-const AF = AbstractField
+# We have no halos to fill
+@inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
-# We (informally) require that all field-like objects define `parent`:
-Base.parent(op::AbstractOperation) = op
+architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("at.jl")
-include("grid_validation.jl")
+"""
+    at(loc, abstract_operation)
 
+Return `abstract_operation` relocated to `loc`ation.
+"""
+at(loc, f) = f # fallback
+
+include("grid_validation.jl")
+include("grid_metrics.jl")
+include("metric_field_reductions.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
-
+include("kernel_function_operation.jl")
+include("conditional_operations.jl")
+include("computed_field.jl")
+include("at.jl")
+include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
-include("averages_of_operations.jl")
 
 # Make some operators!
 
-# Some unaries:
+# Some operators:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh
 @unary -
+@unary +
 
 @binary +
 @binary -

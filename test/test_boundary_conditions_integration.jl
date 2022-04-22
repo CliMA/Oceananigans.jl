@@ -1,14 +1,16 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
+using Oceananigans: prognostic_fields
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
-    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
+    grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
-    boundary_condition_kwarg = Dict(side => boundary_condition)
-    field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
-    bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
-
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
-                                boundary_conditions=bcs)
+    boundary_condition_kwarg = (; side => boundary_condition)
+    field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
+    bcs = (; field_name => field_boundary_conditions)
+    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16, euler=true)
@@ -21,41 +23,46 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     return success
 end
 
-function test_flux_budget(arch, FT, fldname)
-    N, κ, Lz = 16, 1, 0.7
-    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, Lz))
+function test_nonhydrostatic_flux_budget(arch, name, side, topo)
 
-    bottom_flux = FT(0.3)
-    flux_bc = BoundaryCondition(Flux, bottom_flux)
+    FT = Float64
+    Lx = 0.3
+    Ly = 0.4
+    Lz = 0.5
 
-    if fldname == :u
-        field_bcs = UVelocityBoundaryConditions(grid, bottom=flux_bc)
-    elseif fldname == :v
-        field_bcs = VVelocityBoundaryConditions(grid, bottom=flux_bc)
-    else
-        field_bcs = TracerBoundaryConditions(grid, bottom=flux_bc)
-    end
+    grid = RectilinearGrid(arch, FT,
+                                  size = (1, 1, 1),
+                                  x = (0, Lx),
+                                  y = (0, Ly),
+                                  z = (0, Lz),
+                                  topology = topo)
 
-    model_bcs = NamedTuple{(fldname,)}((field_bcs,))
+    flux = FT(π)
+    direction = side ∈ (:west, :south, :bottom) ? 1 : -1
+    bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
+    field_bcs = FieldBoundaryConditions(; bc_kwarg...)
+    model_bcs = (; name => field_bcs)
 
-    closure = IsotropicDiffusivity(FT, ν=κ, κ=κ)
-    model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
-                                float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
+    model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
+                                closure=nothing, tracers=:c)
+                                
+    is_velocity_field = name ∈ (:u, :v, :w)
+    field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
+    set!(field, 0)
 
-    field = get_model_field(fldname, model)
-    @. field.data = 0
+    simulation = Simulation(model, Δt = 1.0, stop_iteration = 1)
+    run!(simulation)
 
-    τκ = Lz^2 / κ   # Diffusion time-scale
-    Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
-    Nt = 10         # Number of time steps
+    mean_ϕ = CUDA.@allowscalar field[1, 1, 1]
 
-    for n in 1:Nt
-        time_step!(model, Δt, euler= n==1)
-    end
+    L = side ∈ (:west, :east) ? Lx :
+        side ∈ (:south, :north) ? Ly : Lz
 
-    # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
-    # therefore <ϕ> = bottom_flux * t / Lz
-    return mean(interior(field)) ≈ bottom_flux * model.clock.time / Lz
+    # budget: L * ∂<ϕ>/∂t = -Δflux = -flux / L (left) + flux / L (right)
+    # therefore <ϕ> = flux * t / L
+    #
+    # Note \approx, because velocity budgets are off by machine precision (due to pressure solve?)
+    return mean_ϕ ≈ flux * model.clock.time / L
 end
 
 function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
@@ -64,14 +71,14 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     bz = FT(π)
     flux = - κ₀ * bz
 
-    grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
+    grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
-    buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
-    κₑ_bcs = DiffusivityBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))
+    buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = IncompressibleModel(
-        grid=grid, architecture=arch, float_type=FT, tracers=:b, buoyancy=BuoyancyTracer(),
+    model = NonhydrostaticModel(
+        grid=grid, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
 
@@ -123,90 +130,98 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                              )
 
 @testset "Boundary condition integration tests" begin
-    @info "Testing boundary condition integration into IncompressibleModel..."
+    @info "Testing boundary condition integration into NonhydrostaticModel..."
 
     @testset "Boundary condition regularization" begin
-        @info "  Testing boundary condition regularization in IncompressibleModel constructor..."
+        @info "  Testing boundary condition regularization in NonhydrostaticModel constructor..."
 
         FT = Float64
         arch = first(archs)
 
-        # We use Periodic, Bounded, Bounded here because triply Bounded domains don't work on the GPU
-        # yet.
-        grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
+        grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Bounded, Bounded, Bounded))
 
-        u_boundary_conditions = UVelocityBoundaryConditions(grid; 
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Open),
+                                                         west  = simple_function_bc(Open))
 
-        v_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(NormalFlow),
-                                                            south  = simple_function_bc(NormalFlow))
+        v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Open),
+                                                        south  = simple_function_bc(Open),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
 
-        w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(NormalFlow),
-                                                            top    = simple_function_bc(NormalFlow),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
+                                                        top    = simple_function_bc(Open),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
-        T_boundary_conditions = TracerBoundaryConditions(grid;
-                                                         bottom = simple_function_bc(Value),
-                                                         top    = simple_function_bc(Value),
-                                                         north  = simple_function_bc(Value),
-                                                         south  = simple_function_bc(Value))
+        T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
         boundary_conditions = (u=u_boundary_conditions,
                                v=v_boundary_conditions,
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = IncompressibleModel(architecture = arch,
-                                    grid = grid,
-                                    float_type = FT,
-                                    boundary_conditions = boundary_conditions)
+        model = NonhydrostaticModel(grid = grid,
+                                    boundary_conditions = boundary_conditions,
+                                    buoyancy = SeawaterBuoyancy(),
+                                    tracers = (:T, :S))
 
-        @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Cell, Nothing)
-        @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Cell, Nothing)
-        @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, Nothing, Cell)
-        @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, Nothing, Cell)
+        @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
+        @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)
+        @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, Nothing, Center)
+        @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, Nothing, Center)
+        @test location(model.velocities.u.boundary_conditions.east.condition)   == (Nothing, Center, Center)
+        @test location(model.velocities.u.boundary_conditions.west.condition)   == (Nothing, Center, Center)
 
-        @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Cell, Face, Nothing)
-        @test location(model.velocities.v.boundary_conditions.top.condition)    == (Cell, Face, Nothing)
-        @test location(model.velocities.v.boundary_conditions.north.condition)  == (Cell, Nothing, Cell)
-        @test location(model.velocities.v.boundary_conditions.south.condition)  == (Cell, Nothing, Cell)
+        @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Center, Face, Nothing)
+        @test location(model.velocities.v.boundary_conditions.top.condition)    == (Center, Face, Nothing)
+        @test location(model.velocities.v.boundary_conditions.north.condition)  == (Center, Nothing, Center)
+        @test location(model.velocities.v.boundary_conditions.south.condition)  == (Center, Nothing, Center)
+        @test location(model.velocities.v.boundary_conditions.east.condition)   == (Nothing, Face, Center)
+        @test location(model.velocities.v.boundary_conditions.west.condition)   == (Nothing, Face, Center)
 
-        @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Cell, Cell, Nothing)
-        @test location(model.velocities.w.boundary_conditions.top.condition)    == (Cell, Cell, Nothing)
-        @test location(model.velocities.w.boundary_conditions.north.condition)  == (Cell, Nothing, Face)
-        @test location(model.velocities.w.boundary_conditions.south.condition)  == (Cell, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
+        @test location(model.velocities.w.boundary_conditions.top.condition)    == (Center, Center, Nothing)
+        @test location(model.velocities.w.boundary_conditions.north.condition)  == (Center, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.south.condition)  == (Center, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.east.condition)   == (Nothing, Center, Face)
+        @test location(model.velocities.w.boundary_conditions.west.condition)   == (Nothing, Center, Face)
 
-        @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Cell, Cell, Nothing)
-        @test location(model.tracers.T.boundary_conditions.top.condition)    == (Cell, Cell, Nothing)
-        @test location(model.tracers.T.boundary_conditions.north.condition)  == (Cell, Nothing, Cell)
-        @test location(model.tracers.T.boundary_conditions.south.condition)  == (Cell, Nothing, Cell)
+        @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
+        @test location(model.tracers.T.boundary_conditions.top.condition)    == (Center, Center, Nothing)
+        @test location(model.tracers.T.boundary_conditions.north.condition)  == (Center, Nothing, Center)
+        @test location(model.tracers.T.boundary_conditions.south.condition)  == (Center, Nothing, Center)
+        @test location(model.tracers.T.boundary_conditions.east.condition)   == (Nothing, Center, Center)
+        @test location(model.tracers.T.boundary_conditions.west.condition)   == (Nothing, Center, Center)
     end
 
-    @testset "Boudnary condition time-stepping works" begin
+    @testset "Boundary condition time-stepping works" begin
         for arch in archs, FT in (Float64,) #float_types
             @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
-            topo = arch isa CPU ? (Bounded, Bounded, Bounded) : (Periodic, Bounded, Bounded)
+            topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-
+                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
-                 arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-
+            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
             end
@@ -214,10 +229,25 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
     end
 
     @testset "Budgets with Flux boundary conditions" begin
-        for arch in archs, FT in float_types
-            @info "  Testing budgets with Flux boundary conditions on u, v, T [$(typeof(arch)), $FT]..."
-            for field_name in (:u, :v, :T)
-                @test test_flux_budget(arch, FT, field_name)
+        for arch in archs
+            @info "  Testing budgets with Flux boundary conditions [$(typeof(arch))]..."
+
+            topo = (Periodic, Bounded, Bounded)
+            for name in (:u, :c), side in (:north, :south, :top, :bottom)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
+            end
+
+            topo = (Bounded, Periodic, Bounded)
+            for name in (:v, :c), side in (:east, :west, :top, :bottom)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
+            end
+
+            topo = (Bounded, Bounded, Periodic)
+            for name in (:w, :c), side in (:east, :west, :north, :south)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
         end
     end

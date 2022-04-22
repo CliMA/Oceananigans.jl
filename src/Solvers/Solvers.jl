@@ -1,29 +1,48 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
-    PressureSolver, solve_for_pressure!
+    BatchedTridiagonalSolver, solve!,
+    FFTBasedPoissonSolver,
+    FourierTridiagonalPoissonSolver,
+    PreconditionedConjugateGradientSolver,
+    HeptadiagonalIterativeSolver
 
+using Statistics
+using FFTW
 using CUDA
 using KernelAbstractions
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type
+using Oceananigans.Architectures: device, CPU, GPU, array_type, arch_array
 using Oceananigans.Utils
 using Oceananigans.Grids
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
+
 using Oceananigans.Grids: unpack_grid
 
-include("solver_utils.jl")
+"""
+    ω(M, k)
+
+Return the `M`th root of unity raised to the `k`th power.
+"""
+@inline ω(M, k) = exp(-2im*π*k/M)
+
+reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
+                        dim == 2 ? (1, N, 1) :
+                        dim == 3 ? (1, 1, N) : nothing
+
 include("batched_tridiagonal_solver.jl")
-
-include("discrete_eigenvalues.jl")
-include("plan_transforms.jl")
-include("pressure_solver.jl")
-include("triply_periodic_pressure_solver.jl")
-include("horizontally_periodic_pressure_solver.jl")
-include("channel_pressure_solver.jl")
-include("box_pressure_solver.jl")
+include("poisson_eigenvalues.jl")
 include("index_permutations.jl")
-include("solve_for_pressure.jl")
+include("discrete_transforms.jl")
+include("plan_transforms.jl")
+include("fft_based_poisson_solver.jl")
+include("fourier_tridiagonal_poisson_solver.jl")
+include("preconditioned_conjugate_gradient_solver.jl")
+include("sparse_approximate_inverse.jl")
+include("matrix_solver_utils.jl")
+include("sparse_preconditioners.jl")
+include("heptadiagonal_iterative_solver.jl")
 
-end
+end # module

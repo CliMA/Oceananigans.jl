@@ -1,8 +1,8 @@
 # Turbulence closures
 
 The turbulence closure selected by the user determines the form of stress divergence
-``\bm{\nabla} \bm{\cdot} \bm{\tau}`` and diffusive flux divergence
-``\bm{\nabla} \bm{\cdot} \bm{q}_c`` in the momentum and tracer conservation equations.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}`` and diffusive flux divergence
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c`` in the momentum and tracer conservation equations.
 
 ## Constant isotropic diffusivity
 
@@ -11,130 +11,136 @@ In a constant isotropic diffusivity model, the kinematic stress tensor is define
 \tau_{ij} = - \nu \Sigma_{ij} \, ,
 ```
 where ``\nu`` is a constant viscosity and
-``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the strain-rate
-tensor. The divergence of ``\bm{\tau}`` is then
+``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the strain-rate
+tensor. The divergence of ``\boldsymbol{\tau}`` is then
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = -\nu \bm{\nabla}^2 \bm{u} \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \nabla^2 \boldsymbol{v} \, .
 ```
-Similarly, the diffusive tracer flux is ``\bm{q}_c = - \kappa \bm{\nabla} c`` for tracer
+Similarly, the diffusive tracer flux is ``\boldsymbol{q}_c = - \kappa \boldsymbol{\nabla} c`` for tracer
 diffusivity ``\kappa``, and the diffusive tracer flux divergence is
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \kappa \bm{\nabla}^2 c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \kappa \nabla^2 c \, .
 ```
 Each tracer may have a unique diffusivity ``\kappa``.
 
 ## Constant anisotropic diffusivity
 
-In Oceananigans.jl, a constant anisotropic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\bm{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+A constant anisotropic diffusivity implies a constant tensor
+diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
+components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
 With this form the kinematic stress divergence becomes
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \nu_v \partial_z^2 \right ] \bm{u} \, ,
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
+                                    + \nu_v \partial_z^2 \right ] \boldsymbol{v} \, ,
 ```
 and diffusive flux divergence
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \kappa_{v} \partial_z^2 \right ] c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
+                                    + \kappa_{v} \partial_z^2 \right ] c \, ,
 ```
-in terms of the horizontal viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_v``.
 
-## Constant anisotropic biharmonic diffusivity
+## Scalar biharmonic diffusivity
 
-In Oceananigans.jl, a constant anisotropic biharmonic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\bm{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
-components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
+A constant biharmonic diffusivity implies a constant tensor diffusivity ``\nu_{j k}`` and
+stress``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero components
+``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_z``.
+
 With this form the kinematic stress divergence becomes
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \nu_v \partial_z^4 \right ] \bm{u} \, ,
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
+                                    + \nu_v \partial_z^4 \right ] \boldsymbol{v} \, ,
 ```
 and diffusive flux divergence
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \kappa_{v} \partial_z^4 \right ] c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
+                                    + \kappa_{v} \partial_z^4 \right ] c \, ,
 ```
-in terms of the horizontal biharmonic viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
-vertical biharmonic viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
-Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v``.
+in terms of the horizontal biharmonic viscosities and diffusivities, ``\nu_h`` and ``\kappa_h``, and the
+vertical biharmonic viscosity and diffusivities, ``\nu_z`` and ``\kappa_z``. Each tracer may have a unique
+diffusivity components ``\kappa_h`` and ``\kappa_z``.
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by Lilly (1962) and Smagorinsky (1963),
+In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
-\tau_{ij} = \nu_e \Sigma_{ij} \, ,
+\tau_{ij} = - 2 \nu_e \Sigma_{ij} \, ,
 ```
-where ``\Sigma_{ij} = \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the resolved
+where ``\Sigma_{ij} = \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the resolved
 strain rate.
 The eddy viscosity is given by
 ```math
-    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \Upsilon(Ri) + \nu \, ,
-    \tag{eq:smagorinsky-viscosity}
+    \begin{align}
+    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \varsigma(N^2 / \Sigma^2) + \nu \, ,
+    \label{eq:smagorinsky-viscosity}
+    \end{align}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
-``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma{ij}``, and
+``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
 ``\nu`` is a constant isotropic background viscosity.
-The factor ``\Upsilon(Ri)`` reduces ``\nu_e`` in regions of
-strong stratification where the resolved gradient Richardson number
-``Ri \equiv N^2 / \Sigma^2`` is large via
+The factor ``\varsigma(N^2 / \Sigma^2)`` reduces ``\nu_e`` in regions of
+strong stratification via
 ```math
-    \Upsilon(Ri) = \sqrt{1 - \min \left ( 1, C_b N^2 / \Sigma^2 \right )} \, ,
+    \varsigma(N^2 / \Sigma^2) = \sqrt{1 - \min \left ( 1, C_b N^2 / \Sigma^2 \right )} \, ,
 ```
 where ``N^2 = \max \left (0, \partial_z b \right )`` is the squared buoyancy frequency for stable
-stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.
-Roughly speaking, the filter width for the Smagorinsky-Lilly closure is taken as
+stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.  Lilly (1962)
+proposed ``C_b = 1/Pr``, where ``Pr`` is a turbulent Prandtl number.
+The filter width for the Smagorinsky-Lilly closure is
 ```math
-\Delta_f(\bm{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
+\Delta_f(\boldsymbol{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
 ```
 where ``\Delta x``, ``\Delta y``, and ``\Delta z`` are the grid spacing in the
-``\bm{\hat x}``, ``\bm{\hat y}``, and ``\bm{\hat z}`` directions at location ``\bm{x} = (x, y, z)``.
+``\boldsymbol{\hat x}``, ``\boldsymbol{\hat y}``, and ``\boldsymbol{\hat z}`` directions at location ``\boldsymbol{x} = (x, y, z)``.
 
 The effect of subgrid turbulence on tracer mixing is also modeled diffusively via
 ```math
-\bm{q}_c = \kappa_e \bm{\nabla} c \, ,
+\boldsymbol{q}_c = - \kappa_e \boldsymbol{\nabla} c \, ,
 ```
 where the eddy diffusivity ``\kappa_e`` is
 ```math
 \kappa_e = \frac{\nu_e - \nu}{Pr} + \kappa \, ,
 ```
-where ``Pr`` is a turbulent Prandtl number and ``\kappa`` is a constant isotropic background diffusivity.
+where ``\kappa`` is a constant isotropic background diffusivity.
 Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
 
-Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by
-Verstappen18 and described and tested by Vreugdenhil18.
-The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
-In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms
-of eddy viscosity and diffusivity *predictors*
-``\nu_e^\dagger`` and ``\kappa_e^\dagger``, such that
+The anisotropic minimum dissipation (AMD) model proposed by [Verstappen18](@cite) and was
+described and tested by [Vreugdenhil18](@cite). The AMD model uses an eddy diffusivity hypothesis
+similar the Smagorinsky-Lilly model. In the AMD model, the eddy viscosity and diffusivity for each
+tracer are defined in terms of eddy viscosity and diffusivity *predictors* ``\nu_e^\dagger`` and ``\kappa_e^\dagger``,
+such that
 ```math
     \nu_e = \max \left ( 0, \nu_e^\dagger \right ) + \nu
     \quad \text{and} \quad
     \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
-constant isotropic background viscosity and diffusivities for each tracer.
-The eddy viscosity predictor is
+constant isotropic background viscosity and diffusivities for each tracer. The eddy viscosity 
+predictor is
 ```math
-    \tag{eq:nu-dagger}
-    \nu_e^\dagger = -(C \Delta_f)^2
+    \begin{equation}
+    \nu_e^\dagger = C \Delta_f^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{\Sigma}_{ij}
-        + C_b \hat{\delta}_{i3} \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k b}
-        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)}
+        {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
+        + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
+        {(\hat{\partial}_l \hat{v}_m) (\hat{\partial}_l \hat{v}_m)} \, ,
+    \label{eq:nu-dagger}
+    \end{equation}
 ```
 while the eddy diffusivity predictor for tracer ``c`` is
 ```math
-    \tag{eq:kappa-dagger}
-    \kappa_e^\dagger = -(C \Delta_f)^2
+    \begin{equation}
+    \label{eq:kappa-dagger}
+    \kappa_e^\dagger = C \Delta_f^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k c \right) \hat{\partial}_i c}
-        {\left( \hat{\partial}_l c \right) \left( \hat{\partial}_l c \right)} \, .
+        {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
+        {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
+    \end{equation}
 ```
 In the definitions of the eddy viscosity and eddy diffusivity predictor, ``C`` and ``C_b`` are
 user-specified model constants, ``\Delta_f`` is a "filter width" associated with the finite volume
@@ -142,15 +148,15 @@ grid spacing, and the hat decorators on partial derivatives, velocities, and the
 delta ``\hat \delta_{i3}`` are defined such that
 ```math
     \hat \partial_i \equiv \Delta_i \partial_i, \qquad
-    \hat{u}_i(x, t) \equiv \frac{u_i(x, t)}{\Delta_i}, \quad \text{and} \quad
+    \hat{v}_i(x, t) \equiv \frac{v_i(x, t)}{\Delta_i}, \quad \text{and} \quad
     \hat{\delta}_{i3} \equiv \frac{\delta_{i3}}{\Delta_3} \, .
 ```
 A velocity gradient, for example, is therefore
-``\hat{\partial}_i \hat{u}_j(x, t) = \frac{\Delta_i}{\Delta_j} \partial_i u_j(x, t)``,
+``\hat{\partial}_i \hat{v}_j(x, t) = \frac{\Delta_i}{\Delta_j} \partial_i v_j(x, t)``,
 while the normalized strain tensor is
 ```math
     \hat{\Sigma}_{ij} =
-        \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(x, t) + \hat{\partial}_j \hat{u}_i(x, t) \right] \, .
+        \frac{1}{2} \left[ \hat{\partial}_i \hat{v}_j(x, t) + \hat{\partial}_j \hat{v}_i(x, t) \right] \, .
 ```
 The filter width ``\Delta_f`` in that appears in the viscosity and diffusivity predictors
 is taken as the square root of the harmonic mean of the squares of the filter widths in
@@ -163,3 +169,12 @@ each direction:
 The constant ``C_b`` permits the "buoyancy modification" term it multiplies to be omitted
 from a calculation.
 By default we use the model constants ``C=1/12`` and ``C_b=0``.
+
+## Convective adjustment vertical diffusivity
+
+This closure aims to model the enhanced mixing that occurs due to convection.
+At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and
+applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid
+is gravitationally neutral or stable with ``∂b/∂z ≥ 0``, or (ii) `convective_νz` and `convective_κz` if ``∂b/∂z < 0``.
+
+This closure is a plausible model for convection if `convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.

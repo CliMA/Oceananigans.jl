@@ -1,7 +1,8 @@
 module Coriolis
 
 export
-    FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
+    HydrostaticSphericalCoriolis, 
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf
@@ -21,8 +22,9 @@ abstract type AbstractRotation end
 
 include("no_rotation.jl")
 include("f_plane.jl")
-include("non_traditional_f_plane.jl")
+include("constant_cartesian_coriolis.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
+include("hydrostatic_spherical_coriolis.jl")
 
-end
+end # module

@@ -1,9 +1,17 @@
-using PyPlot, Glob
+if haskey(ENV, "CI") && ENV["CI"] == "true"
+    ENV["PYTHON"] = ""
+    using Pkg
+    Pkg.build("PyCall")
+end
 
-include("ConvergenceTests/ConvergenceTests.jl")
+using PyPlot
+using Glob
+using Oceananigans
 
-using .ConvergenceTests
-using .ConvergenceTests.ForcedFlowFreeSlip: u
+using ConvergenceTests
+using ConvergenceTests.ForcedFlowFreeSlip: u
+
+arch = CUDA.has_cuda() ? GPU() : CPU()
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)
@@ -33,28 +41,33 @@ for i = 1:length(errors)
     L₁ = map(err -> err.L₁, error)
     L∞ = map(err -> err.L∞, error)
 
-    loglog(Nx, L₁, basex=2, color=defaultcolors[i], alpha=0.6, mfc="None",
+    loglog(Nx, L₁, color=defaultcolors[i], alpha=0.6, mfc="None",
            linestyle="None", marker="o", label="\$L_1\$-norm, $name")
-    loglog(Nx, L∞, basex=2, color=defaultcolors[i], alpha=0.6, mfc="None",
+    loglog(Nx, L∞, color=defaultcolors[i], alpha=0.6, mfc="None",
            linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
 end
 
 L₁ = map(err -> err.L₁, errors[1])
-loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", basex=2, linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
 
 legend()
+xscale("log", base=2)
+yscale("log", base=10)
 xlabel(L"N_x")
 ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}} | \$")
-removespines("top", "right")
 title("Convergence for forced free slip")
+removespines("top", "right")
 
-filepath = joinpath(@__DIR__, "figs", "forced_free_slip_convergence.png")
+filename = "forced_free_slip_convergence_$(typeof(arch)).png"
+filepath = joinpath(@__DIR__, "figs", filename)
+mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
+p = sortperm(Nx)
 for (name, error) in zip(names, errors)
     L₁ = map(e -> e.L₁, error)
     L∞ = map(e -> e.L∞, error)
     name = "Forced flow free slip " * strip(name.s, '$')
-    test_rate_of_convergence(L₁, Nx, expected=-2.0, atol=0.001, name=name * " L₁")
-    test_rate_of_convergence(L∞, Nx, expected=-2.0, atol=0.001, name=name * " L∞")
+    test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.001, name=name * " L₁")
+    test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.005, name=name * " L∞")
 end

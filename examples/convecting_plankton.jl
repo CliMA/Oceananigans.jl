@@ -12,10 +12,10 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \boldsymbol{v ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
-# where ``\bm{u}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
+# where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
 #  ``μ₀`` is the phytoplankton growth rate at the surface, ``λ`` is the scale over
 # which sunlight attenuates away from the surface, and ``m`` is the mortality rate
 # of phytoplankton due to viruses and grazing by zooplankton. We use Oceananigans'
@@ -29,35 +29,37 @@
 #     and grazing by zooplankton.
 #   * How to set time-dependent boundary conditions.
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
-#   * How to use `AveragedField` to diagnose spatial averages of model fields.
+#   * How to use `Average` to diagnose spatial averages of model fields.
 #
 # ## Install dependencies
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```
 
 # ## The grid
 #
-# We use a two-dimensional grid with 64² points and 1 m grid spacing:
+# We use a two-dimensional grid with 64² points, 3² halo points for high-order advection,
+# 1 m grid spacing, and a `Flat` `y`-direction:
 
 using Oceananigans
+using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularCartesianGrid(size=(64, 1, 64), extent=(64, 1, 64))
+grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-using Oceananigans.Utils
-
-buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
+buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
 
-buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
+buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_flux_parameters)
 
 # The fourth power in the argument of `exp` above helps keep the buoyancy flux relatively
 # constant during the first phase of the simulation. We produce a plot of this time-dependent
@@ -65,9 +67,9 @@ buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_
 
 using Plots, Measures
 
-time = range(0, 12hours, length=100)
+times = range(0, 12hours, length=100)
 
-flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in time],
+flux_plot = plot(times ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times],
                  linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
                  size = (800, 300), margin = 5mm, label = nothing)
 
@@ -85,19 +87,19 @@ flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters)
 
 N² = 1e-4 # s⁻²
 
-buoyancy_gradient_bc = BoundaryCondition(Gradient, N²)
+buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 
 # In summary, the buoyancy boundary conditions impose a destabilizing flux
 # at the top and a stable buoyancy gradient at the bottom:
 
-buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
+buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
 # ## Phytoplankton dynamics: light-dependent growth and uniform mortality
 #
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
+growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing # hide
 
 # with parameters
@@ -113,19 +115,17 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
                             parameters = plankton_dynamics_parameters)
 
 # ## The model
-# 
+#
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a fifth-order 
+# constructor for `NonhydrostaticModel`. We additionally specify a fifth-order
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-using Oceananigans.Advection
-
-model = IncompressibleModel(
+model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,
-                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
+                closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :P), # P for Plankton
                buoyancy = BuoyancyTracer(),
@@ -145,54 +145,52 @@ stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
 
-initial_buoyancy(x, y, z) = stratification(z) + noise(z) 
+initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
-# ## Adaptive time-stepping, logging, output and simulation setup
+# ## Simulation with adaptive time-stepping, logging, and output
 #
-# We use a `TimeStepWizard` that limits the
+# We build a simulation
+
+simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
+
+# with a `TimeStepWizard` that limits the
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
 
-# We also write a function that prints the progress of the simulation
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# We also add a callback that prints the progress of the simulation,
 
 using Printf
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
-                        sim.model.clock.iteration,
-                        prettytime(sim.model.clock.time),
-                        prettytime(sim.Δt.Δt))
-                               
-simulation = Simulation(model, Δt=wizard, stop_time=24hour,
-                        iteration_interval=20, progress=progress)
+                        iteration(sim), prettytime(time(sim)), prettytime(sim.Δt))
 
-# We add a basic `JLD2OutputWriter` that writes velocities and both
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+
+# and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
-using Oceananigans.OutputWriters, Oceananigans.Fields
-
-averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))
-
 outputs = (w = model.velocities.w,
-           plankton = model.tracers.P,
-           averaged_plankton = averaged_plankton)
+           P = model.tracers.P,
+           P_avg = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(20minutes),
-                     prefix = "convecting_plankton",
-                     force = true)
+                     filename = "convecting_plankton.jld2",
+                     overwrite_existing = true)
 
 # !!! info "Using multiple output writers"
-#     Because each output writer is associated with a single output `schedule`, 
+#     Because each output writer is associated with a single output `schedule`,
 #     it often makes sense to use _different_ output writers for different types of output.
-#     For example, reduced fields like `AveragedField` usually consume less disk space than
-#     two- or three-dimensional fields, and can thus be output more frequently without
-#     blowing up your hard drive. An arbitrary number of output writers may be added to
-#     `simulation.output_writers`.
+#     For example, smaller outputs that consume less disk space may be written more
+#     frequently without threatening the capacity of your hard drive.
+#     An arbitrary number of output writers may be added to `simulation.output_writers`.
 #
 # The simulation is set up. Let there be plankton:
 
@@ -208,21 +206,20 @@ run!(simulation)
 
 using JLD2
 
-file = jldopen(simulation.output_writers[:simple_output].filepath)
+filepath = simulation.output_writers[:simple_output].filepath
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries(filepath, "w")
+P_timeseries = FieldTimeSeries(filepath, "P")
+P_avg_timeseries = FieldTimeSeries(filepath, "P_avg")
 
-times = [file["timeseries/t/$iter"] for iter in iterations]
-
+times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
-using Oceananigans.Grids: nodes
-
-xw, yw, zw = nodes(model.velocities.w)
-xp, yp, zp = nodes(model.tracers.P)
+xw, yw, zw = nodes(w_timeseries)
+xp, yp, zp = nodes(P_timeseries)
 nothing # hide
 
 # Finally, we animate plankton mixing and blooming,
@@ -231,22 +228,16 @@ using Plots
 
 @info "Making a movie about plankton..."
 
-w_lim = 0   # the maximum(abs(w)) across the whole timeseries
+w_lim = maximum(abs, interior(w_timeseries))
 
-for (i, iteration) in enumerate(iterations)
-    w = file["timeseries/w/$iteration"][:, 1, :]
+anim = @animate for i in 1:length(times)
 
-    global w_lim = maximum([w_lim, maximum(abs.(w))])
-end
+    @info "Plotting frame $i of $(length(times))..."
 
-anim = @animate for (i, iteration) in enumerate(iterations)
-
-    @info "Plotting frame $i from iteration $iteration..."
-    
-    t = file["timeseries/t/$iteration"]
-    w = file["timeseries/w/$iteration"][:, 1, :]
-    P = file["timeseries/plankton/$iteration"][:, 1, :]
-    averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
+    t = times[i]
+    w = interior(w_timeseries[i], :, 1, :)
+    P = interior(P_timeseries[i], :, 1, :)
+    P_avg = interior(P_avg_timeseries[i], 1, 1, :)
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
@@ -273,7 +264,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                           clims = P_lims,
                           kwargs...)
 
-    P_profile = plot(averaged_P, zp,
+    P_profile = plot(P_avg, zp,
                      linewidth = 2,
                      label = nothing,
                      xlims = (0.9, 1.3),
@@ -299,7 +290,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
              markershape = :circle,
              color = :steelblue,
              markerstrokewidth = 0,
-             markersize = 15, 
+             markersize = 15,
              label = "Current buoyancy flux")
 
     layout = Plots.grid(2, 2, widths=(0.7, 0.3))
@@ -309,7 +300,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     plot(w_contours, flux_plot, P_contours, P_profile,
          title=[w_title "" P_title ""],
-         layout=layout, size=(1000, 1000))
+         layout=layout, size=(1000.5, 1000.5))
 end
 
-gif(anim, "convecting_plankton.gif", fps = 8) # hide
+mp4(anim, "convecting_plankton.mp4", fps = 8) # hide

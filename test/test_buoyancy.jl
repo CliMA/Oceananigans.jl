@@ -1,13 +1,15 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Fields: TracerFields
 
-using Oceananigans.Buoyancy:
+using Oceananigans.BuoyancyModels:
     required_tracers, ρ′, ∂x_b, ∂y_b,
     thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶠᶜ, thermal_expansionᶜᶜᶠ,
     haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶠᶜ, haline_contractionᶜᶜᶠ
 
 function instantiate_linear_equation_of_state(FT, α, β)
-    eos = LinearEquationOfState(FT, α=α, β=β)
-    return eos.α == FT(α) && eos.β == FT(β)
+    eos = LinearEquationOfState(FT, thermal_expansion=α, haline_contraction=β)
+    return eos.thermal_expansion == FT(α) && eos.haline_contraction == FT(β)
 end
 
 function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
@@ -16,36 +18,36 @@ function instantiate_seawater_buoyancy(FT, EquationOfState; kwargs...)
 end
 
 function density_perturbation_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields((:T, :S), grid)
     density_anomaly = ρ′(2, 2, 2, grid, eos, C.T, C.S)
     return true
 end
 
 function ∂x_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdx = ∂x_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂y_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdy = ∂y_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂z_b_works(arch, FT, buoyancy)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdz = ∂z_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function thermal_expansion_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields((:T, :S), grid)
     α = thermal_expansionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     α = thermal_expansionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     α = thermal_expansionᶜᶠᶜ(2, 2, 2, grid, eos, C.T, C.S)
@@ -54,8 +56,8 @@ function thermal_expansion_works(arch, FT, eos)
 end
 
 function haline_contraction_works(arch, FT, eos)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), arch, grid))
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
+    C = TracerFields((:T, :S), grid)
     β = haline_contractionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     β = haline_contractionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     β = haline_contractionᶜᶠᶜ(2, 2, 2, grid, eos, C.T, C.S)
@@ -66,7 +68,7 @@ end
 EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
-@testset "Buoyancy" begin
+@testset "BuoyancyModels" begin
     @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
@@ -84,9 +86,8 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                 @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
             end
 
-            buoyancies =
-                (nothing, BuoyancyTracer(), SeawaterBuoyancy(FT),
-                 (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
+            buoyancies = (nothing, Buoyancy(model=BuoyancyTracer()), Buoyancy(model=SeawaterBuoyancy(FT)),
+                          (Buoyancy(model=SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
 
             for arch in archs
                 for buoyancy in buoyancies

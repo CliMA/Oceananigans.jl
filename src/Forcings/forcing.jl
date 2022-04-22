@@ -6,17 +6,21 @@ Returns a forcing function added to the tendency of an Oceananigans model field.
 If `discrete_form=false` (the default), and neither `parameters` nor `field_dependencies`
 are provided, then `func` must be callable with the signature
 
-    `func(x, y, z, t)`
+```
+func(x, y, z, t)
+```
 
 where `x, y, z` are the east-west, north-south, and vertical spatial coordinates, and `t` is time.
-Note that this form is also default in the constructor for `IncompressibleModel`, so that `Forcing` is
+Note that this form is also default in the constructor for `NonhydrostaticModel`, so that `Forcing` is
 not needed.
 
 If `discrete_form=false` (the default), and `field_dependencies` are provided,
 the signature of `func` must include them. For example, if `field_dependencies=(:u, :S)`
 (and `parameters` are _not_ provided), then `func` must be callable with the signature
 
-    `func(x, y, z, t, u, S)`
+```
+func(x, y, z, t, u, S)`
+```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field
 which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be present
@@ -26,7 +30,9 @@ If `discrete_form=false` (the default) and `parameters` are provided, then the _
 to `func` must be `parameters`. For example, if `func` has no `field_dependencies` but does
 depend on `parameters`, then it must be callable with the signature
 
-    `func(x, y, z, t, parameters)`
+```
+func(x, y, z, t, parameters)
+```
 
 The object `parameters` is arbitrary in principle, however GPU compilation can place
 constraints on `typeof(parameters)`.
@@ -34,21 +40,27 @@ constraints on `typeof(parameters)`.
 With `field_dependencies=(:u, :v, :w, :c)` and `parameters`, then `func` must be
 callable with the signature
 
-    `func(x, y, z, t, u, v, w, c, parameters)`
+```
+func(x, y, z, t, u, v, w, c, parameters)
+```
 
 If `discrete_form=true` then `func` must be callable with the "discrete form"
 
-    `func(i, j, k, grid, clock, model_fields)`
+```
+func(i, j, k, grid, clock, model_fields)
+```
 
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
 and `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivities`, each of which is an `OffsetArray`s (or `NamedTuple`s
+and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
 of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
 
-    `func(i, j, k, grid, clock, model_fields, parameters)`
+```
+func(i, j, k, grid, clock, model_fields, parameters)
+```
 
 Examples
 ========
@@ -62,30 +74,30 @@ parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
 v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}}
-├── func: parameterized_func
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}}
+├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
 
 Note that because forcing locations are regularized within the
-`IncompressibleModel` constructor:
+`NonhydrostaticModel` constructor:
 
 ```jldoctest forcing
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, forcing=(v=v_forcing,))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
 
 model.forcing.v
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}} at (Cell, Face, Cell)
-├── func: parameterized_func
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}} at (Center, Face, Center)
+├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
 
-After passing through the constructor for `IncompressibleModel`, the `v`-forcing location
-information is available and set to `Cell, Face, Cell`.
+After passing through the constructor for `NonhydrostaticModel`, the `v`-forcing location
+information is available and set to `Center, Face, Center`.
 
 ```jldoctest forcing
 # Field-dependent forcing
@@ -95,7 +107,7 @@ plankton_forcing = Forcing(growth_in_sunlight, field_dependencies=:P)
 
 # output
 ContinuousForcing{Nothing}
-├── func: growth_in_sunlight
+├── func: growth_in_sunlight (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: (:P,)
 ```
@@ -109,8 +121,8 @@ c_forcing = Forcing(tracer_relaxation,
                             parameters = (μ=1/60, λ=10, H=1000, dCdz=1))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz),Tuple{Float64,Int64,Int64,Int64}}}
-├── func: tracer_relaxation
+ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz), Tuple{Float64, Int64, Int64, Int64}}}
+├── func: tracer_relaxation (generic function with 1 method)
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
 └── field dependencies: (:c,)
 ```
@@ -124,20 +136,20 @@ filtered_forcing = Forcing(filtered_relaxation, discrete_form=true)
 
 # output
 DiscreteForcing{Nothing}
-├── func: filtered_relaxation
+├── func: filtered_relaxation (generic function with 1 method)
 └── parameters: nothing
 ```
 
 ```jldoctest forcing
 # Discrete-form forcing function with parameters
 masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * model_fields.u[i, j, k]
+    @inbounds - parameters.μ * exp(grid.zᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 
 # output
-DiscreteForcing{NamedTuple{(:μ, :λ),Tuple{Int64,Irrational{:π}}}}
-├── func: masked_damping
+DiscreteForcing{NamedTuple{(:μ, :λ), Tuple{Int64, Irrational{:π}}}}
+├── func: masked_damping (generic function with 1 method)
 └── parameters: (μ = 42, λ = π)
 ```
 """
@@ -148,3 +160,4 @@ function Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=
         return ContinuousForcing(func; parameters=parameters, field_dependencies=field_dependencies)
     end
 end
+

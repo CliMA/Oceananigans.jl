@@ -13,30 +13,33 @@ end
 ```
 
 Forcings are added to `Oceananigans` models by passing a `NamedTuple` of functions
-or forcing objects to the `forcing` keyword argument in `IncompressibleModel`'s constructor.
+or forcing objects to the `forcing` keyword argument in `NonhydrostaticModel`'s constructor.
 By default, momentum and tracer forcing functions are assumed to be functions of
 `x, y, z, t`. A basic example is
 
 ```jldoctest
 u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, forcing=(u=u_forcing,))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
 
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Cell, Cell)
-├── func: u_forcing
+ContinuousForcing{Nothing} at (Face, Center, Center)
+├── func: u_forcing (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: ()
 ```
 
 More general forcing functions are built via the `Forcing` constructor
-described below. `Oceananigans` also provides a convenience type called `Relaxation`
-that specifies "relaxation", or damping terms that restore a field to a
-target distribution outside of a masked region of space. `Relaxation` can be
-used to implement sponge layers near the boundaries of a domain.
+described below. `Oceananigans` also provides two convenience types:
+    * `Relaxation` for damping terms that restore a field to a
+      target distribution outside of a masked region of space. `Relaxation` can be
+      used to implement sponge layers near the boundaries of a domain.
+    * `AdvectiveForcing` for advecting individual quantities by a separate or
+      "slip" velocity relative to both the prognostic model velocity field and any
+      `BackgroundField` velocity field.
 
 ## The `Forcing` constructor
 
@@ -63,14 +66,14 @@ T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω
 
 T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.T
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Float64}}} at (Cell, Cell, Cell)
-├── func: T_forcing_func
+ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω), Tuple{Int64, Float64, Float64, Float64}}} at (Center, Center, Center)
+├── func: T_forcing_func (generic function with 1 method)
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()
 ```
@@ -79,8 +82,8 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Flo
 model.forcing.u
 
 # output
-ContinuousForcing{Float64} at (Face, Cell, Cell)
-├── func: u_forcing_func
+ContinuousForcing{Float64} at (Face, Center, Center)
+├── func: u_forcing_func (generic function with 1 method)
 ├── parameters: 0.1
 └── field dependencies: ()
 ```
@@ -108,14 +111,14 @@ S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
 S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(w=w_forcing, S=S_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Face)
-├── func: w_forcing_func
+ContinuousForcing{Nothing} at (Center, Center, Face)
+├── func: w_forcing_func (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: (:u, :v, :w)
 ```
@@ -124,8 +127,8 @@ ContinuousForcing{Nothing} at (Cell, Cell, Face)
 model.forcing.S
 
 # output
-ContinuousForcing{Float64} at (Cell, Cell, Cell)
-├── func: S_forcing_func
+ContinuousForcing{Float64} at (Center, Center, Center)
+├── func: S_forcing_func (generic function with 1 method)
 ├── parameters: 0.01
 └── field dependencies: (:S,)
 ```
@@ -173,11 +176,11 @@ b_forcing_func(i, j, k, grid, clock, model_fields) = - local_average(i, j, k, gr
 b_forcing = Forcing(b_forcing_func, discrete_form=true)
 
 # A term that damps the local velocity field in the presence of stratification
-using Oceananigans.Operators: ∂zᵃᵃᶠ, ℑxzᶠᵃᶜ
+using Oceananigans.Operators: ∂zᶠᶜᶠ, ℑxzᶠᵃᶜ
 
 function u_forcing_func(i, j, k, grid, clock, model_fields, ε)
     # The vertical derivative of buoyancy, interpolated to the u-velocity location:
-    N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, model_fields.b)
+    N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, model_fields.b)
 
     # Set to zero in unstable stratification where N² < 0:
     N² = max(N², zero(typeof(N²)))
@@ -187,14 +190,14 @@ end
 
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
 model.forcing.b
 
 # output
 DiscreteForcing{Nothing}
-├── func: b_forcing_func
+├── func: b_forcing_func (generic function with 1 method)
 └── parameters: nothing
 ```
 
@@ -203,7 +206,7 @@ model.forcing.u
 
 # output
 DiscreteForcing{Float64}
-├── func: u_forcing_func
+├── func: u_forcing_func (generic function with 1 method)
 └── parameters: 0.001
 ```
 
@@ -222,13 +225,13 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 ```jldoctest
 damping = Relaxation(rate = 1/1000)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
-model = IncompressibleModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Face)
+ContinuousForcing{Nothing} at (Center, Center, Face)
 ├── func: Relaxation(rate=0.001, mask=1, target=0)
 ├── parameters: nothing
 └── field dependencies: (:w,)
@@ -244,7 +247,7 @@ velocity fields to zero and restores temperature to a linear gradient in the bot
 1/10th of the domain:
 
 ```jldoctest sponge_layer
-grid = RegularCartesianGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
         damping_rate = 1/100 # relax fields on a 100 second time-scale
 temperature_gradient = 0.001 # ⁰C m⁻¹
@@ -256,12 +259,12 @@ target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=te
 uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
   T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
-model = IncompressibleModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge))
+model = NonhydrostaticModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Cell, Cell)
+ContinuousForcing{Nothing} at (Face, Center, Center)
 ├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
@@ -271,8 +274,94 @@ ContinuousForcing{Nothing} at (Face, Cell, Cell)
 model.forcing.T
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Cell)
+ContinuousForcing{Nothing} at (Center, Center, Center)
 ├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
+
+## `AdvectiveForcing`
+
+`AdvectiveForcing` defines a forcing function that represents advection by
+a separate or "slip" velocity relative to the prognostic model velocity field.
+`AdvectiveForcing` is implemented with native Oceananigans advection operators,
+which means that tracers advected by the "flux form" advection term
+``∇ ⋅ u⃗_slip c``. Caution is advised when ``u⃗_slip`` is not divergence free.
+
+As an example, consider a model for sediment settling at a constant rate:
+
+```jldoctest
+using Oceananigans
+
+r_sediment = 1e-4 # [m] "Fine sand"
+ρ_sediment = 1200 # kg m⁻³
+ρ_ocean = 1026 # kg m⁻³
+Δb = 9.81 * (ρ_ocean - ρ_sediment) / ρ_ocean # m s⁻²
+ν_molecular = 1.05e-6 # m² s⁻¹
+w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
+
+sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
+
+# output
+AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+├── u: ZeroField{Int64}
+├── v: ZeroField{Int64}
+└── w: ConstantField(-0.00352102)
+```
+
+The first argument to `AdvectiveForcing` is the advection scheme (here `UpwindBiasedFifthOrder()`).
+The three keyword arguments specify the `u`, `v`, and `w` components of the separate
+slip velocity field. The default for each `u, v, w` is `ZeroField`.
+
+Next we consider a dynamically-evolving slip velocity. For this we use `ZFaceField`
+with appropriate boundary conditions as our slip velocity:
+
+```jldoctest sinking
+using Oceananigans
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+
+grid = RectilinearGrid(size=(32, 32, 32), x=(-10, 10), y=(-10, 10), z=(-4, 4),
+                       topology=(Periodic, Periodic, Bounded))
+
+no_penetration = ImpenetrableBoundaryCondition()
+slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
+                                   top=no_penetration, bottom=no_penetration)
+
+w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
+sinking = AdvectiveForcing(WENO5(; grid), w=w_slip)
+
+# output
+AdvectiveForcing with the WENO5 scheme:
+├── u: ZeroField{Int64}
+├── v: ZeroField{Int64}
+└── w: 32×32×33 Field{Center, Center, Face} on RectilinearGrid on CPU
+```
+
+To compute the slip velocity, we must add a `Callback`to `simulations.callback` that
+computes `w_slip` ever iteration:
+
+```jldoctest sinking
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+
+model = NonhydrostaticModel(; grid, tracers=(:b, :P), forcing=(; P=sinking))
+simulation = Simulation(model; Δt=1, stop_iteration=100)
+
+# Build abstract operation for slip velocity
+b_particle = - 1e-4 # relative buoyancy depends on reference density and initial buoyancy condition
+b = model.tracers.b
+R = 1e-3 # [m] mean particle radius
+ν = 1.05e-6 # [m² s⁻¹] molecular kinematic viscosity of water
+w_slip_op = 2/9 * (b - b_particle) / ν * R^2 # Stokes terminal velocity
+
+function compute_slip_velocity!(sim)
+    w_slip .= w_slip_op
+    fill_halo_regions!(w_slip)
+    return nothing
+end
+
+simulation.callbacks[:slip] = Callback(compute_slip_velocity!)
+
+# output
+Callback of compute_slip_velocity! on IterationInterval(1)
+```
+

@@ -1,20 +1,18 @@
 module Diagnostics
 
-export
-    NaNChecker,
-    FieldMaximum,
-    CFL, AdvectiveCFL, DiffusiveCFL,
-    run_diagnostic!,
-    TimeInterval, IterationInterval, WallTimeInterval
+export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
+using CUDA
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractDiagnostic
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
-include("nan_checker.jl")
-include("field_maximum.jl")
+import Base: show
+import Oceananigans: run_diagnostic!
+
+include("state_checker.jl")
 include("cfl.jl")
 
-end
+end # module
