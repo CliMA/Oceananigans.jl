@@ -290,8 +290,11 @@ end
 
 function test_grid_equality_over_architectures()
     grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-    grid_gpu = RectilinearGrid(GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-
+    if CUDA.has_cuda()
+        grid_gpu = RectilinearGrid(CUDAGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+    elseif AMDGPU.has_rocm_gpu()
+        grid_gpu = RectilinearGrid(AMDGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+    end
     return grid_cpu == grid_gpu
 end
 
@@ -668,7 +671,7 @@ end
                 test_grid_equality(arch)
             end
 
-            if CUDA.has_cuda()
+            if CUDA.has_cuda() || AMDGPU.has_rocm_gpu()
                 test_grid_equality_over_architectures()
             end
         end
