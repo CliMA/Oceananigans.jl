@@ -15,4 +15,4 @@ import Oceananigans: run_diagnostic!
 include("state_checker.jl")
 include("cfl.jl")
 
-end
+end # module

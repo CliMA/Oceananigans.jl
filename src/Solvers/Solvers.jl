@@ -45,4 +45,4 @@ include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
 include("heptadiagonal_iterative_solver.jl")
 
-end
+end # module

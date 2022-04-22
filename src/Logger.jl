@@ -90,4 +90,4 @@ function handle_message(logger::OceananigansLogger, level, message, _module, gro
     return nothing
 end
 
-end
+end # module
