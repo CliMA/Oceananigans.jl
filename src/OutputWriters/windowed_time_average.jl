@@ -34,7 +34,7 @@ longer `stride`s are faster to compute, but less accurate.
 The time-average of ``a`` is a left Riemann sum corresponding to
 
 ```math
-⟨a⟩ = 1/T \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \, ,
+⟨a⟩ = T⁻¹ \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \\, ,
 ```
 
 where ``⟨a⟩`` is the time-average of ``a``, ``T`` is the time-window for averaging,
