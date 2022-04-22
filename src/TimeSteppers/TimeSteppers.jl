@@ -23,9 +23,9 @@ Abstract supertype for time steppers.
 abstract type AbstractTimeStepper end
 
 """
-    TimeStepper(name, args...)
+    TimeStepper(name::Symbol, args...; kwargs...)
 
-Returns a timestepper with name `name`, instantiated with `args...`.
+Returns a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 
 Example
 =======

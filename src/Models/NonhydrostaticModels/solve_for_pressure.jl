@@ -73,4 +73,3 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     return nothing
 end
-
