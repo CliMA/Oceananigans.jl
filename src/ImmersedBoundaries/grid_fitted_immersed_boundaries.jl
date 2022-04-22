@@ -1,5 +1,6 @@
 using Adapt
 using CUDA: CuArray
+using OffsetArrays: OffsetArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
@@ -11,69 +12,48 @@ abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 #####
-##### GridFittedBoundary
-#####
-
-struct GridFittedBoundary{S} <: AbstractGridFittedBoundary
-    mask :: S
-end
-
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
-
-#####
-##### GridFittedBottom
+##### GridFittedBottom (simple 2D immersed boundary)
 #####
 
 """
     GridFittedBottom(bottom)
 
-Return an immersed boundary.
+Return an immersed boundary with an irregular bottom fit to the underlying grid.
 """
 struct GridFittedBottom{B} <: AbstractGridFittedBoundary
     bottom :: B
 end
 
-function on_architecture(arch, b::GridFittedBoundary)
-    mask = b.mask isa AbstractArray ?
-        arch_array(arch, b.mask) :
-        b.mask
+const OffsetArrayGridFittedBottom = GridFittedBottom{<:OffsetArray}
 
-    return GridFittedBoundary(mask)
+function ImmersedBoundaryGrid(grid, ib::OffsetArrayGridFittedBottom)
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
-function on_architecture(arch, b::GridFittedBottom)
-    bottom = b.bottom isa AbstractArray ?
-        arch_array(arch, b.bottom) :
-        b.bottom
+"""
+    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 
-    return GridFittedBottom(bottom)
-end
+Return a grid with `GridFittedBottom` immersed boundary.
 
-@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom)
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return z < ib.bottom(x, y)
-end
-
-@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom{<:AbstractArray})
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return @inbounds z < ib.bottom[i, j]
-end
-
-const ArrayGridFittedBottom = GridFittedBottom{<:Array}
-const CuArrayGridFittedBottom = GridFittedBottom{<:CuArray}
-
-function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGridFittedBottom})
-    # Wrap bathymetry in an OffsetArray with halos
+Computes ib.bottom and wraps in an array.
+"""
+function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     arch = grid.architecture
     bottom_field = Field{Center, Center, Nothing}(grid)
-    bottom_data = arch_array(arch, ib.bottom)
-    bottom_field .= bottom_data
+    set!(bottom_field, ib.bottom)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
     new_ib = GridFittedBottom(offset_bottom_array)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
+@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom)
+    x, y, z = node(c, c, c, i, j, k, underlying_grid)
+    return @inbounds z < ib.bottom[i, j]
+end
+
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom))
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom))     
 
 #####
@@ -110,4 +90,24 @@ for location in (:upper_, :lower_)
         end
     end
 end
+
+#####
+##### GridFittedBoundary (experimental 3D immersed boundary)
+#####
+
+struct GridFittedBoundary{S} <: AbstractGridFittedBoundary
+    mask :: S
+end
+
+function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary)
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
+
+function on_architecture(arch, b::GridFittedBoundary)
+    mask = b.mask isa AbstractArray ? arch_array(arch, b.mask) : b.mask
+    return GridFittedBoundary(mask)
+end
+
+@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
 

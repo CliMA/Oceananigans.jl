@@ -1,5 +1,4 @@
 import Oceananigans.Fields: Field, location
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
     arch = architecture(grid)
@@ -9,10 +8,3 @@ end
 
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-
-fill_halo_regions!(field::DistributedField, args...; kwargs...) =
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.grid,
-                       location(field),
-                       args...; kwargs...)

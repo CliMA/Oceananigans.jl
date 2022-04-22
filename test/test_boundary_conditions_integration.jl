@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 using Oceananigans: prognostic_fields
 

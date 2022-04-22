@@ -90,8 +90,27 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     tracked_fields = merge(velocities, (; s=speed))
 
     # Test second constructor
-    particles = LagrangianParticles(particles; tracked_fields)
-    @test particles isa LagrangianParticles
+    lagrangian_particles = LagrangianParticles(particles; tracked_fields)
+    @test lagrangian_particles isa LagrangianParticles
+
+    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
+                                velocities=velocities, particles=lagrangian_particles)
+
+    set!(model, u=1, v=1)
+
+    sim = Simulation(model, Δt=1e-2, stop_iteration=1)
+
+    jld2_filepath = "test_particles.jld2"
+    sim.output_writers[:particles_jld2] =
+        JLD2OutputWriter(model, (; particles=model.particles),
+                         filename=jld2_filepath, schedule=IterationInterval(1))
+
+    nc_filepath = "test_particles.nc"
+    sim.output_writers[:particles_nc] =
+        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
+
+    sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
+                                                     dir = ".", prefix = "particles_checkpoint")
 
     sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper, velocities)    
     model = sim.model

@@ -371,8 +371,8 @@ total_b = Field(b + model.background_fields.tracers.b)
 simulation.output_writers[:vorticity] =
     JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
                      schedule = TimeInterval(0.10 / estimated_growth_rate),
-                     prefix = "kelvin_helmholtz_instability",
-                     force = true)
+                     filename = "kelvin_helmholtz_instability.jld2",
+                     overwrite_existing = true)
 
 # And now we...
 
