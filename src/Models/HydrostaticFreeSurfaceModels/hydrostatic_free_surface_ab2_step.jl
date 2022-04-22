@@ -15,14 +15,20 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
+    if model.free_surface isa SplitExplicitFreeSurface
+        sefs = model.free_surface
+        u, v, _ = model.velocities
+        barotropic_mode!(sefs.state.U, sefs.state.V, model.grid, u, v)
+    end
+
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
     explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
     free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ,
-                                                MultiEvent(Tuple(explicit_velocity_step_events)))
+        MultiEvent(Tuple(explicit_velocity_step_events)))
 
     prognostic_field_events = MultiEvent(tuple(free_surface_event,
-                                               explicit_velocity_step_events...,
-                                               explicit_tracer_step_events...))
+        explicit_velocity_step_events...,
+        explicit_tracer_step_events...))
 
     wait(device(model.architecture), prognostic_field_events)
 
@@ -60,14 +66,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       nothing,
                        model.clock,
                        Δt,
-                       model.closure,
-                       nothing,
-                       model.diffusivity_fields,
-                       model.velocities,
-                       model.tracers,
-                       model.buoyancy,
                        dependencies = explicit_velocity_step_events[i])
     end
 
@@ -101,19 +104,19 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         tracer_field = tracers[tracer_name]
+        explicit_tracer_step_event = explicit_tracer_step_events[tracer_index]
+        closure = model.closure
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
+                       closure,
+                       model.diffusivity_fields,
+                       Val(tracer_index),
                        model.clock,
                        Δt,
-                       model.closure,
-                       tracer_index,
-                       model.diffusivity_fields,
-                       model.velocities,
-                       model.tracers,
-                       model.buoyancy,
-                       dependencies = explicit_tracer_step_events[tracer_index])
+                       dependencies = explicit_tracer_step_event)
     end
 
     return explicit_tracer_step_events
 end
+

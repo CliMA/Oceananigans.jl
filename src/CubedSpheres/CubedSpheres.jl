@@ -6,7 +6,6 @@ include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
 include("cubed_sphere_exchange_bcs.jl")
 include("cubed_sphere_faces.jl")
-include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 include("immersed_conformal_cubed_sphere_grid.jl")
@@ -15,17 +14,23 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions, validate_indices
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
+validate_indices(indices, loc, grid::ConformalCubedSphereGrid) = indices
+
+function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
 
     for (face_data, face_grid) in zip(data.faces, grid.faces)
-        validate_field_data(X, Y, Z, face_data, face_grid)
+        validate_field_data(loc, face_data, face_grid, indices)
     end
 
     return nothing
 end
+
+# We don't support validating cubed sphere boundary conditions at this time
+validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
+validate_boundary_conditions(loc, grid::ConformalCubedSphereFaceGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
@@ -36,7 +41,10 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
 
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, field_name, prognostic_field_names)
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces,
+                                              grid::AbstractGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
 
     faces = Tuple(regularize_field_boundary_conditions(face_bcs, face_grid, field_name, prognostic_field_names)
                   for (face_bcs, face_grid) in zip(bcs.faces, grid.faces))
@@ -44,7 +52,10 @@ function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, field
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::ConformalCubedSphereGrid, field_name, prognostic_field_names)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::ConformalCubedSphereGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
@@ -143,10 +154,36 @@ function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, veloc
 end
 
 #####
+##### compute...
+#####
+
+import Oceananigans.Fields: compute!
+using Oceananigans.AbstractOperations: _compute!
+using Oceananigans.Fields: compute_at!
+
+const CubedSphereComputedField{LX, LY, LZ} = Field{LX, LY, LZ,
+                                                   <:AbstractOperation,
+                                                   <:ConformalCubedSphereGrid} where {LX, LY, LZ}
+
+function compute!(comp::CubedSphereComputedField, time=nothing)
+    # First compute `dependencies`:
+    compute_at!(comp.operand, time)
+
+    arch = architecture(comp)
+    events = Tuple(launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+                   for c in faces(comp))
+
+    wait(device(arch), MultiEvent(events))
+
+    fill_halo_regions!(comp)
+
+    return comp
+end
+
+#####
 ##### Output writing for cubed sphere fields
 #####
 
-using Oceananigans.Fields: compute!
 import Oceananigans.OutputWriters: fetch_output
 
 function fetch_output(field::AbstractCubedSphereField, model, field_slicer)

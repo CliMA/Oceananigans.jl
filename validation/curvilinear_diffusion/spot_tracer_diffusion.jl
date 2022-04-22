@@ -1,7 +1,7 @@
 # # Meridional diffusion
 
 using Oceananigans
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: Horizontal
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, PrescribedVelocityFields
 
 using Statistics
@@ -24,7 +24,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = :c,
                                     velocities = PrescribedVelocityFields(), # quiescent
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=1),
+                                    closure = HorizontalScalarDiffusivity(κ=1),
                                     buoyancy = nothing)
 
 # Tracer patch for visualization
@@ -67,7 +67,7 @@ output_prefix = "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(10cell_diffusion_time_scale),
                                                       prefix = output_prefix,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

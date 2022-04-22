@@ -1,5 +1,6 @@
 using KernelAbstractions: NoneEvent
 using OffsetArrays: OffsetArray
+using CUDA: @allowscalar
 
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
@@ -29,8 +30,10 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
-FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
@@ -40,13 +43,13 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(arch, ::SingleColumnGrid, args...) = NoneEvent()
+calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
 
 # Fast state update and halo filling
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
 
-    fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     compute_auxiliary_fields!(model.auxiliary_fields)
 
@@ -54,7 +57,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields,
-                       model.architecture,
                        model.clock,
                        fields(model))
 
@@ -91,7 +93,7 @@ validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 @inline function time_discretization(closure_array::AbstractArray)
-    first_closure = first(closure_array) # assumes all closures have same time-discretization
+    first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)
 end
 

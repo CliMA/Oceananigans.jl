@@ -1,37 +1,30 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using NCDatasets
-using Test
-
-using Oceananigans
-using Oceananigans.Diagnostics
-using Oceananigans.Fields
-using Oceananigans.OutputWriters
 
 using Dates: Millisecond
 using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
-
 #####
 ##### WindowedTimeAverage tests
 #####
 
-function instantiate_windowed_time_average(model)
+function run_instantiate_windowed_time_average_tests(model)
 
     set!(model, u = (x, y, z) -> rand())
-
     u, v, w = model.velocities
+    Nx, Ny, Nz = size(u)
 
-    u₀ = similar(interior(u))
-    u₀ .= interior(u)
+    for test_u in (u, view(u, 1:Nx, 1:Ny, 1:Nz))
+        u₀ = deepcopy(parent(test_u))
+        wta = WindowedTimeAverage(test_u, schedule=AveragedTimeInterval(10, window=1))
+        @test all(wta(model) .== u₀)
+    end
 
-    wta = WindowedTimeAverage(model.velocities.u, schedule=AveragedTimeInterval(10, window=1))
-
-    return all(wta(model) .== u₀)
+    return nothing
 end
 
 function time_step_with_windowed_time_average(model)
@@ -47,7 +40,7 @@ function time_step_with_windowed_time_average(model)
     simulation.diagnostics[:u_avg] = wta
     run!(simulation)
 
-    return all(wta(model) .== interior(model.velocities.u))
+    return all(wta(model) .== parent(model.velocities.u))
 end
 
 #####
@@ -75,20 +68,62 @@ function test_dependency_adding(model)
     dimensions = Dict("time_average" => ("xF", "yC", "zC"))
 
     # JLD2 dependencies test
-    jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", prefix="test", force=true)
+    jld2_output_writer = JLD2OutputWriter(model, output, schedule=TimeInterval(4), dir=".", filename="test.jld2", overwrite_existing=true)
 
+    windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
+
+    rm("test.jld2")
 
     # NetCDF dependency test
     netcdf_output_writer = NetCDFOutputWriter(model, output,
                                               schedule = TimeInterval(4),
-                                              filepath = "test.nc",
+                                              filename = "test.nc",
                                               output_attributes = attributes,
                                               dimensions = dimensions)
 
+    windowed_time_average = netcdf_output_writer.outputs["time_average"]
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
     rm("test.nc")
+
+    return nothing
+end
+
+function test_creating_and_appending(model, output_writer)
+
+    simulation = Simulation(model, Δt=1, stop_iteration=5)
+    output = fields(model)
+    filename = "test_creating_and_appending"
+
+    # Create a simulation with `overwrite_existing = true` and run it
+    simulation.output_writers[:writer] = writer = output_writer(model, output,
+                                                                filename = filename,
+                                                                schedule = IterationInterval(1),
+                                                                overwrite_existing = true, verbose=true)
+    run!(simulation)
+
+    # Test if file was crated
+    filepath = writer.filepath
+    @test isfile(filepath)
+
+    # Extend simulation and run it with `overwrite_existing = false`
+    simulation.stop_iteration = 10
+    simulation.output_writers[:writer].overwrite_existing = false
+    run!(simulation)
+
+    # Test that length is what we expected
+    if output_writer === NetCDFOutputWriter
+        ds = NCDataset(filepath)
+        time_length = length(ds["time"])
+    elseif output_writer === JLD2OutputWriter
+        ds = jldopen(filepath)
+        time_length = length(keys(ds["timeseries/t"]))
+    end
+    close(ds)
+    @test time_length == 11
+
+    rm(filepath)
 
     return nothing
 end
@@ -99,21 +134,21 @@ end
 
 function test_windowed_time_averaging_simulation(model)
 
-    jld_filename1 = "test_windowed_time_averaging1"
-    jld_filename2 = "test_windowed_time_averaging2"
+    jld_filename1 = "test_windowed_time_averaging1.jld2"
+    jld_filename2 = "test_windowed_time_averaging2.jld2"
 
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
     jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
-                                          prefix = jld_filename1,
-                                          force = true)
+                                          filename = jld_filename1,
+                                          overwrite_existing = true)
 
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath1,
+    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filename=nc_filepath1,
                                           schedule = AveragedTimeInterval(π, window=1))
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
@@ -162,12 +197,12 @@ function test_windowed_time_averaging_simulation(model)
 
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
                                                         schedule = AveragedTimeInterval(π, window=π),
-                                                          prefix = jld_filename2,
-                                                           force = true)
+                                                        filename = jld_filename2,
+                                                        overwrite_existing = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath2,
+    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filename=nc_filepath2,
                                                         schedule=AveragedTimeInterval(π, window=π))
 
     run!(simulation)
@@ -177,8 +212,8 @@ function test_windowed_time_averaging_simulation(model)
 
     rm(nc_filepath1)
     rm(nc_filepath2)
-    rm(jld_filename1 * ".jld2")
-    rm(jld_filename2 * ".jld2")
+    rm(jld_filename1)
+    rm(jld_filename2)
 
     return nothing
 end
@@ -190,16 +225,25 @@ end
 @testset "Output writers" begin
     @info "Testing output writers..."
 
+    topo = (Periodic, Periodic, Bounded)
     for arch in archs
+
+        @info "Testing that writers create file and append to it properly"
+        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+            grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
+            model = NonhydrostaticModel(grid=grid)
+            test_creating_and_appending(model, output_writer)
+        end
+
         # Some tests can reuse this same grid and model.
-        topo = (Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
+
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
-            @test instantiate_windowed_time_average(model)
+            run_instantiate_windowed_time_average_tests(model)
             @test time_step_with_windowed_time_average(model)
             @test_throws ArgumentError AveragedTimeInterval(1.0, window=1.1)
         end
@@ -226,3 +270,4 @@ end
         end
     end
 end
+

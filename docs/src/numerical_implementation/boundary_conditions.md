@@ -3,7 +3,16 @@
 We adopt a mixed approach for implementing boundary conditions that uses both halo regions and "direct"
 imposition of boundary conditions, depending on the condition prescribed.
 
-We illustrate how boundary conditions are implemented by considering the tracer equation \eqref{eq:tracer}.
+We illustrate how boundary conditions are implemented by considering the tracer equation
+```math
+    \begin{align}
+    \partial_t c = - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+                   - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
+                   + F_c \, ,
+    \label{eq:tracer}
+    \end{align}
+```
+where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
 
 See [Model setup: boundary conditions](@ref model_step_bcs) for how to create and use these
 boundary conditions in Oceananigans.

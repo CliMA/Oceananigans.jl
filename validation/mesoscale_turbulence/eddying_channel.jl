@@ -13,6 +13,7 @@ using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: Vertical, Horizontal
 
 filename = "eddying_channel"
 
@@ -156,7 +157,10 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
+
+vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)                 
+
+horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
@@ -175,7 +179,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = (horizontal_diffusivity, catke),
+                                    closure = (horizontal_closure, vertical_closure, catke),
                                     tracers = (:b, :e, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb,)
@@ -239,7 +243,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b, c = model.tracers.b, model.tracers.c
 
-ζ = ComputedField(∂x(v) - ∂y(u))
+ζ = Field(∂x(v) - ∂y(u))
 
 B = AveragedField(b, dims=1)
 U = AveragedField(u, dims=1)
@@ -264,7 +268,7 @@ averaged_outputs = (; v′b′, w′b′, B, U)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1years),
                                                         prefix = filename,
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 slicers = (west = FieldSlicer(i=1),
            east = FieldSlicer(i=grid.Nx),
@@ -280,19 +284,19 @@ for side in keys(slicers)
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
                                                        prefix = filename * "_$(side)_slice",
-                                                       force = true)
+                                                       overwrite_existing = true)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(save_fields_interval),
                                                      prefix = filename * "_zonal_average",
-                                                     force = true)
+                                                     overwrite_existing = true)
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
                                                         prefix = filename * "_averages",
                                                         verbose = true,
-                                                        force = true)
+                                                        overwrite_existing = true)
 =#
 
 @info "Running the simulation..."

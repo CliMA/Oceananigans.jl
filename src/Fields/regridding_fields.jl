@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
-using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
@@ -13,7 +13,7 @@ Regrid field `b` onto the grid of field `a`.
 
 !!! warning "Functionality limitation"
     Currently `regrid!` only regrids in the vertical ``z`` direction and works only on
-    grids for which ``x`` and ``y`` dimensions are `Flat`.
+    fields that have data only in ``z`` direction.
 
 Example
 =======
@@ -26,11 +26,11 @@ using Oceananigans
 Nz, Lz = 2, 1.0
 topology = (Flat, Flat, Bounded)
 
-input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology)
+input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology, halo=1)
 input_field = CenterField(input_grid)
 input_field[1, 1, 1:Nz] = [2, 3]
 
-output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology, halo=1)
 output_field = CenterField(output_grid)
 
 regrid!(output_field, input_field)
@@ -47,27 +47,38 @@ output_field[1, 1, :]
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
-function regrid!(a, target_grid, source_grid, b)
-    msg = """Regridding
-             $(short_show(b)) on $(short_show(source_grid))
-             to $(short_show(a)) on $(short_show(target_grid))
-             is not supported."""
+function we_can_regrid(a, target_grid, source_grid, b)
+    # Only 1D regridding in the vertical is supported, so check that
+    #   1. source and target grid are in the same "class" and
+    #   2. source and target Field have same horizontal size
+    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+        size(a)[1:2] === size(b)[1:2] && return true
 
-    return throw(ArgumentError(msg))
+    return false
+end
+
+function regrid!(a, target_grid, source_grid, b)
+    if we_can_regrid(a, target_grid, source_grid, b)
+        arch = architecture(a)
+        source_z_faces = znodes(Face, source_grid)
+
+        event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
+        wait(device(arch), event)
+
+        return a
+    else
+        msg = """Regridding
+                 $(summary(b)) on $(summary(source_grid))
+                 to $(summary(a)) on $(summary(target_grid))
+                 is not supported."""
+
+        return throw(ArgumentError(msg))
+    end
 end
 
 #####
 ##### Regridding for single column grids
 #####
-
-function regrid!(a, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, b)
-    arch = architecture(a)
-    source_z_faces = znodes(Face, source_grid)
-
-    event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
-    wait(device(arch), event)
-    return nothing
-end
 
 @kernel function _regrid!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
@@ -89,7 +100,7 @@ end
 
         # Add contribution from all full cells in the integration range
         @unroll for k_src = k₋_src:k₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᵃᵃᶜ(i_src, j_src, k_src, source_grid)
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
         zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
@@ -102,7 +113,7 @@ end
         # Add contribution to integral from fractional top part
         @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
 
-        @inbounds target_field[i, j, k] /= Δzᵃᵃᶜ(i, j, k, target_grid)
+        @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 

@@ -34,16 +34,16 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
     "one_dimensional_diffusion.jl",
-    "geostrophic_adjustment.jl",
     "two_dimensional_turbulence.jl",
     "internal_wave.jl",
     "convecting_plankton.jl",
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
-    "eady_turbulence.jl",
+    "baroclinic_adjustment.jl",
     "kelvin_helmholtz_instability.jl",
     "shallow_water_Bickley_jet.jl",
-    "horizontal_convection.jl"
+    "horizontal_convection.jl",
+    "tilted_bottom_boundary_layer.jl"
 ]
 
 for example in examples
@@ -57,16 +57,16 @@ end
 
 example_pages = [
     "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
-    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
     "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
     "Internal wave"                      => "generated/internal_wave.md",
     "Convecting plankton"                => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Baroclinic adjustment"              => "generated/baroclinic_adjustment.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
     "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"              => "generated/horizontal_convection.md"
+    "Horizontal convection"              => "generated/horizontal_convection.md",
+    "Tilted bottom boundary layer"       => "generated/tilted_bottom_boundary_layer.md"
  ]
 
 model_setup_pages = [
@@ -154,7 +154,7 @@ format = Documenter.HTML(
 
 makedocs(bib,
   sitename = "Oceananigans.jl",
-   authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
+   authors = "Climate Modeling Alliance and contributors",
     format = format,
      pages = pages,
    modules = [Oceananigans],
@@ -167,11 +167,13 @@ makedocs(bib,
 deploydocs(
           repo = "github.com/CliMA/OceananigansDocumentation.git",
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+     forcepush = true,
   push_preview = true,
      devbranch = "main"
 )
 
 @info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+
 for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
     rm(file)
 end

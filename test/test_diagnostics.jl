@@ -1,4 +1,3 @@
-using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
 
@@ -9,23 +8,15 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
           grid = RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
-       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν)
+       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
 )
 
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
           grid = RectilinearGrid(arch, FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
-       closure = IsotropicDiffusivity(FT, ν=ν, κ=ν)
+       closure = ScalarDiffusivity(FT, ν=ν, κ=ν)
 )
-
-function diagnostic_windowed_spatial_average(arch, FT)
-    model = TestModel_RegularRectGrid(arch, FT)
-    set!(model.velocities.u, 7)
-    slicer = FieldSlicer(i=model.grid.Nx÷2:model.grid.Nx, k=1)
-    u_mean = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
-    return CUDA.@allowscalar u_mean(model)[1] == 7
-end
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)
     Δt = FT(1.3e-6)
@@ -192,7 +183,6 @@ end
         @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
             @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]..."
             for FT in float_types
-                @test diagnostic_windowed_spatial_average(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)
             end

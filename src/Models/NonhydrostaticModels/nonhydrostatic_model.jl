@@ -13,10 +13,13 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
+
+import Oceananigans.Architectures: architecture
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
@@ -45,47 +48,56 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;
-                   grid,
-           architecture = CPU(),
-                  clock = Clock{eltype(grid)}(0, 0, 1),
-              advection = CenteredSecondOrder(),
-               buoyancy = nothing,
-               coriolis = nothing,
-           stokes_drift = nothing,
-                forcing = NamedTuple(),
-                closure = nothing,
-    boundary_conditions = NamedTuple(),
-                tracers = (),
-            timestepper = :QuasiAdamsBashforth2,
-      background_fields = NamedTuple(),
-              particles = nothing,
-             velocities = nothing,
-              pressures = nothing,
-     diffusivity_fields = nothing,
-        pressure_solver = nothing,
-      immersed_boundary = nothing,
-       auxiliary_fields = NamedTuple(),
+    NonhydrostaticModel(;     grid,
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                          advection = CenteredSecondOrder(),
+                           buoyancy = nothing,
+                           coriolis = nothing,
+                       stokes_drift = nothing,
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+                            tracers = (),
+                        timestepper = :QuasiAdamsBashforth2,
+      background_fields::NamedTuple = NamedTuple(),
+      particles::ParticlesOrNothing = nothing,
+                         velocities = nothing,
+                          pressures = nothing,
+                 diffusivity_fields = nothing,
+                    pressure_solver = nothing,
+                  immersed_boundary = nothing,
+                   auxiliary_fields = NamedTuple(),
     )
 
-Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
-when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
+Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
+approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
+            architecture (CPU/GPU) that the model is solve is inferred from the architecture
+            of the `grid`.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `coriolis`: Parameters for the background rotation rate of the model.
+  - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                    `:RungeKutta3`.
+  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
+  - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `velocities`: The model velocities. Default: `nothing`.
+  - `pressures`: Hydrostatic and non-hydrostatic pressure fields. Default: `nothing`.
+  - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
+    chooses the default based on the `grid` provide.
+  - `immersed_boundary`: The immersed boundary. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
@@ -115,6 +127,13 @@ function NonhydrostaticModel(;    grid,
     end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    # We don't support CAKTE for NonhydrostaticModel yet.
+    closure = validate_closure(closure)
+    first_closure = closure isa Tuple ? first(closure) : closure
+    first_closure isa FlavorOfCATKE &&
+        error("CATKEVerticalDiffusivity is not supported for " *
+              "NonhydrostaticModel --- yet!")
 
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
@@ -157,10 +176,10 @@ function NonhydrostaticModel(;    grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = VelocityFields(velocities, arch, grid, boundary_conditions)
-    tracers            = TracerFields(tracers,      arch, grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  arch, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = VelocityFields(velocities, grid, boundary_conditions)
+    tracers            = TracerFields(tracers,      grid, boundary_conditions)
+    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(arch, grid)
@@ -170,8 +189,8 @@ function NonhydrostaticModel(;    grid,
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
-    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
@@ -186,6 +205,8 @@ function NonhydrostaticModel(;    grid,
     
     return model
 end
+
+architecture(model::NonhydrostaticModel) = model.architecture
 
 #####
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields

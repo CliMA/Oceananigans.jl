@@ -1,14 +1,16 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans: short_show
 
-struct FFTBasedPoissonSolver{A, G, Λ, S, B, T}
-    architecture :: A
+import Oceananigans.Architectures: architecture
+
+struct FFTBasedPoissonSolver{G, Λ, S, B, T}
             grid :: G
      eigenvalues :: Λ
          storage :: S
           buffer :: B
       transforms :: T
 end
+
+architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
 
 transform_str(transform) = string(typeof(transform).name.wrapper, ", ")
 
@@ -19,37 +21,37 @@ function transform_list_str(transform_list)
     return list
 end
 
-Base.show(io::IO, solver::FFTBasedPoissonSolver{A, G}) where {A, G}=
-    print(io, "FFTBasedPoissonSolver{$A}: \n",
-          "├── grid: $(short_show(solver.grid))\n",
+Base.show(io::IO, solver::FFTBasedPoissonSolver) =
+print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
+          "├── grid: $(summary(solver.grid))\n",
           "├── storage: $(typeof(solver.storage))\n",
           "├── buffer: $(typeof(solver.buffer))\n",
           "└── transforms:\n",
           "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
           "    └── backward: ", transform_list_str(solver.transforms.backward))
 
-function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
+function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
     λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
     λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY())
     λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ())
 
-    eigenvalues = (
-        λx = arch_array(arch, λx),
-        λy = arch_array(arch, λy),
-        λz = arch_array(arch, λz)
-    )
+    arch = architecture(grid)
+
+    eigenvalues = (λx = arch_array(arch, λx),
+                   λy = arch_array(arch, λy),
+                   λz = arch_array(arch, λz))
 
     storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    transforms = plan_transforms(arch, grid, storage, planner_flag)
+    transforms = plan_transforms(grid, storage, planner_flag)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in topo
     buffer = buffer_needed ? similar(storage) : nothing
 
-    return FFTBasedPoissonSolver(arch, grid, eigenvalues, storage, buffer, transforms)
+    return FFTBasedPoissonSolver(grid, eigenvalues, storage, buffer, transforms)
 end
 
 """
@@ -67,11 +69,12 @@ on a staggered grid and for periodic or Neumann boundary conditions.
 In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
 elements (typically the same type as `solver.storage`).
 
-Note: ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
-when ``m < 0``, or the Helmholtz equation when ``m > 0``.
+!!! info "Alternative names for "generalized" Poisson equation
+    Equation ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
+    when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
-    arch = solver.architecture
+    arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
     λx, λy, λz = solver.eigenvalues

@@ -1,14 +1,20 @@
 include("dependencies_for_runtests.jl")
 
 @testset "Oceananigans" begin
+    if test_file != :none
+        @testset "Single file test" begin
+            include(String(test_file))
+        end
+    end
+
+    # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
-            include("test_reduced_fields.jl")
-            include("test_kernel_computed_field.jl")
+            include("test_field_reductions.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
@@ -18,14 +24,52 @@ include("dependencies_for_runtests.jl")
         end
     end
 
-    if group == :solvers || group == :all
-        @testset "Solvers" begin
-            include("test_batched_tridiagonal_solver.jl")
-            include("test_preconditioned_conjugate_gradient_solver.jl")
+    if group == :abstract_operations || group == :all
+        @testset "AbstractOperations and broadcasting tests" begin
+            include("test_abstract_operations.jl")
+            include("test_conditional_reductions.jl")
+            include("test_computed_field.jl")
+            include("test_broadcasting.jl")
+        end
+    end
+
+    if group == :poisson_solvers_1 || group == :all
+        @testset "Poisson Solvers 1" begin
             include("test_poisson_solvers.jl")
         end
     end
 
+    if group == :poisson_solvers_2 || group == :all
+        @testset "Poisson Solvers 2" begin
+            include("test_poisson_solvers_vertically_stretched_grid.jl")
+        end
+    end
+
+    if group == :matrix_poisson_solvers || group == :all
+        @testset "Matrix Poisson Solvers" begin
+            include("test_matrix_poisson_solver.jl")
+        end
+    end
+
+    if group == :general_solvers || group == :all
+        @testset "General Solvers" begin
+            include("test_batched_tridiagonal_solver.jl")
+            include("test_preconditioned_conjugate_gradient_solver.jl")
+        end
+    end
+
+    # Simulations
+    if group == :simulation || group == :all
+        @testset "Simulation tests" begin
+            include("test_simulations.jl")
+            include("test_diagnostics.jl")
+            include("test_output_writers.jl")
+            include("test_output_readers.jl")
+            include("test_lagrangian_particle_tracking.jl")
+        end
+    end
+
+    # Models
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
@@ -37,8 +81,18 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
-            include("test_turbulence_closures.jl")
+        end
+    end
+
+    if group == :time_stepping_3 || group == :all
+        @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
+        end
+    end
+
+    if group == :turbulence_closures || group == :all
+        @testset "Turbulence closures tests" begin
+            include("test_turbulence_closures.jl")
         end
     end
 
@@ -53,29 +107,13 @@ include("dependencies_for_runtests.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_apply_surf_bc.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_vertical_integrals.jl")
+            include("test_split_explicit_free_surface_solver.jl")
+            include("test_split_explicit_vertical_integrals.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
-
-    if group == :abstract_operations || group == :all
-        @testset "AbstractOperations and broadcasting tests" begin
-            include("test_abstract_operations.jl")
-            include("test_computed_field.jl")
-            include("test_broadcasting.jl")
-        end
-    end
-
-    if group == :simulation || group == :all
-        @testset "Simulation tests" begin
-            include("test_simulations.jl")
-            include("test_diagnostics.jl")
-            include("test_output_writers.jl")
-            include("test_output_readers.jl")
-            include("test_lagrangian_particle_tracking.jl")
-        end
-    end
-
+    
+    # Model enhancements: cubed sphere, distributed, etc
     if group == :cubed_sphere || group == :all
         @testset "Cubed sphere tests" begin
             include("test_cubed_spheres.jl")
@@ -90,8 +128,12 @@ include("dependencies_for_runtests.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :regression || group == :all
-        include("test_regression.jl")
+    if group == :nonhydrostatic_regression || group == :all
+        include("test_nonhydrostatic_regression.jl")
+    end
+
+    if group == :hydrostatic_regression || group == :all
+        include("test_hydrostatic_regression.jl")
     end
 
     if group == :scripts || group == :all

@@ -5,14 +5,15 @@ export
     BoundaryCondition, getbc, setbc!,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
+    validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
     fill_halo_regions!
 
 using CUDA
-using KernelAbstractions
+using KernelAbstractions: @index, @kernel, MultiEvent, NoneEvent
 
-using Oceananigans.Architectures: device
+using Oceananigans.Architectures: CPU, GPU, device
 using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
@@ -33,4 +34,4 @@ include("fill_halo_regions_nothing.jl")
 
 include("apply_flux_bcs.jl")
 
-end
+end # module

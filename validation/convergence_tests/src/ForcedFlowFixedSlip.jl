@@ -53,7 +53,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                 coriolis = nothing,
                                 buoyancy = nothing,
                                 tracers = nothing,
-                                closure = IsotropicDiffusivity(ν=1),
+                                closure = ScalarDiffusivity(ν=1),
                                 boundary_conditions = (u=u_bcs,),
                                 forcing = (u=u_forcing, v=v_forcing))
 
@@ -67,7 +67,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          dir = dir, force = true,
+                                                          dir = dir, overwrite_existing = true,
                                                           prefix = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
                                                           field_slicer = nothing,
                                                           schedule = TimeInterval(stop_iteration * Δt / 2))
@@ -99,7 +99,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                 coriolis = nothing,
                                 buoyancy = nothing,
                                 tracers = nothing,
-                                closure = IsotropicDiffusivity(ν=1),
+                                closure = ScalarDiffusivity(ν=1),
                                 boundary_conditions = (u=u_bcs,),
                                 forcing = (u=u_forcing, w=w_forcing))
 
@@ -113,7 +113,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          dir = dir, force = true,
+                                                          dir = dir, overwrite_existing = true,
                                                           prefix = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
                                                           field_slicer = nothing,
                                                           schedule = TimeInterval(stop_iteration * Δt / 2))

@@ -2,10 +2,9 @@ module Models
 
 export
     NonhydrostaticModel, ShallowWaterModel,
-    HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
-    PrescribedVelocityFields
+    HydrostaticFreeSurfaceModel,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
+    PrescribedVelocityFields, PressureField
 
 using Oceananigans: AbstractModel
 
@@ -19,15 +18,13 @@ include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 
-using .NonhydrostaticModels: NonhydrostaticModel
+using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 
 using .HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
+    HydrostaticFreeSurfaceModel,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields
 
 using .ShallowWaterModels: ShallowWaterModel
 
-end
+end # module

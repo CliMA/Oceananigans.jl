@@ -2,8 +2,8 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     # Just choose something anisotropic to catch Δx/Δy type errors.
     Lx, Ly, Lz = 10, 20, 30
 
-    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    field = CenterField(arch, grid)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), halo=(1, 1, 1))
+    field = CenterField(grid)
 
     # Fill the interior with random numbers.
     set!(field, rand(FT, Nx, Ny, Nz))
@@ -24,11 +24,12 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 100, 200, 300
 
     grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
-                                  topology=(Periodic, Periodic, Bounded))
-    field = CenterField(arch, grid)
+                           halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+
+    field = CenterField(grid)
 
     set!(field, rand(FT, Nx, Ny, Nz))
-    fill_halo_regions!(field, arch)
+    fill_halo_regions!(field)
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     data = field.data

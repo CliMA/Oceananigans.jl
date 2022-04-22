@@ -103,15 +103,15 @@ u = uh / h
 v = vh / h
 
 ## Build and compute mean vorticity discretely
-ω = ComputedField(∂x(v) - ∂y(u))
+ω = Field(∂x(v) - ∂y(u))
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field(Face, Face, Nothing, model.architecture, model.grid)
+ωⁱ = Field{Face, Face, Nothing}(model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity
-ω′ = ComputedField(ω - ωⁱ)
+ω′ = Field(ω - ωⁱ)
 
 # and finally set the "true" initial condition with noise,
 
@@ -138,18 +138,18 @@ perturbation_norm(args...) = norm(v)
 # Output every `t = 1.0`.
 
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                        filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc"),
+                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc"),
                                                         schedule = TimeInterval(1),
-                                                        mode = "c")
+                                                        overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
 
 simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                        filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc"),
+                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc"),
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; perturbation_norm = ()),
-                                                        mode = "c")
+                                                        overwrite_existing = true)
 
 # And finally run the simulation.
 
@@ -188,8 +188,6 @@ nothing # hide
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-iterations = keys(ds["time"])
-
 anim = @animate for (iter, t) in enumerate(ds["time"])
     ω = ds["ω"][:, :, 1, iter]
     ω′ = ds["ω′"][:, :, 1, iter]
@@ -214,8 +212,6 @@ mp4(anim, "shallow_water_Bickley_jet.mp4", fps=15)
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
-
-iterations = keys(ds2["time"])
 
      t = ds2["time"][:]
 norm_v = ds2["perturbation_norm"][:]

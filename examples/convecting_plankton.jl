@@ -29,7 +29,7 @@
 #     and grazing by zooplankton.
 #   * How to set time-dependent boundary conditions.
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
-#   * How to use `AveragedField` to diagnose spatial averages of model fields.
+#   * How to use `Average` to diagnose spatial averages of model fields.
 #
 # ## Install dependencies
 #
@@ -42,13 +42,13 @@
 
 # ## The grid
 #
-# We use a two-dimensional grid with 64² points and 1 m grid spacing and assign `Flat`
-# to the `y` direction:
+# We use a two-dimensional grid with 64² points, 3² halo points for high-order advection,
+# 1 m grid spacing, and a `Flat` `y`-direction:
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
@@ -125,7 +125,7 @@ model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,
-                closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
+                closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                coriolis = FPlane(f=1e-4),
                 tracers = (:b, :P), # P for Plankton
                buoyancy = BuoyancyTracer(),
@@ -175,25 +175,22 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
-averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))
-
 outputs = (w = model.velocities.w,
-           plankton = model.tracers.P,
-           averaged_plankton = averaged_plankton)
+           P = model.tracers.P,
+           P_avg = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(20minutes),
-                     prefix = "convecting_plankton",
-                     force = true)
+                     filename = "convecting_plankton.jld2",
+                     overwrite_existing = true)
 
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,
 #     it often makes sense to use _different_ output writers for different types of output.
-#     For example, reduced fields like `AveragedField` usually consume less disk space than
-#     two- or three-dimensional fields, and can thus be output more frequently without
-#     blowing up your hard drive. An arbitrary number of output writers may be added to
-#     `simulation.output_writers`.
+#     For example, smaller outputs that consume less disk space may be written more
+#     frequently without threatening the capacity of your hard drive.
+#     An arbitrary number of output writers may be added to `simulation.output_writers`.
 #
 # The simulation is set up. Let there be plankton:
 
@@ -209,19 +206,20 @@ run!(simulation)
 
 using JLD2
 
-file = jldopen(simulation.output_writers[:simple_output].filepath)
+filepath = simulation.output_writers[:simple_output].filepath
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+w_timeseries = FieldTimeSeries(filepath, "w")
+P_timeseries = FieldTimeSeries(filepath, "P")
+P_avg_timeseries = FieldTimeSeries(filepath, "P_avg")
 
-times = [file["timeseries/t/$iter"] for iter in iterations]
-
+times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
-xw, yw, zw = nodes(model.velocities.w)
-xp, yp, zp = nodes(model.tracers.P)
+xw, yw, zw = nodes(w_timeseries)
+xp, yp, zp = nodes(P_timeseries)
 nothing # hide
 
 # Finally, we animate plankton mixing and blooming,
@@ -230,22 +228,16 @@ using Plots
 
 @info "Making a movie about plankton..."
 
-w_lim = 0   # the maximum(abs(w)) across the whole timeseries
+w_lim = maximum(abs, interior(w_timeseries))
 
-for (i, iteration) in enumerate(iterations)
-    w = file["timeseries/w/$iteration"][:, 1, :]
+anim = @animate for i in 1:length(times)
 
-    global w_lim = maximum([w_lim, maximum(abs.(w))])
-end
+    @info "Plotting frame $i of $(length(times))..."
 
-anim = @animate for (i, iteration) in enumerate(iterations)
-
-    @info "Plotting frame $i from iteration $iteration..."
-
-    t = file["timeseries/t/$iteration"]
-    w = file["timeseries/w/$iteration"][:, 1, :]
-    P = file["timeseries/plankton/$iteration"][:, 1, :]
-    averaged_P = file["timeseries/averaged_plankton/$iteration"][1, 1, :]
+    t = times[i]
+    w = interior(w_timeseries[i], :, 1, :)
+    P = interior(P_timeseries[i], :, 1, :)
+    P_avg = interior(P_avg_timeseries[i], 1, 1, :)
 
     P_min = minimum(P) - 1e-9
     P_max = maximum(P) + 1e-9
@@ -272,7 +264,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                           clims = P_lims,
                           kwargs...)
 
-    P_profile = plot(averaged_P, zp,
+    P_profile = plot(P_avg, zp,
                      linewidth = 2,
                      label = nothing,
                      xlims = (0.9, 1.3),

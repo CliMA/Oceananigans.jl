@@ -76,7 +76,7 @@ using CUDA, CUDAKernels, KernelAbstractions, Tullio
 
 using Oceananigans.Models
 using Oceananigans.Grids: halo_size
-using Oceananigans.Operators: Δxᶠᶜᵃ, Δyᶜᶠᵃ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 
 accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.grid, model.velocities)
 
@@ -93,9 +93,9 @@ function accurate_cell_advection_timescale(grid, velocities)
     w = view(velocities.w.data.parent, is, js, ks)
 
     min_timescale = minimum(
-        @tullio (min) timescale[k] := 1 / (  abs(u[i, j, k]) / Δxᶠᶜᵃ(i, j, k, grid)
-                                           + abs(v[i, j, k]) / Δyᶜᶠᵃ(i, j, k, grid)
-                                           + abs(w[i, j, k]) / Δzᵃᵃᶠ(i, j, k, grid))
+        @tullio (min) timescale[k] := 1 / (  abs(u[i, j, k]) / Δxᶠᶜᶜ(i, j, k, grid)
+                                           + abs(v[i, j, k]) / Δyᶜᶠᶜ(i, j, k, grid)
+                                           + abs(w[i, j, k]) / Δzᶜᶜᶠ(i, j, k, grid))
     )
 
     return min_timescale

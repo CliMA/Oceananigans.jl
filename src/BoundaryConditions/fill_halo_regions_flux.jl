@@ -27,92 +27,46 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Combined halo filling functions
 #####
 
-@kernel function fill_flux_west_and_east_halo!(c, grid)
-    j, k = @index(Global, NTuple)
-
-    @unroll for i in 1:grid.Hx
-        _fill_flux_west_halo!(i, j, k, grid, c)
-        _fill_flux_east_halo!(i, j, k, grid, c)
-    end
-end
-
-@kernel function fill_flux_south_and_north_halo!(c, grid)
-    i, k = @index(Global, NTuple)
-
-    @unroll for j in 1:grid.Hy
-        _fill_flux_south_halo!(i, j, k, grid, c)
-        _fill_flux_north_halo!(i, j, k, grid, c)
-    end
-end
-
-@kernel function fill_flux_bottom_and_top_halo!(c, grid)
-    i, j = @index(Global, NTuple)
-
-    @unroll for k in 1:grid.Hz
-        _fill_flux_bottom_halo!(i, j, k, grid, c)
-        _fill_flux_top_halo!(i, j, k, grid, c)
-    end
-end
-
-fill_west_and_east_halo!(c, west_bc::FBC, east_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :yz, fill_flux_west_and_east_halo!, c, grid; dependencies=dep, kwargs...)
-
-fill_south_and_north_halo!(c, south_bc::FBC, north_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :xz, fill_flux_south_and_north_halo!, c, grid; dependencies=dep, kwargs...)
-
-fill_bottom_and_top_halo!(c, bottom_bc::FBC, top_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :xy, fill_flux_bottom_and_top_halo!, c, grid; dependencies=dep, kwargs...)
+@inline _fill_west_halo!(j, k, grid, c, ::FBC, args...)   =   _fill_flux_west_halo!(1, j, k, grid, c)
+@inline _fill_east_halo!(j, k, grid, c, ::FBC, args...)   =   _fill_flux_east_halo!(1, j, k, grid, c)
+@inline _fill_south_halo!(i, k, grid, c, ::FBC, args...)  =  _fill_flux_south_halo!(i, 1, k, grid, c)
+@inline _fill_north_halo!(i, k, grid, c, ::FBC, args...)  =  _fill_flux_north_halo!(i, 1, k, grid, c)
+@inline _fill_bottom_halo!(i, j, grid, c, ::FBC, args...) = _fill_flux_bottom_halo!(i, j, 1, grid, c)
+@inline _fill_top_halo!(i, j, grid, c, ::FBC, args...)    =    _fill_flux_top_halo!(i, j, 1, grid, c)
 
 #####
-##### Single halo filling functions
+##### Single halo filling kernels
 #####
 
+#=
 @kernel function fill_flux_west_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
-    @unroll for i in 1:grid.Hx
-        _fill_flux_west_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_west_halo!(1, j, k, grid, c)
 end
 
 @kernel function fill_flux_south_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
-    @unroll for j in 1:grid.Hy
-        _fill_flux_south_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_south_halo!(i, 1, k, grid, c)
 end
 
 @kernel function fill_flux_bottom_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
-    @unroll for k in 1:grid.Hz
-        _fill_flux_bottom_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_bottom_halo!(i, j, 1, grid, c)
 end
 
 @kernel function fill_flux_east_halo!(c, grid)
     j, k = @index(Global, NTuple)
-
-    @unroll for i in 1:grid.Hx
-        _fill_flux_east_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_east_halo!(1, j, k, grid, c)
 end
 
 @kernel function fill_flux_north_halo!(c, grid)
     i, k = @index(Global, NTuple)
-
-    @unroll for j in 1:grid.Hy
-        _fill_flux_north_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_north_halo!(i, 1, k, grid, c)
 end
 
 @kernel function fill_flux_top_halo!(c, grid)
     i, j = @index(Global, NTuple)
-
-    @unroll for k in 1:grid.Hz
-        _fill_flux_top_halo!(i, j, k, grid, c)
-    end
+    _fill_flux_top_halo!(i, j, 1, grid, c)
 end
 
 #####
@@ -125,3 +79,4 @@ end
  fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, fill_flux_north_halo!,  c, grid; dependencies=dep, kwargs...)
 fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_bottom_halo!, c, grid; dependencies=dep, kwargs...)
    fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_top_halo!,    c, grid; dependencies=dep, kwargs...)
+=#

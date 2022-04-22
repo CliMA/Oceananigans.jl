@@ -1,5 +1,6 @@
-using Oceananigans.Architectures
-using Oceananigans.Grids: total_extent, halo_size
+include("dependencies_for_runtests.jl")
+
+using Oceananigans.Grids: total_extent
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -250,9 +251,9 @@ function test_flat_size_regular_rectilinear_grid(FT)
 
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 3, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 3, 0)
 
     @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
     @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
@@ -347,7 +348,7 @@ function test_correct_quadratic_grid_spacings(FT, Nz)
      zᵃᵃᶠ(k) = (k-1)^2
      zᵃᵃᶜ(k) = (k^2 + (k-1)^2) / 2
     Δzᵃᵃᶠ(k) = k^2 - (k-1)^2
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k+1) - zᵃᵃᶜ(k)
+    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k) - zᵃᵃᶜ(k-1)
 
     @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
@@ -355,7 +356,7 @@ function test_correct_quadratic_grid_spacings(FT, Nz)
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], Δzᵃᵃᶜ.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
 
     return nothing
 end
@@ -368,7 +369,7 @@ function test_correct_tanh_grid_spacings(FT, Nz)
 
      zᵃᵃᶜ(k) = (zᵃᵃᶠ(k) + zᵃᵃᶠ(k+1)) / 2
     Δzᵃᵃᶠ(k) = zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k+1) - zᵃᵃᶜ(k)
+    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
     @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
@@ -376,7 +377,7 @@ function test_correct_tanh_grid_spacings(FT, Nz)
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], Δzᵃᵃᶜ.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
 
    return nothing
 end

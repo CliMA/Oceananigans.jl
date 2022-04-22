@@ -11,6 +11,7 @@ export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
+export on_architecture
 
 using CUDA
 using Adapt
@@ -20,7 +21,6 @@ using Oceananigans
 using Oceananigans.Architectures
 
 import Base: size, length, eltype, show
-import Oceananigans: short_show
 import Oceananigans.Architectures: architecture
 
 #####
@@ -113,10 +113,12 @@ Abstract supertype for horizontally-curvilinear grids with elements of type `FT`
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
 
+isrectilinear(grid) = false
 
 include("grid_utils.jl")
 include("zeros.jl")
 include("new_data.jl")
+include("grid_solid_nodes.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
@@ -124,4 +126,4 @@ include("rectilinear_grid.jl")
 include("conformal_cubed_sphere_face_grid.jl")
 include("latitude_longitude_grid.jl")
 
-end
+end # module

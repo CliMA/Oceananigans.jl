@@ -52,7 +52,7 @@ simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, itera
 
 uh, vh, h = model.solution
 
-ζ = ComputedField(∂x(vh / h) - ∂y(uh / h))
+ζ = Field(∂x(vh / h) - ∂y(uh / h))
 
 outputs = merge(model.solution, (ζ=ζ,))
 
@@ -61,7 +61,7 @@ simulation.output_writers[:fields] =
                      schedule = TimeInterval(0.1),
                      prefix = experiment_name,
                      field_slicer = nothing,
-                     force = true)
+                     overwrite_existing = true)
 
 run!(simulation)
 

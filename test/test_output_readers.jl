@@ -1,11 +1,4 @@
-using Test
-using Statistics
-using JLD2
-
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans.Architectures: array_type
-using Oceananigans.Fields: location
+include("dependencies_for_runtests.jl")
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -17,12 +10,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                    tracers = (:T, :S),
-                   buoyancy = SeawaterBuoyancy(),
-        boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
-    )
+    model = NonhydrostaticModel(; grid, tracers = (:T, :S), buoyancy = SeawaterBuoyancy(),
+                                boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     dTdz = 0.01
     Tᵢ(x, y, z) = 20 + dTdz * z + 1e-6 * randn()
@@ -37,27 +26,35 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     computed_fields = (
         b = BuoyancyField(model),
-        ζ = ComputedField(∂x(v) - ∂y(u)),
-        ke = ComputedField(√(u^2 + v^2))
+        ζ = Field(∂x(v) - ∂y(u)),
+        ke = Field(√(u^2 + v^2))
     )
 
     fields_to_output = merge(model.velocities, model.tracers, computed_fields)
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                  prefix = "test_3d_output_with_halos",
-            field_slicer = FieldSlicer(with_halos=true),
-                schedule = TimeInterval(30seconds),
-                   force = true)
+                         filename = "test_3d_output_with_halos.jld2",
+                         with_halos = true,
+                         schedule = TimeInterval(30seconds),
+                         overwrite_existing = true)
 
-    profiles = NamedTuple{keys(fields_to_output)}(AveragedField(f, dims=(1, 2)) for f in fields_to_output)
+    simulation.output_writers[:jld2_2d_with_halos] =
+        JLD2OutputWriter(model, fields_to_output,
+                         filename = "test_2d_output_with_halos.jld2",
+                         indices = (:, :, grid.Nz),
+                         with_halos = true,
+                         schedule = TimeInterval(30seconds),
+                         overwrite_existing = true)
+
+    profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
     simulation.output_writers[:jld2_1d_with_halos] =
         JLD2OutputWriter(model, profiles,
-                  prefix = "test_1d_output_with_halos",
-            field_slicer = FieldSlicer(with_halos=true),
-                schedule = TimeInterval(30seconds),
-                   force = true)
+                         filename = "test_1d_output_with_halos.jld2",
+                         with_halos = true,
+                         schedule = TimeInterval(30seconds),
+                         overwrite_existing = true)
 
     run!(simulation)
 
@@ -72,6 +69,7 @@ end
     Nt = 5
 
     filepath3d = "test_3d_output_with_halos.jld2"
+    filepath2d = "test_2d_output_with_halos.jld2"
     filepath1d = "test_1d_output_with_halos.jld2"
 
     for arch in archs
@@ -86,6 +84,15 @@ end
             T3 = FieldTimeSeries(filepath3d, "T", architecture=arch)
             b3 = FieldTimeSeries(filepath3d, "b", architecture=arch)
             ζ3 = FieldTimeSeries(filepath3d, "ζ", architecture=arch)
+
+            # This behavior ensures that set! works
+            # but perhaps should be changed in the future
+            @test size(parent(u3[1])) == size(parent(u3))[1:3]
+            @test size(parent(v3[1])) == size(parent(v3))[1:3]
+            @test size(parent(w3[1])) == size(parent(w3))[1:3]
+            @test size(parent(T3[1])) == size(parent(T3))[1:3]
+            @test size(parent(b3[1])) == size(parent(b3))[1:3]
+            @test size(parent(ζ3[1])) == size(parent(ζ3))[1:3]
 
             @test location(u3) == (Face, Center, Center)
             @test location(v3) == (Center, Face, Center)
@@ -103,13 +110,47 @@ end
 
             ArrayType = array_type(arch)
             for fts in (u3, v3, w3, T3, b3, ζ3)
-                @test fts.data.parent isa ArrayType
+                @test parent(fts) isa ArrayType
             end
 
             if arch isa CPU
                 @test u3[1, 2, 3, 4] isa Number
                 @test u3[1] isa Field
                 @test v3[2] isa Field
+            end
+
+            ## 2D sliced Fields
+
+            u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
+            v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
+            w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
+            T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
+            b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
+            ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
+
+            @test location(u2) == (Face, Center, Center)
+            @test location(v2) == (Center, Face, Center)
+            @test location(w2) == (Center, Center, Face)
+            @test location(T2) == (Center, Center, Center)
+            @test location(b2) == (Center, Center, Center)
+            @test location(ζ2) == (Face, Face, Center)
+
+            @test size(u2) == (Nx, Ny, 1,   Nt)
+            @test size(v2) == (Nx, Ny, 1,   Nt)
+            @test size(w2) == (Nx, Ny, 1, Nt)
+            @test size(T2) == (Nx, Ny, 1,   Nt)
+            @test size(b2) == (Nx, Ny, 1,   Nt)
+            @test size(ζ2) == (Nx, Ny, 1,   Nt)
+
+            ArrayType = array_type(arch)
+            for fts in (u3, v3, w3, T3, b3, ζ3)
+                @test parent(fts) isa ArrayType
+            end
+
+            if arch isa CPU
+                @test u2[1, 2, 5, 4] isa Number
+                @test u2[1] isa Field
+                @test v2[2] isa Field
             end
 
             ## 1D AveragedFields
@@ -136,7 +177,7 @@ end
             @test size(ζ1) == (1, 1, Nz,   Nt)
 
             for fts in (u1, v1, w1, T1, b1, ζ1)
-                @test fts.data.parent isa ArrayType
+                @test parent(fts) isa ArrayType
             end
 
             if arch isa CPU
@@ -199,6 +240,6 @@ end
         end
     end
 
-    rm("test_3d_output_with_halos.jld2")
-    rm("test_1d_output_with_halos.jld2")
+    rm(filepath3d)
+    rm(filepath1d)
 end

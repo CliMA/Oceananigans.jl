@@ -1,32 +1,26 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) 
-
-
 ENV["GKSwstype"] = "nul"
+
 using Plots
-using Measures
 
 using Printf
 using Statistics
+using CUDA
 
 using Oceananigans
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.Advection
+using Oceananigans.Units
 
-#####
-##### The Bickley jet
-#####
+using Oceananigans.Advection: EnergyConservingScheme
+using Oceananigans.OutputReaders: FieldTimeSeries
 
-Ψ(y) = - tanh(y)
-U(y) = sech(y)^2
+using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
+using Oceananigans.Operators: Δx, Δy
+using Oceananigans.TurbulenceClosures
 
-# A sinusoidal tracer
-C(y, L) = sin(2π * y / L)
+CUDA.device!(1)
 
-# Slightly off-center vortical perturbations
-ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
-
-# Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
-ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
+using .BickleyJet: set_bickley_jet!
 
 """
     run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
@@ -35,103 +29,88 @@ C(y, L) = sin(2π * y / L)
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
+function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
+                           momentum_advection = VectorInvariant())
 
-    # Regular model
-    grid = RectilinearGrid(arch, size=(Nh, Nh), halo=(3, 3),
-                                  x = (-2π, 2π), y=(-2π, 2π),
-                                  topology = (Periodic, Bounded, Flat))
+    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
+                           x = (-2π, 2π), y=(-2π, 2π), z=(0, 1), halo = (4, 4, 4),
+                           topology = (Periodic, Periodic, Bounded))
+    
+    @inline toplft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
+    @inline botlft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
+    @inline toprgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
+    @inline botrgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
+    @inline bottom(x, y) = Int(toplft(x, y) | toprgt(x, y) | botlft(x, y) | botrgt(x, y))
 
-    regular_model = NonhydrostaticModel(advection = advection,
-                                        timestepper = :RungeKutta3,
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -1))
+
+    c = sqrt(10.0)
+    Δt = 0.1 * grid.Δxᶜᵃᵃ / c
+
+    timescale = (5days / (6minutes) * Δt)
+    @show prettytime(timescale)
+
+    @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
+    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
+
+    model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
+                                        tracer_advection = WENO5(),
                                         grid = grid,
                                         tracers = :c,
-                                        closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                        closure = nothing,
+                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0),
                                         coriolis = nothing,
                                         buoyancy = nothing)
-
-    # Non-regular model
-    solid(x, y, z) = y > 2π
-
-    expanded_grid = RectilinearGrid(arch, size=(Nh, Int(5Nh/4)), halo=(3, 3),
-                                           x = (-2π, 2π), y=(-2π, 3π),
-                                           topology = (Periodic, Bounded, Flat))
-
-    immersed_grid = ImmersedBoundaryGrid(arch, expanded_grid, GridFittedBoundary(solid))
-
-    immersed_model = NonhydrostaticModel(advection = advection,
-                                         timestepper = :RungeKutta3,
-                                         grid = immersed_grid,
-                                         tracers = (:c, :mass),
-                                         closure = IsotropicDiffusivity(ν=ν, κ=ν),
-                                         coriolis = nothing,
-                                         buoyancy = nothing)
 
     # ** Initial conditions **
     #
     # u, v: Large-scale jet + vortical perturbations
     #    c: Sinusoid
+    
+    set_bickley_jet!(model)
 
-    # Parameters
-    ϵ = 0.1 # perturbation magnitude
-    ℓ = 0.5 # Gaussian width
-    k = 0.5 # Sinusoidal wavenumber
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
 
-    # Total initial conditions
-    uᵢ(x, y, z) = U(y) + ϵ * ũ(x, y, ℓ, k)
-    vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
-    cᵢ(x, y, z) = C(y, grid.Ly)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 
-    set!(regular_model, u=uᵢ, v=vᵢ, c=cᵢ)
-    set!(immersed_model, u=uᵢ, v=vᵢ, c=cᵢ, mass=1)
+    progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
+                            iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
 
-    wall_clock = [time_ns()]
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
 
-    function progress(sim)
-        @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, wall time: %s, max|u|: %.2f",
-                       sim.model.clock.iteration,
-                       sim.model.clock.time,
-                       sim.Δt.Δt,
-                       prettytime(1e-9 * (time_ns() - wall_clock[1])),
-                       maximum(abs, sim.model.velocities.u.data.parent)))
+    simulation.callbacks[:wizard]   = Callback(wizard, IterationInterval(10))
 
-        wall_clock[1] = time_ns()
+    # Output: primitive fields + computations
+    u, v, w, c = merge(model.velocities, model.tracers)
 
-        return nothing
+    ζ = Field(∂x(v) - ∂y(u))
+
+    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
+
+    name = typeof(model.advection.momentum).name.wrapper
+    if model.advection.momentum isa WENOVectorInvariantVel
+        name = "WENOVectorInvariantVel"
+    end
+    if model.advection.momentum isa WENOVectorInvariantVort
+        name = "WENOVectorInvariantVort"
     end
 
-    models = (immersed_model, regular_model)
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(typeof(regular_model.advection).name.wrapper)"
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_Upwind"
 
-    for m in models
-        wizard = TimeStepWizard(cfl=0.1, Δt=0.1 * grid.Δx, max_change=1.1, max_Δt=10.0)
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, outputs,
+                                schedule = TimeInterval(output_time_interval),
+                                prefix = experiment_name,
+                                overwrite_existing = true)
 
-        simulation = Simulation(m, Δt=wizard, stop_time=stop_time, iteration_interval=10, progress=progress)
 
-        # Output: primitive fields + computations
-        u, v, w, c = merge(m.velocities, m.tracers)
-        ζ = ComputedField(∂x(v) - ∂y(u))
-        outputs = merge(m.velocities, m.tracers, (ζ=ζ,))
+    @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
-        output_name = m.grid isa ImmersedBoundaryGrid ?
-                            "immersed_" * experiment_name :
-                            "regular_" * experiment_name
+    start_time = time_ns()
 
-        @show output_name
-
-        simulation.output_writers[:fields] =
-            JLD2OutputWriter(m, outputs,
-                             schedule = TimeInterval(output_time_interval),
-                             prefix = output_name,
-                             field_slicer = nothing,
-                             force = true)
-
-        @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
-
-        start_time = time_ns()
-
-        run!(simulation)
-    end
+    run!(simulation)
 
     return experiment_name 
 end
@@ -141,196 +120,61 @@ end
 
 Visualize the Bickley jet data associated with `experiment_name`.
 """
-function visualize_immersed_bickley_jet(experiment_name)
+function visualize_bickley_jet(experiment_name)
 
     @info "Making a fun movie about an unstable Bickley jet..."
 
-    regular_filepath = "regular_" * experiment_name * ".jld2"
-    immersed_filepath = "immersed_" * experiment_name * ".jld2"
+    filepath = experiment_name * ".jld2"
 
-    regular_u_timeseries = FieldTimeSeries(regular_filepath,  "u")
-    immersed_u_timeseries = FieldTimeSeries(immersed_filepath, "u")
+    ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
+    c_timeseries = FieldTimeSeries(filepath, "c", boundary_conditions=nothing, location=(Face, Center, Center))
 
-    regular_v_timeseries = FieldTimeSeries(regular_filepath,  "v")
-    immersed_v_timeseries = FieldTimeSeries(immersed_filepath, "v")
+    grid = c_timeseries.grid
 
-    regular_ζ_timeseries = FieldTimeSeries(regular_filepath,  "ζ")
-    immersed_ζ_timeseries = FieldTimeSeries(immersed_filepath, "ζ")
+    xζ, yζ, zζ = nodes(ζ_timeseries)
+    xc, yc, zc = nodes(c_timeseries)
 
-    regular_c_timeseries = FieldTimeSeries(regular_filepath,  "c")
-    immersed_c_timeseries = FieldTimeSeries(immersed_filepath, "c")
+    anim = @animate for (i, iteration) in enumerate(c_timeseries.times)
 
-    regular_grid = regular_c_timeseries.grid
-    immersed_grid = immersed_c_timeseries.grid
+        @info "    Plotting frame $i from iteration $iteration..."
 
-    xu, yu, zu = nodes(regular_u_timeseries)
-    xv, yv, zv = nodes(regular_v_timeseries)
-    xζ, yζ, zζ = nodes(regular_ζ_timeseries)
-    xc, yc, zc = nodes(regular_c_timeseries)
+        ζ = ζ_timeseries[i]
+        c = c_timeseries[i]
+        t = ζ_timeseries.times[i]
 
-    anim = @animate for (i, t) in enumerate(regular_c_timeseries.times)
+        ζi = interior(ζ)[:, :, 1]
+        ci = interior(c)[:, :, 1]
 
-        @info "    Plotting frame $i of $(length(regular_c_timeseries.times))..."
-
-        Nx, Ny, Nz = size(regular_grid)
-
-        regular_u = regular_u_timeseries[i]
-        regular_v = regular_v_timeseries[i]
-        regular_ζ = regular_ζ_timeseries[i]
-        regular_c = regular_c_timeseries[i]
-
-        immersed_u = immersed_u_timeseries[i]
-        immersed_v = immersed_v_timeseries[i]
-        immersed_ζ = immersed_ζ_timeseries[i]
-        immersed_c = immersed_c_timeseries[i]
-
-        regular_ui = interior(regular_u)[:, :, 1]
-        regular_vi = interior(regular_v)[:, :, 1]
-        regular_ζi = interior(regular_ζ)[:, :, 1]
-        regular_ci = interior(regular_c)[:, :, 1]
-
-        Nx, Ny = size(regular_ui)
-
-        immersed_ui = interior(immersed_u)[1:Nx, 1:Ny, 1]
-        immersed_vi = interior(immersed_v)[1:Nx, 1:Ny+1, 1]
-        immersed_ζi = interior(immersed_ζ)[1:Nx, 1:Ny+1, 1]
-        immersed_ci = interior(immersed_c)[1:Nx, 1:Ny, 1]
-
-        difference_ui = immersed_ui .- regular_ui 
-        difference_vi = immersed_vi .- regular_vi
-        difference_ζi = immersed_ζi .- regular_ζi
-        difference_ci = immersed_ci .- regular_ci
-
-        kwargs = Dict(:aspectratio => 1,
+        kwargs = Dict(
+                      :aspectratio => 1,
                       :linewidth => 0,
                       :colorbar => :none,
                       :ticks => nothing,
                       :clims => (-1, 1),
-                      :xlims => (-regular_grid.Lx/2, regular_grid.Lx/2),
-                      :ylims => (-regular_grid.Ly/2, regular_grid.Ly/2))
+                      :xlims => (-grid.Lx/2, grid.Lx/2),
+                      :ylims => (-grid.Ly/2, grid.Ly/2)
+                     )
 
-        regular_u_plot = heatmap(xu, yu, clamp.(regular_ui, -1, 1)'; color = :balance, kwargs...)
-        regular_v_plot = heatmap(xv, yv, clamp.(regular_vi, -1, 1)'; color = :balance, kwargs...)
-        regular_ζ_plot = heatmap(xζ, yζ, clamp.(regular_ζi, -1, 1)'; color = :balance, kwargs...)
-        regular_c_plot = heatmap(xc, yc, clamp.(regular_ci, -1, 1)'; color = :thermal, kwargs...)
+        ζ_plot = heatmap(xζ, yζ, clamp.(ζi, -1, 1)'; color = :balance, kwargs...)
+        c_plot = heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
 
-        immersed_u_plot = heatmap(xu, yu, clamp.(immersed_ui, -1, 1)'; color = :balance, kwargs...)
-        immersed_v_plot = heatmap(xv, yv, clamp.(immersed_vi, -1, 1)'; color = :balance, kwargs...)
-        immersed_ζ_plot = heatmap(xζ, yζ, clamp.(immersed_ζi, -1, 1)'; color = :balance, kwargs...)
-        immersed_c_plot = heatmap(xc, yc, clamp.(immersed_ci, -1, 1)'; color = :thermal, kwargs...)
+        ζ_title = @sprintf("ζ at t = %.1f", t)
+        c_title = @sprintf("u at t = %.1f", t)
 
-        δlim = 0.1
-        kwargs[:clims] = (-δlim, δlim)
-
-        difference_u_plot = heatmap(xu, yu, clamp.(difference_ui, -δlim, δlim)'; color = :balance, kwargs...)
-        difference_v_plot = heatmap(xv, yv, clamp.(difference_vi, -δlim, δlim)'; color = :balance, kwargs...)
-        difference_ζ_plot = heatmap(xζ, yζ, clamp.(difference_ζi, -δlim, δlim)'; color = :balance, kwargs...)
-        difference_c_plot = heatmap(xc, yc, clamp.(difference_ci, -δlim, δlim)'; color = :thermal, kwargs...)
-
-        r_u_title = @sprintf("regular u at t = %.1f", t)
-        r_v_title = @sprintf("regular v at t = %.1f", t)
-        r_ζ_title = @sprintf("regular ζ at t = %.1f", t)
-        r_c_title = @sprintf("regular c at t = %.1f", t)
-
-        i_u_title = @sprintf("immersed u at t = %.1f", t)
-        i_v_title = @sprintf("immersed v at t = %.1f", t)
-        i_ζ_title = @sprintf("immersed ζ at t = %.1f", t)
-        i_c_title = @sprintf("immersed c at t = %.1f", t)
-
-        d_u_title = @sprintf("Δu at t = %.1f", t)
-        d_v_title = @sprintf("Δv at t = %.1f", t)
-        d_ζ_title = @sprintf("Δζ at t = %.1f", t)
-        d_c_title = @sprintf("Δc at t = %.1f", t)
-
-        plot(regular_u_plot, regular_v_plot, regular_ζ_plot, regular_c_plot,
-             immersed_u_plot, immersed_v_plot, immersed_ζ_plot, immersed_c_plot,
-             difference_u_plot, difference_v_plot, difference_ζ_plot, difference_c_plot,
-             title = [r_u_title r_v_title r_ζ_title r_c_title i_u_title i_v_title i_ζ_title i_c_title d_u_title d_v_title d_ζ_title d_c_title],
-             layout = (3, 4), size = (2000, 1000))
+        plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
     end
 
-    mp4(anim, "differences_" * experiment_name * ".mp4", fps = 8)
+    mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-"""
-    analyze_bickley_jet(experiment_name)
+advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
+                     WENO5(vector_invariant=VorticityStencil()),
+                     WENO5(),
+                     VectorInvariant()]
 
-Analyze the Bickley jet data associated with `experiment_name`.
-"""
-
-function analyze_immersed_bickley_jet(experiment_name)
-
-    @info "    Analyzing IBM Results for Velocity and Tracer Concentration... "
-
-    regular_filepath = "regular_" * experiment_name * ".jld2"
-    immersed_filepath = "immersed_" * experiment_name * ".jld2"
-
-    regular_v_timeseries = FieldTimeSeries(regular_filepath,  "v")
-    immersed_v_timeseries = FieldTimeSeries(immersed_filepath, "v")
-
-    immersed_m_timeseries = FieldTimeSeries(immersed_filepath, "mass")
-    regular_c_timeseries = FieldTimeSeries(regular_filepath,  "c")
-    
-    xv, yv, zv = nodes(regular_v_timeseries)
-    xm, ym, zm = nodes(immersed_m_timeseries)
-        
-    # Finding the rms surface normal velocity (should be zero)
-    function rms_normal(r_v_series, im_v_series)
-        
-        time_amt = length(r_v_series.times);
-        last_y_fluid = size(r_v_series)[2];
-        
-        r_norm_rms = sqrt.(sum(r_v_series[:,last_y_fluid,1,:].^2, dims = 2)./time_amt)
-        im_norm_rms = sqrt.(sum(im_v_series[:,last_y_fluid,1,:].^2, dims = 2)./time_amt)
-        
-        return r_norm_rms, im_norm_rms
+for Nx in [128]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        # visualize_bickley_jet(experiment_name)
     end
-
-    regular_norm_rms, immersed_norm_rms = rms_normal(regular_v_timeseries, immersed_v_timeseries);
-    
-    # largest value for plotting
-    max_norm = round(maximum(immersed_norm_rms), sigdigits = 2, RoundUp);
-    
-    @info "    Plotting the surface normal velocity..."
-
-    norm_plot = plot(regular_v_timeseries.grid.xᶜᵃᵃ, regular_norm_rms, label = "regular", yformatter = :scientific,
-    color = :red, lw = 3, xlabel = "x", ylabel = "Vⁿ", legend = :bottomright)
-    plot!(regular_v_timeseries.grid.xᶜᵃᵃ, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
-    plot!(yticks = 0:max_norm/5:max_norm, guidefontsize = 14, titlefont=14,legendfont = 10, 
-        tickfont = 8)
-        
-    # Finding the area integrated concentration in time
-
-    function area_int_concentration(r_m_series, im_m_series, xm, ym)
-        
-        last_y = size(r_m_series)[2];
-        
-        im_C = (sum(im_m_series[1:last_y,1:last_y,1,:], dims = 1:2)[1,1,:])*(ym[2]-ym[1])*(xm[2]-xm[1]);
-        
-        return im_C
-    end
-
-    immersed_concent = area_int_concentration(regular_c_timeseries, immersed_m_timeseries, xm, ym);
-    
-    #taking the percent leakage between IBM and nonIBM (which does not change from initial)
-    percent_leakage_m = (abs.(immersed_concent[1] .- immersed_concent) ./ immersed_concent[1]) * 100;
-    
-    @info "    Plotting the tracer concentration leakage..."
-    
-    concent_diff = plot(immersed_m_timeseries.times, percent_leakage_m, yformatter = :scientific,
-        color = :blue, xlabel = "t", ylabel = "% Concentration Leakage", legend = false, lw = 3,
-        guidefontsize = 14, titlefont=14,legendfont = 10, tickfont = 8)
-        
-    results_plot = plot(norm_plot, concent_diff,
-             title = ["Normal Velocity" "% Change in Area Integrated Concentration"],
-             layout = (1, 2), size = (1400, 500), left_margin=10mm, bottom_margin=10mm)
-    
-    Plots.savefig(results_plot, "Analysis_" * experiment_name * ".png")
-    
 end
-
-
-advection = WENO5()
-experiment_name = run_bickley_jet(advection=advection, Nh=64, stop_time=200)
-visualize_immersed_bickley_jet(experiment_name)
-analyze_immersed_bickley_jet(experiment_name)

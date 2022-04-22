@@ -9,7 +9,7 @@ using KernelAbstractions: NoneEvent
 
 import Base: show
 
-import Oceananigans.BoundaryConditions: bc_str, print_condition
+import Oceananigans.BoundaryConditions: bc_str
 
 import Oceananigans.BoundaryConditions:
     apply_x_bcs!,
@@ -40,7 +40,7 @@ CubedSphereExchangeInformation(; from_face, to_face, from_side, to_side) =
 Base.show(io::IO, ex::CubedSphereExchangeInformation) =
     print(io, "CubedSphereExchangeInformation: (from: face $(ex.from_face) $(ex.from_side) side, to: face $(ex.to_face) $(ex.to_side) side)")
 
-print_condition(info::CubedSphereExchangeInformation) =
+Base.summary(info::CubedSphereExchangeInformation) =
     "(from: face $(info.from_face) $(info.from_side) side, to: face $(info.to_face) $(info.to_side) side)"
 
 function inject_cubed_sphere_exchange_boundary_conditions(field_bcs, face_number, face_connectivity)

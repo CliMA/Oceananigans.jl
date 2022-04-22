@@ -4,7 +4,7 @@
 #
 # This example demonstrates:
 #
-#   * How to use `ComputedField`s for output.
+#   * How to use computed `Field`s for output.
 #   * How to post-process saved output using `FieldTimeSeries`.
 #
 # ## Install dependencies
@@ -90,13 +90,12 @@ nothing # hide
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = NonhydrostaticModel(
-                   grid = grid,
+model = NonhydrostaticModel(; grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,
                 tracers = :b,
                buoyancy = BuoyancyTracer(),
-                closure = IsotropicDiffusivity(ν=ν, κ=κ),
+                closure = ScalarDiffusivity(ν=ν, κ=κ),
     boundary_conditions = (; b=b_bcs))
 
 # ## Simulation set-up
@@ -128,33 +127,29 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 
 # ### Output
 #
-# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
-# and the buoyancy, ``b``. Note that `ComputedField`s take "AbstractOperations" on `Field`s as
+# We use computed `Field`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
+# and the buoyancy, ``b``. Note that computed `Field`s take "AbstractOperations" on `Field`s as
 # input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = ComputedField(sqrt(u^2 + w^2))
+s = sqrt(u^2 + w^2)
 
 ## y-component of vorticity
-ζ = ComputedField(∂z(u) - ∂x(w))
-
-outputs = (s = s, b = b, ζ = ζ)
+ζ = ∂z(u) - ∂x(w)
 nothing # hide
 
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
-saved_output_prefix = "horizontal_convection"
-saved_output_filename = saved_output_prefix * ".jld2"
+saved_output_filename = "horizontal_convection.jld2"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                  field_slicer = nothing,
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
-                                                        prefix = saved_output_prefix,
-                                                         force = true)
+                                                      filename = saved_output_filename,
+                                                      overwrite_existing = true)
 nothing # hide
 
 # Ready to press the big red button:
@@ -170,14 +165,12 @@ run!(simulation)
 # To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
 # creating coordinate arrays that each field lives on.
 
-
 using JLD2, Plots
 using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations: volume
 
-saved_output_prefix = "horizontal_convection"
-saved_output_filename = saved_output_prefix * ".jld2"
+saved_output_filename = "horizontal_convection.jld2"
 
 ## Open the file with our data
 file = jldopen(saved_output_filename)
@@ -205,15 +198,15 @@ anim = @animate for i in 1:length(times)
     ## Load fields from `FieldTimeSeries` and compute χ
     t = times[i]
     
-    s_snapshot = interior(s_timeseries[i])[:, 1, :]
-    ζ_snapshot = interior(ζ_timeseries[i])[:, 1, :]
+    s_snapshot = interior(s_timeseries[i], :, 1, :)
+    ζ_snapshot = interior(ζ_timeseries[i], :, 1, :)
     
     b = b_timeseries[i]
-    χ = ComputedField(κ * (∂x(b)^2 + ∂z(b)^2))
+    χ = Field(κ * (∂x(b)^2 + ∂z(b)^2))
     compute!(χ)
     
-    b_snapshot = interior(b)[:, 1, :]
-    χ_snapshot = interior(χ)[:, 1, :]
+    b_snapshot = interior(b, :, 1, :)
+    χ_snapshot = interior(χ, :, 1, :)
     
     ## determine colorbar limits and contour levels
     slim = 0.6
@@ -313,8 +306,8 @@ nothing # hide
 
 grid = b_timeseries.grid
 
-∫ⱽ_s² = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
-∫ⱽ_mod²_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
+∫ⱽ_s² = Field{Nothing, Nothing, Nothing}(grid)
+∫ⱽ_mod²_∇b = Field{Nothing, Nothing, Nothing}(grid)
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,

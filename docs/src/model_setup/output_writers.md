@@ -21,8 +21,7 @@ The `Checkpointer` is discussed on a separate documentation page.
    periodic output according to the simulation time, simulation interval, or "wall time" (the physical time
    according to a clock on your wall). A fourth `schedule` called `AveragedTimeInterval` specifies
    periodic output that is time-averaged over a `window` prior to being written.
-4. The filename and directory. Currently `NetCDFOutputWriter` accepts one `filepath` argument, while
-   `JLD2OutputWriter` accepts a filename `prefix` and `dir`ectory.
+4. The `filename` and `dir`ectory.
 
 Other important keyword arguments are
 
@@ -49,59 +48,56 @@ passing it a dictionary of (label, field) pairs and any indices for slicing if y
 
 ### Examples
 
-Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
-to separate NetCDF files:
+Saving the u velocity field and temperature fields as full 3D fields, surface 2D slices, and
+1D columns to separate NetCDF files:
 
 ```jldoctest netcdf1
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c);
+model = NonhydrostaticModel(grid=grid, tracers=:c)
 
-simulation = Simulation(model, Δt=12, stop_time=3600);
+simulation = Simulation(model, Δt=12, stop_time=3600)
 
-fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="more_fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: more_fields.nc
+├── filepath: ./more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["c", "u"]
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 2 outputs: (c, u)
 └── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="another_surface_xy_slice.nc",
-                       schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
+    NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
+                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: another_surface_xy_slice.nc
+├── filepath: ./another_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["c", "u"]
-├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
+├── 2 outputs: (c, u)
 └── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
-                       filepath = "another_averaged_z_profile.nc",
+                       filename = "another_averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
-                       field_slicer = FieldSlicer(i=1, j=1))
+                       indices = (1, 1, :))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: another_averaged_z_profile.nc
+├── filepath: ./another_averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
+├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 └── array type: Array{Float32}
 ```
 
@@ -111,20 +107,20 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid)
 
-simulation = Simulation(model, Δt=1.25, stop_iteration=3);
+simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
 h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
+                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
-outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
+outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"));
+dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -132,19 +128,18 @@ output_attributes = Dict(
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
 );
 
-global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
+global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filepath="some_things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filename="some_things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: some_things.nc
+├── filepath: ./some_things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: ["profile", "slice", "scalar"]
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float32}
 ```
 
@@ -180,19 +175,18 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
+c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_more_data",
+                                                          filename = "some_more_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_data.jld2
-├── 3 outputs: (:u, :v, :w)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 3 outputs: (u, v, w)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
@@ -203,14 +197,13 @@ to a file called `some_more_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     prefix = "some_more_averaged_data",
+                                                     filename = "some_more_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_averaged_data.jld2
-├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
@@ -261,14 +254,13 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "even_more_averaged_velocity_data",
+                                                          filename = "even_more_averaged_velocity_data.jld2",
                                                           schedule = AveragedTimeInterval(4years, window=1year, stride=2))
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
-├── 3 outputs: (:u, :v, :w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
-├── field slicer: FieldSlicer(:, :, :, with_halos=false)
+├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB

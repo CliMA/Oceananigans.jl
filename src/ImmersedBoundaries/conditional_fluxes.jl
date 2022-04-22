@@ -5,39 +5,14 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDi
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
-const IBG = ImmersedBoundaryGrid
+@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 
-const c = Center()
-const f = Face()
-
-#####
-##### GridFittedImmersedBoundaryGrid
-#####
-
-const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:AbstractGridFittedBoundary} where {FT, TX, TY, TZ, G}
-
-@inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
-
-@inline solid_node(LX, LY, LZ, i, j, k, ibg) = solid_cell(i, j, k, ibg) # fallback (for Center or Nothing LX, LY, LZ)
-
-@inline solid_node(::Face, LX, LY, i, j, k, ibg) = solid_cell(i, j, k, ibg) || solid_cell(i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_cell(i, j, k, ibg) || solid_cell(i, j-1, k, ibg)
-@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_cell(i, j, k, ibg) || solid_cell(i, j, k-1, ibg)
-
-@inline solid_node(::Face, ::Face, LZ, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) || solid_node(c, f, c, i-1, j, k, ibg)
-@inline solid_node(::Face, LY, ::Face, i, j, k, ibg) = solid_node(c, c, f, i, j, k, ibg) || solid_node(c, c, f, i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) || solid_node(c, f, c, i, j, k-1, ibg)
-
-@inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) || solid_node(c, f, f, i-1, j, k, ibg)
-
-@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-
-@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 
 #####
 ##### Advective fluxes
@@ -99,18 +74,46 @@ const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:AbstractGridFittedBounda
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i - 1, j, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i + 1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j - 1, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j + 1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j, k - 1, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j, k + 1, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i - 1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i + 1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i - 2, j, k, ibg) | solid_cell(i - 1, j, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i + 1, j, k, ibg) | solid_cell(i + 2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j - 2, k, ibg) | solid_cell(i, j - 1, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j + 1, k, ibg) | solid_cell(i, j + 2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j, k - 2, ibg) | solid_cell(i, j, k - 1, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j, k + 1, ibg) | solid_cell(i, j, k + 2, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i - 2, j, k, ibg) | solid_node(i - 1, j, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i + 1, j, k, ibg) | solid_node(i + 2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j - 2, k, ibg) | solid_node(i, j - 1, k, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j + 1, k, ibg) | solid_node(i, j + 2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_node(i, j, k - 2, ibg) | solid_node(i, j, k - 1, ibg) | solid_node(i, j, k, ibg) | solid_node(i, j, k + 1, ibg) | solid_node(i, j, k + 2, ibg)
+
+using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
+
+@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+    return solid_node(c, f, c, i, j, k, ibg)     |       
+           solid_node(c, f, c, i-3, j, k, ibg)   | solid_node(c, f, c, i+3, j, k, ibg) |
+           solid_node(c, f, c, i-2, j, k, ibg)   | solid_node(c, f, c, i+2, j, k, ibg) |
+           solid_node(c, f, c, i-1, j, k, ibg)   | solid_node(c, f, c, i+1, j, k, ibg) | 
+           solid_node(f, c, c, i, j, k, ibg)     |
+           solid_node(f, c, c, i-2, j, k, ibg)   | solid_node(f, c, c, i+2, j, k, ibg) |
+           solid_node(f, c, c, i-1, j, k, ibg)   | solid_node(f, c, c, i+1, j, k, ibg) |
+           solid_node(f, c, c, i-2, j+1, k, ibg) | solid_node(f, c, c, i+2, j+1, k, ibg) |
+           solid_node(f, c, c, i-1, j+1, k, ibg) | solid_node(f, c, c, i+1, j+1, k, ibg) |
+           solid_node(f, c, c, i, j+1, k, ibg) 
+end
+
+@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+    return solid_node(f, c, c, i, j, k, ibg)     | 
+           solid_node(f, c, c, i, j+3, k, ibg)   | solid_node(f, c, c, i, j+3, k, ibg) |
+           solid_node(f, c, c, i, j+2, k, ibg)   | solid_node(f, c, c, i, j+2, k, ibg) |
+           solid_node(f, c, c, i, j+1, k, ibg)   | solid_node(f, c, c, i, j+1, k, ibg) |     
+           solid_node(c, f, c, i, j, k, ibg)     | 
+           solid_node(c, f, c, i, j-2, k, ibg)   | solid_node(c, f, c, i, j+2, k, ibg) |
+           solid_node(c, f, c, i, j-1, k, ibg)   | solid_node(c, f, c, i, j+1, k, ibg) | 
+           solid_node(c, f, c, i+1, j-2, k, ibg) | solid_node(c, f, c, i+1, j+2, k, ibg) |
+           solid_node(c, f, c, i+1, j-1, k, ibg) | solid_node(c, f, c, i+1, j+1, k, ibg) |
+           solid_node(c, f, c, i+1, j, k, ibg) 
+end
 
 # Takes forever to compile, but works.
-# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
-# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
-# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
+# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
+# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
+# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
 
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -134,21 +137,43 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
-
-                # @inline $alt_interp(i, j, k, ibg::IBG, scheme, ψ) = $interp(i, j, k, ibg.grid, scheme, ψ)
+            end
+            if ξ == :z
+                @eval begin
+                    import Oceananigans.Advection: $alt_interp
+                    using Oceananigans.Advection: $interp
+    
+                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
+                        ifelse($near_boundary(i, j, k, ibg, scheme),
+                            $second_order_interp(i, j, k, ibg.grid, ∂z, u),
+                            $interp(i, j, k, ibg.grid, scheme, ∂z, VI, u))
+                end
+            else    
+                @eval begin
+                    import Oceananigans.Advection: $alt_interp
+                    using Oceananigans.Advection: $interp
+    
+                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
+                        ifelse($near_boundary(i, j, k, ibg, scheme),
+                                $second_order_interp(i, j, k, ibg.grid, ζ, u, v),
+                                $interp(i, j, k, ibg.grid, scheme, ζ, VI, u, v))
+                end    
             end
         end
     end
 end
 
-#####
-##### Masking for GridFittedBoundary
-#####
+for bias in (:left_biased, :right_biased)
+    for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
+        interp     = Symbol(bias, :_interpolate_, dir)
+        alt_interp = Symbol(:_, interp)
 
-@inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field)
-    return @inbounds ifelse(solid_node(LX, LY, LZ, i, j, k, grid),
-                            value,
-                            field[i, j, k])
+        near_horizontal_boundary = Symbol(:near_horizontal_boundary_, d)
+        @eval begin
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
+            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
+               $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
+               $interp(i, j, k, ibg.grid, scheme, ζ, VelocityStencil, u, v))
+        end
+    end
 end
-
-mask_immersed_velocities!(U, arch, grid::GFIBG) = Tuple(mask_immersed_field!(q) for q in U)

@@ -1,9 +1,9 @@
-using Oceananigans.Operators: Γᶠᶠᵃ, ζ₃ᶠᶠᵃ
+using Oceananigans.Operators: Γᶠᶠᶜ, ζ₃ᶠᶠᶜ
 
 function diagnose_velocities_from_streamfunction(ψ, arch, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, arch, grid)
-    uᶠᶜᶜ = Field(Face, Center, Center, arch, grid)
-    vᶜᶠᶜ = Field(Center, Face, Center, arch, grid)
+    ψᶠᶠᶜ = Field{Face, Face,   Center}(grid)
+    uᶠᶜᶜ = Field{Face, Center, Center}(grid)
+    vᶜᶠᶜ = Field{Center, Face, Center}(grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
@@ -45,8 +45,8 @@ for arch in archs
         Nx, Ny, Nz, Nf = size(grid)
         R = grid.faces[1].radius
 
-        u_field = XFaceField(arch, grid)
-        v_field = YFaceField(arch, grid)
+        u_field = XFaceField(grid)
+        v_field = YFaceField(grid)
 
         ψ(λ, φ) = R * sind(φ)
         CUDA.@allowscalar set_velocities_from_streamfunction!(u_field, v_field, ψ, arch, grid)
@@ -57,8 +57,8 @@ for arch in archs
         u_faces = [get_face(u_field, f) for f in 1:Nf]
         v_faces = [get_face(v_field, f) for f in 1:Nf]
 
-        circulation(i, j, f) = Γᶠᶠᵃ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
-        vorticity(i, j, f) = ζ₃ᶠᶠᵃ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
+        circulation(i, j, f) = Γᶠᶠᶜ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
+        vorticity(i, j, f) = ζ₃ᶠᶠᶜ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
 
         CUDA.allowscalar(true)
 

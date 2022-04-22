@@ -6,9 +6,35 @@ using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
-const MAX_THREADS_PER_BLOCK = 256
-
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
+
+function heuristic_workgroup(Wx, Wy, Wz=nothing)
+
+    workgroup = Wx == 1 && Wy == 1 ?
+
+                    # One-dimensional column models:
+                    (1, 1) :
+
+                Wx == 1 ?
+
+                    # Two-dimensional y-z slice models:
+                    (1, min(256, Wy)) :
+
+                Wy == 1 ?
+
+                    # Two-dimensional x-z slice models:
+                    (1, min(256, Wx)) :
+
+                    # Three-dimensional models
+                    (16, 16)
+
+    return workgroup
+end
+
+function work_layout(grid, worksize::Tuple; kwargs...)
+    workgroup = heuristic_workgroup(worksize...)
+    return workgroup, worksize
+end
 
 """
     work_layout(grid, dims; include_right_boundaries=false, location=nothing)
@@ -23,45 +49,14 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-
-function heuristic_workgroup(grid)
-
-    Nx, Ny, Nz = size(grid)
-
-    workgroup = Nx == 1 && Ny == 1 ?
-
-                    # One-dimensional column models:
-                    (1, 1) :
-
-                Nx == 1 ?
-
-                    # Two-dimensional y-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, Ny)) :
-
-                Ny == 1 ?
-
-                    # Two-dimensional x-z slice models:
-                    (1, min(MAX_THREADS_PER_BLOCK, Nx)) :
-
-                    # Three-dimensional models
-                    (Int(√MAX_THREADS_PER_BLOCK), Int(√MAX_THREADS_PER_BLOCK))
-
-    return workgroup
-end
-
-
-function work_layout(grid, worksize::NTuple{N, Int}; kwargs...) where N
-    workgroup = heuristic_workgroup(grid)
-    return workgroup, worksize
-end
-
 function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
-
-    workgroup = heuristic_workgroup(grid)
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
 
+    workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
+
+    # Drop omitted dimemsions
     worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
                workdims == :xy  ? (Nx′, Ny′) :
                workdims == :xz  ? (Nx′, Nz′) :
@@ -89,9 +84,9 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec,
-                          include_right_boundaries = include_right_boundaries,
-                                reduced_dimensions = reduced_dimensions,
-                                          location = location)
+                                      include_right_boundaries = include_right_boundaries,
+                                      reduced_dimensions = reduced_dimensions,
+                                      location = location)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
@@ -103,4 +98,5 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 end
 
 # When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec = launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
+    launch!(arch, grid, workspec, args...; kwargs...)

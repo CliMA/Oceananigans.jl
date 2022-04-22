@@ -1,5 +1,5 @@
 """
-    NonTraditionalBetaPlane{FT} <: AbstractRotation
+    struct NonTraditionalBetaPlane{FT} <: AbstractRotation
 
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
@@ -25,8 +25,8 @@ end
 
 """
     NonTraditionalBetaPlane(FT=Float64;
-        fz=nothing, fy=nothing, β=nothing, γ=nothing,
-        rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+                            fz=nothing, fy=nothing, β=nothing, γ=nothing,
+                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
 The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
 `rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate
@@ -41,8 +41,8 @@ and `γ = - 4 * rotation_rate * sind(latitude) / radius`.
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """
 function NonTraditionalBetaPlane(FT=Float64;
-        fz=nothing, fy=nothing, β=nothing, γ=nothing,
-        rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
+                                 fz=nothing, fy=nothing, β=nothing, γ=nothing,
+                                 rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
     Ω, φ, R = rotation_rate, latitude, radius
 
@@ -81,7 +81,9 @@ end
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     @inbounds -two_Ωʸ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶠ[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
-Base.show(io::IO, β_plane::NonTraditionalBetaPlane{FT}) where FT =
-    print(io, "NonTraditionalBetaPlane{$FT}: ",
-          @sprintf("fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e, R = %.2e",
+Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
+    string("NonTraditionalBetaPlane{$FT}",
+           @sprintf("(fz = %.2e, fy = %.2e, β = %.2e, γ = %.2e, R = %.2e)",
                    β_plane.fz, β_plane.fy, β_plane.β, β_plane.γ, β_plane.R))
+
+Base.show(io::IO, β_plane::NonTraditionalBetaPlane) = print(io, summary(β_plane))

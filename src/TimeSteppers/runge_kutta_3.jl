@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
@@ -18,17 +19,36 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(arch, grid, tracers,
-                           Gⁿ = TendencyFields(arch, grid, tracers),
-                           G⁻ = TendencyFields(arch, grid, tracers))
+    RungeKutta3TimeStepper(grid, tracers;
+                           implicit_solver = nothing,
+                           Gⁿ = TendencyFields(grid, tracers),
+                           G⁻ = TendencyFields(grid, tracers))
 
-Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
-`grid`. The tendency fields can be specified via optional kwargs.
+Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
+The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
+
+The scheme described by Le and Moin (1991) (see [LeMoin1991](@cite)). In a nutshel, the 3rd-order
+Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
+step is applied after at each substep.
+
+The state `U` after each substep `m` is
+
+```julia
+Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
+```
+
+where `Uᵐ` is the state at the ``m``-th substep, `Gᵐ` is the tendency
+at the ``m``-th substep, `Gᵐ⁻¹` is the tendency at the previous substep,
+and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
+``ζ¹ = 0``, ``ζ² = -17/60``, ``ζ³ = -5/12``.
+
+The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
+`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
 """
-function RungeKutta3TimeStepper(arch, grid, tracers;
+function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(arch, grid, tracers),
-                                G⁻ = TendencyFields(arch, grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = TendencyFields(grid, tracers),
+                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -51,7 +71,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to
@@ -141,53 +161,45 @@ stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
-
-    barrier = Event(device(model.architecture))
-
-    substep_field_kernel! = rk3_substep_field!(device(model.architecture), workgroup, worksize)
-
+    barrier = Event(device(architecture(model)))
+    substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
     model_fields = prognostic_fields(model)
-
     events = []
 
     for (i, field) in enumerate(model_fields)
-
         field_event = substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
                                             model.timestepper.Gⁿ[i],
                                             model.timestepper.G⁻[i],
                                             dependencies=barrier)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = i - 3 # assumption
+        tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       tracer_index,
                        model.clock,
                        stage_Δt(Δt, γⁿ, ζⁿ),
-                       model.closure,
-                       tracer_index,
-                       model.diffusivity_fields,
-                       model.tracers,
                        dependencies = field_event)
 
         push!(events, field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(architecture(model)), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
 """
-Time step fields via the 3rd-order Runge-Kutta method
+Time step velocity fields via the 3rd-order Runge-Kutta method
 
-    `U^{m+1} = U^m + Δt (γⁿ G^{m} + ζⁿ G^{m-1})`,
+```
+Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
+```
 
 where `m` denotes the substage.
-"""
-
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
 """
 @kernel function rk3_substep_field!(U, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
@@ -197,9 +209,6 @@ Time step velocity fields with a 3rd-order Runge-Kutta method.
     end
 end
 
-"""
-Time step velocity fields with a 3rd-order Runge-Kutta method.
-"""
 @kernel function rk3_substep_field!(U, Δt, γ¹, ::Nothing, G¹, G⁰)
     i, j, k = @index(Global, NTuple)
 
@@ -207,5 +216,3 @@ Time step velocity fields with a 3rd-order Runge-Kutta method.
         U[i, j, k] += Δt * γ¹ * G¹[i, j, k]
     end
 end
-
-

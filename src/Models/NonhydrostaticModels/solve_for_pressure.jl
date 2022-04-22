@@ -14,18 +14,17 @@ end
 
 @kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
-    @inbounds rhs[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
 #####
 ##### Solve for pressure
 #####
 
-
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
     rhs = first(solver.storage)
-    arch = solver.architecture
-    grid = solver.my_grid
+    arch = architecture(solver)
+    grid = solver.local_grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
                         rhs, grid, Δt, U★, dependencies = device_event(arch))
@@ -43,7 +42,7 @@ function solve_for_pressure!(pressure, solver::FFTBasedPoissonSolver, Δt, U★)
 
     # Calculate right hand side:
     rhs = solver.storage
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
@@ -61,7 +60,7 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     # Calculate right hand side:
     rhs = solver.source_term
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
@@ -69,9 +68,8 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     wait(device(arch), rhs_event)
 
-    # Pressure Poisson rhs, scaled by Δzᵃᵃᶜ, is stored in solver.source_term:
+    # Pressure Poisson rhs, scaled by Δzᶜᶜᶜ, is stored in solver.source_term:
     solve!(pressure, solver)
 
     return nothing
 end
-

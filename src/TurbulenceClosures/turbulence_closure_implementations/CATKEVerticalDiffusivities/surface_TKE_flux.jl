@@ -23,8 +23,8 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct SurfaceTKEFlux{FT}
-    Cᵂu★ :: FT = 3.62
-    CᵂwΔ :: FT = 1.31
+    Cᵂu★ :: FT = 4.56
+    CᵂwΔ :: FT = 4.46
 end
 
 #####
@@ -32,13 +32,20 @@ end
 #####
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfCATKE, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
 
     return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
+
+""" Compute the flux of TKE through the surface / top boundary. """
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = 0
+
+# ASSUMING that CATKE is first.
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, first(closure_tuple), buoyancy)
 
 @inline function _top_tke_flux(i, j, grid, surface_TKE_flux::SurfaceTKEFlux, closure,
                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
@@ -65,7 +72,7 @@ end
 @inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     FT = eltype(grid)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
-    Δz = Δzᵃᵃᶜ(i, j, grid.Nz, grid)
+    Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
     return max(zero(FT), Qᵇ) * Δz   
 end
 
@@ -98,8 +105,7 @@ end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
-
-    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3)(), Center())
+    default_top_bc = default_prognostic_bc(topology(grid, 3)(), Center())
 
     user_bc_names = keys(user_bcs)
     u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : default_top_bc
@@ -109,7 +115,7 @@ function top_velocity_boundary_conditions(grid, user_bcs)
 end
 
 """ Add TKE boundary conditions specific to `CATKEVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::Union{CATKEVD, CATKEVDArray},
+function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
                                                   user_bcs,
                                                   grid,
                                                   tracer_names,
@@ -141,3 +147,7 @@ function add_closure_specific_boundary_conditions(closure::Union{CATKEVD, CATKEV
     return new_boundary_conditions
 end
 
+Base.show(io::IO, SurfaceTKEFlux::SurfaceTKEFlux) =
+    print(io, "SurfaceTKEFlux: \n" *
+              "         Cᵂu★ = $(SurfaceTKEFlux.Cᵂu★), \n" *
+              "         CᵂwΔ = $(SurfaceTKEFlux.CᵂwΔ)")

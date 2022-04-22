@@ -36,7 +36,7 @@ function ∇²_KA!(∇²ϕ, ϕ)
     Nx, Ny, Nz = worksize = size(grid)
     workgroup = (16, 16)
 
-    fill_halo_regions!(ϕ, arch)
+    fill_halo_regions!(ϕ)
     loop! = _∇²_KA!(device(arch), workgroup, worksize)
     event = loop!(∇²ϕ, grid, ϕ)
     wait(device(arch), event)
@@ -46,7 +46,7 @@ end
 
 function ∇²_base_threads!(∇²ϕ, ϕ)
     arch = ϕ.architecture
-    fill_halo_regions!(ϕ, arch)
+    fill_halo_regions!(ϕ)
     _∇²_base_threads!(∇²ϕ, grid, ϕ)
     return nothing
 end
