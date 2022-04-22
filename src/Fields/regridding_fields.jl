@@ -40,7 +40,7 @@ output_field[1, 1, :]
 # output
 4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
  0.0
- 2.333333333333333
+ 2.333333333333334
  3.0
  0.0
 ```
