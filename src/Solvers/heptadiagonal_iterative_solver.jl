@@ -110,17 +110,17 @@ function HeptadiagonalIterativeSolver(coeffs;
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
     return HeptadiagonalIterativeSolver(grid,
-                                 problem_size, 
-                                 matrix_constructors,
-                                 diagonal,
-                                 placeholder_matrix,
-                                 preconditioner,
-                                 preconditioner_method,
-                                 settings,
-                                 iterative_solver, 
-                                 tolerance,
-                                 placeholder_timestep,
-                                 maximum_iterations)
+                                        problem_size, 
+                                        matrix_constructors,
+                                        diagonal,
+                                        placeholder_matrix,
+                                        preconditioner,
+                                        preconditioner_method,
+                                        settings,
+                                        iterative_solver, 
+                                        tolerance,
+                                        placeholder_timestep,
+                                        maximum_iterations)
 end
 
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
@@ -312,7 +312,9 @@ end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
-    print(io, "├── grid: ", summary(solver.grid), '\n')
-    print(io, "├── method: ", solver.iterative_solver, '\n')
-    print(io, "└── preconditioner: ", solver.preconditioner_method)
+    print(io, "├── Problem size: "  , solver.problem_size, '\n')
+    print(io, "├── Grid: "  , solver.grid, '\n')
+    print(io, "├── Solution method: ", solver.iterative_solver, '\n')
+    print(io, "└── Preconditioner: ", solver.preconditioner_method)
+    return nothing
 end

@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
-import Oceananigans.Fields: fill_halo_regions_field_tuple!
+import Oceananigans.Fields: tupled_fill_halo_regions!
 
 using Oceananigans.BoundaryConditions:
     fill_west_and_east_halo!, 
@@ -12,7 +12,6 @@ import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!
-
 
 #####
 ##### MPI tags for halo communication BCs
@@ -60,19 +59,19 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions_field_tuple!(full_fields, grid::DistributedGrid, args...; kwargs...) 
+function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_location, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, loc, grid::DistributedGrid, args...; kwargs...)
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...; kwargs...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, loc, arch, barrier, grid, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, loc, arch, barrier, grid, args...; kwargs...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, loc, arch, barrier, grid, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
@@ -86,7 +85,6 @@ function fill_halo_regions!(c::OffsetArray, bcs, grid::DistributedGrid, c_locati
     return nothing
 end
 
-
 #####
 ##### fill_west_and_east_halos!   }
 ##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
@@ -98,8 +96,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, child_architecture(arch), barrier, grid, args...; kwargs...)
+        function $fill_both_halos!(c, bc_side, bc_opposite_side, loc, arch, barrier, grid, args...; kwargs...)
+                event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
             return [event]
         end
     end
@@ -113,7 +111,7 @@ end
 
 const CBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
 
-for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
+for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, :top], [1, 2, 3])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     send_side_halo = Symbol("send_$(side)_halo")
     send_opposite_side_halo = Symbol("send_$(opposite_side)_halo")
@@ -121,17 +119,17 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, arch, 
-                                   barrier, grid, c_location, args...; kwargs...)
+        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, loc, arch, 
+                                   barrier, grid, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
-            send_req1 = $send_side_halo(c, grid, c_location, local_rank, bc_side.condition.to)
-            send_req2 = $send_opposite_side_halo(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
+            send_req1 = $send_side_halo(c, grid, loc[$dir], local_rank, bc_side.condition.to)
+            send_req2 = $send_opposite_side_halo(c, grid, loc[$dir], local_rank, bc_opposite_side.condition.to)
 
-            recv_req1 = $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
-            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
+            recv_req1 = $recv_and_fill_side_halo!(c, grid, loc[$dir], local_rank, bc_side.condition.to)
+            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, loc[$dir], local_rank, bc_opposite_side.condition.to)
 
             return send_req1, send_req2, recv_req1, recv_req2
         end
@@ -149,8 +147,8 @@ for side in sides
     side_send_tag = Symbol("$(side)_send_tag")
 
     @eval begin
-        function $send_side_halo(c, grid, c_location, local_rank, rank_to_send_to)
-            send_buffer = $underlying_side_boundary(c, grid, c_location)
+        function $send_side_halo(c, grid, side_location, local_rank, rank_to_send_to)
+            send_buffer = $underlying_side_boundary(c, grid, side_location)
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
@@ -172,8 +170,8 @@ for side in sides
     side_recv_tag = Symbol("$(side)_recv_tag")
 
     @eval begin
-        function $recv_and_fill_side_halo!(c, grid, c_location, local_rank, rank_to_recv_from)
-            recv_buffer = $underlying_side_halo(c, grid, c_location)
+        function $recv_and_fill_side_halo!(c, grid, side_location, local_rank, rank_to_recv_from)
+            recv_buffer = $underlying_side_halo(c, grid, side_location)
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"

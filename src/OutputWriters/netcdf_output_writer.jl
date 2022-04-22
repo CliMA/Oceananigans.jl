@@ -122,7 +122,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
+    mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
@@ -131,20 +131,21 @@ mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     dataset :: D
     outputs :: O
     schedule :: T
-    mode :: String
+    overwrite_existing :: Bool
     array_type :: A
     previous :: Float64
     verbose :: Bool
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filepath, schedule
+    NetCDFOutputWriter(model, outputs; filename, schedule
+                                          dir = ".",
                                    array_type = Array{Float32},
                                       indices = nothing,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = nothing,
+                           overwrite_existing = false,
                                   compression = 0,
                                       verbose = false)
 
@@ -156,18 +157,21 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filepath` (required): Filepath to save output to.
+- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
+- `dir`: Directory to save output to.
+
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: Array{Float32}.
+                Default: `Array{Float32}`.
 
-- `indices`: TODO
+- `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
+             includes the full fields.
 
-- `with_halos`: TODO
+- `with_halos`: Boolean defining whether or not to include halos in the outputs.
 
-- `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
+- `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
@@ -175,14 +179,15 @@ Keyword arguments
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
-- `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
-          documentation for more information on the `mode` option.
+- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
+                        will overwrite `filepath` if it exists or create it if it does not.
+                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
 
-- `compression`: Determines the compression level of data (0-9, default 0)
+- `compression`: Determines the compression level of data (0-9; default: 0)
 
 Examples
 ========
-Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
+Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
 ```jldoctest netcdf1
@@ -197,11 +202,11 @@ simulation = Simulation(model, Δt=12, stop_time=3600)
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: fields.nc
+├── filepath: ./fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
 └── array type: Array{Float32}
@@ -209,12 +214,12 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
+    NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
                        schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: surface_xy_slice.nc
+├── filepath: ./surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
 └── array type: Array{Float32}
@@ -223,13 +228,13 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
-                       filepath = "averaged_z_profile.nc",
+                       filename = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        indices = (1, 1, :))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: averaged_z_profile.nc
+├── filepath: ./averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 └── array type: Array{Float32}
@@ -268,37 +273,52 @@ global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filepath="things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: things.nc
+├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float32}
 ```
 """
-function NetCDFOutputWriter(model, outputs; filepath, schedule,
+function NetCDFOutputWriter(model, outputs; filename, schedule,
+                                          dir = ".",
                                    array_type = Array{Float32},
                                       indices = (:, :, :),
                                    with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = nothing,
+                           overwrite_existing = nothing,
                                   compression = 0,
                                       verbose = false)
 
-    if isfile(filepath) && isnothing(mode)
-        @warn "$filepath already exists but no NetCDFOutputWriter mode was explicitly specified. " *
-              "Will default to mode = \"a\" to append to existing file. You might experience errors " *
-              "when writing output if the existing file belonged to a different simulation!"
-        mode = "a"
+    mkpath(dir)
+    filename = auto_extension(filename, ".nc")
+    filepath = joinpath(dir, filename)
+
+    if isnothing(overwrite_existing)
+        if isfile(filepath)
+            overwrite_existing = false
+        else
+            overwrite_existing = true
+        end
+    else
+
+        if isfile(filepath) && !overwrite_existing
+            @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
+                  "You might experience errors when writing output if the existing file belonged to a different simulation!"
+
+        elseif isfile(filepath) && overwrite_existing
+            @warn "Overwriting existing $filepath."
+
+        end
     end
 
-    # Default to create/clobber.
-    isnothing(mode) && (mode = "c")
+    mode = overwrite_existing ? "c" : "a"
 
     # TODO: This call to dictify is only necessary because "dictify" is hacked to help
     # with LagrangianParticles output (see the end of the file).
@@ -362,7 +382,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, overwrite_existing, array_type, 0.0, verbose)
 end
 
 #####

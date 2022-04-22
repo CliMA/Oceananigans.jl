@@ -29,8 +29,8 @@ function visualize_barotropic_gyre(filepath)
 
     file = jldopen(filepath)
 
-    Nx = file["grid/grid/Nx"]
-    Ny = file["grid/grid/Ny"]
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
 
     # A spherical domain
     grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -44,7 +44,7 @@ function visualize_barotropic_gyre(filepath)
     xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
     xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
 
-    iter = Node(0)
+    iter = Observable(0)
 
     plot_title = @lift @sprintf("Barotropic gyre: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
 
@@ -61,10 +61,9 @@ function visualize_barotropic_gyre(filepath)
     statenames = ["u", "v", "η"]
     for (n, var) in enumerate([u, v, η])
         ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
-        wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
+        wireframe!(ax, Sphere(Point3f(0), 0.99f0), show_axis=false)
         surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])
-        rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-        zoom!(ax.scene, (0, 0, 0), 5, false)
+        rotate_cam!(ax.scene, (0, 3π/4, 0))
         fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
     end
 

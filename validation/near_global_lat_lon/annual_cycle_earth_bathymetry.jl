@@ -207,7 +207,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
-                                    tracers = (:T, :S),
+                                    tracers = :T,
                                     closure = (vertical_closure, convective_adjustment)) 
 
 #####
@@ -218,8 +218,6 @@ u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
 T .= -1
-S = model.tracers.S
-S .= 30
 
 #####
 ##### Simulation setup
@@ -236,7 +234,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds
 else
-    Δt = 5minutes
+    Δt = 20minutes
 end
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
@@ -264,22 +262,20 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 u, v, w = model.velocities
 
 T = model.tracers.T
-S = model.tracers.S
 η = model.free_surface.η
 
-output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, η),
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
-                                                              force = true)
+                                                              overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

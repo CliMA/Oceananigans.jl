@@ -40,7 +40,11 @@ Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
 function diffusivity end 
 
-# For tuples
+# Fallback locations
+@inline viscosity_location(::AbstractScalarDiffusivity) = (Center(), Center(), Center())
+@inline diffusivity_location(::AbstractScalarDiffusivity) = (Center(), Center(), Center())
+
+# For tuples (note that kernel functions are "untupled", so these are for the user API)
 viscosity(closure::Tuple, K) = sum(Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure)))
 diffusivity(closure::Tuple, K, id) = sum(Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure)))
 
@@ -54,23 +58,25 @@ Base.summary(::ThreeDimensionalFormulation) = "ThreeDimensionalFormulation"
 ##### Coefficient extractors
 #####
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K)) 
-@inline νᶠᶠᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶠᶜᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶜᶠᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K))
+const ASD = AbstractScalarDiffusivity
 
-@inline κᶠᶜᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶠᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶜᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity(closure, K, id))
+@inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K)) 
+@inline νᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
+@inline νᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
+@inline νᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
 
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K)) 
-@inline νzᶠᶠᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νzᶠᶜᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νzᶜᶠᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K))
+@inline κᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
+@inline κᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
+@inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
 
-@inline κzᶠᶜᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κzᶜᶠᶜ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κzᶜᶜᶠ(i, j, k, grid, closure::AbstractScalarDiffusivity, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity(closure, K, id))
+@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K)) 
+@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
+@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
+@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clock, viscosity_location(clo), viscosity(clo, K))
+
+@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
+@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
+@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity_location(clo), diffusivity(clo, K, id))
 
 #####
 ##### Stress divergences

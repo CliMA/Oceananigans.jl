@@ -144,13 +144,12 @@ nothing # hide
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
-saved_output_prefix = "horizontal_convection"
-saved_output_filename = saved_output_prefix * ".jld2"
+saved_output_filename = "horizontal_convection.jld2"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
-                                                      prefix = saved_output_prefix,
-                                                      force = true)
+                                                      filename = saved_output_filename,
+                                                      overwrite_existing = true)
 nothing # hide
 
 # Ready to press the big red button:
@@ -171,8 +170,7 @@ using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations: volume
 
-saved_output_prefix = "horizontal_convection"
-saved_output_filename = saved_output_prefix * ".jld2"
+saved_output_filename = "horizontal_convection.jld2"
 
 ## Open the file with our data
 file = jldopen(saved_output_filename)
