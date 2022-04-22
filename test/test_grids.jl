@@ -294,7 +294,7 @@ function test_grid_equality_over_architectures()
     if CUDA.has_cuda()
         grid_gpu = RectilinearGrid(CUDAGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
     elseif AMDGPU.has_rocm_gpu()
-        grid_gpu = RectilinearGrid(AMDGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+        grid_gpu = RectilinearGrid(ROCMGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
     end
     return grid_cpu == grid_gpu
 end
@@ -577,7 +577,8 @@ function test_lat_lon_precomputed_metrics(FT, arch)
         end
     end
 
-    end # CUDA.allowscalar()
+    CUDA.allowscalar(false)
+    AMDGPU.allowscalar(false)
 
 end
 
