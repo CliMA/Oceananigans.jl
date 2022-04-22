@@ -8,6 +8,7 @@ using CUDA
 using AMDGPU
 using KernelAbstractions
 using CUDAKernels
+using ROCKernels
 using Adapt
 using OffsetArrays
 
@@ -88,7 +89,7 @@ struct ROCMGPU <: AbstractArchitecture end
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::CUDAGPU) = CUDAKernels.CUDADevice()
-device(::ROCMGPU) = AMDGPU.device()
+device(::ROCMGPU) = ROCKernels.ROCDevice()
 
 architecture() = nothing
 architecture(::Number) = nothing
