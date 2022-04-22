@@ -61,7 +61,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
     VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
