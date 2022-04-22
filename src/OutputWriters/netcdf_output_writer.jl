@@ -122,7 +122,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
+    mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
 
 An output writer for writing to NetCDF files.
 """
@@ -164,14 +164,14 @@ Keyword arguments
 - `dir`: Directory to save output to.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: Array{Float32}.
+                Default: `Array{Float32}`.
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
 - `with_halos`: Boolean defining whether or not to include halos in the outputs.
 
-- `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
+- `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
@@ -179,15 +179,15 @@ Keyword arguments
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
-- `overwrite_existing`: If false, NetCDFOutputWriter will be set to append to `filepath`. If true, NetCDFOutputWriter 
-                        will overwrite `filepath` if it exists or create it if it does not. 
-                        Default: false. See NCDatasets.jl documentation for more information about its `mode` option.
+- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
+                        will overwrite `filepath` if it exists or create it if it does not.
+                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
 
-- `compression`: Determines the compression level of data (0-9, default 0)
+- `compression`: Determines the compression level of data (0-9; default: 0)
 
 Examples
 ========
-Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
+Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
 ```jldoctest netcdf1
