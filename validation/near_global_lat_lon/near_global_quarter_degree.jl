@@ -351,7 +351,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 run!(simulation, pickup = pickup_file)
 
 @info """
-
     Simulation took $(prettytime(simulation.run_wall_time))
     Background diffusivity: $background_diffusivity
     Free surface: $(typeof(model.free_surface).name.wrapper)
