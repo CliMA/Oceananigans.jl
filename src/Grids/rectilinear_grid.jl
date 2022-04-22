@@ -110,7 +110,7 @@ Keyword arguments
                      `k` as argument and retuns the location of the faces for indices `k = 1` through `k = Nz + 1`,
                      where `Nz` is the `size` of the stretched `z` dimension.
 
-*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
+**Note**: _Either_ `extent`, or _all_ of `x`, `y`, and `z` must be specified.
 
 - `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
           the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.

@@ -42,7 +42,7 @@ where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, 
 solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
 ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
-eigenvalues ``\lambda_x``, ``\lambda_y``, and ``\lambda_z`` satisfying the discrete form of Poisson's equation with
+eigenvalues ``\lambda^x``, ``\lambda^y``, and ``\lambda^z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
 ```math
@@ -53,21 +53,21 @@ The eigenvalues are given by [Schumann88](@cite) and can also be tediously deriv
 discrete Fourier transform into \eqref{eq:poisson-spectral}:
 ```math
 \begin{align}
-    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \, , \\
-    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \, , \\
-    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1 \, ,
+    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1) \pi}{N_x}  \right ], \quad i=0, 1, \dots, N_x-1 \, , \\
+    \lambda^y_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1) \pi}{N_y}  \right ], \quad j=0, 1, \dots, N_y-1 \, , \\
+    \lambda^z_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1) \pi}{2N_z} \right ], \quad k=0, 1, \dots, N_z-1 \, ,
 \end{align}
 ```
-where ``\lambda_x`` and ``\lambda_y`` correspond to periodic boundary conditions in the horizontal and ``\lambda_z`` to
+where ``\lambda^x`` and ``\lambda^y`` correspond to periodic boundary conditions in the horizontal and ``\lambda^z`` to
 Neumann boundary conditions in the vertical.
 
 There is also an ambiguity in the solution to Poisson's equation as it's only defined up to a constant. To resolve this
-we choose the solution with zero mean by setting the zeroth Fourier coefficient ``p_{000}`` (corresponding to
+ambiguity we choose the solution with zero mean by setting the zeroth Fourier coefficient ``p_{000}`` (corresponding to
 ``k_x = k_y = k_z = 0``) to zero. This also has the added benefit of discarding the zero eigenvalue so we don't divide by
 it.
 
 The Fast Fourier transforms are computed using FFTW.jl [[Frigo98](@cite) and [Frigo05](@cite)] on the CPU and using the
-cuFFT library on the GPU. Along wall-bouded dimensions, the cosine transform is used. In particular, as the transforms
+cuFFT library on the GPU. Along wall-bounded dimensions, the cosine transform is used. In particular, as the transforms
 are performed on a staggered grid, DCT-II (`REDFT10`) is used to perform the forward cosine transform and DCT-III
 (`REDFT01`) is used to perform the inverse cosine transform.
 
@@ -101,10 +101,10 @@ and recalling that Fourier transforms do ``\partial_x \rightarrow \mathrm{i} k_x
 Discretizing the ``\partial_z^2`` derivative and equating the term inside the brackets to zero we arrive at
 ``N_x\times N_y`` symmetric tridiagonal systems of ``N_z`` linear equations for the Fourier modes:
 ```math
-\frac{\tilde{p}_{mn,k-1}}{\Delta z^C_k}
+\frac{\tilde{p}_{mn, k-1}}{\Delta z^C_k}
 - \left\lbrace \frac{1}{\Delta z^C_k} + \frac{1}{\Delta z^C_{k+1}} + \Delta z^F_k (k_x^2 + k_y^2) \right\rbrace
   \tilde{p}_{mnk}
-+ \frac{\tilde{p}_{mn,k+1}}{\Delta z^C_{k+1}}
++ \frac{\tilde{p}_{mn, k+1}}{\Delta z^C_{k+1}}
 = \Delta z^F_k \tilde{\mathscr{F}}_{mnk} \, .
 ```
 
@@ -199,11 +199,10 @@ series sines and cosines. This means discrete Fast Fourier Transforms can't be u
 of the equation right hand side onto eigenvectors. So an eigenvector based approach to solving
 the Poisson equation is not computationally efficient.
 
-An pre-conditioned conjugate gradient iterative solver is used instead for problems with grids
-that are non uniform in multiple directions. This includes curvilinear grids on the sphere and
-also telescoping cartesian grids that stretch along more than one dimension. There are two forms 
-of the pressure operator in this approach. One is rigid lid form and one is an implicit 
-free-surface form.
+For problems with grids that are non uniform in multiple directions, we use instead a pre-conditioned conjugate
+gradient iterative solver. Such cases include curvilinear grids on the sphere and also telescoping cartesian
+grids that stretch along more than one dimension. There are two forms of the pressure operator in this approach.
+One is rigid lid form and one is an implicit free-surface form.
 
 ### Rigid lid pressure operator
 
@@ -223,13 +222,13 @@ integrated continuity equation
 ```
 
 where ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); 
-currently ``M=0`` is assumed. To form a linear system that can be solved implicitly we recast
+currently we assume that ``M=0``. To form a linear system that can be solved implicitly we recast
 the continuity equation into a discrete integral form
 
 ```math
     \begin{equation}
     \label{eq:semi-discrete-integral-continuity}
-    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{caa} \sum_k A_y v = A_z M \, ,
+    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{aca} \sum_k A_y v = A_z M \, ,
     \end{equation}
 ```
 
@@ -247,11 +246,13 @@ as follows.
 Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
 
 ```math
-    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = -\delta_x^{caa} \sum_k A_x u^{n+1} - \delta_y^{caa} \sum_k A_y v^{n+1} \, .
+    \begin{equation}
+    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = -\delta_x^{caa} \sum_k A_x u^{n+1} - \delta_y^{aca} \sum_k A_y v^{n+1} \, .
+    \end{equation}
 ```
 
 Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-hand-side of
-\eqref{eq:hydrostatic-fractional-step} then gives an implicit equation for ``\eta^{n+1}``,
+\eqref{eq:hydrostatic-fractional-step} then gives an implicit equation for ``\eta^{n+1}``:
 
 ```math
 \begin{align}
@@ -260,5 +261,5 @@ Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-ha
 \end{align}
 ```
 
-Formulated in this way, the linear operator will be symmetric and so can be solved using a
-preconditioned conjugate gradient algorithmn.
+Formulated in this way, the linear operator is symmetric and so can be solved using a
+preconditioned conjugate gradient algorithm.

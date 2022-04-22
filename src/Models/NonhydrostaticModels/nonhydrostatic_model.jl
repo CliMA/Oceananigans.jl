@@ -69,15 +69,15 @@ end
                    auxiliary_fields = NamedTuple(),
     )
 
-Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
-when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
+Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
+approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
+  - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
-            of the grid.
+            of the `grid`.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.

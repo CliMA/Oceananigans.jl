@@ -110,7 +110,7 @@ Keyword arguments
 Example
 =======
 
-Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average:
+Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
 
 ```jldoctest jld2_output_writer
 using Oceananigans
@@ -143,7 +143,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
+and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
