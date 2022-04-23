@@ -227,9 +227,9 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             grids_to_test(topology) = [RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...),
                                        ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)]
 
-            for grid in grids_to_test((Periodic, Periodic, Bounded))
+            for grid in grids_to_test((Periodic, Bounded, Bounded))
                 for name in (:u, :c)
-                    for (side, L) in zip((:north, :south, :top, :bottom, :immersed), (Ly, Ly, Lz, Lz, Lz))
+                    for (side, L) in zip((:south, :top, :bottom, :immersed), (Ly, Ly, Lz, Lz, Lz))
                         @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
                         @test test_nonhydrostatic_flux_budget(grid, name, side, L)
                     end
