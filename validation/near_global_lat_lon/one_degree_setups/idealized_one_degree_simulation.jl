@@ -5,9 +5,10 @@ using Printf
 using JLD2
 using GLMakie
 using SeawaterPolynomials.TEOS10
-using Oceananigans.Operators: Δx, Δy
+using Oceananigans.Operators: Δx, Δy, ζ₃ᶠᶠᶜ
 
 using Oceananigans: fields
+using Oceananigans.Grids: ynode
 
 arch = CPU()
 filename = "near_global_one_degree"
@@ -54,14 +55,24 @@ function closure_tuple(; νh, κ_skew=0, κ_symmetric=κ_skew)
 end
 
 @inline T_reference(φ) = max(-1.0, 30.0 * cos(1.2 * π * φ / 180))
-@inline T_relaxation(λ, φ, t, T, tᵣ) = 1 / tᵣ * (T - T_reference(φ))
-T_top_bc = FluxBoundaryCondition(T_relaxation, field_dependencies=:T, parameters=30days)
+
+@inline function T_relaxation(i, j, grid, clock, fields, tᵣ)
+    φ = ynode(Center(), j, grid)
+    return @inbounds 1 / tᵣ * (fields.T[i, j, grid.Nz] - T_reference(φ))
+end
+
+T_top_bc = FluxBoundaryCondition(T_relaxation, discrete_form=true, parameters=30days)
 T_bcs = FieldBoundaryConditions(top=T_top_bc)
 
-@inline surface_stress_x(λ, φ, t, p) = p.τ₀ * (1 + exp(-φ^2 / 200)) - (p.τ₀ + p.τˢ) * exp(-(φ + 50)^2 / 200) -
-                                                                      (p.τ₀ + p.τᴺ) * exp(-(φ - 50)^2 / 200)
+@inline surface_stress_x(φ, τ₀, τˢ, τᴺ) = τ₀ * (1 - exp(-φ^2 / 200)) - (τ₀ + τˢ) * exp(-(φ + 50)^2 / 200) -
+                                                                       (τ₀ + τᴺ) * exp(-(φ - 50)^2 / 200)
 
-u_top_bc = FluxBoundaryCondition(surface_stress_x, parameters=(τ₀=6e-5, τˢ=2e-4, τᴺ=5e-5))
+@inline function surface_stress_x(i, j, grid, clock, fields, p)
+    φ = ynode(Center(), j, grid)
+    return surface_stress_x(φ, p.τ₀, p.τˢ, p.τᴺ)
+end
+
+u_top_bc = FluxBoundaryCondition(surface_stress_x, discrete_form=true, parameters=(τ₀=6e-5, τˢ=2e-4, τᴺ=5e-5))
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
 model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
@@ -75,7 +86,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
 Tᵢ(λ, φ, z) = T_reference(φ)
 set!(model, T=Tᵢ)
 
-simulation = Simulation(model; Δt=20minutes, stop_iteration=1000)
+simulation = Simulation(model; Δt=20minutes, stop_time=30days)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
@@ -107,9 +118,10 @@ simulation.callbacks[:p] = Callback(progress, IterationInterval(10))
 
 u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
+ζ = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 
-simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE)),
-                                                       schedule = IterationInterval(100),
+simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE, ζ)),
+                                                       schedule = TimeInterval(3hours),
                                                        filename = filename * "_surface.jld2",
                                                        indices = (:, :, grid.Nz), 
                                                        overwrite_existing = true)
@@ -120,16 +132,25 @@ ut = FieldTimeSeries(filename * "_surface.jld2", "u")
 vt = FieldTimeSeries(filename * "_surface.jld2", "v")
 Tt = FieldTimeSeries(filename * "_surface.jld2", "T")
 Kt = FieldTimeSeries(filename * "_surface.jld2", "KE")
-Nt = length(ut.times)
+t = ut.times
+Nt = length(t)
 
 fig = Figure(resolution=(1800, 900))
-ax = Axis(fig[1, 1], xlabel="Longitude", ylabel="Latitude", title="Surface kinetic energy")
-slider = Slider(fig[2, 1], range=1:Nt, startvalue=1)
+ax = Axis(fig[2, 1], xlabel="Longitude", ylabel="Latitude")
+slider = Slider(fig[3, 1], range=1:Nt, startvalue=1)
 n = slider.value
+
+title = @lift string("Surface kinetic energy at ", prettytime(t[$n]))
+Label(fig[1, 1], title, tellwidth=false)
 
 KEⁿ = @lift interior(Kt[$n], :, :, 1) ./ 2
 
-heatmap!(ax, KEⁿ, colorrange=(0, 1))
+hm = heatmap!(ax, KEⁿ, colorrange=(0, 0.1))
+Colorbar(fig[2, 2], hm, label="Surface kinetic energy (m² s⁻²)")
     
 display(fig)
+
+record(fig, filename * ".mp4", 1:Nt, framerate=12) do nn
+    n[] = nn
+end
 
