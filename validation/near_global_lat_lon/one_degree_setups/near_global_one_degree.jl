@@ -19,7 +19,9 @@ const thirty_days = 30days
 
 output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)_$(Nz)"
 
-bathymetry = jldopen("bathymetry-360x150-latitude-75.0.jld2")["bathymetry"]
+include("one_degree_artifacts.jl")
+bathymetry_path = download_bathymetry()
+bathymetry = jldopen(bathymetry_path)["bathymetry"]
 
 include("one_degree_interface_heights.jl")
 z = one_degree_interface_heights()
