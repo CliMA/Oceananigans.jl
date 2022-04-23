@@ -1,7 +1,7 @@
 # [Boundary conditions](@id model_step_bcs)
 
 Boundary conditions are intimately related to the grid topology, and only
-need to be considered in directions with `Bounded` topology.
+need to be considered in directions with `Bounded` topology or across immersed boundaries.
 In `Bounded` directions, tracer and momentum fluxes are conservative or "zero flux"
 by default. Non-default boundary conditions are therefore required to specify non-zero fluxes
 of tracers and momentum across `Bounded` directions, and across immersed boundaries
@@ -107,29 +107,33 @@ There are three primary boundary condition classifications:
 
 1. [`FluxBoundaryCondition`](@ref) specifies fluxes directly.
 
-   For example, sunlight absorbed at the ocean surface imparts a temperature flux that heats near-surface fluid.
-   If there is a known `diffusivity`, you can express `FluxBoundaryCondition(flux)`
-   using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
-   But when `diffusivity` is not known or is variable (as for large eddy simulation, for example),
-   it's convenient and more straightforward to apply `FluxBoundaryCondition`.
+   Some applications of `FluxBoundaryCondition` are:
+       * surface momentum fluxes due to wind, or "wind stress";
+       * linear or quadratic bottom drag;
+       * surface temperature fluxes due to heating or cooling;
+       * surface salinity fluxes due to precipitation and evaporation;
+       * relaxation boundary conditions that restores a field to some boundary distribution
+         over a given time-scale.
 
 2. [`ValueBoundaryCondition`](@ref) (Dirchlet) specifies the value of a field on
    the given boundary, which when used in combination with a turbulence closure
-   results in a flux across the boundary. For example, `ValueBoundaryCondition(0)` is used
-   to specify no-slip boundary conditions on velocity components tangential to the given boundary.
+   results in a flux across the boundary.
 
-   Examples with `ValueBoundaryCondition`:
+   Some applications of `ValueBoundaryCondition` are:
 
-   * Prescribe a surface to have a constant temperature, like 20 degrees.
-     Heat will then flux in and out of the domain depending on the temperature difference between the surface and the interior, and the temperature diffusivity.
-   * Prescribe a velocity tangent to a boundary as in a driven-cavity flow (for example), where the top boundary is moving.
-     Momentum will flux into the domain do the difference between the top boundary velocity and the interior velocity, and the prescribed viscosity.
+       * no-slip boundary condition for wall-tangential velocity components via `ValueBoundaryCondition(0)`;
+       * surface temperature distribution, where heat fluxes in and out of the domain
+         at a rate controlled by the near-surface temperature gradient and the temperature diffusivity;
+       * constant velocity tangential to a boundary as in a driven-cavity flow (for example), 
+         where the top boundary is moving. Momentum will flux into the domain do the difference
+         between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
    _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component.
-   `ImpenetrableBoundaryCondition` is internally enforced and thus only needs to be specified
-   for "additional" fields created outside model constructors.
+   `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
 
 3. [`GradientBoundaryCondition`](@ref) (Neumann) specifies the gradient of a field on a boundary.
+   For example, if there is a known `diffusivity`, we can express `FluxBoundaryCondition(flux)`
+   using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
 
 In addition to these primary boundary conditions, `ImpenetrableBoundaryCondition` applies to velocity
 components in wall-normal directions.
@@ -165,7 +169,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 
 Oceananigans uses a hierarchical structure to express boundary conditions:
 
-1. Each boundary has one [`BoundaryCondition`](@ref)
+1. Each boundary of reach field has one [`BoundaryCondition`](@ref)
 2. Each field has seven [`BoundaryCondition`](@ref) (`west`, `east`, `south`, `north`, `bottom`, `top` and
    `immersed`)
 3. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
