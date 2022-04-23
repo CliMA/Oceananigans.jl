@@ -180,7 +180,7 @@ for side in sides
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple, K, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
-             $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields) +
+             $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields)
     end
 end
 
