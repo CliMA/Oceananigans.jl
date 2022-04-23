@@ -129,8 +129,7 @@ There are three primary boundary condition classifications:
          between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
    _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component.
-   `ImpenetrableBoundaryCondition` is internally enforced and thus only needs to be specified
-   for "additional" fields created outside model constructors.
+   `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
 
 3. [`GradientBoundaryCondition`](@ref) (Neumann) specifies the gradient of a field on a boundary.
 
