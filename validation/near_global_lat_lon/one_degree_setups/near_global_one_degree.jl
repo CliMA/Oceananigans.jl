@@ -56,42 +56,52 @@ equation_of_state = LinearEquationOfState()
 buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=35.0)
 
 closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity, gent_mcwilliams_diffusivity)
+#closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity)
 # closures = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity, gent_mcwilliams_diffusivity)
 
-#=
-@inline reference_temperature(φ) = -1 + 32.0 * cos(2π * φ / 180)
-@inline temperature_relaxation(λ, φ, t, T, λ) = λ * (T - reference_temperature(φ))
-T_top_bc = FluxBoundaryCondition(temperature_relaxation, field_dependencies=:T, parameters=30days)
+@inline T_reference(φ) = max(-1.0, 30.0 * cos(1.2 * π * φ / 180))
+@inline T_relaxation(λ, φ, t, T, tᵣ) = 1 / tᵣ * (T - T_reference(φ))
+T_top_bc = FluxBoundaryCondition(T_relaxation, field_dependencies=:T, parameters=30days)
 T_bcs = FieldBoundaryConditions(top=T_top_bc)
 
-@inline surface_stress_x(λ, φ, t, p) = p.τ₀ (1 + exp(-φ^2 / 200) - (p.τ₀ + p.τˢ) * exp(-(φ + 50)^2 / 200) -
-                                                                   (p.τ₀ + p.τᴺ) * exp(-(φ - 50)^2 / 200)
+@inline surface_stress_x(λ, φ, t, p) = p.τ₀ * (1 + exp(-φ^2 / 200)) - (p.τ₀ + p.τˢ) * exp(-(φ + 50)^2 / 200) -
+                                                                      (p.τ₀ + p.τᴺ) * exp(-(φ - 50)^2 / 200)
 
-u_top_bc = FluxBoundaryCondition(surface_stress, parameters=(τ₀=6e-5, τˢ=2e-4, τᴺ=5e-5))
-=#
+u_top_bc = FluxBoundaryCondition(surface_stress_x, parameters=(τ₀=6e-5, τˢ=2e-4, τᴺ=5e-5))
+u_bcs = FieldBoundaryConditions(top=u_top_bc)
 
 model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     tracers = :T,
                                     closure = closures,
+                                    #boundary_conditions = (u=u_bcs, T=T_bcs),
                                     tracer_advection = WENO5(grid=underlying_grid))
 
-simulation = Simulation(model; Δt=20minutes, stop_iteration=10)
+simulation = Simulation(model; Δt=1.0, stop_iteration=3)
+Tᵢ(λ, φ, z) = T_reference(φ)
+set!(model, T=Tᵢ)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
     u, v, w = sim.model.velocities
+    T = sim.model.tracers.T
     η = sim.model.free_surface.η
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
     wmax = maximum(abs, w)
     ηmax = maximum(abs, η)
+    Tmax = maximum(T)
+    Tmin = minimum(T)
 
-    @info @sprintf("Iteration: %d, time: %s, wall time: %s, max(u): (%.2e, %.2e, %.2e), max|η|: %.1f",
-                   iteration(sim), prettytime(sim), prettytime(elapsed), umax, vmax, wmax, ηmax)
+    msg1 = @sprintf("Iteration: %d, time: %s, wall time: %s", iteration(sim), prettytime(sim), prettytime(elapsed))
+    msg2 = @sprintf("├── max(u): (%.2e, %.2e, %.2e) m s⁻¹", umax, vmax, wmax)
+    msg3 = @sprintf("├── extrema(T): (%.2f, %.2f) ᵒC", Tmin, Tmax)
+    msg4 = @sprintf("└── max|η|: %.2e m", ηmax)
+
+    @info string(msg1, '\n', msg2, '\n', msg3, '\n', msg4)
 
     wall_clock[] = time_ns()
 
