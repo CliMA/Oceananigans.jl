@@ -53,7 +53,7 @@ function idealized_one_degree_closure(; νh = (100kilometers)^2 / 1day,
                                                                     κ_symmetric = κ_symmetric,
                                                                     slope_limiter = FluxTapering(1e-2))
 
-    horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
+    horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=νh)
 
     return (horizontal_diffusivity,
             background_vertical_diffusivity,
