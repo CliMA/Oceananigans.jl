@@ -5,7 +5,8 @@ using Oceananigans
 using Oceananigans.Units
 using GLMakie
 
-filename = "coarse_baroclinic_adjustment"
+gradient = "x"
+filename = "coarse_baroclinic_adjustment_" * gradient
 
 # Architecture
 architecture = CPU()
@@ -63,7 +64,10 @@ y < y₀           => ramp = 0
 y₀ < y < y₀ + Δy => ramp = y / Δy
 y > y₀ + Δy      => ramp = 1
 """
-ramp(x, y, Δ) = min(max(0, sqrt(x^2 + y^2) / Δ + 1/2), 1)
+function ramp(x, y, Δ)
+    gradient == "x" && return min(max(0, x / Δ + 1/2), 1)
+    gradient == "y" && return min(max(0, y / Δ + 1/2), 1)
+end
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
@@ -148,17 +152,23 @@ z = z .* zscale
 times = bt.times
 Nt = length(times)
 
-un(n) = interior(mean(ut[n], dims=1), 1, :, :)
-bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
-cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
+if gradient == "y" # average in x
+    un(n) = interior(mean(ut[n], dims=1), 1, :, :)
+    bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
+    cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
+else # average in y
+    un(n) = interior(mean(ut[n], dims=2), :, 1, :)
+    bn(n) = interior(mean(bt[n], dims=2), :, 1, :)
+    cn(n) = interior(mean(ct[n], dims=2), :, 1, :)
+end
 
 @show min_c = 0
 @show max_c = 1
 @show max_u = maximum(abs, un(Nt))
 min_u = - max_u
 
-axu = Axis(fig[2, 1], title="Zonal velocity")
-axc = Axis(fig[3, 1], title="Tracer concentration")
+axu = Axis(fig[2, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Zonal velocity")
+axc = Axis(fig[3, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Tracer concentration")
 slider = Slider(fig[4, 1:2], range=1:Nt, startvalue=1)
 n = slider.value
 
