@@ -1,21 +1,25 @@
 using JLD2
 using GLMakie
 
-filename = "bathymetry-360x150-latitude-75.0.jld2"
-file = jldopen(filename)
+include("one_degree_artifacts.jl")
+bathymetry_path = download_bathymetry()
+boundary_conditions_path = download_boundary_conditions()
+
+file = jldopen(bathymetry_path)
 h = file["bathymetry"]
 land = h .> 0
 close(file)
 
 ρ₀ = 1025
 φ = -74.5:74.5
-filename = "boundary_conditions-1degree.jld2"
-file = jldopen(filename)
+file = jldopen(boundary_conditions_path)
 
 τˣ = file["τˣ"] ./ ρ₀
 τʸ = file["τʸ"] ./ ρ₀
 Tˢ = file["Tˢ"]
 Sˢ = file["Sˢ"]
+
+close(file)
 
 τˣ[isnan.(τˣ)] .= 0
 τʸ[isnan.(τʸ)] .= 0
