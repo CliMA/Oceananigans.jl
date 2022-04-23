@@ -64,6 +64,11 @@ closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_ver
 @inline temperature_relaxation(λ, φ, t, T, λ) = λ * (T - reference_temperature(φ))
 T_top_bc = FluxBoundaryCondition(temperature_relaxation, field_dependencies=:T, parameters=30days)
 T_bcs = FieldBoundaryConditions(top=T_top_bc)
+
+@inline surface_stress_x(λ, φ, t, p) = p.τ₀ (1 + exp(-φ^2 / 200) - (p.τ₀ + p.τˢ) * exp(-(φ + 50)^2 / 200) -
+                                                                   (p.τ₀ + p.τᴺ) * exp(-(φ - 50)^2 / 200)
+
+u_top_bc = FluxBoundaryCondition(surface_stress, parameters=(τ₀=6e-5, τˢ=2e-4, τᴺ=5e-5))
 =#
 
 model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
