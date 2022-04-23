@@ -1,20 +1,16 @@
 using Oceananigans
 using Oceananigans.Units
-using Printf
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Printf
 using JLD2
+using GLMakie
 using SeawaterPolynomials.TEOS10
+using Oceananigans.Operators: Δx, Δy
+
+using Oceananigans: fields
 
 arch = CPU()
-reference_density = 1029
-latitude = (-75, 75)
-
-# 1 degree resolution
-Nx = 360
-Ny = 150
-Nz = 48
-
-output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)_$(Nz)"
+filename = "near_global_one_degree"
 
 include("one_degree_artifacts.jl")
 # bathymetry_path = download_bathymetry() # not needed because we uploaded to repo
@@ -23,41 +19,39 @@ bathymetry = jldopen(bathymetry_path)["bathymetry"]
 include("one_degree_interface_heights.jl")
 z = one_degree_interface_heights()
 
-# A spherical domain
-@show underlying_grid = LatitudeLongitudeGrid(arch; size = (Nx, Ny, Nz), halo = (4, 4, 4),
-                                              latitude, z,
-                                              longitude = (-180, 180),
-                                              precompute_metrics = true)
+underlying_grid = LatitudeLongitudeGrid(arch;
+                                        size = (360, 150, 48),
+                                        halo = (4, 4, 4),
+                                        latitude = (-75, 75),
+                                        z,
+                                        longitude = (-180, 180),
+                                        precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-using Oceananigans.Operators: Δx, Δy
-using Oceananigans.TurbulenceClosures
+@show grid
 
-@inline ν₄(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))^2 / 5days
+@inline ν₄(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 +
+                                              1 / Δy(i, j, k, grid, lx, ly, lz)^2))^2 / 1days
 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=1e1, κ=1e1)
+biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, discrete_form=true)
 background_vertical_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-4)
 dynamic_vertical_diffusivity = RiBasedVerticalDiffusivity()
-biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, discrete_form=true)
 
-κ_skew = 1000.0      # [m² s⁻¹] skew diffusivity
-κ_symmetric = 1000.0 # [m² s⁻¹] symmetric diffusivity
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
-                                                                κ_symmetric = κ_symmetric,
-                                                                slope_limiter = gerdes_koberle_willebrand_tapering)
-
-free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver)
-                                   # preconditioner_method = :SparseInverse,
-                                   # preconditioner_settings = (ε=0.01, nzrel=10))
-
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 equation_of_state = LinearEquationOfState()
 buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=35.0)
 
-closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity, gent_mcwilliams_diffusivity)
-#closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity)
-# closures = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity, gent_mcwilliams_diffusivity)
+Δh = 100kilometers # 1 degree
+νhᵢ = κh = Δh^2 / 1day
+
+function closure_tuple(; νh, κ_skew=0, κ_symmetric=κ_skew)
+    gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
+                                                                    κ_symmetric = κ_symmetric,
+                                                                    slope_limiter = FluxTapering(1e-2))
+    horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
+    return (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity, biharmonic_viscosity)
+end
 
 @inline T_reference(φ) = max(-1.0, 30.0 * cos(1.2 * π * φ / 180))
 @inline T_relaxation(λ, φ, t, T, tᵣ) = 1 / tᵣ * (T - T_reference(φ))
@@ -74,13 +68,14 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     tracers = :T,
-                                    closure = closures,
-                                    #boundary_conditions = (u=u_bcs, T=T_bcs),
+                                    closure = closure_tuple(; νh),
+                                    boundary_conditions = (u=u_bcs, T=T_bcs),
                                     tracer_advection = WENO5(grid=underlying_grid))
 
-simulation = Simulation(model; Δt=1.0, stop_iteration=3)
 Tᵢ(λ, φ, z) = T_reference(φ)
 set!(model, T=Tᵢ)
+
+simulation = Simulation(model; Δt=20minutes, stop_iteration=1000)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
@@ -108,41 +103,33 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:p] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:p] = Callback(progress, IterationInterval(10))
+
+u, v, w = model.velocities
+KE = @at (Center, Center, Center) u^2 + v^2
+
+simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE)),
+                                                       schedule = IterationInterval(10),
+                                                       filename = filename * "_surface.jld2",
+                                                       indices = (:, :, grid.Nz), 
+                                                       overwrite_existing = true)
 
 run!(simulation)
 
-#=
-u, v, w = model.velocities
-T = model.tracers.T
-S = model.tracers.S
-η = model.free_surface.η
+ut = FieldTimeSeries(filename * "_surface.jld2", "u")
+vt = FieldTimeSeries(filename * "_surface.jld2", "v")
+Tt = FieldTimeSeries(filename * "_surface.jld2", "T")
+Kt = FieldTimeSeries(filename * "_surface.jld2", "KE")
+Nt = length(ut.times)
 
-output_fields = (; u, v, T, S, η)
-save_interval = 5days
+fig = Figure(resolution=(1800, 900))
+ax = Axis(fig[1, 1], xlabel="Longitude", ylabel="Latitude", title="Surface kinetic energy")
+slider = Slider(fig[2, 1], range=1:Nt, startvalue=1)
+n = slider.value
 
-u2 = Field(u * u)
-v2 = Field(v * v)
-w2 = Field(w * w)
-η2 = Field(η * η)
-T2 = Field(T * T)
+KEⁿ = @lift interior(Kt[$n], :, :, 1) ./ 2
 
-outputs = (; u, v, T, S, η)
-average_outputs = (; u, v, T, S, η, u2, v2, T2, η2)
+heatmap!(ax, KEⁿ, colorrange=(0, 1))
+    
+display(fig)
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
-                                                              indices = (:, :, grid.Nz), 
-                                                              force = true)
-
-simulation.output_writers[:averages] = JLD2OutputWriter(model, average_outputs,
-                                                              schedule = AveragedTimeInterval(4*30days, window=4*30days),
-                                                              prefix = output_prefix * "_averages",
-                                                              force = true)
-
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(6*30days),
-                                                        prefix = output_prefix * "_checkpoint",
-                                                        force = true)
-=#
