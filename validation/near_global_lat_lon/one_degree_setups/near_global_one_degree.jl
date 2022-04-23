@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
+using Printf
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using JLD2
 using SeawaterPolynomials.TEOS10
@@ -13,14 +14,10 @@ Nx = 360
 Ny = 150
 Nz = 48
 
-const Nyears = 60.0
-const Nmonths = 12
-const thirty_days = 30days
-
 output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)_$(Nz)"
 
 include("one_degree_artifacts.jl")
-bathymetry_path = download_bathymetry()
+# bathymetry_path = download_bathymetry() # not needed because we uploaded to repo
 bathymetry = jldopen(bathymetry_path)["bathymetry"]
 
 include("one_degree_interface_heights.jl")
@@ -62,7 +59,7 @@ closures = (horizontal_diffusivity, background_vertical_diffusivity, dynamic_ver
 # closures = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity, gent_mcwilliams_diffusivity)
 
 #=
-@inline reference_temperature(φ) = 30.0 * cos(2π * φ / 180)
+@inline reference_temperature(φ) = -1 + 32.0 * cos(2π * φ / 180)
 @inline temperature_relaxation(λ, φ, t, T, λ) = λ * (T - reference_temperature(φ))
 T_top_bc = FluxBoundaryCondition(temperature_relaxation, field_dependencies=:T, parameters=30days)
 T_bcs = FieldBoundaryConditions(top=T_top_bc)
@@ -86,9 +83,15 @@ wall_clock = Ref(time_ns())
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
-    @info string("Iteration: ", iteration(sim),
-                 ", time: ", prettytime(sim),
-                 ", wall time: ", prettytime(elapsed))
+    u, v, w = sim.model.velocities
+    η = sim.model.free_surface.η
+    umax = maximum(abs, u)
+    vmax = maximum(abs, v)
+    wmax = maximum(abs, w)
+    ηmax = maximum(abs, η)
+
+    @info @sprintf("Iteration: %d, time: %s, wall time: %s, max(u): (%.2e, %.2e, %.2e), max|η|: %.1f",
+                   iteration(sim), prettytime(sim), prettytime(elapsed), umax, vmax, wmax, ηmax)
 
     wall_clock[] = time_ns()
 
