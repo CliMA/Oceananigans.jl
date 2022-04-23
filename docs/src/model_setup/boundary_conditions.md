@@ -169,7 +169,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 
 Oceananigans uses a hierarchical structure to express boundary conditions:
 
-1. Each boundary has one [`BoundaryCondition`](@ref)
+1. Each boundary of reach field has one [`BoundaryCondition`](@ref)
 2. Each field has seven [`BoundaryCondition`](@ref) (`west`, `east`, `south`, `north`, `bottom`, `top` and
    `immersed`)
 3. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
