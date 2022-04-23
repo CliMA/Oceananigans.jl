@@ -124,8 +124,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
-                             κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
+                                κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
                   (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
 end
 
@@ -153,8 +153,8 @@ end
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-                             κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                                κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
                   (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 

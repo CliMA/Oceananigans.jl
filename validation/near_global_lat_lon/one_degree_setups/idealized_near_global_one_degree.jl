@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Simulations: reset!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Printf
 using JLD2
@@ -107,7 +108,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
 Tᵢ(λ, φ, z) = T_reference(φ)
 set!(model, T=Tᵢ)
 
-simulation = Simulation(model; Δt=10minutes, stop_iteration=2)
+simulation = Simulation(model; Δt=10minutes, stop_time=30days)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
@@ -136,6 +137,12 @@ function progress(sim)
 end
 
 simulation.callbacks[:p] = Callback(progress, IterationInterval(1))
+
+# Spin up simulation then reset.
+run!(simulation)
+reset!(simulation)
+simulation.stop_time = 30days
+model.closure = idealized_one_degree_closure(κ_skew=1e3)
 
 u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
