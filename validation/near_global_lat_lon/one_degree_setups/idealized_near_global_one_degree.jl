@@ -108,7 +108,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
 Tᵢ(λ, φ, z) = T_reference(φ)
 set!(model, T=Tᵢ)
 
-simulation = Simulation(model; Δt=10minutes, stop_time=30days)
+simulation = Simulation(model; Δt=10minutes, stop_time=10years)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
@@ -138,18 +138,18 @@ end
 
 simulation.callbacks[:p] = Callback(progress, IterationInterval(1))
 
-# Spin up simulation then reset.
-run!(simulation)
-reset!(simulation)
-simulation.stop_time = 30days
-model.closure = idealized_one_degree_closure(κ_skew=1e3)
+## Spin up simulation then reset.
+#run!(simulation)
+#reset!(simulation)
+#simulation.stop_time = 30days
+#model.closure = idealized_one_degree_closure(κ_skew=1e3)
 
 u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
 ζ = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 
 simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE, ζ)),
-                                                       schedule = TimeInterval(3hours),
+                                                       schedule = TimeInterval(1day),
                                                        filename = filename * "_surface.jld2",
                                                        indices = (:, :, grid.Nz), 
                                                        overwrite_existing = true)
