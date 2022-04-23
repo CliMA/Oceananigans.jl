@@ -11,7 +11,7 @@ using Oceananigans: fields
 using Oceananigans.Grids: ynode
 
 arch = CPU()
-filename = "near_global_one_degree"
+filename = "idealized_near_global_one_degree"
 
 include("one_degree_artifacts.jl")
 # bathymetry_path = download_bathymetry() # not needed because we uploaded to repo
