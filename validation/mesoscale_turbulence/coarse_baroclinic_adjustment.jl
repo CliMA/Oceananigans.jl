@@ -21,7 +21,7 @@ stop_time = 30days
 Δt = 20minutes
 
 grid = RectilinearGrid(architecture;
-                       topology = (Periodic, Bounded, Bounded), 
+                       topology = (Bounded, Bounded, Bounded),
                        size = (Ny, Ny, Nz), 
                        x = (-Ly/2, Ly/2),
                        y = (-Ly/2, Ly/2),
