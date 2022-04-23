@@ -1,7 +1,7 @@
 # [Boundary conditions](@id model_step_bcs)
 
 Boundary conditions are intimately related to the grid topology, and only
-need to be considered in directions with `Bounded` topology.
+need to be considered in directions with `Bounded` topology or across immersed boundaries.
 In `Bounded` directions, tracer and momentum fluxes are conservative or "zero flux"
 by default. Non-default boundary conditions are therefore required to specify non-zero fluxes
 of tracers and momentum across `Bounded` directions, and across immersed boundaries
