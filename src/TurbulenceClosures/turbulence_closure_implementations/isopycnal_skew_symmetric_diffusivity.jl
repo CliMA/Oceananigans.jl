@@ -205,6 +205,11 @@ calculate_diffusivities!(diffusivity_fields, closure::Union{ISSD, ISSDVector}, m
 ##### Show
 #####
 
+Base.summary(closure::ISSD) = string("IsopycnalSkewSymmetricDiffusivity",
+                                     "(κ_skew=",
+                                     prettysummary(closure.κ_skew),
+                                     ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
+
 Base.show(io::IO, closure::ISSD) =
     print(io, "IsopycnalSkewSymmetricDiffusivity: " *
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *

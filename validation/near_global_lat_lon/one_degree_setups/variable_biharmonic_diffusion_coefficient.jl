@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 struct VariableBiharmonicDiffusionCoefficient
     time_scale :: Float64
 end
@@ -7,4 +9,7 @@ end
     Δh⁴ = 1 / Δh⁻²^2 
     return Δh⁴ / vbd.time_scale
 end
+
+Base.summary(vbdc::VariableBiharmonicDiffusionCoefficient) = string("VariableBiharmonicDiffusionCoefficient(time_scale=",
+                                                                    prettytime(vbdc.time_scale), ")")
 

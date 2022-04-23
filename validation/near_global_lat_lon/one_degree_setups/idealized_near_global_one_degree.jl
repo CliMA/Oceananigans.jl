@@ -42,7 +42,7 @@ background_vertical_diffusivity = VerticalScalarDiffusivity(vitd, ν=1e-2, κ=1e
 dynamic_vertical_diffusivity = RiBasedVerticalDiffusivity()
 
 function idealized_one_degree_closure(; νh = (100kilometers)^2 / 1day,
-                                        κ_skew = 0,
+                                        κ_skew = 1e3,
                                         κ_symmetric = κ_skew,
                                         biharmonic_time_scale = 1day)
 
