@@ -223,13 +223,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             bottom(x, y) = 0
             ib = GridFittedBottom(bottom)
-            grid_kw = (size = (1, 1, 3), x = (0, Lx), y = (0, Ly))
+            grid_kw = (size = (1, 1, 2), x = (0, Lx), y = (0, Ly))
             grids_to_test(topology) = [RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...),
                                        ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)]
 
             for grid in grids_to_test((Periodic, Bounded, Bounded))
                 for name in (:u, :c)
-                    for (side, L) in zip((:south, :top, :bottom, :immersed), (Ly, Ly, Lz, Lz, Lz))
+                    for (side, L) in zip((:north, :south, :top, :bottom), (Ly, Ly, Lz, Lz))
+                        if grid isa ImmersedBoundaryGrid && side == :bottom
+                            side = :immersed
+                        end
                         @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
                         @test test_nonhydrostatic_flux_budget(grid, name, side, L)
                     end
@@ -238,7 +241,10 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             for grid in grids_to_test((Bounded, Periodic, Bounded))
                 for name in (:v, :c)
-                    for (side, L) in zip((:east, :west, :top, :bottom, :immersed), (Lx, Lx, Lz, Lz, Lz))
+                    for (side, L) in zip((:east, :west, :top, :bottom), (Lx, Lx, Lz, Lz))
+                        if grid isa ImmersedBoundaryGrid && side == :bottom
+                            side = :immersed
+                        end
                         @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
                         @test test_nonhydrostatic_flux_budget(grid, name, side, L)
                     end
