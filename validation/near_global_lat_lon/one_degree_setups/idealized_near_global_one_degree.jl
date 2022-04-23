@@ -9,6 +9,8 @@ using Oceananigans.Operators: Δx, Δy, ζ₃ᶠᶠᶜ
 
 using Oceananigans: fields
 using Oceananigans.Grids: ynode
+using Oceananigans.Utils: with_tracers
+using Oceananigans.TurbulenceClosures: validate_closure
 
 arch = CPU()
 filename = "idealized_near_global_one_degree"
@@ -42,7 +44,7 @@ background_vertical_diffusivity = VerticalScalarDiffusivity(vitd, ν=1e-2, κ=1e
 dynamic_vertical_diffusivity = RiBasedVerticalDiffusivity()
 
 function idealized_one_degree_closure(; νh = (100kilometers)^2 / 1day,
-                                        κ_skew = 1e3,
+                                        κ_skew = 0,
                                         κ_symmetric = κ_skew,
                                         biharmonic_time_scale = 1day)
 
@@ -55,11 +57,16 @@ function idealized_one_degree_closure(; νh = (100kilometers)^2 / 1day,
 
     horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=νh)
 
-    return (horizontal_diffusivity,
-            background_vertical_diffusivity,
-            dynamic_vertical_diffusivity,
-            biharmonic_viscosity,
-            gent_mcwilliams_diffusivity)
+    closure_tuple = (gent_mcwilliams_diffusivity,
+                     biharmonic_viscosity,
+                     dynamic_vertical_diffusivity,
+                     horizontal_diffusivity,
+                     background_vertical_diffusivity)
+
+    closure_tuple = with_tracers(tuple(:T), closure_tuple)
+    closure_tuple = validate_closure(closure_tuple)
+
+    return closure_tuple
 end
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
@@ -95,10 +102,12 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
                                     boundary_conditions = (u=u_bcs, T=T_bcs),
                                     tracer_advection = WENO5(grid=underlying_grid))
 
+@show model
+
 Tᵢ(λ, φ, z) = T_reference(φ)
 set!(model, T=Tᵢ)
 
-simulation = Simulation(model; Δt=20minutes, stop_time=30days)
+simulation = Simulation(model; Δt=10minutes, stop_iteration=2)
 
 wall_clock = Ref(time_ns())
 function progress(sim)
@@ -126,7 +135,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:p] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:p] = Callback(progress, IterationInterval(1))
 
 u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
