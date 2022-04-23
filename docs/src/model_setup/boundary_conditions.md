@@ -132,6 +132,8 @@ There are three primary boundary condition classifications:
    `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
 
 3. [`GradientBoundaryCondition`](@ref) (Neumann) specifies the gradient of a field on a boundary.
+   For example, if there is a known `diffusivity`, we can express `FluxBoundaryCondition(flux)`
+   using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
 
 In addition to these primary boundary conditions, `ImpenetrableBoundaryCondition` applies to velocity
 components in wall-normal directions.
