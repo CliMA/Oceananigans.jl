@@ -32,27 +32,35 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
 @show grid
 
-@inline ν₄(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 +
-                                              1 / Δy(i, j, k, grid, lx, ly, lz)^2))^2 / 1days
+#####
+##### Closures
+#####
 
-biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, discrete_form=true)
-background_vertical_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-4)
+include("variable_biharmonic_diffusion_coefficient.jl") # defines VariableBiharmonicDiffusionCoefficient
+vitd = VerticallyImplicitTimeDiscretization()
+background_vertical_diffusivity = VerticalScalarDiffusivity(vitd, ν=1e-2, κ=1e-4)
 dynamic_vertical_diffusivity = RiBasedVerticalDiffusivity()
+
+function closure_tuple(; νh = (100kilometers)^2 / 1day, κ_skew=1e3, κ_symmetric=κ_skew, biharmonic_time_scale=1day)
+    ν₄ = VariableBiharmonicDiffusivity(biharmonic_time_scale)
+    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, discrete_form=true)
+
+    gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
+                                                                    κ_symmetric = κ_symmetric,
+                                                                    slope_limiter = FluxTapering(1e-2))
+
+    horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
+
+    return (horizontal_diffusivity,
+            background_vertical_diffusivity,
+            dynamic_vertical_diffusivity,
+            biharmonic_viscosity,
+            gent_mcwilliams_diffusivity)
+end
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 equation_of_state = LinearEquationOfState()
 buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=35.0)
-
-Δh = 100kilometers # 1 degree
-νhᵢ = κh = Δh^2 / 1day
-
-function closure_tuple(; νh, κ_skew=0, κ_symmetric=κ_skew)
-    gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
-                                                                    κ_symmetric = κ_symmetric,
-                                                                    slope_limiter = FluxTapering(1e-2))
-    horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
-    return (horizontal_diffusivity, background_vertical_diffusivity, dynamic_vertical_diffusivity, biharmonic_viscosity)
-end
 
 @inline T_reference(φ) = max(-1.0, 30.0 * cos(1.2 * π * φ / 180))
 
