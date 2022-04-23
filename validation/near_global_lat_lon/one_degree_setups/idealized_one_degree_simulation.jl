@@ -68,7 +68,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     tracers = :T,
-                                    closure = closure_tuple(; νh),
+                                    closure = closure_tuple(; νh=νhᵢ),
                                     boundary_conditions = (u=u_bcs, T=T_bcs),
                                     tracer_advection = WENO5(grid=underlying_grid))
 
@@ -109,7 +109,7 @@ u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
 
 simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE)),
-                                                       schedule = IterationInterval(10),
+                                                       schedule = IterationInterval(100),
                                                        filename = filename * "_surface.jld2",
                                                        indices = (:, :, grid.Nz), 
                                                        overwrite_existing = true)
