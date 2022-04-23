@@ -7,7 +7,11 @@ See the [performance benchmarks](@ref performance_benchmarks) for more details.
 
 See [Architecture](@ref) for instructions on setting up a model on a GPU.
 
-Oceananigans does not yet support distributed parallelism (multi-CPU or multi-GPU).
+Distributed parallelism (multi-CPU or multi-GPU) is currently work in progress, so even
+though some distributed simulations are current possible, expect a few bugs along the way.
+If you'd like to contibute or read more about it, please check [this PR](https://github.com/CliMA/Oceananigans.jl/pull/2253
+for multi-GPU), [this issue for multi-CPU](https://github.com/CliMA/Oceananigans.jl/issues/2347),
+and [this discussion](https://github.com/CliMA/Oceananigans.jl/discussions/2345).
 
 !!! tip "Running on GPUs"
     If you are having issues with running Oceananigans on a GPU or setting things up,
@@ -34,7 +38,8 @@ performance although Oceananigans can be used with 32-bit floats. Most recent ga
 should work but might have poor 64-bit float performance.
 
 If you have access to any supercomputer clusters, check to see if they have any GPUs.
-See also this Stack Overflow post:
+NSF grants automatically give access to [NCAR's Casper Cluster](https://arc.ucar.edu/knowledge_base/70549550),
+which has several high-end GPUs. See also this Stack Overflow post:
 [Where can I get access to GPU cluster for educational purpose?](https://scicomp.stackexchange.com/questions/8508/where-can-i-get-access-to-gpu-cluster-for-educational-purpose)
 
 Cloud computing providers such as Google Cloud and Amazon EC2 allow you to rent GPUs per
