@@ -41,8 +41,12 @@ vitd = VerticallyImplicitTimeDiscretization()
 background_vertical_diffusivity = VerticalScalarDiffusivity(vitd, ν=1e-2, κ=1e-4)
 dynamic_vertical_diffusivity = RiBasedVerticalDiffusivity()
 
-function closure_tuple(; νh = (100kilometers)^2 / 1day, κ_skew=1e3, κ_symmetric=κ_skew, biharmonic_time_scale=1day)
-    ν₄ = VariableBiharmonicDiffusivity(biharmonic_time_scale)
+function idealized_one_degree_closure(; νh = (100kilometers)^2 / 1day,
+                                        κ_skew = 0,
+                                        κ_symmetric = κ_skew,
+                                        biharmonic_time_scale = 1day)
+
+    ν₄ = VariableBiharmonicDiffusionCoefficient(biharmonic_time_scale)
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=ν₄, discrete_form=true)
 
     gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κ_skew,
@@ -87,7 +91,7 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     tracers = :T,
-                                    closure = closure_tuple(; νh=νhᵢ),
+                                    closure = idealized_one_degree_closure(),
                                     boundary_conditions = (u=u_bcs, T=T_bcs),
                                     tracer_advection = WENO5(grid=underlying_grid))
 
