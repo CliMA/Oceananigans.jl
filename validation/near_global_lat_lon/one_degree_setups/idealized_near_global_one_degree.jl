@@ -74,7 +74,7 @@ free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 equation_of_state = LinearEquationOfState()
 buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=35.0)
 
-@inline T_reference(φ) = max(-1.0, 30.0 * cos(1.2 * π * φ / 180))
+@inline T_reference(φ) = max(0.0, 30.0 * cos(1.2 * π * φ / 180))
 
 @inline function T_relaxation(i, j, grid, clock, fields, tᵣ)
     φ = ynode(Center(), j, grid)
@@ -105,8 +105,15 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface, buoyancy,
 
 @show model
 
-Tᵢ(λ, φ, z) = T_reference(φ)
-set!(model, T=Tᵢ)
+function T_initial(λ, φ, z)
+    H_stratification = 2000
+    T_bottom = 0.0
+    T_surface = T_reference(φ)
+    dTdz = (T_surface - T_bottom) / H_stratification
+    return max(T_bottom, T_surface + z * dTdz)
+end
+
+set!(model, T=T_initial)
 
 simulation = Simulation(model; Δt=10minutes, stop_time=10years)
 
@@ -136,7 +143,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:p] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:p] = Callback(progress, IterationInterval(10))
 
 ## Spin up simulation then reset.
 #run!(simulation)
@@ -160,21 +167,27 @@ ut = FieldTimeSeries(filename * "_surface.jld2", "u")
 vt = FieldTimeSeries(filename * "_surface.jld2", "v")
 Tt = FieldTimeSeries(filename * "_surface.jld2", "T")
 Kt = FieldTimeSeries(filename * "_surface.jld2", "KE")
+Zt = FieldTimeSeries(filename * "_surface.jld2", "ζ")
 t = ut.times
 Nt = length(t)
 
 fig = Figure(resolution=(1800, 900))
-ax = Axis(fig[2, 1], xlabel="Longitude", ylabel="Latitude")
-slider = Slider(fig[3, 1], range=1:Nt, startvalue=1)
+axk = Axis(fig[2, 2], xlabel="Longitude", ylabel="Latitude")
+axz = Axis(fig[2, 3], xlabel="Longitude", ylabel="Latitude")
+slider = Slider(fig[3, 2:3], range=1:Nt, startvalue=1)
 n = slider.value
 
 title = @lift string("Surface kinetic energy at ", prettytime(t[$n]))
 Label(fig[1, 1], title, tellwidth=false)
 
 KEⁿ = @lift interior(Kt[$n], :, :, 1) ./ 2
+ζⁿ = @lift interior(Zt[$n], :, :, 1)
 
-hm = heatmap!(ax, KEⁿ, colorrange=(0, 0.1))
-Colorbar(fig[2, 2], hm, label="Surface kinetic energy (m² s⁻²)")
+hmk = heatmap!(axk, KEⁿ, colorrange=(0, 0.1))
+hmz = heatmap!(axz, ζⁿ, colorrange=(-1e-4, 1e-4))
+
+Colorbar(fig[2, 1], hmk, label="Surface kinetic energy (m² s⁻²)")
+Colorbar(fig[2, 4], hmz, label="Surface vertical vorticity (s⁻¹)")
     
 display(fig)
 
