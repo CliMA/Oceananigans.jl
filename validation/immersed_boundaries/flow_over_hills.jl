@@ -7,7 +7,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Utils: prettysummary
 
 # Monin-Obukhov drag coefficient
-z₀ = 1e-4 # Charnock roughness
+z₀ = 1e-2 # Charnock roughness
 κ = 0.4 # Von Karman constant
 Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
 
@@ -19,7 +19,7 @@ Cᴰ(Δz) = (κ / log(Δz / 2z₀))^2
 function hilly_simulation(; Nx = 64,
                             Nz = Nx,
                             h = 0.1,
-                            Re = 1e4,
+                            Re = 1e3,
                             N² = 1e-2,
                             boundary_condition = :no_slip,
                             stop_time = 1,
@@ -128,17 +128,21 @@ end
 ##### Run them!
 #####
 
-Nx = 32
+Nx = 128
 stop_time = 20.0
 
 experiments = ["reference", "no_slip", "free_slip", "bottom_drag"]
 Nexp = length(experiments)
 
+function filename(exp, Nx, h)
+    exp == "reference" && (h = 0.0)
+    return @sprintf("hills_%s_%d_h%d", exp, Nx, 10h)
+end
+
 for exp in experiments
-    filename = "hills_$(exp)_$Nx"
-    h = exp == "reference" ? 0.0 : 0.2
+    h = exp == "reference" ? 0.0 : 0.3
     boundary_condition = exp == "reference" ? :no_slip : Symbol(exp)
-    reference_sim = hilly_simulation(; stop_time, Nx, filename, h, boundary_condition)
+    reference_sim = hilly_simulation(; stop_time, Nx, filename=filename(exp, Nx, h), h, boundary_condition)
     run!(reference_sim)
 end
 
@@ -146,13 +150,13 @@ end
 ##### Plot results
 #####
 
-ξ  = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "ξ")  for exp in experiments)
-U  = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "U")  for exp in experiments)
-KE = Dict(exp => FieldTimeSeries("hills_$(exp)_$Nx.jld2", "KE") for exp in experiments)
+h = 0.3
+ξ  = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "ξ")  for exp in experiments)
+U  = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "U")  for exp in experiments)
+KE = Dict(exp => FieldTimeSeries(filename(exp, Nx, h) * ".jld2", "KE") for exp in experiments)
 
-t = ξ["reference"].times
-Nt = length(t)
-t = t[1:Nt]
+Nt = minimum(length(ξ[exp].times) for exp in experiments)
+t = ξ["reference"].times[1:Nt]
 δU_series(U) = [(U[1, 1, 1, n] - U[1, 1, 1, 1]) / U[1, 1, 1, 1] for n = 1:Nt]
 δK_series(K) = [(K[1, 1, 1, n] - K[1, 1, 1, 1]) / K[1, 1, 1, 1] for n = 1:Nt]
 δU = Dict(exp => δU_series(u) for (exp, u) in U)
@@ -206,7 +210,8 @@ vlines!(axe, tn, ymin=min_δK, ymax=1.0)
 
 display(fig)
 
-record(fig, "flow_over_hills.mp4", 1:Nt, framerate=24) do nn
+moviename = @sprintf("flow_over_hills_%dd_h%d.mp4", Nx, 10h)
+record(fig, moviename, 1:Nt, framerate=24) do nn
     n[] = nn
 end
 

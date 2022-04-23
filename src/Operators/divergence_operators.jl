@@ -59,7 +59,7 @@ end
 
 @inline function δy_Ay_q(i, j, k, grid, (LX, LY, LZ), qˢ, qᴺ)
     jˢ = index_left(j, LY)
-    Ayᵂ = Ay(i, jˢ, k, grid, LX, LY, LZ)
+    Ayˢ = Ay(i, jˢ, k, grid, LX, LY, LZ)
 
     jᴺ = index_right(j, LY)
     Ayᴺ = Ay(i, jᴺ, k, grid, LX, LY, LZ)

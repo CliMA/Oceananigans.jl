@@ -32,4 +32,4 @@ include("jld2_output_writer.jl")
 include("netcdf_output_writer.jl")
 include("checkpointer.jl")
 
-end
+end # module

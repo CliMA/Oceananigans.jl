@@ -22,7 +22,7 @@ See equation (20) of [Makhoul80](@cite).
 """
     unpermute_index(i, N)
 
-Permute `i` in the opposite manner as `_permute_index`, such that,
+Permute `i` in the opposite manner as `permute_index`, such that,
 for example, `i ∈ 1:N` becomes
 
    [1, 2, 3, 4, 5, 6, 7, 8] -> [1, 3, 5, 7, 8, 6, 4, 2]

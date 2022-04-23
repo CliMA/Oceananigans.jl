@@ -82,4 +82,4 @@ include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
-end
+end # module

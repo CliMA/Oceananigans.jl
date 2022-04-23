@@ -24,7 +24,7 @@ export
     xnodes, ynodes, znodes, nodes,
 
     # Immersed boundaries
-    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom,
+    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 

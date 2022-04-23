@@ -1,6 +1,6 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition
        
 using Adapt
 
@@ -156,9 +156,10 @@ is not part of the prognostic state.
     immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
 
 """
-    inactive_cell(i, j, k, ibg::IBG)
+    inactive_cell(i, j, k, grid::ImmersedBoundaryGrid)
 
-Return true if a cell is either immersed or outside the `Bounded` domain.
+Return `true` if the tracer cell at `i, j, k` either (i) lies outside the `Bounded` domain
+or (ii) lies within the immersed region of `ImmersedBoundaryGrid`.
         
 Example
 =======

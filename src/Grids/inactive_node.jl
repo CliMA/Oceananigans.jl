@@ -19,9 +19,8 @@ const XYZBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
 """
     inactive_cell(i, j, k, grid)
 
-Return `true` when the tracer cell is outside the boundaries of the domain.
-Return `false` either when the tracer cell at index `i, j, k` is "wet".
-In non-`Bounded` directions, `inactive_node` always returns `false`.
+Return `true` when the tracer cell at `i, j, k` is lies outside the "active domain" of
+the grid in `Bounded` directions. Otherwise, return `false`.
 """
 @inline inactive_cell(i, j, k, grid) = false
 @inline inactive_cell(i, j, k, grid::XBoundedGrid) = (i < 1) | (i > grid.Nx)
@@ -39,12 +38,15 @@ In non-`Bounded` directions, `inactive_node` always returns `false`.
 """
     inactive_node(LX, LY, LZ, i, j, k, grid)
 
-Return `true` when the location `(LX, LY, LZ)`, interpreted as _either_ a
-cell interface, or the cell itself, is "entirely" exterior to a `Bounded` domain.
+Return `true` when the location `(LX, LY, LZ)` is "inactive" and thus not directly
+associated with an "active" cell.
 
-For `Face` locations, this means the node is surrounded by `inactive_cell`s.
+For `Face` locations, this means the node is surrounded by `inactive_cell`s:
+the interfaces of "active" cells are _not_ `inactive_node`.
 
-If a cell interface touches a "wet" cell, it is _not_ an exterior node.
+For `Center` locations, this means the direction is `Bounded` and that the
+cell or interface centered on the location is completely outside the active
+region of the grid.
 """
 @inline inactive_node(LX, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
 
@@ -61,8 +63,8 @@ If a cell interface touches a "wet" cell, it is _not_ an exterior node.
 """
     peripheral_node(LX, LY, LZ, i, j, k, grid)
 
-Return `true` when the location `(LX, LY, LZ)`, is _either_ exterior or
-lies on a boundary.
+Return `true` when the location `(LX, LY, LZ)`, is _either_ inactive or
+lies on the boundary between inactive and active cells in a `Bounded` direction.
 """
 @inline peripheral_node(LX, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
 
