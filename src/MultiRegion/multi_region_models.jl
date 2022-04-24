@@ -9,11 +9,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme
 import Oceananigans.Simulations: new_time_step
 import Oceananigans.Diagnostics: accurate_cell_advection_timescale
 import Oceananigans.Advection: WENO5
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels:
-                        build_implicit_step_solver,
-                        validate_tracer_advection
-
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
@@ -24,9 +20,7 @@ const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 @inline @inbounds getregion(fs::AbstractFreeSurface, i)      = getname(fs)(Tuple(getregion(getproperty(fs, propertynames(fs)[idx]), i) for idx in 1:length(propertynames(fs)))...)
 @inline @inbounds getregion(pv::PrescribedVelocityFields, i) = getname(pv)(Tuple(getregion(getproperty(pv, propertynames(pv)[idx]), i) for idx in 1:length(propertynames(pv)))...)
 
-@inline @inbounds getregion(fs::ExplicitFreeSurface, i) =
-                    ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)
-
+@inline @inbounds getregion(fs::ExplicitFreeSurface, i) = ExplicitFreeSurface(getregion(fs.η, i), fs.gravitational_acceleration)
 isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
@@ -43,11 +37,11 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
 WENO5(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO5, mrg, args...; kwargs...)
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
-      Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
-      return minimum(Δt.regions)
+    Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
+    return minimum(Δt.regions)
 end
 
 function new_time_step(old_Δt, wizard, model::MultiRegionModel)
-      Δt = construct_regionally(new_time_step, old_Δt, wizard, model)
-      return minimum(Δt.regions)
+    Δt = construct_regionally(new_time_step, old_Δt, wizard, model)
+    return minimum(Δt.regions)
 end

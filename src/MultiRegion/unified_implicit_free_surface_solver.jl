@@ -49,11 +49,9 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    multiple_devices ?
-    solver = UnifiedDiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                            grid = grid, mrg = mrg, settings...) :
-    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                            grid = on_architecture(arch, grid), settings...)
+    reduced_dim = (false, false, true)
+    solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
+                                HeptadiagonalIterativeSolver(coeffs; reduced_dim, grid = on_architecture(arch, grid), settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
 end
@@ -65,13 +63,10 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, settings, gra
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
 
-function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver,
-                                                        g, Δt, ∫ᶻQ, η)
-
-    grid   = ∫ᶻQ.u.grid
-    M      = length(grid.partition)
+function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver, g, Δt, ∫ᶻQ, η)
+    grid = ∫ᶻQ.u.grid
+    M    = length(grid.partition)
     @apply_regionally compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, Iterate(1:M), grid.partition)
-
     return nothing
 end
 

@@ -3,54 +3,45 @@ using Oceananigans.Fields: FunctionField, data_summary
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
-import Oceananigans.Fields: 
-                      set!,
-                      validate_field_data,
-                      validate_boundary_conditions, 
-                      validate_indices,
-                      FieldBoundaryBuffers
-
-import Oceananigans.BoundaryConditions: 
-                FieldBoundaryConditions, 
-                regularize_field_boundary_conditions
-
+import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
+import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: new_data
 import Base: fill!
-
 import Oceananigans.Simulations: hasnan
 
-const MultiRegionField{LX, LY, LZ, O}                  = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
-const MultiRegionFunctionField{LX, LY, LZ, C, P, F, G} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
+# Field and FunctionField (both fields with "grids attached")
+const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
+const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
 
-const MultiRegionFields = Union{MultiRegionField, MultiRegionFunctionField}
-const MultiRegionFieldsTuple{N, T} = NTuple{N, T} where {N, T<:MultiRegionFields}
-const MultiRegionFieldsNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:MultiRegionFieldsTuple}
+const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
+const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
+const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
 
-Base.size(f::MultiRegionField) = size(getregion(f.grid, 1))
+# Utils
+Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
-isregional(f::MultiRegionFields) = true
+       isregional(f::GriddedMultiRegionField)    = true
+          devices(f::GriddedMultiRegionField)    = devices(f.grid)
+sync_all_devices!(f::GriddedMultiRegionField)    = sync_all_devices!(devices(f.grid))
 
-devices(f::MultiRegionFields)           = devices(f.grid)
-switch_device!(f::MultiRegionFields, i) = switch_device!(f.grid, i)
-getdevice(f::MultiRegionFields, i)      = getdevice(f.grid, i)
-sync_all_devices!(f::MultiRegionFields) = sync_all_devices!(devices(f.grid))
+switch_device!(f::GriddedMultiRegionField, r) = switch_device!(f.grid, r)
+     getdevice(f::GriddedMultiRegionField, r) = getdevice(f.grid, r)
 
-getregion(f::MultiRegionFunctionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
-  FunctionField{LX, LY, LZ}(
-        getregion(f.func, i),
-        getregion(f.grid, i),
-        clock = getregion(f.clock, i),
-        parameters = getregion(f.parameters, i))
+getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+    FunctionField{LX, LY, LZ}(getregion(f.func, r),
+                              getregion(f.grid, r),
+                              clock = getregion(f.clock, r),
+                              parameters = getregion(f.parameters, r))
 
-getregion(f::MultiRegionField{LX, LY, LZ}, i) where {LX, LY, LZ} =
-  Field{LX, LY, LZ}(
-        getregion(f.grid, i),
-        getregion(f.data, i),
-        getregion(f.boundary_conditions, i),
-        getregion(f.indices, i),
-        getregion(f.operand, i),
-        getregion(f.status, i),
-        getregion(f.boundary_buffers, i))
+getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+    Field{LX, LY, LZ}(getregion(f.grid, r),
+                      getregion(f.data, r),
+                      getregion(f.boundary_conditions, r),
+                      getregion(f.indices, r),
+                      getregion(f.operand, r),
+                      getregion(f.status, r),
+                      getregion(f.boundary_buffers, r))
 
 @inline reconstruct_global_field(f::AbstractField) = f
 

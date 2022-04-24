@@ -12,7 +12,6 @@ function validate_devices(partition, devices::Number)
 end
 
 validate_devices(p, ::Nothing) = nothing
-
 assign_devices(p, ::Nothing) = Tuple(CPU() for i in 1:length(p))
 
 function assign_devices(p::AbstractPartition, dev::Number) 

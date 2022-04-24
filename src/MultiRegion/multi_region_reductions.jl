@@ -5,13 +5,13 @@ import Statistics.dot
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 
-####
-#### Reductions are still veeeery slow on MultiRegionGrids. Avoid as much as possible!
-####
+#####
+##### Reductions are still veeeery slow on MultiRegionGrids. Avoid as much as possible!
+#####
 
-####
-#### Non allocating reductions are not implemented as of now
-####
+#####
+##### Non allocating reductions are not implemented as of now
+#####
 
 # Allocating reductions
 for reduction in reductions

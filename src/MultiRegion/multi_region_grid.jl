@@ -1,13 +1,16 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 
-struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiGrid{FT, TX, TY, TZ, Arch}
+struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     partition :: P
     region_grids :: G
     devices :: D
 
-    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P, region_grids::G, devices::D) where {FT, TX, TY, TZ, P, G, D, A}
+    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
+                                             region_grids::G,
+                                             devices::D) where {FT, TX, TY, TZ, P, G, D, A}
+
         return new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
     end
 end

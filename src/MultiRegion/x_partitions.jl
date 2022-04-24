@@ -14,11 +14,10 @@ end
 
 const EqualXPartition = XPartition{<:Number}
 
-length(p::EqualXPartition) = p.div
-length(p::XPartition)      = length(p.div)
-
-Base.summary(p::EqualXPartition) = "Equal partitioning in X ($(p.div) regions)"
-Base.summary(p::XPartition)      = "partitioning in X [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
+Base.length(p::XPartition) = length(p.div)
+Base.length(p::EqualXPartition) = p.div
+Base.summary(p::EqualXPartition{N}) where N = "EqualXPartition{$N}"
+Base.summary(p::XPartition) = "XPartition with [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
 function partition_size(p::EqualXPartition, grid)
     Nx, Ny, Nz = size(grid)
@@ -44,13 +43,10 @@ end
 function partition_topology(p::XPartition, grid) 
     TX, TY, TZ = topology(grid)
     
-    return Tuple(((TX == Periodic ? 
-                   FullyConnected : 
-                   i == 1 ?
-                   RightConnected :
-                   i == length(p) ?
-                   LeftConnected :
-                   FullyConnected), TY, TZ) for i in 1:length(p))
+    return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
+                                    RightConnected : i == length(p) ?
+                                    LeftConnected :
+                                    FullyConnected), TY, TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualXPartition) = 
@@ -74,9 +70,9 @@ function partition_global_array(a::OffsetArray, ::EqualXPartition, local_size, r
     return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
-####
-#### Global reconstruction utils
-####
+#####
+##### Global reconstruction utils
+#####
 
 function reconstruct_size(mrg, p::XPartition)
     Ny = mrg.region_grids[1].Ny

@@ -102,19 +102,17 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Cubed sphere
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, XPartition, 
     ConformalCubedSphereGrid,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
-
-
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
-
 using CUDA
 using Adapt
 using DocStringExtensions
@@ -168,7 +166,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end

@@ -29,7 +29,7 @@ import Oceananigans.Utils:
                 getregion,
                 sync_all_devices!
 
-abstract type AbstractMultiGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
+abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
 
