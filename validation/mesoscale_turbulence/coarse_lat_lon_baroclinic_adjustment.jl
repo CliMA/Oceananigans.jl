@@ -36,7 +36,7 @@ horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh, κ=κh)
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3,
-                                                                κ_symmetric=1e3,
+                                                                κ_symmetric=0.0,
                                                                 slope_limiter=gerdes_koberle_willebrand_tapering)
 
 closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
