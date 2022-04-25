@@ -6,8 +6,8 @@ import Oceananigans.TimeSteppers: correct_immersed_tendencies!
     correct_immersed_tendencies!(model, Δt, γⁿ, ζⁿ)
     
 Correct the tendency terms to implement no-slip boundary conditions on an immersed boundary
- without the contribution from the non-hydrostatic pressure. 
-Makes velocity vanish within the immersed surface.
+without the contribution from the non-hydrostatic pressure. Makes velocity vanish within the
+immersed surface.
 """
 
 correct_immersed_tendencies!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ) =

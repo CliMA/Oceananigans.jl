@@ -27,4 +27,4 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel
 
-end
+end # module
