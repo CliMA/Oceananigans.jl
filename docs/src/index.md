@@ -27,6 +27,8 @@ julia> Pkg.add("Oceananigans")
 If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and using [Julia's wondeful and featureful package manager `Pkg`](https://docs.julialang.org/en/v1/stdlib/Pkg/), or just like reading documentation,
 the Oceananigans wiki provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
+Note: that many Oceananigans experiments will run on Julia 1.7, it's just that our tests don't cover Julia 1.7 _yet_.
+
 ## The Oceananigans "knowledge base"
 
 Oceananigans knowledge runs _deep_ and includes:
