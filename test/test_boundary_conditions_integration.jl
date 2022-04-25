@@ -24,7 +24,6 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
 end
 
 function test_nonhydrostatic_flux_budget(grid, name, side, L)
-    
     FT = eltype(grid)
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom, :immersed) ? 1 : -1
@@ -251,7 +250,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 end
             end
 
-            for grid in grids_to_test((Bounded, Bounded, Periodic))
+            # Omit ImmersedBoundaryGrid from vertically-periodic test
+            for grid in grids_to_test((Bounded, Bounded, Periodic))[1]
                 for name in (:w, :c)
                     for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
                         @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
