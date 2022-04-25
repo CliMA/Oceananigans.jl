@@ -21,20 +21,20 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
-       isregional(f::GriddedMultiRegionField)    = true
-          devices(f::GriddedMultiRegionField)    = devices(f.grid)
-sync_all_devices!(f::GriddedMultiRegionField)    = sync_all_devices!(devices(f.grid))
+@inline isregional(f::GriddedMultiRegionField) = true
+@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
+sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
 
-switch_device!(f::GriddedMultiRegionField, r) = switch_device!(f.grid, r)
-     getdevice(f::GriddedMultiRegionField, r) = getdevice(f.grid, r)
+@inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
+@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
 
-getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
                               getregion(f.grid, r),
                               clock = getregion(f.clock, r),
                               parameters = getregion(f.parameters, r))
 
-getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(getregion(f.grid, r),
                       getregion(f.data, r),
                       getregion(f.boundary_conditions, r),
@@ -46,26 +46,25 @@ getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
 @inline reconstruct_global_field(f::AbstractField) = f
 
 function reconstruct_global_field(mrf::MultiRegionField)
-  global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
-  global_field = Field(location(mrf), global_grid)
-
-  data = construct_regionally(interior, mrf)
-  data = construct_regionally(Array, data)
-  compact_data!(global_field, global_grid, data, mrf.grid.partition)
+    global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
+    global_field = Field(location(mrf), global_grid)
   
-  fill_halo_regions!(global_field)
-  return global_field
+    data = construct_regionally(interior, mrf)
+    data = construct_regionally(Array, data)
+    compact_data!(global_field, global_grid, data, mrf.grid.partition)
+    
+    fill_halo_regions!(global_field)
+    return global_field
 end
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
-
-hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
+@inline hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = 
-              construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
+    construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
 
 FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) = 
-              construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
+    construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, args...; kwargs...) =
   construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), args...; kwargs...)

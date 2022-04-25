@@ -276,7 +276,7 @@ end
 ##### MultiRegion boundary condition utils
 #####
 
-@inline @inbounds getregion(fc::FieldBoundaryConditions, i) = 
+@inline getregion(fc::FieldBoundaryConditions, i) = 
         FieldBoundaryConditions(getregion(fc.west, i), 
                                 getregion(fc.east, i), 
                                 getregion(fc.south, i), 
@@ -285,16 +285,16 @@ end
                                 getregion(fc.top, i),
                                 fc.immersed)
 
-@inline @inbounds getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+@inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
-@inline @inbounds getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
+@inline getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
     ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
                                            getregion(cf.parameters, i),
                                            cf.field_dependencies,
                                            cf.field_dependencies_indices,
                                            cf.field_dependencies_interp)
 
-@inline @inbounds getregion(df::DiscreteBoundaryFunction, i) =
+@inline getregion(df::DiscreteBoundaryFunction, i) =
     DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC

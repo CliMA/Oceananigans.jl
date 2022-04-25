@@ -3,10 +3,12 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field
 using GLMakie
 
-grid = RectilinearGrid(size=(128, 128, 1), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
-#grid = MultiRegionGrid(grid, partition=XPartition(2))
+Nh = 128
+grid = RectilinearGrid(size=(Nh, Nh, 1), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
+grid = MultiRegionGrid(grid, partition=XPartition(2))
 
-momentum_advection = WENO5() #vector_invariant=VelocityStencil())
+momentum_advection = WENO5()
+#momentum_advection = WENO5(vector_invariant=VelocityStencil())
 
 model = HydrostaticFreeSurfaceModel(; grid, momentum_advection,
                                     tracers = (),

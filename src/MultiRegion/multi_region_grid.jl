@@ -1,5 +1,6 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
 import Oceananigans.Grids: architecture, size, new_data, halo_size
+import Oceananigans.Grids: with_halo, on_architecture
 
 struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -15,14 +16,14 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
     end
 end
 
-isregional(mrg::MultiRegionGrid)        = true
-getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
-switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
-devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
-sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
+@inline isregional(mrg::MultiRegionGrid)        = true
+@inline getdevice(mrg::MultiRegionGrid, i)      = getdevice(mrg.region_grids, i)
+@inline switch_device!(mrg::MultiRegionGrid, i) = switch_device!(getdevice(mrg, i))
+@inline devices(mrg::MultiRegionGrid)           = devices(mrg.region_grids)
+@inline sync_all_devices!(mrg::MultiRegionGrid) = sync_all_devices!(devices(mrg))
 
-getregion(mrg::MultiRegionGrid, i)  = getregion(mrg.region_grids, i)
-Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
+@inline getregion(mrg::MultiRegionGrid, r)  = getregion(mrg.region_grids, r)
+@inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
 
@@ -122,8 +123,6 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
-
-import Oceananigans.Grids: with_halo, on_architecture
 
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(with_halo, new_halo, mrg)
