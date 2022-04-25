@@ -65,7 +65,7 @@ end
                                   auxiliary_fields = NamedTuple(),
     )
 
-Construct an hydrostatic model with a free surface on `grid`.
+Construct a hydrostatic model with a free surface on `grid`.
 
 Keyword arguments
 =================
