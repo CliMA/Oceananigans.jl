@@ -33,7 +33,7 @@ julia> no_slip_bc = ValueBoundaryCondition(0)
 ValueBoundaryCondition: 0
 ```
 
-A "no-slip" boundary condition that velocity components tangential to `Bounded`
+A "no-slip" [`BoundaryCondition`](@ref) specifies that velocity components tangential to `Bounded`
 directions decay to `0` at the boundary, leading to a viscous loss of momentum.
 
 ```jldoctest bcsintro
@@ -105,7 +105,7 @@ for "no-flux boundary condition".
 
 There are three primary boundary condition classifications:
 
-1. [`FluxBoundaryCondition`](@ref) specifies fluxes directly.
+1. `FluxBoundaryCondition` specifies fluxes directly.
 
    Some applications of `FluxBoundaryCondition` are:
        * surface momentum fluxes due to wind, or "wind stress";
@@ -115,7 +115,7 @@ There are three primary boundary condition classifications:
        * relaxation boundary conditions that restores a field to some boundary distribution
          over a given time-scale.
 
-2. [`ValueBoundaryCondition`](@ref) (Dirchlet) specifies the value of a field on
+2. `ValueBoundaryCondition` (Dirchlet) specifies the value of a field on
    the given boundary, which when used in combination with a turbulence closure
    results in a flux across the boundary.
 
@@ -131,7 +131,7 @@ There are three primary boundary condition classifications:
    _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component.
    `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
 
-3. [`GradientBoundaryCondition`](@ref) (Neumann) specifies the gradient of a field on a boundary.
+3. `GradientBoundaryCondition` (Neumann) specifies the gradient of a field on a boundary.
    For example, if there is a known `diffusivity`, we can express `FluxBoundaryCondition(flux)`
    using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
 
