@@ -4,7 +4,7 @@
 
 Oceananigans is fast, friendly, and flexible software for finite volume simulations the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs. Aside from its ability to run on GPUs (wow, fast!)
-Oceananigans receives it's powers from a flexible and intuitive user interface that
+Oceananigans receives its powers from a flexible and intuitive user interface that
 makes simple numerical experiments easy, and complex, creative numerical experiments possible.
 
 Oceananigans is written in Julia by the [Climate Modeling Alliance](https://clima.caltech.edu)
