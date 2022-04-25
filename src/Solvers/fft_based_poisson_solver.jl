@@ -69,8 +69,9 @@ on a staggered grid and for periodic or Neumann boundary conditions.
 In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
 elements (typically the same type as `solver.storage`).
 
-Note: ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
-when ``m < 0``, or the Helmholtz equation when ``m > 0``.
+!!! info "Alternative names for "generalized" Poisson equation
+    Equation ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
+    when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     arch = architecture(solver)

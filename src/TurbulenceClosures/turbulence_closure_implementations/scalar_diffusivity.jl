@@ -106,7 +106,14 @@ function Base.summary(closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")
     prefix === "ThreeDimensional" && (prefix = "")
-    return string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+
+    if closure.κ == NamedTuple()
+        summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ")")
+    else
+        summary_str = string(prefix, "ScalarDiffusivity{$TD}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+    end
+
+    return summary_str
 end
 
 Base.show(io::IO, closure::ScalarDiffusivity) = print(io, summary(closure))
