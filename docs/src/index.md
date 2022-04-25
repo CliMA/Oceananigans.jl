@@ -14,7 +14,7 @@ and heroic external collaborators.
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/), so the installation instructions are:
 
-1. [Download Julia 1.6](https://julialang.org/downloads/);
+1. [Download Julia](https://julialang.org/downloads/);
 
 2. Start up Julia and type
 
