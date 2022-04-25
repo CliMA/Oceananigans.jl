@@ -3,7 +3,6 @@
 This section covers the basics of installing Julia and Oceananigans, and then describes best practices when running
 Oceananigans. If you're new to Julia, we also recommend reading [Julia's "getting started" page](https://julialang.org/learning/getting-started/).
 
-
 ## Installation instructions
 
 Usually the hardest part of installing Oceananigans is installing Julia. You can first check if your
