@@ -42,7 +42,7 @@ compute!(ζ)
 heatmap(interior(ζ, :, :, 1))
 ```
 
-## They always cheat by doing simple quick starts
+## They always cheat with too-simple "quick" starts
 
 Fine, we'll re-run this code on the GPU then:
 
