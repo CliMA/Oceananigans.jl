@@ -50,11 +50,10 @@
   </a>
 </p>
 
-Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and more!
-
-We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
+Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic and hydrostatic Boussinesq equations on CPUs and GPUs. It runs on GPUs (wow, fast!), though we believe Oceananigans draws its true powers from a flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 
 Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+
 
 ## Contents
 
@@ -67,23 +66,35 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 ## Installation instructions
 
-You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
+Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
+
+1. [Download Julia](https://julialang.org/downloads/);
+
+2. Launch Julia and type
 
 ```julia
-julia>]
-(v1.6) pkg> add Oceananigans
-(v1.6) pkg> instantiate
+julia> using Pkg
+
+julia> Pkg.add("Oceananigans")
 ```
 
-We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
+## The Oceananigans "knowledge base"
 
-```julia
-(v1.6) pkg> update Oceananigans
-```
+It's _deep_ and includes:
 
-At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
-
-**Note**: The latest version of Oceananigans requires at least Julia v1.6 to run. Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).
+* This documentation, which provides
+    * example Oceananigans scripts,
+    * tutorials that describe key Oceananigans objects and functions,
+    * explanations of Oceananigans finite-volume-based numerical methods,
+    * details of the dynamical equations solved by Oceananigans models, and
+    * a library documenting all user-facing Oceananigans objects and functions.
+* [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
+    * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
+    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
+  
+    If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
+* The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
+* [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
 ## Running your first model
 
