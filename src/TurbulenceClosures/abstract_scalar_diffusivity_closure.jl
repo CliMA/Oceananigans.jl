@@ -5,26 +5,35 @@ Abstract type for closures with *isotropic* diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
+abstract type AbstractDiffusivityFormulation end
+
 """
-    struct ThreeDimensional end
+    struct ThreeDimensionalFormulation end
 
 Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
 """
-struct ThreeDimensionalFormulation end
+struct ThreeDimensionalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    struct Horizontal end
+    struct HorizontalFormulation end
 
 Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
-struct HorizontalFormulation end
+struct HorizontalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    struct Vertical end
+    struct HorizontalDivergenceFormulation end
+
+Specifies viscosity for "divergence damping". Has no effect on tracers.
+"""
+struct HorizontalDivergenceFormulation <: AbstractDiffusivityFormulation end
+
+"""
+    struct VerticalFormulation end
 
 Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 """
-struct VerticalFormulation end
+struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
     viscosity(closure, diffusivities)
@@ -130,7 +139,12 @@ const C = Center
 #####
 ##### Stress divergences
 #####
-
+    
+const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
+const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
+const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
+const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
+    
 @inline viscous_flux_ux(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, Σ₁₁, U.u, U.v, U.w)
 @inline viscous_flux_vx(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, Σ₂₁, U.u, U.v, U.w)
 @inline viscous_flux_wx(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, Σ₃₁, U.u, U.v, U.w)
@@ -153,6 +167,15 @@ const C = Center
 @inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, ∂zᶜᶠᶠ, U.v)
 @inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, ∂zᶜᶜᶜ, U.w)
 
+# "Divergence damping"
+@inline viscous_flux_ux(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
+@inline viscous_flux_vy(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
+
+@inline viscous_flux_uy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+
 #####
 ##### Diffusive fluxes
 #####
@@ -164,11 +187,15 @@ const AIDorAVD = Union{AID, AVD}
 @inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂yᶜᶠᶜ(i, j, k, grid, C[id])
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk) * ∂zᶜᶜᶠ(i, j, k, grid, C[id])
 
+@inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
+@inline diffusive_flux_z(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
+
 #####
 ##### Zero out not used fluxes
 #####
 
-for (dir, Clo) in zip((:x, :y, :z), (:AVD, :AVD, :AHD))
+for (dir, Clo) in zip((:x, :y, :z, :z), (:AVD, :AVD, :AHD, :ADD))
     diffusive_flux = Symbol(:diffusive_flux_, dir)
     viscous_flux_u = Symbol(:viscous_flux_u, dir)
     viscous_flux_v = Symbol(:viscous_flux_v, dir)
