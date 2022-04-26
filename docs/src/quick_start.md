@@ -55,4 +55,4 @@ Notice the difference? We passed the positional argument `GPU()` to `Rectilinear
 
 ## Well, that was tantalizing
 
-Of course, you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions, turbulence closures, output writing... 🤯). It'd be best to move on to the [one-dimensional diffusion example](https://clima.github.io/OceananigansDocumentation/stable/generated/one_dimensional_diffusion/).
+But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions, turbulence closures, output writing... 🤯). It'd be best to move on to the [one-dimensional diffusion example](https://clima.github.io/OceananigansDocumentation/stable/generated/one_dimensional_diffusion/).
