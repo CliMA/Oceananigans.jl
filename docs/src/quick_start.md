@@ -39,7 +39,7 @@ simulation = Simulation(model; Δt=0.01, stop_iteration=100)
 run!(simulation)
 ```
 
-Notice the difference? We passed the positional argument `GPU()` when constructing `RectilinearGrid`.
+Notice the difference? We passed the positional argument `GPU()` to `RectilinearGrid`.
 
 ## Well, that was tantalizing
 
