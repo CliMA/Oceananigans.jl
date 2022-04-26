@@ -118,7 +118,10 @@ There are three primary boundary condition classifications:
 2. `ValueBoundaryCondition` (Dirchlet) specifies the value of a field on
    the given boundary, which when used in combination with a turbulence closure
    results in a flux across the boundary.
-
+   
+   _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component
+   (see the note below about `ImpenetrableBoundaryCondition`).
+   
    Some applications of `ValueBoundaryCondition` are:
 
        * no-slip boundary condition for wall-tangential velocity components via `ValueBoundaryCondition(0)`;
@@ -128,18 +131,17 @@ There are three primary boundary condition classifications:
          where the top boundary is moving. Momentum will flux into the domain do the difference
          between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
-   _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component.
-   `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
-
 3. `GradientBoundaryCondition` (Neumann) specifies the gradient of a field on a boundary.
    For example, if there is a known `diffusivity`, we can express `FluxBoundaryCondition(flux)`
    using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
 
 In addition to these primary boundary conditions, `ImpenetrableBoundaryCondition` applies to velocity
 components in wall-normal directions.
-Note however that impenetrability is internally enforced for model velocity components,
-so that `ImpenetrableBoundaryCondition` is only used for _additional_ velocity components
-that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].
+
+!!! warn `ImpenetrableBoundaryCondition`
+    `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
+    As a result, `ImpenetrableBoundaryCondition` is only used for _additional_ velocity components
+    that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].
 
 Finally, note that `Periodic` boundary conditions are internally enforced for `Periodic` directions,
 and `DefaultBoundaryCondition`s may exist before boundary conditions are "materialized" by a model.
