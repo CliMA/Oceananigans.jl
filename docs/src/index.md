@@ -50,7 +50,7 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 * [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
-* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel. We love to chat.
+* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel if you'd like to chat.
 
 ## Citing
 
