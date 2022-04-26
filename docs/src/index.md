@@ -36,10 +36,10 @@ It's _deep_ and includes:
 
 * This documentation, which provides
     * example Oceananigans scripts,
-    * tutorials that describe key Oceananigans objects and functions
-    * explanations of Oceananigans numerical methods,
+    * tutorials that describe key Oceananigans objects and functions,
+    * explanations of Oceananigans finite-volume-based numerical methods,
     * details of the dynamical equations solved by Oceananigans models, and
-    * a library documenting all user-facing Oceananigans objects and functions,
+    * a library documenting all user-facing Oceananigans objects and functions.
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
