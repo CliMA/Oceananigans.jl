@@ -1,6 +1,6 @@
 # Quick start
 
-Try copy/pasting this into a Julia REPL:
+This code:
 
 ```jldoctest cpu
 using Oceananigans
@@ -12,9 +12,12 @@ simulation = Simulation(model; Δt=0.01, stop_iteration=100)
 run!(simulation)
 ```
 
+runs 100 time steps of a two-dimensional turbulence simulation with `128²` finite volume cells and a fifth-order upwinded WENO advection scheme.
+It's quite similar to the [two-dimensional turbulence example](https://clima.github.io/OceananigansDocumentation/stable/generated/two_dimensional_turbulence/).
+
 ## Visualization
 
-Visualization in Julia...
+They say that a Makie visualization is worth a thousand unicode characters, so here's a plot of vorticity...
 
 ```jldoctest cpu
 using GLMakie
