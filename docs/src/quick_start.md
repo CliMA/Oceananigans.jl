@@ -37,9 +37,9 @@ compute!(ζ)
 heatmap(interior(ζ, :, :, 1))
 ```
 
-## GPU quick start
+## They always cheat by doing simple quick starts
 
-Switching over to the GPU requires changing just a few characters (at least, for this simple setup):
+Fine, we'll run this code on the GPU then:
 
 ```jldoctest gpu
 using Oceananigans
