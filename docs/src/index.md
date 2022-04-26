@@ -16,7 +16,7 @@ Oceananigans is a [registered Julia package](https://julialang.org/packages/), s
 
 1. [Download Julia](https://julialang.org/downloads/);
 
-2. Start up Julia and type
+2. Launch Julia and type
 
 ```julia
 julia> using Pkg
