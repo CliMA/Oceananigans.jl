@@ -17,11 +17,10 @@ It's quite similar to the [two-dimensional turbulence example](https://clima.git
 
 ## Visualization
 
-They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so here's a plot of vorticity at the end of two-dimensional turbulence simulation:
+They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so here's a plot of vorticity at the end of the two-dimensional turbulence simulation:
 
 ```jldoctest cpu
 using GLMakie
-
 u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
 compute!(ζ)
