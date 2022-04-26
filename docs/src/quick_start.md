@@ -2,7 +2,7 @@
 
 This code:
 
-```jldoctest cpu
+```@example cpu
 using Oceananigans
 
 grid = RectilinearGrid(size=(128, 128), halo=(3, 3), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
@@ -22,7 +22,7 @@ It's quite similar to the [two-dimensional turbulence example](https://clima.git
 
 They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so let's plot vorticity,
 
-```jldoctest cpu
+```@example cpu
 using GLMakie
 
 u, v, w = model.velocities
@@ -34,7 +34,7 @@ heatmap(interior(ζ, :, :, 1))
 
 A few more time-steps, and it's starting to get a little diffuse!
 
-```jldoctest cpu
+```@example cpu
 simulation.stop_iteration += 400
 run!(simulation)
 
@@ -46,7 +46,7 @@ heatmap(interior(ζ, :, :, 1))
 
 Fine, we'll re-run this code on the GPU then:
 
-```jldoctest gpu
+```@example gpu
 using Oceananigans
 
 grid = RectilinearGrid(GPU(), size=(128, 128), halo=(3, 3), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
