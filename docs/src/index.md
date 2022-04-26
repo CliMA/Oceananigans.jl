@@ -35,7 +35,7 @@ the Oceananigans wiki provides [more detailed installation instructions](https:/
 
 Oceananigans knowledge runs _deep_ and includes:
 
-* This documentation, covering Oceananigans syntax, usage, code structure, and a description of
+* This documentation, which provides Oceananigans tutorials and describes Oceananigans functions and objects, source code structure, numerical methods, and dynamical equations solved by Oceananigans models.
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science) (how to science and set up numerical simulations in Oceananigans) and
     * ["experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features) (for those who like to live a little).
