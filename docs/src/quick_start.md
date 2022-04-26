@@ -17,7 +17,7 @@ It's quite similar to the [two-dimensional turbulence example](https://clima.git
 
 ## Visualization
 
-They say that a Makie visualization is worth a thousand unicode characters, so here's a plot of vorticity...
+They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so here's a plot of vorticity:
 
 ```jldoctest cpu
 using GLMakie
