@@ -39,7 +39,7 @@ Oceananigans knowledge runs _deep_ and includes:
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science) (how to science and set up numerical simulations in Oceananigans) and
     * ["experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features) (for those who like to live a little).
-    
+
     If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and best practices for using Oceananigans.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
@@ -54,8 +54,8 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 ## Citing
 
-If you use Oceananigans.jl as part of your research, teaching, or other activities, we would be grateful if you could
-cite our work and mention Oceananigans.jl by name.
+If you use Oceananigans as part of your research, teaching, or other activities, we would be grateful if you could
+cite our work and mention Oceananigans by name.
 
 ```bibtex
 @article{OceananigansJOSS,
@@ -72,9 +72,9 @@ cite our work and mention Oceananigans.jl by name.
 }
 ```
 
-## Papers and preprints using Oceananigans.jl
+## Papers and preprints using Oceananigans
 
-If you have work using Oceananigans.jl that you would like to have listed here, please open a pull request to add it or let us know!
+If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 
