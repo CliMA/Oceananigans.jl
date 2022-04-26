@@ -15,12 +15,12 @@ simulation = Simulation(model; Δt=0.01, stop_iteration=100)
 run!(simulation)
 ```
 
-runs 100 time steps of a two-dimensional turbulence simulation with `128²` finite volume cells and a fifth-order upwinded WENO advection scheme.
+runs 100 time steps of a two-dimensional turbulence simulation with `128²` [finite volume](https://en.wikipedia.org/wiki/Finite_volume_method) cells and a fifth-order upwinded [WENO advection scheme](https://en.wikipedia.org/wiki/WENO_methods).
 It's quite similar to the [two-dimensional turbulence example](https://clima.github.io/OceananigansDocumentation/stable/generated/two_dimensional_turbulence/).
 
 ## Visualization
 
-They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so here's a plot of vorticity at the end of the two-dimensional turbulence simulation:
+They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so let's plot vorticity,
 
 ```jldoctest cpu
 using GLMakie
@@ -44,7 +44,7 @@ heatmap(interior(ζ, :, :, 1))
 
 ## They always cheat by doing simple quick starts
 
-Fine, we'll run this code on the GPU then:
+Fine, we'll re-run this code on the GPU then:
 
 ```jldoctest gpu
 using Oceananigans
