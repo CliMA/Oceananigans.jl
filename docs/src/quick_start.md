@@ -23,7 +23,7 @@ It's quite similar to the [two-dimensional turbulence example](https://clima.git
 They say that a [Makie](https://makie.juliaplots.org/stable/) visualization is worth a thousand Unicode characters, so let's plot vorticity,
 
 ```@example cpu
-using GLMakie
+using CairoMakie
 
 u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
@@ -46,7 +46,7 @@ heatmap(interior(ζ, :, :, 1))
 
 Fine, we'll re-run this code on the GPU then:
 
-```@example gpu
+```julia
 using Oceananigans
 
 grid = RectilinearGrid(GPU(), size=(128, 128), halo=(3, 3), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
