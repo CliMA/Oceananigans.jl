@@ -5,7 +5,7 @@ This code:
 ```@example cpu
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), halo=(3, 3), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
+grid = RectilinearGrid(size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 model = NonhydrostaticModel(; grid, advection=WENO5())
 
 ϵ(x, y, z) = 2rand() - 1
@@ -49,7 +49,7 @@ Fine, we'll re-run this code on the GPU then:
 ```julia
 using Oceananigans
 
-grid = RectilinearGrid(GPU(), size=(128, 128), halo=(3, 3), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
+grid = RectilinearGrid(GPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
 model = NonhydrostaticModel(; grid, advection=WENO5())
 
 ϵ(x, y, z) = 2rand() - 1
