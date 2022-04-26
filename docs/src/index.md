@@ -37,8 +37,8 @@ Oceananigans knowledge runs _deep_ and includes:
 
 * This documentation, which provides Oceananigans tutorials and describes Oceananigans functions and objects, source code structure, numerical methods, and dynamical equations solved by Oceananigans models.
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
-    * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science): how to science and set up numerical simulations in Oceananigans), and
-    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features): for those who live life on the bleeding edge.
+    * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science): how to science and set up numerical simulations in Oceananigans, and
+    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features): which covers new and sparsely-documented features for those who like to live a little dangerously.
   
     If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and best practices for using Oceananigans.
