@@ -1,4 +1,4 @@
-using Oceananigans.Grids: solid_interface
+using Oceananigans.Grids: peripheral_node
 
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
@@ -120,10 +120,10 @@ end
 ##### ∂(biharmonic_mask(∇²(var))) ensures that laplacians are 0 on the boundaries
 #####
 
-biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(solid_x(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(solid_y(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(solid_z(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(x_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(y_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(z_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
 
-solid_x(i, j, k, grid) = solid_interface(Face(), Center(), Center(), i, j, k, grid)
-solid_y(i, j, k, grid) = solid_interface(Center(), Face(), Center(), i, j, k, grid)
-solid_z(i, j, k, grid) = solid_interface(Center(), Center(), Face(), i, j, k, grid)
+x_peripheral_node(i, j, k, grid) = peripheral_node(Face(), Center(), Center(), i, j, k, grid)
+y_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Face(), Center(), i, j, k, grid)
+z_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Center(), Face(), i, j, k, grid)

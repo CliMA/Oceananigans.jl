@@ -307,6 +307,8 @@ function boundary_conditions(f::Field)
     end
 end
 
+immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
+
 data(field::Field) = field.data
 
 indices(obj, i=default_indices(3)) = i

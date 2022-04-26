@@ -69,6 +69,10 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
+# This means we don't support fluxes through immersed boundaries on the cubed sphere
+import Oceananigans.Fields: immersed_boundary_condition
+immersed_boundary_condition(::AbstractCubedSphereField) = nothing
+
 #####
 ##### Applying flux boundary conditions
 #####
