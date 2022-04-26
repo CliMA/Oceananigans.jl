@@ -103,7 +103,7 @@ Let's initialize a 3D horizontally periodic model with 100×100×50 grid points 
 ```julia
 using Oceananigans
 grid = RectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(; grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
 ```
@@ -122,7 +122,7 @@ L = Lx = Ly = Lz = 2000  # Length of each dimension.
 topology = (Periodic, Periodic, Bounded)
 
 model = NonhydrostaticModel(
-            grid = RectilinearGrid(CPU(); topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+            grid = RectilinearGrid(CPU(); topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          tracers = (:T, :S),
         buoyancy = SeawaterBuoyancy(),
          closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
