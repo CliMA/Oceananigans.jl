@@ -2,17 +2,17 @@
 
 *🌊 Fast and friendly fluid dynamics on CPUs and GPUs.*
 
-Oceananigans is a fast, friendly, and flexible software package for finite volume simulations the nonhydrostatic
-and hydrostatic Boussinesq equations on CPUs and GPUs. Aside from its ability to run on GPUs (wow, fast!)
-Oceananigans receives its powers from a flexible and intuitive user interface that
-makes simple numerical experiments easy, and complex, creative numerical experiments possible.
+Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
+and hydrostatic Boussinesq equations on CPUs and GPUs.
+It does run on GPUs (wow, fast!), but Oceananigans draws its true powers
+from a flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 
 Oceananigans is written in Julia by the [Climate Modeling Alliance](https://clima.caltech.edu)
 and heroic external collaborators.
 
 ## Quick install
 
-Oceananigans is a [registered Julia package](https://julialang.org/packages/), so the installation instructions are:
+Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
 1. [Download Julia](https://julialang.org/downloads/);
 
@@ -28,14 +28,18 @@ julia> Pkg.add("Oceananigans")
     The latest version of Oceananigans requires _at least_ Julia v1.6 to run.
     Many scripts will also run on Julia 1.7 (but Oceananigans is only tested on Julia 1.6.6 right now).
 
-If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and new to using [Julia's wonderful and featureful package manager `Pkg`](https://docs.julialang.org/en/v1/stdlib/Pkg/), or just like reading documentation,
-the Oceananigans wiki provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
+If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the Oceananigans wiki provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
 ## The Oceananigans "knowledge base"
 
-Oceananigans knowledge dives _deep_ and includes:
+It's _deep_ and includes:
 
-* This documentation, which provides Oceananigans tutorials and describes Oceananigans functions and objects, source code structure, numerical methods, and dynamical equations solved by Oceananigans models.
+* This documentation, which provides
+    * example Oceananigans scripts,
+    * tutorials that describe key Oceananigans objects and functions
+    * explanations of Oceananigans numerical methods,
+    * details of the dynamical equations solved by Oceananigans models, and
+    * a library documenting all user-facing Oceananigans objects and functions,
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
