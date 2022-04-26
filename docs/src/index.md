@@ -33,12 +33,12 @@ the Oceananigans wiki provides [more detailed installation instructions](https:/
 
 ## The Oceananigans "knowledge base"
 
-Oceananigans knowledge runs _deep_ and includes:
+Oceananigans knowledge dives _deep_ and includes:
 
 * This documentation, which provides Oceananigans tutorials and describes Oceananigans functions and objects, source code structure, numerical methods, and dynamical equations solved by Oceananigans models.
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
-    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live a little dangerously.
+    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
   
     If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and best practices for using Oceananigans.
@@ -50,7 +50,7 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 * [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
-* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel if you'd like to chat.
+* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
 
 ## Citing
 
