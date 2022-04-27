@@ -78,8 +78,6 @@ bathymetry = jldopen(bathy_path)["bathymetry"]
 T★ = zeros(Nx, Ny, Nmonths)
 S★ = zeros(Nx, Ny, Nmonths)
 
-
-
 # Files contain 1 year (1992) of 12 monthly averages
 τˣ = jldopen("path")["field"] ./ reference_density
 τʸ = jldopen("path")["field"] ./ reference_density
@@ -225,7 +223,6 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 

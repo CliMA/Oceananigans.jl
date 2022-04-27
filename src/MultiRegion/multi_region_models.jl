@@ -15,7 +15,13 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Bottleneck is getregion!!! (there are type issues with FieldBoundaryConditions and with propertynames)
-for T in (:HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2TimeStepper, :PrescribedVelocityFields)
+
+Types = (:HydrostaticFreeSurfaceModel,
+         :ImplicitFreeSurface,
+         :QuasiAdamsBashforth2TimeStepper,
+         :PrescribedVelocityFields)
+
+for T in Types
     @eval begin
         # This assumes a constructor of the form T(arg1, arg2, ...) exists,
         # which is not the case for all types.
