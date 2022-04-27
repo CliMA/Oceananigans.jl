@@ -22,19 +22,34 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
+@inline devices(f::GriddedMultiRegionField)   = devices(f.grid)
 sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
 
 @inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
-@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
+@inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+    FunctionField{LX, LY, LZ}(getregion_inner(f.func, r),
+                              getregion_inner(f.grid, r),
+                              clock = getregion_inner(f.clock, r),
+                              parameters = getregion_inner(f.parameters, r))
+
+@inline getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+    Field{LX, LY, LZ}(getregion_inner(f.grid, r),
+                      getregion_inner(f.data, r),
+                      getregion_inner(f.boundary_conditions, r),
+                      getregion_inner(f.indices, r),
+                      getregion_inner(f.operand, r),
+                      getregion_inner(f.status, r),
+                      getregion_inner(f.boundary_buffers, r))
+
+@inline getregion_inner(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
                               getregion(f.grid, r),
                               clock = getregion(f.clock, r),
                               parameters = getregion(f.parameters, r))
 
-@inline getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline getregion_inner(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(getregion(f.grid, r),
                       getregion(f.data, r),
                       getregion(f.boundary_conditions, r),

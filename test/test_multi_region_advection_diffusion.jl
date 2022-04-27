@@ -157,9 +157,9 @@ for arch in archs
         
             cs, ds, es = solid_body_tracer_advection_test(grid)
             
-            cs = Array(interior(cs));
-            ds = Array(interior(ds));
-            es = Array(interior(es));
+            cs = Array(interior(cs))
+            ds = Array(interior(ds))
+            es = Array(interior(es))
 
             for regions in [2, 4], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
@@ -184,11 +184,11 @@ for arch in archs
 
         us, vs, ws, cs, ηs = solid_body_rotation_test(grid)
             
-        us = Array(interior(us));
-        vs = Array(interior(vs));
-        ws = Array(interior(ws));
-        cs = Array(interior(cs));
-        ηs = Array(interior(ηs));
+        us = Array(interior(us))
+        vs = Array(interior(vs))
+        ws = Array(interior(ws))
+        cs = Array(interior(cs))
+        ηs = Array(interior(ηs))
         
         for regions in [2, 4], P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"

@@ -20,6 +20,11 @@ struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
 end
 
 Base.show(io::IO, fs::ImplicitFreeSurface) =
+    isnothing(fs.η) ?
+    print(io, "ImplicitFreeSurface with ", fs.solver_method, '\n',
+              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), '\n',
+              "├─ solver_method: ", fs.solver_method, '\n', # TODO: implement summary for solvers
+              "└─ settings: ", isempty(fs.solver_settings) ? "Default" : fs.solver_settings) :
     print(io, "ImplicitFreeSurface with ", fs.solver_method, '\n',
               "├─ grid: ", summary(fs.η.grid), '\n',
               "├─ η: ", summary(fs.η), '\n',
@@ -124,7 +129,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch, prognostic_field_events)
-    wait(device(arch), MultiEvent(prognostic_field_events[1]))
+    wait(device(arch), MultiEvent(tuple(prognostic_field_events[1]...)))
     masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)

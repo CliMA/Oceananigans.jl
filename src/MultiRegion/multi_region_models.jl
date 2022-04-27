@@ -18,6 +18,7 @@ const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 
 Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
+         :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
          :PrescribedVelocityFields)
 
@@ -25,11 +26,11 @@ for T in Types
     @eval begin
         # This assumes a constructor of the form T(arg1, arg2, ...) exists,
         # which is not the case for all types.
-        @inline getregion(t::$T, r) = $T(Tuple(getregion(getproperty(t, n), r) for n in fieldnames($T))...)
+        @inline  getregion(t::$T, r) = $T(Tuple(_getregion(getproperty(t, n), r) for n in fieldnames($T))...)
+        @inline _getregion(t::$T, r) = $T(Tuple( getregion(getproperty(t, n), r) for n in fieldnames($T))...)
     end
 end
 
-@inline getregion(fs::ExplicitFreeSurface, r) = ExplicitFreeSurface(getregion(fs.η, r), fs.gravitational_acceleration)
 @inline isregional(pv::PrescribedVelocityFields) = isregional(pv.u) | isregional(pv.v) | isregional(pv.w)
 @inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 

@@ -31,6 +31,8 @@ end
 # Finally, the true fill_halo!
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 
+# fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...) = nothing
+
 function fill_halo_regions!(c::Union{OffsetArray, NTuple{<:Any, OffsetArray}}, boundary_conditions, grid, args...; kwargs...)
 
     arch = architecture(grid)

@@ -52,7 +52,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 ##### fill_halo_regions! for a MultiRegionObject
 #####
 
-# fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) =
+# fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
@@ -277,25 +277,47 @@ end
 #####
 
 @inline getregion(fc::FieldBoundaryConditions, i) = 
-        FieldBoundaryConditions(getregion(fc.west, i), 
-                                getregion(fc.east, i), 
-                                getregion(fc.south, i), 
-                                getregion(fc.north, i), 
-                                getregion(fc.bottom, i),
-                                getregion(fc.top, i),
+        FieldBoundaryConditions(_getregion(fc.west, i), 
+                                _getregion(fc.east, i), 
+                                _getregion(fc.south, i), 
+                                _getregion(fc.north, i), 
+                                _getregion(fc.bottom, i),
+                                _getregion(fc.top, i),
                                 fc.immersed)
 
-@inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+@inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
 @inline getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
     ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
-                                           getregion(cf.parameters, i),
+                                           _getregion(cf.parameters, i),
                                            cf.field_dependencies,
                                            cf.field_dependencies_indices,
                                            cf.field_dependencies_interp)
 
 @inline getregion(df::DiscreteBoundaryFunction, i) =
-    DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
+    DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
+
+
+@inline _getregion(fc::FieldBoundaryConditions, i) = 
+FieldBoundaryConditions(getregion(fc.west, i), 
+                        getregion(fc.east, i), 
+                        getregion(fc.south, i), 
+                        getregion(fc.north, i), 
+                        getregion(fc.bottom, i),
+                        getregion(fc.top, i),
+                        fc.immersed)
+
+@inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+
+@inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
+ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+                                   getregion(cf.parameters, i),
+                                   cf.field_dependencies,
+                                   cf.field_dependencies_indices,
+                                   cf.field_dependencies_interp)
+
+@inline _getregion(df::DiscreteBoundaryFunction, i) =
+DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 

@@ -48,10 +48,19 @@ switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
 @inline getregion(iter::Iterate, i)         = iter.iter[i]
-@inline getregion(mo::MultiRegionObject, i) = getregion(mo.regions[i], i)
+@inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regions[i], i)
 
-@inline getregion(t::Tuple, i)              = Tuple(getregion(elem, i) for elem in t)
-@inline getregion(nt::NamedTuple, i)        = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
+@inline _getregion(a, i) = a
+@inline _getregion(ref::Reference, i)        = ref.ref
+@inline _getregion(iter::Iterate, i)         = iter.iter[i]
+@inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regions[i], i)
+
+
+@inline getregion(t::Tuple, i)         = Tuple(_getregion(elem, i) for elem in t)
+@inline getregion(nt::NamedTuple, i)   = NamedTuple{keys(nt)}(_getregion(elem, i) for elem in nt)
+
+@inline _getregion(t::Tuple, i)        = Tuple(getregion(elem, i) for elem in t)
+@inline _getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
 
 isregional(a)                   = false
 isregional(::MultiRegionObject) = true

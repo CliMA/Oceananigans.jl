@@ -78,11 +78,16 @@ bathymetry = jldopen(bathy_path)["bathymetry"]
 T★ = zeros(Nx, Ny, Nmonths)
 S★ = zeros(Nx, Ny, Nmonths)
 
+path_tau_x = "path/tau/x"
+path_tau_y = "path/tau/y"
+path_T = "path/T"
+path_S = "path/S"
+
 # Files contain 1 year (1992) of 12 monthly averages
-τˣ = jldopen("path")["field"] ./ reference_density
-τʸ = jldopen("path")["field"] ./ reference_density
-T★ = jldopen("path")["field"] 
-S★ = jldopen("path")["field"] 
+τˣ = jldopen(path_tau_x)["field"] ./ reference_density
+τʸ = jldopen(path_tau_y)["field"] ./ reference_density
+T★ = jldopen(path_T)["field"] 
+S★ = jldopen(path_S)["field"] 
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 bathymetry = arch_array(arch, bathymetry)
