@@ -107,7 +107,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
 end
 
 """ Compute the divergence of fluxes Qu and Qv. """
-@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
+@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, Qu, Qv) = δxᶜᶜᶜ(i, j, k, grid, Qu) + δyᶜᶜᶜ(i, j, k, grid, Qv)
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
@@ -146,8 +146,8 @@ Compute the horizontal divergence of vertically-uniform quantity using
 vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 """
 @inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ZReducedField) =
-    (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
-     δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
+    (δxᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
+     δyᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
 
 """
     _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)

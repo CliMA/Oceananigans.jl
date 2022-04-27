@@ -102,14 +102,14 @@ for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
         ν = Symbol(:ν, dir, code)
         @eval begin
-            @inline $ν(i, j, k, grid, clo::$Clo, args...) = zero(eltype(grid))
+            @inline $ν(i, j, k, grid, clo::$Clo, args...) = zero(grid)
         end
     end
 
     for code in (:ᶠᶜᶜ, :ᶜᶠᶜ, :ᶜᶜᶠ)
         κ = Symbol(:κ, dir, code)
         @eval begin
-            @inline $κ(i, j, k, grid, clo::$Clo, args...) = zero(eltype(grid))
+            @inline $κ(i, j, k, grid, clo::$Clo, args...) = zero(grid)
         end
     end
 end
@@ -171,10 +171,10 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline viscous_flux_ux(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
 @inline viscous_flux_vy(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
 
-@inline viscous_flux_uy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, closure::ADD, args...) = zero(grid)
+@inline viscous_flux_vx(i, j, k, grid, closure::ADD, args...) = zero(grid)
+@inline viscous_flux_wx(i, j, k, grid, closure::ADD, args...) = zero(grid)
+@inline viscous_flux_wy(i, j, k, grid, closure::ADD, args...) = zero(grid)
 
 #####
 ##### Diffusive fluxes
@@ -187,9 +187,8 @@ const AIDorAVD = Union{AID, AVD}
 @inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂yᶜᶠᶜ(i, j, k, grid, C[id])
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk) * ∂zᶜᶜᶠ(i, j, k, grid, C[id])
 
-@inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
+@inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(grid)
 
 #####
 ##### Zero out not used fluxes
@@ -201,10 +200,10 @@ for (dir, Clo) in zip((:x, :y, :z, :z), (:AVD, :AVD, :AHD, :ADD))
     viscous_flux_v = Symbol(:viscous_flux_v, dir)
     viscous_flux_w = Symbol(:viscous_flux_w, dir)
     @eval begin
-        @inline $diffusive_flux(i, j, k, grid, closure::$Clo, K, ::Val, args...) = zero(eltype(grid))
-        @inline $viscous_flux_u(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
-        @inline $viscous_flux_v(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
-        @inline $viscous_flux_w(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
+        @inline $diffusive_flux(i, j, k, grid, closure::$Clo, K, ::Val, args...) = zero(grid)
+        @inline $viscous_flux_u(i, j, k, grid, closure::$Clo, args...) = zero(grid)
+        @inline $viscous_flux_v(i, j, k, grid, closure::$Clo, args...) = zero(grid)
+        @inline $viscous_flux_w(i, j, k, grid, closure::$Clo, args...) = zero(grid)
     end
 end
 
@@ -220,8 +219,8 @@ const VITD = VerticallyImplicitTimeDiscretization
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, clo::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, clo, args...)
 @inline viscous_flux_vz(i, j, k, grid,  ::VITD, clo::AIDorAVD, args...) = ivd_viscous_flux_vz(i, j, k, grid, clo, args...)
-@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(grid)
                   
 # Vertically bounded grids
 #
@@ -246,12 +245,12 @@ end
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
     return ifelse((k == 1) | (k == grid.Nz+1), 
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(eltype(grid)))
+                  zero(grid))
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
     return ifelse((k == 1) | (k == grid.Nz+1), 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(eltype(grid)))
+                  zero(grid))
 end
 

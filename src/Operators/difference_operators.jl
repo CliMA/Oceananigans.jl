@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat
+using Oceananigans.Grids: Center, Face, Flat, peripheral_node
 
 #####
 ##### Base difference operators
@@ -30,20 +30,69 @@ using Oceananigans.Grids: Flat
 ##### Support for Flat Earths
 #####
 
-@inline δxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, u) where {FT, TY, TZ} = zero(FT)
-@inline δxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, c) where {FT, TY, TZ} = zero(FT)
+const XFlatGrid = AG{<:Any, Flat}
+const YFlatGrid = AG{<:Any, <:Any, Flat}
+const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
 
-@inline δyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, v) where {FT, TX, TZ} = zero(FT)
-@inline δyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, c) where {FT, TX, TZ} = zero(FT)
+@inline δxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = zero(grid)
+@inline δxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = zero(grid)
 
-@inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, w) where {FT, TX, TY} = zero(FT)
-@inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, c) where {FT, TX, TY} = zero(FT)
+@inline δyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v) = zero(grid)
+@inline δyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c) = zero(grid)
 
-@inline δxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = zero(FT)
-@inline δxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = zero(FT)
+@inline δzᵃᵃᶜ(i, j, k, grid::YFlatGrid, w) = zero(grid)
+@inline δzᵃᵃᶠ(i, j, k, grid::YFlatGrid, c) = zero(grid)
 
-@inline δyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = zero(FT)
-@inline δyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = zero(FT)
+@inline δxᶜᵃᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
+@inline δxᶠᵃᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
 
-@inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
-@inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
+@inline δyᵃᶜᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
+@inline δyᵃᶠᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
+
+@inline δzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
+@inline δzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
+
+#####
+##### Three dimensional, homogeneous differences
+#####
+
+const c = Center()
+const f = Face()
+
+syms = (:ᶜ, :ᶠ)
+locs = (:c, :f)
+
+for (sx, ℓx) in zip(syms, locs)
+    for (sy, ℓy) in zip(syms, locs)
+        for (sz, ℓz) in zip(syms, locs)
+            δx_outer = Symbol(:δx, sx, sy, sz)
+            δy_outer = Symbol(:δy, sx, sy, sz)
+            δz_outer = Symbol(:δz, sx, sy, sz)
+
+            δx_inner = Symbol(:δx, sx, :ᵃ, :ᵃ)
+            δy_inner = Symbol(:δy, :ᵃ, sy, :ᵃ)
+            δz_inner = Symbol(:δz, :ᵃ, :ᵃ, sz)
+
+            for (δout, δin) in zip((δx_outer, δy_outer, δz_outer),
+                                   (δx_inner, δy_inner, δz_inner))
+
+                @eval begin
+                    @inline $δout(i, j, k, grid, q) = ifelse(peripheral_node($ℓx, $ℓy, $ℓz, i, j, k, grid), zero(grid), $δin(i, j, k, grid, q))
+                    @inline $δout(i, j, k, grid, f::F, args...) where {F<:Function} = ifelse(peripheral_node($ℓx, $ℓy, $ℓz, i, j, k, grid), zero(grid), $δin(i, j, k, grid, f, args...))
+                end
+            end
+
+            @eval begin
+                @inline $δx_outer(i, j, k, grid::XFlatGrid, u) = zero(grid)
+                @inline $δx_outer(i, j, k, grid::XFlatGrid, f::F, args...) where F<:Function = zero(grid)
+
+                @inline $δy_outer(i, j, k, grid::YFlatGrid, u) = zero(grid)
+                @inline $δy_outer(i, j, k, grid::YFlatGrid, f::F, args...) where F<:Function = zero(grid)
+
+                @inline $δz_outer(i, j, k, grid::ZFlatGrid, u) = zero(grid)
+                @inline $δz_outer(i, j, k, grid::ZFlatGrid, f::F, args...) where F<:Function = zero(grid)
+            end
+        end
+    end
+end
+

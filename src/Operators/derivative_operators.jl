@@ -4,18 +4,17 @@
 #####
 
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-    
     x_derivative = Symbol(:∂x, LX, LY, LZ)
     x_spacing    = Symbol(:Δx, LX, LY, LZ)
-    x_difference = Symbol(:δx, LX, :ᵃ, :ᵃ)
+    x_difference = Symbol(:δx, LX, LY, LZ)
 
     y_derivative = Symbol(:∂y, LX, LY, LZ)
     y_spacing    = Symbol(:Δy, LX, LY, LZ)
-    y_difference = Symbol(:δy, :ᵃ, LY, :ᵃ)
+    y_difference = Symbol(:δy, LX, LY, LZ)
 
     z_derivative = Symbol(:∂z, LX, LY, LZ)
     z_spacing    = Symbol(:Δz, LX, LY, LZ)
-    z_difference = Symbol(:δz, :ᵃ, :ᵃ, LZ)
+    z_difference = Symbol(:δz, LX, LY, LZ)
 
     @eval begin
         @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)

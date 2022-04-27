@@ -11,35 +11,7 @@ using Oceananigans.Utils
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
-
-using Oceananigans.TurbulenceClosures:
-    viscous_flux_ux,
-    viscous_flux_uy,
-    viscous_flux_uz,
-    viscous_flux_vx,
-    viscous_flux_vy,
-    viscous_flux_vz,
-    viscous_flux_wx,
-    viscous_flux_wy,
-    viscous_flux_wz,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
-
-using Oceananigans.Advection:
-    advective_momentum_flux_Uu,
-    advective_momentum_flux_Uv,
-    advective_momentum_flux_Uw,
-    advective_momentum_flux_Vu,
-    advective_momentum_flux_Vv,
-    advective_momentum_flux_Vw,
-    advective_momentum_flux_Wu,
-    advective_momentum_flux_Wv,
-    advective_momentum_flux_Ww,
-    advective_tracer_flux_x,
-    advective_tracer_flux_y,
-    advective_tracer_flux_z,
-    WENOVectorInvariant
+using Oceananigans.Advection: WENOVectorInvariant
 
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
@@ -48,33 +20,7 @@ import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_
 import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
-import Oceananigans.Advection:
-    _advective_momentum_flux_Uu,
-    _advective_momentum_flux_Uv,
-    _advective_momentum_flux_Uw,
-    _advective_momentum_flux_Vu,
-    _advective_momentum_flux_Vv,
-    _advective_momentum_flux_Vw,
-    _advective_momentum_flux_Wu,
-    _advective_momentum_flux_Wv,
-    _advective_momentum_flux_Ww,
-    _advective_tracer_flux_x,
-    _advective_tracer_flux_y,
-    _advective_tracer_flux_z
-
 import Oceananigans.TurbulenceClosures:
-    _viscous_flux_ux,
-    _viscous_flux_uy,
-    _viscous_flux_uz,
-    _viscous_flux_vx,
-    _viscous_flux_vy,
-    _viscous_flux_vz,
-    _viscous_flux_wx,
-    _viscous_flux_wy,
-    _viscous_flux_wz,
-    _diffusive_flux_x,
-    _diffusive_flux_y,
-    _diffusive_flux_z,
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,
@@ -252,7 +198,6 @@ include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
-include("conditional_derivatives.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
