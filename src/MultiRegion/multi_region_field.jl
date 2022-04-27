@@ -29,27 +29,27 @@ sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid
 @inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
-    FunctionField{LX, LY, LZ}(getregion_inner(f.func, r),
-                              getregion_inner(f.grid, r),
-                              clock = getregion_inner(f.clock, r),
-                              parameters = getregion_inner(f.parameters, r))
+    FunctionField{LX, LY, LZ}(_getregion(f.func, r),
+                              _getregion(f.grid, r),
+                              clock = _getregion(f.clock, r),
+                              parameters = _getregion(f.parameters, r))
 
 @inline getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
-    Field{LX, LY, LZ}(getregion_inner(f.grid, r),
-                      getregion_inner(f.data, r),
-                      getregion_inner(f.boundary_conditions, r),
-                      getregion_inner(f.indices, r),
-                      getregion_inner(f.operand, r),
-                      getregion_inner(f.status, r),
-                      getregion_inner(f.boundary_buffers, r))
+    Field{LX, LY, LZ}(_getregion(f.grid, r),
+                      _getregion(f.data, r),
+                      _getregion(f.boundary_conditions, r),
+                      _getregion(f.indices, r),
+                      _getregion(f.operand, r),
+                      _getregion(f.status, r),
+                      _getregion(f.boundary_buffers, r))
 
-@inline getregion_inner(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline _getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
                               getregion(f.grid, r),
                               clock = getregion(f.clock, r),
                               parameters = getregion(f.parameters, r))
 
-@inline getregion_inner(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline _getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(getregion(f.grid, r),
                       getregion(f.data, r),
                       getregion(f.boundary_conditions, r),
