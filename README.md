@@ -68,7 +68,7 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-1. [Download Julia](https://julialang.org/downloads/);
+1. [Download Julia](https://julialang.org/downloads/).
 
 2. Launch Julia and type
 
