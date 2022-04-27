@@ -54,12 +54,12 @@ Oceananigans is a fast, friendly, flexible software package for finite volume si
 
 Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
 
-
 ## Contents
 
 * [Installation instructions](#installation-instructions)
 * [Running your first model](#running-your-first-model)
-* [Getting help](#getting-help)
+* [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
+* [Citing](#citing)
 * [Contributing](#contributing)
 * [Movies](#movies)
 * [Performance benchmarks](#performance-benchmarks)
@@ -78,7 +78,26 @@ julia> using Pkg
 julia> Pkg.add("Oceananigans")
 ```
 
-## The Oceananigans "knowledge base"
+## Running your first model
+
+Let's run a two-dimensional, horizontally-periodic simulation of turbulence using 128² finite volume cells for 4 non-dimensional time units:
+
+```julia
+using Oceananigans
+grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
+model = NonhydrostaticModel(; grid, advection=WENO5())
+ϵ(x, y, z) = 2rand() - 1
+set!(model, u=ϵ, v=ϵ)
+simulation = Simulation(model; Δt=0.01, stop_time=4)
+run!(simulation)
+```
+
+That's it! Even better, changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
+
+Dive into [the documentation](clima.github.io/oceananigansdocumentation/stable) for more code examples and tutorials.
+You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
+
+## The Oceananigans knowledge base
 
 It's _deep_ and includes:
 
@@ -94,57 +113,8 @@ It's _deep_ and includes:
   
     If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
+* The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
-
-## Running your first model
-
-Let's initialize a 3D horizontally periodic model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 hour using a constant time step of 60 seconds.
-
-```julia
-using Oceananigans
-grid = RectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
-model = NonhydrostaticModel(; grid)
-simulation = Simulation(model, Δt=60, stop_time=3600)
-run!(simulation)
-```
-
-You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
-
-### More interesting example
-
-Let's add something to make the dynamics a bit more interesting. We can add a hot bubble in the middle of the domain and watch it rise to the surface. This example also shows how to set an initial condition.
-
-```julia
-using Oceananigans
-
-N = Nx = Ny = Nz = 128   # Number of grid points in each dimension.
-L = Lx = Ly = Lz = 2000  # Length of each dimension.
-topology = (Periodic, Periodic, Bounded)
-
-model = NonhydrostaticModel(
-            grid = RectilinearGrid(CPU(); topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-         tracers = (:T, :S),
-        buoyancy = SeawaterBuoyancy(),
-         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-)
-
-# Set a temperature perturbation with a Gaussian profile located at the center.
-# This will create a buoyant thermal bubble that will rise with time.
-x₀, z₀ = Lx/2, Lz/2
-T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (Lx^2 + Lz^2))
-set!(model, T=T₀)
-
-simulation = Simulation(model, Δt=10, stop_iteration=5000)
-run!(simulation)
-```
-
-By changing the first positional argument of `RectilinearGrid` from `CPU()` to `GPU()` the example will run on a CUDA-enabled Nvidia GPU!
-
-You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
-
-## Getting help
-
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! If you're trying to set up a model then check out the examples and model setup documentation. Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/main/examples) and please feel free to [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions) if you have any questions, comments, suggestions, etc! There is also an #oceananigans channel on the [Julia Slack](https://julialang.org/slack/).
 
 ## Citing
 
