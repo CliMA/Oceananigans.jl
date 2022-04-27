@@ -132,9 +132,6 @@ Keyword arguments
 Examples
 ========
 
-Examples
-========
-
 * A default grid with `Float64` type:
 
 ```jldoctest
