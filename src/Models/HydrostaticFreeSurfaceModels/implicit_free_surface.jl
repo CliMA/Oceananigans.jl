@@ -133,7 +133,7 @@ function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch, progno
     velocity_events = tuple(prognostic_field_events[1]...)
 
     # Wait for predictor velocity update step to complete.
-    wait(device(arch), MultiEvent(velocity_events)
+    wait(device(arch), MultiEvent(velocity_events))
 
     masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
