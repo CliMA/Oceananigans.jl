@@ -104,7 +104,7 @@ You can see some movies from GPU simulations below along with CPU and GPU [perfo
 
 It's _deep_ and includes:
 
-* This documentation, which provides
+* [Documentation](https://clima.github.io/OceananigansDocumentation/stable) that provides
     * example Oceananigans scripts,
     * tutorials that describe key Oceananigans objects and functions,
     * explanations of Oceananigans finite-volume-based numerical methods,
