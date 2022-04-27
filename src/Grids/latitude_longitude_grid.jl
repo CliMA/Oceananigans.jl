@@ -165,7 +165,6 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
                                     latitude = (-20, 20),
                                     z = hyperbolically_spaced_faces,
                                     topology = (Bounded, Bounded, Bounded))
-
 36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── longitude: Bounded  λ ∈ [-180.0, 180.0] regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-20.0, 20.0]   regularly spaced with Δφ=1.17647
