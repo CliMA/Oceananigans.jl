@@ -168,13 +168,13 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, ∂zᶜᶜᶜ, U.w)
 
 # "Divergence damping"
-@inline viscous_flux_ux(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
-@inline viscous_flux_vy(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
+@inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
+@inline viscous_flux_vy(i, j, k, grid, clo::ADD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
 
-@inline viscous_flux_uy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, clo::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, clo::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, clo::ADD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, clo::ADD, args...) = zero(eltype(grid))
 
 #####
 ##### Diffusive fluxes
@@ -189,7 +189,6 @@ const AIDorAVD = Union{AID, AVD}
 
 @inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
 
 #####
 ##### Zero out not used fluxes

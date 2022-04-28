@@ -13,10 +13,11 @@ end
 
 const EqualXPartition = XPartition{<:Number}
 
-Base.length(p::XPartition) = length(p.div)
-Base.length(p::EqualXPartition) = p.div
-Base.summary(p::EqualXPartition{N}) where N = "EqualXPartition{$N}"
-Base.summary(p::XPartition) = "XPartition with [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
+Base.length(p::XPartition)       = length(p.div)
+Base.length(p::EqualXPartition)  = p.div
+
+Base.summary(p::EqualXPartition) = "Equal partitioning in X with ($(p.div) regions)"
+Base.summary(p::XPartition)      = "XPartition with [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
 function partition_size(p::EqualXPartition, grid)
     Nx, Ny, Nz = size(grid)

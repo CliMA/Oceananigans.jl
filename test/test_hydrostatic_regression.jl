@@ -74,7 +74,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                 longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
                 grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
-            for free_surface in [explicit_free_surface, implicit_free_surface]
+            for free_surface in [explicit_free_surface]
                                     
                 # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
                 # because "uses too much parameter space (maximum 0x1100 bytes)" error 
