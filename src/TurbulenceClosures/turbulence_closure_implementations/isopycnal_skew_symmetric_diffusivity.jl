@@ -212,19 +212,19 @@ end
 @inline explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c) = ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline function κzᶠᶜᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+@inline function κzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure, id)
     return κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 end
 
-@inline function κzᶜᶠᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+@inline function κzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure, id)
     return κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 end
 
-@inline function κzᶜᶜᶠ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure, id)
     return κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
