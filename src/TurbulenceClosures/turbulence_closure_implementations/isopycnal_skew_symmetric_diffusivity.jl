@@ -77,21 +77,16 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
 @inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) where FT
+    # TODO: handle boundaries!
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 
-    # bz = ifelse(k == 1,       ∂z_b(i, j, 2,         grid, buoyancy, tracers),
-    #      ifelse(k == grid.Nz, ∂z_b(i, j, grid.Nz-1, grid, buoyancy, tracers),
-    #             ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)))
-    
     slope_x = - bx / bz
     slope_y = - by / bz
     slope² = ifelse(bz <= 0, zero(FT), slope_x^2 + slope_y^2)
 
-    ϵ = min(one(FT), tapering.max_slope^2 / slope²)
-
-    return ϵ
+    return min(one(FT), tapering.max_slope^2 / slope²)
 end
 
 """
@@ -121,11 +116,6 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-
-    # These end up at fcc
-    # Gradient... of... the average
-    #∂y_c = ∂yᶠᶜᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
-    #∂z_c = ∂zᶠᶜᶜ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
 
     # Average... of... the gradient!
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
@@ -158,11 +148,6 @@ end
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    # These end up at cfc:
-    # Gradient... of... the average
-    #∂x_c = ∂xᶜᶠᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
-    #∂z_c = ∂zᶜᶠᶜ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
-
     # Average... of... the gradient!
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
@@ -193,11 +178,6 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-
-    # These end up at ccf
-    # Gradient... of... the average
-    #∂x_c = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
-    #∂y_c = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
 
     # Average... of... the gradient!
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
