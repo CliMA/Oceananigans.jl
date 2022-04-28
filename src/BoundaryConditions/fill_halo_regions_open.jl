@@ -24,12 +24,12 @@ end
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
 end
 
-@inline   fill_west_halo!(u, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, set_west_or_east_u!,   u,           1, bc, grid, args...; dependencies=dep, kwargs...)
-@inline   fill_east_halo!(u, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, set_west_or_east_u!,   u, grid.Nx + 1, bc, grid, args...; dependencies=dep, kwargs...)
-@inline  fill_south_halo!(v, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, set_south_or_north_v!, v,           1, bc, grid, args...; dependencies=dep, kwargs...)
-@inline  fill_north_halo!(v, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, set_south_or_north_v!, v, grid.Ny + 1, bc, grid, args...; dependencies=dep, kwargs...)
-@inline fill_bottom_halo!(w, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, set_bottom_or_top_w!,  w,           1, bc, grid, args...; dependencies=dep, kwargs...)
-@inline    fill_top_halo!(w, bc::OBC, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, set_bottom_or_top_w!,  w, grid.Nz + 1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline   fill_west_halo!(u, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, set_west_or_east_u!,   u,           1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline   fill_east_halo!(u, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, set_west_or_east_u!,   u, grid.Nx + 1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline  fill_south_halo!(v, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, set_south_or_north_v!, v,           1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline  fill_north_halo!(v, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, set_south_or_north_v!, v, grid.Ny + 1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline fill_bottom_halo!(w, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, set_bottom_or_top_w!,  w,           1, bc, grid, args...; dependencies=dep, kwargs...)
+@inline    fill_top_halo!(w, bc::OBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, set_bottom_or_top_w!,  w, grid.Nz + 1, bc, grid, args...; dependencies=dep, kwargs...)
 
 @inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
 @inline   _fill_east_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
