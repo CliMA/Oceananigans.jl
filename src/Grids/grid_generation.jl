@@ -74,12 +74,12 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     @assert length(coord) == 2
 
-    c₁, c₂ = coord
+    c₁, c₂ = @. BigFloat(Float32(coord))
     @assert c₁ < c₂
-    L = FT(c₂ - c₁)
+    L = c₂ - c₁
 
     # Convert to get the correct type also when using single precision
-    Δᶠ = Δᶜ = Δ = convert(FT, L / N)
+    Δᶠ = Δᶜ = Δ = L / N
 
     F₋ = c₁ - H * Δ
     F₊ = F₋ + total_extent(topology, H, Δ, L)
@@ -90,13 +90,13 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     TF = total_length(Face,   topology, N, H)
     TC = total_length(Center, topology, N, H)
 
-    F = range(F₋, F₊, length = TF)
-    C = range(C₋, C₊, length = TC)
+    F = range(FT(F₋), FT(F₊), length = TF)
+    C = range(FT(C₋), FT(C₊), length = TC)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
         
-    return L, F, C, Δᶠ, Δᶜ
+    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
 
 # Flat domains
