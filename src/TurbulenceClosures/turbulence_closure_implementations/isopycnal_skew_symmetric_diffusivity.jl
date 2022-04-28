@@ -19,7 +19,7 @@ const FlavorOfISSD{TD} = Union{ISSD{TD}, ISSDVector{TD}} where TD
 const issd_coefficient_loc = (Center, Center, Center)
 
 """
-    IsopycnalSkewSymmetricDiffusivity([FT=Float64;]
+    IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                       κ_skew = 0,
                                       κ_symmetric = 0,
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
@@ -32,22 +32,23 @@ calculated isopycnal slope values.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-function IsopycnalSkewSymmetricDiffusivity(time_disc = VerticallyImplicitTimeDiscretization(), FT = Float64;
+function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                           slope_limiter = nothing)
+                                           slope_limiter = nothing) where TD
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
-
-    TD = typeof(time_disc)
 
     return IsopycnalSkewSymmetricDiffusivity{TD}(convert_diffusivity(FT, κ_skew),
                                                  convert_diffusivity(FT, κ_symmetric),
                                                  isopycnal_tensor,
                                                  slope_limiter)
 end
+
+IsopycnalSkewSymmetricDiffusivity(FT::DataType=Float64; kw...) = 
+    IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::ISSD{TD}) where TD
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
