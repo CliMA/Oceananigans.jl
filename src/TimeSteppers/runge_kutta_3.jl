@@ -28,18 +28,18 @@ Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` 
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
 
 The scheme described by Le and Moin (1991) (see [LeMoin1991](@cite)). In a nutshel, the 3rd-order
-Runge Kutta timestepper steps forward the state `U^n` by `Δt` via 3 substeps. A pressure correction
+Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
 step is applied after at each substep.
 
 The state `U` after each substep `m` is
 
 ```julia
-Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)`,
+Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
 ```
 
 where `Uᵐ` is the state at the ``m``-th substep, `Gᵐ` is the tendency
-at the ``n``-th substep, and `Gᵐ⁻¹` is the tendency at the previous
-substep, and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
+at the ``m``-th substep, `Gᵐ⁻¹` is the tendency at the previous substep,
+and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
 ``ζ¹ = 0``, ``ζ² = -17/60``, ``ζ³ = -5/12``.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
@@ -195,7 +195,9 @@ end
 """
 Time step velocity fields via the 3rd-order Runge-Kutta method
 
-    `Uᵐ⁺¹ = Uᵐ + Δt (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)`,
+```
+Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
+```
 
 where `m` denotes the substage.
 """

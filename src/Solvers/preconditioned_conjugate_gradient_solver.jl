@@ -38,7 +38,7 @@ initialize_precondition_product(::Nothing, template_field) = nothing
                                           abstol = 0,
                                           preconditioner = nothing)
 
-Returns a PreconditionedConjugateGradientSolver that solves the linear equation
+Returns a `PreconditionedConjugateGradientSolver` that solves the linear equation
 ``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
 The solver is used by calling
 

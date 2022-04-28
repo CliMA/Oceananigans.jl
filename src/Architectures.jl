@@ -91,4 +91,4 @@ arch_array(arch, a::Number) = a
 
 device_event(arch) = Event(device(arch))
 
-end
+end # module

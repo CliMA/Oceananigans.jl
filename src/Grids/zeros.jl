@@ -10,3 +10,5 @@ zeros(FT, ::ROCMGPU, N...) = AMDGPU.ROCArray(zeros(FT, N...))
 
 zeros(arch::AbstractArchitecture, grid, N...) = zeros(eltype(grid), arch, N...)
 zeros(grid::AbstractGrid, N...) = zeros(eltype(grid), architecture(grid), N...)
+
+@inline Base.zero(grid::AbstractGrid) = zero(eltype(grid))
