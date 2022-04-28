@@ -70,7 +70,7 @@ variable `JULIA_NUM_THREADS` is set.
 struct CPU <: AbstractArchitecture end
 
 """
-    CUDAGPU <: AbstractArchitecture
+    GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
