@@ -40,7 +40,7 @@ output_field[1, 1, :]
 # output
 4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
  0.0
- 2.333333333333334
+ 2.333333333333333
  3.0
  0.0
 ```
@@ -89,7 +89,7 @@ end
     j_src = ifelse(Ny_target == Ny_source, j, 1)
 
     @unroll for k = 1:target_grid.Nz
-        @inbounds target_field[i, j, k] = 0
+        @inbounds target_field[i, j, k] = 0 
 
         z₋ = znode(Center(), Center(), Face(), i, j, k,   target_grid)
         z₊ = znode(Center(), Center(), Face(), i, j, k+1, target_grid)
