@@ -37,8 +37,9 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
 
     @warn "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!"
 
-    arch    = devices isa Nothing ? CPU() : GPU()
-    devices = validate_devices(partition, devices)
+    arch = architecture(global_grid)
+
+    devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
 
     global_grid  = on_architecture(CPU(), global_grid)

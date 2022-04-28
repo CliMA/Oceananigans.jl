@@ -3,9 +3,11 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 # using GLMakie
 
+arch = CPU()
 Nh   = 512
-grid = RectilinearGrid(GPU(), size=(Nh, Nh, 10), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
-mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = (0, 0))
+Nz   = 1
+grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
+mrg  = MultiRegionGrid(grid, partition=XPartition(2))
 
 Δh = 2π / grid.Nx
 Δt = 0.1 * Δh
@@ -20,8 +22,8 @@ v_init_mrg = multi_region_object_from_array(v_init, mrg)
 momentum_advection = WENO5()
 # momentum_advection = WENO5(vector_invariant=VelocityStencil())
 
-# free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
-free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
+free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
+# free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
 
 progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
@@ -36,7 +38,7 @@ model_1 = HydrostaticFreeSurfaceModel(; grid = mrg, momentum_advection, free_sur
                                     buoyancy = nothing,
                                     closure = ScalarDiffusivity(ν=1e-4))
 
-# set!(model_1, u=u_init_mrg, v=v_init_mrg)
+set!(model_1, u=u_init_mrg, v=v_init_mrg)
 
 simulation = Simulation(model_1; Δt, stop_iteration=10)
 run!(simulation)
@@ -65,7 +67,7 @@ model_2 = HydrostaticFreeSurfaceModel(; grid, momentum_advection,
                                     free_surface = ImplicitFreeSurface(gravitational_acceleration=1),
                                     closure = ScalarDiffusivity(ν=1e-4))
 
-# set!(model_2, u=u_init, v=v_init)
+set!(model_2, u=u_init, v=v_init)
 
 simulation = Simulation(model_2; Δt, stop_iteration=10)
 run!(simulation)
