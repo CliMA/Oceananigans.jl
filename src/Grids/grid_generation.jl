@@ -74,7 +74,7 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     @assert length(coord) == 2
 
-    c₁, c₂ = @. BigFloat(Float32(coord))
+    c₁, c₂ = FT.(coord)
     @assert c₁ < c₂
     L = c₂ - c₁
 
