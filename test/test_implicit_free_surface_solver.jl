@@ -121,7 +121,7 @@ end
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
         
-        events = ([device_event(arch), device_event(arch)], [device_event(arch), device_event(arch)])
+        events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
         Δt = 900
         for m in (mat_model, pcg_model, fft_model)

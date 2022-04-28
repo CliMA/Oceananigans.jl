@@ -57,7 +57,8 @@ function divide_direction(x::AbstractArray, p::EqualXPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
-partition_global_array(a::Function, args...) = a
+partition_global_array(a::Function, args...)  = a
+partition_global_array(a::Field, p::EqualXPartition, args...) = partition_global_array(a.data, p, args...)
 
 function partition_global_array(a::AbstractArray, ::EqualXPartition, local_size, region, arch) 
     idxs = default_indices(length(size(a)))
