@@ -121,7 +121,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     
     if arch == CUDAGPU() && !has_cuda()
         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    endif
+    end
     if arch == ROCMGPU() && !AMDGPU.has_rocm_gpu()
         throw(ArgumentError("Cannot create a GPU model. No ROCM-enabled GPU was detected!"))
     endif
