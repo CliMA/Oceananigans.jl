@@ -124,7 +124,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     end
     if arch == ROCMGPU() && !AMDGPU.has_rocm_gpu()
         throw(ArgumentError("Cannot create a GPU model. No ROCM-enabled GPU was detected!"))
-    endif
+    end
 
     momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
