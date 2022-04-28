@@ -189,7 +189,6 @@ const AIDorAVD = Union{AID, AVD}
 
 @inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
 
 #####
 ##### Zero out not used fluxes
