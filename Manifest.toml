@@ -328,9 +328,9 @@ version = "0.19.2"
 
 [[deps.MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "3dacfc006764fe498515a022c3976b7e133c4008"
+git-tree-sha1 = "8eed51eb836c8f47781cdb493ffd5f56370c0496"
 uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
-version = "4.0.2+0"
+version = "4.0.1+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
