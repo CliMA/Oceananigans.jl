@@ -84,11 +84,7 @@ end
 
 function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size, extent, partition, region)
     boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, local_size, region, child_arch)
-    if boundary isa GridFittedBoundary
-        return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary, precompute_mask = false)
-    else
-        return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary)
-    end
+    return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary)
 end
 
 partition_immersed_boundary(b, args...) = 

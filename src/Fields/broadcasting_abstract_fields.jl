@@ -23,8 +23,13 @@ Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType 
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
                                         Broadcasted{<:CUDA.CuArrayStyle}}
 
-@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
-    Base.Broadcast.materialize!(interior(dest), bc)
+@inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrCuArray)
+    if any(a isa OffsetArray for a in bc.args)
+        return Base.Broadcast.materialize!(dest.data, bc)
+    else
+        return Base.Broadcast.materialize!(interior(dest), bc)
+    end
+end
 
 #####
 ##### Kernels
@@ -39,7 +44,7 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
 # Broadcasting with interpolation breaks Base's default rules for AbstractOperations 
 @inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
-                                    dest::AbstractField,
+                                    dest::Field,
                                     bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
 
 @inline function Base.copyto!(dest::Field, bc::Broadcasted{Nothing})

@@ -50,7 +50,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-
+    fill_halo_regions!(vertically_integrated_lateral_areas)
+    
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
