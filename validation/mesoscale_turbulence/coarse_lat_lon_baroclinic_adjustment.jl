@@ -7,7 +7,7 @@ using GLMakie
 
 using Oceananigans.TurbulenceClosures: FluxTapering
 
-gradient = "φ"
+gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
 
 # Architecture
@@ -17,7 +17,7 @@ architecture = CPU()
 Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
-save_fields_interval = 0.5day
+save_fields_interval = 1hour
 stop_time = 30days
 Δt = 20minutes
 
@@ -36,7 +36,7 @@ coriolis = HydrostaticSphericalCoriolis()
 vertical_closure = VerticalScalarDiffusivity(ν=1e-2, κ=1e-4)
 horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
+gerdes_koberle_willebrand_tapering = FluxTapering(1e-1)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
                                                                 κ_symmetric = (b=0, c=1e3),
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
@@ -65,24 +65,24 @@ y < y₀           => ramp = 0
 y₀ < y < y₀ + Δy => ramp = y / Δy
 y > y₀ + Δy      => ramp = 1
 """
-function ramp(λ, φ, Δ)
-    gradient == "λ" && return min(max(0, λ / Δ + 1/2), 1)
-    gradient == "φ" && return min(max(0, (φ - 45) / Δ + 1/2), 1)
+function ramp(λ, y, Δ)
+    gradient == "x" && return min(max(0, λ / Δ + 1/2), 1)
+    gradient == "y" && return min(max(0, (y - 45) / Δ + 1/2), 1)
 end
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-Δφ = 1 # degree
+Δy = 1 # degree
 Δz = 100
 
-Δc = 100kilometers * 2Δφ
-Δb = 100kilometers * Δφ * M²
+Δc = 100kilometers * 2Δy
+Δb = 100kilometers * Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
-bᵢ(λ, φ, z) = N² * z + Δb * ramp(λ, φ, Δφ)
-cᵢ(λ, φ, z) = exp(-φ^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
+bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
+cᵢ(λ, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -150,7 +150,7 @@ x, y, z = nodes((Center, Center, Center), grid)
 times = bt.times
 Nt = length(times)
 
-if gradient == "φ" # average in x
+if gradient == "y" # average in x
     un(n) = interior(mean(ut[n], dims=1), 1, :, :)
     bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
     cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
@@ -162,7 +162,7 @@ end
 
 @show min_c = 0
 @show max_c = 1
-@show max_u = maximum(abs, un(Nt))
+@show max_u = 4 * maximum(abs, un(Nt))
 min_u = - max_u
 
 axu = Axis(fig[2, 1], xlabel="$gradient (deg)", ylabel="z (m)", title="Zonal velocity")

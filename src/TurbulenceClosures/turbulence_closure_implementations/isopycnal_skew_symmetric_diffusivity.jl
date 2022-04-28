@@ -80,12 +80,18 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+
+    # bz = ifelse(k == 1,       ∂z_b(i, j, 2,         grid, buoyancy, tracers),
+    #      ifelse(k == grid.Nz, ∂z_b(i, j, grid.Nz-1, grid, buoyancy, tracers),
+    #             ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)))
     
     slope_x = - bx / bz
     slope_y = - by / bz
     slope² = ifelse(bz <= 0, zero(FT), slope_x^2 + slope_y^2)
 
-    return min(one(FT), tapering.max_slope^2 / slope²)
+    ϵ = min(one(FT), tapering.max_slope^2 / slope²)
+
+    return ϵ
 end
 
 """
@@ -116,13 +122,14 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
-    # End up at fcc
-    ∂y_c = ∂yᶠᶜᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
-    ∂z_c = ∂zᶠᶜᶜ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
+    # These end up at fcc
+    # Gradient... of... the average
+    #∂y_c = ∂yᶠᶜᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
+    #∂z_c = ∂zᶠᶜᶜ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
 
-    # Previously:
-    #∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    #∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    # Average... of... the gradient!
+    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(eltype(grid))
     R₁₂ = zero(eltype(grid))
@@ -130,8 +137,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
-                             κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
+                                κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
                   (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
 end
 
@@ -151,13 +158,14 @@ end
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    # End up at cfc
-    ∂x_c = ∂xᶜᶠᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
-    ∂z_c = ∂zᶜᶠᶜ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
+    # These end up at cfc:
+    # Gradient... of... the average
+    #∂x_c = ∂xᶜᶠᶜ(i, j, k, grid, ℑxyᶠᶠᵃ, c)
+    #∂z_c = ∂zᶜᶠᶜ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
 
-    # Previously:
-    #∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    #∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    # Average... of... the gradient!
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(eltype(grid))
     R₂₂ = one(eltype(grid))
@@ -165,8 +173,8 @@ end
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-                             κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                                κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
                   (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 
@@ -186,13 +194,14 @@ end
 
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
-    # End up at ccf
-    ∂x_c = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
-    ∂y_c = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
+    # These end up at ccf
+    # Gradient... of... the average
+    #∂x_c = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᵃᶠ, c)
+    #∂y_c = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᵃᶠᶠ, c)
 
-    # Previously:
-    #∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    #∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    # Average... of... the gradient!
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
