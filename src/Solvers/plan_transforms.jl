@@ -56,7 +56,7 @@ end
 
 function plan_backward_transform(A::ROCArray, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return AMDGPU.rocFFT.plan_ifft(A, dims)
+    return AbstractFFTs.plan_ifft!(A, dims)
 end
 
 plan_backward_transform(A::Union{Array, CuArray, ROCArray}, ::Flat, args...) = nothing
