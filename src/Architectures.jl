@@ -39,14 +39,16 @@ struct CPU <: AbstractArchitecture end
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct CUDAGPU <: AbstractArchitecture end
+struct GPU{D} <: AbstractArchitecture
+    device :: D
+end
 
-"""
-    ROCMGPU <: AbstractArchitecture
+const CUDAGPU = GPU{<:CUDAKernels.CUDADevice}
+const ROCMGPU = GPU{<:ROCKernels.ROCDevice}
 
-Run Oceananigans on a single AMD ROCM GPU.
-"""
-struct ROCMGPU <: AbstractArchitecture end
+# Convenience, non-public constructors (may be better to remove these eventually for code clarity)
+CUDAGPU() = GPU(CUDAKernels.CUDADevice())
+ROCMGPU() = GPU(ROCKernels.ROCDevice())
 
 #####
 ##### These methods are extended in Distributed.jl
