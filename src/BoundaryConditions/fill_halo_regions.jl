@@ -31,7 +31,7 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kw...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
 
