@@ -90,13 +90,13 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     TF = total_length(Face,   topology, N, H)
     TC = total_length(Center, topology, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = range(F₋, F₊, length = TF)
+    C = range(C₋, C₊, length = TC)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
         
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    return L, F, C, Δᶠ, Δᶜ
 end
 
 # Flat domains
