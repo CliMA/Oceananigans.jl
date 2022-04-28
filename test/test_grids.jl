@@ -554,7 +554,8 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,     zstr)
 
-    CUDA.allowscalar() do
+    CUDA.allowscalar(true)
+    AMDGPU.allowscalar(true)
 
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude

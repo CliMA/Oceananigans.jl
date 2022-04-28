@@ -276,7 +276,7 @@ function __init__()
             @debug "$id: $(agent.name)"
         end
 
-        AMDGPU.allowscalar(false)
+
     end
 end
 end # module
