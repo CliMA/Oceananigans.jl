@@ -289,15 +289,11 @@ function test_grid_equality(arch)
     return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
-function test_grid_equality_over_architectures()
-    grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-    if CUDA.has_cuda()
-        grid_gpu = RectilinearGrid(CUDAGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-    elseif AMDGPU.has_rocm_gpu()
-        grid_gpu = RectilinearGrid(ROCMGPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-    end
-    return grid_cpu == grid_gpu
-end
+function test_grid_equality_over_architectures(arch)
+     grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+     grid_arch = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+     return grid_cpu == grid_arch
+ end
 
 #####
 ##### Vertically stretched grids
@@ -672,10 +668,7 @@ end
             
             for arch in archs
                 test_grid_equality(arch)
-            end
-
-            if CUDA.has_cuda() || AMDGPU.has_rocm_gpu()
-                test_grid_equality_over_architectures()
+                test_grid_equality_over_architectures(arch)
             end
         end
 
