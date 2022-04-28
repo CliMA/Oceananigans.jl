@@ -1,23 +1,22 @@
-struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
+struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L} <: AbstractTurbulenceClosure{TD}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M
              slope_limiter :: L
     
-    function IsopycnalSkewSymmetricDiffusivity(κ_skew::K, κ_symmetric::S, isopycnal_tensor::I, slope_limiter::L) where {K, S, I, L}
+    function IsopycnalSkewSymmetricDiffusivity{TD}(κ_skew :: K,
+                                                   κ_symmetric :: S,
+                                                   isopycnal_tensor :: I,
+                                                   slope_limiter :: L) where {TD, K, S, I, L}
 
-        isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
-            error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
-
-        return new{K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
+        return new{TD, K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
     end
 end
 
-const ISSD = IsopycnalSkewSymmetricDiffusivity
-const ISSDVector = AbstractVector{<:ISSD}
-const FlavorOfISSD = Union{ISSD, ISSDVector}
+const ISSD{TD} = IsopycnalSkewSymmetricDiffusivity{TD} where TD
+const ISSDVector{TD} = AbstractVector{<:ISSD{TD}} where TD
+const FlavorOfISSD{TD} = Union{ISSD{TD}, ISSDVector{TD}} where TD
 const issd_coefficient_loc = (Center, Center, Center)
-
 
 """
     IsopycnalSkewSymmetricDiffusivity([FT=Float64;]
@@ -33,10 +32,24 @@ calculated isopycnal slope values.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_tensor=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
-    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_tensor, slope_limiter)
+function IsopycnalSkewSymmetricDiffusivity(time_disc = VerticallyImplicitTimeDiscretization(), FT = Float64;
+                                           κ_skew = 0,
+                                           κ_symmetric = 0,
+                                           isopycnal_tensor = SmallSlopeIsopycnalTensor(),
+                                           slope_limiter = nothing)
 
-function with_tracers(tracers, closure::ISSD)
+    isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
+        error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
+
+    TD = typeof(time_disc)
+
+    return IsopycnalSkewSymmetricDiffusivity{TD}(convert_diffusivity(FT, κ_skew),
+                                                 convert_diffusivity(FT, κ_symmetric),
+                                                 isopycnal_tensor,
+                                                 slope_limiter)
+end
+
+function with_tracers(tracers, closure::ISSD{TD}) where TD
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
@@ -76,7 +89,7 @@ References
 R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
-@inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) where FT
+@inline function taper_factor_ccc(i, j, k, grid, buoyancy, tracers, tapering::FluxTapering)
     # TODO: handle boundaries!
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
@@ -84,9 +97,9 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
 
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope² = ifelse(bz <= 0, zero(FT), slope_x^2 + slope_y^2)
+    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
 
-    return min(one(FT), tapering.max_slope^2 / slope²)
+    return min(one(grid), tapering.max_slope^2 / slope²)
 end
 
 """
@@ -94,7 +107,7 @@ end
 
 Returns 1 for the  isopycnal slope tapering factor, that is, no tapering is done.
 """
-taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT = one(FT)
+taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
 
 # Diffusive fluxes
 
@@ -121,8 +134,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
-    R₁₁ = one(eltype(grid))
-    R₁₂ = zero(eltype(grid))
+    R₁₁ = one(grid)
+    R₁₂ = zero(grid)
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
@@ -152,8 +165,8 @@ end
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
-    R₂₁ = zero(eltype(grid))
-    R₂₂ = one(eltype(grid))
+    R₂₁ = zero(grid)
+    R₂₂ = one(grid)
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
@@ -165,8 +178,8 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where tracer_index
+                                  closure::FlavorOfISSD{TD}, diffusivity_fields, ::Val{tracer_index},
+                                  velocities, tracers, clock, buoyancy) where {tracer_index, TD}
 
     c = tracers[tracer_index]
     closure = getclosure(i, j, closure)
@@ -189,22 +202,30 @@ end
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
-                  (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c +
-                                κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c)
+    κ_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c)
+
+    return - κ_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
+                           (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
-@inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_uz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c) = ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
+@inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline viscous_flux_vx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_vz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline κzᶠᶜᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶠᶜᶜ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
+@inline κzᶜᶠᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶜᶠᶜ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
+@inline κzᶜᶜᶠ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶜᶜᶠ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
 
-@inline viscous_flux_wx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
-@inline viscous_flux_wz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+
+@inline viscous_flux_vx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+
+@inline viscous_flux_wx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
 
 calculate_diffusivities!(diffusivity_fields, closure::Union{ISSD, ISSDVector}, model) = nothing
 
