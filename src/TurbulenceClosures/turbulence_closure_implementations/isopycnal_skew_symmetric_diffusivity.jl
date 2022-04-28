@@ -47,7 +47,7 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                                  slope_limiter)
 end
 
-IsopycnalSkewSymmetricDiffusivity(FT::DataType=Float64; kw...) = 
+IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::ISSD{TD}) where TD
