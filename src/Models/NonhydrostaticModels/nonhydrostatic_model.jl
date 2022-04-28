@@ -122,8 +122,11 @@ function NonhydrostaticModel(;    grid,
 
     arch = architecture(grid)
 
-    if (arch == CUDAGPU() && !has_cuda()) || (arch == ROCMGPU() && !AMDGPU.has_rocm_gpu())
-         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    if arch == CUDAGPU() && !has_cuda()
+        throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    end
+    if arch == ROCMGPU() && !AMDGPU.has_rocm_gpu()
+        throw(ArgumentError("Cannot create a GPU model. No ROCM-enabled GPU was detected!"))
     end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
