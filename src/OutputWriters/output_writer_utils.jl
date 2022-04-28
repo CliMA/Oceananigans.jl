@@ -12,6 +12,7 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 convert_to_arch(::CPU, a) = a
 convert_to_arch(::CUDAGPU, a) = CuArray(a)
 convert_to_arch(::ROCMGPU, a) = ROCArray(a)
+
 """
     ext(ow)
 
