@@ -77,10 +77,11 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
 @inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) where FT
+    # TODO: handle boundaries!
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    
+
     slope_x = - bx / bz
     slope_y = - by / bz
     slope² = ifelse(bz <= 0, zero(FT), slope_x^2 + slope_y^2)
@@ -115,6 +116,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+
+    # Average... of... the gradient!
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
@@ -124,8 +127,8 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
-                             κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
+                                κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
                   (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
 end
 
@@ -143,8 +146,10 @@ end
     κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_skew)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+
+    # Average... of... the gradient!
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(eltype(grid))
@@ -153,8 +158,8 @@ end
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-                             κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+    return - ϵ * (              κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                                κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
                   (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 
@@ -172,9 +177,11 @@ end
     κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc,κ_skew)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+
+    # Average... of... the gradient!
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
