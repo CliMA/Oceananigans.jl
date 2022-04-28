@@ -212,9 +212,23 @@ end
 @inline explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c) = ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline κzᶠᶜᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶠᶜᶜ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
-@inline κzᶜᶠᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶜᶠᶜ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
-@inline κzᶜᶜᶠ(i, j, k, grid, clo::FlavorOfISSD, K, id, clk) = κᶜᶜᶠ(i, j, k, grid, clk, issd_coefficient_loc, get_tracer_κ(get_closure(i, j, closure).κ_symmetric, id))
+@inline function κzᶠᶜᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+    closure = getclosure(i, j, closure)
+    κ_symmetric = get_tracer_κ(closure, id)
+    return κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+end
+
+@inline function κzᶜᶠᶜ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+    closure = getclosure(i, j, closure)
+    κ_symmetric = get_tracer_κ(closure, id)
+    return κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+end
+
+@inline function κzᶜᶜᶠ(i, j, k, grid, clo::FlavorOfISSD, K, id, clock)
+    closure = getclosure(i, j, closure)
+    κ_symmetric = get_tracer_κ(closure, id)
+    return κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+end
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
 @inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
