@@ -127,11 +127,11 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
     
-    Δz_min = minimum(grid.grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(grid.underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
-    immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=closure, model_kwargs...)
+    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(; grid, closure, model_kwargs...)
 
     initial_temperature(x, y, z) = exp(-z^2 / 0.02)
     set!(full_model,     c=initial_temperature)

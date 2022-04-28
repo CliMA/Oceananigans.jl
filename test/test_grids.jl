@@ -551,29 +551,30 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,     zstr)
 
-    CUDA.allowscalar() do
+    CUDA.allowscalar(true)
 
-        # grid with pre computed metrics vs metrics computed on the fly
-        for lat in latitude
-            for lon in longitude
-                for z in zcoord
-                    println("$lat, $lon, $z")
-                    grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
-                    grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
-        
-                    @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Δxᶜᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Δyᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Azᶠᶜᵃ(i, j, 1, grid_pre) ≈ Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                    @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                end 
-            end
+    # grid with pre computed metrics vs metrics computed on the fly
+    for lat in latitude
+        for lon in longitude
+            for z in zcoord
+                println("$lat, $lon, $z")
+                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
+                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+    
+                @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δyᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶜᵃ(i, j, 1, grid_pre) ≈ Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+            end 
         end
     end
+
+    CUDA.allowscalar(false)
 
 end
 
@@ -678,7 +679,9 @@ end
         grid = RectilinearGrid(CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::RectilinearGrid)")
@@ -719,7 +722,9 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-                show(grid); println()
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -749,7 +754,9 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -763,7 +770,9 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
 
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -785,7 +794,9 @@ end
         grid = ConformalCubedSphereFaceGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")

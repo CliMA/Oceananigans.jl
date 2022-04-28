@@ -56,7 +56,6 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = zeros(grid, N...)
-    
     for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
@@ -85,13 +84,12 @@ function run_poisson_equation_test(grid)
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
     calc_∇²!(∇²ϕ, ϕ_truth, grid)
-
+    
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
     rhs = copy(interior(rhs))
     rhs = reshape(rhs, length(rhs))
-    weights_cpu = compute_poisson_weights(on_architecture(CPU(), grid))
-    weights = Tuple(arch_array(arch, w) for w in weights_cpu)
+    weights = compute_poisson_weights(grid)
     solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 
     # Solve Poisson equation
@@ -103,7 +101,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ_solution = CenterField(grid)
     calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)
 
-    ϕ_solution .-= mean(ϕ_solution)
+    parent(ϕ_solution) .-= mean(ϕ_solution)
 
     CUDA.@allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))

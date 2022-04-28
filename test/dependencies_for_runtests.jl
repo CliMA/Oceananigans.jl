@@ -67,6 +67,8 @@ closures = (
 ##### Run tests!
 #####
 
+CUDA.allowscalar(true)
+
 float_types = (Float32, Float64)
 
 include("data_dependencies.jl")

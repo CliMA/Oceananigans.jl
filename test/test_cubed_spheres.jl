@@ -44,10 +44,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
             set!(c, 0)
             set!(η, 0)
 
-            CUDA.allowscalar() do
-                @test all(all(face_c .== 0) for face_c in faces(c))
-                @test all(all(face_η .== 0) for face_η in faces(η))
-            end
+            CUDA.allowscalar(true)
+            @test all(all(face_c .== 0) for face_c in faces(c))
+            @test all(all(face_η .== 0) for face_η in faces(η))
+            CUDA.allowscalar(false)
 
             @test maximum(abs, c) == 0
             @test minimum(abs, c) == 0
