@@ -122,7 +122,7 @@ function NonhydrostaticModel(;    grid,
 
     arch = architecture(grid)
 
-    if arch == GPU() && !has_cuda()
+    if (arch == CUDAGPU() && !has_cuda()) || (arch == ROCMGPU() && !AMDGPU.has_rocm_gpu())
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 

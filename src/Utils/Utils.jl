@@ -13,7 +13,7 @@ export instantiate
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
 
 import CUDA  # To avoid name conflicts
-import AMDGPU
+# import AMDGPU
 
 #####
 ##### Misc. small utils
