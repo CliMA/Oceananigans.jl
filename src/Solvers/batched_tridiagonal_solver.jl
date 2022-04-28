@@ -2,8 +2,6 @@ using Oceananigans.Architectures: device_event, arch_array
 
 import Oceananigans.Architectures: architecture
 
-import Oceananigans.Utils: launch!
-
 """
     BatchedTridiagonalSolver
 
