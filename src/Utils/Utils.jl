@@ -15,7 +15,7 @@ export apply_regionally!, construct_regionally, @apply_regionally, @regional, Mu
 export isregional, getregion, _getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
 
 import CUDA  # To avoid name conflicts
-import AMDGPU
+# import AMDGPU
 
 #####
 ##### Misc. small utils

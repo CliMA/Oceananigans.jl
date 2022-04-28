@@ -140,7 +140,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
-    
+
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by TKEBasedVerticalDiffusivity, are enforced:
     boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)
@@ -200,8 +200,8 @@ function validate_vertical_velocity_boundary_conditions(w)
 end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
-function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid)
+    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " *
           "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end
