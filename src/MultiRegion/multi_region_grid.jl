@@ -84,7 +84,7 @@ end
 
 function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size, extent, partition, region)
     boundary = partition_immersed_boundary(ibg.immersed_boundary, partition, local_size, region, child_arch)
-    return ImmersedBoundaryGrid(construct_grid(ibg.grid, child_arch, topo, local_size, extent), boundary)
+    return ImmersedBoundaryGrid(construct_grid(ibg.underlying_grid, child_arch, topo, local_size, extent), boundary)
 end
 
 partition_immersed_boundary(b, args...) = 
@@ -101,7 +101,7 @@ end
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
                                                      mrg.partition, 
-                                                     construct_regionally(getproperty, mrg, :grid), 
+                                                     construct_regionally(getproperty, mrg, :underlying_grid), 
                                                      mrg.devices)
                                                      
     global_grid     = on_architecture(CPU(), reconstruct_global_grid(underlying_mrg))

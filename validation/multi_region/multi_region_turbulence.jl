@@ -3,7 +3,7 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 # using GLMakie
 
-arch = CPU()
+arch = GPU()
 Nh   = 512
 Nz   = 1
 grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
