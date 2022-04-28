@@ -5,6 +5,10 @@ Abstract type for closures with *isotropic* diffusivities.
 """
 abstract type AbstractScalarDiffusivity{TD, F} <: AbstractTurbulenceClosure{TD} end
 
+#####
+##### Formulations
+#####
+
 abstract type AbstractDiffusivityFormulation end
 
 """

@@ -16,7 +16,7 @@ end
 const ISSD{TD} = IsopycnalSkewSymmetricDiffusivity{TD} where TD
 const ISSDVector{TD} = AbstractVector{<:ISSD{TD}} where TD
 const FlavorOfISSD{TD} = Union{ISSD{TD}, ISSDVector{TD}} where TD
-const issd_coefficient_loc = (Center, Center, Center)
+const issd_coefficient_loc = (Center(), Center(), Center())
 
 """
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
@@ -69,6 +69,43 @@ function with_tracers(tracers, closure_vector::ISSDVector)
 
     return arch_array(arch, closure_vector)
 end
+
+# Note: computing diffusivities at cell centers for now.
+function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) where TD
+    if TD() isa VerticallyImplicitTimeDiscretization
+        # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
+        return (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
+    else
+        return nothing
+    end
+end
+
+function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model)
+
+    arch = model.architecture
+    grid = model.grid
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    event = launch!(arch, grid, :xyz,
+                    compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    return nothing
+end
+
+@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) where LZ
+    i, j, k, = @index(Global, NTuple)
+
+    closure_ij = getclosure(i, j, closure)
+    ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure_ij.slope_limiter)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure_ij.isopycnal_tensor)
+
+    @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
+end
+
 
 #####
 ##### Tapering
@@ -191,43 +228,33 @@ end
     κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc,κ_skew)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-
     # Average... of... the gradient!
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
+    κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
 
-    κ_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c)
-
-    return - κ_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
-                           (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
+    return - ϵ * κ_symmetric_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
+                                         (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
-@inline explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, ϵ, κ_symmetricᶜᶜᶠ, R₃₃, ∂z_c) = ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
+@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    return κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
+end
+
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline function κzᶠᶜᶜ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
+@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, ::Val{id}, clock) where id
     closure = getclosure(i, j, closure)
-    κ_symmetric = get_tracer_κ(closure, id)
-    return κᶠᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
-end
-
-@inline function κzᶜᶠᶜ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
-    closure = getclosure(i, j, closure)
-    κ_symmetric = get_tracer_κ(closure, id)
-    return κᶜᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
-end
-
-@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock)
-    closure = getclosure(i, j, closure)
-    κ_symmetric = get_tracer_κ(closure, id)
-    return κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, id)
+    ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor
+    return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 end
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
