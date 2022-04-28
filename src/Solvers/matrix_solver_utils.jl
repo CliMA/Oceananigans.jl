@@ -2,7 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device, device_event
 import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
-using AMDGPU
 using KernelAbstractions: @kernel, @index
 
 using LinearAlgebra, SparseArrays, IncompleteLU

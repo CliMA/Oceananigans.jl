@@ -1,5 +1,5 @@
 import Adapt
-using AMDGPU
+using AMDGPU: ROCArray
 
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}

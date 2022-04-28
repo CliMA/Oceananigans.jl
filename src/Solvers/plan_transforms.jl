@@ -13,7 +13,8 @@
 
 ##### Only for regular grids (FX == FY == FZ <: Number) 
 ##### and vertically stretched grids (FX == FY <: Number)
-using AMDGPU
+using AMDGPU.rocFFT
+using AMDGPU: ROCArray
 
 const Regular             = RegRectilinearGrid
 const VerticallyStretched = HRegRectilinearGrid
