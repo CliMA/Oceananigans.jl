@@ -198,7 +198,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     JLD2OutputWriter(model, output_fields,
         schedule = TimeInterval(1hour),
           prefix = "cubed_sphere_rossby_haurwitz",
-           force = true)
+           overwrite_existing = true)
 
     run!(simulation)
 

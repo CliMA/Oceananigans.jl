@@ -310,13 +310,51 @@ save_interval = 5days
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
                                                               schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
-                                                              indices = (:, :, grid.Nz),
-                                                              force = true)
+                                                              field_slicer = FieldSlicer(k=grid.Nz),
+                                                              overwrite_existing = true)
+
+# This is at -15 m
+simulation.output_writers[:below_surface_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                              schedule = TimeInterval(save_interval),
+                                                              prefix = output_prefix * "_below_surface",
+                                                              field_slicer = FieldSlicer(k=grid.Nz - 1),
+                                                              overwrite_existing = true)
+
+# This is at -861 m
+simulation.output_writers[:mid_domain_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_mid_domain",
+                                                            field_slicer = FieldSlicer(k=18),
+                                                            overwrite_existing = true)
+
+simulation.output_writers[:atlantic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_atlantic",
+                                                            field_slicer = FieldSlicer(i=625),
+                                                            overwrite_existing = true)
+
+simulation.output_writers[:pacific_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_pacific",
+                                                            field_slicer = FieldSlicer(i=100),
+                                                            overwrite_existing = true)
+
+simulation.output_writers[:equator_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_equator",
+                                                            field_slicer = FieldSlicer(j=300),
+                                                            overwrite_existing = true)
+
+simulation.output_writers[:north_tropic_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                            schedule = TimeInterval(save_interval),
+                                                            prefix = output_prefix * "_north_tropic",
+                                                            field_slicer = FieldSlicer(j=470),
+                                                            overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

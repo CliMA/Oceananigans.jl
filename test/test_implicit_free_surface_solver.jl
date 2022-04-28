@@ -45,7 +45,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                                            abstol=1e-15, reltol=0))
     
-    events = ([device_event(arch), device_event(arch)], [device_event(arch), device_event(arch)])
+    events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, events)

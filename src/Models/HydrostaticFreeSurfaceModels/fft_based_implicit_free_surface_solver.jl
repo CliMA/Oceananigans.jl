@@ -104,7 +104,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FF
                     rhs, grid, g, Lz, Δt, ∫ᶻQ, η,
                     dependencies = device_event(arch))
     
-     wait(device(arch), event)
+    wait(device(arch), event)
     return nothing
 end
 

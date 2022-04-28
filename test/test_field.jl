@@ -102,7 +102,7 @@ end
 
 function run_field_interpolation_tests(FT, arch)
 
-    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
+    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
 
     velocities = VelocityFields(grid)
     tracers = TracerFields((:c,), grid)

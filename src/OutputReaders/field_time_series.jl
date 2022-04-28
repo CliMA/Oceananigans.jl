@@ -8,9 +8,9 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
-using Oceananigans.Fields: show_location, interior_view_indices, data_summary
+using Oceananigans.Fields: show_location, interior_view_indices, data_summary, reduced_location
 
-import Oceananigans.Fields: Field, set!, interior
+import Oceananigans.Fields: Field, set!, interior, indices
 import Oceananigans.Architectures: architecture
 
 struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
@@ -260,6 +260,8 @@ end
 
 interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
 
+indices(fts::FieldTimeSeries) = fts.indices
+
 #####
 ##### OnDisk time serieses
 #####
@@ -315,6 +317,47 @@ end
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
 Base.parent(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}) where {LX, LY, LZ} = nothing
+
+#####
+##### Basic support for reductions
+#####
+##### TODO: support for reductions across _time_ (ie when 4 ∈ dims)
+#####
+
+const FTS = FieldTimeSeries
+
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+
+        # Allocating
+        function Base.$(reduction)(f::Function, fts::FTS; dims=:, kw...)
+            if dims isa Colon        
+                return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
+            else
+                T = filltype(Base.$(reduction!), fts)
+                loc = LX, LY, LZ = reduced_location(location(fts); dims)
+                times = fts.times
+                rts = FieldTimeSeries{LX, LY, LZ}(grid, times, T; indices=fts.indices)
+                return Base.$(reduction!)(f, rts, fts; kw...)
+            end
+        end
+
+        Base.$(reduction)(fts::FTS; kw...) = Base.$(reduction)(identity, fts; kw...)
+
+        function Base.$(reduction!)(f::Function,rts::FTS, fts::FTS; dims=:, kw...)
+            dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
+            times = rts.times
+            for n = 1:length(times)
+                Base.$(reduction!)(f, rts[i], fts[i]; dims, kw...)
+            end
+            return rts
+        end
+
+        Base.$(reduction!)(rts::FTS, fts::FTS; kw...) = Base.$(reduction!)(identity, rts, fts; kw...)
+    end
+end
 
 #####
 ##### Show methods

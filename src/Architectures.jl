@@ -125,4 +125,4 @@ end
 
 device_event(arch) = Event(device(arch))
 
-end
+end # module

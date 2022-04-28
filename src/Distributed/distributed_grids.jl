@@ -9,28 +9,6 @@ import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:MultiArch}
 
-@inline get_local_coords(c::Tuple         , nc, R, index) = (c[1] + (index-1) * (c[2] - c[1]) / R,    c[1] + index * (c[2] - c[1]) / R)
-@inline get_local_coords(c::AbstractVector, nc, R, index) = c[1 + (index-1) * nc : 1 + nc * index]
-
-@inline get_global_coords(c::Tuple        , nc, R,  index, arch) = (c[2] - index * (c[2] - c[1]), c[2] - (index - R) * (c[2] - c[1]))
-
-"""
-    get_global_coords(c_local::AbstractVector, nc, R, index, arch) 
-
-Build a linear global coordinate vector given a local coordinate vector `c_local`
-a local number of elements `nc`, number of ranks `R`, rank `index`,
-and `arch`itecture.
-"""
-function get_global_coords(c_local::AbstractVector, nc, R, index, arch) 
-    c_global = zeros(eltype(c_local), nc*R+1)
-    c_global[1 + (index-1) * nc : nc * index] .= c[1:end-1]
-    index == R && (c_global[end] = c[end])
-
-    MPI.Allreduce!(c_global, +, arch.communicator)
-
-    return c_global
-end
-
 """
     RectilinearGrid(arch::MultiArch, FT=Float64; kw...)
 
@@ -63,9 +41,9 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
     # Local sizes are denoted with lowercase `n`
     nx, ny, nz = local_size = Nx÷Rx, Ny÷Ry, Nz÷Rz
 
-    xl = get_local_coords(x, nx, Rx, ri)
-    yl = get_local_coords(y, ny, Ry, rj)
-    zl = get_local_coords(z, nz, Rz, rk)
+    xl = partition(x, nx, Rx, ri)
+    yl = partition(y, ny, Ry, rj)
+    zl = partition(z, nz, Rz, rk)
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, Hx, xl, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))
@@ -106,9 +84,9 @@ function LatitudeLongitudeGrid(arch::MultiArch,
 
     nλ, nφ, nz = local_size = Nλ÷Rx, Nφ÷Ry, Nz÷Rz
 
-    λl = get_local_coords(longitude, nx, Rx, i)
-    φl = get_local_coords(latitude , ny, Ry, j)
-    zl = get_local_coords(z,         nz, Rz, k)
+    λl = partition(longitude, nx, Rx, i)
+    φl = partition(latitude,  ny, Ry, j)
+    zl = partition(z,         nz, Rz, k)
 
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -148,9 +126,9 @@ function reconstruct_global_grid(grid::RectilinearGrid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    xG = get_global_coords(x, nx, Rx, i, arch)
-    yG = get_global_coords(y, ny, Ry, j, arch)
-    zG = get_global_coords(z, nz, Rz, k, arch)
+    xG = assemble(x, nx, Rx, i, arch)
+    yG = assemble(y, ny, Ry, j, arch)
+    zG = assemble(z, nz, Rz, k, arch)
 
     child_arch = child_architecture(arch)
 

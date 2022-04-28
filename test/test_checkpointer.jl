@@ -88,7 +88,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
-    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), force=true)
+    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), overwrite_existing=true)
     push!(true_simulation.output_writers, checkpointer)
 
     run!(true_simulation) # for 5 iterations
@@ -138,7 +138,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
 
     # Pickup using existing checkpointer
     test_simulation.output_writers[:checkpointer] =
-        Checkpointer(test_model, schedule=IterationInterval(5), force=true)
+        Checkpointer(test_model, schedule=IterationInterval(5), overwrite_existing=true)
 
     run!(test_simulation, pickup=true)
     @info "    Testing model equality when running with pickup=true."

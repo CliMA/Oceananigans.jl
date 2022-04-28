@@ -120,7 +120,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
         JLD2OutputWriter(model, output_fields,
             schedule = TimeInterval(1hour),
               prefix = "cubed_sphere_surface_gravity_waves_face$face_number",
-               force = true)
+               overwrite_existing = true)
 
     run!(simulation)
 

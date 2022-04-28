@@ -10,10 +10,3 @@ end
 
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-
-fill_halo_regions!(field::DistributedField, args...; kwargs...) =
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.grid,
-                       location(field),
-                       args...; kwargs...)

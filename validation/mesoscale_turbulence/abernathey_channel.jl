@@ -231,20 +231,20 @@ averaged_outputs = (; v′b′, w′b′, B)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
     schedule = TimeInterval(100days),
     prefix = "abernathey_channel",
-    force = true)
+    overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
     schedule = TimeInterval(5days),
     prefix = "abernathey_channel",
     field_slicer = nothing,
     verbose = true,
-    force = true)
+    overwrite_existing = true)
 
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
     schedule = AveragedTimeInterval(1days, window = 1days, stride = 1),
     prefix = "abernathey_channel_averages",
     verbose = true,
-    force = true)
+    overwrite_existing = true)
 
 @info "Running the simulation..."
 

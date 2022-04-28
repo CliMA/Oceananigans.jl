@@ -1,3 +1,4 @@
+using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_event
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
@@ -10,7 +11,7 @@ using Oceananigans.BoundaryConditions:
             CBCT, 
             CBC
 
-import Oceananigans.Fields: fill_halo_regions_field_tuple!, extract_field_bcs, extract_field_data
+import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
 
 import Oceananigans.BoundaryConditions:
             fill_halo_regions!,
@@ -24,10 +25,10 @@ import Oceananigans.BoundaryConditions:
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
-@inline extract_field_buffers(field::Field)        = field.boundary_buffers
-@inline extract_field_bcs(field::MultiRegionField) = field.boundary_conditions
+@inline extract_field_buffers(field::Field)          = field.boundary_buffers
+@inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
-@inline function fill_halo_regions_field_tuple!(full_fields, grid::MultiRegionGrid, args...; kwargs...) 
+@inline function tupled_fill_halo_regions!(full_fields, grid::MultiRegionGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
@@ -38,6 +39,7 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
 
     return fill_halo_regions!(field.data,
                               field.boundary_conditions,
+                              instantiated_location(field),
                               field.grid,
                               field.boundary_buffers,
                               args...;
@@ -55,7 +57,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+function fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
     arch = architecture(mrg)
 
@@ -64,7 +66,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buf
     for task = 1:3
         barrier = device_event(arch)
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+                          c, loc, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
                           args...; kwargs...)
     end
 
@@ -82,17 +84,17 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::CBC, right_bc::CBC, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::CBC, right_bc::CBC, loc, arch, dep, grid, args...; kwargs...) 
              $fill_left_halo!(c,  left_bc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
             return NoneEvent()
         end   
-        function $fill_both_halo!(c, left_bc::CBC, right_bc, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::CBC, right_bc, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c,  left_bc, arch, event, grid, args...; kwargs...)
             return NoneEvent()
         end   
-        function $fill_both_halo!(c, left_bc, right_bc::CBC, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::CBC, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_left_halo!(c,  left_bc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, arch, event, grid, args...; kwargs...)
             return NoneEvent()

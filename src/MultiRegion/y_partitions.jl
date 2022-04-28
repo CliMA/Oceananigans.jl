@@ -1,6 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: CBC, PBC
-using Oceananigans.Fields: extract_field_data
 
 struct YPartition{N} <: AbstractPartition
     div :: N

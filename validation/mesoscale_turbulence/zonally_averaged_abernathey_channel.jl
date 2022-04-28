@@ -259,13 +259,13 @@ outputs = merge(model.velocities, model.tracers)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
-                                                        force = true)
+                                                        overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(10day),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
-                                                      force = true)
+                                                      overwrite_existing = true)
 
 try
     run!(simulation, pickup=false)

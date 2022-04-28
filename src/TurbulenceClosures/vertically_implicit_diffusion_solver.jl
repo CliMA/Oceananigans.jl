@@ -64,11 +64,17 @@ end
 ### Diagonal terms
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) - maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                        maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+    one(eltype(grid)) -
+        Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
+@inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+
+# Default
+@inline implicit_linear_coefficient(i, j, k, grid, closure, args...) = zero(eltype(grid))
 
 #####
 ##### Solver constructor
@@ -80,13 +86,13 @@ end
 Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 - Δt ∂z κz ∂z) cⁿ⁺¹ = c★
+(1 - Δt ∂z κz ∂z - Δt L) cⁿ⁺¹ = c★
 ```
 
 and
 
 ```math
-(1 - Δt ∂z νz ∂z) wⁿ⁺¹ = w★
+(1 - Δt ∂z νz ∂z - Δt L) wⁿ⁺¹ = w★
 ```
 
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,

@@ -53,7 +53,7 @@ function run_bickley_jet(;
         JLD2OutputWriter(model, outputs,
                                 schedule = TimeInterval(output_time_interval),
                                 prefix = output_name,
-                                force = true)
+                                overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 

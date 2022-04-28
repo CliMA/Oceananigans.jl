@@ -321,5 +321,6 @@ function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "├── Grid: "  , solver.grid, '\n')
     print(io, "├── Solution method: ", solver.iterative_solver, '\n')
     print(io, "└── Preconditioner: ", solver.preconditioner_method)
+    
     return nothing
 end

@@ -130,7 +130,7 @@ end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch, prognostic_field_events)
     
-    velocity_events = tuple(prognostic_field_events[1]...)
+    velocity_events = prognostic_field_events[1]
 
     # Wait for predictor velocity update step to complete.
     wait(device(arch), MultiEvent(velocity_events))

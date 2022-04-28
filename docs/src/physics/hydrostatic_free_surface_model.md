@@ -76,7 +76,7 @@ be solved simultaneously with the momentum equations.
 From left to right, the terms that appear on the right-hand side of the tracer conservation 
 equation are
 
-* tracer advection: ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* tracer advection: ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
 * molecular or turbulent diffusion: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
 * an arbitrary internal source of tracer: ``F_c``.
 

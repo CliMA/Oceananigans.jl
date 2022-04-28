@@ -237,7 +237,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
         JLD2OutputWriter(model, output_fields,
             schedule = TimeInterval(1day),
               prefix = "cubed_sphere_eddying_aquaplanet",
-               force = true)
+               overwrite_existing = true)
 
     run!(simulation)
 
