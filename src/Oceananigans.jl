@@ -117,7 +117,7 @@ using Statistics
 using LinearAlgebra
 
 using CUDA
-using AMDGPU
+using AMDGPU: ROCArray
 using Adapt
 using DocStringExtensions
 using OffsetArrays
