@@ -150,7 +150,7 @@ x, y, z = nodes(w_timeseries)
 
 anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
-    @info "Drawing frame $i from iteration $Nt..."
+    @info "Drawing frame $i of $Nt..."
 
     w = interior(w_timeseries[i], :, 1, :)
 
