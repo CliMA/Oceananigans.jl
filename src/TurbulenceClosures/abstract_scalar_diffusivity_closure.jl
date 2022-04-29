@@ -139,6 +139,23 @@ const C = Center
 #####
 ##### Stress divergences
 #####
+
+#####
+##### Fallback: flux = 0
+#####
+
+for dir in (:x, :y, :z)
+    diffusive_flux = Symbol(:diffusive_flux_, dir)
+    viscous_flux_u = Symbol(:viscous_flux_u, dir)
+    viscous_flux_v = Symbol(:viscous_flux_v, dir)
+    viscous_flux_w = Symbol(:viscous_flux_w, dir)
+    @eval begin
+        @inline $diffusive_flux(i, j, k, grid, args...) = zero(grid)
+        @inline $viscous_flux_u(i, j, k, grid, args...) = zero(grid)
+        @inline $viscous_flux_v(i, j, k, grid, args...) = zero(grid)
+        @inline $viscous_flux_w(i, j, k, grid, args...) = zero(grid)
+    end
+end
     
 const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
@@ -171,11 +188,6 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline viscous_flux_ux(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
 @inline viscous_flux_vy(i, j, k, grid, closure::ADD, K, U, C, clock, b) = - ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, U.u, U.v)
 
-@inline viscous_flux_uy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wx(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::ADD, args...) = zero(eltype(grid))
-
 #####
 ##### Diffusive fluxes
 #####
@@ -186,27 +198,6 @@ const AIDorAVD = Union{AID, AVD}
 @inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂xᶠᶜᶜ(i, j, k, grid, C[id])
 @inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂yᶜᶠᶜ(i, j, k, grid, C[id])
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk) * ∂zᶜᶜᶠ(i, j, k, grid, C[id])
-
-@inline diffusive_flux_x(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::ADD, K, ::Val, args...) = zero(eltype(grid))
-
-#####
-##### Zero out not used fluxes
-#####
-
-for (dir, Clo) in zip((:x, :y, :z, :z), (:AVD, :AVD, :AHD, :ADD))
-    diffusive_flux = Symbol(:diffusive_flux_, dir)
-    viscous_flux_u = Symbol(:viscous_flux_u, dir)
-    viscous_flux_v = Symbol(:viscous_flux_v, dir)
-    viscous_flux_w = Symbol(:viscous_flux_w, dir)
-    @eval begin
-        @inline $diffusive_flux(i, j, k, grid, closure::$Clo, K, ::Val, args...) = zero(eltype(grid))
-        @inline $viscous_flux_u(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
-        @inline $viscous_flux_v(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
-        @inline $viscous_flux_w(i, j, k, grid, closure::$Clo, args...) = zero(eltype(grid))
-    end
-end
 
 #####
 ##### Support for VerticallyImplicit
