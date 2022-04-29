@@ -64,7 +64,6 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
     sol = solve!(η, solver, rhs, Δt)
         
     set!(η, reshape(sol, solver.problem_size...))
-    fill_halo_regions!(η) 
 
     return nothing
 end

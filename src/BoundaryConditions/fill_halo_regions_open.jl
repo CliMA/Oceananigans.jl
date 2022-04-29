@@ -9,17 +9,17 @@
 # because the boundary-normal index can vary (and array boundary conditions need to be
 # 3D in general).
 
-@kernel function set_west_or_east_u!(u, i_boundary, bc, loc, grid, args...)
+@kernel function set_west_or_east_u!(u, i_boundary, bc, grid, args...)
     j, k = @index(Global, NTuple)
     @inbounds u[i_boundary, j, k] = getbc(bc, j, k, grid, args...)
 end
 
-@kernel function set_south_or_north_v!(v, j_boundary, bc, loc, grid, args...)
+@kernel function set_south_or_north_v!(v, j_boundary, bc, grid, args...)
     i, k = @index(Global, NTuple)
     @inbounds v[i, j_boundary, k] = getbc(bc, i, k, grid, args...)
 end
 
-@kernel function set_bottom_or_top_w!(w, k_boundary, bc, loc, grid, args...)
+@kernel function set_bottom_or_top_w!(w, k_boundary, bc, grid, args...)
     i, j = @index(Global, NTuple)
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
 end
