@@ -70,33 +70,30 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
 end
 
 # generate a regular coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number}, architecture)
+function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number}, arch)
 
     @assert length(coord) == 2
 
-    c₁, c₂ = @. BigFloat(coord)
+    c₁, c₂ = @. FT(coord)
     @assert c₁ < c₂
     L = c₂ - c₁
+
+    F = range(c₁, c₂, length = N + 1)
+    F = StepRangeLen(F.ref, F.step, F.len + 2 * H, F.offset + H)
 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
 
-    F₋ = c₁ - H * Δ
-    F₊ = F₋ + total_extent(topology, H, Δ, L)
+    C₋ = c₁ + Δ / 2
+    C₊ = c₂ - Δ / 2
 
-    C₋ = F₋ + Δ / 2
-    C₊ = C₋ + L + Δ * (2H - 1)
-
-    TF = total_length(Face,   topology, N, H)
-    TC = total_length(Center, topology, N, H)
-
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    C = range(C₋, C₊, length = N)
+    C = StepRangeLen(C.ref, C.step, C.len + 2 * H, C.offset + H)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
         
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    return L, F, C, Δᶠ, Δᶜ
 end
 
 # Flat domains
