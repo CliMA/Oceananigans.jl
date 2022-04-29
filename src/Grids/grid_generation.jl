@@ -17,6 +17,12 @@ lower_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[2]  - Fi[
 upper_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
 upper_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
 
+upper_interior_F(topology, coord, Δ)               = coord - Δ
+upper_interior_F(::Type{<:BoundedTopology}, coord) = coord
+
+total_interior_length(topology, N)                  = N
+total_interior_length(::Type{<:BoundedTopology}, N) = N + 1
+
 # generate a stretched coordinate passing the explicit coord faces as vector of functionL
 function generate_coordinate(FT, topology, N, H, coord, arch)
 
@@ -78,11 +84,14 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     @assert c₁ < c₂
     L = c₂ - c₁
 
-    F = range(c₁, c₂, length = N + 1)
-    F = StepRangeLen(F.ref, F.step, F.len + 2 * H, F.offset + H)
-
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
+    
+    F₋ = c₁
+    F₊ = upper_interior_F(topology, c₂, Δ)
+
+    F = range(c₁, c₂, length = total_interior_length(topology, N))
+    F = StepRangeLen(F.ref, F.step, F.len + 2 * H, F.offset + H)
 
     C₋ = c₁ + Δ / 2
     C₊ = c₂ - Δ / 2
@@ -90,8 +99,8 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     C = range(C₋, C₊, length = N)
     C = StepRangeLen(C.ref, C.step, C.len + 2 * H, C.offset + H)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    F = OffsetArray(FT.(F), -H)
+    C = OffsetArray(FT.(C), -H)
         
     return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
