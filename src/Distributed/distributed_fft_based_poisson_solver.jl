@@ -20,40 +20,43 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     arch = architecture(local_grid)
-    topo = (TX, TY, TZ) = topology(global_grid)
+    arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
 
+    # Plan the PencilFFT
+    communicator = MPI.COMM_WORLD
+    pencil = PencilFFTs.Pencil(size(global_grid), communicator) # by default, decomposes along dims (2, 3).
+
+    # Only works for fully-periodic:
+    transform = PencilFFTs.Transforms.FFT!()
+
+    plan = PencilFFTs.PencilFFTPlan(pencil, transform)
+
+    # Allocate memory for in-place FFT + transpositions
+    storage = PencilFFTs.allocate_input(plan)
+
+    # Build _global_ eigenvalues
+    topo = (TX, TY, TZ) = topology(global_grid)
     λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
     λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
     λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
 
-    arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
+    # We add singleton dimensions because its "convenient", but
+    # PencilFFTs doesn't want that.
+    λx = dropdims(λx, dims=(2, 3))
+    λy = dropdims(λy, dims=(1, 3))
+    λz = dropdims(λz, dims=(1, 2))
 
-    Rx, Ry, Rz = arch.ranks
-
-    # PencilFFT performs a permutation y -> x. 
-    # x will be the "distributed direction" when  s = b / (λx + λy + λz)
-    # we have to permute (Rx, Ry, Rz) with (Ry, Rx, Rz)
-    I, J, K = rank2index(arch.local_rank, Ry, Rx, Rz)
-
-    perm_Nx = global_grid.Nx ÷ Ry
-
-    i₁ = (I-1) * perm_Nx + 1
-    i₂ = I * perm_Nx
-    λx = λx[i₁:i₂, :, :]
-
-    eigenvalues = (; λx, λy, λz)
-
-    transform = PencilFFTs.Transforms.FFT!()
-    proc_dims = (arch.ranks[2], arch.ranks[3])
-    plan = PencilFFTs.PencilFFTPlan(size(global_grid), transform, proc_dims, MPI.COMM_WORLD)
-    storage = PencilFFTs.allocate_input(plan)
+    eigenvalues = PencilFFTs.localgrid(last(storage), (λx, λy, λz))
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage)
 end
 
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     arch = architecture(solver)
-    λx, λy, λz = solver.eigenvalues
+
+    λx = solver.eigenvalues[1]
+    λy = solver.eigenvalues[2]
+    λz = solver.eigenvalues[3]
 
     # Apply forward transforms.
     solver.plan * solver.storage
@@ -61,7 +64,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Solve the discrete Poisson equation, storing the solution
     # temporarily in xc and later extracting the real part into 
     # the solution, x.
-    xc = b = solver.storage[2]
+    xc = b = last(solver.storage)
     @. xc = - b / (λx + λy + λz)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
@@ -80,3 +83,4 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     return x
 end
+
