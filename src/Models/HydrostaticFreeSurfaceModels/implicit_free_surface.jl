@@ -109,11 +109,14 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     ∫ᶻQ    = free_surface.barotropic_volume_flux
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
+ 
+    @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
+    fill_halo_regions!(model.velocities)
 
     # Compute right hand side of implicit free surface equation
-    @apply_regionally prognostic_field_events = local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch, prognostic_field_events)
+    @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
     fill_halo_regions!(∫ᶻQ)
-
+    
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -128,18 +131,21 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     return prognostic_field_events
 end
 
-function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch, prognostic_field_events)
-    
+function wait_velocity_event(arch, prognostic_field_events)
     velocity_events = prognostic_field_events[1]
 
     # Wait for predictor velocity update step to complete.
     wait(device(arch), MultiEvent(velocity_events))
 
+    return MultiEvent(prognostic_field_events[2])
+end
+
+function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
+    
     masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
-    
-    return MultiEvent(prognostic_field_events[2])
 end
+

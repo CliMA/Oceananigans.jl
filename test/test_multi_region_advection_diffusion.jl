@@ -68,7 +68,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     else
         devices = nothing
     end
-    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
