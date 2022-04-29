@@ -23,11 +23,13 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             @info "Testing multi region $(getname(grid)) on $regions $(P)s"
             mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices(arch, regions))
 
-            for Field_type in [CenterField, XFaceField, YFaceField]
-                @info "Testing multi region $(Field_type) on $(getname(grid)) on $regions $(P)s"
+            @test reconstruct_global_grid(mrg) == grid
 
-                par_field = Field_type(mrg)
-                ser_field = Field_type(grid)
+            for FieldType in [CenterField, XFaceField, YFaceField]
+                @info "Testing multi region $(FieldType) on $(getname(grid)) on $regions $(P)s"
+
+                par_field = FieldType(mrg)
+                ser_field = FieldType(grid)
 
                 set!(ser_field, (x, y, z) -> x)
                 @apply_regionally set!(par_field, (x, y, z) -> x)
@@ -45,7 +47,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
                 mrg = MultiRegionGrid(ibg, partition = P(regions), devices = devices(arch, regions))
 
-                @test on_architecture(arch, reconstruct_global_grid(mrg)) isa ImmersedBoundaryGrid
+                @test on_architecture(arch, reconstruct_global_grid(mrg)) == ibg
             end
         end
     end
