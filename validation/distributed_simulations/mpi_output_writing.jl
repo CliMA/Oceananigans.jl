@@ -26,8 +26,8 @@ simulation = Simulation(model, Δt=0.01, stop_iteration=3)
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, (; ζ)),
                                                       schedule = IterationInterval(1),
                                                       with_halos = true,
-                                                      prefix = "test_output_writing_rank$rank",
-                                                      force = true)
+                                                      filename = "test_output_writing_rank$rank",
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

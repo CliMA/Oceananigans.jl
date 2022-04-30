@@ -272,9 +272,9 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = filename,
                                                         overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      prefix = filename,
+                                                      filename,
                                                       field_slicer = nothing,
                                                       verbose = false,
                                                       overwrite_existing = true)

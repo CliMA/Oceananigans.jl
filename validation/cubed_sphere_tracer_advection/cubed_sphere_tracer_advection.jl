@@ -148,8 +148,8 @@ function cubed_sphere_tracer_advection(; face_number, α)
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
             schedule = TimeInterval(1hour),
-              prefix = "cubed_sphere_tracer_advection_face$(face_number)_alpha$α",
-              overwrite_existing = true)
+            filename = "cubed_sphere_tracer_advection_face$(face_number)_alpha$α",
+            overwrite_existing = true)
 
     run!(simulation)
 
