@@ -80,27 +80,27 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     @assert length(coord) == 2
 
-    c₁, c₂ = @. FT(coord)
+    c₁, c₂ = @. BigFloat(coord)
     @assert c₁ < c₂
     L = c₂ - c₁
 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
-    
-    F₋ = c₁
-    F₊ = upper_interior_F(topology, c₂, Δ)
 
-    F = range(c₁, c₂, length = total_interior_length(topology, N))
-    F = StepRangeLen(F.ref, F.step, F.len + 2 * H, F.offset + H)
+    F₋ = c₁ - H * Δ
+    F₊ = F₋ + total_extent(topology, H, Δ, L)
 
-    C₋ = c₁ + Δ / 2
-    C₊ = c₂ - Δ / 2
+    C₋ = F₋ + Δ / 2
+    C₊ = C₋ + L + Δ * (2H - 1)
 
-    C = range(C₋, C₊, length = N)
-    C = StepRangeLen(C.ref, C.step, C.len + 2 * H, C.offset + H)
+    TF = total_length(Face,   topology, N, H)
+    TC = total_length(Center, topology, N, H)
 
-    F = OffsetArray(FT.(F), -H)
-    C = OffsetArray(FT.(C), -H)
+    F = range(FT(F₋), FT(F₊), length = TF)
+    C = range(FT(C₋), FT(C₊), length = TC)
+
+    F = OffsetArray(F, -H)
+    C = OffsetArray(C, -H)
         
     return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
