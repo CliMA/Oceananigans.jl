@@ -162,3 +162,9 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
 @inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
 @inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
+
+function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
+    #check if grids are of the same type
+    vals = construct_regionally(Base.:(==), mrg1, mrg2)
+    return all(vals.regions)
+end

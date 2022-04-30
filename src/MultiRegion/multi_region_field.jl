@@ -1,9 +1,10 @@
 using Oceananigans.BoundaryConditions: default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
-import Oceananigans.Fields: set!, validate_field_data, validate_boundary_conditions
+import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: new_data
@@ -12,6 +13,7 @@ import Oceananigans.Simulations: hasnan
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrid} where {LX, LY, LZ}
 const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
@@ -22,8 +24,8 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField)   = devices(f.grid)
-sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
+@inline devices(f::GriddedMultiRegionField)    = devices(f.grid)
+sync_all_devices!(f::GriddedMultiRegionField)  = sync_all_devices!(devices(f.grid))
 
 @inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
 @inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)
@@ -71,6 +73,12 @@ function reconstruct_global_field(mrf::MultiRegionField)
     fill_halo_regions!(global_field)
     return global_field
 end
+
+## Functions applied regionally
+set!(mrf::MultiRegionField, v) = apply_regionally!(set!, mrf, v)
+
+compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
+compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 @inline hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)

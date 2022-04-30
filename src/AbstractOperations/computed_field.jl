@@ -58,15 +58,18 @@ Compute `comp.operand` and store the result in `comp.data`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
-    compute_at!(comp.operand, time)
-
-    arch = architecture(comp)
-    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
-    wait(device(arch), event)
+    @apply_regionally compute_at!(comp.operand, time)
+    @apply_regionally compute_field!(comp)
 
     fill_halo_regions!(comp)
 
     return comp
+end
+
+function compute_field!(comp)
+    arch = architecture(comp)
+    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
+    wait(device(arch), event)
 end
 
 @inline offset_compute_index(::Colon, i) = i
