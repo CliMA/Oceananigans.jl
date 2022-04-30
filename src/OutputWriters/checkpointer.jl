@@ -18,7 +18,7 @@ end
 """
     Checkpointer(model; schedule,
                  dir = ".",
-                 filename = "checkpoint",
+                 prefix = "checkpoint",
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
@@ -50,7 +50,7 @@ Keyword arguments
 
 - `dir`: Directory to save output to. Default: "." (current working directory).
 
-- `filename`: Descriptive filename prefixed to all output files. Default: "checkpoint".
+- `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
 
 - `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
@@ -64,7 +64,7 @@ Keyword arguments
 """
 function Checkpointer(model; schedule,
                       dir = ".",
-                      filename = "checkpoint",
+                      prefix = "checkpoint",
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
