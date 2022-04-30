@@ -135,16 +135,21 @@ end
 ##### Boundary specific Utils
 #####
 
+struct Connectivity
+    rank :: Int
+    from_rank :: Int
+end
+
 inject_south_boundary(region, p::XPartition, bc) = bc
 inject_north_boundary(region, p::XPartition, bc) = bc
 
 function inject_west_boundary(region, p::XPartition, global_bc) 
     if region == 1
         typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
+                bc = CommunicationBoundaryCondition(Connectivity(region, length(p))) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
+        bc = CommunicationBoundaryCondition(Connectivity(region, region - 1))
     end
     return bc
 end
@@ -152,10 +157,10 @@ end
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
         typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
+                bc = CommunicationBoundaryCondition(Connectivity(region, 1)) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
+        bc = CommunicationBoundaryCondition(Connectivity(region, region + 1))
     end
     return bc
 end

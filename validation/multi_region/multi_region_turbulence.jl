@@ -1,14 +1,21 @@
 using Oceananigans
 using Oceananigans.MultiRegion
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 # using GLMakie
 
 arch = CPU()
-Nh   = 128
+Nh   = 256
 Nz   = 1
 grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
-mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = (1, 1))
+
+bottom = zeros(Nh, Nh)
+bound  = Int.(Nh/2-10:Nh/2+10)
+bottom[bound, bound] .= 1
+
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 1)
 
 Δh = 2π / grid.Nx
 Δt = 0.1 * Δh
@@ -23,8 +30,8 @@ v_init_mrg = multi_region_object_from_array(v_init, mrg)
 momentum_advection = WENO5()
 # momentum_advection = WENO5(vector_invariant=VelocityStencil())
 
-free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
+# free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
+free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
 
 progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
@@ -62,10 +69,9 @@ v_1 = reconstruct_global_field(v)
 
 #### Single region model ----------------------------------------------------------
 
-model_2 = HydrostaticFreeSurfaceModel(; grid, momentum_advection,
+model_2 = HydrostaticFreeSurfaceModel(; grid, momentum_advection, free_surface,
                                     tracers = (),
                                     buoyancy = nothing,
-                                    free_surface = ImplicitFreeSurface(gravitational_acceleration=1),
                                     closure = ScalarDiffusivity(ν=1e-4))
 
 set!(model_2, u=u_init, v=v_init)

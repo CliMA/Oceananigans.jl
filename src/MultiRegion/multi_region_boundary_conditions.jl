@@ -108,13 +108,13 @@ end
     
 function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
-    wait(device(arch), dep)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
-    
+
+    wait(device(arch), dep)
+
     switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
     src .= view(parent(w), N+1:N+H, :, :)
@@ -131,13 +131,13 @@ end
 
 function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
 
-    wait(device(arch), dep)
-
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
-        
+
+    wait(device(arch), dep)
+
     switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
     src .= view(parent(e), H+1:2H, :, :)
@@ -153,14 +153,14 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
 end
 
 function fill_south_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
-    
-    wait(device(arch), dep)
-    
+        
     H = halo_size(grid)[2]
     N = size(grid)[2]
     s = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].south.recv
-    
+
+    wait(device(arch), dep)
+
     switch_device!(getdevice(s))
     src = buffers[bc.condition.from_rank].north.send
     src .= view(parent(s), :, N+1:N+H, :)
@@ -177,13 +177,13 @@ end
 
 function fill_north_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args...; kwargs...)
     
-    wait(device(arch), dep)
-
     H = halo_size(grid)[2]
     N = size(grid)[2]
     n = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].north.recv
-    
+
+    wait(device(arch), dep)
+
     switch_device!(getdevice(n))
     src = buffers[bc.condition.from_rank].south.send
     src .= view(parent(n), :, H+1:2H, :)
