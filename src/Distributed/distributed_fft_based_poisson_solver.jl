@@ -7,11 +7,11 @@ import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
-              plan :: P
-       global_grid :: F
-        local_grid :: L
-       eigenvalues :: λ
-           storage :: S
+    plan :: P
+    global_grid :: F
+    local_grid :: L
+    eigenvalues :: λ
+    storage :: S
 end
 
 architecture(solver::DistributedFFTBasedPoissonSolver) =
@@ -22,14 +22,11 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     arch = architecture(local_grid)
     arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
 
-    # Plan the PencilFFT
+    # Plan the PencilFFT (only works for fully-periodic and Array):
     communicator = MPI.COMM_WORLD
-    pencil = PencilFFTs.Pencil(size(global_grid), communicator) # by default, decomposes along dims (2, 3).
-
-    # Only works for fully-periodic:
-    transform = PencilFFTs.Transforms.FFT!()
-
-    plan = PencilFFTs.PencilFFTPlan(pencil, transform)
+    transforms = PencilFFTs.Transforms.FFT!()
+    processors_per_dimension = (arch.ranks[2], arch.ranks[3])
+    plan = PencilFFTs.PencilFFTPlan(size(global_grid), transforms, processors_per_dimension, communicator)
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
