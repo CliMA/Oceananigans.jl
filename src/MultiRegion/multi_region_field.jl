@@ -7,7 +7,6 @@ using Oceananigans.OutputWriters: output_indices
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
-import Oceananigans.Grids: new_data
 import Base: fill!
 import Oceananigans.Simulations: hasnan
 
@@ -75,12 +74,12 @@ function reconstruct_global_field(mrf::MultiRegionField)
 end
 
 ## Functions applied regionally
-set!(mrf::MultiRegionField, v) = apply_regionally!(set!, mrf, v)
+set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
+fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
 compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
 compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
 
-new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 @inline hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = 

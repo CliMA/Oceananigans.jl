@@ -127,6 +127,12 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     return ma
 end
 
+#### 
+#### Utilitites for MultiRegionGrid
+####
+
+new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
+
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(with_halo, new_halo, mrg)
     return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
@@ -146,10 +152,14 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
               "└── devices: $(devices(mrg))")
-
-#### 
-#### Utilitites that aren't used anywhere at the moment
-####
+ 
+function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
+    #check if grids are of the same type
+    vals = construct_regionally(Base.:(==), mrg1, mrg2)
+    return all(vals.regions)
+end
+   
+# These are not used in the code, should we remove them?
 
 grids(mrg::MultiRegionGrid) = mrg.region_grids
 
@@ -162,9 +172,3 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
 @inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
 @inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
-
-function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
-    #check if grids are of the same type
-    vals = construct_regionally(Base.:(==), mrg1, mrg2)
-    return all(vals.regions)
-end
