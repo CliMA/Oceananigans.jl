@@ -26,6 +26,9 @@ const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
 @inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
     Base.Broadcast.materialize!(interior(dest), bc)
 
+@inline Base.Broadcast.materialize!(dest::WindowedField, bc::BroadcastedArrayOrCuArray) =
+    Base.Broadcast.materialize!(parent(dest), bc)
+
 #####
 ##### Kernels
 #####
