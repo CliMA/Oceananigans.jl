@@ -118,7 +118,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, output_fields,
             schedule = TimeInterval(1days),
-            filename = "cubed_sphere_surface_gravity_waves_face.jld2",
+            filename = "cubed_sphere_surface_gravity_waves.jld2",
             overwrite_existing = true)
 
     run!(simulation)
