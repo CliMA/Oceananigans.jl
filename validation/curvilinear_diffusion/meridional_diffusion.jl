@@ -67,7 +67,7 @@ output_prefix = "meridional_diffusion_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(cell_diffusion_time_scale),
-                                                      prefix = output_prefix,
+                                                      filename = output_prefix,
                                                       overwrite_existing = true)
 
 run!(simulation)
