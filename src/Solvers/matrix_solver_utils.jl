@@ -10,23 +10,23 @@ using SparseArrays: fkeep!
 # Utils for sparse matrix manipulation
 
 @inline constructors(::CPU, A::SparseMatrixCSC) = (A.n, A.n, A.colptr, A.rowval, A.nzval)
-@inline constructors(::GPU, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.n, A.n))
+@inline constructors(::CUDAGPU, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.n, A.n))
 @inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
-@inline constructors(::GPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
+@inline constructors(::CUDAGPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 @inline constructors(::CPU, n::Number, constr::Tuple) = (n, n, constr...)
-@inline constructors(::GPU, n::Number, constr::Tuple) = (constr..., (n, n))
+@inline constructors(::CUDAGPU, n::Number, constr::Tuple) = (constr..., (n, n))
 
 @inline unpack_constructors(::CPU, constr::Tuple) = (constr[3], constr[4], constr[5])
-@inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
+@inline unpack_constructors(::CUDAGPU, constr::Tuple) = (constr[1], constr[2], constr[3])
 @inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
-@inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
+@inline copy_unpack_constructors(::CUDAGPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
-@inline arch_sparse_matrix(::GPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
+@inline arch_sparse_matrix(::CUDAGPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::CPU, A::CuSparseMatrixCSC) = SparseMatrixCSC(constructors(CPU(), A)...)
-@inline arch_sparse_matrix(::GPU, A::SparseMatrixCSC)   = CuSparseMatrixCSC(constructors(GPU(), A)...)
+@inline arch_sparse_matrix(::CUDAGPU, A::SparseMatrixCSC)   = CuSparseMatrixCSC(constructors(CUDAGPU(), A)...)
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
-@inline arch_sparse_matrix(::GPU, A::CuSparseMatrixCSC) = A
+@inline arch_sparse_matrix(::CUDAGPU, A::CuSparseMatrixCSC) = A
 
 
 # We need to update the diagonal element each time the time step changes!!
