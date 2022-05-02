@@ -62,8 +62,8 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     copyto!(test_fields.u, interior(model.velocities.u))
     copyto!(test_fields.v, interior(model.velocities.v))
     copyto!(test_fields.w, interior(model.velocities.w))
-    copyto!(test_fields.T, interior(model.velocities.T))
-    copyto!(test_fields.S, interior(model.velocities.S))
+    copyto!(test_fields.T, interior(model.tracers.T))
+    copyto!(test_fields.S, interior(model.tracers.S))
 
     correct_fields = (u = ds["u"][:, :, :, end],
                       v = ds["v"][:, :, :, end],
