@@ -67,13 +67,7 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    event = launch!(arch, grid, :xyz,
-                    broadcast_kernel!, dest, bc′, dest.indices,
-                    include_right_boundaries = true,
-                    dependencies = device_event(arch),
-                    reduced_dimensions = reduced_dimensions(dest),
-                    location = location(dest))
-
+    event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
     wait(device(arch), event)
 
     return dest
