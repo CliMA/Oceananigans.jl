@@ -110,7 +110,7 @@ output_prefix = grid isa LatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1hour),
-                                                      prefix = output_prefix,
+                                                      filename = output_prefix,
                                                       overwrite_existing = true)
 
 run!(simulation)

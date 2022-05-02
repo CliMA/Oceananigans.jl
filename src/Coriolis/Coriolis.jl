@@ -27,4 +27,4 @@ include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
 include("hydrostatic_spherical_coriolis.jl")
 
-end
+end # module

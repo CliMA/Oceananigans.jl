@@ -51,4 +51,4 @@ include("nonlinear_equation_of_state.jl")
 include("g_dot_b.jl")
 include("buoyancy_field.jl")
 
-end
+end # module

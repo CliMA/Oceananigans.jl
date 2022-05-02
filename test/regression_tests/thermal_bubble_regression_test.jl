@@ -4,10 +4,10 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     Δt = 6
 
     if grid_type == :regular
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), halo=(1, 1, 1))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF, halo=(1, 1, 1))
     end
 
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)

@@ -13,6 +13,7 @@ using Oceananigans.Grids
 
 include("distributed_utils.jl")
 include("multi_architectures.jl")
+include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")

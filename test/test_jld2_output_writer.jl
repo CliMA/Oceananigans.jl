@@ -40,7 +40,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_file_splitting(arch)
-    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 

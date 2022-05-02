@@ -4,6 +4,7 @@ import Oceananigans: tracer_tendency_kernel_function
 using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
+using Oceananigans.Fields: immersed_boundary_condition
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -58,26 +59,33 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     grid = model.grid
     arch = architecture(grid)
 
-    momentum_kernel_args = (grid,
-                            model.advection.momentum,
-                            model.coriolis,
-                            model.closure,
-                            velocities,
-                            model.free_surface,
-                            model.tracers,
-                            model.buoyancy,
-                            model.diffusivity_fields,
-                            model.pressure.pHY′,
-                            model.auxiliary_fields,
-                            model.forcing,
-                            model.clock)
+    u_immersed_bc = immersed_boundary_condition(velocities.u)
+    v_immersed_bc = immersed_boundary_condition(velocities.v)
+
+    start_momentum_kernel_args = (grid,
+                                  model.advection.momentum,
+                                  model.coriolis,
+                                  model.closure)
+
+    end_momentum_kernel_args = (velocities,
+                                model.free_surface,
+                                model.tracers,
+                                model.buoyancy,
+                                model.diffusivity_fields,
+                                model.pressure.pHY′,
+                                model.auxiliary_fields,
+                                model.forcing,
+                                model.clock)
+
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
 
     Gu_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, momentum_kernel_args...;
+                       calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
                        dependencies = dependencies)
 
     Gv_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, momentum_kernel_args...;
+                       calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
                        dependencies = dependencies)
 
     Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
@@ -123,6 +131,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
         Gc_event = launch!(arch, grid, :xyz,
@@ -133,6 +142,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            Val(tracer_index),
                            c_advection,
                            model.closure,
+                           c_immersed_bc,
                            model.buoyancy,
                            model.velocities,
                            model.free_surface,

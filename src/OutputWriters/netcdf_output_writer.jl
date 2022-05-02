@@ -9,6 +9,19 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
+mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    overwrite_existing :: Bool
+    array_type :: A
+    previous :: Float64
+    verbose :: Bool
+end
+
+ext(::Type{NetCDFOutputWriter}) = ".nc"
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
@@ -122,22 +135,6 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    NetCDFOutputWriter{D, O, I, T, A} <: AbstractOutputWriter
-
-An output writer for writing to NetCDF files.
-"""
-mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
-    filepath :: String
-    dataset :: D
-    outputs :: O
-    schedule :: T
-    overwrite_existing :: Bool
-    array_type :: A
-    previous :: Float64
-    verbose :: Bool
-end
-
-"""
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
                                    array_type = Array{Float32},
@@ -157,21 +154,21 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): File name to save output to.
+- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
 - `dir`: Directory to save output to.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: Array{Float32}.
+                Default: `Array{Float32}`.
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
 - `with_halos`: Boolean defining whether or not to include halos in the outputs.
 
-- `global_attributes`: Dict of model properties to save with every file (deafult: `Dict()`)
+- `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
@@ -179,15 +176,15 @@ Keyword arguments
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
 
-- `overwrite_existing`: If false, NetCDFOutputWriter will be set to append to `filepath`. If true, NetCDFOutputWriter 
-                        will overwrite `filepath` if it exists or create it if it does not. 
-                        Default: false. See NCDatasets.jl documentation for more information about its `mode` option.
+- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
+                        will overwrite `filepath` if it exists or create it if it does not.
+                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
 
-- `compression`: Determines the compression level of data (0-9, default 0)
+- `compression`: Determines the compression level of data (0-9; default: 0)
 
 Examples
 ========
-Saving the u velocity field and temperature fields, the full 3D fields and surface 2D slices
+Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
 ```jldoctest netcdf1
@@ -297,6 +294,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
                                       verbose = false)
 
     mkpath(dir)
+    filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
 
     if isnothing(overwrite_existing)
