@@ -42,7 +42,7 @@ progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 #### Multi region model ----------------------------------------------------------
 
 model_1 = HydrostaticFreeSurfaceModel(; grid = mrg, momentum_advection, free_surface,
-                                    tracers = (),
+                                    tracers = :T,
                                     buoyancy = nothing,
                                     closure = ScalarDiffusivity(ν=1e-4))
 
