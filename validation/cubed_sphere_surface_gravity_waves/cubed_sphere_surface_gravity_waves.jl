@@ -96,11 +96,10 @@ function cubed_sphere_surface_gravity_waves(; face_number)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 25days,
-        iteration_interval = 1,
-                  progress = Progress(time_ns()),
-                parameters = (; cfl)
+                 stop_time = 25days
     )
+
+    simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(72))
 
     fields_to_check = (
         u = model.velocities.u,
@@ -119,7 +118,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, output_fields,
             schedule = TimeInterval(1hour),
-            filename = "cubed_sphere_surface_gravity_waves_face$face_number",
+            filename = "cubed_sphere_surface_gravity_waves_face$face_number.jld2",
             overwrite_existing = true)
 
     run!(simulation)
