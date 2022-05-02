@@ -42,9 +42,11 @@ const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
 
 @kernel function broadcast_kernel!(dest, bc, index_ranges)
     i, j, k = @index(Global, NTuple)
+
     i′ = offset_compute_index(index_ranges[1], i)
     j′ = offset_compute_index(index_ranges[2], j)
     k′ = offset_compute_index(index_ranges[3], k)
+
     @inbounds dest[i′, j′, k′] = bc[i′, j′, k′]
 end
 
