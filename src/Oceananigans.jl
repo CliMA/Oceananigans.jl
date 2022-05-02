@@ -19,7 +19,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
+    RectilinearGrid,
     LatitudeLongitudeGrid,
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
