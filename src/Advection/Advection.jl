@@ -30,6 +30,7 @@ using DocStringExtensions
 
 using Oceananigans.Grids
 using Oceananigans.Operators
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ
 
 import Oceananigans.Grids: required_halo_size
 
