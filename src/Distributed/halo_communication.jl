@@ -8,10 +8,7 @@ using Oceananigans.BoundaryConditions:
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
-import Oceananigans.BoundaryConditions:
-    fill_halo_regions!,
-    fill_west_halo!, fill_east_halo!, fill_south_halo!,
-    fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 #####
 ##### MPI tags for halo communication BCs
@@ -97,7 +94,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
 
     @eval begin
         function $fill_both_halos!(c, bc_side, bc_opposite_side, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
+            event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
             return [event]
         end
     end
@@ -181,3 +178,4 @@ for side in sides
         end
     end
 end
+
