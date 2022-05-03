@@ -53,8 +53,6 @@ const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Windowed
 function construct_output(user_output::WindowedField, grid, user_indices, with_halos)
     if !with_halos
         new_indices = restrict_to_interior.(user_output.indices, location(user_output), topology(grid), size(grid))
-        @show user_output.indices new_indices
-        #@which view(user_output, new_indices...)
         return view(user_output, new_indices...)
     end
 

@@ -207,6 +207,12 @@ function Base.similar(f::Field, grid=f.grid)
                  deepcopy(f.status))
 end
 
+
+rparent(a) = rparent(parent(a))
+
+const UnderlyingArrays = Union{Array, CuArray}
+rparent(a::UnderlyingArrays) = a
+
 """
     offset_windowed_data(data, loc, grid, indices)
 
@@ -222,7 +228,7 @@ function offset_windowed_data(data, loc, grid, indices)
         windowed_parent = parent(data)
     else
         parent_indices = parent_index_range.(indices, loc, topo, halo)
-        windowed_parent = view(parent(data), parent_indices...)
+        windowed_parent = view(rparent(data), parent_indices...)
     end
 
     sz = size(grid)
