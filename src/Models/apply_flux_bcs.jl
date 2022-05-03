@@ -147,7 +147,7 @@ function calculate_boundary_tendency_contributions!(model)
     Φ = prognostic_fields(model)
     Nfields = length(Φ)
     ids = [q > 3 ? Val(q) : nothing for q = 1:Nfields]
-    events = [barrier for _ = 1:Nfields]
+    events = Any[barrier for _ = 1:Nfields]
 
     if grid isa XBoundedGrid
         for q = 1:Nfields

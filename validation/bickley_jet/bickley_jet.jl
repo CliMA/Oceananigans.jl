@@ -20,23 +20,39 @@ function run_bickley_jet(;
                          arch = CPU(),
                          Nh = 64, 
                          free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0),
-                         momentum_advection = WENO5(),
                          tracer_advection = WENO5(),
+                         momentum_advection = WENO5(),
+                         nonhydrostatic = false,
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
     grid = bickley_grid(; arch, Nh)
-    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection,
-                                        free_surface, tracers = :c, buoyancy=nothing)
+
+    if nonhydrostatic
+        model = NonhydrostaticModel(; grid, advection=momentum_advection, tracers=:c)
+    else
+        model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection,
+                                            free_surface, tracers = :c, buoyancy=nothing)
+    end
+
     set_bickley_jet!(model)
 
     Δt = 0.2 * 2π / Nh
     wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=10.0)
     simulation = Simulation(model; Δt, stop_time)
 
-    progress(sim) = @printf("Iter: %d, time: %.1f, Δt: %.1e, max|u|: %.3f, max|η|: %.3f\n",
-                            iteration(sim), time(sim), sim.Δt,
-                            maximum(abs, model.velocities.u),
-                            maximum(abs, model.free_surface.η))
+    function progress(sim)
+        msg = @sprintf("Iter: %d, time: %.1f, Δt: %.1e, max|u|: %.3f",
+                       iteration(sim), time(sim), sim.Δt,
+                       maximum(abs, model.velocities.u))
+
+        if !nonhydrostatic
+            msg *= @sprintf(", max|η|: %.3f", maximum(abs, model.free_surface.η))
+        end
+
+        @info msg
+                            
+        return nothing
+    end
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
@@ -45,7 +61,12 @@ function run_bickley_jet(;
 
     # Output: primitive fields + computations
     u, v, w = model.velocities
-    outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.η))
+
+    outputs = merge(model.velocities, model.tracers, (; ζ=∂x(v) - ∂y(u)))
+
+    if !nonhydrostatic
+        outputs = merge(outputs, (; η=model.free_surface.η))
+    end
 
     @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name
 
@@ -116,7 +137,7 @@ advection_schemes = [WENO5()]
 arch = CPU()
 for Nh in [128]
     for momentum_advection in advection_schemes
-        name = run_bickley_jet(; arch, momentum_advection, Nh)
+        name = run_bickley_jet(; arch, momentum_advection, Nh, nonhydrostatic=true)
         visualize_bickley_jet(name)
     end
 end
