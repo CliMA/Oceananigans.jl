@@ -47,13 +47,26 @@ function construct_output(user_output::Union{AbstractField, Reduction}, grid, us
 end
 
 
+const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+
+function construct_output(user_output::WindowedField, grid, user_indices, with_halos)
+    if !with_halos
+        new_indices = restrict_to_interior.(user_output.indices, location(user_output), topology(grid), size(grid))
+        @show user_output.indices new_indices
+        #@which view(user_output, new_indices...)
+        return view(user_output, new_indices...)
+    end
+
+    return user_output
+end
+
+
 construct_output(user_output::Field, indices) = view(user_output, indices...)
 construct_output(user_output::Reduction, indices) = Field(user_output; indices)
 construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
-const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
-const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
-construct_output(windowed_field::WindowedField, indices) = windowed_field # don't re-index a windowed field
+#construct_output(user_windowed_field::WindowedField, indices) = user_windowed_field # don't re-index a windowed field
 
 #####
 ##### Time-averaging
