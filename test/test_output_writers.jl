@@ -8,6 +8,44 @@ using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
+
+
+function test_output_construction(model)
+
+    u, v, w = model.velocities
+
+    op = u^2+v^2
+
+    indices1 = (:, :, :)
+    indices2 = (1, 2:3, :)
+
+    @test construct_output(u, model.grid, indices1, false) isa Field
+    @test construct_output(u, model.grid, indices2, false) isa Field
+    @test construct_output(op, model.grid, indices1, false) isa Field
+    @test construct_output(op, model.grid, indices2, false) isa Field
+
+    u_sliced1 = Field(u, indices=indices1)
+    u_sliced2 = Field(u, indices=indices2)
+
+    op_sliced1 = Field(op, indices=indices1)
+    op_sliced2 = Field(op, indices=indices2)
+
+    @test construct_output(u_sliced1, model.grid, indices1, false) isa Field
+    @test construct_output(u_sliced1, model.grid, indices2, false) isa Field
+
+    @test construct_output(u_sliced2, model.grid, indices1, false) isa Field
+    @test construct_output(u_sliced2, model.grid, indices2, false) isa Field
+
+    @test construct_output(op_sliced1, model.grid, indices1, false) isa Field
+    @test construct_output(op_sliced1, model.grid, indices2, false) isa Field
+
+    @test construct_output(op_sliced2, model.grid, indices1, false) isa Field
+    @test construct_output(op_sliced2, model.grid, indices2, false) isa Field
+
+    return nothing
+end
+
+
 #####
 ##### WindowedTimeAverage tests
 #####
@@ -218,25 +256,29 @@ function test_windowed_time_averaging_simulation(model)
     return nothing
 end
 
+
+
 #####
 ##### Run output writer tests!
 #####
 
+topo = (Periodic, Periodic, Bounded)
 @testset "Output writers" begin
     @info "Testing output writers..."
 
-    topo = (Periodic, Periodic, Bounded)
     for arch in archs
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+
+        @info "Test that outputs are properly constructed"
+        test_output_construction(model)
 
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
-            grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
             model = NonhydrostaticModel(grid=grid)
             test_creating_and_appending(model, output_writer)
         end
 
         # Some tests can reuse this same grid and model.
-        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
@@ -254,7 +296,6 @@ end
     include("test_checkpointer.jl")
 
     for arch in archs
-        topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
