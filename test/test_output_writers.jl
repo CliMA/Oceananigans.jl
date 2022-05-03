@@ -268,7 +268,7 @@ topo = (Periodic, Periodic, Bounded)
 
     for arch in archs
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid=grid)
+        model = NonhydrostaticModel(; grid)
 
         @info "Test that outputs are properly constructed"
         test_output_construction(model)
