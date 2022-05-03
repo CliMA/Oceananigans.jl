@@ -13,22 +13,18 @@ using Oceananigans.OutputWriters: construct_output
 function test_output_construction(model)
 
     u, v, w = model.velocities
-
-    op = u^2+v^2
+    set!(model, u=(x, y, z)->y)
 
     indices1 = (:, :, :)
     indices2 = (1, 2:3, :)
 
+    # First we test fields
     @test construct_output(u, model.grid, indices1, false) isa Field
     @test construct_output(u, model.grid, indices2, false) isa Field
-    @test construct_output(op, model.grid, indices1, false) isa Field
-    @test construct_output(op, model.grid, indices2, false) isa Field
 
+    # Now we test windowed fields
     u_sliced1 = Field(u, indices=indices1)
     u_sliced2 = Field(u, indices=indices2)
-
-    op_sliced1 = Field(op, indices=indices1)
-    op_sliced2 = Field(op, indices=indices2)
 
     @test construct_output(u_sliced1, model.grid, indices1, false) isa Field
     @test construct_output(u_sliced1, model.grid, indices2, false) isa Field
@@ -36,11 +32,29 @@ function test_output_construction(model)
     @test construct_output(u_sliced2, model.grid, indices1, false) isa Field
     @test construct_output(u_sliced2, model.grid, indices2, false) isa Field
 
+    @test parent(u_sliced2) != parent(construct_output(u_sliced1, model.grid, indices2, false)) # u_sliced2 should have halo regions
+    @test parent(u_sliced2) == parent(construct_output(u_sliced1, model.grid, indices2, true)) # both should have halo regions
+
+
+    # Now we test abstract operations
+    op = u^2+v^2
+
+    @test construct_output(op, model.grid, indices1, false) isa Field
+    @test construct_output(op, model.grid, indices2, false) isa Field
+
+    op_sliced1 = Field(op, indices=indices1)
+    op_sliced2 = Field(op, indices=indices2)
+    compute!(op_sliced1)
+    compute!(op_sliced2)
+
     @test construct_output(op_sliced1, model.grid, indices1, false) isa Field
     @test construct_output(op_sliced1, model.grid, indices2, false) isa Field
 
     @test construct_output(op_sliced2, model.grid, indices1, false) isa Field
     @test construct_output(op_sliced2, model.grid, indices2, false) isa Field
+
+    @test parent(op_sliced2) != parent(construct_output(op_sliced1, model.grid, indices2, false)) # op_sliced2 should have halo regions
+    @test parent(op_sliced2) == parent(construct_output(op_sliced1, model.grid, indices2, true)) # both should have halo regions
 
     return nothing
 end
