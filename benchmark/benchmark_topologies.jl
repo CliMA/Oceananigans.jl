@@ -25,7 +25,8 @@ end
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Ns = [(256, 256, 1), (128, 128, 128)]
+#Ns = [(128, 128, 128)]
+Ns = [(256, 256, 1)]
 PB = (Periodic, Bounded)
 Topologies = collect(Iterators.product(PB, PB, PB))[:]
 
@@ -34,7 +35,6 @@ Topologies = collect(Iterators.product(PB, PB, PB))[:]
 suite = run_benchmarks(benchmark_topology; Architectures, Ns, Topologies)
 
 df = benchmarks_dataframe(suite)
-sort!(df, [:Architectures, :Topologies, :Ns], by=(string, string, identity))
 benchmarks_pretty_table(df, title="Topologies benchmarks")
 
 if GPU in Architectures
