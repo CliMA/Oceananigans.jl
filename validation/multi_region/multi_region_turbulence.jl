@@ -54,7 +54,10 @@ run!(simulation)
 simulation.stop_iteration += 1000
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-
+simulation.output_writers[:surface] = JLD2OutputWriter(model_1, model.velocities, 
+                                                       filename = "test_surf",
+                                                       schedule = IterationInterval(100))
+                                                       
 start_time = time_ns()
 run!(simulation)
 elapsed_time = 1e-9 * (time_ns() - start_time)
