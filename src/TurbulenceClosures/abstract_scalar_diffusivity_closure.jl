@@ -1,3 +1,7 @@
+using Oceananigans.Grids: idxᴿ, idxᴸ, flip
+using Oceananigans.Operators: Δx, Δy, Δz
+using Oceananigans.BoundaryConditions: VBC, GBC
+
 import Oceananigans.BoundaryConditions: west_flux, east_flux, south_flux, north_flux, bottom_flux, top_flux
 
 """
@@ -256,11 +260,7 @@ end
 ##### Fluxes!
 #####
 
-# Harder in some ways... ValueBoundaryCondition...
-const VBC = BoundaryCondition{Value}
-const GBC = BoundaryCondition{Gradient}
 const VBCorGBC = Union{VBC, GBC}
-const ASD = AbstractScalarDiffusivity
 
 # "Gradient" utility for Value or Gradient boundary conditions
 @inline right_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
