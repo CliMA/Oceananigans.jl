@@ -307,12 +307,6 @@ S = model.tracers.S
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
-                                                              field_slicer = FieldSlicer(k=grid.Nz),
-                                                              overwrite_existing = true)
-
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
