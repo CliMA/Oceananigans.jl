@@ -1,11 +1,6 @@
-using Oceananigans
-using CUDA
+include("dependencies_for_runtests.jl")
+
 using Glob
-using Test
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### Checkpointer tests
@@ -49,17 +44,15 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(grid=grid, closure=closure,
-                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-
+    true_model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
-    i1, i2 = round(Int, Nx/4) - true_model.tracers.T.data.offsets[1], round(Int, 3Nx/4) - true_model.tracers.T.data.offsets[1]
-    j1, j2 = round(Int, Ny/4) - true_model.tracers.T.data.offsets[2], round(Int, 3Ny/4) - true_model.tracers.T.data.offsets[2]
-    k1, k2 = round(Int, Nz/4) - true_model.tracers.T.data.offsets[3], round(Int, 3Nz/4) - true_model.tracers.T.data.offsets[3]
-    CUDA.@allowscalar true_model.tracers.T.data.parent[i1:i2, j1:j2, k1:k2] .+= 0.01
+    i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
+    j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
+    k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
+    view(true_model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
