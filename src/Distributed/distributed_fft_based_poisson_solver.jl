@@ -1,8 +1,5 @@
 import PencilFFTs
 
-using Oceananigans.Solvers: copy_real_component!
-using Oceananigans.Distributed: rank2index
-
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
@@ -20,13 +17,25 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     arch = architecture(local_grid)
-    arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
+    Rx, Ry, Rz = arch.ranks
+    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
-    # Plan the PencilFFT (only works for fully-periodic and Array):
+    # Create a PencilFFTPlan.
+    # 
+    # Note:
+    #
+    #   * This only works for triply periodic models...
+    #   * Because PencilFFT does not support partitioning along the x-dimension,
+    #     but Oceananigans does not support partitioning along the _z_-dimension,
+    #     we permute the PencilFFTs storage object to have the layout (z, x, y).
+    
+    gNx, gNy, gNz = size(global_grid)
+    permuted_size = (gNz, gNx, gNy)
+    processors_per_dimension = (Rx, Ry)
+
     communicator = MPI.COMM_WORLD
-    transforms = PencilFFTs.Transforms.FFT!()
-    processors_per_dimension = (arch.ranks[2], arch.ranks[3])
-    plan = PencilFFTs.PencilFFTPlan(size(global_grid), transforms, processors_per_dimension, communicator)
+    transforms = PencilFFTs.Transforms.FFT!() # only
+    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
@@ -43,11 +52,15 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     λy = dropdims(λy, dims=(1, 3))
     λz = dropdims(λz, dims=(1, 2))
 
-    eigenvalues = PencilFFTs.localgrid(last(storage), (λx, λy, λz))
+    # Note the permutation: (z, x, y).
+    eigenvalues = PencilFFTs.localgrid(last(storage), (λz, λx, λy))
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage)
 end
 
+# solve! requires that `b` in `A x = b` (the right hand side)
+# was computed and stored in first(solver.storage) prior to calling `solve!(x, solver)`.
+# See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     arch = architecture(solver)
 
@@ -61,8 +74,8 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Solve the discrete Poisson equation, storing the solution
     # temporarily in xc and later extracting the real part into 
     # the solution, x.
-    xc = b = last(solver.storage)
-    @. xc = - b / (λx + λy + λz)
+    xhat = b = last(solver.storage)
+    @. xhat = - b / (λx + λy + λz)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
@@ -73,11 +86,19 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     # Apply backward transforms.
     solver.plan \ solver.storage
-    xc_transposed = first(solver.storage)
+    
+    # xc is Complex and the physical space outcome of the inverse transform of xhat.
+    xc = first(solver.storage)
 	
-    copy_event = launch!(arch, solver.local_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
+    # Copy just the real component of xc to x.
+    copy_event = launch!(arch, solver.local_grid, :xyz, copy_permuted_real_component!, x, xc, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x
 end
 
+@kernel function copy_permuted_real_component!(ϕ, ϕc)
+    i, j, k = @index(Global, NTuple)
+    # Note the index permutation
+    @inbounds ϕ[i, j, k] = real(ϕc[k, i, j])
+end
