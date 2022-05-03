@@ -289,6 +289,7 @@ topo = (Periodic, Periodic, Bounded)
 
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+            model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)
         end
 
