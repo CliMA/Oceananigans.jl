@@ -15,7 +15,7 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Utility to generate the inputs to complex `getregion`s
-function getregion_inputs(T; inner = true) 
+function getregionalproperties(T, inner=true) 
     type = eval(T)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
@@ -34,9 +34,9 @@ Types = (:HydrostaticFreeSurfaceModel,
 for T in Types
     @eval begin
         # This assumes a constructor of the form T(arg1, arg2, ...) exists,
-        # which is not the case for all types.
-        @inline  getregion(t::$T, r) = $T($(getregion_inputs(T, inner = true)...))
-        @inline _getregion(t::$T, r) = $T($(getregion_inputs(T, inner = false)...))
+        # # which is not the case for all types.
+        @inline  getregion(t::$T, r) = $T($(getregionalproperties(T, true)...))
+        @inline _getregion(t::$T, r) = $T($(getregionalproperties(T, false)...))
     end
 end
 

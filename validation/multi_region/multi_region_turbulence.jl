@@ -6,7 +6,7 @@ using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_fr
 # using GLMakie
 
 arch = GPU()
-Nh   = 256
+Nh   = 1024
 Nz   = 1
 grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
 
@@ -33,7 +33,7 @@ momentum_advection = WENO5(vector_invariant=VelocityStencil())
 # free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
 
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim)), max vel: $(maximum(sim.model.velocities.u))"
+progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
 #####
 ##### Running and comparing the two models
