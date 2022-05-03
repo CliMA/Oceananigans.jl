@@ -72,7 +72,9 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices)
+    event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices,
+                    dependencies = device_event(arch))
+
     wait(device(arch), event)
 
     return dest
