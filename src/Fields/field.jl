@@ -208,10 +208,10 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 
-rparent(a) = rparent(parent(a))
-
+# "Recursive parent" utility for extracting underlying arrays from doubly (or more) nested array types
 const UnderlyingArrays = Union{Array, CuArray}
-rparent(a::UnderlyingArrays) = a
+@inline rparent(a) = rparent(parent(a))
+@inline rparent(a::UnderlyingArrays) = a
 
 """
     offset_windowed_data(data, loc, grid, indices)
