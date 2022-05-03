@@ -67,10 +67,10 @@ for free_surface in (ExplicitFreeSurface, )
     simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                        schedule = TimeInterval(0.1),
-                                                        prefix = "internal_tide_$(show_name(time_stepper))",
-                                                        init = serialize_grid,
-                                                        overwrite_existing = true)
+                                                          schedule = TimeInterval(0.1),
+                                                          filename = "internal_tide_$(show_name(time_stepper))",
+                                                          init = serialize_grid,
+                                                          overwrite_existing = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 

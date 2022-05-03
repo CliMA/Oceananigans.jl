@@ -6,7 +6,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
-import Base: getindex, size, show, minimum, maximum
+import Base: getindex, size, show, minimum, maximum, length
 import Statistics: mean
 
 import Oceananigans.Fields: AbstractField, Field, FieldBoundaryBuffers, minimum, maximum, mean, location, set!
@@ -22,6 +22,7 @@ function CubedSphereFaces(faces::F) where F
     return CubedSphereFaces{E, F}(faces)
 end
 
+@inline Base.length(f::CubedSphereFaces) = Base.length(f.faces)
 @inline Base.getindex(f::CubedSphereFaces, i::Int) = @inbounds f.faces[i]
 
 #####

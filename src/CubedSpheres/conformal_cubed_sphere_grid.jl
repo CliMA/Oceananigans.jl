@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology, architecture, halo_size
+import Oceananigans.Grids: topology, architecture, halo_size, on_architecture
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -233,6 +233,15 @@ Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
 topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
 architecture(grid::ConformalCubedSphereGrid) = grid.architecture
+
+function on_architecture(arch, grid::ConformalCubedSphereGrid) 
+
+    faces = Tuple(on_architecture(arch, grid.faces[n]) for n in 1:6)
+    face_connectivity = grid.face_connectivity
+    FT = eltype(grid)
+    
+    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
+end
 
 #####
 ##### filling grid halos

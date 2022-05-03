@@ -81,9 +81,9 @@ function run_and_analyze(simulation)
     end
 
     simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
-        schedule = TimeInterval(Δt),
-        prefix = "solution_$(solver_method)",
-        overwrite_existing = true)
+                                                          schedule = TimeInterval(Δt),
+                                                          filename = "solution_$(solver_method)",
+                                                          overwrite_existing = true)
 
     progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,

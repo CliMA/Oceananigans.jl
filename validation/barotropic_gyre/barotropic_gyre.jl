@@ -127,7 +127,7 @@ output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(10day),
-                                                      prefix = output_prefix,
+                                                      filename = output_prefix,
                                                       overwrite_existing = true)
 
 run!(simulation)

@@ -5,7 +5,7 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 # using GLMakie
 
-arch = CPU()
+arch = GPU()
 Nh   = 256
 Nz   = 1
 grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
@@ -15,7 +15,7 @@ bound  = Int.(Nh/2-10:Nh/2+10)
 bottom[bound, bound] .= 1
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 1)
+mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 2)
 
 Δh = 2π / grid.Nx
 Δt = 0.1 * Δh
