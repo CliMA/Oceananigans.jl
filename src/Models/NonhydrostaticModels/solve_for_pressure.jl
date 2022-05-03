@@ -14,7 +14,7 @@ end
 
 @kernel function calculate_permuted_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
-    @inbounds rhs[k, i, j] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds rhs[k, j, i] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
 @kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)

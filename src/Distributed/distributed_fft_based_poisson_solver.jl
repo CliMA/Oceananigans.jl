@@ -24,14 +24,24 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # 
     # Note:
     #
-    #   * This only works for triply periodic models...
-    #   * Because PencilFFT does not support partitioning along the x-dimension,
-    #     but Oceananigans does not support partitioning along the _z_-dimension,
-    #     we permute the PencilFFTs storage object to have the layout (z, x, y).
+    #   * This only works for triply periodic models now...
+    #
+    #   * Because PencilFFT cannot partition the _first_ dimension,
+    #     and Oceananigans cannot partition the _last_ (z) dimension,
+    #     we support pencil partitioning by permuting the PencilFFTs storage
+    #     to have the layout (z, y, x).
+    #
+    #   * The transformed data must be placed in first(solver.storage).
+    #
+    #   * After performing a transform, last(solver.storage) contains the "output", and has
+    #     the layout (x, y, z).
+    #
+    #   * After performing an inverse transform, first(solver.storage) has the layout (z, y, x).
+    #
     
     gNx, gNy, gNz = size(global_grid)
-    permuted_size = (gNz, gNx, gNy)
-    processors_per_dimension = (Rx, Ry)
+    permuted_size = (gNz, gNy, gNx)
+    processors_per_dimension = (Ry, Rx)
 
     communicator = MPI.COMM_WORLD
     transforms = PencilFFTs.Transforms.FFT!() # only
@@ -52,8 +62,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     λy = dropdims(λy, dims=(1, 3))
     λz = dropdims(λz, dims=(1, 2))
 
-    # Note the permutation: (z, x, y).
-    eigenvalues = PencilFFTs.localgrid(last(storage), (λz, λx, λy))
+    # Note the permutation: (z, y, x).
+    eigenvalues = PencilFFTs.localgrid(last(storage), (λz, λy, λx))
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage)
 end
@@ -100,5 +110,5 @@ end
 @kernel function copy_permuted_real_component!(ϕ, ϕc)
     i, j, k = @index(Global, NTuple)
     # Note the index permutation
-    @inbounds ϕ[i, j, k] = real(ϕc[k, i, j])
+    @inbounds ϕ[i, j, k] = real(ϕc[k, j, i])
 end
