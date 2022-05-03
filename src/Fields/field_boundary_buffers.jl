@@ -11,6 +11,7 @@ end
 
 FieldBoundaryBuffers() = FieldBoundaryBuffers(nothing, nothing, nothing, nothing)
 FieldBoundaryBuffers(grid, data, ::Missing) = nothing
+FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
 
 function FieldBoundaryBuffers(grid, data, boundary_conditions)
 
