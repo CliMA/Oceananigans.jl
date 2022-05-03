@@ -26,11 +26,8 @@ include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
-include("fill_halo_regions_value_gradient.jl")
 include("fill_halo_regions_open.jl")
 include("fill_halo_regions_periodic.jl")
-include("fill_halo_regions_flux.jl")
-include("fill_halo_regions_nothing.jl")
 
 #####
 ##### Interface for calculating boundary fluxes
