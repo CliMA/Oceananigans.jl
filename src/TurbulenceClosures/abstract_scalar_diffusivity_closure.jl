@@ -1,3 +1,5 @@
+import Oceananigans.BoundaryConditions: west_flux, east_flux, south_flux, north_flux, bottom_flux, top_flux
+
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
 
@@ -252,5 +254,109 @@ end
     return ifelse((k == 1) | (k == grid.Nz+1), 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(grid))
+end
+
+#####
+##### Fluxes!
+#####
+
+# Harder in some ways... ValueBoundaryCondition...
+const VBC = BoundaryCondition{Value}
+const GBC = BoundaryCondition{Gradient}
+const VBCorGBC = Union{VBC, GBC}
+const ASD = AbstractScalarDiffusivity
+
+# "Gradient" utility for Value or Gradient boundary conditions
+@inline right_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
+@inline left_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
+
+@inline function right_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+    cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
+    cⁱʲᵏ = @inbounds c[i, j, k]
+    return 2 * (cᵇ - cⁱʲᵏ) / Δ
+end
+
+@inline function left_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+    cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
+    cⁱʲᵏ = @inbounds c[i, j, k]
+    return 2 * (cⁱʲᵏ - cᵇ) / Δ
+end
+
+# Metric and index gymnastics for the 6 facets of the cube
+
+@inline function _west_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δx(idxᴸ(i, LX), j, k, ibg, LX, LY, LZ)
+    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+@inline function _east_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δx(idxᴿ(i, LX), j, k, ibg, LX, LY, LZ)
+    κ = h_diffusivity(i, j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+@inline function _south_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δy(i, idxᴸ(j, LY), k, ibg, LX, LY, LZ)
+    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+@inline function _north_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δy(i, idxᴿ(j, LY), k, ibg, LX, LY, LZ)
+    κ = h_diffusivity(i, j, k, ibg, LX, flip(LY), LZ, closure, K, id, clock)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+@inline function _bottom_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δz(i, j, idxᴸ(k, LZ), ibg, LX, LY, LZ)
+    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+@inline function _top_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
+    Δ = Δz(i, j, idxᴿ(k, LZ), ibg, LX, LY, LZ)
+    κ = z_diffusivity(i, j, k, ibg, LX, LY, flip(LZ), closure, K, id, clock)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    return - κ * ∇c
+end
+
+sides = [:west, :east, :south, :north, :bottom, :top]
+
+for side in sides
+    flux = Symbol(side, "_flux")
+    _flux = Symbol("_", flux)
+
+    @eval begin
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, args...) = $_flux(i, j, k, ibg, bc::VBCorGBC, args...)
+        @inline $_flux(i, j, k, ibg, bc::VBCorGBC, args...) = zero(ibg) # fallback for non-ASD closures
+
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any}, K, id, clock, fields) =
+            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields)
+
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any}, K, id, clock, fields) =
+            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields)
+
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any}, K, id, clock, fields) =
+            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields)
+
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any, <:Any}, K, id, clock, fields) =
+            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields)
+
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple, K, id, clock, fields) =
+            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
+             $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields)
+    end
 end
 

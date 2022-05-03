@@ -105,7 +105,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # Cubed sphere
-    ConformalCubedSphereGrid,
+    #ConformalCubedSphereGrid,
 
     # Utils
     prettytime
@@ -211,7 +211,7 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
-include("CubedSpheres/CubedSpheres.jl")
+#include("CubedSpheres/CubedSpheres.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -240,7 +240,7 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
-using .CubedSpheres
+#using .CubedSpheres
 
 function __init__()
     threads = Threads.nthreads()

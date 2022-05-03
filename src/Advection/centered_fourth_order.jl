@@ -1,3 +1,6 @@
+using Oceananigans.Operators: δxᶠᵃᵃ, δyᵃᶠᵃ, δzᵃᵃᶠ
+using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ
+
 #####
 ##### Centered fourth-order advection scheme
 #####

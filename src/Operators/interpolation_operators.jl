@@ -1,4 +1,10 @@
+#####
+##### Note: we call this "interpolation", but these operators actually "reconstruct"
+##### cell-averaged fields at _staggered_ locations.
+#####
+
 using Oceananigans.Grids: Flat
+using Oceananigans.Grids: idxᴸ, idxᴿ, flip
 
 #####
 ##### Base interpolation operators without grid
@@ -88,27 +94,73 @@ using Oceananigans.Grids: Flat
 @inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j, k])
 
 #####
-##### Support for Flat Earths
+##### Location'd interpolation
 #####
 
-const XFlatGrid = AG{<:Any, Flat}
-const YFlatGrid = AG{<:Any, <:Any, Flat}
-const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
+const c = Center()
+const f = Face()
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
-@inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]
+@inline onehalf(grid::AG{FT}) where FT = FT(0.5)
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, w) = @inbounds w[i, j, k]
-@inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c) = @inbounds c[i, j, k]
+# `getξᴰ` retrieves staggered values along the ξ axis, in the ᴰ direction,
+# where ξ is (x, y, z) and ᴰ is ᴿ for "right" or ᴸ for "left".
+#
+# If the location being retrieved is _inactive_, then the value on the
+# _opposite_ side of the inactive is returned. Otherwise, the value
+# (which is known to be active) is returned.
+@inline getxᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴿ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), q[idxᴸ(i, ℓx), j, k], q[idxᴿ(i, ℓx), j, k])
+@inline getxᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴸ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), q[idxᴿ(i, ℓx), j, k], q[idxᴸ(i, ℓx), j, k])
+@inline getyᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴿ(j, ℓy), k, ℓx, flip(ℓy), ℓz), q[i, idxᴸ(j, ℓy), k], q[i, idxᴿ(j, ℓy), k])
+@inline getyᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴸ(j, ℓy), k, ℓx, flip(ℓy), ℓz), q[i, idxᴿ(j, ℓy), k], q[i, idxᴸ(j, ℓy), k])
+@inline getzᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴿ(i, ℓx), ℓx, ℓy, flip(ℓz)), q[i, j, idxᴸ(k, ℓz)], q[i, j, idxᴿ(k, ℓz)])
+@inline getzᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴸ(i, ℓx), ℓx, ℓy, flip(ℓz)), q[i, j, idxᴿ(k, ℓz)], q[i, j, idxᴸ(k, ℓz)])
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w) = @inbounds w[i, j, k]
-@inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c) = @inbounds c[i, j, k]
+@inline getxᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴿ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), f(idxᴸ(i, ℓx), j, k, g, a...), f(idxᴿ(i, ℓx), j, k, g, a...))
+@inline getxᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴸ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), f(idxᴿ(i, ℓx), j, k, g, a...), f(idxᴸ(i, ℓx), j, k, g, a...))
+@inline getyᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴿ(j, ℓy), k, ℓx, flip(ℓy), ℓz), f(i, idxᴸ(j, ℓy), k, g, a...), f(i, idxᴿ(j, ℓy), k, g, a...))
+@inline getyᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴸ(j, ℓy), k, ℓx, flip(ℓy), ℓz), f(i, idxᴿ(j, ℓy), k, g, a...), f(i, idxᴸ(j, ℓy), k, g, a...))
+@inline getzᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴿ(i, ℓx), ℓx, ℓy, flip(ℓz)), f(i, j, idxᴸ(k, ℓz), g, a...), f(i, j, idxᴿ(k, ℓz), g, a...))
+@inline getzᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴸ(i, ℓx), ℓx, ℓy, flip(ℓz)), f(i, j, idxᴿ(k, ℓz), g, a...), f(i, j, idxᴸ(k, ℓz), g, a...))
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
-@inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+syms = (:ᶜ, :ᶠ)
+locs = (:c, :f)
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
-@inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+for (sx, ℓx) in zip(syms, locs)
+    for (sy, ℓy) in zip(syms, locs)
+        for (sz, ℓz) in zip(syms, locs)
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
-@inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+            for ξ in (:x, :y, :z)
+                boundary = Symbol(ξ, :_boundary)
+                ℑ = Symbol(:ℑ, ξ, sx, sy, sz)
+
+                getᴸ = Symbol(:get, ξ, :ᴸ)
+                getᴿ = Symbol(:get, ξ, :ᴿ)
+
+                @eval begin
+                    @inline $ℑ(i, j, k, grid, q) = onehalf(grid) * ($getᴸ(i, j, k, $ℓx, $ℓy, $ℓz, q) + $getᴿ(i, j, k, $ℓx, $ℓy, $ℓz, q))
+
+                    @inline $ℑ(i, j, k, grid, q::F, args...) where F<:Function = onehalf(grid) * ($getᴸ(i, j, k, $ℓx, $ℓy, $ℓz, q, args...) +
+                                                                                                  $getᴿ(i, j, k, $ℓx, $ℓy, $ℓz, q, args...))
+                end
+            end
+
+            ℑx = Symbol(:ℑx, sx, sy, sz)
+            ℑy = Symbol(:ℑy, sx, sy, sz)
+            ℑz = Symbol(:ℑz, sx, sy, sz)
+
+            @eval begin
+                @inline $ℑx(i, j, k, grid::XFlatGrid, q) = @inbounds q[i, j, k]
+                @inline $ℑx(i, j, k, grid::XFlatGrid, f::F, args...) where F<:Function = f(i, j, k, grid, args...)
+
+                @inline $ℑy(i, j, k, grid::YFlatGrid, q) = @inbounds q[i, j, k]
+                @inline $ℑy(i, j, k, grid::YFlatGrid, f::F, args...) where F<:Function = f(i, j, k, grid, args...)
+
+                @inline $ℑz(i, j, k, grid::ZFlatGrid, q) = @inbounds q[i, j, k]
+                @inline $ℑz(i, j, k, grid::ZFlatGrid, f::F, args...) where F<:Function = f(i, j, k, grid, args...)
+            end
+        end
+    end
+end
+
+
+

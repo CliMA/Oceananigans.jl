@@ -140,8 +140,13 @@ As well as
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 
 # Isolate periphery of the immersed boundary
-@inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
-                                                                  !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+@inline immersed_peripheral_node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) =  peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) &
+                                                                  !peripheral_node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+
+# Isolate periphery of the immersed boundary
+@inline immersed_x_boundary(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = x_boundary(i, j, k, ibg, ℓx, ℓy, ℓz) & !x_boundary(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline immersed_y_boundary(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = y_boundary(i, j, k, ibg, ℓx, ℓy, ℓz) & !y_boundary(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline immersed_z_boundary(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = z_boundary(i, j, k, ibg, ℓx, ℓy, ℓz) & !z_boundary(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 #####
 ##### Utilities
@@ -155,13 +160,13 @@ const f = Face()
 @inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline xnode(LX, i, ibg::IBG) = xnode(LX, i, ibg.underlying_grid)
-@inline ynode(LY, j, ibg::IBG) = ynode(LY, j, ibg.underlying_grid)
-@inline znode(LZ, k, ibg::IBG) = znode(LZ, k, ibg.underlying_grid)
+@inline xnode(ℓx, i, ibg::IBG) = xnode(ℓx, i, ibg.underlying_grid)
+@inline ynode(ℓy, j, ibg::IBG) = ynode(ℓy, j, ibg.underlying_grid)
+@inline znode(ℓz, k, ibg::IBG) = znode(ℓz, k, ibg.underlying_grid)
 
-@inline xnode(LX, LY, LZ, i, j, k, ibg::IBG) = xnode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline ynode(LX, LY, LZ, i, j, k, ibg::IBG) = ynode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline znode(LX, LY, LZ, i, j, k, ibg::IBG) = znode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline xnode(ℓx, ℓy, ℓz, i, j, k, ibg::IBG) = xnode(ℓx, ℓy, ℓz, i, j, k, ibg.underlying_grid)
+@inline ynode(ℓx, ℓy, ℓz, i, j, k, ibg::IBG) = ynode(ℓx, ℓy, ℓz, i, j, k, ibg.underlying_grid)
+@inline znode(ℓx, ℓy, ℓz, i, j, k, ibg::IBG) = znode(ℓx, ℓy, ℓz, i, j, k, ibg.underlying_grid)
 
 all_x_nodes(loc, ibg::IBG) = all_x_nodes(loc, ibg.underlying_grid)
 all_y_nodes(loc, ibg::IBG) = all_y_nodes(loc, ibg.underlying_grid)

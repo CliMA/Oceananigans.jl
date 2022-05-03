@@ -5,6 +5,7 @@ using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.Models: calculate_boundary_tendency_contributions!
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -20,16 +21,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                                           model.grid,
-                                                           model.architecture,
-                                                           model.velocities,
-                                                           model.free_surface,
-                                                           model.tracers,
-                                                           model.clock,
-                                                           fields(model),
-                                                           model.closure,
-                                                           model.buoyancy)
+    calculate_boundary_tendency_contributions!(model)
 
     return nothing
 end
@@ -47,11 +39,10 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
                        model.auxiliary_fields,
                        model.forcing,
                        model.clock;
-                       dependencies = dependencies)
+                       dependencies)
 
     return Gη_event
 end
-    
 
 """ Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
@@ -82,11 +73,11 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
 
     Gu_event = launch!(arch, grid, :xyz,
                        calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
-                       dependencies = dependencies)
+                       dependencies)
 
     Gv_event = launch!(arch, grid, :xyz,
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
-                       dependencies = dependencies)
+                       dependencies)
 
     Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
 
@@ -199,42 +190,16 @@ end
 end
 
 #####
-##### Boundary condributions to hydrostatic free surface model
+##### Boundary contributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
-    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
-    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
-    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
+apply_flux_bcs!(::Nothing, args...) = nothing
 
+function apply_flux_bcs!(Gcⁿ, events, barrier, c, closure, K, id, clock, model_fields)
+    x_bcs_event = apply_x_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
+    y_bcs_event = apply_y_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
+    z_bcs_event = apply_z_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
     push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
-
     return nothing
 end
 
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
-
-    barrier = device_event(arch)
-
-    events = []
-
-    # Velocity fields
-    for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
-    end
-
-    # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, args...)
-
-    # Tracer fields
-    for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, args...)
-    end
-
-    events = filter(e -> typeof(e) <: Event, events)
-
-    wait(device(arch), MultiEvent(Tuple(events)))
-
-    return nothing
-end

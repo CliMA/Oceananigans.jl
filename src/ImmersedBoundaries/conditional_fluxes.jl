@@ -15,7 +15,11 @@ Return either
 
 This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
 """
-@inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) = ifelse(immersed_peripheral_node(ℓx, ℓy, ℓz, i, j, k, ibg), qᴮ, qᴵ)
+@inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) = ifelse(immersed_peripheral_node(i, j, k, ℓx, ℓy, ℓz, ibg), qᴮ, qᴵ)
+
+@inline conditional_x_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) = ifelse(immersed_x_boundary(i, j, k, ibg, ℓx, ℓy, ℓz), qᴮ, qᴵ)
+@inline conditional_y_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) = ifelse(immersed_y_boundary(i, j, k, ibg, ℓx, ℓy, ℓz), qᴮ, qᴵ)
+@inline conditional_z_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) = ifelse(immersed_z_boundary(i, j, k, ibg, ℓx, ℓy, ℓz), qᴮ, qᴵ)
 
 #####
 ##### "Boundary-aware" reconstruction

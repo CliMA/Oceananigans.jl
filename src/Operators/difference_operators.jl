@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Center, Face, Flat, peripheral_node
+using Oceananigans.Grids: Center, Face, Flat, x_boundary, y_boundary, z_boundary
 
 #####
 ##### Base difference operators
@@ -27,34 +27,12 @@ using Oceananigans.Grids: Center, Face, Flat, peripheral_node
 @inline δzᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)
 
 #####
-##### Support for Flat Earths
+##### Three dimensional, homogeneous differences
 #####
 
 const XFlatGrid = AG{<:Any, Flat}
 const YFlatGrid = AG{<:Any, <:Any, Flat}
 const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
-
-@inline δxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = zero(grid)
-@inline δxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = zero(grid)
-
-@inline δyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v) = zero(grid)
-@inline δyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c) = zero(grid)
-
-@inline δzᵃᵃᶜ(i, j, k, grid::YFlatGrid, w) = zero(grid)
-@inline δzᵃᵃᶠ(i, j, k, grid::YFlatGrid, c) = zero(grid)
-
-@inline δxᶜᵃᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-@inline δxᶠᵃᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-
-@inline δyᵃᶜᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-@inline δyᵃᶠᵃ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-
-@inline δzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-@inline δzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = zero(grid)
-
-#####
-##### Three dimensional, homogeneous differences
-#####
 
 const c = Center()
 const f = Face()
@@ -65,22 +43,29 @@ locs = (:c, :f)
 for (sx, ℓx) in zip(syms, locs)
     for (sy, ℓy) in zip(syms, locs)
         for (sz, ℓz) in zip(syms, locs)
-            δx_outer = Symbol(:δx, sx, sy, sz)
-            δy_outer = Symbol(:δy, sx, sy, sz)
-            δz_outer = Symbol(:δz, sx, sy, sz)
 
             δx_inner = Symbol(:δx, sx, :ᵃ, :ᵃ)
             δy_inner = Symbol(:δy, :ᵃ, sy, :ᵃ)
             δz_inner = Symbol(:δz, :ᵃ, :ᵃ, sz)
 
-            for (δout, δin) in zip((δx_outer, δy_outer, δz_outer),
-                                   (δx_inner, δy_inner, δz_inner))
+            for (ξ, δin) in zip((:x, :y, :z), (δx_inner, δy_inner, δz_inner))
+                boundary = Symbol(ξ, :_boundary)
+                δout = Symbol(:δ, ξ, sx, sy, sz)
 
                 @eval begin
-                    @inline $δout(i, j, k, grid, q) = ifelse(peripheral_node($ℓx, $ℓy, $ℓz, i, j, k, grid), zero(grid), $δin(i, j, k, grid, q))
-                    @inline $δout(i, j, k, grid, f::F, args...) where {F<:Function} = ifelse(peripheral_node($ℓx, $ℓy, $ℓz, i, j, k, grid), zero(grid), $δin(i, j, k, grid, f, args...))
+                    @inline $δout(i, j, k, grid, q) =
+                        ifelse($boundary(i, j, k, grid, $ℓx, $ℓy, $ℓz), zero(grid), $δin(i, j, k, grid, q))
+
+                    @inline $δout(i, j, k, grid, q::F, args...) where {F<:Function} =
+                        ifelse($boundary(i, j, k, grid, $ℓx, $ℓy, $ℓz), zero(grid), $δin(i, j, k, grid, q, args...))
                 end
             end
+
+            # Support for Flat Earths
+
+            δx_outer = Symbol(:δx, sx, sy, sz)
+            δy_outer = Symbol(:δy, sx, sy, sz)
+            δz_outer = Symbol(:δz, sx, sy, sz)
 
             @eval begin
                 @inline $δx_outer(i, j, k, grid::XFlatGrid, u) = zero(grid)

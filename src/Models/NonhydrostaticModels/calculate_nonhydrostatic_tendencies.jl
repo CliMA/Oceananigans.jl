@@ -2,6 +2,8 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans: fields
 using Oceananigans.Utils: work_layout
+using Oceananigans.Models: calculate_boundary_tendency_contributions!
+using Oceananigans.Grids: XBoundedGrid, YBoundedGrid, ZBoundedGrid
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -25,12 +27,7 @@ function calculate_tendencies!(model::NonhydrostaticModel)
                                                
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.clock,
-                                               fields(model))
+    calculate_boundary_tendency_contributions!(model)
 
     return nothing
 end
@@ -179,22 +176,3 @@ end
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
 end
 
-#####
-##### Boundary contributions to tendencies due to user-prescribed fluxes
-#####
-
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
-
-    barrier = device_event(arch)
-
-    fields = merge(velocities, tracers)
-
-    x_events = Tuple(apply_x_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    y_events = Tuple(apply_y_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    z_events = Tuple(apply_z_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-                         
-    wait(device(arch), MultiEvent(tuple(x_events..., y_events..., z_events...)))
-
-    return nothing
-end

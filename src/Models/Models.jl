@@ -14,6 +14,7 @@ device_event(model::AbstractModel) = device_event(model.architecture)
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
+include("apply_flux_bcs.jl")
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
@@ -28,3 +29,4 @@ using .HydrostaticFreeSurfaceModels:
 using .ShallowWaterModels: ShallowWaterModel
 
 end # module
+

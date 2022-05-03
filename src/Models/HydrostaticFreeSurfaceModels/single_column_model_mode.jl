@@ -3,8 +3,6 @@ using OffsetArrays: OffsetArray
 using CUDA: @allowscalar
 
 using Oceananigans.Operators: Δzᵃᵃᶜ
-using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
-using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.Architectures: device_event
