@@ -235,14 +235,14 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
     schedule = TimeInterval(5days),
-    prefix = "abernathey_channel",
+    filename = "abernathey_channel",
     field_slicer = nothing,
     verbose = true,
     overwrite_existing = true)
 
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
     schedule = AveragedTimeInterval(1days, window = 1days, stride = 1),
-    prefix = "abernathey_channel_averages",
+    filename = "abernathey_channel_averages",
     verbose = true,
     overwrite_existing = true)
 

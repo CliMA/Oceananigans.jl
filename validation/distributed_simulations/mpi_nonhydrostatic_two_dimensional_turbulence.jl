@@ -76,8 +76,8 @@ outputs = merge(model.velocities, (; e, ζ))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(0.1),
                                                       with_halos = true,
-                                                      prefix = "two_dimensional_turbulence_rank$rank",
-                                                      force = true)
+                                                      filename = "two_dimensional_turbulence_rank$rank",
+                                                      overwrite_existing = true)
 
 run!(simulation)
 
