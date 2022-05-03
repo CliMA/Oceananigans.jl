@@ -57,35 +57,6 @@ using Oceananigans.Grids: idxᴸ, idxᴿ, flip
 @inline ℑzᵃᵃᶜ(i, j, k, grid::AG, f::Number, args...) = f
 
 #####
-##### Double interpolation
-#####
-
-@inline ℑxyᶜᶜᵃ(i, j, k, grid, f, args...) = ℑyᵃᶜᵃ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
-@inline ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) = ℑyᵃᶜᵃ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
-@inline ℑxyᶠᶠᵃ(i, j, k, grid, f, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
-@inline ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
-@inline ℑxzᶜᵃᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
-@inline ℑxzᶠᵃᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
-@inline ℑxzᶠᵃᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶠᵃᵃ, f, args...)
-@inline ℑxzᶜᵃᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, f, args...)
-@inline ℑyzᵃᶜᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶜᵃ, f, args...)
-@inline ℑyzᵃᶠᶜ(i, j, k, grid, f, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ℑyᵃᶠᵃ, f, args...)
-@inline ℑyzᵃᶠᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶠᵃ, f, args...)
-@inline ℑyzᵃᶜᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, f, args...)
-
-#####
-##### Triple interpolation
-#####
-
-@inline ℑxyzᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶜᶠᶜ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
-@inline ℑxyzᶠᶜᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, f, args...)
-
-@inline ℑxyzᶜᶠᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶠᶜᶠ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶠᶠᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
-
-#####
 ##### Leftover
 #####
 
@@ -125,6 +96,8 @@ const f = Face()
 syms = (:ᶜ, :ᶠ)
 locs = (:c, :f)
 
+symflip(s) = s === :ᶜ ? :ᶠ : :ᶜ
+
 for (sx, ℓx) in zip(syms, locs)
     for (sy, ℓy) in zip(syms, locs)
         for (sz, ℓz) in zip(syms, locs)
@@ -137,10 +110,10 @@ for (sx, ℓx) in zip(syms, locs)
                 getᴿ = Symbol(:get, ξ, :ᴿ)
 
                 @eval begin
-                    @inline $ℑ(i, j, k, grid, q) = onehalf(grid) * ($getᴸ(i, j, k, $ℓx, $ℓy, $ℓz, q) + $getᴿ(i, j, k, $ℓx, $ℓy, $ℓz, q))
+                    @inline $ℑ(i, j, k, grid, q) = onehalf(grid) * ($getᴸ(i, j, k, grid, $ℓx, $ℓy, $ℓz, q) + $getᴿ(i, j, k, grid, $ℓx, $ℓy, $ℓz, q))
 
-                    @inline $ℑ(i, j, k, grid, q::F, args...) where F<:Function = onehalf(grid) * ($getᴸ(i, j, k, $ℓx, $ℓy, $ℓz, q, args...) +
-                                                                                                  $getᴿ(i, j, k, $ℓx, $ℓy, $ℓz, q, args...))
+                    @inline $ℑ(i, j, k, grid, q::F, args...) where F<:Function = onehalf(grid) * ($getᴸ(i, j, k, grid, $ℓx, $ℓy, $ℓz, q, args...) +
+                                                                                                  $getᴿ(i, j, k, grid, $ℓx, $ℓy, $ℓz, q, args...))
                 end
             end
 
@@ -158,9 +131,30 @@ for (sx, ℓx) in zip(syms, locs)
                 @inline $ℑz(i, j, k, grid::ZFlatGrid, q) = @inbounds q[i, j, k]
                 @inline $ℑz(i, j, k, grid::ZFlatGrid, f::F, args...) where F<:Function = f(i, j, k, grid, args...)
             end
+
+            # Double interpolation
+            ℑ²xy = Symbol(:ℑxy, sx, sy, sz)
+            ℑy   = Symbol(:ℑy,  sx, sy, sz)
+            ℑx   = Symbol(:ℑx,  sx, symflip(sy), sz)
+            @eval @inline $ℑ²xy(i, j, k, grid, f, args...) = $ℑy(i, j, k, grid, $ℑx, f, args...)
+
+            ℑ²xz = Symbol(:ℑxz, sx, sy, sz)
+            ℑz   = Symbol(:ℑz,  sx, sy, sz)
+            ℑx   = Symbol(:ℑx,  sx, sy, symflip(sz))
+            @eval @inline $ℑ²xz(i, j, k, grid, f, args...) = $ℑz(i, j, k, grid, $ℑx, f, args...)
+
+            ℑ²yz = Symbol(:ℑyz, sx, sy, sz)
+            ℑz   = Symbol(:ℑz, sx, sy, sz)
+            ℑy   = Symbol(:ℑy, sx, sy, symflip(sz))
+            @eval @inline $ℑ²yz(i, j, k, grid, f, args...) = $ℑz(i, j, k, grid, $ℑy, f, args...)
+
+            # Triple interpolation
+            ℑ³xyz = Symbol(:ℑxyz, sx, sy, sz)
+            ℑz    = Symbol(:ℑz, sx, sy, sz)
+            ℑy    = Symbol(:ℑy, sx, sy, symflip(sz))
+            ℑx    = Symbol(:ℑx, sx, symflip(sy), symflip(sz))
+            @eval @inline $ℑ³xyz(i, j, k, grid, f, args...) = $ℑz(i, j, k, grid, $ℑy, $ℑx, f, args...)
         end
     end
 end
-
-
 

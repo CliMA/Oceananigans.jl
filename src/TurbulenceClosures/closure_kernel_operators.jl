@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, div
+using Oceananigans.Operators: Δy_qᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶠᶜᶜ, ℑxyᶠᶠᶜ, ℑxzᶠᶜᶠ, ℑyzᶜᶠᶠ, div
 
 #####                                                            
 ##### Viscous flux divergences
@@ -65,23 +65,23 @@ end
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = @inbounds ν[i, j, k]
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxzᶠᵃᶠ(i, j, k, grid, ν)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑyzᵃᶠᶠ(i, j, k, grid, ν)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxyᶠᶠᵃ(i, j, k, grid, ν)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxzᶠᶜᶠ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑyzᶜᶠᶠ(i, j, k, grid, ν)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxyᶠᶠᶜ(i, j, k, grid, ν)
                                         
-@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑxᶠᶜᶜ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑyᶜᶠᶜ(i, j, k, grid, κ)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑzᶜᶜᶠ(i, j, k, grid, κ)
 
 # Array / Field at `Center, Center, Face`
 const Lᶜᶜᶠ = Tuple{Center, Center, Face}
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑzᵃᵃᶜ(i, j, k, grid, ν)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, ν)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑzᶜᶜᶜ(i, j, k, grid, ν)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑxᶠᶜᶜ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑyᶜᶠᶜ(i, j, k, grid, ν)
 @inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑxzᶠᶜᶠ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑyzᶜᶠᶠ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = @inbounds κ[i, j, k]
 
 # Function

@@ -50,15 +50,14 @@ export Ax_∂xᶠᶠᶠ, Ax_∂xᶠᶠᶜ, Ax_∂xᶠᶜᶠ, Ax_∂xᶠᶜᶜ, A
 export Ay_∂yᶠᶠᶠ, Ay_∂yᶠᶠᶜ, Ay_∂yᶠᶜᶠ, Ay_∂yᶠᶜᶜ, Ay_∂yᶜᶠᶠ, Ay_∂yᶜᶠᶜ, Ay_∂yᶜᶜᶠ, Ay_∂yᶜᶜᶜ
 export Az_∂zᶠᶠᶠ, Az_∂zᶠᶠᶜ, Az_∂zᶠᶜᶠ, Az_∂zᶠᶜᶜ, Az_∂zᶜᶠᶠ, Az_∂zᶜᶠᶜ, Az_∂zᶜᶜᶠ, Az_∂zᶜᶜᶜ
 
+# Interpolations / reconstructions
+export ℑxᶠᶠᶠ, ℑxᶠᶠᶜ, ℑxᶠᶜᶠ, ℑxᶠᶜᶜ, ℑxᶜᶠᶠ, ℑxᶜᶠᶜ, ℑxᶜᶜᶠ, ℑxᶜᶜᶜ
+export ℑyᶠᶠᶠ, ℑyᶠᶠᶜ, ℑyᶠᶜᶠ, ℑyᶠᶜᶜ, ℑyᶜᶠᶠ, ℑyᶜᶠᶜ, ℑyᶜᶜᶠ, ℑyᶜᶜᶜ
+export ℑzᶠᶠᶠ, ℑzᶠᶠᶜ, ℑzᶠᶜᶠ, ℑzᶠᶜᶜ, ℑzᶜᶠᶠ, ℑzᶜᶠᶜ, ℑzᶜᶜᶠ, ℑzᶜᶜᶜ
+
 # Divergences
 export divᶜᶜᶜ, div_xyᶜᶜᶜ, ζ₃ᶠᶠᶜ
 export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜᶜᶜ, ∇²hᶠᶜᶜ, ∇²hᶜᶠᶜ
-
-# Interpolations
-export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
-export ℑᴶxᶜᵃᵃ, ℑᴶxᶠᵃᵃ, ℑᴶyᵃᶜᵃ, ℑᴶyᵃᶠᵃ, ℑᴶzᵃᵃᶜ, ℑᴶzᵃᵃᶠ
-export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
-export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ
 
 using Oceananigans.Grids
 

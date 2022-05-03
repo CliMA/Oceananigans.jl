@@ -129,9 +129,9 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
 """
 @inline function taper_factor_ccc(i, j, k, grid, buoyancy, tracers, tapering::FluxTapering)
     # TODO: handle boundaries!
-    bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bx = ℑxᶜᶜᶜ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+    by = ℑyᶜᶜᶜ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+    bz = ℑzᶜᶜᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
 
     slope_x = - bx / bz
     slope_y = - by / bz
@@ -169,8 +169,8 @@ taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂y_c = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
@@ -200,8 +200,8 @@ end
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂x_c = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
@@ -229,8 +229,8 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)

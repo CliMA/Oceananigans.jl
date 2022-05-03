@@ -220,7 +220,7 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 @inline depth(i, j, k, ibg::GFBIBG) = @inbounds max(zero(eltype(ibg)), min(ibg.Lz, -ibg.immersed_boundary.bottom[i, j]))
 @inline ∂x_H_∂x_η(i, j, k, ibg, η) = ∂xᶠᶜᶜ(i, j, k, ibg, depth) * ∂xᶠᶜᶜ(i, j, k, ibg, η)
 @inline ∂y_H_∂y_η(i, j, k, ibg, η) = ∂yᶜᶠᶜ(i, j, k, ibg, depth) * ∂yᶜᶠᶜ(i, j, k, ibg, η)
-@inline ∇H_∇η(i, j, k, ibg::GFBIBG, η) = ℑxᶜᵃᵃ(i, j, k, ibg, ∂x_H_∂x_η, η) + ℑyᵃᶜᵃ(i, j, k, ibg, ∂y_H_∂y_η, η)
+@inline ∇H_∇η(i, j, k, ibg::GFBIBG, η) = ℑxᶜᶜᶜ(i, j, k, ibg, ∂x_H_∂x_η, η) + ℑyᶜᶜᶜ(i, j, k, ibg, ∂y_H_∂y_η, η)
 
 @inline function H⁻¹_∇H_∇η(i, j, k, ibg::GFBIBG, η)
     H = depth(i, j, k, ibg)

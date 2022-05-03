@@ -69,10 +69,10 @@ Apply a west and/or east boundary condition to variable `c`.
     # Flux across i = Nx
     qᴱ = east_flux(Nx+1, j, k, grid, east_bc, loc, c, closure, K, id, clock, fields)
     Axᴱ =       Ax(Nx+1, j, k, grid, LX, LY, LZ)
-    Vᵂ  =   volume(Nx,   j, k, grid, LX, LY, LZ)
+    Vᴱ  =   volume(Nx,   j, k, grid, LX, LY, LZ)
 
     @inbounds Gc[1,  j, k] += qᵂ * Axᵂ / Vᵂ
-    @inbounds Gc[Nx, j, k] -= qᴱ * Axᴱ / Vᴱ 
+    @inbounds Gc[Nx, j, k] -= qᴱ * Axᴱ / Vᴱ
 end
 
 """
