@@ -1,4 +1,4 @@
-using Oceananigans.Operators
+using Oceananigans.Operators: ℑxyᶜᶜᵃ, ℑxzᶜᵃᶜ, ℑyzᵃᶜᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure

@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField
+using Oceananigans.Operators: ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
 
 #####
 ##### The turbulence closure proposed by Leith

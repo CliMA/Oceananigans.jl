@@ -1,4 +1,4 @@
-using Oceananigans.Operators
+using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑyzᵃᶜᶜ
 
 """
     struct MixingLength{FT}

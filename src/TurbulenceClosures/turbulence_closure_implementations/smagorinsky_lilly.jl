@@ -1,3 +1,6 @@
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑyzᵃᶜᶠ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, ℑxzᶜᵃᶠ, ℑxyᶜᶠᵃ
+using Oceananigans.Operators: ℑxyᶜᶜᵃ, ℑxzᶜᵃᶜ, ℑyzᵃᶜᶜ, ℑxzᶠᵃᶠ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ
+
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
 ##### We also call this 'Constant Smagorinsky'.
@@ -145,7 +148,7 @@ const Δᶠ_cff = Δᶠ
 "Return the double dot product of strain at `ccc`."
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     return (
-                    tr_Σ²(i, j, k, grid, u, v, w)
+                   tr_Σ²(i, j, k, grid, u, v, w)
             + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
@@ -156,7 +159,7 @@ end
 @inline function ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
     return (
                   ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 *    Σ₁₂²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₁₂²(i, j, k, grid, u, v, w)
             + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
@@ -167,7 +170,7 @@ end
     return (
                   ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 *    Σ₁₃²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₁₃²(i, j, k, grid, u, v, w)
             + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
@@ -178,7 +181,7 @@ end
                   ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 *    Σ₂₃²(i, j, k, grid, u, v, w)
+            + 2 *   Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
 

@@ -11,7 +11,8 @@ using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
-using Oceananigans.Operators: ℑzᵃᵃᶜ
+
+using Oceananigans.Operators: ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
