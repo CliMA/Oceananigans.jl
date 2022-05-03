@@ -17,7 +17,6 @@ hydrostatic pressure) to the current model state.
 """
 update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
 
-
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     @apply_regionally masking_actions!(model)
