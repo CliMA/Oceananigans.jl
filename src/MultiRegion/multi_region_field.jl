@@ -24,7 +24,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
 @inline devices(f::GriddedMultiRegionField)    = devices(f.grid)
-sync_all_devices!(f::GriddedMultiRegionField)  = sync_all_devices!(devices(f.grid))
+@inline sync_all_devices!(f::GriddedMultiRegionField)  = sync_all_devices!(devices(f.grid))
 
 @inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
 @inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)

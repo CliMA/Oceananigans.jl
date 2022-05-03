@@ -30,20 +30,20 @@ end
 ### Multi region functions
 ###
 
-getdevice(a, i)                     = nothing
-getdevice(cu::GPUVar, i)            = CUDA.device(cu)
-getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
-getdevice(mo::MultiRegionObject, i) = mo.devices[i]
+@inline getdevice(a, i)                     = nothing
+@inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
+@inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
+@inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
-getdevice(a)               = nothing
-getdevice(cu::GPUVar)      = CUDA.device(cu)
-getdevice(cu::OffsetArray) = getdevice(cu.parent)
+@inline getdevice(a)               = nothing
+@inline getdevice(cu::GPUVar)      = CUDA.device(cu)
+@inline getdevice(cu::OffsetArray) = getdevice(cu.parent)
 
-switch_device!(a)                        = nothing
-switch_device!(dev::Int)                 = CUDA.device!(dev)
-switch_device!(dev::CuDevice)            = CUDA.device!(dev)
-switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
-switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
+@inline switch_device!(a)                        = nothing
+@inline switch_device!(dev::Int)                 = CUDA.device!(dev)
+@inline switch_device!(dev::CuDevice)            = CUDA.device!(dev)
+@inline switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
+@inline switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
@@ -73,24 +73,24 @@ switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 @inline getregion(nt::NamedTuple, i)   = NamedTuple{keys(nt)}(_getregion(Tuple(nt), i))
 @inline _getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(getregion(Tuple(nt), i))
 
-isregional(a)                   = false
-isregional(::MultiRegionObject) = true
+@inline isregional(a)                   = false
+@inline isregional(::MultiRegionObject) = true
 
-isregional(t::Tuple{}) = false
-isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
+@inline isregional(t::Tuple{}) = false
+@inline isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
 for func in [:isregional, :devices, :switch_device!]
     @eval begin
-        $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
+        @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
     end
 end
 
-devices(mo::MultiRegionObject) = mo.devices
+@inline devices(mo::MultiRegionObject) = mo.devices
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regions, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
-function apply_regionally!(func!, args...; kwargs...)
+@inline function apply_regionally!(func!, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
@@ -110,7 +110,7 @@ function apply_regionally!(func!, args...; kwargs...)
 end 
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
-function construct_regionally(constructor, args...; kwargs...)
+@inline function construct_regionally(constructor, args...; kwargs...)
     mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
     mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
     isnothing(mra) && isnothing(mrk) && return constructor(args...; kwargs...)
@@ -131,18 +131,18 @@ function construct_regionally(constructor, args...; kwargs...)
     return MultiRegionObject(Tuple(res), devs)
 end
 
-sync_all_devices!(grid::AbstractGrid)    = nothing
-sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
+@inline sync_all_devices!(grid::AbstractGrid)    = nothing
+@inline sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
 
-function sync_all_devices!(devices)
+@inline function sync_all_devices!(devices)
     for dev in devices
         switch_device!(dev)
         sync_device!(dev)
     end
 end
 
-sync_device!(::CuDevice) = CUDA.device_synchronize()
-sync_device!(dev)        = nothing
+@inline sync_device!(::CuDevice) = CUDA.device_synchronize()
+@inline sync_device!(dev)        = nothing
 
 """
 macro `@apply_regionally` to distribute locally the function calls

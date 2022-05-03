@@ -21,19 +21,19 @@ mrg  = MultiRegionGrid(grid, partition=XPartition(2), devices = 1)
 Δt = 0.1 * Δh
 
 ϵ(x, y, z)  =  2rand() - 1
+
 u_init = Array(interior(set!(Field((Face, Center, Center), grid), ϵ)))
 v_init = Array(interior(set!(Field((Center, Face, Center), grid), ϵ)))
 
 u_init_mrg = multi_region_object_from_array(u_init, mrg)
 v_init_mrg = multi_region_object_from_array(v_init, mrg)
 
-momentum_advection = WENO5()
-# momentum_advection = WENO5(vector_invariant=VelocityStencil())
+momentum_advection = WENO5(vector_invariant=VelocityStencil())
 
 # free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
 
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
+progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim)), max vel: $(maximum(sim.model.velocities.u))"
 
 #####
 ##### Running and comparing the two models
@@ -54,9 +54,6 @@ run!(simulation)
 simulation.stop_iteration += 1000
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-simulation.output_writers[:surface] = JLD2OutputWriter(model_1, model.velocities, 
-                                                       filename = "test_surf",
-                                                       schedule = IterationInterval(100))
                                                        
 start_time = time_ns()
 run!(simulation)
@@ -84,7 +81,6 @@ run!(simulation)
 
 simulation.stop_iteration += 1000
 
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 start_time = time_ns()
@@ -96,7 +92,3 @@ u_2, v_2, w = model_2.velocities
 
 ζ_2 = compute!(Field(∂x(v_2) - ∂y(u_2)))
 
-# fig = Figure()
-# ax = Axis(fig[1, 1])
-# heatmap!(ax, interior(ζ, :, :, 1))
-# display(fig)
