@@ -49,25 +49,36 @@ switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 @inline getregion(ref::Reference, i)        = ref.ref
 @inline getregion(iter::Iterate, i)         = iter.iter[i]
 @inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regions[i], i)
-
-@inline getregion(t::Tuple, i)         = Tuple(_getregion(elem, i) for elem in t)
-@inline getregion(nt::NamedTuple, i)   = NamedTuple{keys(nt)}(_getregion(elem, i) for elem in nt)
-@inline getregion(p::Pair, i)          = p.first => _getregion(p.second, i)
+@inline getregion(p::Pair, i)               = p.first => _getregion(p.second, i)
 
 @inline _getregion(a, i) = a
 @inline _getregion(ref::Reference, i)        = ref.ref
 @inline _getregion(iter::Iterate, i)         = iter.iter[i]
 @inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regions[i], i)
+@inline _getregion(p::Pair, i)               = p.first => getregion(p.second, i)
 
-@inline _getregion(t::Tuple, i)        = Tuple(getregion(elem, i) for elem in t)
-@inline _getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(getregion(elem, i) for elem in nt)
-@inline _getregion(p::Pair, i)         = p.first => getregion(p.second, i)
+## The implementation of `getregion` for a Tuple forces the compiler to infer the size of the Tuple
+@inline getregion(t::Tuple{}, i)                            = ()
+@inline getregion(t::Tuple{<:Any}, i)                       = (_getregion(t[1], i), )
+@inline getregion(t::Tuple{<:Any, <:Any}, i)                = (_getregion(t[1], i), _getregion(t[2], i))
+@inline getregion(t::Tuple{<:Any, <:Any, <:Any}, i)         = (_getregion(t[1], i), _getregion(t[2], i), _getregion(t[3], i))
+@inline getregion(t::Tuple, i)                              = (_getregion(t[1], i), _getregion(t[2:end], i)...)
+
+@inline _getregion(t::Tuple{}, i)                           = ()
+@inline _getregion(t::Tuple{<:Any}, i)                      = (getregion(t[1], i), )
+@inline _getregion(t::Tuple{<:Any, <:Any}, i)               = (getregion(t[1], i), getregion(t[2], i))
+@inline _getregion(t::Tuple{<:Any, <:Any, <:Any}, i)        = (getregion(t[1], i), getregion(t[2], i), getregion(t[3], i))
+@inline _getregion(t::Tuple, i)                             = (getregion(t[1], i), getregion(t[2:end], i)...)
+
+@inline getregion(nt::NamedTuple, i)   = NamedTuple{keys(nt)}(_getregion(Tuple(nt), i))
+@inline _getregion(nt::NamedTuple, i)  = NamedTuple{keys(nt)}(getregion(Tuple(nt), i))
 
 isregional(a)                   = false
 isregional(::MultiRegionObject) = true
-isregional(t::Union{Tuple, NamedTuple}) = any([isregional(elem) for elem in t])
 
-for func in [:devices, :switch_device!]
+isregional(t::Tuple{}) = false
+isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false
+for func in [:isregional, :devices, :switch_device!]
     @eval begin
         $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
     end
@@ -89,7 +100,7 @@ function apply_regionally!(func!, args...; kwargs...)
     else
         devs = devices(mra)
     end
-
+   
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
         func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
@@ -110,10 +121,11 @@ function construct_regionally(constructor, args...; kwargs...)
         devs = devices(mra)
     end
 
-    res = Tuple((switch_device!(dev);
-                constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...))
-                for (r, dev) in enumerate(devs))
-
+    res = Vector(undef, length(devs))
+    for (r, dev) in enumerate(devs)
+        switch_device!(dev)
+        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    end
     sync_all_devices!(devs)
 
     return MultiRegionObject(Tuple(res), devs)

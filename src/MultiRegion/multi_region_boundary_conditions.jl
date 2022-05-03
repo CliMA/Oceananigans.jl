@@ -28,6 +28,7 @@ import Oceananigans.BoundaryConditions:
 @inline extract_field_buffers(field::Field)          = field.boundary_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
+# This can be implemented once we have a buffer for field_tuples
 @inline function tupled_fill_halo_regions!(full_fields, grid::MultiRegionGrid, args...; kwargs...) 
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
@@ -49,11 +50,11 @@ end
 
 fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
-
 #####
 ##### fill_halo_regions! for a MultiRegionObject
 #####
 
+# this can be used once we don't need to fill Value, Flux and Gradient anymore!
 # fill_halo_regions!(c::MultiRegionObject, bcs, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 

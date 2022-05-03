@@ -55,14 +55,20 @@ function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, �
     return prognostic_field_events
 end
 
+# ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
+#     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
+
 function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events) 
     
     free_surface_event = launch!(model.architecture, model.grid, :xy,
                                 _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
                                 model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
                                 dependencies = device_event(model.architecture))
-
+    
     return MultiEvent(tuple(prognostic_field_events[1]..., prognostic_field_events[2]..., free_surface_event))
+    
+    # wait(device(model.architecture), free_surface_event)
+    # return nothing
 end
 
 #####

@@ -18,9 +18,13 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     
     # blocking step for implicit free surface, non blocking for explicit
     prognostic_field_events = ab2_step_free_surface!(model.free_surface, model, Δt, χ, prognostic_field_events)
-    
+
     # waiting all the ab2 steps (velocities, free_surface and tracers to complete)
     @apply_regionally wait(device(model.architecture), prognostic_field_events)
+
+
+    # @apply_regionally local_ab2_step!(model, Δt, χ)
+    # ab2_step_free_surface!(model.free_surface, model, Δt, χ, nothing)    
 
     return nothing
 end
@@ -39,7 +43,11 @@ function local_ab2_step!(model, Δt, χ)
     prognostic_field_events = (tuple(explicit_velocity_step_events...),
         tuple(explicit_tracer_step_events...))
 
-    return prognostic_field_events
+    return prognostic_field_events    
+
+    # wait(device(model.architecture), MultiEvent(tuple(explicit_velocity_step_events..., explicit_tracer_step_events...)))
+
+    # return nothing
 end
 
 #####

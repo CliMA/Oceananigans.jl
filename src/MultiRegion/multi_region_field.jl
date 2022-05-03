@@ -80,7 +80,7 @@ fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
 compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
 
-@inline hasnan(field::MultiRegionField) = (&)(hasnan.(construct_regionally(parent, field).regions)...)
+@inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regions...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrid, args...) = 
     construct_regionally(validate_indices, indices, loc, mrg.region_grids, args...)
