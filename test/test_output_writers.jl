@@ -268,13 +268,13 @@ topo = (Periodic, Periodic, Bounded)
 
     for arch in archs
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid=grid)
 
         @info "Test that outputs are properly constructed"
         test_output_construction(model)
 
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
-            model = NonhydrostaticModel(grid=grid)
             test_creating_and_appending(model, output_writer)
         end
 
