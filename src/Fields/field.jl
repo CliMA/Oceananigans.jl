@@ -292,6 +292,9 @@ function Base.view(f::Field, i, j, k)
                  f.status)
 end
 
+const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+
 # Conveniences
 Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)

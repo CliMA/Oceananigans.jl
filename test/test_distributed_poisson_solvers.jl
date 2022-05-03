@@ -1,6 +1,32 @@
 include("dependencies_for_runtests.jl")
 
+using MPI
+
+# # Distributed model tests
+#
+# These tests are meant to be run on 4 ranks. This script may be run
+# stand-alone (outside the test environment) via
+#
+# mpiexec -n 4 julia --project test_distributed_models.jl
+#
+# provided that a few packages (like TimesDates.jl) are in your global environment.
+#
+# Another possibility is to use tmpi ():
+#
+# tmpi 4 julia --project
+#
+# then later:
+# 
+# julia> include("test_distributed_models.jl")
+#
+# When running the tests this way, uncomment the following line
+
+MPI.Init()
+
+# to initialize MPI.
+
 using Oceananigans.Distributed: reconstruct_global_grid
+using Oceananigans.Solvers: copy_real_component!
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -49,7 +75,11 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     ϕ   = CenterField(local_grid, boundary_conditions=p_bcs) # "pressure"
     ∇²ϕ = CenterField(local_grid, boundary_conditions=p_bcs)
 
-    interior(ϕ) .= real(first(solver.storage))
+    copy_event = launch!(arch, local_grid, :xyz,
+                         copy_real_component!, ϕ, first(solver.storage),
+                         dependencies=device_event(arch))
+    wait(device(arch), copy_event)
+
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
     return R ≈ interior(∇²ϕ)
