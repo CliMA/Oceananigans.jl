@@ -2,33 +2,64 @@
 
 *🌊 Fast and friendly fluid dynamics on CPUs and GPUs.*
 
-Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs
-and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic
-Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating
-stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy
-simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and
-more!
+Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
+and hydrostatic Boussinesq equations on CPUs and GPUs.
+It runs on GPUs (wow, fast!), though we believe Oceananigans makes the biggest waves
+with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 
-We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible,
-allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm
-so that the code runs as fast as possible for the configuration chosen by the user --- from simple
-two-dimensional setups to complex three-dimensional simulations --- and so that as much code
-as possible is shared between the different architectures, models, and grids.
+Oceananigans is written in Julia by the [Climate Modeling Alliance](https://clima.caltech.edu)
+and heroic external collaborators.
 
-Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
+## Quick install
 
-## Getting help
+Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us
-questions and get in touch! If you're trying to set up a model then check out the examples and model setup
-documentation. Please feel free to [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions)
-if you have any questions, comments, suggestions, etc! There is also an #oceananigans channel on the
-[Julia Slack](https://julialang.org/slack/).
+1. [Download Julia](https://julialang.org/downloads/).
+
+2. Launch Julia and type
+
+```julia
+julia> using Pkg
+
+julia> Pkg.add("Oceananigans")
+```
+
+!!! compat "Julia 1.6 or newer"
+    The latest version of Oceananigans requires _at least_ Julia 1.6 to run.
+    Many scripts will also run on Julia 1.7 (but Oceananigans is only tested on Julia 1.6.6 right now).
+
+If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
+
+## The Oceananigans "knowledge base"
+
+It's _deep_ and includes:
+
+* This documentation, which provides
+    * example Oceananigans scripts,
+    * tutorials that describe key Oceananigans objects and functions,
+    * explanations of Oceananigans finite-volume-based numerical methods,
+    * details of the dynamical equations solved by Oceananigans models, and
+    * a library documenting all user-facing Oceananigans objects and functions.
+* [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
+    * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
+    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
+  
+    If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
+* The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
+* [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
+
+## Getting in touch
+
+Whether you need help getting started with Oceananigans, found a bug, want Oceananigans to be more awesome, or just want to chat about computational oceanography, you've got a few options for getting in touch:
+
+* [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
+* [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
+* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
 
 ## Citing
 
-If you use Oceananigans.jl as part of your research, teaching, or other activities, we would be grateful if you could
-cite our work and mention Oceananigans.jl by name.
+If you use Oceananigans as part of your research, teaching, or other activities, we would be grateful if you could
+cite our work and mention Oceananigans by name.
 
 ```bibtex
 @article{OceananigansJOSS,
@@ -45,9 +76,9 @@ cite our work and mention Oceananigans.jl by name.
 }
 ```
 
-## Papers and preprints using Oceananigans.jl
+## Papers and preprints using Oceananigans
 
-If you have work using Oceananigans.jl that you would like to have listed here, please open a pull request to add it or let us know!
+If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 

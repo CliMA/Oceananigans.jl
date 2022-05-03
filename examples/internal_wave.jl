@@ -143,13 +143,14 @@ run!(simulation)
 using Printf, Plots
 
 w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+Nt = length(w_timeseries.times)
 x, y, z = nodes(w_timeseries)
 
 # and makes an animation with Plots.jl:
 
 anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
-    @info "Drawing frame $i from iteration $iter..."
+    @info "Drawing frame $i of $Nt..."
 
     w = interior(w_timeseries[i], :, 1, :)
 
