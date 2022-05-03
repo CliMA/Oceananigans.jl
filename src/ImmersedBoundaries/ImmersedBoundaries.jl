@@ -10,7 +10,7 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, x_boundary, y_boundary, z_boundary
 using Oceananigans.Advection: WENOVectorInvariant
 
 import Base: show, summary

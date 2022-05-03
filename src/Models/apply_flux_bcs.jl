@@ -138,7 +138,6 @@ function calculate_boundary_tendency_contributions!(model)
     velocities = model.velocities
     tracers = model.tracers
     clock = model.clock
-    model_fields = merge(model.velocities, model.tracers)
     closure = model.closure
     barrier = device_event(arch)
 
@@ -151,19 +150,19 @@ function calculate_boundary_tendency_contributions!(model)
 
     if grid isa XBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_x_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, model_fields)
+            events[q] = apply_x_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
         end
     end
 
     if grid isa YBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_y_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, model_fields)
+            events[q] = apply_y_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
         end
     end
 
     if grid isa ZBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_z_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, model_fields)
+            events[q] = apply_z_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
         end
     end
 
