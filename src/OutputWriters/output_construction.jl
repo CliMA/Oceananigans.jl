@@ -46,9 +46,14 @@ function construct_output(user_output::Union{AbstractField, Reduction}, grid, us
     return construct_output(user_output, indices)
 end
 
+
 construct_output(user_output::Field, indices) = view(user_output, indices...)
 construct_output(user_output::Reduction, indices) = Field(user_output; indices)
 construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
+
+const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+construct_output(windowed_field::WindowedField, indices) = windowed_field # don't re-index a windowed field
 
 #####
 ##### Time-averaging
