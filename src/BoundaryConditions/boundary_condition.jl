@@ -102,9 +102,13 @@ GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwa
 
 @inline getbc(bc, args...) = bc.condition(args...) # fallback!
 
-@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
-@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
-@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(grid)
+
+# For immersed boundaries
+@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, args...) = zero(grid)
+@inline getbc(bc::Nothing,             i::Integer, j::Integer, k::Integer, grid::AbstractGrid, args...) = zero(grid)
 
 @inline getbc(bc::BC{C, <:Number}, args...) where C = bc.condition
 @inline getbc(bc::BC{C, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) where C = @inbounds bc.condition[i, j]
