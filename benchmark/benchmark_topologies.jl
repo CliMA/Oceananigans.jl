@@ -7,9 +7,11 @@ using Benchmarks
 
 # Benchmark function
 
-function benchmark_topology(Arch, N, topo)
-    grid = RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
+function benchmark_topology(Arch, size, topology, extent=(1, 1, 1))
+    grid = RectilinearGrid(Arch(); topology, size, extent)
+    closure = ScalarDiffusivity(ν=1, κ=1)
+    advection = WENO5()
+    model = NonhydrostaticModel(; advection, grid, closure, tracers=:c)
 
     time_step!(model, 1) # warmup
 
@@ -23,7 +25,7 @@ end
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Ns = [128]
+Ns = [(256, 256, 1), (128, 128, 128)]
 PB = (Periodic, Bounded)
 Topologies = collect(Iterators.product(PB, PB, PB))[:]
 
