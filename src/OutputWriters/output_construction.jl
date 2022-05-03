@@ -64,8 +64,6 @@ construct_output(user_output::Field, indices) = view(user_output, indices...)
 construct_output(user_output::Reduction, indices) = Field(user_output; indices)
 construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
-#construct_output(user_windowed_field::WindowedField, indices) = user_windowed_field # don't re-index a windowed field
-
 #####
 ##### Time-averaging
 #####
