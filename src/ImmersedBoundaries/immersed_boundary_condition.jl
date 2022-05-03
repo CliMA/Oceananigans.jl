@@ -77,6 +77,7 @@ end
 for side in (:east, :north, :top)
     side_flux = Symbol(side, :_flux)
     @eval begin
+        # Note sign convection for fluxes
         @inline $side_flux(i, j, k, ibg::IBG, bc::FBC, loc, c, closure, K, id, args...) = - getbc(bc, i, j, k, ibg, args...)
         @inline $side_flux(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
     end
