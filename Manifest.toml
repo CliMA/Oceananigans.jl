@@ -180,9 +180,9 @@ version = "1.13.0"
 
 [[GPUArrays]]
 deps = ["Adapt", "LLVM", "LinearAlgebra", "Printf", "Random", "Serialization", "Statistics"]
-git-tree-sha1 = "c783e8883028bf26fb05ed4022c450ef44edd875"
+git-tree-sha1 = "9010083c218098a3695653773695a9949e7e8f0d"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "8.3.2"
+version = "8.3.1"
 
 [[GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
