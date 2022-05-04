@@ -18,9 +18,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
         @info "  Constructing a ConformalCubedSphereGrid from file [$(typeof(arch))]..."
 
-        # These tests cause an underfined `Bound Acces Error` on GPU() CI with the new CUDA version.
-        # This error is not reproducible on neither on Tartarus not Sverdrup.
-        # Therefore, they are excised for the moment (PR #2253)
+        # These tests cause an undefined `Bound Access Error` on GPU's CI with the new CUDA version.
+        # The error is not reproducible neither on Tartarus nor on Sverdrup.
+        # These are excised for the moment (PR #2253) as Cubed sphere will be reworked
         if !(arch isa GPU)
             # Prototype grid and model for subsequent tests
             cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
