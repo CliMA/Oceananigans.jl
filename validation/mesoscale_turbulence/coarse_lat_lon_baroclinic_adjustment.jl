@@ -18,7 +18,7 @@ Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
 save_fields_interval = 1hour
-stop_time = 30days
+stop_time = 60days
 Δt = 20minutes
 
 grid = LatitudeLongitudeGrid(architecture;

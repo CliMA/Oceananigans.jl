@@ -1,3 +1,5 @@
+using Oceananigans.Operators: ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ, ℑxyᶜᶠᶜ, ℑyzᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶠᶜᶜ
+
 struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L} <: AbstractTurbulenceClosure{TD}
                     κ_skew :: K
                κ_symmetric :: S
@@ -169,8 +171,12 @@ taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    #∂y_c = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    #∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+
+    # Gradient of the average.
+    ∂y_c = ∂yᶠᶜᶜ(i, j, k, grid, ℑxyᶠᶠᶜ, c)
+    ∂z_c = ∂zᶠᶜᶜ(i, j, k, grid, ℑxzᶠᶜᶠ, c)
 
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
@@ -200,8 +206,12 @@ end
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    #∂x_c = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    #∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    
+    # Gradient of the average.
+    ∂x_c = ∂xᶜᶠᶜ(i, j, k, grid, ℑxyᶠᶠᶜ, c)
+    ∂z_c = ∂zᶜᶠᶜ(i, j, k, grid, ℑyzᶜᶠᶠ, c)
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
@@ -229,8 +239,12 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    #∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    #∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+
+    # Gradient of the average.
+    ∂x_c = ∂xᶜᶜᶠ(i, j, k, grid, ℑxzᶠᶜᶠ, c)
+    ∂y_c = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᶜᶠᶠ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
