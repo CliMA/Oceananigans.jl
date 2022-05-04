@@ -1,64 +1,84 @@
 using Adapt
 using CUDA: CuArray
+using OffsetArrays: OffsetArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
+using Oceananigans.BoundaryConditions: FBC
+using Printf
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal
+
+import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
+                                        immersed_∂ⱼ_τ₂ⱼ,
+                                        immersed_∂ⱼ_τ₃ⱼ,
+                                        immersed_∇_dot_qᶜ
+
+#####
+##### Some conveniences for grid fitted boundaries
+#####
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 #####
-##### GridFittedBoundary
+##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
 
-struct GridFittedBoundary{S} <: AbstractGridFittedBoundary
-    mask :: S
-end
-
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
-
-#####
-##### GridFittedBottom
-#####
+abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 
 """
     GridFittedBottom(bottom)
 
-Return an immersed boundary.
+Return an immersed boundary with an irregular bottom fit to the underlying grid.
 """
-struct GridFittedBottom{B} <: AbstractGridFittedBoundary
-    bottom :: B
+struct GridFittedBottom{H} <: AbstractGridFittedBottom{H}
+    bottom_height :: H
 end
 
-@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom)
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return z < ib.bottom(x, y)
+function Base.summary(ib::GridFittedBottom)
+    hmax = maximum(ib.bottom_height)
+    hmin = minimum(ib.bottom_height)
+    return @sprintf("GridFittedBottom(min(h)=%.2e, max(h)=%.2e)", hmin, hmax)
 end
 
-@inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom{<:AbstractArray})
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return @inbounds z < ib.bottom[i, j]
-end
+Base.show(io, ib::GridFittedBottom) = print(io, summary(ib))
 
-const ArrayGridFittedBottom = GridFittedBottom{<:Array}
-const CuArrayGridFittedBottom = GridFittedBottom{<:CuArray}
+"""
+    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 
-function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGridFittedBottom})
-    # Wrap bathymetry in an OffsetArray with halos
+Return a grid with `GridFittedBottom` immersed boundary.
+
+Computes ib.bottom_height and wraps in an array.
+"""
+function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
     arch = grid.architecture
     bottom_field = Field{Center, Center, Nothing}(grid)
-    bottom_data = arch_array(arch, ib.bottom)
-    bottom_field .= bottom_data
+    set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
-    new_ib = GridFittedBottom(offset_bottom_array)
+
+    # TODO: maybe clean this up
+    IB = typeof(ib).name.wrapper
+    new_ib = IB(offset_bottom_array)
+
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom))     
+function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
+    TX, TY, TZ = topology(grid)
+    # TODO: check size
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
+
+@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
+    z = znode(c, c, c, i, j, k, underlying_grid)
+    return @inbounds z < ib.bottom_height[i, j]
+end
+
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
 
 #####
 ##### Implicit vertical diffusion
@@ -71,27 +91,68 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 #### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 ####
 
-@inline immersed_ivd_solid_interface(LX, LY, ::Center, i, j, k, ibg) = solid_interface(LX, LY, Face(), i, j, k+1, ibg)
-@inline immersed_ivd_solid_interface(LX, LY, ::Face, i, j, k, ibg)   = solid_interface(LX, LY, Center(), i, j, k, ibg)
+@inline immersed_ivd_peripheral_node(LX, LY, ::Center, i, j, k, ibg) = immersed_peripheral_node(LX, LY, Face(), i, j, k+1, ibg)
+@inline immersed_ivd_peripheral_node(LX, LY, ::Face, i, j, k, ibg)   = immersed_peripheral_node(LX, LY, Center(), i, j, k, ibg)
 
-# extending the upper and lower diagonal functions of the batched tridiagonal solver
+# Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
 for location in (:upper_, :lower_)
     immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
-    func = Symbol(:ivd_ , location, :diagonal)
+    ordinary_func = Symbol(:ivd_ ,         location, :diagonal)
     @eval begin
         # Disambiguation
-        @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Face, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-        @inline $func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ::Center, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-        @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, LX, LY, LZ, clock, Δt, κz)
-            return ifelse(immersed_ivd_solid_interface(LX, LY, LZ, i, j, k, ibg),
-                          zero(eltype(ibg.grid)),
-                          $func(i, j, k, ibg.grid, closure, K, id, LX, LY, LZ, clock, Δt, κz))
+        @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+            return ifelse(immersed_ivd_peripheral_node(ℓx, ℓy, ℓz, i, j, k, ibg),
+                          zero(eltype(ibg.underlying_grid)),
+                          $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
         end
     end
 end
+
+#####
+##### GridFittedBoundary (experimental 3D immersed boundary)
+#####
+
+struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
+    mask :: M
+end
+
+@inline immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
+
+@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
+    x, y, z = node(c, c, c, i, j, k, underlying_grid)
+    return ib.mask(x, y, z)
+end
+
+function compute_mask(grid, ib)
+    arch = grid.architecture
+    mask_field = Field{Center, Center, Center}(grid, Bool)
+    set!(mask_field, ib.mask)
+    fill_halo_regions!(mask_field)
+    return mask_field
+end
+
+function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true)
+    TX, TY, TZ = topology(grid)
+
+    if precompute_mask
+        mask_field = compute_mask(grid, ib)
+        new_ib = GridFittedBoundary(mask_field)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+    else
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+    end
+end
+
+on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
+on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
+on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
+
+Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 

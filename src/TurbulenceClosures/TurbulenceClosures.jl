@@ -93,6 +93,9 @@ include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
 
+# Implicit closure terms (diffusion + linear terms)
+include("vertically_implicit_diffusion_solver.jl")
+
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
 
@@ -103,6 +106,7 @@ include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
+include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
@@ -114,7 +118,6 @@ using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
-include("vertically_implicit_diffusion_solver.jl")
 
 #####
 ##### Some value judgements here

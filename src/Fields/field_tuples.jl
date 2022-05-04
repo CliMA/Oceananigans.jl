@@ -1,71 +1,86 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
-@inline extract_field_data(field::Field) = field.data
-
-@inline function extract_field_bcs(field::Field) 
-    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
-        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    else
-        maybe_filtered_bcs = field.boundary_conditions
-    end
-    return maybe_filtered_bcs
-end
-
-const AllFieldTypes = [:Field, :ReducedField]
-
-for FieldType in AllFieldTypes
-    
-    @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$FieldType}) = push!(filtered_fields, field)
-    OtherFieldTypes = deepcopy(AllFieldTypes)
-    deleteat!(OtherFieldTypes, OtherFieldTypes .== FieldType)
-        
-    for OtherFieldType in OtherFieldTypes
-        @eval @inline recursive_fill(filtered_fields, field::$FieldType, ::Type{$OtherFieldType}) = nothing
-    end
-end
-
-@inline recursive_fill(filtered_fields, ::Nothing, Type) = nothing
-
-@inline function recursive_fill(filtered_fields, fields::Union{Tuple, NamedTuple}, Type) 
-    for field in fields
-        recursive_fill(filtered_fields, field, Type)
-    end
-    return filtered_fields
-end
-
-@inline fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...) = 
-        fill_halo_regions!(extract_field_data.(full_fields), extract_field_bcs.(full_fields), grid, args...; kwargs...)
+#####
+##### `fill_halo_regions!` for tuples of `Field`
+#####
 
 """
-    fill_halo_regions!field_tuple, args...; kwargs...) 
+    flattened_unique_values(a::NamedTuple)
 
-separated `ReducedField`s from `Field`s in a `red_fields` and `full_fields` tuple.
-The halo of the former are filled individually, while for the latter, all halos are filled
-together in the same direction
+Return values of the (possibly nested) `NamedTuple` `a`,
+flattened into a single tuple, with duplicate entries removed.
 """
-function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...; kwargs...) 
-    
-    red_fields = Tuple(recursive_fill([], fields, ReducedField))
+@inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
+    tupled = Tuple(tuplify(ai) for ai in a)
+    flattened = flatten_tuple(tupled)
 
-    for field in red_fields
+    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
+    seen = []
+    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+end
+
+# Utility for extracting values from nested NamedTuples
+@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a) = a
+
+# Outer-inner form
+@inline flatten_tuple(a::Tuple) = tuple(inner_flatten_tuple(a[1])..., inner_flatten_tuple(a[2:end])...)
+@inline flatten_tuple(a::Tuple{<:Any}) = tuple(inner_flatten_tuple(a[1])...)
+
+@inline inner_flatten_tuple(a) = tuple(a)
+@inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
+@inline inner_flatten_tuple(a::Tuple{}) = ()
+
+"""
+    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
+
+Fill halo regions for all `fields`. The algorithm:
+
+    1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+       duplicate entries to avoid "repeated" halo filling.
+    
+    2. Filters fields into two categories:
+        i. ReducedFields with non-trivial boundary conditions;
+        ii. Fields with non-trivial boundary conditions.
+    
+    3. Halo regions for every `ReducedField` are filled independently.
+    
+    4. In every direction, the halo regions in each of the remaining Field tuple
+       are filled simultaneously.
+"""
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+    flattened = flattened_unique_values(maybe_nested_tuple)
+
+    # Sort fields into ReducedField and Field with non-nothing boundary conditions
+    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
+    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
+
+    # Fill halo regions for reduced fields
+    for field in reduced_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
-    full_fields = Tuple(recursive_fill([], fields, Field))
-
-    if !isempty(full_fields)
-        grid = full_fields[1].grid
-        fill_halo_regions_field_tuple!(full_fields, grid, args...; kwargs...)
+    # Fill the rest
+    if !isempty(ordinary_fields)
+        grid = first(ordinary_fields).grid
+        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-# TODO: This code belongs in the Models module
+tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
+    fill_halo_regions!(data.(fields),
+                       boundary_conditions.(fields),
+                       instantiated_location.(fields),
+                       grid, args...; kwargs...)
 
 #####
 ##### Tracer names
 #####
+
+# TODO: This code belongs in the Models module
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
 has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]

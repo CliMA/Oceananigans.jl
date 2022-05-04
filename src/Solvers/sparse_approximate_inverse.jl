@@ -70,10 +70,9 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
     J  = Int64[1]
 
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
+
     # this loop can be parallelized!
-    for j = 1 : n 
-      
-        @show j
+    for j = 1:n 
         # maximum number of elements in a column
         ncolmax = nzrel * nnz(A[:, j])
 
@@ -82,6 +81,7 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
         mj[iterator.J] = iterator.mhat
         M[:, j]        = mj
     end
+
     return M
 end
 

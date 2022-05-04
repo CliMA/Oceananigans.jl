@@ -34,27 +34,27 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                         prefix = "test_3d_output_with_halos",
+                         filename = "test_3d_output_with_halos.jld2",
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     simulation.output_writers[:jld2_2d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                         prefix = "test_2d_output_with_halos",
+                         filename = "test_2d_output_with_halos.jld2",
                          indices = (:, :, grid.Nz),
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
     simulation.output_writers[:jld2_1d_with_halos] =
         JLD2OutputWriter(model, profiles,
-                         prefix = "test_1d_output_with_halos",
+                         filename = "test_1d_output_with_halos.jld2",
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
-                         force = true)
+                         overwrite_existing = true)
 
     run!(simulation)
 

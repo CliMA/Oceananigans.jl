@@ -48,7 +48,7 @@ julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField
 
 julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -88,7 +88,7 @@ julia> c .= 1;
 
 julia> c_dV = c * volume
 BinaryOperation at (Center, Center, Center)
-├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU

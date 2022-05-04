@@ -92,13 +92,22 @@ ImpenetrableBoundaryCondition() = BoundaryCondition(Open,     nothing)
 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
     OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
 
-# Support for various types of boundary conditions
-@inline getbc(bc::BC{<:Open, Nothing}, i, j, grid, args...) = zero(eltype(grid))
-@inline getbc(bc::BC{<:Flux, Nothing}, i, j, grid, args...) = zero(eltype(grid))
+# Support for various types of boundary conditions.
+#
+# Notes:
+#     * "two-dimensional forms" (i, j, grid, ...) support boundary conditions on "native" grid boundaries:
+#       east, west, etc.
+#     * additional arguments to `fill_halo_regions` enter `getbc` after the `grid` argument:
+#           so `fill_halo_regions!(c, clock, fields)` translates to `getbc(bc, i, j, grid, clock, fields)`, etc.
 
-@inline getbc(bc::BC{C, <:Number},        args...)             where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, args...) where C = @inbounds bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields, args...) where C = bc.condition(i, j, grid, clock, model_fields, args...)
+@inline getbc(bc, args...) = bc.condition(args...) # fallback!
+
+@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+
+@inline getbc(bc::BC{C, <:Number}, args...) where C = bc.condition
+@inline getbc(bc::BC{C, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) where C = @inbounds bc.condition[i, j]
 
 Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
                                                                      Adapt.adapt(to, bc.condition))

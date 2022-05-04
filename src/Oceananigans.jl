@@ -23,6 +23,9 @@ export
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
+    # Immersed boundaries
+    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
+
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
@@ -35,10 +38,10 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, Reduction, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, location,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask,
+    Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
@@ -228,6 +231,7 @@ using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
+using .ImmersedBoundaries
 using .Distributed
 using .Models
 using .TimeSteppers

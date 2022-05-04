@@ -7,7 +7,6 @@ using BenchmarkTools
 
 using Oceananigans
 using Oceananigans.Distributed
-using Benchmarks
 
 Logging.global_logger(OceananigansLogger())
 
@@ -16,9 +15,6 @@ MPI.Init()
       comm = MPI.COMM_WORLD
 local_rank = MPI.Comm_rank(comm)
          R = MPI.Comm_size(comm)
-
- # Assigns one GPU per rank, could increase efficiency but must have enough GPUs
- # CUDA.device!(local_rank)
 
  Nx = parse(Int, ARGS[1])
  Ny = parse(Int, ARGS[2])
@@ -45,7 +41,7 @@ time_step!(model, 1) # warmup
 MPI.Barrier(comm)
 
 trial = @benchmark begin
-    @sync_gpu time_step!($model, 1)
+    time_step!($model, 1)
 end samples=10 evals=1
 
 MPI.Barrier(comm)

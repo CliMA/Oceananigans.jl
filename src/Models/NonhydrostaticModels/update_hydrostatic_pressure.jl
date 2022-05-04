@@ -25,7 +25,7 @@ update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.p
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers) =
-    update_hydrostatic_pressure!(pHY′, arch, ibg.grid, buoyancy, tracers)
+    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers)
 
 function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
 

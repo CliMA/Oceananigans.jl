@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FieldStatus, reduced_dimensions
+using Oceananigans.Fields: FieldStatus, reduced_dimensions, validate_indices, offset_compute_index
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -38,15 +38,17 @@ function Field(operand::AbstractOperation;
                recompute_safely = true)
 
     grid = operand.grid
+    loc = location(operand)
+    indices = validate_indices(indices, loc, grid)
 
     if isnothing(data)
-        data = new_data(grid, location(operand), indices)
+        data = new_data(grid, loc, indices)
         recompute_safely = false
     end
 
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(location(operand), grid, data, boundary_conditions, indices, operand, status)
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
 """
@@ -66,9 +68,6 @@ function compute!(comp::ComputedField, time=nothing)
 
     return comp
 end
-
-@inline offset_compute_index(::Colon, i) = i
-@inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
 
 """Compute an `operand` and store in `data`."""
 @kernel function _compute!(data, operand, index_ranges)

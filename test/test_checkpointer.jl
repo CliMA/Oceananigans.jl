@@ -1,11 +1,6 @@
-using Oceananigans
-using CUDA
+include("dependencies_for_runtests.jl")
+
 using Glob
-using Test
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### Checkpointer tests
@@ -49,9 +44,7 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(grid=grid, closure=closure,
-                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-
+    true_model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -59,7 +52,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    view(true_model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
@@ -88,7 +81,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
-    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), force=true)
+    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), overwrite_existing=true)
     push!(true_simulation.output_writers, checkpointer)
 
     run!(true_simulation) # for 5 iterations
@@ -138,7 +131,7 @@ function run_checkpointer_tests(true_model, test_model, Δt)
 
     # Pickup using existing checkpointer
     test_simulation.output_writers[:checkpointer] =
-        Checkpointer(test_model, schedule=IterationInterval(5), force=true)
+        Checkpointer(test_model, schedule=IterationInterval(5), overwrite_existing=true)
 
     run!(test_simulation, pickup=true)
     @info "    Testing model equality when running with pickup=true."

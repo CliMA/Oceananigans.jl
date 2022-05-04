@@ -66,8 +66,8 @@ output_prefix = "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(10cell_diffusion_time_scale),
-                                                      prefix = output_prefix,
-                                                      force = true)
+                                                      filename = output_prefix,
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

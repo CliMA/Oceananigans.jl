@@ -1,4 +1,4 @@
-using Oceananigans.Grids: solid_interface
+using Oceananigans.Grids: peripheral_node
 
 """
     abstract type AbstractScalarDiffusivity <: AbstractTurbulenceClosure end
@@ -15,14 +15,15 @@ const ASBD = AbstractScalarBiharmonicDiffusivity
 ##### Coefficient extractors
 #####
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K)) 
-@inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K))
-@inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K))
+const ccc = (Center(), Center(), Center())
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶜᶜ(i, j, k, grid, clock, ccc, viscosity(closure, K)) 
+@inline νᶠᶠᶜ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶠᶜ(i, j, k, grid, clock, ccc, viscosity(closure, K))
+@inline νᶠᶜᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶠᶜᶠ(i, j, k, grid, clock, ccc, viscosity(closure, K))
+@inline νᶜᶠᶠ(i, j, k, grid, closure::ASBD, K, clock) = νᶜᶠᶠ(i, j, k, grid, clock, ccc, viscosity(closure, K))
 
-@inline κᶠᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, diffusivity(closure, K, id))
-@inline κᶜᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, diffusivity(closure, K, id))
+@inline κᶠᶜᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
+@inline κᶜᶠᶜ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
+@inline κᶜᶜᶠ(i, j, k, grid, closure::ASBD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clock, ccc, diffusivity(closure, K, id))
 
 #####
 ##### Stress divergences
@@ -30,6 +31,7 @@ const ASBD = AbstractScalarBiharmonicDiffusivity
 
 const AIBD = AbstractScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation}
 const AHBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalFormulation}
+const ADBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulation}
 const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 
 @inline viscous_flux_ux(i, j, k, grid, clo::AIBD, K, U, C, clk, b) = + ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, ∂xᶜᶜᶜ, biharmonic_mask_x, ∇²ᶠᶜᶜ, U.u)
@@ -51,6 +53,9 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 @inline viscous_flux_vz(i, j, k, grid, clo::AVBD, K, U, C, clk, b) = + ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, biharmonic_mask_z, ∂zᶜᶠᶠ, ∂²zᶜᶠᶜ, U.v)
 @inline viscous_flux_wz(i, j, k, grid, clo::AVBD, K, U, C, clk, b) = + ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, ∂zᶜᶜᶜ, biharmonic_mask_z, ∂²zᶜᶜᶠ, U.w)
 
+@inline viscous_flux_ux(i, j, k, grid, clo::ADBD, K, U, C, clk, b) = + ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, δ★ᶜᶜᶜ, U.u, U.v)   
+@inline viscous_flux_vy(i, j, k, grid, clo::ADBD, K, U, C, clk, b) = + ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, δ★ᶜᶜᶜ, U.u, U.v)
+
 #####
 ##### Diffusive fluxes
 #####
@@ -61,23 +66,6 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 @inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, ::Val{id}, U, C, clk, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, C[id])
 @inline diffusive_flux_y(i, j, k, grid, clo::AHBD, K, ::Val{id}, U, C, clk, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, C[id])
 @inline diffusive_flux_z(i, j, k, grid, clo::AVBD, K, ::Val{id}, U, C, clk, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, biharmonic_mask_z, ∂³zᶜᶜᶠ, C[id])
-
-#####
-##### Zero out not used fluxes
-#####
-
-for (dir, closure) in zip((:x, :y, :z), (:AVBD, :AVBD, :AHBD))
-    diffusive_flux = Symbol(:diffusive_flux_, dir)
-    viscous_flux_u = Symbol(:viscous_flux_u, dir)
-    viscous_flux_v = Symbol(:viscous_flux_v, dir)
-    viscous_flux_w = Symbol(:viscous_flux_w, dir)
-    @eval begin
-        @inline $diffusive_flux(i, j, k, grid, closure::$closure, args...) = zero(eltype(grid))
-        @inline $viscous_flux_u(i, j, k, grid, closure::$closure, args...) = zero(eltype(grid))
-        @inline $viscous_flux_v(i, j, k, grid, closure::$closure, args...) = zero(eltype(grid))
-        @inline $viscous_flux_w(i, j, k, grid, closure::$closure, args...) = zero(eltype(grid))
-    end
-end
 
 #####
 ##### Biharmonic-specific viscous operators
@@ -119,10 +107,10 @@ end
 ##### ∂(biharmonic_mask(∇²(var))) ensures that laplacians are 0 on the boundaries
 #####
 
-biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(solid_x(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(solid_y(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(solid_z(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(x_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(y_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(z_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
 
-solid_x(i, j, k, grid) = solid_interface(Face(), Center(), Center(), i, j, k, grid)
-solid_y(i, j, k, grid) = solid_interface(Center(), Face(), Center(), i, j, k, grid)
-solid_z(i, j, k, grid) = solid_interface(Center(), Center(), Face(), i, j, k, grid)
+x_peripheral_node(i, j, k, grid) = peripheral_node(Face(), Center(), Center(), i, j, k, grid)
+y_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Face(), Center(), i, j, k, grid)
+z_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Center(), Face(), i, j, k, grid)

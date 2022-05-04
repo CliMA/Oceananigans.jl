@@ -24,10 +24,10 @@ seamount_field = Field{Center, Center, Nothing}(underlying_grid)
 set!(seamount_field, seamount)
 fill_halo_regions!(seamount_field)
 
-minimum_fractional_partial_Δz = 0.2
+minimum_fractional_Δz = 0.2
 immersed_boundaries = [
                        PartialCellBottom(seamount_field.data;
-                                         minimum_fractional_partial_Δz),
+                                         minimum_fractional_Δz),
                        GridFittedBottom(seamount_field.data)
                       ]
 
@@ -78,8 +78,7 @@ v_full    = v[2]
 
 fig = Figure(resolution=(1200, 1800))
 
-partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f",
-                              minimum_fractional_partial_Δz)
+partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f", minimum_fractional_Δz)
 ax_bp = Axis(fig[1, 2], title=partial_cell_title)
 ax_bf = Axis(fig[2, 2], title="GridFittedBottom")
 ax_bd = Axis(fig[3, 2], title="Difference (GridFitted - PartialCell)")
