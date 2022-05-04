@@ -82,7 +82,7 @@ julia> Pkg.add("Oceananigans")
 ```
 
 This installs the latest version that's _compatible with your current environment_.
-Don't forget to *be safe* 🏄 and check which Oceananigans you installed:
+Don't forget to *be careful* 🏄 and check which Oceananigans you installed:
 
 ```julia
 julia> Pkg.status("Oceananigans")
