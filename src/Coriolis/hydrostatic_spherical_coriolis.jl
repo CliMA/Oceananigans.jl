@@ -1,5 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
