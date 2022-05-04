@@ -24,9 +24,10 @@ seamount_field = Field{Center, Center, Nothing}(underlying_grid)
 set!(seamount_field, seamount)
 fill_halo_regions!(seamount_field)
 
+minimum_fractional_partial_Δz = 1.0
 immersed_boundaries = [
-                       PartialCellBottom(seamount_field.data,
-                                         minimum_fractional_partial_Δz=1.0),
+                       PartialCellBottom(seamount_field.data;
+                                         minimum_fractional_partial_Δz),
                        GridFittedBottom(seamount_field.data)
                       ]
 
@@ -75,11 +76,14 @@ v_partial = v[1]
 v_full    = v[2]
 Δv = v_full .- v_partial
 
-fig = Figure(resolution=(800, 1200))
+fig = Figure(resolution=(1200, 1800))
 
-ax_bp = Axis(fig[1, 2])
-ax_bf = Axis(fig[2, 2])
-ax_bd = Axis(fig[3, 2])
+minimum_fractional_partial_Δz
+partial_cell_title = @sprintf("PartialCellBottom with ϵ = %.1f",
+                              minimum_fractional_partial_Δz)
+ax_bp = Axis(fig[1, 2], title=partial_cell_title)
+ax_bf = Axis(fig[2, 2], title="GridFittedBottom")
+ax_bd = Axis(fig[3, 2], title="Difference (GridFitted - PartialCell)")
 
 # ax_vp = Axis(fig[1, 3])
 # ax_vf = Axis(fig[2, 3])
@@ -91,14 +95,14 @@ levels = 15
 
 hmbp = heatmap!(ax_bp, b_partial)
 contour!(ax_bp, b_partial; levels, color, linewidth)
-Colorbar(fig[1, 1], hmbp)
+Colorbar(fig[1, 1], hmbp, label="Buoyancy", flipaxis=false)
 
 hmbf = heatmap!(ax_bf, b_full)
 contour!(ax_bf, b_full; levels, color, linewidth)
-Colorbar(fig[2, 1], hmbf)
+Colorbar(fig[2, 1], hmbf, label="Buoyancy", flipaxis=false)
 
 hmbd = heatmap!(ax_bd, Δb)
-Colorbar(fig[3, 1], hmbd)
+Colorbar(fig[3, 1], hmbd, label="Buoyancy", flipaxis=false)
 
 #=
 hmvp = heatmap!(ax_vp, v_partial)
