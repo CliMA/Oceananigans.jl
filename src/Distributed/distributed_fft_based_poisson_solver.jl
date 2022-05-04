@@ -78,30 +78,31 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     λy = solver.eigenvalues[2]
     λz = solver.eigenvalues[3]
 
-    # Apply forward transforms.
+    # Apply forward transforms to b = first(solver.storage).
     solver.plan * solver.storage
 
-    # Solve the discrete Poisson equation, storing the solution
-    # temporarily in xc and later extracting the real part into 
-    # the solution, x.
-    xhat = b = last(solver.storage)
-    @. xhat = - b / (λx + λy + λz)
+    # Solve the discrete Poisson equation in wavenumber space
+    # for x̂. We solve for x̂ in place, reusing b̂.
+    x̂ = b̂ = last(solver.storage)
 
-    # Setting DC component of the solution (the mean) to be zero. This is also
-    # necessary because the source term to the Poisson equation has zero mean
-    # and so the DC component comes out to be ∞.
+    @. x̂ = - b̂ / (λx + λy + λz)
+
+    # Set the zeroth wavenumber and volume mean, which are undetermined
+    # in the Poisson equation, to zero.
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-        xc[1, 1, 1] = 0
+        x̂[1, 1, 1] = 0
     end
 
-    # Apply backward transforms.
+    # Apply backward transforms to x̂ = last(solver.storage).
     solver.plan \ solver.storage
     
-    # xc is Complex and the physical space outcome of the inverse transform of xhat.
+    # xc is the backward transform of x̂.
     xc = first(solver.storage)
 	
-    # Copy just the real component of xc to x.
+    # Copy the real component of xc to x. Note that the axes of xc are permuted compared to x,
+    # if x's axes are (1, 2, 3), then the layout of xc is (3, 2, 1).
     copy_event = launch!(arch, solver.local_grid, :xyz, copy_permuted_real_component!, x, xc, dependencies=device_event(arch))
+
     wait(device(arch), copy_event)
 
     return x
