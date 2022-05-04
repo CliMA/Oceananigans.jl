@@ -79,7 +79,9 @@ end
     full_Δz = Δzᶜᶜᶠ(i, j, k, ibg.grid)
     partial_Δz = zc - zf + Δzᶜᶜᶜ(i, j, k-1, ibg) / 2
 
-    return ifelse(just_above_bottom, partial_Δz, full_Δz)
+    Δz = ifelse(just_above_bottom, partial_Δz, full_Δz)
+
+    return Δz
 end
 
 @inline Δzᶠᶜᶜ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶜ(i-1, j, k, ibg), Δzᶜᶜᶜ(i, j, k, ibg))
