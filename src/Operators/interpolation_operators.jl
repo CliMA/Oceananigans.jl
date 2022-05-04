@@ -3,8 +3,7 @@
 ##### cell-averaged fields at _staggered_ locations.
 #####
 
-using Oceananigans.Grids: Flat
-using Oceananigans.Grids: idxᴸ, idxᴿ, flip
+using Oceananigans.Grids: Flat, idxᴸ, idxᴿ, flip, inactive_node
 
 #####
 ##### Operators for interpolating arrays without a grid
@@ -80,19 +79,19 @@ const f = Face()
 # If the location being retrieved is _inactive_, then the value on the
 # _opposite_ side of the inactive is returned. Otherwise, the value
 # (which is known to be active) is returned.
-@inline getxᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴿ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), q[idxᴸ(i, ℓx), j, k], q[idxᴿ(i, ℓx), j, k])
-@inline getxᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴸ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), q[idxᴿ(i, ℓx), j, k], q[idxᴸ(i, ℓx), j, k])
-@inline getyᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴿ(j, ℓy), k, ℓx, flip(ℓy), ℓz), q[i, idxᴸ(j, ℓy), k], q[i, idxᴿ(j, ℓy), k])
-@inline getyᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴸ(j, ℓy), k, ℓx, flip(ℓy), ℓz), q[i, idxᴿ(j, ℓy), k], q[i, idxᴸ(j, ℓy), k])
-@inline getzᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴿ(i, ℓx), ℓx, ℓy, flip(ℓz)), q[i, j, idxᴸ(k, ℓz)], q[i, j, idxᴿ(k, ℓz)])
-@inline getzᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴸ(i, ℓx), ℓx, ℓy, flip(ℓz)), q[i, j, idxᴿ(k, ℓz)], q[i, j, idxᴸ(k, ℓz)])
+@inline getxᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴿ(i, ℓx), j, k, grid, flip(ℓx), ℓy, ℓz), q[idxᴸ(i, ℓx), j, k], q[idxᴿ(i, ℓx), j, k])
+@inline getxᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(idxᴸ(i, ℓx), j, k, grid, flip(ℓx), ℓy, ℓz), q[idxᴿ(i, ℓx), j, k], q[idxᴸ(i, ℓx), j, k])
+@inline getyᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴿ(j, ℓy), k, grid, ℓx, flip(ℓy), ℓz), q[i, idxᴸ(j, ℓy), k], q[i, idxᴿ(j, ℓy), k])
+@inline getyᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, idxᴸ(j, ℓy), k, grid, ℓx, flip(ℓy), ℓz), q[i, idxᴿ(j, ℓy), k], q[i, idxᴸ(j, ℓy), k])
+@inline getzᴿ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴿ(i, ℓx), grid, ℓx, ℓy, flip(ℓz)), q[i, j, idxᴸ(k, ℓz)], q[i, j, idxᴿ(k, ℓz)])
+@inline getzᴸ(i, j, k, grid, ℓx, ℓy, ℓz, q) = @inbounds ifelse(inactive_node(i, j, idxᴸ(i, ℓx), grid, ℓx, ℓy, flip(ℓz)), q[i, j, idxᴿ(k, ℓz)], q[i, j, idxᴸ(k, ℓz)])
 
-@inline getxᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴿ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), f(idxᴸ(i, ℓx), j, k, g, a...), f(idxᴿ(i, ℓx), j, k, g, a...))
-@inline getxᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴸ(i, ℓx), j, k, flip(ℓx), ℓy, ℓz), f(idxᴿ(i, ℓx), j, k, g, a...), f(idxᴸ(i, ℓx), j, k, g, a...))
-@inline getyᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴿ(j, ℓy), k, ℓx, flip(ℓy), ℓz), f(i, idxᴸ(j, ℓy), k, g, a...), f(i, idxᴿ(j, ℓy), k, g, a...))
-@inline getyᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴸ(j, ℓy), k, ℓx, flip(ℓy), ℓz), f(i, idxᴿ(j, ℓy), k, g, a...), f(i, idxᴸ(j, ℓy), k, g, a...))
-@inline getzᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴿ(i, ℓx), ℓx, ℓy, flip(ℓz)), f(i, j, idxᴸ(k, ℓz), g, a...), f(i, j, idxᴿ(k, ℓz), g, a...))
-@inline getzᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴸ(i, ℓx), ℓx, ℓy, flip(ℓz)), f(i, j, idxᴿ(k, ℓz), g, a...), f(i, j, idxᴸ(k, ℓz), g, a...))
+@inline getxᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴿ(i, ℓx), j, k, g, flip(ℓx), ℓy, ℓz), f(idxᴸ(i, ℓx), j, k, g, a...), f(idxᴿ(i, ℓx), j, k, g, a...))
+@inline getxᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(idxᴸ(i, ℓx), j, k, g, flip(ℓx), ℓy, ℓz), f(idxᴿ(i, ℓx), j, k, g, a...), f(idxᴸ(i, ℓx), j, k, g, a...))
+@inline getyᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴿ(j, ℓy), k, g, ℓx, flip(ℓy), ℓz), f(i, idxᴸ(j, ℓy), k, g, a...), f(i, idxᴿ(j, ℓy), k, g, a...))
+@inline getyᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, idxᴸ(j, ℓy), k, g, ℓx, flip(ℓy), ℓz), f(i, idxᴿ(j, ℓy), k, g, a...), f(i, idxᴸ(j, ℓy), k, g, a...))
+@inline getzᴿ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴿ(i, ℓx), g, ℓx, ℓy, flip(ℓz)), f(i, j, idxᴸ(k, ℓz), g, a...), f(i, j, idxᴿ(k, ℓz), g, a...))
+@inline getzᴸ(i, j, k, g, ℓx, ℓy, ℓz, f::F, a...) where F<:Function = ifelse(inactive_node(i, j, idxᴸ(i, ℓx), g, ℓx, ℓy, flip(ℓz)), f(i, j, idxᴿ(k, ℓz), g, a...), f(i, j, idxᴸ(k, ℓz), g, a...))
 
 syms = (:ᶜ, :ᶠ)
 locs = (:c, :f)
