@@ -371,6 +371,7 @@ for arch in archs
 
         end
     end
+end
 
 for arch in archs
      
