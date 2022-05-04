@@ -5,8 +5,8 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 # using GLMakie
 
-arch = GPU()
-Nh   = 1024
+arch = CPU()
+Nh   = 128
 Nz   = 1
 grid = RectilinearGrid(arch, size=(Nh, Nh, Nz), halo=(4, 4, 4), x=(0, 2π), y=(0, 2π), z=(0, 1), topology=(Periodic, Periodic, Bounded))
 
@@ -30,8 +30,8 @@ v_init_mrg = multi_region_object_from_array(v_init, mrg)
 
 momentum_advection = WENO5(vector_invariant=VelocityStencil())
 
-# free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
-free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
+free_surface = ImplicitFreeSurface(gravitational_acceleration=1, solver_method = :HeptadiagonalIterativeSolver)
+# free_surface = ExplicitFreeSurface(gravitational_acceleration=1) 
 
 progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 

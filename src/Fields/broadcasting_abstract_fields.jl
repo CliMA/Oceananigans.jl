@@ -38,13 +38,6 @@ end
 @inline Base.Broadcast.materialize!(dest::WindowedField, bc::BroadcastedArrayOrCuArray) =
     Base.Broadcast.materialize!(parent(dest), bc)
 
-# TODO: make this support Field that are windowed in _only_ 1 or 2 dimensions.
-# Right now, this may only produce expected behavior (re: dimensionality) for
-# WindowedField that are windowed in three-dimensions. Of course, broadcasting with
-# scalar `bc` is no issue.
-@inline Base.Broadcast.materialize!(dest::WindowedField, bc::BroadcastedArrayOrCuArray) =
-    Base.Broadcast.materialize!(parent(dest), bc)
-
 #####
 ##### Kernels
 #####
