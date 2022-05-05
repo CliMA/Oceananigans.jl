@@ -4,6 +4,7 @@ import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
+    # Do we need backwards_plan :: B too?
     plan :: P
     global_grid :: F
     local_grid :: L
@@ -44,9 +45,19 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     processors_per_dimension = (Ry, Rx)
 
     communicator = MPI.COMM_WORLD
-    transforms = PencilFFTs.Transforms.FFT!() # only
+	
+    # To support Bounded, we need something like
+    periodic_transform = PencilFFTs.Transforms.FFT!()
+    # bounded_transform = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
+    # transforms = Tuple(T() isa Periodic ? periodic_transform : bounded_transform for T in topology(global_grid))
+    transforms = periodic_transform
     plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
 
+    # Maybe also
+    # bwd_bounded_transform = PencilFFTs.Transforms.R2R!(FFTW.REDFT01)
+    # bwd_transforms = Tuple(T() isa Periodic ? periodic_transform : bwd_bounded_transform for T in topology(global_grid))
+    # backwards_plan = PencilFFTs.PencilFFTPlan(permuted_size, bwd_transforms, processors_per_dimension, communicator)
+	
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
 
