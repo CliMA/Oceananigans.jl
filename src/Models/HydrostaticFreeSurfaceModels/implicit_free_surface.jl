@@ -111,7 +111,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     arch   = model.architecture
  
     @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
-    fill_halo_regions!(model.velocities)
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     # Compute right hand side of implicit free surface equation
     @apply_regionally local_compute_integrated_volume_flux!(∫ᶻQ, model.velocities, arch)
