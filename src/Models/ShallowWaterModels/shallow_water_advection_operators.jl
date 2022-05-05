@@ -34,14 +34,6 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 ##### Momentum flux divergence operators
 #####
 
-@inline div_hUu(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
-    + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
-    
-@inline div_hUv(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
-    + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
-
 @inline div_hUu(i, j, k, grid, advection, solution, formulation) =
     1 / Azᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
                                 δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution))
@@ -49,6 +41,14 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 @inline div_hUv(i, j, k, grid, advection, solution, formulation) =
     1 / Azᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
                                 δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
+
+@inline div_hUu(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
+    + vertical_vorticity_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
+    
+@inline div_hUv(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
+    + vertical_vorticity_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
 
 # Support for no advection
 @inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)

@@ -38,7 +38,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, TV, HV, R, F,
     gravitational_acceleration :: T         # Gravitational acceleration, full, or reduced
                      advection :: V         # Advection scheme for velocities 
               tracer_advection :: TV        # Advection scheme for tracers
-              height_advection :: TV        # Advection scheme for height h
+              height_advection :: HV        # Advection scheme for height h
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
                        forcing :: F         # Container for forcing functions defined by the user
                        closure :: E         # Diffusive 'turbulence closure' for all model fields

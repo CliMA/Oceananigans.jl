@@ -53,12 +53,19 @@ g = 9.8         # Gravitational acceleration
 # We build a `ShallowWaterModel` with the `WENO5` advection scheme and
 # 3rd-order Runge-Kutta time-stepping,
 
-model = ShallowWaterModel(
+using Oceananigans.Advection: VelocityStencil
+using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
+
+formulation = VectorInvariantFormulation()
+
+model = ShallowWaterModel(;
                           timestepper = :RungeKutta3,
-                          advection = WENO5(),
+                          advection = WENO5(vector_invariant = VelocityStencil()),
                           grid = grid,
                           gravitational_acceleration = g,
-                          coriolis = FPlane(f=f))
+                          coriolis = FPlane(f=f),
+                          formulation)
+
 
 # Use `architecture = GPU()` to run this problem on a GPU.
 
@@ -92,15 +99,18 @@ uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
 
 ū̄h(x, y, z) = ū(x, y, z) * h̄(x, y, z)
 
-set!(model, uh = ū̄h, h = h̄)
+if formulation isa VectorInvariantFormulation 
+    set!(model, u = ū, h = h̄)
+    u, v, h = model.solution
+else
+    set!(model, uh = ū̄h, h = h̄) 
+    uh, vh, h = model.solution
+
+    u = uh / h
+    v = vh / h
+end
 
 # We next compute the initial vorticity and perturbation vorticity,
-
-uh, vh, h = model.solution
-
-## Build velocities
-u = uh / h
-v = vh / h
 
 ## Build and compute mean vorticity discretely
 ω = Field(∂x(v) - ∂y(u))
@@ -115,7 +125,7 @@ compute!(ω)
 
 # and finally set the "true" initial condition with noise,
 
-set!(model, uh = uhⁱ)
+formulation isa VectorInvariantFormulation ? set!(model, u = uhⁱ) : set!(model, uh = uhⁱ)
 
 # ## Running a `Simulation`
 #
