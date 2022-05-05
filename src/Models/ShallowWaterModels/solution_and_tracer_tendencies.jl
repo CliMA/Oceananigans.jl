@@ -78,7 +78,7 @@ Compute the tendency for the height, h.
                                      clock,
                                      formulation)
 
-    return ( - div_Uh(i, j, k, grid, solution, advection, formulation)
+    return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -96,7 +96,7 @@ end
     @inbounds c = tracers[tracer_index]
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
-             + c_div_U(i, j, k, grid, solution, c, formulation)         
+             + c_div_U(i, j, k, grid, advection, solution, c, formulation)         
              - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
