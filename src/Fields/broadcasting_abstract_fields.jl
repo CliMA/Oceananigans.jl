@@ -23,23 +23,46 @@ Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType 
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
                                         Broadcasted{<:CUDA.CuArrayStyle}}
 
-@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
-    Base.Broadcast.materialize!(interior(dest), bc)
+@inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrCuArray)
+    if any(a isa OffsetArray for a in bc.args)
+        return Base.Broadcast.materialize!(dest.data, bc)
+    else
+        return Base.Broadcast.materialize!(interior(dest), bc)
+    end
+end
+
+# TODO: make this support Field that are windowed in _only_ 1 or 2 dimensions.
+# Right now, this may only produce expected behavior (re: dimensionality) for
+# WindowedField that are windowed in three-dimensions. Of course, broadcasting with
+# scalar `bc` is no issue.
+@inline Base.Broadcast.materialize!(dest::WindowedField, bc::BroadcastedArrayOrCuArray) =
+    Base.Broadcast.materialize!(parent(dest), bc)
 
 #####
 ##### Kernels
 #####
 
-@kernel function broadcast_kernel!(dest, bc)
+@inline offset_compute_index(::Colon, i) = i
+@inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
+
+@kernel function broadcast_kernel!(dest, bc, index_ranges)
     i, j, k = @index(Global, NTuple)
-    @inbounds dest[i, j, k] = bc[i, j, k]
+
+    i′ = offset_compute_index(index_ranges[1], i)
+    j′ = offset_compute_index(index_ranges[2], j)
+    k′ = offset_compute_index(index_ranges[3], k)
+
+    @inbounds dest[i′, j′, k′] = bc[i′, j′, k′]
 end
 
+# Interface for getting AbstractOperation right
 broadcasted_to_abstract_operation(loc, grid, a) = a
 
-# Broadcasting with interpolation breaks Base's default rules for AbstractOperations 
+# Broadcasting with interpolation breaks Base's default rules,
+# so we bypass the infrastructure for checking axes compatibility,
+# and head straight to copyto! from materialize!.
 @inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
-                                    dest::AbstractField,
+                                    dest::Field,
                                     bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
 
 @inline function Base.copyto!(dest::Field, bc::Broadcasted{Nothing})
@@ -49,11 +72,8 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
-    event = launch!(arch, grid, :xyz, broadcast_kernel!, dest, bc′,
-                    include_right_boundaries = true,
-                    dependencies = device_event(arch),
-                    reduced_dimensions = reduced_dimensions(dest),
-                    location = location(dest))
+    event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 

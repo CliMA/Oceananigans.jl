@@ -73,6 +73,20 @@ end
 import Oceananigans.Fields: immersed_boundary_condition
 immersed_boundary_condition(::AbstractCubedSphereField) = nothing
 
+import Oceananigans.OutputWriters: construct_output, fetch_output
+
+construct_output(user_output::AbstractCubedSphereField, args...) = user_output
+
+# Needed to support `fetch_output` with `model::Nothing`.
+time(model) = model.clock.time
+time(::Nothing) = nothing
+
+function fetch_output(field::AbstractCubedSphereField, model)
+    compute_at!(field, time(model))
+    data = Tuple(parent(field.data[n]) for n in 1:length(field.data))
+    return data
+end
+
 #####
 ##### Applying flux boundary conditions
 #####
