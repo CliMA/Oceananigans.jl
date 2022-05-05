@@ -97,7 +97,7 @@ function ShallowWaterModel(;
                                clock = Clock{eltype(grid)}(0, 0, 1),
                            advection = UpwindBiasedFifthOrder(),
                     tracer_advection = WENO5(),
-                    height_advection = WENO5(),
+                      mass_advection = WENO5(),
                             coriolis = nothing,
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
@@ -166,7 +166,7 @@ end
 using Oceananigans.Advection: VectorInvariantSchemes
 
 validate_advection(advection, tracer_advection, mass_advection, formulation) = (momentum = advection, tracer = tracer_advection, mass = mass_advection)
-validate_advection(advection, tracer_advection, mass_advection, ::VectorInvariant) = throw(ArgumentError("you have to use VectorInvariant advection for VectorInvariantFormulation"))
-validate_advection(advection::VectorInvariantSchemes, tracer_advection, mass_advection, ::VectorInvariant) = (momentum = advection, tracer = tracer_advection, mass = mass_advection)
+validate_advection(advection, tracer_advection, mass_advection, ::VectorInvariantFormulation) = throw(ArgumentError("you have to use VectorInvariant advection for VectorInvariantFormulation"))
+validate_advection(advection::VectorInvariantSchemes, tracer_advection, mass_advection, ::VectorInvariantFormulation) = (momentum = advection, tracer = tracer_advection, mass = mass_advection)
 
 architecture(model::ShallowWaterModel) = model.architecture
