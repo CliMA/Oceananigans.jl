@@ -39,7 +39,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.tracers,
                                                model.diffusivity_fields,
                                                model.forcing,
-                                               model.clock)
+                                               model.clock,
+                                               model.formulation)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -66,7 +67,8 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     tracers,
                                                     diffusivities,
                                                     forcings,
-                                                    clock)
+                                                    clock,
+                                                    formulation)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
@@ -79,17 +81,17 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     Guh_event = calculate_Guh_kernel!(tendencies.uh,
                                       grid, gravitational_acceleration, advection, coriolis, closure, 
-                                      bathymetry, solution, tracers, diffusivities, forcings, clock,
+                                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                       dependencies=barrier)
 
     Gvh_event = calculate_Gvh_kernel!(tendencies.vh,
                                       grid, gravitational_acceleration, advection, coriolis, closure, 
-                                      bathymetry, solution, tracers, diffusivities, forcings, clock,
+                                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                       dependencies=barrier)
 
     Gh_event  = calculate_Gh_kernel!(tendencies.h,
                                      grid, gravitational_acceleration, coriolis, closure, 
-                                     bathymetry, solution, tracers, diffusivities, forcings, clock,
+                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                      dependencies=barrier)
 
     events = [Guh_event, Gvh_event, Gh_event]

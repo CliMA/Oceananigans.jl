@@ -2,38 +2,51 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Uu,
     _advective_momentum_flux_Uv,
     _advective_momentum_flux_Vu,
-    _advective_momentum_flux_Vv
+    _advective_momentum_flux_Vv,
+    vertical_vorticity_U,
+    vertical_vorticity_V,
+    bernoulli_head_U,
+    bernoulli_head_V
 
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
+
 
 #####
 ##### Momentum flux operators
 #####
 
-@inline momentum_flux_huu(i, j, k, grid, advection, solution) =
+@inline momentum_flux_huu(i, j, k, grid, advection, solution, formulation) =
     @inbounds _advective_momentum_flux_Uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
 
-@inline momentum_flux_hvu(i, j, k, grid, advection, solution) =
+@inline momentum_flux_hvu(i, j, k, grid, advection, solution, formulation) =
     @inbounds _advective_momentum_flux_Vu(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
-@inline momentum_flux_huv(i, j, k, grid, advection, solution) =
+@inline momentum_flux_huv(i, j, k, grid, advection, solution, formulation) =
     @inbounds _advective_momentum_flux_Uv(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
-@inline momentum_flux_hvv(i, j, k, grid, advection, solution) =
+@inline momentum_flux_hvv(i, j, k, grid, advection, solution, formulation) =
     @inbounds _advective_momentum_flux_Vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
 #####
 ##### Momentum flux divergence operators
 #####
 
-@inline div_hUu(i, j, k, grid, advection, solution) =
-    1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
-                               δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution))
+@inline div_hUu(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
+    + vertical_vorticity_U(i, j, k, grid, advection, solution.uh, solution.vh)  # Vertical relative vorticity term
+    + bernoulli_head_U(i, j, k, grid, advection, solution.uh, solution.vh))     # Bernoulli head term
+    
+@inline div_hUv(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
+    + vertical_vorticity_V(i, j, k, grid, advection, solution.uh, solution.vh)  # Vertical relative vorticity term
+    + bernoulli_head_V(i, j, k, grid, advection, solution.uh, solution.vh))     # Bernoulli head term
 
-@inline div_hUv(i, j, k, grid, advection, solution) =
-    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
-                               δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
+@inline div_hUu(i, j, k, grid, advection, solution, formulation) =
+    1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution, formulation) +
+                               δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution, formulation))
+
+@inline div_hUv(i, j, k, grid, advection, solution, formulation) =
+    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution, formulation) +
+                               δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution, formulation))
 
 # Support for no advection
 @inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
@@ -52,7 +65,7 @@ Calculates the divergence of the mass flux into a cell,
 
 which will end up at the location `ccc`.
 """
-@inline function div_Uh(i, j, k, grid, solution)
+@inline function div_Uh(i, j, k, grid, solution, formulation)
     1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, solution.uh) + 
                              δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, solution.vh))
 end
@@ -77,13 +90,13 @@ a velocity field U = (u, v), ∇·(Uc),
 
 which will end up at the location `ccc`.
 """
-@inline function div_Uc(i, j, k, grid, advection, solution, c)
+@inline function div_Uc(i, j, k, grid, advection, solution, c, formulation)
     1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution.uh, solution.h, c) +        
                              δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution.vh, solution.h, c))
 end
 
 # Support for no advection
-@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c) where FT = zero(FT)
+@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)
 
 @inline u(i, j, k, grid, solution) = @inbounds solution.uh[i, j, k] / solution.h[i, j, k]
 @inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / solution.h[i, j, k]

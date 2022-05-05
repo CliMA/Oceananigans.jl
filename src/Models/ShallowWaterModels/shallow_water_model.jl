@@ -121,7 +121,7 @@ function ShallowWaterModel(;
     any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
         (grid = with_halo((Hx, Hy, 0), grid))
 
-    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
+    prognostic_field_names = (:uh, :vh, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
@@ -161,11 +161,5 @@ function ShallowWaterModel(;
 
     return model
 end
-
-const ConservativeShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS} =
-             ShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS, <:ConservativeFormulation} where {G, A, T, V, R, F, E, B, Q, C, K} 
-
-const VectorInvariantShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS}  =
-            ShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS, <:VectorInvariantFormulation} where {G, A, T, V, R, F, E, B, Q, C, K}
 
 architecture(model::ShallowWaterModel) = model.architecture
