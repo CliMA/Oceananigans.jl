@@ -6,6 +6,8 @@ import Oceananigans.OutputWriters:
                         serializeproperty!
 
 # This is working just fine at the moment?
+# But it will be veeeeery slow, as reconstruct_global_field is not 
+# a performant operation
 function fetch_output(mrf::MultiRegionField, model)
     field = reconstruct_global_field(mrf)
     compute_at!(field, time(model))
