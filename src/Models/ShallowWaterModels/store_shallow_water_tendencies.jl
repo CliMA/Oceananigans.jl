@@ -8,8 +8,8 @@ import Oceananigans.TimeSteppers: store_tendencies!
 @kernel function store_solution_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds G⁻.uh[i, j, k] = G⁰.uh[i, j, k]
-    @inbounds G⁻.vh[i, j, k] = G⁰.vh[i, j, k]
+    @inbounds G⁻[1][i, j, k] = G⁰[1][i, j, k]
+    @inbounds G⁻[2][i, j, k] = G⁰[2][i, j, k]
     @inbounds G⁻.h[i, j, k]  = G⁰.h[i, j, k]
 end
 
