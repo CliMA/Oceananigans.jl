@@ -83,12 +83,12 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    Guh_event = calculate_Guh_kernel!(tendencies.uh,
+    Guh_event = calculate_Guh_kernel!(tendencies[1],
                                       grid, gravitational_acceleration, advection, coriolis, closure, 
                                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                       dependencies=barrier)
 
-    Gvh_event = calculate_Gvh_kernel!(tendencies.vh,
+    Gvh_event = calculate_Gvh_kernel!(tendencies[2],
                                       grid, gravitational_acceleration, advection, coriolis, closure, 
                                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                       dependencies=barrier)
