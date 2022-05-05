@@ -544,22 +544,26 @@ for arch in archs
             compute!(computed_tke)
             @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
 
+            tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
+            compute!(tke_window)
+            @test all(interior(tke_window) .== 9/2)
+
             # Computations along slices
             tke_xy = Field(tke_ccc, indices=(:, :, 2)) 
             compute!(tke_xy)
             @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
 
-            tke_xz = Field(tke_ccc, indices=(:, 2, :)) 
+            tke_xz = Field(tke_ccc, indices=(2:3, 2, 2:3)) 
             compute!(tke_xz)
-            @test all(interior(tke_xz, 2:3, 1, 2:3) .== 9/2)
+            @test all(interior(tke_xz) .== 9/2)
 
-            tke_yz = Field(tke_ccc, indices=(2, :, :)) 
+            tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3)) 
             compute!(tke_yz)
-            @test all(interior(tke_yz, 1, 2:3, 2:3) .== 9/2)
+            @test all(interior(tke_yz) .== 9/2)
 
-            tke_x = Field(tke_ccc, indices=(:, 2, 2)) 
+            tke_x = Field(tke_ccc, indices=(2:3, 2, 2)) 
             compute!(tke_x)
-            @test all(interior(tke_x, 2:3, 1, 1) .== 9/2)
+            @test all(interior(tke_x) .== 9/2)
         end
 
         @testset "Computations with Fields [$A]" begin
