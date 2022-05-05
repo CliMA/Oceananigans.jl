@@ -32,6 +32,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.grid,
                                                model.gravitational_acceleration,
                                                model.advection,
+                                               model.tracer_advection,
+                                               model.height_advection,
                                                model.coriolis,
                                                model.closure,
                                                model.bathymetry,
@@ -60,6 +62,8 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     grid,
                                                     gravitational_acceleration,
                                                     advection,
+                                                    tracer_advection,
+                                                    height_advection,
                                                     coriolis,
                                                     closure, 
                                                     bathymetry,
@@ -90,7 +94,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                       dependencies=barrier)
 
     Gh_event  = calculate_Gh_kernel!(tendencies.h,
-                                     grid, gravitational_acceleration, coriolis, closure, 
+                                     grid, gravitational_acceleration, height_advection, coriolis, closure, 
                                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation,
                                      dependencies=barrier)
 
@@ -100,7 +104,7 @@ function calculate_interior_tendency_contributions!(tendencies,
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, solution,
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), tracer_advection, closure, solution,
                                         tracers, diffusivities, forcing, clock, dependencies=barrier)
 
         push!(events, Gc_event)

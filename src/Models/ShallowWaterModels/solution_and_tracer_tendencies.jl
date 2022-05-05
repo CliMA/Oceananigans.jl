@@ -8,8 +8,11 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 @inline half_g_h²(i, j, k, grid, h, g) = @inbounds 1/2 * g * h[i, j, k]^2
 
-@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
-@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+
+@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, ::VectorInvariantFormulation) = gravitational_acceleration * ∂xᶠᶜᶜ(i, j, k, grid, h)
+@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, ::VectorInvariantFormulation) = gravitational_acceleration * ∂yᶜᶠᶜ(i, j, k, grid, h)
 
 """
 Compute the tendency for the x-directional transport, uh
@@ -30,7 +33,7 @@ Compute the tendency for the x-directional transport, uh
     g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution, formulation)
-             - x_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration)
+             - x_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.uh(i, j, k, grid, clock, merge(solution, tracers)))
 end
@@ -54,7 +57,7 @@ Compute the tendency for the y-directional transport, vh.
      g = gravitational_acceleration
 
     return ( - div_hUv(i, j, k, grid, advection, solution, formulation)
-             - y_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration)
+             - y_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.vh(i, j, k, grid, clock, merge(solution, tracers)))
 end
@@ -64,6 +67,7 @@ Compute the tendency for the height, h.
 """
 @inline function h_solution_tendency(i, j, k, grid,
                                      gravitational_acceleration,
+                                     advection,
                                      coriolis,
                                      closure,
                                      bathymetry,
@@ -74,7 +78,7 @@ Compute the tendency for the height, h.
                                      clock,
                                      formulation)
 
-    return ( - div_Uh(i, j, k, grid, solution, formulation)
+    return ( - div_Uh(i, j, k, grid, solution, advection, formulation)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 

@@ -33,19 +33,19 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 #####
 
 @inline div_hUu(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_U(i, j, k, grid, advection, solution.uh, solution.vh)  # Vertical relative vorticity term
-    + bernoulli_head_U(i, j, k, grid, advection, solution.uh, solution.vh))     # Bernoulli head term
+    + vertical_vorticity_U(i, j, k, grid, advection, solution.u, solution.v)  # Vertical relative vorticity term
+    + bernoulli_head_U(i, j, k, grid, advection, solution.u, solution.v))     # Bernoulli head term
     
 @inline div_hUv(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_V(i, j, k, grid, advection, solution.uh, solution.vh)  # Vertical relative vorticity term
-    + bernoulli_head_V(i, j, k, grid, advection, solution.uh, solution.vh))     # Bernoulli head term
+    + vertical_vorticity_V(i, j, k, grid, advection, solution.u, solution.v)  # Vertical relative vorticity term
+    + bernoulli_head_V(i, j, k, grid, advection, solution.u, solution.v))     # Bernoulli head term
 
 @inline div_hUu(i, j, k, grid, advection, solution, formulation) =
-    1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution, formulation) +
+    1 / Azᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution, formulation) +
                                δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution, formulation))
 
 @inline div_hUv(i, j, k, grid, advection, solution, formulation) =
-    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution, formulation) +
+    1 / Azᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution, formulation) +
                                δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution, formulation))
 
 # Support for no advection
@@ -69,6 +69,12 @@ which will end up at the location `ccc`.
     1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, solution.uh) + 
                              δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, solution.vh))
 end
+
+@inline function div_Uh(i, j, k, grid, solution, formulation)
+    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, solution.uh) + 
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, solution.vh))
+end
+
 
 #####
 ##### Tracer advection operator
