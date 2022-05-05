@@ -48,7 +48,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
                        tracers :: C         # Container for tracer fields
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
-		   formulation :: FR        # Either conservative or vector-invariant
+		           formulation :: FR        # Either conservative or vector-invariant
 
 end
 
@@ -89,6 +89,11 @@ Keyword arguments
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
                    `:RungeKutta3`.
 """
+
+struct ConservativeFormulation end
+
+struct VectorInvariantFormulation end
+
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
@@ -102,7 +107,7 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3,
-		 	 formulation = :conservative)
+		 	             formulation = ConservativeFormulation())
 
     arch = architecture(grid)
 
@@ -116,7 +121,7 @@ function ShallowWaterModel(;
     any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
         (grid = with_halo((Hx, Hy, 0), grid))
 
-    prognostic_field_names = (:uh, :vh, :h, tracers...)
+    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
@@ -149,11 +154,18 @@ function ShallowWaterModel(;
                               solution,
                               tracers,
                               diffusivity_fields,
-                              timestepper)
+                              timestepper,
+                              formulation)
 
     update_state!(model)
 
     return model
 end
+
+const ConservativeShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS} =
+             ShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS, <:ConservativeFormulation} where {G, A, T, V, R, F, E, B, Q, C, K} 
+
+const VectorInvariantShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS}  =
+            ShallowWaterModel{G, A, T, V, R, F, E, B, Q, C, K, TS, <:VectorInvariantFormulation} where {G, A, T, V, R, F, E, B, Q, C, K}
 
 architecture(model::ShallowWaterModel) = model.architecture
