@@ -33,7 +33,7 @@ function ShallowWaterSolutionFields(grid, bcs)
     return (; uh, vh, h)
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
 
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -48,6 +48,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
                        tracers :: C         # Container for tracer fields
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
+		   formulation :: FR        # Either conservative or vector-invariant
 
 end
 
@@ -100,7 +101,8 @@ function ShallowWaterModel(;
                              tracers = (),
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3)
+                 timestepper::Symbol = :RungeKutta3,
+		 	 formulation = :conservative)
 
     arch = architecture(grid)
 
