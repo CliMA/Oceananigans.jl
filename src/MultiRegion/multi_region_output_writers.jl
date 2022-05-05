@@ -5,6 +5,7 @@ import Oceananigans.OutputWriters:
                         construct_output,
                         serializeproperty!
 
+# This is not working at the moment?
 function fetch_output(mrf::MultiRegionField, model)
     field = reconstruct_global_field(mrf)
     compute_at!(field, time(model))
