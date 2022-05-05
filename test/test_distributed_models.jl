@@ -1,4 +1,29 @@
+include("dependencies_for_runtests.jl")
+
 using MPI
+
+# # Distributed model tests
+#
+# These tests are meant to be run on 4 ranks. This script may be run
+# stand-alone (outside the test environment) via
+#
+# mpiexec -n 4 julia --project test_distributed_models.jl
+#
+# provided that a few packages (like TimesDates.jl) are in your global environment.
+#
+# Another possibility is to use tmpi ():
+#
+# tmpi 4 julia --project
+#
+# then later:
+# 
+# julia> include("test_distributed_models.jl")
+#
+# When running the tests this way, uncomment the following line
+
+#MPI.Init()
+
+# to initialize MPI.
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Distributed: MultiArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo

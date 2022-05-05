@@ -1,10 +1,11 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.75.3"
+version = "0.76.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
@@ -12,6 +13,7 @@ CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+GPUArrays = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 IncompleteLU = "40713840-3770-5561-ab4c-a76e7d0d7895"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -39,17 +41,27 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 Adapt = "^3"
+<<<<<<< HEAD
 CUDA = "3.0.0 - 3.3.6, ^3.8.2"
 CUDAKernels = "0.2, 0.3, 0.4"
+=======
+CUDA = "3.8"
+CUDAKernels = "0.3.3, 0.4"
+KernelAbstractions = "0.7, 0.8"
+>>>>>>> origin/main
 Crayons = "^4"
 CubedSphere = "0.1, 0.2"
 DocStringExtensions = "^0.8"
 FFTW = "^1"
 Glob = "1.3"
+GPUArrays = "= 8.3.1"
 IncompleteLU = "0.2"
 IterativeSolvers = "0.9"
 JLD2 = "^0.4"
+<<<<<<< HEAD
 KernelAbstractions = "0.6, 0.7, 0.8"
+=======
+>>>>>>> origin/main
 MPI = "0.16, 0.17, 0.18, 0.19"
 MPICH_jll = "= 4.0.1"
 NCDatasets = "^0.10, ^0.11, 0.12"

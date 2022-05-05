@@ -38,7 +38,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### Single halo filling kernels
 #####
 
-#=
 @kernel function fill_flux_west_halo!(c, grid)
     j, k = @index(Global, NTuple)
     _fill_flux_west_halo!(1, j, k, grid, c)
@@ -73,10 +72,16 @@ end
 ##### Kernel launchers for flux boundary conditions
 #####
 
-  fill_west_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, fill_flux_west_halo!,   c, grid; dependencies=dep, kwargs...)
-  fill_east_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, fill_flux_east_halo!,   c, grid; dependencies=dep, kwargs...)
- fill_south_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, fill_flux_south_halo!,  c, grid; dependencies=dep, kwargs...)
- fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, fill_flux_north_halo!,  c, grid; dependencies=dep, kwargs...)
-fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_bottom_halo!, c, grid; dependencies=dep, kwargs...)
-   fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, fill_flux_top_halo!,    c, grid; dependencies=dep, kwargs...)
-=#
+fill_west_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :yz, fill_flux_west_halo!, c, grid; dependencies=dep, kwargs...)
+fill_east_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :yz, fill_flux_east_halo!, c, grid; dependencies=dep, kwargs...)
+fill_south_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xz, fill_flux_south_halo!, c, grid; dependencies=dep, kwargs...)
+fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xz, fill_flux_north_halo!, c, grid; dependencies=dep, kwargs...)
+fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xy, fill_flux_bottom_halo!, c, grid; dependencies=dep, kwargs...)
+fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = 
+            launch!(arch, grid, :xy, fill_flux_top_halo!, c, grid; dependencies=dep, kwargs...)
+

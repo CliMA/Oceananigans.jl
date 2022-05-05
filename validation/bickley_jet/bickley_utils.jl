@@ -18,6 +18,9 @@ ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
     u, v: Large-scale jet + vortical perturbations
        c: Sinusoid
 """
+
+const Ly = 4π
+
 function set_bickley_jet!(model;
                           ϵ = 0.1, # perturbation magnitude
                           ℓ = 0.5, # gaussian width
@@ -26,7 +29,7 @@ function set_bickley_jet!(model;
     # total initial conditions
     uᵢ(x, y, z) = U(y) + ϵ * ũ(x, y, ℓ, k)
     vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
-    cᵢ(x, y, z) = C(y, model.grid.Ly)
+    cᵢ(x, y, z) = C(y, Ly)
     
     # Note that u, v are only horizontally-divergence-free as resolution -> ∞.
     set!(model, u=uᵢ, v=vᵢ, c=cᵢ)
