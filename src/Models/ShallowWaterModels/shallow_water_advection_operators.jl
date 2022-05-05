@@ -28,7 +28,7 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
     @inbounds _advective_momentum_flux_Uv(i, j, k, grid, advection, solution[1], solution[2]) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
 @inline momentum_flux_hvv(i, j, k, grid, advection, solution) =
-    @inbounds _advective_momentum_flux_Vv(i, j, k, grid, advection, solution[2] solution[2]) / solution.h[i, j, k]
+    @inbounds _advective_momentum_flux_Vv(i, j, k, grid, advection, solution[2], solution[2]) / solution.h[i, j, k]
 
 #####
 ##### Momentum flux divergence operators
@@ -73,7 +73,7 @@ which will end up at the location `ccc`.
 end
 
 @inline div_Uh(i, j, k, grid, advection, solution, formulation::VectorInvariantFormulation) = 
-        div_Uc(i, j, k, grid, advection, solution.h, solution, formulation)
+        div_Uc(i, j, k, grid, advection, solution, solution.h, formulation)
 
 #####
 ##### Tracer advection operator

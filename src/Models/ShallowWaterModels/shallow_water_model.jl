@@ -36,9 +36,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, TV, HV, R, F,
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
     gravitational_acceleration :: T         # Gravitational acceleration, full, or reduced
-                     advection :: V         # Advection scheme for velocities 
-              tracer_advection :: TV        # Advection scheme for tracers
-              height_advection :: HV        # Advection scheme for height h
+                     advection :: V         # Advection scheme for velocities, mass and tracers
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
                        forcing :: F         # Container for forcing functions defined by the user
                        closure :: E         # Diffusive 'turbulence closure' for all model fields
@@ -126,6 +124,8 @@ function ShallowWaterModel(;
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
+    advection = validate_advection(advection, tracer_advection, mass_advection, formulation)
+
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
@@ -148,8 +148,6 @@ function ShallowWaterModel(;
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,
-                              tracer_advection,
-                              height_advection,
                               coriolis,
                               forcing,
                               closure,
@@ -164,5 +162,11 @@ function ShallowWaterModel(;
 
     return model
 end
+
+using Oceananigans.Advection: VectorInvariantSchemes
+
+validate_advection(advection, tracer_advection, mass_advection, formulation) = (momentum = advection, tracer = tracer_advection, mass = mass_advection)
+validate_advection(advection, tracer_advection, mass_advection, ::VectorInvariant) = throw(ArgumentError("you have to use VectorInvariant advection for VectorInvariantFormulation"))
+validate_advection(advection::VectorInvariantSchemes, tracer_advection, mass_advection, ::VectorInvariant) = (momentum = advection, tracer = tracer_advection, mass = mass_advection)
 
 architecture(model::ShallowWaterModel) = model.architecture

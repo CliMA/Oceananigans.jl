@@ -125,7 +125,7 @@ compute!(ω)
 
 # and finally set the "true" initial condition with noise,
 
-formulation isa VectorInvariantFormulation ? set!(model, u = uhⁱ) : set!(model, uh = uhⁱ)
+formulation isa VectorInvariantFormulation ? set!(model, u = uⁱ) : set!(model, uh = uhⁱ)
 
 # ## Running a `Simulation`
 #
