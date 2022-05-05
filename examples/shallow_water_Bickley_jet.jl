@@ -54,9 +54,10 @@ g = 9.8         # Gravitational acceleration
 # 3rd-order Runge-Kutta time-stepping,
 
 using Oceananigans.Advection: VelocityStencil
-using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
+using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation
 
 formulation = VectorInvariantFormulation()
+# formulation = ConservativeFormulation()
 
 model = ShallowWaterModel(;
                           timestepper = :RungeKutta3,
@@ -162,6 +163,10 @@ simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_n
                                                         overwrite_existing = true)
 
 # And finally run the simulation.
+using Printf
+
+progress(simulation) = @info @sprintf("Maximum |u|: %.2f\n", maximum(abs, simulation.model.solution[1]))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 
