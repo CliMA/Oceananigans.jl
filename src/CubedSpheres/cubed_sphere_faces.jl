@@ -9,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum, length
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, set!
+import Oceananigans.Fields: AbstractField, Field, FieldBoundaryBuffers, minimum, maximum, mean, location, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -82,6 +82,12 @@ function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, loc, indices; u
 
     return CubedSphereFaces(faces)
 end
+
+#####
+##### FieldBoundaryBuffers
+#####
+
+FieldBoundaryBuffers(grid::ConformalCubedSphereGrid, args...) = FieldBoundaryBuffers()
 
 #####
 ##### Utils

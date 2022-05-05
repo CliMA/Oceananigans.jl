@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -79,7 +80,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         # Ensure zeroing out all previous tendency fields to avoid errors in
         # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for field in model.timestepper.G⁻
-            !isnothing(field) && fill!(field, 0)
+            !isnothing(field) && @apply_regionally fill!(field, 0)
         end
     end
 
@@ -88,19 +89,23 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model)
 
-    calculate_tendencies!(model)
-
+    @apply_regionally calculate_tendencies!(model)
+    
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
-
     calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+
+    @apply_regionally correct_velocties_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
     update_state!(model)
-    store_tendencies!(model)
     update_particle_properties!(model, Δt)
 
     return nothing
+end
+
+function correct_velocties_and_store_tendecies!(model, Δt)
+    pressure_correct_velocities!(model, Δt)
+    store_tendencies!(model)
 end
 
 #####
