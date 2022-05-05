@@ -131,12 +131,13 @@ end
                                 tracers,
                                 diffusivities,
                                 forcings,
-                                clock)
+                                clock, 
+                                formulation)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
-                                                    bathymetry, solution, tracers, diffusivities, forcings, clock)
+                                                    bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 """ Calculate the right-hand-side of the vh-transport equation. """
@@ -151,12 +152,13 @@ end
                                 tracers,
                                 diffusivities,
                                 forcings,
-                                clock)
+                                clock, 
+                                formulation)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
-                                                    bathymetry, solution, tracers, diffusivities, forcings, clock)
+                                                    bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 """ Calculate the right-hand-side of the height equation. """
@@ -170,12 +172,13 @@ end
                                tracers,
                                diffusivities,
                                forcings,
-                               clock)
+                               clock, 
+                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, coriolis, closure, bathymetry,
-                                                solution, tracers, diffusivities, forcings, clock)
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, bathymetry,
+                                                solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 #####
@@ -192,12 +195,13 @@ end
                                tracers,
                                diffusivities,
                                forcing,
-                               clock)
+                               clock,
+                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure, solution, tracers,
-                                            diffusivities, forcing, clock)
+                                            diffusivities, forcing, clock, formulation)
 end
 
 #####
