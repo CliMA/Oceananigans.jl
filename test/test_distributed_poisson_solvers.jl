@@ -21,12 +21,17 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-MPI.Init()
+#MPI.Init()
 
 # to initialize MPI.
 
 using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Solvers: copy_real_component!
+
+@kernel function permuted_copy_123_to_321!(permuted_ϕ, ϕ)
+    i, j, k = @index(Global, NTuple)
+    # Note the index permutation
+    @inbounds permuted_ϕ[k, j, i] = ϕ[i, j, k]
+end
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -59,27 +64,28 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=ranks, topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
+
+    bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
+    bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+
+    # The test will solve for ϕ, then compare R to ∇²ϕ.
+    ϕ   = CenterField(local_grid, boundary_conditions=bcs)
+    ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
+    R   = random_divergent_source_term(local_grid)
     
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-    R = random_divergent_source_term(local_grid)
-    first(solver.storage) .= R
-
+    # Solve it
     ϕc = first(solver.storage)
-    solve!(ϕc, solver)
 
-    p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
-    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
+    # first(solver.storage) has the permuted layout (z, y, x) compared to Oceananigans data with layout (x, y, z).
+    event = launch!(arch, local_grid, :xyz, permuted_copy_123_to_321!, ϕc, R, dependencies=device_event(arch))
+    wait(device(arch), event)
 
-    ϕ   = CenterField(local_grid, boundary_conditions=p_bcs) # "pressure"
-    ∇²ϕ = CenterField(local_grid, boundary_conditions=p_bcs)
+    solve!(ϕ, solver)
 
-    copy_event = launch!(arch, local_grid, :xyz,
-                         copy_real_component!, ϕ, first(solver.storage),
-                         dependencies=device_event(arch))
-    wait(device(arch), copy_event)
-
+    # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
     return R ≈ interior(∇²ϕ)
@@ -90,5 +96,7 @@ end
     @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 44, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
     @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
 end
+
