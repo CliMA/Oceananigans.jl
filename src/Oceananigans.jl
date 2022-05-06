@@ -240,12 +240,8 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
-<<<<<<< HEAD
 #using .CubedSpheres
-=======
 using .MultiRegion
-using .CubedSpheres
->>>>>>> main
 
 function __init__()
     threads = Threads.nthreads()
