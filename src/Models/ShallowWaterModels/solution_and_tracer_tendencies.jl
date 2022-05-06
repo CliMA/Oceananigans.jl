@@ -96,7 +96,7 @@ end
     @inbounds c = tracers[tracer_index]
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
-             + c_div_U(i, j, k, grid, advection, solution, c, formulation)         
+             + c_div_U(i, j, k, grid, solution, c, formulation)         
              - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )

@@ -35,11 +35,11 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 #####
 
 @inline div_hUu(i, j, k, grid, advection, solution, formulation) =
-    1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
+    1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
                                δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution))
 
 @inline div_hUv(i, j, k, grid, advection, solution, formulation) =
-    1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
+    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
                                δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 @inline div_hUu(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
@@ -82,10 +82,10 @@ end
 #####
 
 @inline transport_tracer_flux_x(i, j, k, grid, advection, uh, h, c) =
-    @inbounds advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / h[i, j, k]
+    @inbounds advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / ℑxᶠᵃᵃ(i, j, k, grid, h)
 
 @inline transport_tracer_flux_y(i, j, k, grid, advection, vh, h, c) =
-    @inbounds advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / h[i, j, k]
+    @inbounds advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
     div_Uc(i, j, k, grid, advection, U, c)
@@ -111,8 +111,8 @@ end
 # Support for no advection
 @inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)
 
-@inline u(i, j, k, grid, solution) = @inbounds solution.uh[i, j, k] / solution.h[i, j, k]
-@inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / solution.h[i, j, k]
+@inline u(i, j, k, grid, solution) = @inbounds solution.uh[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, h)
+@inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
     c_div_U(i, j, k, grid, advection, U)
