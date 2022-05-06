@@ -70,8 +70,8 @@ Calculates the divergence of the mass flux into a cell,
 which will end up at the location `ccc`.
 """
 @inline function div_Uh(i, j, k, grid, advection, solution, formulation)
-    1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, solution[1]) + 
-                              δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, solution[2]))
+    1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + 
+                              δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 end
 
 @inline div_Uh(i, j, k, grid, advection, solution, formulation::VectorInvariantFormulation) = 
