@@ -141,15 +141,7 @@ function NonhydrostaticModel(;    grid,
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
+    @apply_regionally validate_model_halo(grid, advection, closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -225,3 +217,15 @@ function extract_boundary_conditions(field_tuple::NamedTuple)
 end
 
 extract_boundary_conditions(field::Field) = field.boundary_conditions
+
+
+function validate_model_halo(grid, advection, closure)
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(user_halo..., topology(grid),
+                                      advection,
+                                      closure)
+  
+    any(user_halo .< required_halo) &&
+        throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+end
+  

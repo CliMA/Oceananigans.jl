@@ -11,8 +11,9 @@ import Oceananigans.Diagnostics: accurate_cell_advection_timescale
 import Oceananigans.Advection: WENO5
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
+import Oceananigans.Models.NonhydrostaticModels: PressureSolver
 
-const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
+const MultiRegionModel = Union{HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid},  NonhydrostaticModel{<:Any, <:Any, <:AbstractArchitecture, <:MultiRegionGrid}}
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true) 
@@ -26,6 +27,7 @@ function getregionalproperties(T, inner=true)
 end
 
 Types = (:HydrostaticFreeSurfaceModel,
+         :NonhydrostaticModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
@@ -44,6 +46,8 @@ end
 @inline devices(pv::PrescribedVelocityFields)    = devices(pv[findfirst(isregional, (pv.u, pv.v, pv.w))])
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrid) = tracer_advection, NamedTuple()
+
+PressureSolver(arch, ::MultiRegionGrid) = nothing
 
 @inline isregional(mrm::MultiRegionModel)        = true
 @inline devices(mrm::MultiRegionModel)           = devices(mrm.grid)
