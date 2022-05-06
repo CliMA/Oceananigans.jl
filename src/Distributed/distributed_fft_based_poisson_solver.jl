@@ -3,13 +3,14 @@ import PencilFFTs
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
-struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
+struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, C}
     # Do we need backwards_plan :: B too?
     plan :: P
     global_grid :: F
     local_grid :: L
     eigenvalues :: λ
     storage :: S
+    communicator :: C
 end
 
 architecture(solver::DistributedFFTBasedPoissonSolver) =
@@ -41,19 +42,26 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     #
     
     gNx, gNy, gNz = size(global_grid)
+    permuted_dims = (3, 2, 1)
     permuted_size = (gNz, gNy, gNx)
     processors_per_dimension = (Ry, Rx)
 
+    # Trying to figure this out: https://github.com/jipolanco/PencilFFTs.jl/issues/43
+    gNz == 1 && @warn "DistributedFFTBasedPoissonSolver may break when Nz=1."
+
     communicator = MPI.COMM_WORLD
 	
-    # To support Bounded, we need something like
     periodic_transform = PencilFFTs.Transforms.FFT!()
-    # bounded_transform = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
-    # transforms = Tuple(T() isa Periodic ? periodic_transform : bounded_transform for T in topology(global_grid))
-    transforms = periodic_transform
-    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
+    plan = PencilFFTs.PencilFFTPlan(permuted_size, periodic_transform, processors_per_dimension, communicator)
 
-    # Maybe also
+    # To support Bounded, we need something like
+    # no_transform = PencilFFTs.Transforms.NoTransform()
+    # bounded_transform = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
+    # transforms = Tuple(topology(grid, d)() isa Periodic ? periodic_transform : bounded_transform for d in permuted_dims)
+    # transforms = Tuple(size(global_grid, d) > 1 ? periodic_transform : no_transform for d in permuted_dims)
+    # plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
+    #
+    # And maybe also
     # bwd_bounded_transform = PencilFFTs.Transforms.R2R!(FFTW.REDFT01)
     # bwd_transforms = Tuple(T() isa Periodic ? periodic_transform : bwd_bounded_transform for T in topology(global_grid))
     # backwards_plan = PencilFFTs.PencilFFTPlan(permuted_size, bwd_transforms, processors_per_dimension, communicator)
@@ -76,7 +84,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Note the permutation: (z, y, x).
     eigenvalues = PencilFFTs.localgrid(last(storage), (λz, λy, λx))
 
-    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage)
+    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage, communicator)
 end
 
 # solve! requires that `b` in `A x = b` (the right hand side)
@@ -100,7 +108,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
-    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    if MPI.Comm_rank(solver.communicator) == 0 #MPI.Comm_size() - 1
         x̂[1, 1, 1] = 0
     end
 

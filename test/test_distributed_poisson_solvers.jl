@@ -21,7 +21,7 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-#MPI.Init()
+MPI.Init()
 
 # to initialize MPI.
 
@@ -93,10 +93,10 @@ end
 
 @testset "Distributed FFT-based Poisson solver" begin
     @info "  Testing distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 44, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 16, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 44, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (1, 4, 1))
 end
 
