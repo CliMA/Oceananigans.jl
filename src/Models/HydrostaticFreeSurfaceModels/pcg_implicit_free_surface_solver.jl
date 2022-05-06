@@ -50,7 +50,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-
+    fill_halo_regions!(vertically_integrated_lateral_areas)
+    
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
@@ -86,9 +87,11 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
 
     ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
     solver = implicit_free_surface_solver.preconditioned_conjugate_gradient_solver
-
+    
     # solve!(x, solver, b, args...) solves A*x = b for x.
-    return solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+    solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+    
+    return nothing
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
@@ -102,8 +105,9 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
 		            dependencies = device_event(arch))
-
-    return event
+    
+    wait(device(arch), event)
+    return nothing
 end
 
 """ Compute the divergence of fluxes Qu and Qv. """

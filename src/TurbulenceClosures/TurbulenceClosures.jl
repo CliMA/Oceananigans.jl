@@ -63,7 +63,7 @@ closure_summary(closure) = summary(closure)
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
-# To allow indexing a diffusivity with (Lx, Ly, Lz, i, j, k, grid)
+# To allow indexing a diffusivity with (i, j, k, grid, Lx, Ly, Lz)
 struct DiscreteDiffusionFunction{F} <: Function
     func :: F
 end

@@ -12,15 +12,17 @@
 const c = Center()
 const f = Face()
 
-const XBoundedGrid = AbstractGrid{<:Any, <:Bounded}
-const YBoundedGrid = AbstractGrid{<:Any, <:Any, <:Bounded}
-const ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}
+function build_condition(Topo, side, dim) 
+    if Topo == :Bounded 
+        return :(($side < 1) | ($side > grid.$dim))
+    elseif Topo == :LeftConnected
+        return :(($side > grid.$dim))
+    else 
+        return :(($side < 1))
+    end
+end
 
-const XYBoundedGrid = AbstractGrid{<:Any, <:Bounded, <:Bounded}
-const XZBoundedGrid = AbstractGrid{<:Any, <:Bounded, <:Any, <:Bounded}
-const YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Bounded, <:Bounded}
-
-const XYZBoundedGrid =  AbstractGrid{<:Any, <:Bounded, <:Bounded, <:Bounded}
+Topos = [:Bounded, :LeftConnected, :RightConnected] 
 
 #####
 ##### Exterior node and peripheral node
@@ -33,17 +35,47 @@ Return `true` when the tracer cell at `i, j, k` is lies outside the "active doma
 the grid in `Bounded` directions. Otherwise, return `false`.
 """
 @inline inactive_cell(i, j, k, grid) = false
-@inline inactive_cell(i, j, k, grid::XBoundedGrid) = (i < 1) | (i > grid.Nx)
-@inline inactive_cell(i, j, k, grid::YBoundedGrid) = (j < 1) | (j > grid.Ny)
-@inline inactive_cell(i, j, k, grid::ZBoundedGrid) = (k < 1) | (k > grid.Nz)
 
-@inline inactive_cell(i, j, k, grid::XYBoundedGrid) = (i < 1) | (i > grid.Nx) | (j < 1) | (j > grid.Ny)
-@inline inactive_cell(i, j, k, grid::XZBoundedGrid) = (i < 1) | (i > grid.Nx) | (k < 1) | (k > grid.Nz)
-@inline inactive_cell(i, j, k, grid::YZBoundedGrid) = (j < 1) | (j > grid.Ny) | (k < 1) | (k > grid.Nz)
+for Topo in Topos
 
-@inline inactive_cell(i, j, k, grid::XYZBoundedGrid) = (i < 1) | (i > grid.Nx) |
-                                                       (j < 1) | (j > grid.Ny) |
-                                                       (k < 1) | (k > grid.Nz)
+    xcondition = build_condition(Topo, :i, :Nx)
+    ycondition = build_condition(Topo, :j, :Ny)
+    zcondition = build_condition(Topo, :k, :Nz)
+
+    @eval begin
+        XBoundedGrid = AbstractGrid{<:Any, <:$Topo}
+        YBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo}
+        ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$Topo}
+
+        @inline inactive_cell(i, j, k, grid::XBoundedGrid) = ifelse($xcondition, true, false)
+        @inline inactive_cell(i, j, k, grid::YBoundedGrid) = ifelse($ycondition, true, false)
+        @inline inactive_cell(i, j, k, grid::ZBoundedGrid) = ifelse($zcondition, true, false)
+    end
+    for OtherTopo in Topos
+        xycondition = :( $xcondition | $(build_condition(OtherTopo, :j, :Ny)))
+        xzcondition = :( $xcondition | $(build_condition(OtherTopo, :k, :Nz)))
+        yzcondition = :( $ycondition | $(build_condition(OtherTopo, :k, :Nz)))
+
+        @eval begin
+            XYBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo}
+            XZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:Any, <:$OtherTopo}
+            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo, <:$OtherTopo}
+
+            @inline inactive_cell(i, j, k, grid::XYBoundedGrid) = ifelse($xycondition, true, false)
+            @inline inactive_cell(i, j, k, grid::XZBoundedGrid) = ifelse($xzcondition, true, false)
+            @inline inactive_cell(i, j, k, grid::YZBoundedGrid) = ifelse($yzcondition, true, false)
+        end
+        for LastTopo in Topos
+            xyzcondition = :( $xycondition | $(build_condition(LastTopo, :k, :Nz)))
+
+            @eval begin
+                XYZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$OtherTopo, <:$LastTopo}
+               
+                @inline inactive_cell(i, j, k, grid::XYZBoundedGrid) = ifelse($xyzcondition, true, false)
+            end
+        end
+    end
+end
 
 """
     inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)

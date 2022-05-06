@@ -1,4 +1,5 @@
 using OffsetArrays: OffsetArray
+using Oceananigans.Utils
 using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -30,9 +31,29 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kw...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
+
+    halo_tuple = permute_boundary_conditions(boundary_conditions)
+   
+    for task = 1:3
+        barrier = device_event(arch)
+        fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+    end
+
+    return nothing
+end
+
+function fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+    fill_halo! = halo_tuple[1][task]
+    bc_left    = halo_tuple[2][task]
+    bc_right   = halo_tuple[3][task]
+    event      = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+end
+
+function permute_boundary_conditions(boundary_conditions)
 
     fill_halos! = [
         fill_west_and_east_halo!,
@@ -56,18 +77,8 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, 
     fill_halos! = fill_halos![perm]
     boundary_conditions_array_left  = boundary_conditions_array_left[perm]
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
-   
-    for task = 1:3
-        barrier    = device_event(arch)
-        fill_halo! = fill_halos![task]
-        bc_left    = boundary_conditions_array_left[task]
-        bc_right   = boundary_conditions_array_right[task]
-        events     = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kw...)
-       
-        wait(device(arch), events)
-    end
 
-    return nothing
+    return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
 
 @inline validate_event(::Nothing) = NoneEvent()
@@ -78,10 +89,16 @@ end
 #####
 
 const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
+const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
 
 fill_first(bc1::PBCT, bc2)       = false
+fill_first(bc1::CBCT, bc2)       = false
+fill_first(bc1::PBCT, bc2::CBCT) = false
+fill_first(bc1::CBCT, bc2::PBCT) = true
 fill_first(bc1, bc2::PBCT)       = true
+fill_first(bc1, bc2::CBCT)       = true
 fill_first(bc1::PBCT, bc2::PBCT) = true
+fill_first(bc1::CBCT, bc2::CBCT) = true
 fill_first(bc1, bc2)             = true
 
 #####

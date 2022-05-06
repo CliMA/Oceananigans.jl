@@ -81,16 +81,19 @@ const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
+const CBC  = BoundaryCondition{<:Communication}
 
 # More readable BC constructors for the public API.
-    PeriodicBoundaryCondition() = BoundaryCondition(Periodic, nothing)
-      NoFluxBoundaryCondition() = BoundaryCondition(Flux,     nothing)
-ImpenetrableBoundaryCondition() = BoundaryCondition(Open,     nothing)
+    PeriodicBoundaryCondition()  = BoundaryCondition(Periodic,      nothing)
+      NoFluxBoundaryCondition()  = BoundaryCondition(Flux,          nothing)
+ImpenetrableBoundaryCondition()  = BoundaryCondition(Open,          nothing)
+CommunicationBoundaryCondition() = BoundaryCondition(Communication, nothing)
 
-    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
-   ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
-GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
+     FluxBoundaryCondition(val; kwargs...)     = BoundaryCondition(Flux, val; kwargs...)
+    ValueBoundaryCondition(val; kwargs...)     = BoundaryCondition(Value, val; kwargs...)
+ GradientBoundaryCondition(val; kwargs...)     = BoundaryCondition(Gradient, val; kwargs...)
+     OpenBoundaryCondition(val; kwargs...)     = BoundaryCondition(Open, val; kwargs...)
+CommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Communication, val; kwargs...)
 
 # Support for various types of boundary conditions.
 #
@@ -120,7 +123,7 @@ Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt
 ##### Validation with topology
 #####
 
-validate_boundary_condition_topology(bc::Union{PBC, Nothing}, topo::Grids.Periodic, side) = nothing
+validate_boundary_condition_topology(bc::Union{PBC, CBC, Nothing}, topo::Grids.Periodic, side) = nothing
 validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 

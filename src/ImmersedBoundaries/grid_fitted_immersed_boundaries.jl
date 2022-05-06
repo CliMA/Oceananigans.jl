@@ -115,7 +115,7 @@ end
 end
 
 function compute_mask(grid, ib)
-    arch = grid.architecture
+    arch = architecture(grid)
     mask_field = Field{Center, Center, Center}(grid, Bool)
     set!(mask_field, ib.mask)
     fill_halo_regions!(mask_field)
@@ -132,6 +132,11 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true
     else
         return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
     end
+end
+
+function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
 on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))

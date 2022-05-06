@@ -15,6 +15,12 @@ using Oceananigans.Advection: WENOVectorInvariant
 
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
+
+import Oceananigans.Grids: 
+        cpu_face_constructor_x,
+        cpu_face_constructor_y,
+        cpu_face_constructor_z
+        
 import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 import Oceananigans.Grids: inactive_cell
@@ -171,6 +177,11 @@ const f = Face()
 all_x_nodes(loc, ibg::IBG) = all_x_nodes(loc, ibg.underlying_grid)
 all_y_nodes(loc, ibg::IBG) = all_y_nodes(loc, ibg.underlying_grid)
 all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
+
+@inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
+@inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
+@inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
+
 
 function on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)
