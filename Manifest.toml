@@ -503,9 +503,9 @@ uuid = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 version = "0.0.1"
 
 [[SeawaterPolynomials]]
-git-tree-sha1 = "e610123433b91a1a5fff1f7fefe77a5b4a9d260b"
+git-tree-sha1 = "a2c62188adfabee9dd25a8bbe6d117ec8ca74169"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.2.2"
+version = "0.2.3"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
