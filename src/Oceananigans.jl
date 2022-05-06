@@ -210,12 +210,8 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
-<<<<<<< HEAD
 #include("CubedSpheres/CubedSpheres.jl")
-=======
 include("MultiRegion/MultiRegion.jl")
-include("CubedSpheres/CubedSpheres.jl")
->>>>>>> main
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
