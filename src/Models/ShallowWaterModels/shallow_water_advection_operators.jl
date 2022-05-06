@@ -99,8 +99,8 @@ which will end up at the location `ccc`.
 """
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, formulation)
-    1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution[1], solution.h, c) +        
-                              δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution[2], solution.h, c))
+    1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, transport_tracer_flux_x, advection, solution[1], solution.h, c) +        
+                              δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, transport_tracer_flux_y, advection, solution[2], solution.h, c))
 end
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, ::VectorInvariantFormulation)
