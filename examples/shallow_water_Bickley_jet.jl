@@ -58,10 +58,12 @@ using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, Conser
 
 formulation = VectorInvariantFormulation()
 # formulation = ConservativeFormulation()
+stencil = VelocityStencil()
+# stencil = nothing
 
 model = ShallowWaterModel(;
                           timestepper = :RungeKutta3,
-                          advection = WENO5(vector_invariant = VelocityStencil()),
+                          advection = WENO5(vector_invariant = stencil),
                           grid = grid,
                           gravitational_acceleration = g,
                           coriolis = FPlane(f=f),

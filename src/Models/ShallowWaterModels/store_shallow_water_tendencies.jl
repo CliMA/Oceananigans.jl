@@ -7,10 +7,9 @@ import Oceananigans.TimeSteppers: store_tendencies!
 """ Store source terms for `uh`, `vh`, and `h`. """
 @kernel function store_solution_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds G⁻[1][i, j, k] = G⁰[1][i, j, k]
-    @inbounds G⁻[2][i, j, k] = G⁰[2][i, j, k]
-    @inbounds G⁻.h[i, j, k]  = G⁰.h[i, j, k]
+    @unroll for t in 1:3
+        @inbounds G⁻[t][i, j, k] = G⁰[t][i, j, k]
+    end
 end
 
 """ Store previous source terms before updating them. """
