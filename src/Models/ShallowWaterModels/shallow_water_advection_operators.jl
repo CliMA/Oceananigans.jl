@@ -51,8 +51,10 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
     + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
 
 # Support for no advection
-@inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
-@inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
+@inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, formulation) where FT = zero(FT)
+@inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, formulation) where FT = zero(FT)
+@inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, ::VectorInvariantFormulation) where FT = zero(FT)
+@inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, ::VectorInvariantFormulation) where FT = zero(FT)
 
 #####
 ##### Mass transport divergence operator
@@ -130,4 +132,4 @@ which will end up at the location `ccc`.
 
 
 # Support for no advection
-@inline c_div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c) where FT = zero(FT)
+@inline c_div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)

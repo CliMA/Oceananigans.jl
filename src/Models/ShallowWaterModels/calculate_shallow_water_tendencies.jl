@@ -72,19 +72,19 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     workgroup, worksize = work_layout(grid, :xyz)
 
-    calculate_Gh_kernel! = calculate_Guh!(device(arch), workgroup, worksize)
+    calculate_Guh_kernel! = calculate_Guh!(device(arch), workgroup, worksize)
     calculate_Gvh_kernel! = calculate_Gvh!(device(arch), workgroup, worksize)
-    calculate_Gh_kernel!  = calculate_Gh!(device(arch), workgroup, worksize)
-    calculate_Gc_kernel!  = calculate_Gc!(device(arch), workgroup, worksize)
+    calculate_Gh_kernel!  =  calculate_Gh!(device(arch), workgroup, worksize)
+    calculate_Gc_kernel!  =  calculate_Gc!(device(arch), workgroup, worksize)
 
     barrier = Event(device(arch))
 
     args = (grid, gravitational_acceleration, advection.momentum, coriolis, closure, 
             bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 
-    Guh_event = calculate_Guh_kernel!(tendencies[1], args...; dependencies = barries)
-    Gvh_event = calculate_Gvh_kernel!(tendencies[2], args...; dependencies = barries)
-    Gh_event  = calculate_Gh_kernel!(tendencies[3],  args...; dependencies = barries)
+    Guh_event = calculate_Guh_kernel!(tendencies[1], args...; dependencies = barrier)
+    Gvh_event = calculate_Gvh_kernel!(tendencies[2], args...; dependencies = barrier)
+    Gh_event  =  calculate_Gh_kernel!(tendencies[3], args...; dependencies = barrier)
 
     events = [Guh_event, Gvh_event, Gh_event]
 
