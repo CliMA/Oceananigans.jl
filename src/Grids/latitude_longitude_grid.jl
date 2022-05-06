@@ -113,6 +113,7 @@ Keyword arguments
                                            (ii) one-dimensional array specifying the cell interface locations or
                                            (iii) a single-argument function that takes an index and returns
                                                  cell interface location.
+
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 
 - `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
@@ -127,6 +128,48 @@ Keyword arguments
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior. The default is 3 halo cells in every direction.
+
+Examples
+========
+
+* A default grid with `Float64` type:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0))
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
+├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+```
+
+* A bounded spherical sector with cell interfaces stretched hyperbolically near the top:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> σ = 1.1; # stretching factor
+
+julia> Nz = 24; # vertical resolution
+
+julia> Lz = 1000; # depth (m)
+
+julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
+                                    longitude = (-180, 180),
+                                    latitude = (-20, 20),
+                                    z = hyperbolically_spaced_faces,
+                                    topology = (Bounded, Bounded, Bounded))
+36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Bounded  λ ∈ [-180.0, 180.0] regularly spaced with Δλ=10.0
+├── latitude:  Bounded  φ ∈ [-20.0, 20.0]   regularly spaced with Δφ=1.17647
+└── z:         Bounded  z ∈ [-1000.0, -0.0] variably spaced with min(Δz)=21.3342, max(Δz)=57.2159
+```
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
@@ -233,7 +276,7 @@ function Base.summary(grid::LatitudeLongitudeGrid)
                   " and ", metric_computation)
 end
 
-function Base.show(io::IO, grid::LatitudeLongitudeGrid)
+function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
@@ -244,16 +287,19 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-    longest = max(length(x_summary), length(y_summary), length(z_summary)) 
+    longest = max(length(x_summary), length(y_summary), length(z_summary))
 
     x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
     y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
-    print(io, summary(grid), '\n',
-          "├── ", x_summary, '\n',
-          "├── ", y_summary, '\n',
-          "└── ", z_summary)
+    if withsummary
+        print(io, summary(grid), '\n')
+    end
+
+    return print(io, "├── ", x_summary, '\n',
+                     "├── ", y_summary, '\n',
+                     "└── ", z_summary)
 end
 
 # Node by node
@@ -525,7 +571,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
-
 #####
 ##### Get minima of grid
 #####
@@ -557,4 +602,3 @@ function min_Δz(grid::LatitudeLongitudeGrid)
         return min_number_or_array(grid.Δzᵃᵃᶜ)
     end
 end
-

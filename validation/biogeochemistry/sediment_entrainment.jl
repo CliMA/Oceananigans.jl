@@ -103,8 +103,8 @@ simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ)),
                      schedule = TimeInterval(1.0),
                      with_halos = false,
-                     prefix = "sediment_entrainment",
-                     force = true)
+                     filename = "sediment_entrainment",
+                     overwrite_existing = true)
 
 run!(simulation)
 

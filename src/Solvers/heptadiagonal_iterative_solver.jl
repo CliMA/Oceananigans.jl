@@ -1,10 +1,12 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array
+using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
+
+import Oceananigans.Grids: architecture
 
 mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                        grid :: G
@@ -19,6 +21,7 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                   tolerance :: T
                 previous_Δt :: F
          maximum_iterations :: Int
+                    verbose :: Bool
 end
 
 """
@@ -91,17 +94,19 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       reduced_dim = (false, false, false), 
                                       placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
-                                      preconditioner_settings = nothing)
+                                      preconditioner_settings = nothing,
+                                      verbose = false)
 
     arch = architecture(grid)
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
-    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of - 1
+    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of 1
     # They will be recalculated before the first time step of the simulation
 
     placeholder_constructors = deepcopy(matrix_constructors)
-    update_diag!(placeholder_constructors, arch, problem_size, diagonal, 1.0)
+    M = prod(problem_size)
+    update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
     
@@ -110,18 +115,21 @@ function HeptadiagonalIterativeSolver(coeffs;
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
     return HeptadiagonalIterativeSolver(grid,
-                                        problem_size, 
-                                        matrix_constructors,
-                                        diagonal,
-                                        placeholder_matrix,
-                                        preconditioner,
-                                        preconditioner_method,
-                                        settings,
-                                        iterative_solver, 
-                                        tolerance,
-                                        placeholder_timestep,
-                                        maximum_iterations)
+                                 problem_size, 
+                                 matrix_constructors,
+                                 diagonal,
+                                 placeholder_matrix,
+                                 preconditioner,
+                                 preconditioner_method,
+                                 settings,
+                                 iterative_solver, 
+                                 tolerance,
+                                 placeholder_timestep,
+                                 maximum_iterations,
+                                 verbose)
 end
+
+architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
 
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
@@ -130,6 +138,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ay = arch_array(CPU(), Ay)
     Az = arch_array(CPU(), Az)
     C  = arch_array(CPU(), C)
+    D  = arch_array(arch,  D)
 
     N = size(grid)
 
@@ -290,7 +299,8 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     # update matrix and preconditioner if time step changes
     if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
-        update_diag!(constructors, arch, solver.problem_size, solver.diagonal, Δt)
+        M = prod(solver.problem_size)
+        update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
 
         solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
@@ -300,14 +310,9 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         solver.previous_Δt = Δt
     end
     
-    #q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose=true)
-    #q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, verbose=true)
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
-    
-    set!(x, reshape(q, solver.problem_size...))
-    fill_halo_regions!(x) 
+    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose = solver.verbose)
 
-    return
+    return q
 end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
@@ -316,5 +321,6 @@ function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "├── Grid: "  , solver.grid, '\n')
     print(io, "├── Solution method: ", solver.iterative_solver, '\n')
     print(io, "└── Preconditioner: ", solver.preconditioner_method)
+    
     return nothing
 end

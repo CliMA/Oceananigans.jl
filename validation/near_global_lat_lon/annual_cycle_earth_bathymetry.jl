@@ -3,8 +3,10 @@ using JLD2
 using Printf
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Utils
 
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.MultiRegion
+using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
@@ -83,9 +85,6 @@ for month in 1:Nmonths
 end
 
 bathymetry = arch_array(arch, bathymetry_data)
-τˣ = arch_array(arch, τˣ)
-τʸ = arch_array(arch, τʸ)
-target_sea_surface_temperature = T★ = arch_array(arch, T★)
 
 H = 3600.0
 # H = - minimum(bathymetry)
@@ -103,6 +102,14 @@ H = 3600.0
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+
+τˣ = multi_region_object_from_array(- τˣ, mrg)
+τʸ = multi_region_object_from_array(- τʸ, mrg)
+
+target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
 
 #####
 ##### Physics and model setup
@@ -161,8 +168,8 @@ T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
     return cyclic_interpolate(τ₁, τ₂, time)
 end
 
-u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τˣ)
-v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τʸ)
+u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τˣ)
+v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τʸ)
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
@@ -198,9 +205,11 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
                                    preconditioner_settings = (ε = 0.01, nzrel = 10))
 
+free_surface = ExplicitFreeSurface()
+
 equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     free_surface = free_surface,
                                     momentum_advection = WENO5(vector_invariant=VelocityStencil()),
                                     tracer_advection = WENO5(),
@@ -223,19 +232,7 @@ T .= -1
 ##### Simulation setup
 #####
 
-# Time-scale for gravity wave propagation across the smallest grid cell
-g = model.free_surface.gravitational_acceleration
-gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-    
-minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ[1:grid.Ny])) * deg2rad(grid.Δλᶜᵃᵃ))
-minimum_Δy = abs(grid.radius * deg2rad(grid.Δφᵃᶜᵃ))
-wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
-
-if model.free_surface isa ExplicitFreeSurface
-    Δt = 60seconds
-else
-    Δt = 20minutes
-end
+Δt = 60 #20minutes
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
 
@@ -246,10 +243,10 @@ function progress(sim)
 
     η = model.free_surface.η
     u = model.velocities.u
-    @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    maximum(abs, η), maximum(abs, u),
+                    # maximum(abs, η), maximum(abs, u),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -268,7 +265,7 @@ save_interval = 5days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, η),
                                                               schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
+                                                              filename = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
                                                               overwrite_existing = true)
 

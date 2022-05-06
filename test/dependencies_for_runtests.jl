@@ -33,6 +33,7 @@ using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
+using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
 
 using Oceananigans: Clock

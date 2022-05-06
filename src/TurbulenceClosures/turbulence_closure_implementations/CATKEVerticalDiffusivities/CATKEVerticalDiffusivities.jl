@@ -8,7 +8,7 @@ using Oceananigans.Grids
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: ZeroField
-using Oceananigans.BoundaryConditions: default_prognostic_bc
+using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -131,9 +131,9 @@ end
 
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
-    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Face)),
+                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Face)),
+                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Face)))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
@@ -148,6 +148,9 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     return (; Kᵘ, Kᶜ, Kᵉ, Lᵉ, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
+
+@inline viscosity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
@@ -176,35 +179,35 @@ end
     closure_ij = getclosure(i, j, closure)
 
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
         diffusivities.Lᵉ[i, j, k] = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, args...)
     end
 end
 
 @inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
-    return L[i, j, k]
+    return @inbounds L[i, j, k]
 end
 
 @inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(max(zero(eltype(grid)), e[i, j, k]))
 
-@inline function Kuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = turbulent_velocity(i, j, k, grid, tracers.e)
-    ℓu = momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+@inline function Kuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
+    ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     return ℓu * u★
 end
 
-@inline function Kcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = turbulent_velocity(i, j, k, grid, tracers.e)
-    ℓc = tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+@inline function Kcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
+    ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     return ℓc * u★
 end
 
-@inline function Keᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    u★ = turbulent_velocity(i, j, k, grid, tracers.e)
-    ℓe = TKE_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+@inline function Keᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+    u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
+    ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     return ℓe * u★
 end
 

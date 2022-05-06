@@ -232,7 +232,7 @@ output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(10days),
-                                                      prefix = output_prefix,
+                                                      filename = output_prefix,
                                                       overwrite_existing = true)
 
 # Let's goo!
