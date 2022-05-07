@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture
 
