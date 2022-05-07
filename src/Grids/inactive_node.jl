@@ -58,9 +58,9 @@ for PrimaryTopo in Topos
         yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz)))
 
         @eval begin
-            XYBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$SecondaryTopo}
-            XZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:Any, <:$SecondaryTopo}
-            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo, <:$SecondaryTopo}
+            XYBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo}
+            XZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:Any, <:$SecondaryTopo}
+            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$PrimaryTopo, <:$SecondaryTopo}
 
             @inline inactive_cell(i, j, k, grid::XYBoundedGrid) = $xycondition
             @inline inactive_cell(i, j, k, grid::XZBoundedGrid) = $xzcondition
@@ -71,7 +71,7 @@ for PrimaryTopo in Topos
             xyzcondition = :( $xycondition | $(build_condition(TeritiaryTopo, :k, :Nz)))
 
             @eval begin
-                XYZBoundedGrid = AbstractGrid{<:Any, <:$Topo, <:$SecondaryTopo, <:$TertiaryTopo}
+                XYZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo, <:$TertiaryTopo}
 
                 @inline inactive_cell(i, j, k, grid::XYZBoundedGrid) = $xyzcondition
             end
