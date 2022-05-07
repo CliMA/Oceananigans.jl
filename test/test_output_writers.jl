@@ -32,8 +32,8 @@ function test_output_construction(model)
     @test construct_output(u_sliced2, model.grid, indices1, false) isa Field
     @test construct_output(u_sliced2, model.grid, indices2, false) isa Field
 
-    @test parent(u_sliced2) != parent(construct_output(u_sliced1, model.grid, indices2, false)) # u_sliced2 should have halo regions
-    @test parent(u_sliced2) == parent(construct_output(u_sliced1, model.grid, indices2, true)) # both should have halo regions
+    @test indices(u_sliced2) != indices(construct_output(u_sliced1, model.grid, indices2, false)) # u_sliced2 should have halo regions
+    @test indices(u_sliced2) == indices(construct_output(u_sliced1, model.grid, indices2, true)) # both should have halo regions
 
 
     # Now we test abstract operations
@@ -53,8 +53,8 @@ function test_output_construction(model)
     @test construct_output(op_sliced2, model.grid, indices1, false) isa Field
     @test construct_output(op_sliced2, model.grid, indices2, false) isa Field
 
-    @test parent(op_sliced2) != parent(construct_output(op_sliced1, model.grid, indices2, false)) # op_sliced2 should have halo regions
-    @test parent(op_sliced2) == parent(construct_output(op_sliced1, model.grid, indices2, true)) # both should have halo regions
+    @test indices(op_sliced2) != indices(construct_output(op_sliced1, model.grid, indices2, false)) # op_sliced2 should have halo regions
+    @test indices(op_sliced2) == indices(construct_output(op_sliced1, model.grid, indices2, true)) # both should have halo regions
 
     return nothing
 end
