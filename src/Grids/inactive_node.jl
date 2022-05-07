@@ -30,6 +30,9 @@ which lie _on_ the boundary are considered active.
 
 # We use metaprogramming to handle all the permutations between
 # Bounded, LeftConnected, and RightConnected topologies.
+# Note that LeftConnected is equivalent to "RightBounded" and
+# RightConnected is equivalent to "LeftBounded".
+# So LeftConnected and RightConnected are "half Bounded" topologies.
 Topos = (:Bounded, :LeftConnected, :RightConnected)
 
 for PrimaryTopo in Topos
