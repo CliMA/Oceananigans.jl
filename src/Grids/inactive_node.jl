@@ -32,16 +32,16 @@ which lie _on_ the boundary are considered active.
 # Bounded, LeftConnected, and RightConnected topologies.
 Topos = (:Bounded, :LeftConnected, :RightConnected)
 
-for PrimaryTopo in PrimaryTopos
+for PrimaryTopo in Topos
 
     xcondition = build_condition(PrimaryTopo, :i, :Nx)
     ycondition = build_condition(PrimaryTopo, :j, :Ny)
     zcondition = build_condition(PrimaryTopo, :k, :Nz)
 
     @eval begin
-        XBoundedGrid = AbstractGrid{<:Any, <:$Topo}
-        YBoundedGrid = AbstractGrid{<:Any, <:Any, <:$Topo}
-        ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$Topo}
+        XBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo}
+        YBoundedGrid = AbstractGrid{<:Any, <:Any, <:$PrimaryTopo}
+        ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$PrimaryTopo}
 
         @inline inactive_cell(i, j, k, grid::XBoundedGrid) = $xcondition
         @inline inactive_cell(i, j, k, grid::YBoundedGrid) = $ycondition
