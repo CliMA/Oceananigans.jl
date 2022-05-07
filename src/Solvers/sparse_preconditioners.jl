@@ -83,7 +83,7 @@ function build_preconditioner(::Val{:ILUFactorization},  A, settings)
     end
 end
 
-@inline architecture(::CuSparseMatrixCSC) = GPU()
+@inline architecture(::CuSparseMatrixCSC) = CUDAGPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
 
 abstract type AbstractInversePreconditioner{M} end

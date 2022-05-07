@@ -1,6 +1,7 @@
 using Pkg
 using InteractiveUtils
 using Oceananigans.Architectures
+using AMDGPU
 
 function versioninfo_with_gpu()
     s = sprint(versioninfo)
