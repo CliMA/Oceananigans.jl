@@ -7,6 +7,7 @@ using Base.Broadcast: Broadcasted
 using CUDA
 
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: launch!
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
