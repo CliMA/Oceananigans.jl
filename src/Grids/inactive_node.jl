@@ -82,19 +82,15 @@ region of the grid.
 """
 @inline inactive_node(LX, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
 
-@inline inactive_node(::Face, ::Center, ::Center, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i-1, j, k, grid)
-@inline inactive_node(::Center, ::Face, ::Center, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i, j-1, k, grid)
-@inline inactive_node(::Center, ::Center, ::Face, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+@inline inactive_node(::Face, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i-1, j, k, grid)
+@inline inactive_node(LX, ::Face, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i, j-1, k, grid)
+@inline inactive_node(LX, LY, ::Face, i, j, k, grid) = inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
 
-@inline inactive_node(::Face, ::Face, ::Center, i, j, k, grid) = inactive_node(c, f, c, i, j, k, grid) & inactive_node(c, f, c, i-1, j, k, grid)
-@inline inactive_node(::Face, ::Center, ::Face, i, j, k, grid) = inactive_node(c, c, f, i, j, k, grid) & inactive_node(c, c, f, i-1, j, k, grid)
-@inline inactive_node(::Center, ::Face, ::Face, i, j, k, grid) = inactive_node(c, f, c, i, j, k, grid) & inactive_node(c, f, c, i, j, k-1, grid)
+@inline inactive_node(::Face, ::Face, LZ, i, j, k, grid) = inactive_node(c, f, c, i, j, k, grid) & inactive_node(c, f, c, i-1, j, k, grid)
+@inline inactive_node(::Face, LY, ::Face, i, j, k, grid) = inactive_node(c, c, f, i, j, k, grid) & inactive_node(c, c, f, i-1, j, k, grid)
+@inline inactive_node(LX, ::Face, ::Face, i, j, k, grid) = inactive_node(c, f, c, i, j, k, grid) & inactive_node(c, f, c, i, j, k-1, grid)
 
 @inline inactive_node(::Face, ::Face, ::Face, i, j, k, grid) = inactive_node(c, f, f, i, j, k, grid) & inactive_node(c, f, f, i-1, j, k, grid)
-
-@inline inactive_node(::Flat, LY, LZ, i, j, k, grid) = inactive_node(c, LY, LZ, i, j, k, grid)
-@inline inactive_node(LX, ::Flat, LZ, i, j, k, grid) = inactive_node(LX, c, LZ, i, j, k, grid)
-@inline inactive_node(LX, LY, ::Flat, i, j, k, grid) = inactive_node(LX, LY, c, i, j, k, grid)
 
 """
     peripheral_node(LX, LY, LZ, i, j, k, grid)
@@ -104,19 +100,15 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 """
 @inline peripheral_node(LX, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
 
-@inline peripheral_node(::Face, ::Center, ::Center, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i-1, j, k, grid)
-@inline peripheral_node(::Center, ::Face, ::Center, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i, j-1, k, grid)
-@inline peripheral_node(::Center, ::Center, ::Face, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i, j, k-1, grid)
+@inline peripheral_node(::Face, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i-1, j, k, grid)
+@inline peripheral_node(LX, ::Face, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i, j-1, k, grid)
+@inline peripheral_node(LX, LY, ::Face, i, j, k, grid) = inactive_cell(i, j, k, grid) | inactive_cell(i, j, k-1, grid)
 
-@inline peripheral_node(::Face, ::Face, ::Center, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i-1, j, k, grid)
-@inline peripheral_node(::Face, ::Center, ::Face, i, j, k, grid) = peripheral_node(c, c, f, i, j, k, grid) | peripheral_node(c, c, f, i-1, j, k, grid)
-@inline peripheral_node(::Center, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i, j, k-1, grid)
+@inline peripheral_node(::Face, ::Face, LZ, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i-1, j, k, grid)
+@inline peripheral_node(::Face, LY, ::Face, i, j, k, grid) = peripheral_node(c, c, f, i, j, k, grid) | peripheral_node(c, c, f, i-1, j, k, grid)
+@inline peripheral_node(LX, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, c, i, j, k, grid) | peripheral_node(c, f, c, i, j, k-1, grid)
 
 @inline peripheral_node(::Face, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, f, i, j, k, grid) | peripheral_node(c, f, f, i-1, j, k, grid)
-
-@inline peripheral_node(::Flat, LY, LZ, i, j, k, grid) = peripheral_node(c, LY, LZ, i, j, k, grid)
-@inline peripheral_node(LX, ::Flat, LZ, i, j, k, grid) = peripheral_node(LX, c, LZ, i, j, k, grid)
-@inline peripheral_node(LX, LY, ::Flat, i, j, k, grid) = peripheral_node(LX, LY, c, i, j, k, grid)
 
 """
     boundary_node(LX, LY, LZ, i, j, k, grid)
