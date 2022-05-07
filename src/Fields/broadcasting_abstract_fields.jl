@@ -9,6 +9,7 @@ using AMDGPU
 using Oceananigans.Utils: launch!
 
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: launch!
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
