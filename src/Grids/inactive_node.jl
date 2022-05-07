@@ -92,9 +92,9 @@ region of the grid.
 
 @inline inactive_node(::Face, ::Face, ::Face, i, j, k, grid) = inactive_node(c, f, f, i, j, k, grid) & inactive_node(c, f, f, i-1, j, k, grid)
 
-@inline inactive_node(::Flat, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
-@inline inactive_node(LX, ::Flat, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
-@inline inactive_node(LX, LY, ::Flat, i, j, k, grid) = inactive_cell(i, j, k, grid)
+@inline inactive_node(::Flat, LY, LZ, i, j, k, grid) = inactive_node(c, LY, LZ, i, j, k, grid)
+@inline inactive_node(LX, ::Flat, LZ, i, j, k, grid) = inactive_node(LX, c, LZ, i, j, k, grid)
+@inline inactive_node(LX, LY, ::Flat, i, j, k, grid) = inactive_node(LX, LY, c, i, j, k, grid)
 
 """
     peripheral_node(LX, LY, LZ, i, j, k, grid)
@@ -114,9 +114,9 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 
 @inline peripheral_node(::Face, ::Face, ::Face, i, j, k, grid) = peripheral_node(c, f, f, i, j, k, grid) | peripheral_node(c, f, f, i-1, j, k, grid)
 
-@inline peripheral_node(::Flat, LY, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
-@inline peripheral_node(LX, ::Flat, LZ, i, j, k, grid) = inactive_cell(i, j, k, grid)
-@inline peripheral_node(LX, LY, ::Flat, i, j, k, grid) = inactive_cell(i, j, k, grid)
+@inline peripheral_node(::Flat, LY, LZ, i, j, k, grid) = peripheral_node(c, LY, LZ, i, j, k, grid)
+@inline peripheral_node(LX, ::Flat, LZ, i, j, k, grid) = peripheral_node(LX, c, LZ, i, j, k, grid)
+@inline peripheral_node(LX, LY, ::Flat, i, j, k, grid) = peripheral_node(LX, LY, c, i, j, k, grid)
 
 """
     boundary_node(LX, LY, LZ, i, j, k, grid)
