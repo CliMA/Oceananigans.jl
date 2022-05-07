@@ -76,7 +76,7 @@ Returns an `event` token associated with the `kernel!` launch.
 The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
 that must complete before `kernel!` is launched.
 """
-function launch!(arch, grid, workspec, kernel!, kernel_args...;
+function launch!(arch::AbstractArchitecture, grid, workspec, kernel!, kernel_args...;
                  dependencies = nothing,
                  include_right_boundaries = false,
                  reduced_dimensions = (),
@@ -98,5 +98,5 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 end
 
 # When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
-    launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch::AbstractArchitecture, grid, ::Val{workspec}, args...; kwargs...) where workspec =
+    launch!(arch::AbstractArchitecture, grid, workspec, args...; kwargs...)
