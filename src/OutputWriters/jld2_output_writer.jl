@@ -249,30 +249,42 @@ function write_output!(writer::JLD2OutputWriter, model)
     end
 
     verbose = writer.verbose
-
-    # Fetch JLD2 output and store in dictionary `data`
-    verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
-
-    tc = Base.@elapsed data = Dict((name, fetch_and_convert_output(output, model, writer)) for (name, output)
-                                   in zip(keys(writer.outputs), values(writer.outputs)))
-
-    verbose && @info "Fetching time: $(prettytime(tc))"
-
-    # Start a new file if the filesize exceeds max_filesize
-    filesize(writer.filepath) >= writer.max_filesize && start_next_file(model, writer)
-
-    # Write output from `data`
     path = writer.filepath
-    verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+    current_iteration = model.clock.iteration
+    iteration_exists = false
 
-    start_time, old_filesize = time_ns(), filesize(path)
-    jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-    end_time, new_filesize = time_ns(), filesize(path)
+    # Look before you leap, as they say
+    jldopen(path, "r+"; kwargs...) do file
+        iteration_exists = string(current_iteration) ∈ keys(file["timeseries/t"])
+    end
 
-    verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                              prettytime((end_time - start_time) / 1e9),
-                              pretty_filesize(new_filesize),
-                              pretty_filesize(new_filesize - old_filesize))
+    if iteration_exists
+        @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+    else # ok let's do this
+
+        # Fetch JLD2 output and store in `data`
+        verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
+
+        tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
+                                             in zip(keys(writer.outputs), values(writer.outputs)))
+
+        verbose && @info "Fetching time: $(prettytime(tc))"
+
+        # Start a new file if the filesize exceeds max_filesize
+        filesize(writer.filepath) >= writer.max_filesize && start_next_file(model, writer)
+
+        # Write output from `data`
+        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+
+        start_time, old_filesize = time_ns(), filesize(path)
+        jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        end_time, new_filesize = time_ns(), filesize(path)
+
+        verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                                  prettytime((end_time - start_time) / 1e9),
+                                  pretty_filesize(new_filesize),
+                                  pretty_filesize(new_filesize - old_filesize))
+    end
 
     return nothing
 end
@@ -288,8 +300,8 @@ the JLD2 file.
 function jld2output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
         file["timeseries/t/$iter"] = time
-        for (name, datum) in data
-            file["timeseries/$name/$iter"] = datum
+        for name in keys(data)
+            file["timeseries/$name/$iter"] = data[name]
         end
     end
     return nothing
