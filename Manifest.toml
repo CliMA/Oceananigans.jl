@@ -275,10 +275,10 @@ uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
 version = "4.9.1"
 
 [[LLVMExtra_jll]]
-deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "5558ad3c8972d602451efe9d81c78ec14ef4f5ef"
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
+git-tree-sha1 = "43817483288cdceb8d3258756040a3e63578bb1b"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.14+2"
+version = "0.0.14+3"
 
 [[LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
@@ -427,7 +427,9 @@ version = "0.16.1"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "6a8f42f2fab1b0966ba8e3bada37a6bd416636d3"
+git-tree-sha1 = "2bd4d4d5c88b6294f2e4ae829ccaf254af55aa6f"
+repo-rev = "master"
+repo-url = "https://github.com/jipolanco/PencilFFTs.jl.git"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
 version = "0.13.4"
 
