@@ -159,4 +159,8 @@ include("dependencies_for_runtests.jl")
     if group == :convergence
         include("test_convergence.jl")
     end
+
+    if group == :quick_amd
+        include("test_quick_amd.jl")
+    end
 end
