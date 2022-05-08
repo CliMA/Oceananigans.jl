@@ -200,10 +200,10 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
 
     if using_tridiagonal_vertical_solver
-        rx, ry, rx = arch.local_index
-        ℓNx, ℓNy, ℓNz = size(local_grid) # probably don't need this
-        local_λx = partition(λx, gNx, ℓNx, rx)
-        local_λy = partition(λy, gNy, ℓNy, ry)
+        ri, ri, rk = arch.local_index
+        nx, ny, nz = size(local_grid) # probably don't need this
+        local_λx = partition(λx, nx, Rx, ri)
+        local_λy = partition(λy, ny, Rx, rj)
         lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(local_grid, local_λx, local_λy)
         tridiagonal_vertical_solver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal)
         tridiagonal_storage = zeros(eltype(first(transposition_storage)), child_architecture(local_grid), size(local_grid)...)
