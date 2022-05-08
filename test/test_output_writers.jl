@@ -8,6 +8,7 @@ using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.OutputWriters: construct_output
+using Oceananigans.Fields: indices
 
 
 function test_output_construction(model)
