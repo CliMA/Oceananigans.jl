@@ -254,7 +254,7 @@ function write_output!(writer::JLD2OutputWriter, model)
     iteration_exists = false
 
     # Look before you leap, as they say
-    jldopen(path, "r+"; kwargs...) do file
+    jldopen(path, "r+"; writers.jld2_kw...) do file
         iteration_exists = string(current_iteration) ∈ keys(file["timeseries/t"])
     end
 
