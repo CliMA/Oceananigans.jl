@@ -8,12 +8,12 @@ import Oceananigans.Architectures: architecture
 A batched solver for large numbers of triadiagonal systems.
 """
 struct BatchedTridiagonalSolver{A, B, C, T, G, P}
-               a :: A
-               b :: B
-               c :: C
-               t :: T
-            grid :: G
-      parameters :: P
+    a :: A
+    b :: B
+    c :: C
+    grid :: G
+    scratch :: T
+    parameters :: P
 end
 
 architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
@@ -50,7 +50,7 @@ function BatchedTridiagonalSolver(grid;
                                   parameters = nothing)
 
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    scratch, grid, parameters)
+                                    grid, scratch, parameters)
 end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
@@ -73,8 +73,9 @@ Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver))) 
 
-    a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
+    a, b, c, parameters = solver.a, solver.b, solver.c, solver.parameters
     grid = solver.grid
+    scratch = solver.scratch
 
     event = launch!(architecture(solver), grid, :xy,
                     solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
@@ -88,35 +89,36 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, rhs, scratch, grid, p, args...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)
 
     @inbounds begin
         β  = get_coefficient(b, i, j, 1, grid, p, args...)
-        f₁ = get_coefficient(f, i, j, 1, grid, p, args...)
-        ϕ[i, j, 1] = f₁ / β
+        rhs₁ = get_coefficient(rhs, i, j, 1, grid, p, args...)
+        ϕ[i, j, 1] = rhs₁ / β
 
         @unroll for k = 2:Nz
             cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, args...)
             bᵏ   = get_coefficient(b, i, j, k,   grid, p, args...)
             aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, args...)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
+            scratch[i, j, k] = cᵏ⁻¹ / β
+            β = bᵏ - aᵏ⁻¹ * scratch[i, j, k]
 
-            fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
+            rhsᵏ = get_coefficient(rhs, i, j, k, grid, p, args...)
             
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+
+            ϕ[i, j, k] = (rhsᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
         @unroll for k = Nz-1:-1:1
-            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
+            ϕ[i, j, k] -= scratch[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
 end
