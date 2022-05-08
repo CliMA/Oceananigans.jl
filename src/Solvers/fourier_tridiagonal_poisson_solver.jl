@@ -17,18 +17,21 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
 
-    # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[i, j, 1] = -1 / Δzᶜᶜᶠ(i, j, 2, grid) - Δzᶜᶜᶜ(i, j, 1, grid) * (λx[i] + λy[j])
+    @inbounds begin
+        # Using a homogeneous Neumann (zero Gradient) boundary condition:
+        D[i, j, 1] = -1 / Δzᶜᶜᶠ(i, j, 2, grid) - Δzᶜᶜᶜ(i, j, 1, grid) * (λx[i] + λy[j])
 
-    @unroll for k in 2:Nz-1
-        D[i, j, k] = - (1 / Δzᶜᶜᶠ(i, j, k+1, grid) + 1 / Δzᶜᶜᶠ(i, j, k, grid)) - Δzᶜᶜᶜ(i, j, k, grid) * (λx[i] + λy[j])
+        @unroll for k in 2:Nz-1
+            D[i, j, k] = - (1 / Δzᶜᶜᶠ(i, j, k+1, grid) + 1 / Δzᶜᶜᶠ(i, j, k, grid)) - Δzᶜᶜᶜ(i, j, k, grid) * (λx[i] + λy[j])
+        end
+
+        D[i, j, Nz] = -1 / Δzᶜᶜᶠ(i, j, Nz, grid) - Δzᶜᶜᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
     end
-
-    D[i, j, Nz] = -1 / Δzᶜᶜᶠ(i, j, Nz, grid) - Δzᶜᶜᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
 function compute_batched_tridiagonals(grid, λx, λy)
     # Lower and upper diagonals are identical and independent of (i, j)
+    Nx, Ny, Nz = size(grid)
     lower_diagonal = CUDA.@allowscalar [1 / Δzᶜᶜᶠ(1, 1, k, grid) for k in 2:Nz]
     lower_diagonal = arch_array(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
