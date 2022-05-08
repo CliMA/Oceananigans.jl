@@ -3,7 +3,7 @@ using PencilArrays: Permutation
 using PencilFFTs: PencilFFTPlan
 import FFTW
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver
+import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver, compute_batched_tridiagonals
 import Oceananigans.Architectures: architecture
 
 struct DistributedFFTBasedPoissonSolver{T, P, F, L, λ, R, I, ST, SD}
@@ -108,17 +108,23 @@ succeeds (ie, why the last transform is correctly decomposed).
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-    # Check input:
-    #     1. Number of ranks in vertical must be 1 (for now).
-    #     2. If vertically-stretched, we'll use a tridiagonal solve in the vertical.
-    
     arch = architecture(local_grid)
     Rx, Ry, Rz = arch.ranks
     communicator = arch.communicator
+    gNx, gNy, gNz = size(global_grid)
 
-    # We don't support distributing anything in z.
+    # Check input:
+    #     1. Number of ranks in vertical must be 1 (for now).
+    #     2. If vertically-stretched, we'll use a tridiagonal solve in the vertical.
+    #     3. If using a two-dimensional process grid, the vertical dimension must be
+    #        large enough to support the required transposes (either Nz > Rx or Nz > Ry).
+
     Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
     two_dimensional_decomposition = Rx > 1 && Ry > 1
+    two_dimensional_decomposition && gNz < Rx && gNz < Ry &&
+        throw(ArgumentError("DistributedFFTBasedPoissonSolver requires either " *
+                            "i) Nz > Rx, ii) Nz > Ry, or iii) a one-dimensional process grid with Rx = 1 or Ry = 1."))
+
     using_tridiagonal_vertical_solver = !(global_grid isa RegRectilinearGrid) 
 
     # Build _global_ eigenvalues
@@ -127,26 +133,19 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Neuter transforms and eigenvalues in vertical direction if using tridiagonal vertical solve
     effective_topology = using_tridiagonal_vertical_solver ? (TX(), TY(), Flat()) :
                                                              (TX(), TY(), TZ())
-
-    gNx, gNy, gNz = size(global_grid)
     
     if two_dimensional_decomposition
-
         if gNz >= Rx 
             input_permutation = Permutation(3, 1, 2)
             permuted_size = (gNz, gNx, gNy)
             processors_per_dimension = (Rx, Ry)
             extra_dims = ()
-        elseif gNz >= Ry
+        else # gNz >= Ry
             input_permutation = Permutation(3, 2, 1)
             permuted_size = (gNz, gNy, gNx)
             processors_per_dimension = (Ry, Rx)
             extra_dims = ()
-        else
-            throw(ArgumentError("DistributedFFTBasedPoissonSolver requires either " *
-                                "i) Nz > Rx, ii) Nz > Ry, iii) Rx = 1 _or_ iv) Ry = 1."))
         end
-
     else # one-dimensional decomposition
 
         if Rx == 1 # x-local, y-distributed
@@ -158,26 +157,36 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
             input_permutation = Permutation(2, 1, 3)
             processors_per_dimension = (Rx, 1)
         end
-
-        if effective_topology[3] isa Flat
-            # If the _effective_ z-topology is Flat --- which occurs either because topology(global_grid, 3)
-            # is actually Flat, or because we are using_tridiagonal_vertical_solver --- we use "extra_dims"
-            # to represent the vertical (3rd) dimension to avoid needless transform / permutation.
-            #
-            # With this option, we have to remove the last element from both the permuted size and process grid.
-            # Note that setting extra_dims = tuple(gNz) means that input / storage will have size (N1, N2, gNz).
-            extra_dims = tuple(gNz)
-            permuted_size = permuted_size[1:2]
-            processors_per_dimension = tuple(processors_per_dimension[1]) 
-        else
-            extra_dims = ()
-        end
     end
 
-    # Reduce inputs for vertical tridiagonal solver
-    Ntransforms = length(permuted_size)
-    transform_dimensions = Tuple(input_permutation[i] for i = 1:Ntransforms)
-    transforms = Tuple(infer_transform(effective_topology[d]) for d in transform_dimensions)
+    # Create eigenvalues for permutation
+    λx = poisson_eigenvalues(gNx, global_grid.Lx, 1, effective_topology[1])
+    λy = poisson_eigenvalues(gNy, global_grid.Ly, 2, effective_topology[2])
+    λz = poisson_eigenvalues(gNz, global_grid.Lz, 3, effective_topology[3])
+
+    # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
+    λx = dropdims(λx, dims=(2, 3))
+    λy = dropdims(λy, dims=(1, 3))
+    λz = dropdims(λz, dims=(1, 2))
+
+    permuted_eigenvalues = Tuple((λx, λy, λz)[d] for d in Tuple(input_permutation))
+    transforms = Tuple(infer_transform(effective_topology[d]) for d in Tuple(input_permutation))
+
+    # If the _effective_ z-topology is Flat --- which occurs either because topology(global_grid, 3)
+    # is actually Flat, or because we are using_tridiagonal_vertical_solver --- we use "extra_dims"
+    # to represent the vertical (3rd) dimension to avoid needless transform / permutation.
+    #
+    # With this option, we have to remove the last element from both the permuted size and process grid.
+    # Note that setting extra_dims = tuple(gNz) means that input / storage will have size (N1, N2, gNz).
+    if effective_topology[3] isa Flat && !two_dimensional_decomposition # this is enforced above as well
+        extra_dims = tuple(gNz)
+        permuted_size = permuted_size[1:2]
+        processors_per_dimension = tuple(processors_per_dimension[1]) 
+        permuted_eigenvalues = permuted_eigenvalues[1:2]
+        transforms = transforms[1:2]
+    else
+        extra_dims = ()
+    end
 
     @info "Building PencilFFTPlan with transforms $transforms, process grid $processors_per_dimension, and extra_dims $extra_dims..."
     plan = PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator; extra_dims)
@@ -188,6 +197,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
     unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
+        
 
     if using_tridiagonal_vertical_solver
         lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(grid, λx, λy)
@@ -197,20 +207,6 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
         tridiagonal_vertical_solver = nothing
         tridiagonal_storage = nothing
     end
-    
-    # Permute the λ appropriately
-    λx = poisson_eigenvalues(gNx, global_grid.Lx, 1, effective_topology[1])
-    λy = poisson_eigenvalues(gNy, global_grid.Ly, 2, effective_topology[2])
-    λz = poisson_eigenvalues(gNz, global_grid.Lz, 3, effective_topology[3])
-
-    # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
-    λx = dropdims(λx, dims=(2, 3))
-    λy = dropdims(λy, dims=(1, 3))
-    λz = dropdims(λz, dims=(1, 2))
-
-    unpermuted_eigenvalues = (λx, λy, λz)
-    permuted_eigenvalues = Tuple(unpermuted_eigenvalues[d] for d in Tuple(input_permutation))
-    eigenvalues = PencilFFTs.localgrid(last(transposition_storage), permuted_eigenvalues)
 
     return DistributedFFTBasedPoissonSolver(plan,
                                             global_grid,
@@ -234,7 +230,13 @@ right-hand-side, `b̂ = last(solver.transposition_storage)` to store the solutio
 function solve_transformed_poisson_equation!(solver)
     x̂ = b̂ = last(solver.transposition_storage)
     λ = solver.eigenvalues
-    @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
+
+    # It's a little better than writing @. x̂ = - b / +(λ...)
+    if length(λ) == 3
+        @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
+    elseif length(λ) == 2
+        @. x̂ = - b̂ / (λ[1] + λ[2])
+    end
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
