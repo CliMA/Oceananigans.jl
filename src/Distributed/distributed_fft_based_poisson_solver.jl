@@ -45,7 +45,7 @@ We support two "modes":
 
 Above, `Nz = size(global_grid, 3)` and `Rx, Ry, Rz = architecture(local_grid).ranks`.
 
-Other configurations that are decomposed in (x, y) but have too few Nz,
+Other configurations that are decomposed in (x, y) but have too few `Nz`,
 or any configuration decomposed in z, are not supported.
 
 Algorithm for two-dimensional decompositions
