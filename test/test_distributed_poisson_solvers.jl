@@ -55,7 +55,7 @@ function random_divergent_source_term(grid)
 end
 
 function divergence_free_poisson_solution(local_grid)
-    
+    arch = architecture(local_grid) 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
