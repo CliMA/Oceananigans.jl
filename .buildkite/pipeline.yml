@@ -577,7 +577,7 @@ steps:
     commands:
       - "pwd"
       - "env"
-      - "srun -p sched_system_penguin  --mem=500G --time=12:00:00 --gres=gpu:8 --pty /opt/rocm/bin/rocm-smi"
+      - "srun -p sched_system_penguin  -N 1 --mem=500G --time=12:00:00 --gres=gpu:8 --pty /opt/rocm/bin/rocm-smi"
       - "hostname"
       - "echo hi"
     agents:
