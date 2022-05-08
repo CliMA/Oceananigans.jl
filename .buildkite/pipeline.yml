@@ -568,6 +568,24 @@ steps:
     depends_on: "init_cpu"
 
 #####
+##### AMD GPU WIP
+#####
+  - label: "AMD GPU"
+    env:
+      JULIA_DEPOT_PATH: "foo"
+      TEST_GROUP: "foo"
+    commands:
+      - "pwd"
+      - "env"
+      - "srun -p sched_system_penguin  --mem=500G --time=12:00:00 --gres=gpu:8 --pty /opt/rocm/bin/rocm-smi"
+      - "hostname"
+      - "echo hi"
+    agents:
+      queue: Oceananigans
+      architecture: AMDGPU
+
+
+#####
 ##### Scripts
 #####
 
