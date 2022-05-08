@@ -37,8 +37,7 @@ Supported configurations
 
 We support two "modes":
 
-    1. Two-dimensional decompositions in (x, y) for problems with either
-       `Nz > Rx` or `Nz > Ry` (therefore, three-dimensional).
+    1. Vertical pencil decompositions: two-dimensional decompositions in (x, y) for three dimensional problems (either `Nz > Rx` or `Nz > Ry`).
 
     2. One-dimensional decompositions in either x or y for problems that are
        either two-dimensional, or have limited dimensionality in z.
