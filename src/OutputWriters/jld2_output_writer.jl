@@ -218,13 +218,14 @@ end
 initialize_jld2_file!(writer::JLD2OutputWriter, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
-function iteration_zero_exists(filepath)
+function iteration_exists(filepath, iter=0)
     file = jldopen(filepath, "r")
 
     zero_exists = try
-        t₀ = file["timeseries/t/0"]
+        t₀ = file["timeseries/t/$iter"]
         true
-    catch
+    catch # This can fail for various reasons:
+          #     the path does not exist, "t" does not exist...
         false
     finally
         close(file)
@@ -235,31 +236,21 @@ end
 
 function write_output!(writer::JLD2OutputWriter, model)
 
-    # Catch an error that occurs when a simulation is initialized but not time-stepped:
-    if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
-        if writer.overwrite_existing
-            # Re-initialize file:
-            rm(writer.filepath, force=true)
-            initialize_jld2_file!(writer, model)
-        else
-            error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
-                  re-initialized. Use `overwrite_existing=true` when constructing JLD2OutputWriter to
-                  replace any existing files and avoid this error.")
-        end
-    end
-
     verbose = writer.verbose
     path = writer.filepath
     current_iteration = model.clock.iteration
-    iteration_exists = false
 
-    # Look before you leap, as they say
-    jldopen(path, "r+"; writer.jld2_kw...) do file
-        iteration_exists = "t" ∈ keys(file["timeseries"]) && string(current_iteration) ∈ keys(file["timeseries/t"])
-    end
+    # Some logic to handle writing to existing files
+    if iteration_exists(path, current_iteration)
 
-    if iteration_exists
-        @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+        if writer.overwrite_existing
+            # Something went wrong, so we remove the file re-initialize it.
+            rm(path, force=true)
+            initialize_jld2_file!(writer, model)
+        else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
+            @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+        end
+
     else # ok let's do this
 
         # Fetch JLD2 output and store in `data`
@@ -271,7 +262,8 @@ function write_output!(writer::JLD2OutputWriter, model)
         verbose && @info "Fetching time: $(prettytime(tc))"
 
         # Start a new file if the filesize exceeds max_filesize
-        filesize(writer.filepath) >= writer.max_filesize && start_next_file(model, writer)
+        filesize(path) >= writer.max_filesize && start_next_file(model, writer)
+        path = writer.filepath # we might have a new path...
 
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
