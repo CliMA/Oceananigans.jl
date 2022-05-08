@@ -51,19 +51,21 @@ or any configuration decomposed in z, are not supported.
 Algorithm for two-dimensional decompositions
 ============================================
 
-When decomposition in two-dimensions for a three-dimensional problem,
+For two-dimensional decompositions (useful for three-dimensional problems),
 there are three forward transforms, three backward transforms,
-and 4 transpositions requiring MPI communication. In the following schematic, the first
-dimension is always the local dimension. The following algorithm requires that `Nz > Rx`,
-where `Nz` is the number of vertical cells and `Rx` is the number of ranks in x.
-For `Nz < Rx` but `Nz > Ry`, a similar algorithm applies with x and y swapped:
+and four transpositions requiring MPI communication. In the schematic below, the first
+dimension is always the local dimension. In our implementation of the PencilFFTs algorithm,
+we require _either_ `Nz >= Rx`, _or_ `Nz >= Ry`, where `Nz` is the number of vertical cells,
+`Rx` is the number of ranks in x, and `Ry` is the number of ranks in `y`.
+Below, we outline the algorithm for the case `Nz >= Rx`.
+If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
 
 1. `first(storage)` is initialized with layout (z, x, y).
 2. Transform along z.
 3  Transpose + communicate to storage[2] in layout (x, z, y),
    which is distributed into `(Rx, Ry)` processes in (z, y).
 4. Transform along x.
-5  Transpose + communicate to last(storage) in layout (y, x, z),
+5. Transpose + communicate to last(storage) in layout (y, x, z),
    which is distributed into `(Rx, Ry)` processes in (x, z).
 6. Transform in y.
 
@@ -87,7 +89,8 @@ _or_ `Ry = 1`, and is important to support two-dimensional transforms.
 
 For one-dimensional decompositions, we place the decomposed direction _last_.
 If the number of ranks is `Rh = max(Rx, Ry)`, this algorithm requires that 
-_both_ `Nx > Rh` _and_ `Ny > Rh`. It remains somewhat of a mystery why this
+_both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transforms
+is similar to the two-dimensional case. It remains somewhat of a mystery why this
 succeeds (ie, why the last transform is correctly decomposed).
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
