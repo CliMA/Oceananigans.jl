@@ -187,10 +187,6 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
-
-    @show summary(permuted_right_hand_side)
-    @show summary(parent(permuted_right_hand_side))
-
     unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
 
     if using_tridiagonal_vertical_solver
