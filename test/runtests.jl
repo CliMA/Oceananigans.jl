@@ -167,6 +167,10 @@ CUDA.allowscalar() do
     if group == :convergence
         include("test_convergence.jl")
     end
+
+    if group == :quick_amd
+        include("test_quick_amd.jl")
+    end
 end
 
 end #CUDA.allowscalar()
