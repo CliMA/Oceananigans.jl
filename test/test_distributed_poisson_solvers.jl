@@ -26,17 +26,6 @@ MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Distributed: reconstruct_global_grid
-using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
-
-@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds permuted_ϕ[k, j, i] = ϕ[i, j, k]
-end
-
-@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZXYPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds permuted_ϕ[k, i, j] = ϕ[i, j, k]
-end
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -65,11 +54,8 @@ function random_divergent_source_term(grid)
     return R
 end
 
-function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
-    topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=ranks, topology = topo)
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
-
+function divergence_free_poisson_solution(local_grid)
+    
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
@@ -82,14 +68,15 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Solve it
-    ϕc = first(solver.storage)
+    solver_rhs = solver.unpermuted_right_hand_side
 
-    event = launch!(arch, local_grid, :xyz,
-                    set_distributed_solver_input!, ϕc, R, solver.input_permutation,
-                    dependencies = device_event(arch))
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        @show summary(solver_rhs)    
+        @show size(solver_rhs)    
+        @show size(R)    
+    end
 
-    wait(device(arch), event)
-
+    solver_rhs .= R
     solve!(ϕ, solver)
 
     # "Recompute" ∇²ϕ
@@ -99,20 +86,48 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
+
+    test_topologies = [(Periodic, Periodic, Periodic),
+                       (Periodic, Periodic, Bounded),
+                       (Periodic, Bounded, Bounded),
+                       (Bounded, Bounded, Bounded)]
+
     @info "  Testing 3D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (2, 2, 1))
+    for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
+        for size in [(44, 32, 8), (24, 44, 16)]
+            for topology in test_topologies
+                arch = MultiArch(CPU(); ranks, topology)
+
+                # Regular grid
+                local_grid = RectilinearGrid(arch; topology, size, extent=(1, 2, 3))
+                @test divergence_free_poisson_solution(local_grid)
+
+                # Vertically-stretched grid
+                if topology[3] != Periodic
+                    Δζ = 1 / size[3]
+                    ζ = 0:Δζ:1
+                    z = ζ.^2
+                    local_grid = RectilinearGrid(arch; topology, size, x=(0, 1), y=(0, 2), z)
+                    @test divergence_free_poisson_solution(local_grid)
+                end
+            end
+        end
+    end
 
     @info "  Testing 2D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (4, 1, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (4, 1, 1))
+    for ranks in [(1, 4, 1), (4, 1, 1)]
+        for topology in test_topologies
+            arch = MultiArch(CPU(); ranks, topology)
+            local_grid = RectilinearGrid(arch; topology, size=(44, 32, 1), extent=(1, 2, 3))
+            @test divergence_free_poisson_solution(local_grid)
+        end
+    end
 
-    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
-    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
+    # Test that we throw an error when attempting (x, y) decomposition of 2D problem
+    topology = (Periodic, Periodic, Bounded)
+    arch = MultiArch(CPU(); ranks=(2, 2, 1), topology)
+    local_grid = RectilinearGrid(arch; topology, size=(44, 32, 1), extent=(1, 2, 3))
+    @test_throws ArgumentError divergence_free_poisson_solution(local_grid)
+    @test_throws ArgumentError divergence_free_poisson_solution(local_grid)
 end
 

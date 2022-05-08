@@ -1,11 +1,12 @@
 import PencilFFTs
-using PencilArrays: Permutation, transpose!
-using PencilFFTs: transpose!, PencilFFTPlan
+using PencilArrays: Permutation
+using PencilFFTs: PencilFFTPlan
+import FFTW
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve!
+import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver
 import Oceananigans.Architectures: architecture
 
-struct DistributedFFTBasedPoissonSolver{T, P, F, L, λ, R, I, ST, T, SD}
+struct DistributedFFTBasedPoissonSolver{T, P, F, L, λ, R, I, ST, SD}
     plan :: P
     global_grid :: F
     local_grid :: L
@@ -13,7 +14,7 @@ struct DistributedFFTBasedPoissonSolver{T, P, F, L, λ, R, I, ST, T, SD}
     unpermuted_right_hand_side :: R
     input_permutation :: I
     transposition_storage :: ST
-    batched_tridiagonal_solver :: T
+    tridiagonal_vertical_solver :: T
     tridiagonal_storage :: SD
 end
 
@@ -108,75 +109,89 @@ succeeds (ie, why the last transform is correctly decomposed).
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Check input:
-    #     1. If vertically-stretched, we'll use a tridiagonal solve in the vertical.
-    #     2. Number of ranks in vertical must be 1 (for now).
+    #     1. Number of ranks in vertical must be 1 (for now).
+    #     2. If vertically-stretched, we'll use a tridiagonal solve in the vertical.
     
-    using_tridiagonal_vertical_solver = !(global_grid isa RegRectilinearGrid) 
-
     arch = architecture(local_grid)
     Rx, Ry, Rz = arch.ranks
     communicator = arch.communicator
 
     # We don't support distributing anything in z.
     Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
+    two_dimensional_decomposition = Rx > 1 && Ry > 1
+    using_tridiagonal_vertical_solver = !(global_grid isa RegRectilinearGrid) 
 
     # Build _global_ eigenvalues
-    gNx, gNy, gNz = size(global_grid)
     TX, TY, TZ = topology(global_grid)
 
     # Neuter transforms and eigenvalues in vertical direction if using tridiagonal vertical solve
     effective_topology = using_tridiagonal_vertical_solver ? (TX(), TY(), Flat()) :
                                                              (TX(), TY(), TZ())
 
-    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, effective_topology[1])
-    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, effective_topology[2])
-    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, effective_topology[3])
+    gNx, gNy, gNz = size(global_grid)
+    
+    if two_dimensional_decomposition
 
-    # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
-    λx = dropdims(λx, dims=(2, 3))
-    λy = dropdims(λy, dims=(1, 3))
-    λz = dropdims(λz, dims=(1, 2))
-
-    unpermuted_eigenvalues = (λx, λy, λz)
-
-    # First we check if we can do a two-dimensional decomposition
-    if gNz >= Rx 
-        input_permutation = Permutation(3, 1, 2)
-        permuted_size = (gNz, gNx, gNy)
-        processors_per_dimension = (Rx, Ry)
-    elseif gNz >= Ry
-        input_permutation = Permutation(3, 2, 1)
-        permuted_size = (gNz, gNy, gNx)
-        processors_per_dimension = (Ry, Rx)
-
-    else # it has to be a one-dimensional decomposition
-
-        Rx > 1 && Ry > 1 &&
+        if gNz >= Rx 
+            input_permutation = Permutation(3, 1, 2)
+            permuted_size = (gNz, gNx, gNy)
+            processors_per_dimension = (Rx, Ry)
+            extra_dims = ()
+        elseif gNz >= Ry
+            input_permutation = Permutation(3, 2, 1)
+            permuted_size = (gNz, gNy, gNx)
+            processors_per_dimension = (Ry, Rx)
+            extra_dims = ()
+        else
             throw(ArgumentError("DistributedFFTBasedPoissonSolver requires either " *
                                 "i) Nz > Rx, ii) Nz > Ry, iii) Rx = 1 _or_ iv) Ry = 1."))
+        end
+
+    else # one-dimensional decomposition
 
         if Rx == 1 # x-local, y-distributed
-            permuted_size = (gNz, gNx, gNy)
-            input_permutation = Permutation(3, 1, 2)
-            processors_per_dimension = (1, Ry)
+            permuted_size = (gNx, gNy, gNz)
+            input_permutation = Permutation(1, 2, 3)
+            processors_per_dimension = (Ry, 1)
         else # Ry == 1, y-local, x-distributed
-            permuted_size = (gNz, gNy, gNx)
-            input_permutation = Permutation(3, 2, 1)
-            processors_per_dimension = (1, Rx)
+            permuted_size = (gNy, gNx, gNz)
+            input_permutation = Permutation(2, 1, 3)
+            processors_per_dimension = (Rx, 1)
+        end
+
+        if effective_topology[3] isa Flat
+            # If the _effective_ z-topology is Flat --- which occurs either because topology(global_grid, 3)
+            # is actually Flat, or because we are using_tridiagonal_vertical_solver --- we use "extra_dims"
+            # to represent the vertical (3rd) dimension to avoid needless transform / permutation.
+            #
+            # With this option, we have to remove the last element from both the permuted size and process grid.
+            # Note that setting extra_dims = tuple(gNz) means that input / storage will have size (N1, N2, gNz).
+            extra_dims = tuple(gNz)
+            permuted_size = permuted_size[1:2]
+            processors_per_dimension = tuple(processors_per_dimension[1]) 
+        else
+            extra_dims = ()
         end
     end
 
-    # Build transforms
-    transforms = Tuple(infer_transform(effective_topology[d]) for d in Tuple(input_permutation))
-    plan = PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
+    # Reduce inputs for vertical tridiagonal solver
+    Ntransforms = length(permuted_size)
+    transform_dimensions = Tuple(input_permutation[i] for i = 1:Ntransforms)
+    transforms = Tuple(infer_transform(effective_topology[d]) for d in transform_dimensions)
+
+    @info "Building PencilFFTPlan with transforms $transforms, process grid $processors_per_dimension, and extra_dims $extra_dims..."
+    plan = PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator; extra_dims)
 
     # Allocate memory for in-place FFT + transpositions
     transposition_storage = PencilFFTs.allocate_input(plan)
 
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
-    inverse_permutation = Tuple(findfirst(p -> p == d, Tuple(input_permutation)) for d in 1:3)
-    unpermuted_right_hand_side = PermutedDimsArray(permuted_right_hand_side, inverse_permutation)
+
+    @show summary(permuted_right_hand_side)
+    @show summary(parent(permuted_right_hand_side))
+
+    unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
 
     if using_tridiagonal_vertical_solver
         lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(grid, λx, λy)
@@ -188,22 +203,39 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     end
     
     # Permute the λ appropriately
+    λx = poisson_eigenvalues(gNx, global_grid.Lx, 1, effective_topology[1])
+    λy = poisson_eigenvalues(gNy, global_grid.Ly, 2, effective_topology[2])
+    λz = poisson_eigenvalues(gNz, global_grid.Lz, 3, effective_topology[3])
+
+    # Drop singleton dimensions for compatibility with PencilFFTs' localgrid
+    λx = dropdims(λx, dims=(2, 3))
+    λy = dropdims(λy, dims=(1, 3))
+    λz = dropdims(λz, dims=(1, 2))
+
+    unpermuted_eigenvalues = (λx, λy, λz)
     permuted_eigenvalues = Tuple(unpermuted_eigenvalues[d] for d in Tuple(input_permutation))
     eigenvalues = PencilFFTs.localgrid(last(transposition_storage), permuted_eigenvalues)
 
-    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, transposition_storage, input_permutation,
-                                            unpermuted_right_hand_side, tridiagonal_vertical_solver, tridiagonal_storage)
+    return DistributedFFTBasedPoissonSolver(plan,
+                                            global_grid,
+                                            local_grid,
+                                            eigenvalues,
+                                            unpermuted_right_hand_side,
+                                            input_permutation,
+                                            transposition_storage,
+                                            tridiagonal_vertical_solver,
+                                            tridiagonal_storage)
 end
 
 """
-    solve_transformed_poission!(solver)
+    solve_transformed_poission_equation!(solver)
 
 Solve the discrete Poisson equation after transforming into the three-dimensional
 eigenfunction space of the second-order discrete Poisson operator.
 We solve the Poisson equation "in-place", re-using the transformed
 right-hand-side, `b̂ = last(solver.transposition_storage)` to store the solution `x̂`.
 """
-function solve_transformed_poission_equation!(solver)
+function solve_transformed_poisson_equation!(solver)
     x̂ = b̂ = last(solver.transposition_storage)
     λ = solver.eigenvalues
     @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
@@ -221,7 +253,7 @@ function solve_transformed_poission_equation!(solver)
 end
 
 """
-    solve_transformed_poission!(solver)
+    solve_transformed_poission_equation!(solver::DistributedFourierTridiagonalPoissonSolver)
 
 Solve the discrete Poisson equation after transforming into the two-dimensional
 eigenfunction space of the horizontal component of the second-order discrete Poisson operator.
@@ -229,35 +261,57 @@ eigenfunction space of the horizontal component of the second-order discrete Poi
 We use a vertical tridiagonal solver which updates the solution "in-place",
 re-using the transformed right-hand-side, `b̂ = last(solver.transposition_storage)` to store the solution `x̂`.
 """
-function solve_transformed_poission_equation!(solver::DistributedFourierTridiagonalPoissonSolver)
+function solve_transformed_poisson_equation!(solver::DistributedFourierTridiagonalPoissonSolver)
 
-    # Perform transposes+communication to obtain a local continguous
-    # z-dimension. In our notation below "h" corresponds to x or y,
-    # "z" is vertical.
-    zhh_storage = solver.transposition_storage[1]
-    hzh_storage = solver.transposition_storage[2]
-    hhz_storage = solver.transposition_storage[3]
+    perm = solver.input_permutation # permutation of the "input" to the solver, ie the rhs.
+    if perm === Permutation(3, 1, 2) || perm === Permutation(3, 2, 1)
 
-    # Transpose back so that z is local.
-    transpose!(hzh_storage, hhz_storage)
-    transpose!(zhh_storage, hzh_storage)
+        # In these cases, the input to the solve is permuted such that the
+        # z-dimension is first, and local. This means that the _output_ to the
+        # transformed data has a permutation in which the z-dimension is last,
+        # and distributed across processes. As a result, we must perform 2
+        # transposes to return the z-dimension to process-continguous,
+        # perform a tridiagonal solve, and then transpose back to prepare for
+        # the backward transforms.,
 
-    # Solve tridiagonal system of linear equations in z at every column:
-    #     1. Copy transformed rhs into new array
-    #     2. Execute tridiagonal solve
-    #
-    # Note: solver.unpermuted_right_hand_side is an "unpermuted" view into
-    # zhh_storage = first(solver.transposition_storage)
-    
-    x̂ = solver.unpermuted_right_hand_side
-    b̂ = solver.tridiagonal_storage
-    b̂ .= x̂
+        # Perform transposes+communication to obtain a local continguous
+        # z-dimension. In our notation below "h" corresponds to x or y,
+        # "z" is vertical.
+        zhh_storage = solver.transposition_storage[1]
+        hzh_storage = solver.transposition_storage[2]
+        hhz_storage = solver.transposition_storage[3]
 
-    # Solve and store the result in x̂
-    solve!(x̂, solver.batched_tridiagonal_solver, b̂)
-    
-    transpose!(hzh_storage, zhh_storage)
-    transpose!(hhz_storage, hzh_storage)
+        # Perform two transposes so that the z-dimension is local to each process.
+        PencilFFTs.transpose!(hzh_storage, hhz_storage)
+        PencilFFTs.transpose!(zhh_storage, hzh_storage)
+
+        # Solve tridiagonal system of linear equations in z at every column:
+        #     1. Copy transformed rhs into new array
+        #     2. Execute tridiagonal solve
+        #
+        # Note: solver.unpermuted_right_hand_side is an "unpermuted" view into
+        # parent(zhh_storage) = parent(first(solver.transposition_storage))
+        
+        x̂ = solver.unpermuted_right_hand_side
+        b̂ = solver.tridiagonal_storage
+        b̂ .= x̂
+
+        # Solve and store the result in x̂
+        solve!(x̂, solver.tridiagonal_vertical_solver, b̂)
+        
+        # Perform two transposes to return `solver.transposition_storage` to the
+        # configuration needed for backwards transforms.
+        PencilFFTs.transpose!(hzh_storage, zhh_storage)
+        PencilFFTs.transpose!(hhz_storage, hzh_storage)
+
+    else # z is local, and we are good to go!
+
+        x̂ = solver.unpermuted_right_hand_side
+        b̂ = solver.tridiagonal_storage
+        b̂ .= x̂
+        solve!(x̂, solver.tridiagonal_vertical_solver, b̂)
+
+    end
 
     return nothing
 end
@@ -283,7 +337,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # Zero volume mean (if it wasn't already)
     arch = architecture(solver.global_grid)
 
-    if isnothing(solver.batched_tridiagonal_solver) # well then we didn't use a tridiagonal solve
+    if isnothing(solver.tridiagonal_vertical_solver) # well then we didn't use a tridiagonal solve
         mean_xc = 0 # guaranteed zero by solve_transformed_poisson_equation!
     else
         mean_xc = MPI.Allreduce(sum(real(xc)), +, arch.communicator)
@@ -301,15 +355,17 @@ end
 
 const ZXYPermutation = Permutation{(3, 1, 2), 3}
 const ZYXPermutation = Permutation{(3, 2, 1), 3}
+const XYZPermutation = Permutation{(1, 2, 3), 3}
+const YXZPermutation = Permutation{(2, 1, 3), 3}
 
-@kernel function copy_permuted_real_component!(ϕ, ::ZXYPermutation, ϕc, mean_xc)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[k, i, j]) - mean_xc
-end
+real_ϕc(i, j, k, ::XYZPermutation, ϕc) = @inbounds real(ϕc[i, j, k])
+real_ϕc(i, j, k, ::YXZPermutation, ϕc) = @inbounds real(ϕc[j, i, k])
+real_ϕc(i, j, k, ::ZYXPermutation, ϕc) = @inbounds real(ϕc[k, j, i])
+real_ϕc(i, j, k, ::ZXYPermutation, ϕc) = @inbounds real(ϕc[k, i, j])
 
-@kernel function copy_permuted_real_component!(ϕ, ::ZYXPermutation, ϕc, mean_xc)
+@kernel function copy_permuted_real_component!(ϕ, perm, ϕc, mean_xc)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[k, j, i]) - mean_xc
+    @inbounds ϕ[i, j, k] = real_ϕc(i, j, k, perm, ϕc) - mean_xc
 end
 
 preprocess_source_term!(solver) = nothing

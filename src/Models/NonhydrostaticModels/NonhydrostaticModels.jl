@@ -15,7 +15,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
+function PressureSolver(arch::MultiArch, local_grid::Union{RegRectilinearGrid, HRegRectilinearGrid})
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
