@@ -194,18 +194,23 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Allocate memory for in-place FFT + transpositions
     transposition_storage = PencilFFTs.allocate_input(plan)
 
+
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
     unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
-        
 
     if using_tridiagonal_vertical_solver
-        lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(grid, λx, λy)
+        rx, ry, rx = arch.local_index
+        ℓNx, ℓNy, ℓNz = size(local_grid) # probably don't need this
+        local_λx = partition(λx, gNx, ℓNx, rx)
+        local_λy = partition(λy, gNy, ℓNy, ry)
+        lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(local_grid, local_λx, local_λy)
         tridiagonal_vertical_solver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal)
         tridiagonal_storage = zeros(eltype(first(transposition_storage)), child_architecture(local_grid), size(local_grid)...)
     else
         tridiagonal_vertical_solver = nothing
         tridiagonal_storage = nothing
+        eigenvalues = PencilFFTs.localgrid(last(transposition_storage), permuted_eigenvalues)
     end
 
     return DistributedFFTBasedPoissonSolver(plan,
