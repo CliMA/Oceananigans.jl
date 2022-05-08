@@ -498,21 +498,68 @@ end
     end
 
     @testset "Time stepping NonhydrostaticModel" begin
+
+        test_topologies = [(Periodic, Periodic, Periodic),
+                           (Periodic, Periodic, Bounded),
+                           (Periodic, Bounded, Bounded),
+                           (Bounded, Bounded, Bounded)]
+
         for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
-            @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
-            topo = (Periodic, Periodic, Periodic)
-            arch = MultiArch(; ranks)
-            grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid)
+            for topology in test_topologies
+                @info "Time-stepping 3D distributed NonhydrostaticModel on a regular grid with ranks $ranks and $topology..."
+                arch = MultiArch(; ranks, topology)
+                grid = RectilinearGrid(arch; topology, size=(8, 8, 8), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid)
 
-            time_step!(model, 1)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 1
+                time_step!(model, 1)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 1
 
-            simulation = Simulation(model, Δt=1, stop_iteration=2)
-            run!(simulation)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 2
+                simulation = Simulation(model, Δt=1, stop_iteration=2)
+                run!(simulation)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 2
+
+                @info "Time-stepping 3D distributed NonhydrostaticModel on a stretched vertical grid with ranks $ranks and $topology..."
+                Nz = 8
+                Lz = 1
+                Δζ = 1 / Nz
+                ζ = 0:Δζ:Lz
+                z = ζ.^2
+                grid = RectilinearGrid(arch; topology, size=(8, 8, Nz), x=(0, 1), y=(0, 2), z)
+                model = NonhydrostaticModel(; grid)
+
+                time_step!(model, 1)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 1
+
+                simulation = Simulation(model, Δt=1, stop_iteration=2)
+                run!(simulation)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 2
+            end
+        end
+
+        test_topologies_2d = [(Periodic, Periodic, Flat),
+                              (Periodic, Bounded, Flat),
+                              (Bounded, Bounded, Flat)]
+
+        for ranks in [(1, 4, 1), (4, 1, 1)]
+            for topology in test_topologies_2d
+                @info "Time-stepping a three_dimensional distributed NonhydrostaticModel with ranks $ranks and $topology..."
+                arch = MultiArch(; ranks)
+                grid = RectilinearGrid(arch, topology, size=(8, 8), extent=(1, 2))
+                model = NonhydrostaticModel(; grid)
+
+                time_step!(model, 1)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 1
+
+                simulation = Simulation(model, Δt=1, stop_iteration=2)
+                run!(simulation)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 2
+            end
         end
     end
 
