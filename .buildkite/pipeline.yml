@@ -577,7 +577,7 @@ steps:
     commands:
       - "pwd"
       - "env"
-      - "srun -p sched_system_penguin  --exclusive -N 1 --mem=500G --time=12:00:00 --gres=gpu:8 --pty /bin/bash -c \"wget https://raw.githubusercontent.com/christophernhill/onan-amd-bk-test-runners/main/amd-test-runner.sh; chmod +x amd-test-runner.sh;./amd-test-runner.sh\""
+      - "srun -p sched_system_penguin  --exclusive -N 1 --mem=500G --time=12:00:00 --gres=gpu:8 --pty /bin/bash -c \"/bin/rm -f ./amd-test-runner.sh; wget https://raw.githubusercontent.com/christophernhill/onan-amd-bk-test-runners/main/amd-test-runner.sh; chmod +x amd-test-runner.sh;./amd-test-runner.sh\""
       - "hostname"
       - "echo hi"
     agents:
