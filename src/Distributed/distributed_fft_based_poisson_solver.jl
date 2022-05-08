@@ -1,6 +1,6 @@
-import PencilFFTs
 using PencilArrays: Permutation
 using PencilFFTs: PencilFFTPlan
+
 import FFTW
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver, compute_batched_tridiagonals
@@ -130,7 +130,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Build _global_ eigenvalues
     TX, TY, TZ = topology(global_grid)
 
-    # Neuter transforms and eigenvalues in vertical direction if using tridiagonal vertical solve
+    # Neutralize transforms and eigenvalues in vertical direction if using tridiagonal vertical solve
     effective_topology = using_tridiagonal_vertical_solver ? (TX(), TY(), Flat()) :
                                                              (TX(), TY(), TZ())
     
@@ -237,9 +237,9 @@ function solve_transformed_poisson_equation!(solver)
     λ = solver.eigenvalues
 
     # It's a little better than writing @. x̂ = - b / +(λ...)
-    if length(λ) == 3
+    if length(λ) === 3
         @. x̂ = - b̂ / (λ[1] + λ[2] + λ[3])
-    elseif length(λ) == 2
+    elseif length(λ) === 2
         @. x̂ = - b̂ / (λ[1] + λ[2])
     end
 
@@ -247,8 +247,8 @@ function solve_transformed_poisson_equation!(solver)
     # in the Poisson equation, to zero.
     multi_arch = architecture(solver.local_grid)
 
-    if MPI.Comm_rank(multi_arch.communicator) == 0
-        # This is an assumption: we *hope* PencilArrays allocates in this way
+    i, j, k = PencilArrays.range_local(x̂)
+    if (i[1], j[1], k[1]) === (1, 1, 1) # we have the zeroth node!
         parent(x̂)[1, 1, 1] = 0
     end
 
