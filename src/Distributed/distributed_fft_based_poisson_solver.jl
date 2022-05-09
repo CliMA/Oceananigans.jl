@@ -7,6 +7,7 @@ import FFTW
 using PencilArrays: Permutation
 using PencilFFTs: PencilFFTPlan
 
+
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver, compute_batched_tridiagonals
 import Oceananigans.Architectures: architecture
 
@@ -54,11 +55,10 @@ Supported domain decompositions
 
 We support two "modes":
 
-    1. Two-dimensional decompositions in (x, y) for problems with either
-       `Nz > Rx` or `Nz > Ry` (therefore, three-dimensional).
+    1. Vertical pencil decompositions: two-dimensional decompositions in (x, y)
+       for three dimensional problems that satisfy either `Nz > Rx` or `Nz > Ry`.
 
-    2. One-dimensional decompositions in either x or y for problems that are
-       either two-dimensional, or have limited dimensionality in z.
+    2. One-dimensional decompositions in either x or y.
 
 Above, `Nz = size(global_grid, 3)` and `Rx, Ry, Rz = architecture(local_grid).ranks`.
 
