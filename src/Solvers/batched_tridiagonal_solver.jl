@@ -78,7 +78,7 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies
     scratch = solver.scratch
 
     event = launch!(architecture(solver), grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, scratch, grid, parameters, args...,
                     dependencies = dependencies)
 
     wait(device(architecture(solver)), event)
