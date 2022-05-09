@@ -410,7 +410,7 @@ function preprocess_source_term!(solver::DistributedFourierTridiagonalPoissonSol
                     multiply_by_Δzᶜᶜᶜ!, input, solver.local_grid,
                     dependencies = device_event(arch))
 
-    wait(device(arch), copy_event)
+    wait(device(arch), event)
 
     return nothing
 end
