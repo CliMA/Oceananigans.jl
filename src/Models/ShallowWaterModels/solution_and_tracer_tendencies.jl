@@ -44,7 +44,7 @@ Compute the tendency for the x-directional transport, uh
     return ( - div_hUu(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
-             + x_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry)
+             - x_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -69,7 +69,7 @@ Compute the tendency for the y-directional transport, vh.
     return ( - div_hUv(i, j, k, grid, advection, solution, formulation)
              - y_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
-             + y_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry)
+             - y_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry, formulation)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
