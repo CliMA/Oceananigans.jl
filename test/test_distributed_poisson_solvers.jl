@@ -96,13 +96,12 @@ end
     for topology in test_topologies
         for size in [(44, 32, 8), (24, 44, 16)]
             test_ranks = [(4, 1, 1)]
-            topology[2] === Periodic && append!(test_ranks, (1, 4, 1), (2, 2, 1))
+            topology[2] === Periodic && push!(test_ranks, (1, 4, 1), (2, 2, 1))
             for ranks in test_ranks
                 @info "    Testing $topology with layout $ranks and size $size..."
 
-                arch = MultiArch(CPU(); ranks, topology)
-
                 # Regular grid
+                arch = MultiArch(CPU(); ranks, topology)
                 local_grid = RectilinearGrid(arch; topology, size, extent=(1, 2, 3))
                 @test divergence_free_poisson_solution(local_grid)
 
