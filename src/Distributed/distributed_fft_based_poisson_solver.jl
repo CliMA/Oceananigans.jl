@@ -366,15 +366,15 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     xc = first(solver.transposition_storage)
 
     # Zero volume mean (if it wasn't already)
-    arch = architecture(solver.global_grid)
-
+    multi_arch = architecture(solver.local_grid)
     if isnothing(solver.tridiagonal_vertical_solver) # well then we didn't use a tridiagonal solve
         mean_xc = 0 # guaranteed zero by solve_transformed_poisson_equation!
     else
-        mean_xc = MPI.Allreduce(sum(real(xc)), +, arch.communicator)
+        mean_xc = MPI.Allreduce(sum(real(xc)), +, multi_arch.communicator)
     end
 	
     # Copy the real component of xc to x.
+    arch = architecture(solver.global_grid)
     copy_event = launch!(arch, solver.local_grid, :xyz,
                          copy_permuted_real_component!, x, solver.input_permutation, parent(xc), mean_xc,
                          dependencies = device_event(arch))
