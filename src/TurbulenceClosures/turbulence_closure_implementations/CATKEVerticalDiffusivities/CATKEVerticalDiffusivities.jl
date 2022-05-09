@@ -105,7 +105,7 @@ Turbulent Kinetic Energy (TKE).
 CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
-                                  Cᴰ = 2.91,
+                                  Cᴰ = 0.81,
                                   mixing_length = MixingLength{FT}(),
                                   surface_TKE_flux = SurfaceTKEFlux{FT}(),
                                   warning = true)

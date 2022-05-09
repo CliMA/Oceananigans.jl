@@ -23,8 +23,8 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct SurfaceTKEFlux{FT}
-    Cᵂu★ :: FT = 4.56
-    CᵂwΔ :: FT = 4.46
+    Cᵂu★ :: FT = 0.01
+    CᵂwΔ :: FT = 40.0
 end
 
 #####
