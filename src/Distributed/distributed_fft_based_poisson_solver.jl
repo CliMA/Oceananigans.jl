@@ -216,7 +216,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
         extra_dims = ()
     end
 
-    @info "Building PencilFFTPlan with transforms $transforms, process grid $processors_per_dimension, and extra_dims $extra_dims..."
+    @debug "Building PencilFFTPlan with transforms $transforms, process grid $processors_per_dimension, and extra_dims $extra_dims..."
     plan = PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator; extra_dims)
 
     # Allocate memory for in-place FFT + transpositions
@@ -224,7 +224,9 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
-    unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
+    perm_input = Tuple(input_permutation)
+    unperm_input = Tuple(findfirst(s -> s == d, perm_input) for d = 1:3)
+    unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), unperm_input)
 
     if using_tridiagonal_vertical_solver
         ri, rj, rk = arch.local_index
