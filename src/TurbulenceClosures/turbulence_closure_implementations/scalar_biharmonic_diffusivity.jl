@@ -72,7 +72,14 @@ calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, ar
 
 function Base.summary(closure::ScalarBiharmonicDiffusivity)
     F = summary(formulation(closure))
-    return string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+
+    if closure.κ == NamedTuple()
+        summary_str = string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ")")
+    else
+        summary_str = string("ScalarBiharmonicDiffusivity{$F}(ν=", prettysummary(closure.ν), ", κ=", prettysummary(closure.κ), ")")
+    end
+
+    return summary_str
 end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))

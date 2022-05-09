@@ -52,43 +52,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             u[imp1, jmm1, 1:Nz ] .= -1
             v[imm1, jmm1, 1:Nz ] .=  1
             v[imm1, jmp1, 1:Nz ] .= -1
-
-              η = model.free_surface.η
-              g = model.free_surface.gravitational_acceleration
-            ∫ᶻQ = model.free_surface.barotropic_volume_flux
-            rhs = model.free_surface.implicit_step_solver.right_hand_side
-            solver = model.free_surface.implicit_step_solver;
-                Δt = 1.
-            compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
-            rhs_event = compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
-            wait(device(arch), rhs_event)
-
-            solve!(η, solver, rhs, g, Δt)
-
-            fill_halo_regions!(η)
-
-            #=
-            println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
-            println("∫ᶻQ.u")
-            show(stdout,"text/plain", ∫ᶻQ.u.data[1:Nx, 1:Ny, 1])
-            println("")
-
-            println("η")
-            show(stdout,"text/plain", η.data[1:Nx, 1:Ny, 1])
-            println("")
-
-            pressure_correct_velocities!(model, Δt)
-            fill_halo_regions!(u)
-
-            println("u")
-            show(stdout,"text/plain", u.data[1:Nx, 1:Ny, 1])
-            println("")
-            =#
-
-            fs = model.free_surface
-            vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
-            ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
-            ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
+            
+            events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
+            implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5, events)
 
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)
