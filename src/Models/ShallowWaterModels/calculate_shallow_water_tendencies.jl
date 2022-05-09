@@ -204,21 +204,14 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
 
     barrier = Event(device(arch))
 
+    prognostic_fields = merge(solution, tracers)
+
     events = []
 
-    # Solution fields
-    for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event)
-    end
-
-    # Tracer fields
-    for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-
+    # Solution fields and tracer fields
+    for i in 1:length(Gⁿ)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
         push!(events, x_bcs_event, y_bcs_event)
     end
 

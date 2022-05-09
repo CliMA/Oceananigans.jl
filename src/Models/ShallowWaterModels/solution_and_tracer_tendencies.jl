@@ -8,11 +8,20 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 @inline half_g_h²(i, j, k, grid, h, g) = @inbounds 1/2 * g * h[i, j, k]^2
 
-@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
-@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, gravitational_acceleration)
+@inline x_pressure_gradient(i, j, k, grid, g, h, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+@inline y_pressure_gradient(i, j, k, grid, g, h, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
 
-@inline x_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, ::VectorInvariantFormulation) = gravitational_acceleration * ∂xᶠᶜᶜ(i, j, k, grid, h)
-@inline y_pressure_gradient(i, j, k, grid, h, gravitational_acceleration, ::VectorInvariantFormulation) = gravitational_acceleration * ∂yᶜᶠᶜ(i, j, k, grid, h)
+@inline x_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h)
+@inline y_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h)
+
+@inline x_bathymetry_term(i, j, k, grid, g, h, bathymetry, formulation) = g * ℑxᶠᵃᵃ(i, j, k, grid, h) * ∂xᶠᶜᶜ(i, j, k, grid, bathymetry)
+@inline y_bathymetry_term(i, j, k, grid, g, h, bathymetry, formulation) = g * ℑyᵃᶠᵃ(i, j, k, grid, h) * ∂yᶜᶠᶜ(i, j, k, grid, bathymetry)
+
+@inline x_bathymetry_term(i, j, k, grid, g, h, bathymetry, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, bathymetry)
+@inline y_bathymetry_term(i, j, k, grid, g, h, bathymetry, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, bathymetry)
+
+@inline x_bathymetry_term(i, j, k, grid, g, h, ::Nothing, args...) = zero(grid)
+@inline y_bathymetry_term(i, j, k, grid, g, h, ::Nothing, args...) = zero(grid)
 
 """
 Compute the tendency for the x-directional transport, uh
@@ -33,9 +42,10 @@ Compute the tendency for the x-directional transport, uh
     g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution, formulation)
-             - x_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration, formulation)
+             - x_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
-             + forcings.uh(i, j, k, grid, clock, merge(solution, tracers)))
+             - x_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry, formulation)
+             + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -57,9 +67,10 @@ Compute the tendency for the y-directional transport, vh.
      g = gravitational_acceleration
 
     return ( - div_hUv(i, j, k, grid, advection, solution, formulation)
-             - y_pressure_gradient(i, j, k, grid, solution.h, gravitational_acceleration, formulation)
+             - y_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
-             + forcings.vh(i, j, k, grid, clock, merge(solution, tracers)))
+             - y_bathymetry_term(i, j, k, grid, gravitational_acceleration, solution.h, bathymetry, formulation)
+             + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -96,7 +107,7 @@ end
     @inbounds c = tracers[tracer_index]
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
-             + c_div_U(i, j, k, grid, advection, solution, c, formulation)         
+             + c_div_U(i, j, k, grid, solution, c, formulation)         
              - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )

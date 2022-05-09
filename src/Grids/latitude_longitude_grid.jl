@@ -176,7 +176,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                size,
                                longitude,
                                latitude,
-                               z,
+                               z = nothing,
                                radius = R_Earth,
                                topology = nothing,
                                precompute_metrics = true,
@@ -252,7 +252,6 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
 
     if !isnothing(topology)
         TX, TY, TZ = topology
-        TZ === Bounded || throw(ArgumentError("z topology must be Bounded"))
     else
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
