@@ -98,7 +98,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
-    for transform! in solver.transforms.backwards
+    for transform! in solver.transforms.backward
         transform!(ϕ, solver.buffer)
     end
 
