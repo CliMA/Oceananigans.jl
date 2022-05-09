@@ -232,6 +232,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
         lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(local_grid, local_λx, local_λy)
         tridiagonal_vertical_solver = BatchedTridiagonalSolver(local_grid; lower_diagonal, diagonal, upper_diagonal)
         tridiagonal_storage = zeros(eltype(first(transposition_storage)), architecture(local_grid), size(local_grid)...)
+        eigenvalues = nothing
     else
         tridiagonal_vertical_solver = nothing
         tridiagonal_storage = nothing
