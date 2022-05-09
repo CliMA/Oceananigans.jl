@@ -87,7 +87,8 @@ Below, we outline the algorithm for the case `Nz >= Rx`.
 If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
 
 1. `first(transposition_storage)` is initialized with layout (z, x, y).
-2. If on a fully regular `RectlinearGrid`, transform along z. Otherwise, no transform.
+2. If on a fully regular `RectlinearGrid`, transform along z. If on a vertically-stretched
+   `RectilinearGrid`, we perform no transform.
 3  Transpose + communicate to transposition_storage[2] in layout (x, z, y),
    which is distributed into `(Rx, Ry)` processes in (z, y).
 4. Transform along x.
@@ -99,7 +100,6 @@ If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
     a. Solve the Poisson equation by updating `last(transposition_storage)`.
        and dividing by the sum of the eigenvalues
        and zero out the volume mean, zeroth mode, or (1, 1, 1) element of
-       the transformed arravolume mean, zeroth mode, or (1, 1, 1) element of
        the transformed array.
 
     If using a vertically-stretched `RectilinearGrid`, then
@@ -130,7 +130,9 @@ decompositions are required for two-dimensional transforms.
 For one-dimensional decomopsitions, the z-direction is placed last. If
 `topology(global_grid, 3) isa Flat`, or if the vertical direction is stretched
 and thus requires a vertical tridiagonal solver, we omit transpositions and
-FFTs in the z-direction entirely, yielding an algorithm with 2 rather than 4 transposes.
+FFTs in the z-direction entirely, yielding an algorithm with 2 transposes --- compared to 4
+for two-dimensional decompositions for fully-regular solves, and _8_ for
+two-dimensional decompositions and vertically-stretched solves.
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -401,11 +403,11 @@ preprocess_source_term!(solver) = nothing
 
 function preprocess_source_term!(solver::DistributedFourierTridiagonalPoissonSolver)
     arch = architecture(solver.global_grid)
-    input = first(solver.storage)
+    input = solver.unpermuted_right_hand_side
 
     # Copy the real component of xc to x.
     event = launch!(arch, solver.local_grid, :xyz,
-                    permuted_multiply_by_Δzᶜᶜᶜ, input, solver.input_permutation, solver.local_grid,
+                    multiply_by_Δzᶜᶜᶜ!, input, solver.local_grid,
                     dependencies = device_event(arch))
 
     wait(device(arch), copy_event)
@@ -413,12 +415,7 @@ function preprocess_source_term!(solver::DistributedFourierTridiagonalPoissonSol
     return nothing
 end
 
-@kernel function permuted_multiply_by_Δzᶜᶜᶜ!(a, ::ZXYPermutation, grid)
+@kernel function multiply_by_Δzᶜᶜᶜ!(a, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds a[k, i, j] *= Δzᶜᶜᶜ(i, j, k, grid)
-end
-
-@kernel function permuted_multiply_by_Δzᶜᶜᶜ!(a, ::ZYXPermutation, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds a[k, j, i] *= Δzᶜᶜᶜ(i, j, k, grid)
+    @inbounds a[i, j, k] *= Δzᶜᶜᶜ(i, j, k, grid)
 end
