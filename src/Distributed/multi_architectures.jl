@@ -18,7 +18,7 @@ end
 #####
 
 function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, Periodic), ranks, communicator = MPI.COMM_WORLD)
-    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
+    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiArch.")
 
     validate_tupled_argument(ranks, Int, "ranks")
 

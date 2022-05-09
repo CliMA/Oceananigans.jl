@@ -21,7 +21,7 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-#MPI.Init()
+MPI.Init()
 
 # to initialize MPI.
 
@@ -90,13 +90,16 @@ end
 
     test_topologies = [(Periodic, Periodic, Periodic),
                        (Periodic, Periodic, Bounded),
-                       (Periodic, Bounded, Bounded),
-                       (Bounded, Bounded, Bounded)]
+                       (Periodic, Bounded, Bounded)]
 
     @info "  Testing 3D distributed FFT-based Poisson solver..."
-    for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
+    for topology in test_topologies
         for size in [(44, 32, 8), (24, 44, 16)]
-            for topology in test_topologies
+            test_ranks = [(4, 1, 1)]
+            topology[2] === Periodic && append!(test_ranks, (1, 4, 1), (2, 2, 1))
+            for ranks in test_ranks
+                @info "    Testing $topology with layout $ranks and size $size..."
+
                 arch = MultiArch(CPU(); ranks, topology)
 
                 # Regular grid
@@ -116,8 +119,11 @@ end
     end
 
     @info "  Testing 2D distributed FFT-based Poisson solver..."
-    for ranks in [(1, 4, 1), (4, 1, 1)]
-        for topology in test_topologies
+    for topology in test_topologies
+        test_ranks = [(4, 1, 1)]
+        topology[2] === Periodic && push!(test_ranks, (1, 4, 1))
+        for ranks in test_ranks
+            @info "    Testing $topology with layout $ranks and size (44, 32, 1)..."
             arch = MultiArch(CPU(); ranks, topology)
             local_grid = RectilinearGrid(arch; topology, size=(44, 32, 1), extent=(1, 2, 3))
             @test divergence_free_poisson_solution(local_grid)

@@ -1,4 +1,5 @@
 using Oceananigans.Grids: Center
+using Oceananigans.Operators: Δzᶜᶜᶜ
 
 import PencilArrays
 import PencilFFTs
@@ -6,7 +7,6 @@ import FFTW
 
 using PencilArrays: Permutation
 using PencilFFTs: PencilFFTPlan
-
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver, compute_batched_tridiagonals
 import Oceananigans.Architectures: architecture
