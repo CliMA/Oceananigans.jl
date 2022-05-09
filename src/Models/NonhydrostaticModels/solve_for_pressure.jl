@@ -9,7 +9,6 @@ using PencilArrays: Permutation
 ##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
 #####
 
-
 @kernel function calculate_fft_pressure_source_term!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
@@ -19,22 +18,6 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
-
-#=
-# Permuted calculations for distributed solver
-const ZXYPermutation = Permutation{(3, 1, 2), 3}
-const ZYXPermutation = Permutation{(3, 2, 1), 3}
-
-@kernel function calculate_permuted_fft_pressure_source_term!(rhs, grid, Δt, U★, ::ZXYPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds rhs[k, i, j] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
-end
-
-@kernel function calculate_permuted_fft_pressure_source_term!(rhs, grid, Δt, U★, ::ZYXPermutation)
-    i, j, k = @index(Global, NTuple)
-    @inbounds rhs[k, j, i] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
-end
-=#
 
 #####
 ##### Solve for pressure
@@ -49,7 +32,7 @@ function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver,
                     calculate_fft_pressure_source_term!, rhs, grid, Δt, U★,
                     #calculate_permuted_fft_pressure_source_term!, rhs, grid, Δt, U★, solver.input_permutation,
                     dependencies = device_event(arch))
-
+  
     wait(device(arch), event)
 
     # Solve pressure Poisson equation for pressure, given rhs

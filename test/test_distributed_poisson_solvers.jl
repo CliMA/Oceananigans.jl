@@ -21,11 +21,12 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-MPI.Init()
+#MPI.Init()
 
 # to initialize MPI.
 
 using Oceananigans.Distributed: reconstruct_global_grid
+using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
 
 function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -130,4 +131,3 @@ end
     @test_throws ArgumentError divergence_free_poisson_solution(local_grid)
     @test_throws ArgumentError divergence_free_poisson_solution(local_grid)
 end
-
