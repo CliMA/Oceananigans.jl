@@ -25,7 +25,8 @@ end
 """
     poisson_eigenvalues(N, L, dim, ::Flat)
 
-No need to do any transforms along `Flat` dimensions so just return zeros
-since they will be added to the eigenvalues for other dimensions.
+Return N-element array of `0.0` reshaped to three-dimensions.
+This is also the first `poisson_eigenvalue` for `Bounded` and `Periodic` directions.
 """
-poisson_eigenvalues(N, L, dim, ::Flat) = zeros(1, 1, 1)
+poisson_eigenvalues(N, L, dim, ::Flat) = reshape(zeros(N), reshaped_size(N, dim)...)
+

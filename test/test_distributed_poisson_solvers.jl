@@ -26,11 +26,16 @@ MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Distributed: reconstruct_global_grid
+using Oceananigans.Distributed: ZXYPermutation, ZYXPermutation
 
-@kernel function permuted_copy_123_to_321!(permuted_ϕ, ϕ)
+@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZYXPermutation)
     i, j, k = @index(Global, NTuple)
-    # Note the index permutation
     @inbounds permuted_ϕ[k, j, i] = ϕ[i, j, k]
+end
+
+@kernel function set_distributed_solver_input!(permuted_ϕ, ϕ, ::ZXYPermutation)
+    i, j, k = @index(Global, NTuple)
+    @inbounds permuted_ϕ[k, i, j] = ϕ[i, j, k]
 end
 
 function random_divergent_source_term(grid)
@@ -79,8 +84,10 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     # Solve it
     ϕc = first(solver.storage)
 
-    # first(solver.storage) has the permuted layout (z, y, x) compared to Oceananigans data with layout (x, y, z).
-    event = launch!(arch, local_grid, :xyz, permuted_copy_123_to_321!, ϕc, R, dependencies=device_event(arch))
+    event = launch!(arch, local_grid, :xyz,
+                    set_distributed_solver_input!, ϕc, R, solver.input_permutation,
+                    dependencies = device_event(arch))
+
     wait(device(arch), event)
 
     solve!(ϕ, solver)
@@ -92,11 +99,20 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
-    @info "  Testing distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((16, 16, 8), (1, 4, 1))
+    @info "  Testing 3D distributed FFT-based Poisson solver..."
     @test divergence_free_poisson_solution_triply_periodic((44, 44, 8), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
     @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (2, 2, 1))
+
+    @info "  Testing 2D distributed FFT-based Poisson solver..."
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (4, 1, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (4, 1, 1))
+
+    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
+    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
 end
 
