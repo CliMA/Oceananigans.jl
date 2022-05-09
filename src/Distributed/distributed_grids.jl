@@ -1,5 +1,5 @@
 using MPI
-using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
+using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements, Face
 using Oceananigans.Grids: validate_rectilinear_domain, validate_topology
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
@@ -41,9 +41,9 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
     # Local sizes are denoted with lowercase `n`
     nx, ny, nz = local_size = Nx÷Rx, Ny÷Ry, Nz÷Rz
 
-    xl = partition(x, nx, Rx, ri)
-    yl = partition(y, ny, Ry, rj)
-    zl = partition(z, nz, Rz, rk)
+    xl = partition(x, Face(), nx, Rx, ri)
+    yl = partition(y, Face(), ny, Ry, rj)
+    zl = partition(z, Face(), nz, Rz, rk)
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, Hx, xl, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))

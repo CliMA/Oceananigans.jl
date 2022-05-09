@@ -11,7 +11,9 @@ using Oceananigans.BoundaryConditions:
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
-    fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+    fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
+    _fill_west_halo!, _fill_east_halo!, _fill_south_halo!,
+    _fill_north_halo!, _fill_bottom_halo!, _fill_top_halo!
 
 #####
 ##### MPI tags for halo communication BCs
@@ -21,9 +23,12 @@ sides  = (:west, :east, :south, :north, :top, :bottom)
 side_id = Dict(side => n for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
-    :west => :east, :east => :west,
-    :south => :north, :north => :south,
-    :bottom => :top, :top => :bottom
+    :west => :east,
+    :east => :west,
+    :south => :north,
+    :north => :south,
+    :bottom => :top,
+    :top => :bottom
 )
 
 # Define functions that return unique send and recv MPI tags for each side.
@@ -91,16 +96,21 @@ end
 ##### fill_bottom_and_top_halos!  }
 #####
 
-for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
+for (side, opposite_side) in zip((:west, :south, :bottom), (:east, :north, :top))
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
         function $fill_both_halos!(c, bc_side, bc_opposite_side, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
+            event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
             return [event]
         end
     end
+end
+
+for side in (:west, :south, :bottom, :east, :north, :top)
+    fill_one_halo! = Symbol("_fill_$(side)_halo!")
+    @eval @inline $fill_one_halo!(c, i, j, grid, ::HaloCommunicationBC, args...) = nothing
 end
 
 #####

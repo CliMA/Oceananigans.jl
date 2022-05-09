@@ -32,6 +32,7 @@ end
 function compute_batched_tridiagonals(grid, λx, λy)
     # Lower and upper diagonals are identical and independent of (i, j)
     Nx, Ny, Nz = size(grid)
+    arch = architecture(grid)
     lower_diagonal = CUDA.@allowscalar [1 / Δzᶜᶜᶠ(1, 1, k, grid) for k in 2:Nz]
     lower_diagonal = arch_array(arch, lower_diagonal)
     upper_diagonal = lower_diagonal

@@ -1,7 +1,11 @@
+using Oceananigans.Grids: Center
+
+import PencilArrays
+import PencilFFTs
+import FFTW
+
 using PencilArrays: Permutation
 using PencilFFTs: PencilFFTPlan
-
-import FFTW
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, BatchedTridiagonalSolver, compute_batched_tridiagonals
 import Oceananigans.Architectures: architecture
@@ -45,8 +49,8 @@ is solved with Fourier transforms in (x, y) and a tridiagonal solve in z.
 
 Other stretching configurations for `RectilinearGrid` are not supported.
 
-Supported configurations
-========================
+Supported domain decompositions
+===============================
 
 We support two "modes":
 
@@ -65,16 +69,25 @@ Algorithm for two-dimensional decompositions
 ============================================
 
 For two-dimensional decompositions (useful for three-dimensional problems),
-there are three forward transforms, three backward transforms,
-and four transpositions requiring MPI communication. In the schematic below, the first
-dimension is always the local dimension. In our implementation of the PencilFFTs algorithm,
+there are either
+
+1. Three forward transforms, three backward transforms,
+   and four transpositions requiring MPI communication for a three-dimensionally
+   regular `RectilinearGrid`.
+
+2. Two forward transforms, two backward transforms, one tridiagonal solve,
+   and _eight_ transpositions requiring MPI communication for a horizontally-regular,
+   vertically-stretched `RectilinearGrid`.
+
+We sketch these below in a schematic where the first dimension is _defined_ as the local
+dimension. In our implementation of the PencilFFTs algorithm,
 we require _either_ `Nz >= Rx`, _or_ `Nz >= Ry`, where `Nz` is the number of vertical cells,
 `Rx` is the number of ranks in x, and `Ry` is the number of ranks in `y`.
 Below, we outline the algorithm for the case `Nz >= Rx`.
 If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
 
 1. `first(transposition_storage)` is initialized with layout (z, x, y).
-2. Transform along z.
+2. If on a fully regular `RectlinearGrid`, transform along z. Otherwise, no transform.
 3  Transpose + communicate to transposition_storage[2] in layout (x, z, y),
    which is distributed into `(Rx, Ry)` processes in (z, y).
 4. Transform along x.
@@ -82,10 +95,23 @@ If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
    which is distributed into `(Rx, Ry)` processes in (x, z).
 6. Transform in y.
 
-At this point the three in-place forward transforms are complete, and we
-solve the Poisson equation by updating `last(transposition_storage)`.
-Then the process is reversed to obtain `first(transposition_storage)` in physical
-space and with the layout (z, x, y).
+5. Next we solve the Poisson equation. If on fully-regular `RectilinearGrid`,
+    a. Solve the Poisson equation by updating `last(transposition_storage)`.
+       and dividing by the sum of the eigenvalues
+       and zero out the volume mean, zeroth mode, or (1, 1, 1) element of
+       the transformed arravolume mean, zeroth mode, or (1, 1, 1) element of
+       the transformed array.
+
+    If using a vertically-stretched `RectilinearGrid`, then
+    
+      i. Transpose back to (x, z, y)
+     ii. Transpose back to (z, x, y)
+    iii. Solve the Poisson equation with a tridiagonal solve.
+     iv. Transpose back to (x, z, y)
+      v. Transpose back to (y, x, z)
+
+At this point we are ready to perform a backwards transform to return to physical
+space and obtain the solution in  `first(transposition_storage)` with the layout (z, x, y).
 
 Restrictions
 ============
@@ -97,14 +123,14 @@ If `Nz` does not satisfy this condition, we can only support a one-dimensional d
 Algorithm for one-dimensional decompositions
 ============================================
 
-This algorithm requires a one-dimensional decomposition with _either_ `Rx = 1`
-_or_ `Ry = 1`, and is important to support two-dimensional transforms.
+For one-dimensional decompositions (ie, rank configurations with only one non-singleton
+dimension) we require _either_ `Rx = 1` _or_ `Ry = 1`. One-dimensional domain
+decompositions are required for two-dimensional transforms.
 
-For one-dimensional decompositions, we place the decomposed direction _last_.
-If the number of ranks is `Rh = max(Rx, Ry)`, this algorithm requires that 
-_both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transforms
-is similar to the two-dimensional case. It remains somewhat of a mystery why this
-succeeds (ie, why the last transform is correctly decomposed).
+For one-dimensional decomopsitions, the z-direction is placed last. If
+`topology(global_grid, 3) isa Flat`, or if the vertical direction is stretched
+and thus requires a vertical tridiagonal solver, we omit transpositions and
+FFTs in the z-direction entirely, yielding an algorithm with 2 rather than 4 transposes.
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -194,19 +220,18 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     # Allocate memory for in-place FFT + transpositions
     transposition_storage = PencilFFTs.allocate_input(plan)
 
-
     # Store a view of the right hand side that "appears" to have the permutation (x, y, z).
     permuted_right_hand_side = first(transposition_storage)
     unpermuted_right_hand_side = PermutedDimsArray(parent(permuted_right_hand_side), Tuple(input_permutation))
 
     if using_tridiagonal_vertical_solver
-        ri, ri, rk = arch.local_index
+        ri, rj, rk = arch.local_index
         nx, ny, nz = size(local_grid) # probably don't need this
-        local_λx = partition(λx, nx, Rx, ri)
-        local_λy = partition(λy, ny, Rx, rj)
+        local_λx = partition(λx, Center(), nx, Rx, ri)
+        local_λy = partition(λy, Center(), ny, Ry, rj)
         lower_diagonal, diagonal, upper_diagonal = compute_batched_tridiagonals(local_grid, local_λx, local_λy)
-        tridiagonal_vertical_solver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal)
-        tridiagonal_storage = zeros(eltype(first(transposition_storage)), child_architecture(local_grid), size(local_grid)...)
+        tridiagonal_vertical_solver = BatchedTridiagonalSolver(local_grid; lower_diagonal, diagonal, upper_diagonal)
+        tridiagonal_storage = zeros(eltype(first(transposition_storage)), architecture(local_grid), size(local_grid)...)
     else
         tridiagonal_vertical_solver = nothing
         tridiagonal_storage = nothing

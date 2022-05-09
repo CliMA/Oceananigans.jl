@@ -1,13 +1,19 @@
 # Partitioning (localization of global objects) and assembly (global assembly of local objects)
 
-partition(c::AbstractVector, Nc, Nr, r) = c[1 + (r-1) * Nc : 1 + Nc * r]
-partition(c::Colon,          Nc, Nr, r) = Colon()
-partition(c::Tuple,          Nc, Nr, r) = (c[1] + (r-1) * (c[2] - c[1]) / Nr,    c[1] + r * (c[2] - c[1]) / Nr)
+partition(c::Colon, loc, n, R, ri) = Colon()
 
-function partition(c::UnitRange, Nc, Nr, r)
-    g = (first(c), last(r))
-    ℓ = partition(g, Nc, Nr, r)
-    return UnitRange(ℓ[1], ℓ[2])
+""" Partition the vector. """
+partition(c::AbstractVector, ::Face,   n, R, ri) = c[1 + (ri-1) * n : n * ri + 1]
+partition(c::AbstractVector, ::Center, n, R, ri) = c[1 + (ri-1) * n : n * ri]
+
+""" Partition the bounds of the interval c. """
+partition((left, right)::Tuple, ::Face, n, R, ri) = (left + (ri - 1) * (right - left) / R,
+                                                     left +       ri * (right - left) / R)
+
+function partition(c::UnitRange, ::Face, n, R, ri)
+    bounds = (first(c), last(r))
+    local_bounds = partition(bounds, n, R, ri)
+    return UnitRange(local_bounds[1], local_bounds[2])
 end
 
 assemble(c::Tuple, Nc, Nr, r, arch) = (c[2] - r * (c[2] - c[1]), c[2] - (r - Nr) * (c[2] - c[1]))
