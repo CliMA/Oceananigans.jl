@@ -69,13 +69,20 @@ Calculates the divergence of the mass flux into a cell,
 
 which will end up at the location `ccc`.
 """
-@inline function div_Uh(i, j, k, grid, advection, solution, formulation)
-    1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + 
-                              δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
+@inline function div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
+    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + 
+                                     δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 end
 
-@inline div_Uh(i, j, k, grid, advection, solution, formulation::VectorInvariantFormulation) = 
-        div_Uc(i, j, k, grid, advection, solution, solution.h, formulation)
+@inline function div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation::VectorInvariantFormulation) 
+    h_term = 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], solution.h) +
+                                      δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], solution.h)) 
+
+    b_term = 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], bathymetry) +
+                                      δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], bathymetry)) 
+
+    return h_term + b_term
+end
 
 #####
 ##### Tracer advection operator
@@ -99,13 +106,13 @@ which will end up at the location `ccc`.
 """
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, formulation)
-    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution[1], solution.h, c) +        
-                             δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution[2], solution.h, c))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution[1], solution.h, c) +        
+                                    δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution[2], solution.h, c))
 end
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, ::VectorInvariantFormulation)
-    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], c) +
-                             δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], c)) 
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], c)) 
 end
 
 # Support for no advection
