@@ -15,13 +15,20 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-function PressureSolver(arch::MultiArch, local_grid::Union{RegRectilinearGrid, HRegRectilinearGrid})
+function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+function PressureSolver(::MultiArch, local_grid::HRegRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+end
+
+PressureSolver(::CPU, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::GPU, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::CPU, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::GPU, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
