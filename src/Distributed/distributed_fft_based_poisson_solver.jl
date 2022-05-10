@@ -134,8 +134,9 @@ FFTs in the z-direction entirely, yielding an algorithm with 2 transposes --- co
 for two-dimensional decompositions for fully-regular solves, and _8_ for
 two-dimensional decompositions and vertically-stretched solves.
 """
-function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+function DistributedFFTBasedPoissonSolver(local_grid)
 
+    global_grid = reconstruct_global_grid(local_grid)
     arch = architecture(local_grid)
     Rx, Ry, Rz = arch.ranks
     communicator = arch.communicator
