@@ -1,11 +1,11 @@
 using CUDA
 using CUDAKernels
-using AMDGPU
+using AMDGPU: ROCArray
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Architectures: device, CUDAGPU, ROCMGPU, CPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: device, GPU, CUDAGPU, ROCMGPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
