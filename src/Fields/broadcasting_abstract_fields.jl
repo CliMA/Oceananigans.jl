@@ -5,7 +5,7 @@
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 using CUDA
-using AMDGPU.ROCArrayStyle
+using AMDGPU
 using Oceananigans.Utils: launch!
 
 using Oceananigans.Architectures: device_event
