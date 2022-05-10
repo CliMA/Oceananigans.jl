@@ -11,7 +11,6 @@ export
 using Statistics
 using FFTW
 using CUDA
-using AMDGPU
 using KernelAbstractions
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
