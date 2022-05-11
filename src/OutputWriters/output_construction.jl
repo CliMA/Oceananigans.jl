@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_indices, Reduction
+using Oceananigans.Fields: validate_indices, Reduction, indices
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Grids: default_indices
 
@@ -49,6 +49,7 @@ end
 
 const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
 const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
 
 function construct_output(user_output::WindowedField, grid, user_indices, with_halos)
     if !with_halos
@@ -58,6 +59,23 @@ function construct_output(user_output::WindowedField, grid, user_indices, with_h
 
     return user_output
 end
+
+function construct_output(user_output::ComputedField, grid, user_indices, with_halos)
+    if indices(user_output) == (Colon(), Colon(), Colon())
+        return construct_output(user_output.operand, grid, user_indices, with_halos)
+    else
+        @info "Only change halos"
+        if !with_halos
+            new_indices = [ indexes == Colon() ? restrict_to_interior(indexes, loc, topo, grid_size) : indexes
+                           for (indexes, loc, topo, grid_size) in zip(indices(user_output), location(user_output), topology(grid), size(grid)) ]
+            @show new_indices summary(user_output.data)
+            return view(user_output, new_indices...)
+        end
+    end
+
+    return user_output
+end
+
 
 
 construct_output(user_output::Field, indices) = view(user_output, indices...)
