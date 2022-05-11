@@ -123,7 +123,6 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
-
 ## Only for contiguous data!! (i.e. the offset is always 1)
 @inline function device_copy_to!(dst::CuArray{T}, src::CuArray{T}; async::Bool = false) where T
     n = length(src)
@@ -138,7 +137,7 @@ end
     return dst
 end
 
-@inline device_copy_to!(dst::Array, scr::Array; kw...) = Base.copyto!(a, b)
+@inline device_copy_to!(dst::Array, scr::Array; kw...) = Base.copyto!(dst, src)
 
 device_event(arch) = Event(device(arch))
 

@@ -1,7 +1,6 @@
 using Statistics
 using JLD2
 using Printf
-using Plots
 using Oceananigans
 using Oceananigans.Units
 
@@ -111,8 +110,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (1, 3))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (1, 3))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 3))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 3))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
