@@ -194,7 +194,7 @@ julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bound
 1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-128.0, 0.0] regularly spaced with Δz=0.5
+└── Bounded  z ∈ [-128.0, 0.0]    regularly spaced with Δz=0.5
 ```
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:

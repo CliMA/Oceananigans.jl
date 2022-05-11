@@ -12,6 +12,11 @@ using Oceananigans.Distributed: DistributedFFTBasedPoissonSolver
     @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
+@kernel function calculate_permuted_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+    @inbounds rhs[k, j, i] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
 @kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
     @inbounds rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
@@ -26,7 +31,7 @@ function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver,
     arch = architecture(solver)
     grid = solver.local_grid
 
-    rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
+    rhs_event = launch!(arch, grid, :xyz, calculate_permuted_pressure_source_term_fft_based_solver!,
                         rhs, grid, Δt, U★, dependencies = device_event(arch))
 
     wait(device(arch), rhs_event)
