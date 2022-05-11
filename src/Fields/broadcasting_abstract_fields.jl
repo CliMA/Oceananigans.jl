@@ -5,7 +5,7 @@
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 using CUDA
-using AMDGPU
+using AMDGPU: ROCArrayStyle
 using Oceananigans.Utils: launch!
 
 using Oceananigans.Architectures: device_event
@@ -18,7 +18,7 @@ Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 # Precedence rule
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::AMDGPU.ROCArrayStyle{N}) where N = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::ROCArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
@@ -26,7 +26,7 @@ Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrGPUArray = Union{Broadcasted{<:DefaultArrayStyle},
                                         Broadcasted{<:CUDA.CuArrayStyle},
-                                        Broadcasted{<:AMDGPU.ROCArrayStyle}}
+                                        Broadcasted{<:ROCArrayStyle}}
 
 @inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrGPUArray)
     if any(a isa OffsetArray for a in bc.args)
