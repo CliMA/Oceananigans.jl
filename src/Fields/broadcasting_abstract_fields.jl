@@ -7,6 +7,7 @@ using Base.Broadcast: Broadcasted
 using CUDA
 
 using Oceananigans.Architectures: device_event
+using AMDGPU.ROCArrayStyle
 using Oceananigans.Utils: launch!
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
@@ -22,9 +23,10 @@ Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType 
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
-                                        Broadcasted{<:CUDA.CuArrayStyle}}
+                                        Broadcasted{<:CUDA.CuArrayStyle},
+                                        Broadcasted{<:AMDGPU.ROCArrayStyle}}
 
-@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
+@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrGPUArray) =
     Base.Broadcast.materialize!(interior(dest), bc)
 
 #####
