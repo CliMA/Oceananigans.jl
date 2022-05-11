@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractMultiArchitecture
 export CPU, GPU, MultiGPU
-export device, device_event, architecture, array_type, arch_array, unified_array
+export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
 using KernelAbstractions
@@ -122,6 +122,23 @@ function unified_array(::GPU, arr::AbstractArray)
     copyto!(vec, arr)
     return vec
 end
+
+
+## Only for contiguous data!! (i.e. the offset is always 1)
+@inline function device_copy_to!(dst::CuArray{T}, src::CuArray{T}; async::Bool = false) where T
+    n = length(src)
+    context!(context(src)) do
+        GC.@preserve src dst begin
+            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async)
+            if Base.isbitsunion(T)
+                unsafe_copyto!(typetagdata(dst, 1), typetagdata(src, 1), n; async)
+            end
+        end
+    end
+    return dst
+end
+
+@inline device_copy_to!(dst::Array, scr::Array; kw...) = Base.copyto!(a, b)
 
 device_event(arch) = Event(device(arch))
 

@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Architectures: arch_array, device_event
+using Oceananigans.Architectures: arch_array, device_event, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 
@@ -122,7 +122,7 @@ function fill_west_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     sync_device!(getdevice(w))
 
     switch_device!(getdevice(c))
-    copyto!(dst, src)
+    device_copy_to!(dst, src)
 
     p  = view(parent(c), 1:H, :, :)
     p .= dst
@@ -145,7 +145,7 @@ function fill_east_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args..
     sync_device!(getdevice(e))
 
     switch_device!(getdevice(c))    
-    copyto!(dst, src)
+    device_copy_to!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
     p .= dst
@@ -168,7 +168,7 @@ function fill_south_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args.
     sync_device!(getdevice(s))
 
     switch_device!(getdevice(c))
-    copyto!(dst, src)
+    device_copy_to!(dst, src)
 
     p  = view(parent(c), :, 1:H, :)
     p .= dst
@@ -191,86 +191,10 @@ function fill_north_halo!(c, bc::CBC, arch, dep, grid, neighbors, buffers, args.
     sync_device!(getdevice(n))
 
     switch_device!(getdevice(c))    
-    copyto!(dst, src)
+    device_copy_to!(dst, src)
 
     p  = view(parent(c), :, N+H+1:N+2H, :)
     p .= dst
-
-    return nothing
-end
-
-#####
-##### Tupled fill_halo! for Communicating boundary condition 
-#####
-    
-function fill_west_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, buffers, args...; kwargs...) where M
-    
-    ## Can we take this off??
-    wait(dep)
-    
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
-
-    dst = []
-    src = []
-    for n in M
-        push!(dst, buffers[n][bc[n].condition.rank].west...)
-        push!(src, buffers[n][bc[n].condition.from_rank].west...)
-    end
-    
-    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
-    
-    @sync for n in 1:M
-        @async begin
-            w = neighbors[n][bc[n].condition.from_rank]
-            src[n] .= parent(w)[N+1:N+H, :, :]
-        end
-    end
-    sync_device!(getdevice(src[1]))
-
-    switch_device!(getdevice(c[1]))
-    copyto!(dst, src)
-
-    @sync for n in 1:M
-        @async begin
-            p  = view(parent(c[n]), 1:H, :, :)
-            p .= dst[n]
-        end
-    end
-
-    return nothing
-end
-
-function fill_east_halo!(c::NTuple, bc::NTuple{M, CBC}, arch, dep, grid, neighbors, args...; kwargs...) where M
-    
-    ## Can we take this off??
-    wait(dep)
-    
-    H = halo_size(grid)[1]
-    N = size(grid)[1]
-
-    dst = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
-
-    switch_device!(getdevice(neighbors[1][bc[1].condition.from_rank]))
-    src = arch_array(arch, zeros(M, H, size(parent(c[1]), 2), size(parent(c[1]), 3)))
-    
-    @sync for n in 1:M
-        @async begin
-            e = neighbors[n][bc[n].condition.from_rank]
-            src[n, :, :, :] .= parent(e)[H+1:2H, :, :]
-        end
-    end
-
-    sync_device!(getdevice(src[1]))
-    
-    switch_device!(getdevice(c[1]))
-    copyto!(dst, src)
-    @sync for n in 1:M
-        @async begin
-            p  = view(parent(c[n]),  N+H+1:N+2H, :, :)
-            p .= dst[n, :, :, :]
-        end
-    end
 
     return nothing
 end
