@@ -51,7 +51,7 @@ import Oceananigans.Grids:
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
-import Oceananigans.Grids: inactive_cell
+import Oceananigans.Grids: inactive_cell, return_metrics
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
@@ -66,8 +66,7 @@ import Oceananigans.Advection:
     _advective_momentum_flux_Ww,
     _advective_tracer_flux_x,
     _advective_tracer_flux_y,
-    _advective_tracer_flux_z,
-    return_metrics
+    _advective_tracer_flux_z
 
 import Oceananigans.TurbulenceClosures:
     _viscous_flux_ux,
