@@ -4,9 +4,6 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Printf
 
-import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
-                                        ivd_lower_diagonal
-
 #####
 ##### PartialCellBottom
 #####
