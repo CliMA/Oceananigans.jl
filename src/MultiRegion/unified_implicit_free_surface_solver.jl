@@ -17,9 +17,10 @@ import Oceananigans.Solvers: solve!
 
 import Oceananigans.Architectures: architecture
 
-struct UnifiedImplicitFreeSurfaceSolver{S, R}
+struct UnifiedImplicitFreeSurfaceSolver{S, R, T}
     unified_pcg_solver :: S
     right_hand_side :: R
+    storage :: T
 end
 
 architecture(solver::UnifiedImplicitFreeSurfaceSolver) =
@@ -41,7 +42,8 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     
     arch = architecture(mrg) 
     right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
-
+    storage = similar(right_hand_side)
+    
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
@@ -93,16 +95,17 @@ end
 function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolver, rhs, g, Δt)
 
     solver = implicit_free_surface_solver.unified_pcg_solver
-    
+    storage = implicit_free_surface_solver.storage
+
     sync_all_devices!(η.grid.devices)
 
     switch_device!(getdevice(solver.matrix_constructors[1]))
-    sol = solve!(η, solver, rhs, Δt)
+    solve!(storage, solver, rhs, Δt)
 
     arch = architecture(solver)
     grid = η.grid
     
-    @apply_regionally redistribute_lhs!(η, sol, arch, grid, Iterate(1:length(grid)), grid.partition)
+    @apply_regionally redistribute_lhs!(η, storage, arch, grid, Iterate(1:length(grid)), grid.partition)
 
     fill_halo_regions!(η)
 

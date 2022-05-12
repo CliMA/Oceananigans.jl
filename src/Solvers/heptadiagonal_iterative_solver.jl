@@ -88,7 +88,7 @@ solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
 """
 function HeptadiagonalIterativeSolver(coeffs;
                                       grid,
-                                      iterative_solver = cg,
+                                      iterative_solver = cg!,
                                       maximum_iterations = prod(size(grid)),
                                       tolerance = 1e-13,
                                       reduced_dim = (false, false, false), 
@@ -310,9 +310,9 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         solver.previous_Δt = Δt
     end
     
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose = solver.verbose)
+    solver.iterative_solver(x, solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner, verbose = solver.verbose)
 
-    return q
+    return x
 end
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)

@@ -285,10 +285,9 @@ function progress(sim)
     u = sim.model.velocities.u
     η = sim.model.free_surface.η
 
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", 
-                    #"Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, #maximum(abs, u), maximum(abs, η),
+                    sim.model.clock.iteration, maximum(abs, u), #maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
