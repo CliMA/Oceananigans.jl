@@ -259,8 +259,6 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
     end
 end
 
-
-
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
