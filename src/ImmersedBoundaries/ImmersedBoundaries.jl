@@ -51,7 +51,7 @@ import Oceananigans.Grids:
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
-import Oceananigans.Grids: inactive_cell, return_metrics
+import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
@@ -259,8 +259,6 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
     end
 end
 
-
-return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
 
 
 include("immersed_grid_metrics.jl")
