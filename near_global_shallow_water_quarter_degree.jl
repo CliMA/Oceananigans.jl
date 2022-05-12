@@ -153,14 +153,14 @@ model = ShallowWaterModel(grid = grid,
                           advection = WENO5(vector_invariant = VelocityStencil()),
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
-#			  bathymetry = bathymetry,
-			  formulation = VectorInvariantFormulation())
+            			  bathymetry = bathymetry,
+			              formulation = VectorInvariantFormulation())
 
 #####
 ##### Initial condition:
 #####
 
-h_init = 5000.0 # .+ bathymetry
+h_init = 5000
 set!(model, h=h_init)
 @info "model initialized"
 

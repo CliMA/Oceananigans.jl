@@ -61,7 +61,7 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 #####
 
 """
-    div_Uh(i, j, k, grid, solution)
+    div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
 
 Calculates the divergence of the mass flux into a cell,
 
