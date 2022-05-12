@@ -13,7 +13,23 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    # Step locally velocity and tracers
+    @apply_regionally prognostic_field_events = local_ab2_step!(model, Δt, χ)
+    
+    # blocking step for implicit free surface, non blocking for explicit
+    prognostic_field_events = ab2_step_free_surface!(model.free_surface, model, Δt, χ, prognostic_field_events)
+
+    # waiting all the ab2 steps (velocities, free_surface and tracers to complete)
+    @apply_regionally wait(device(model.architecture), prognostic_field_events)
+
+
+    # @apply_regionally local_ab2_step!(model, Δt, χ)
+    # ab2_step_free_surface!(model.free_surface, model, Δt, χ, nothing)    
+
+    return nothing
+end
+
+function local_ab2_step!(model, Δt, χ)
 
     if model.free_surface isa SplitExplicitFreeSurface
         sefs = model.free_surface
@@ -22,17 +38,16 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     end
 
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
-    explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
-    free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ,
-        MultiEvent(Tuple(explicit_velocity_step_events)))
+    explicit_tracer_step_events   = ab2_step_tracers!(model.tracers, model, Δt, χ)
+    
+    prognostic_field_events = (tuple(explicit_velocity_step_events...),
+        tuple(explicit_tracer_step_events...))
 
-    prognostic_field_events = MultiEvent(tuple(free_surface_event,
-        explicit_velocity_step_events...,
-        explicit_tracer_step_events...))
+    return prognostic_field_events    
 
-    wait(device(model.architecture), prognostic_field_events)
+    # wait(device(model.architecture), MultiEvent(tuple(explicit_velocity_step_events..., explicit_tracer_step_events...)))
 
-    return nothing
+    # return nothing
 end
 
 #####
