@@ -41,8 +41,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       _getregion(f.boundary_conditions, r),
                       _getregion(f.indices, r),
                       _getregion(f.operand, r),
-                      _getregion(f.status, r),
-                      _getregion(f.boundary_buffers, r))
+                      _getregion(f.status, r))
 
 @inline _getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
@@ -56,8 +55,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       getregion(f.boundary_conditions, r),
                       getregion(f.indices, r),
                       getregion(f.operand, r),
-                      getregion(f.status, r),
-                      getregion(f.boundary_buffers, r))
+                      getregion(f.status, r))
 
 @inline reconstruct_global_field(f::AbstractField) = f
 
@@ -94,21 +92,22 @@ FieldBoundaryConditions(mrg::MultiRegionGrid, loc, args...; kwargs...) =
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               mrg::MultiRegionGrid,
                                               field_name::Symbol,
+                                              buffer,
                                               prognostic_field_name=nothing)
 
   reg_bcs = regularize_field_boundary_conditions(bcs, mrg.region_grids[1], field_name, prognostic_field_name)
   loc = assumed_field_location(field_name)
 
-  return FieldBoundaryConditions(mrg, loc; west = reg_bcs.west,
-                                           east = reg_bcs.east,
-                                           south = reg_bcs.south,
-                                           north = reg_bcs.north,
-                                           bottom = reg_bcs.bottom,
-                                           top = reg_bcs.top,
-                                           immersed = reg_bcs.immersed)
+  return FieldBoundaryConditions(mrg, loc, buffer; west = reg_bcs.west,
+                                                   east = reg_bcs.east,
+                                                  south = reg_bcs.south,
+                                                  north = reg_bcs.north,
+                                                 bottom = reg_bcs.bottom,
+                                                    top = reg_bcs.top,
+                                               immersed = reg_bcs.immersed)
 end
 
-function inject_regional_bcs(grid, region, partition, loc, args...;   
+function inject_regional_bcs(grid, region, partition, loc, buffer, args...;   
                               west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                               east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                              south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
@@ -117,10 +116,10 @@ function inject_regional_bcs(grid, region, partition, loc, args...;
                                top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
-  west  = inject_west_boundary(region, partition, west)
-  east  = inject_east_boundary(region, partition, east)
-  south = inject_south_boundary(region, partition, south)
-  north = inject_north_boundary(region, partition, north)
+  west  = inject_west_boundary(region, buffer.west, partition, west)
+  east  = inject_east_boundary(region, buffer.east, partition, east)
+  south = inject_south_boundary(region, buffer.south, partition, south)
+  north = inject_north_boundary(region, buffer.north, partition, north)
   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 

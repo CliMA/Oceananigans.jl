@@ -9,29 +9,34 @@ struct FieldBoundaryBuffers{W, E, S, N}
    north :: N
 end
 
-FieldBoundaryBuffers() = FieldBoundaryBuffers(nothing, nothing, nothing, nothing)
-FieldBoundaryBuffers(grid, data, ::Missing) = nothing
-FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
+function FieldBoundaryBuffers(fields)
 
-function FieldBoundaryBuffers(grid, data, boundary_conditions)
+    grid = first(fields).grid
+    boundary_conditions = first(fields).boundary_conditions
 
     Hx, Hy, Hz = halo_size(grid)
+    arch = architecture(grid)
+    
+    Nx = minimum([size(parent(field.data), 1) for field in fields])
+    Ny = minimum([size(parent(field.data), 2) for field in fields])
+    Nz = minimum([size(parent(field.data), 3) for field in fields])
 
-    west  = create_buffer_x(architecture(grid), data, Hx, boundary_conditions.west)
-    east  = create_buffer_x(architecture(grid), data, Hx, boundary_conditions.east)
-    south = create_buffer_y(architecture(grid), data, Hy, boundary_conditions.south)
-    north = create_buffer_y(architecture(grid), data, Hy, boundary_conditions.north)
+    N = (Nx, Ny, Nz)
+    west  = create_buffer_x(arch, N, Hx, length(fields), boundary_conditions.west)
+    east  = create_buffer_x(arch, N, Hx, length(fields), boundary_conditions.east)
+    south = create_buffer_y(arch, N, Hy, length(fields), boundary_conditions.south)
+    north = create_buffer_y(arch, N, Hy, length(fields), boundary_conditions.north)
 
     return FieldBoundaryBuffers(west, east, south, north)
 end
 
-create_buffer_x(arch, data, H, bc)    = nothing
-create_buffer_y(arch, data, H, bc)    = nothing
+create_buffer_x(arch, N, H, Nvar, bc)    = nothing
+create_buffer_y(arch, N, H, Nvar, bc)    = nothing
 
-create_buffer_x(arch, data, H, ::CBC) = (send = arch_array(arch, zeros(H, size(parent(data), 2), size(parent(data), 3))), 
-                                         recv = arch_array(arch, zeros(H, size(parent(data), 2), size(parent(data), 3))))    
-create_buffer_y(arch, data, H, ::CBC) = (send = arch_array(arch, zeros(size(parent(data), 1), H, size(parent(data), 3))), 
-                                         recv = arch_array(arch, zeros(size(parent(data), 1), H, size(parent(data), 3))))
+create_buffer_x(arch, N, H, Nvar, ::CBC) = (send = arch_array(arch, zeros(H, N[2], N[3], Nvar)), 
+                                            recv = arch_array(arch, zeros(H, N[2], N[3], Nvar)))    
+create_buffer_y(arch, N, H, Nvar, ::CBC) = (send = arch_array(arch, zeros(N[1], H, N[3], Nvar)), 
+                                            recv = arch_array(arch, zeros(N[1], H, N[3], Nvar)))
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 
