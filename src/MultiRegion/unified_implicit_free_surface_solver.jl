@@ -43,7 +43,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     arch = architecture(mrg) 
     right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
     storage = similar(right_hand_side)
-    
+
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
@@ -55,7 +55,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
                                 HeptadiagonalIterativeSolver(coeffs; reduced_dim, grid = on_architecture(arch, grid), settings...)
 
-    return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side)
+    return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
