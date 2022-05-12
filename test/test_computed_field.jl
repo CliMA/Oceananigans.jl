@@ -400,13 +400,26 @@ for arch in archs
                 f isa Field && f.operand === op
             end
 
-            @test begin
-                u, v, w = model.velocities
-                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
-                ζ = Field(ζ_op) # identical to `VerticalVorticityField`
-                compute!(ζ)
-                ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᶜ
-            end
+            ϵ(x, y, z) = 2rand() - 1
+            u, v, w = model.velocities
+            set!(model, u=ϵ, v=ϵ)
+            ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+
+            ζ = Field(ζ_op) # identical to `VerticalVorticityField`
+            compute!(ζ)
+            @test ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᶜ
+
+            ζxy = Field(ζ_op, indices=(:, :, 1))
+            compute!(ζxy)
+            @test ζxy == view(ζ, :, :, 1)
+
+            ζxz = Field(ζ_op, indices=(:, 1, :))
+            compute!(ζxz)
+            @test ζxz == view(ζ, :, 1, :)
+
+            ζyz = Field(ζ_op, indices=(1, :, :))
+            compute!(ζyz)
+            @test ζyz == view(ζ, 1, :, :)
         end
 
         @testset "Operations with Field and PressureField [$A]" begin
@@ -447,13 +460,17 @@ for arch in archs
 
             Nx, Ny, Nz = size(model.grid)
 
+            # Periodic xy
             @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
             @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
+            
+            # Bounded z
             @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
             @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
 
             @compute ST_face = Field(@at (Center, Center, Face) S * T)
 
+            # These are initially 0 and remain 0
             @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
             @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
         end
@@ -495,7 +512,7 @@ for arch in archs
 
             set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
 
-            # Two ways to compute turbulent kinetic energy
+            # A few ways to compute turbulent kinetic energy
             U = Field(Average(u, dims=(1, 2)))
             V = Field(Average(v, dims=(1, 2)))
 
@@ -525,7 +542,28 @@ for arch in archs
 
             computed_tke = Field(tke_ccc)
             compute!(computed_tke)
-            @test all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2)
+            @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+
+            tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
+            compute!(tke_window)
+            @test all(interior(tke_window) .== 9/2)
+
+            # Computations along slices
+            tke_xy = Field(tke_ccc, indices=(:, :, 2)) 
+            compute!(tke_xy)
+            @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+
+            tke_xz = Field(tke_ccc, indices=(2:3, 2, 2:3)) 
+            compute!(tke_xz)
+            @test all(interior(tke_xz) .== 9/2)
+
+            tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3)) 
+            compute!(tke_yz)
+            @test all(interior(tke_yz) .== 9/2)
+
+            tke_x = Field(tke_ccc, indices=(2:3, 2, 2)) 
+            compute!(tke_x)
+            @test all(interior(tke_x) .== 9/2)
         end
 
         @testset "Computations with Fields [$A]" begin

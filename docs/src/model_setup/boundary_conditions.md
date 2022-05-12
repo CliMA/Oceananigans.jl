@@ -25,9 +25,9 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(16, 16, 16), x=(0, 2π), y=(0, 1), z=(0, 1), topology=(Periodic, Bounded, Bounded))
 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [1.26883e-16, 6.28319) regularly spaced with Δx=0.392699
-├── Bounded  y ∈ [0.0, 1.0]             regularly spaced with Δy=0.0625
-└── Bounded  z ∈ [0.0, 1.0]             regularly spaced with Δz=0.0625
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.392699
+├── Bounded  y ∈ [0.0, 1.0]     regularly spaced with Δy=0.0625
+└── Bounded  z ∈ [0.0, 1.0]     regularly spaced with Δz=0.0625
 
 julia> no_slip_bc = ValueBoundaryCondition(0)
 ValueBoundaryCondition: 0

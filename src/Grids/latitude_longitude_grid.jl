@@ -287,7 +287,7 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-    longest = max(length(x_summary), length(y_summary), length(z_summary)) 
+    longest = max(length(x_summary), length(y_summary), length(z_summary))
 
     x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
     y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
@@ -571,7 +571,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
-
 #####
 ##### Get minima of grid
 #####
@@ -603,4 +602,3 @@ function min_Δz(grid::LatitudeLongitudeGrid)
         return min_number_or_array(grid.Δzᵃᵃᶜ)
     end
 end
-

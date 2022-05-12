@@ -175,7 +175,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
-
+    
     return x
 end
 
