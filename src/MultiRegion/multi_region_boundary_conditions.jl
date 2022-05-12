@@ -98,34 +98,6 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
-function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, dep, grid, neighbors, buffers...; kwargs...)
-
-    H = halo_size(grid)[2]
-    N = size(grid)[2]
-    s = neighbors[southbc.condition.from_rank]
-    n = neighbors[northbc.condition.from_rank]
-
-    southdst = buffers[southbc.condition.rank].south.recv
-    northdst = buffers[northbc.condition.rank].north.recv
-
-    wait(device(arch), dep)
-
-    switch_device!(getdevice(s))
-    southsrc = buffers[westbc.condition.from_rank].south.send
-    southsrc .= view(parent(s), :, N+1:N+H, :)
-    
-    switch_device!(getdevice(n))
-    northsrc = buffers[eastbc.condition.from_rank].north.send
-    northsrc .= view(parent(n), :, H+1:2H, :)
-
-    switch_device!(getdevice(c))    
-    device_copy_to!(southdst, southsrc)
-    device_copy_to!(northdst, northsrc)
-
-    view(parent(c), :, 1:H, :, :)        .= southdst
-    view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
-end
-
 function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, grid, neighbors, buffers...; kwargs...)
 
     H = halo_size(grid)[1]
@@ -152,6 +124,34 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, g
 
     view(parent(c), 1:H, :, :)        .= westdst
     view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+end
+
+function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, dep, grid, neighbors, buffers...; kwargs...)
+
+    H = halo_size(grid)[2]
+    N = size(grid)[2]
+    s = neighbors[southbc.condition.from_rank]
+    n = neighbors[northbc.condition.from_rank]
+
+    southdst = buffers[southbc.condition.rank].south.recv
+    northdst = buffers[northbc.condition.rank].north.recv
+
+    wait(device(arch), dep)
+
+    switch_device!(getdevice(s))
+    southsrc = buffers[westbc.condition.from_rank].south.send
+    southsrc .= view(parent(s), :, N+1:N+H, :)
+    
+    switch_device!(getdevice(n))
+    northsrc = buffers[eastbc.condition.from_rank].north.send
+    northsrc .= view(parent(n), :, H+1:2H, :)
+
+    switch_device!(getdevice(c))    
+    device_copy_to!(southdst, southsrc)
+    device_copy_to!(northdst, northsrc)
+
+    view(parent(c), :, 1:H, :, :)        .= southdst
+    view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
 end
 
 #####
