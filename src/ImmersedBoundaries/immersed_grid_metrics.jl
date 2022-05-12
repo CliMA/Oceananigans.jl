@@ -1,5 +1,4 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
-using Oceananigans.Advection: compute_stretched_weno_coefficients
 
 const c = Center()
 const f = Face()
@@ -32,5 +31,3 @@ end
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
-
-compute_stretched_weno_coefficients(grid::ImmersedBoundaryGrid; kwargs...) = compute_stretched_weno_coefficients(grid.underlying_grid, kwargs...)

@@ -66,7 +66,8 @@ import Oceananigans.Advection:
     _advective_momentum_flux_Ww,
     _advective_tracer_flux_x,
     _advective_tracer_flux_y,
-    _advective_tracer_flux_z
+    _advective_tracer_flux_z,
+    return_metrics
 
 import Oceananigans.TurbulenceClosures:
     _viscous_flux_ux,
@@ -258,6 +259,10 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
             ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
     end
 end
+
+
+return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
+
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
