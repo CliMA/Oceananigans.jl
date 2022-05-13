@@ -29,7 +29,7 @@ using Oceananigans
 #
 # ## Instantiating and configuring a model
 #
-# A core Oceananigans type is `NonhydrostaticModel`. We build an `NonhydrostaticModel`
+# A core Oceananigans type is `NonhydrostaticModel`. We build a `NonhydrostaticModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
 # Below, we build a rectilinear grid with 128 regularly-spaced grid points in
@@ -107,8 +107,8 @@ plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers, prefix = "one_dimensional_diffusion",
-                     schedule=IterationInterval(100), force = true)
+    JLD2OutputWriter(model, model.tracers, filename = "one_dimensional_diffusion.jld2",
+                     schedule=IterationInterval(100), overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 

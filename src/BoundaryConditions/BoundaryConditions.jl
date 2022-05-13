@@ -3,7 +3,7 @@ module BoundaryConditions
 export
     BCType, Flux, Gradient, Value, Open,
     BoundaryCondition, getbc, setbc!,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition,
+    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, CommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -34,4 +34,4 @@ include("fill_halo_regions_nothing.jl")
 
 include("apply_flux_bcs.jl")
 
-end
+end # module

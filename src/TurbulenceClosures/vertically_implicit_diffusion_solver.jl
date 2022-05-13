@@ -3,6 +3,29 @@ using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 #####
+##### implicit_step! interface
+#####
+##### Closures with `VerticallyImplicitTimeDiscretization` can define
+#####
+##### 1. "Coefficient extractors" `νz` and `κz` to support vertically-implicit
+#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`. 
+#####    There are three extractors for momentum (`νz`) and one for tracers (`κz`)
+#####    relevant to implicit vertical diffusion.
+#####
+##### 2. `implicit_linear_coefficient` to support the implicit treament of a _linear_ term.
+#####
+
+# Fallbacks: extend these function for `closure` to support.
+# TODO: docstring
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
+    zero(grid)
+
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # w
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock) = zero(grid) # tracers
+
+#####
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
@@ -64,9 +87,12 @@ end
 ### Diagonal terms
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
-    one(eltype(grid)) - maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
-                        maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
+    one(eltype(grid)) -
+        Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
+                      maybe_tupled_ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz)
 
+@inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
 
@@ -80,13 +106,13 @@ end
 Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 - Δt ∂z κz ∂z) cⁿ⁺¹ = c★
+(1 - Δt ∂z κz ∂z - Δt L) cⁿ⁺¹ = c★
 ```
 
 and
 
 ```math
-(1 - Δt ∂z νz ∂z) wⁿ⁺¹ = w★
+(1 - Δt ∂z νz ∂z - Δt L) wⁿ⁺¹ = w★
 ```
 
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,

@@ -24,9 +24,11 @@ update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.p
 # Partial cell "algorithm"
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
-update_hydrostatic_pressure!(ibg::PCBIBG, model) = update_hydrostatic_pressure!(ibg.grid, model)
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers) =
+    update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers)
 
 function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
+
     pressure_calculation = launch!(arch, grid, :xy, _update_hydrostatic_pressure!,
                                    pHY′, grid, buoyancy, tracers,
                                    dependencies = Event(device(arch)))

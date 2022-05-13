@@ -325,33 +325,47 @@ function computations_with_computed_fields(model)
 end
 
 for arch in archs
-    @testset "Computed Fields [$(typeof(arch))]" begin
-        @info "  Testing computed Fields [$(typeof(arch))]..."
+    A = typeof(arch)
+    @testset "Computed Fields [$A]" begin
+        @info "  Testing computed Fields [$A]..."
 
-        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
-                               topology=(Periodic, Periodic, Bounded))
-
-        buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
-                                    equation_of_state = LinearEquationOfState(thermal_expansion=1, haline_contraction=1))
-
+        gravitational_acceleration = 1
+        equation_of_state = LinearEquationOfState(thermal_expansion=1, haline_contraction=1)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+        buoyancy = SeawaterBuoyancy(; gravitational_acceleration, equation_of_state)
         model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
 
-        @testset "Derivative computations [$(typeof(arch))]" begin
-            @info "      Testing compute! derivatives..."
+        @testset "Instantiating and computing computed fields [$A]" begin
+            @info "  Testing computed Field instantiation and computation [$A]..."
+            c = CenterField(grid)
+            c² = compute!(Field(c^2))
+            @test c² isa Field
+
+            # Test indices
+            indices = [(:, :, :), (1, :, :), (:, :, grid.Nz), (2:4, 3, 5)]
+            sizes   = [(4, 4, 4), (1, 4, 4), (4, 4, 1),       (3, 1, 1)]
+            for (ii, sz) in zip(indices, sizes)
+                c² = compute!(Field(c^2; indices=ii))
+                @test size(interior(c²)) === sz
+            end
+        end
+
+        @testset "Derivative computations [$A]" begin
+            @info "      Testing correctness of compute! derivatives..."
             @test compute_derivative(model, ∂x)
             @test compute_derivative(model, ∂y)
             @test compute_derivative(model, ∂z)
         end
 
-        @testset "Unary computations [$(typeof(arch))]" begin
-            @info "      Testing compute! unary operations..."
+        @testset "Unary computations [$A]" begin
+            @info "      Testing correctness of compute! unary operations..."
             for unary in (sqrt, sin, cos, exp, tanh)
                 @test compute_unary(unary, model)
             end
         end
 
-        @testset "Binary computations [$(typeof(arch))]" begin
-            @info "      Testing compute! binary operations..."
+        @testset "Binary computations [$A]" begin
+            @info "      Testing correctness of compute! binary operations..."
             @test compute_plus(model)
             @test compute_minus(model)
             @test compute_times(model)
@@ -361,15 +375,15 @@ for arch in archs
             @test try compute!(Field(u + v - w)); true; catch; false; end
         end
 
-        @testset "Multiary computations [$(typeof(arch))]" begin
-            @info "      Testing compute! multiary operations..."
+        @testset "Multiary computations [$A]" begin
+            @info "      Testing correctness of compute! multiary operations..."
             @test compute_many_plus(model)
 
-            @info "      Testing compute! kinetic energy..."
+            @info "      Testing correctness of compute! kinetic energy..."
             @test compute_kinetic_energy(model)
         end
 
-        @testset "Computations with KernelFunctionOperation [$(typeof(arch))]" begin
+        @testset "Computations with KernelFunctionOperation [$A]" begin
             @test begin
                 @inline trivial_kernel_function(i, j, k, grid) = 1
                 op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
@@ -386,16 +400,29 @@ for arch in archs
                 f isa Field && f.operand === op
             end
 
-            @test begin
-                u, v, w = model.velocities
-                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
-                ζ = Field(ζ_op) # identical to `VerticalVorticityField`
-                compute!(ζ)
-                ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᶜ
-            end
+            ϵ(x, y, z) = 2rand() - 1
+            u, v, w = model.velocities
+            set!(model, u=ϵ, v=ϵ)
+            ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+
+            ζ = Field(ζ_op) # identical to `VerticalVorticityField`
+            compute!(ζ)
+            @test ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᶜ
+
+            ζxy = Field(ζ_op, indices=(:, :, 1))
+            compute!(ζxy)
+            @test ζxy == view(ζ, :, :, 1)
+
+            ζxz = Field(ζ_op, indices=(:, 1, :))
+            compute!(ζxz)
+            @test ζxz == view(ζ, :, 1, :)
+
+            ζyz = Field(ζ_op, indices=(1, :, :))
+            compute!(ζyz)
+            @test ζyz == view(ζ, 1, :, :)
         end
 
-        @testset "Operations with Field and PressureField [$(typeof(arch))]" begin
+        @testset "Operations with Field and PressureField [$A]" begin
             @info "      Testing operations with Field..."
             @test operations_with_computed_field(model)
 
@@ -403,7 +430,7 @@ for arch in archs
             # @test pressure_field(model)
         end
 
-        @testset "Horizontal averages of operations [$(typeof(arch))]" begin
+        @testset "Horizontal averages of operations [$A]" begin
             @info "      Testing horizontal averges..."
             @test horizontal_average_of_plus(model)
             @test horizontal_average_of_minus(model)
@@ -413,17 +440,17 @@ for arch in archs
             @test multiplication_and_derivative_ccc(model)
         end
 
-        @testset "Zonal averages of operations [$(typeof(arch))]" begin
+        @testset "Zonal averages of operations [$A]" begin
             @info "      Testing zonal averges..."
             @test zonal_average_of_plus(model)
         end
 
-        @testset "Volume averages of operations [$(typeof(arch))]" begin
+        @testset "Volume averages of operations [$A]" begin
             @info "      Testing volume averges..."
             @test volume_average_of_times(model)
         end
 
-        @testset "Field boundary conditions [$(typeof(arch))]" begin
+        @testset "Field boundary conditions [$A]" begin
             @info "      Testing boundary conditions for Field..."
 
             set!(model; S=π, T=42)
@@ -433,18 +460,22 @@ for arch in archs
 
             Nx, Ny, Nz = size(model.grid)
 
+            # Periodic xy
             @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
             @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
+            
+            # Bounded z
             @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
             @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
 
             @compute ST_face = Field(@at (Center, Center, Face) S * T)
 
+            # These are initially 0 and remain 0
             @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
             @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
         end
 
-        @testset "Operations with AveragedField [$(typeof(arch))]" begin
+        @testset "Operations with AveragedField [$A]" begin
             @info "      Testing operations with AveragedField..."
 
             T, S = model.tracers
@@ -464,16 +495,16 @@ for arch in archs
                       (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
 
         for buoyancy in buoyancies
-            @testset "Computations with BuoyancyFields [$(typeof(arch)), $(typeof(buoyancy).name.wrapper)]" begin
+            @testset "Computations with BuoyancyFields [$A, $(typeof(buoyancy).name.wrapper)]" begin
                 @info "      Testing computations with BuoyancyField " *
-                      "[$(typeof(arch)), $(typeof(buoyancy).name.wrapper)]..."
+                      "[$A, $(typeof(buoyancy).name.wrapper)]..."
 
                 @test computations_with_buoyancy_field(arch, buoyancy)
             end
         end
 
-        @testset "Computations with AveragedFields [$(typeof(arch))]" begin
-            @info "      Testing computations with AveragedField [$(typeof(arch))]..."
+        @testset "Computations with AveragedFields [$A]" begin
+            @info "      Testing computations with AveragedField [$A]..."
 
             @test computations_with_averaged_field_derivative(model)
 
@@ -481,7 +512,7 @@ for arch in archs
 
             set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
 
-            # Two ways to compute turbulent kinetic energy
+            # A few ways to compute turbulent kinetic energy
             U = Field(Average(u, dims=(1, 2)))
             V = Field(Average(v, dims=(1, 2)))
 
@@ -511,17 +542,38 @@ for arch in archs
 
             computed_tke = Field(tke_ccc)
             compute!(computed_tke)
-            @test all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2)
+            @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+
+            tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
+            compute!(tke_window)
+            @test all(interior(tke_window) .== 9/2)
+
+            # Computations along slices
+            tke_xy = Field(tke_ccc, indices=(:, :, 2)) 
+            compute!(tke_xy)
+            @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+
+            tke_xz = Field(tke_ccc, indices=(2:3, 2, 2:3)) 
+            compute!(tke_xz)
+            @test all(interior(tke_xz) .== 9/2)
+
+            tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3)) 
+            compute!(tke_yz)
+            @test all(interior(tke_yz) .== 9/2)
+
+            tke_x = Field(tke_ccc, indices=(2:3, 2, 2)) 
+            compute!(tke_x)
+            @test all(interior(tke_x) .== 9/2)
         end
 
-        @testset "Computations with Fields [$(typeof(arch))]" begin
-            @info "      Testing computations with Field [$(typeof(arch))]..."
+        @testset "Computations with Fields [$A]" begin
+            @info "      Testing computations with Field [$A]..."
             @test computations_with_computed_fields(model)
         end
 
-        @testset "Conditional computation of Field and BuoyancyField [$(typeof(arch))]" begin
+        @testset "Conditional computation of Field and BuoyancyField [$A]" begin
             @info "      Testing conditional computation of Field and BuoyancyField " *
-                  "[$(typeof(arch))]..."
+                  "[$A]..."
 
             set!(model, u=2, v=0, w=0, T=3, S=0)
             u, v, w, T, S = fields(model)

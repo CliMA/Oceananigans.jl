@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FieldStatus, reduced_dimensions
+using Oceananigans.Fields: FieldStatus, reduced_dimensions, validate_indices, offset_compute_index
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -38,15 +38,17 @@ function Field(operand::AbstractOperation;
                recompute_safely = true)
 
     grid = operand.grid
+    loc = location(operand)
+    indices = validate_indices(indices, loc, grid)
 
     if isnothing(data)
-        data = new_data(grid, location(operand), indices)
+        data = new_data(grid, loc, indices)
         recompute_safely = false
     end
 
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(location(operand), grid, data, boundary_conditions, indices, operand, status)
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
 """
@@ -56,19 +58,19 @@ Compute `comp.operand` and store the result in `comp.data`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
-    compute_at!(comp.operand, time)
-
-    arch = architecture(comp)
-    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
-    wait(device(arch), event)
+    @apply_regionally compute_at!(comp.operand, time)
+    @apply_regionally compute_field!(comp)
 
     fill_halo_regions!(comp)
 
     return comp
 end
 
-@inline offset_compute_index(::Colon, i) = i
-@inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
+function compute_field!(comp)
+    arch = architecture(comp)
+    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
+    wait(device(arch), event)
+end
 
 """Compute an `operand` and store in `data`."""
 @kernel function _compute!(data, operand, index_ranges)

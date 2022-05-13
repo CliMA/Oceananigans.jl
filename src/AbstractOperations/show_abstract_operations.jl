@@ -12,7 +12,7 @@ operation_name(op::GridMetricOperation)  = string(op.metric)
 
 function show_interp(op)
     op_str = string(op)
-    if op_str[1:8] == "identity"
+    if length(op_str) >= 8 && op_str[1:8] == "identity"
         return "identity"
     else
         return op_str

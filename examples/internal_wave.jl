@@ -128,8 +128,8 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           schedule = IterationInterval(1),
-                                                            prefix = "internal_wave",
-                                                             force = true)
+                                                          filename = "internal_wave.jld2",
+                                                          overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
@@ -143,13 +143,14 @@ run!(simulation)
 using Printf, Plots
 
 w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+Nt = length(w_timeseries.times)
 x, y, z = nodes(w_timeseries)
 
 # and makes an animation with Plots.jl:
 
 anim = @animate for (i, t) in enumerate(w_timeseries.times)
 
-    @info "Drawing frame $i from iteration $iter..."
+    @info "Drawing frame $i of $Nt..."
 
     w = interior(w_timeseries[i], :, 1, :)
 

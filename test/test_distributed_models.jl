@@ -1,4 +1,29 @@
+include("dependencies_for_runtests.jl")
+
 using MPI
+
+# # Distributed model tests
+#
+# These tests are meant to be run on 4 ranks. This script may be run
+# stand-alone (outside the test environment) via
+#
+# mpiexec -n 4 julia --project test_distributed_models.jl
+#
+# provided that a few packages (like TimesDates.jl) are in your global environment.
+#
+# Another possibility is to use tmpi ():
+#
+# tmpi 4 julia --project
+#
+# then later:
+# 
+# julia> include("test_distributed_models.jl")
+#
+# When running the tests this way, uncomment the following line
+
+#MPI.Init()
+
+# to initialize MPI.
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Distributed: MultiArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
@@ -258,6 +283,8 @@ end
 #####
 ##### Injection of halo communication BCs
 #####
+##### TODO: use Field constructor for these tests rather than NonhydrostaticModel.
+#####
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
@@ -432,6 +459,10 @@ end
 
     @info "Testing distributed MPI Oceananigans..."
 
+    # We don't support distributing _anything_ in the vertical,
+    # so these tests are commented out below (and maybe should be removed
+    # in the future).
+
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
@@ -444,7 +475,7 @@ end
         @info "  Testing local grids for distributed models..."
         test_triply_periodic_local_grid_with_411_ranks()
         test_triply_periodic_local_grid_with_141_ranks()
-        test_triply_periodic_local_grid_with_114_ranks()
+        # test_triply_periodic_local_grid_with_114_ranks()
         test_triply_periodic_local_grid_with_221_ranks()
     end
 
@@ -452,7 +483,7 @@ end
         @info "  Testing injection of halo communication BCs..."
         test_triply_periodic_bc_injection_with_411_ranks()
         test_triply_periodic_bc_injection_with_141_ranks()
-        test_triply_periodic_bc_injection_with_114_ranks()
+        # test_triply_periodic_bc_injection_with_114_ranks()
         test_triply_periodic_bc_injection_with_221_ranks()
     end
 
@@ -461,32 +492,35 @@ end
         for H in 1:3
             test_triply_periodic_halo_communication_with_411_ranks((H, H, H))
             test_triply_periodic_halo_communication_with_141_ranks((H, H, H))
-            test_triply_periodic_halo_communication_with_114_ranks((H, H, H))
+            # test_triply_periodic_halo_communication_with_114_ranks((H, H, H))
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H))
         end
     end
 
     @testset "Time stepping NonhydrostaticModel" begin
-        topo = (Periodic, Periodic, Periodic)
-        arch = MultiArch(ranks=(1, 4, 1))
-        grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-        model = NonhydrostaticModel(grid=grid)
+        for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
+            topo = (Periodic, Periodic, Periodic)
+            arch = MultiArch(; ranks)
+            grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+            model = NonhydrostaticModel(; grid)
 
-        time_step!(model, 1)
-        @test model isa NonhydrostaticModel
-        @test model.clock.time ≈ 1
+            time_step!(model, 1)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 1
 
-        simulation = Simulation(model, Δt=1, stop_iteration=2)
-        run!(simulation)
-        @test model isa NonhydrostaticModel
-        @test model.clock.time ≈ 2
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 2
+        end
     end
 
     @testset "Time stepping ShallowWaterModel" begin
         topo = (Periodic, Periodic, Flat)
         arch = MultiArch(ranks=(1, 4, 1), topology = topo)
         grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
-        model = ShallowWaterModel(advection=nothing, grid=grid, gravitational_acceleration=1)
+        model = ShallowWaterModel(; advection=nothing, grid, gravitational_acceleration=1)
 
         set!(model, h=1)
         time_step!(model, 1)

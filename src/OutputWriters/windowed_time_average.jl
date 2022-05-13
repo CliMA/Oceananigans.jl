@@ -33,7 +33,9 @@ longer `stride`s are faster to compute, but less accurate.
 
 The time-average of ``a`` is a left Riemann sum corresponding to
 
-`` ⟨a⟩ = 1/T \\int_{tᵢ-T}^T a \\mathrm{d} t ,``
+```math
+⟨a⟩ = T⁻¹ \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \\, ,
+```
 
 where ``⟨a⟩`` is the time-average of ``a``, ``T`` is the time-window for averaging,
 and the ``tᵢ`` are discrete times separated by the time `interval`. The ``tᵢ`` specify
@@ -65,7 +67,7 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "averaged_velocity_data",
+                                                          filename= "averaged_velocity_data.jld2",
                                                           schedule = AveragedTimeInterval(4years, window=1year, stride=2))
 
 # output
@@ -91,7 +93,7 @@ TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
 Base.copy(schedule::AveragedTimeInterval) = AveragedTimeInterval(schedule.interval, window=schedule.window, stride=schedule.stride)
 
 """
-    WindowedTimeAverage{OP, R, FS} <: AbstractDiagnostic
+    mutable struct WindowedTimeAverage{OP, R} <: AbstractDiagnostic
 
 An object for computing 'windowed' time averages, or moving time-averages
 of a `operand` over a specified `window`, collected on `interval`.

@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.BoundaryConditions: OBC
+using Oceananigans.BoundaryConditions: OBC, CBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
 
 using Adapt
@@ -13,18 +13,19 @@ import Statistics: norm, mean, mean!
 ##### The bees knees
 #####
 
-struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
     indices :: I
     operand :: O
     status :: S
+    boundary_buffers :: F
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S, I}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, indices, op, status)
+        return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
     end
 end
 
@@ -45,9 +46,9 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                  # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing}, ::Face, side) = nothing # only open or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing          # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing                        # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing, CBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                # its nothing or nothing
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -100,12 +101,13 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=nothing, status=nothing)
-    validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, bcs)
+function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
+    @apply_regionally validate_field_data(loc, data, grid, indices)
+    @apply_regionally validate_boundary_conditions(loc, grid, bcs)
     indices = validate_indices(indices, loc, grid)
+    buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
-    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status)
+    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
 
 """
@@ -132,10 +134,10 @@ julia> using Oceananigans
 
 julia> ω = Field{Face, Face, Center}(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 1×1×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2
+└── data: 7×7×7 OffsetArray(::Array{Float64, 3}, -2:4, -2:4, -2:4) with eltype Float64 with indices -2:4×-2:4×-2:4
     └── max=0.0, min=0.0, mean=0.0
 ```
 """
@@ -157,7 +159,7 @@ function Field(loc::Tuple,
 end
     
 Field(z::ZeroField; kw...) = z
-Field(f::Field) = f # hmm...
+Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
     CenterField(grid; kw...)
@@ -245,20 +247,20 @@ julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 
 julia> c = CenterField(grid)
 2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 4×5×6 OffsetArray(::Array{Float64, 3}, 0:3, 0:4, 0:5) with eltype Float64 with indices 0:3×0:4×0:5
+└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 
 julia> c .= rand(size(c)...);
 
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 4×2×2 OffsetArray(view(::Array{Float64, 3}, :, 3:4, 2:3), 0:3, 2:3, 1:2) with eltype Float64 with indices 0:3×2:3×1:2
+└── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
     └── max=0.854147, min=0.0109059, mean=0.520099
 
 julia> size(v)
@@ -292,13 +294,27 @@ function Base.view(f::Field, i, j, k)
                  f.status)
 end
 
+const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+
 # Conveniences
 Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
-boundary_conditions(field) = nothing
-boundary_conditions(f::Field) = f.boundary_conditions
+boundary_conditions(not_field) = nothing
+
+function boundary_conditions(f::Field)
+    if f.indices === default_indices(3) # default boundary conditions
+        return f.boundary_conditions
+    else # filter boundary conditions in windowed directions
+        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
+    end
+end
+
+immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
+
+data(field::Field) = field.data
 
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
@@ -469,6 +485,7 @@ function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
     return Field{LX, LY, LZ}(nothing,
                              adapt(to, reduced_field.data),
+                             nothing,
                              nothing,
                              nothing,
                              nothing,
@@ -648,16 +665,24 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    if !(field.indices isa typeof(default_indices(3))) # filter bcs for non-default indices
-        maybe_filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
-    else
-        maybe_filtered_bcs = field.boundary_conditions
+    # To correctly fill the halo regions of fields with non-default indices, we'd have to
+    # offset indices in the fill halo regions kernels.
+    # For now we punt and don't support filling halo regions on windowed fields.
+    # Note that `FieldBoundaryConditions` _can_ filter boundary conditions in
+    # windowed directions:
+    #
+    #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
+    #  
+    # which will be useful for implementing halo filling for windowed fields in the future.
+    if field.indices isa typeof(default_indices(3))
+        fill_halo_regions!(field.data,
+                           field.boundary_conditions,
+                           instantiated_location(field),
+                           field.grid,
+                           args...;
+                           reduced_dimensions = reduced_dims,
+                           kwargs...)
     end
 
-    return fill_halo_regions!(field.data,
-                              maybe_filtered_bcs,
-                              field.grid,
-                              args...;
-                              reduced_dimensions = reduced_dims,
-                              kwargs...)
+    return nothing
 end

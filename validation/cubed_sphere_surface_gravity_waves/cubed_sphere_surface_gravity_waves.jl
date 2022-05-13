@@ -22,20 +22,20 @@ end
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
 
-    @info @sprintf("Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
+    @info @sprintf("Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), wall time: %s",
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(abs, sim.model.velocities.u),
                    maximum(abs, sim.model.velocities.v),
                    minimum(sim.model.free_surface.η),
                    maximum(sim.model.free_surface.η),
-                   sim.parameters.cfl(sim.model),
                    prettytime(wall_time))
 
     p.interval_start_time = time_ns()
 
     return nothing
 end
+
 
 #####
 ##### Script starts here
@@ -96,11 +96,10 @@ function cubed_sphere_surface_gravity_waves(; face_number)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 25days,
-        iteration_interval = 1,
-                  progress = Progress(time_ns()),
-                parameters = (; cfl)
+                 stop_time = 25days
     )
+
+    simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(72))
 
     fields_to_check = (
         u = model.velocities.u,
@@ -112,35 +111,26 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     )
 
     simulation.diagnostics[:state_checker] =
-        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(1))
+        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(100))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, output_fields,
-            schedule = TimeInterval(1hour),
-              prefix = "cubed_sphere_surface_gravity_waves_face$face_number",
-               force = true)
+            schedule = TimeInterval(1days),
+            filename = "cubed_sphere_surface_gravity_waves.jld2",
+            overwrite_existing = true)
 
     run!(simulation)
 
     return simulation
 end
 
-include("animate_on_map_projection.jl")
+# include("animate_on_map_projection.jl")
 
-function run_cubed_sphere_surface_gravity_waves_validation()
+cubed_sphere_surface_gravity_waves(face_number=1)
 
-    for f in 1:6
-        cubed_sphere_surface_gravity_waves(face_number=f)
-    end
-
-    projections = [
-        ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
-        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-    ]
-
-    for f in 1:6
-        animate_surface_gravity_waves(face_number=f, projections=projections)
-    end
-end
+#     projections = [
+#         ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
+#         ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+#     ]

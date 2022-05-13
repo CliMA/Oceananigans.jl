@@ -125,9 +125,9 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                           schedule = TimeInterval(super_rotation_period / 1000),
-                                                          prefix = output_prefix,
+                                                          filename = output_prefix,
                                                           field_slicer = nothing,
-                                                          force = true)
+                                                          overwrite_existing = true)
 
     run!(simulation)
 

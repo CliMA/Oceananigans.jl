@@ -73,7 +73,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $second_order_interp(i, j, k, grid, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::WVI, ∂z, VI, u) where {FT, TX, TY} =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
                                 $interp(i, j, k, grid, scheme, ∂z, VI, u),
                                 $second_order_interp(i, j, k, grid, ∂z, u))
                 end

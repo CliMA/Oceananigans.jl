@@ -79,33 +79,16 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
 # Support for "ManyIndependentColumnMode"
 const CAVDArray = AbstractArray{<:CAVD}
+const FlavorOfCAVD = Union{CAVD, CAVDArray}
 
-with_tracers(tracers, closure::CAVD{TD}) where TD =
-    ConvectiveAdjustmentVerticalDiffusivity{TD}(closure.convective_κz,
-                                                closure.convective_νz,
-                                                closure.background_κz,
-                                                closure.background_νz)
-
-function with_tracers(tracers, closure_array::CAVDArray)
-    arch = architecture(closure_array)
-    Ex, Ey = size(closure_array)
-    return arch_array(arch, [with_tracers(tracers, closure_array[i, j]) for i=1:Ex, j=1:Ey])
-end
-
-# Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
-    ## If we can get away with only precomputing the "stability" of a cell:
-    # data = new_data(Bool, arch, grid, (Center, Center, Center))
-    κ = CenterField(grid)
-    ν = CenterField(grid)
-    return (; κ, ν)
-end
-
-const FlavorOfCAVD = Union{CAVD, AbstractArray{<:CAVD}}
+with_tracers(tracers, closure::FlavorOfCAVD) = closure
+DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFaceField(grid), ν = ZFaceField(grid))
+@inline viscosity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfCAVD) = (Center(), Center(), Face())
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
 
-function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
 
     arch = model.architecture
     grid = model.grid
@@ -131,8 +114,7 @@ end
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) &
-                  is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 
     @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
                                                 closure_ij.background_κz,
