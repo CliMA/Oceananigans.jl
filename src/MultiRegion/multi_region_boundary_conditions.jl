@@ -98,7 +98,7 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
-function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, grid, neighbors, buffers...; kwargs...)
+function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -124,9 +124,11 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, g
 
     view(parent(c), 1:H, :, :)        .= westdst
     view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+
+    return NoneEvent()
 end
 
-function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, dep, grid, neighbors, buffers...; kwargs...)
+function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[2]
     N = size(grid)[2]
@@ -152,6 +154,8 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, de
 
     view(parent(c), :, 1:H, :, :)        .= southdst
     view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
+
+    return NoneEvent()
 end
 
 #####
