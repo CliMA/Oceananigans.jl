@@ -32,9 +32,9 @@ function run_identity_operator_test(grid)
 
     b = arch_array(architecture(grid), rand(M))
 
-    sol = solve!(b, solver, b, 1.0)
+    solve!(solver.storage, solver, b, 1.0)
 
-    @test norm(Array(sol) .- Array(b)) .< solver.tolerance
+    @test norm(Array(solver.storage) .- Array(b)) .< solver.tolerance
 end
 
 @kernel function _multiply_by_volume!(r, grid)
@@ -88,8 +88,8 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
-    sol = solve!(ϕ_solution, solver, rhs, 1.0)
-    set!(ϕ_solution, reshape(sol, solver.problem_size...))
+    solve!(solver.storage, solver, rhs, 1.0)
+    set!(ϕ_solution, reshape(solver.storage, solver.problem_size...))
     fill_halo_regions!(ϕ_solution) 
     
     # Diagnose Laplacian of solution

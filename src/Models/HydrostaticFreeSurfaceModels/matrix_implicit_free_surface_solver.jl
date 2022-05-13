@@ -62,7 +62,7 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 #####
 
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
-    solver = implicit_free_surface_solver.matrix_iterative_solver
+    solver  = implicit_free_surface_solver.matrix_iterative_solver
     storage = implicit_free_surface_solver.storage
     
     solve!(storage, solver, rhs, Δt)
