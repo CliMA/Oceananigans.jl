@@ -161,26 +161,26 @@ for side in sides
         @inline $_flux(i, j, k, ibg, bc::VBCorGBC, args...) = zero(ibg) # fallback for non-ASD closures
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any}, K, id, clock, fields) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields)
+            $_flux(i, j, k, ibg, bc, loc, c, closure[1], Ks[1], id, clock, fields)
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any}, K, id, clock, fields) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields)
+            $_flux(i, j, k, ibg, bc, loc, c, closure[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[2], Ks[2], id, clock, fields)
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any}, K, id, clock, fields) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields)
+            $_flux(i, j, k, ibg, bc, loc, c, closure[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[2], Ks[2], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[3], Ks[3], id, clock, fields)
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any, <:Any}, K, id, clock, fields) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields)
+            $_flux(i, j, k, ibg, bc, loc, c, closure[1], Ks[1], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[2], Ks[2], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[3], Ks[3], id, clock, fields) +
+            $_flux(i, j, k, ibg, bc, loc, c, closure[4], Ks[4], id, clock, fields)
 
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple, K, id, clock, fields) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
-             $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields)
+            $_flux(i, j, k, ibg, bc, loc, c, closure[1], Ks[1], id, clock, fields) +
+             $flux(i, j, k, ibg, bc, loc, c, closure[2:end], Ks[2:end], id, clock, fields)
     end
 end
 
