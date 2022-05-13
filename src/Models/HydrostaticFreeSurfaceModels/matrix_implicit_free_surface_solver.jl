@@ -40,7 +40,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
-    right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
+    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
     storage = similar(right_hand_side)
     # Set maximum iterations to Nx * Ny if not set
@@ -49,7 +49,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     settings[:maximum_iterations] = maximum_iterations
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
