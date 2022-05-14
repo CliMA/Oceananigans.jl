@@ -44,15 +44,17 @@ with different conservation properties.
 You can also set different diffusivities for each tracer in your simulation by passing
 a [NamedTuple](https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple) as the argument ``\kappa``:
 
-```jldoctestjulia> using Oceananigans.TurbulenceClosures
+```jldoctest
+julia> using Oceananigans.TurbulenceClosures
 
 julia> ScalarDiffusivity(ν=1e-6, κ=(S=1e-7, T=1e-10))
 ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1.0e-6, κ=(S=1.0e-7, T=1.0e-10))
 ```
 
 The example above sets a viscosity of `1e-6`, a diffusivity for a tracer called `T` of `1e-7`,
-and a diffusivity for a tracer called `S` of `1e-10`. Specifying diffusivities this way is valid 
-for any constant-diffusivity closure in `Oceananigans`.
+and a diffusivity for a tracer called `S` of `1e-10`. Specifying diffusivities this way is also valid
+for `HorizontalScalarDiffusivity` and `VerticalScalarDiffusivity`. If this method is used, diffusivities
+for all tracers need to be specified.
 
 
 ## Smagorinsky-Lilly
