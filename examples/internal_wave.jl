@@ -140,31 +140,67 @@ run!(simulation)
 # To visualize the solution, we load a FieldTimeSeries of w and make contour
 # plots of vertical velocity.
 
-using Printf, Plots
+using GLMakie
 
-w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
-Nt = length(w_timeseries.times)
-x, y, z = nodes(w_timeseries)
+filename = "internal_wave"
 
-# and makes an animation with Plots.jl:
+fig = Figure(resolution = (800, 400))
 
-anim = @animate for (i, t) in enumerate(w_timeseries.times)
+ax = Axis(fig[1, 1];
+          xlabel = "x",
+          ylabel = "z",
+          limits = ((-π, π), (-π, π)),
+          aspect = AxisAspect(1))
 
-    @info "Drawing frame $i of $Nt..."
+nothing #hide
 
-    w = interior(w_timeseries[i], :, 1, :)
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-    contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
-                      levels = range(-1e-8, stop=1e-8, length=10),
-                       clims = (-1e-8, 1e-8),
-                      xlabel = "x",
-                      ylabel = "z",
-                       xlims = (-π, π),
-                       ylims = (-π, π),
-                   linewidth = 0,
-                       color = :balance,
-                      legend = false,
-                 aspectratio = :equal)
+iter = Observable(0)
+
+# We open the saved output `.jld2` files and extract the vorticity and speed.
+
+using JLD2
+
+file = jldopen(filename * ".jld2")
+grid = file["serialized/grid"]
+
+title = @lift(string("ωt = ",
+              string(round(file["timeseries/t/" * string($iter)] * ω, digits=3))))
+
+w = @lift(Array(file["timeseries/w/" * string($iter)][:, 1, :]))
+
+# We build the coordinates from the saved `grid`.
+
+x, y, z = nodes((Center, Center, Center), grid)
+
+# We plot the vertical velocity, ``w``.
+
+w_lim = 1e-8
+w_levels = range(-w_lim, stop=w_lim, length=10)
+
+contourf!(ax, x, z, w; 
+          levels = w_levels,
+          colormap = :balance,
+          colorrange = (-w_lim, w_lim),
+          extendlow = :auto,
+          extendhigh = :auto)
+
+fig[0, :] = Label(fig, title, textsize=24)
+
+# And, finally, we record a movie.
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
+
+record(fig, filename * ".mp4", iterations, framerate=8) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
 end
+nothing #hide
 
-mp4(anim, "internal_wave.mp4", fps = 8) # hide
+# ![](internal_wave.mp4)
+
+# Let's be tidy now and close the `.jld2` file.
+
+close(file)

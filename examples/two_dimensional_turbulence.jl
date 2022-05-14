@@ -131,8 +131,8 @@ axis_kwargs = (xlabel = "x", xlabelsize = 24,
                titlesize = 32,
                aspect = AxisAspect(1))
 
-ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...    )
-ax_s = Axis(fig[1, 2]; title = "speed", axis_kwargs...    )
+ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...)
+ax_s = Axis(fig[1, 2]; title = "speed", axis_kwargs...)
 
 nothing #hide
 
@@ -148,8 +148,8 @@ using JLD2
 file = jldopen(filename * ".jld2")
 grid = file["serialized/grid"]
 
-ω = @lift(Array(file["timeseries/ω/"   * string($iter)][:, :, 1]))
-s = @lift(Array(file["timeseries/s/"   * string($iter)][:, :, 1]))
+ω = @lift(Array(file["timeseries/ω/" * string($iter)][:, :, 1]))
+s = @lift(Array(file["timeseries/s/" * string($iter)][:, :, 1]))
 
 # We build the coordinates from the saved `grid`.
 
