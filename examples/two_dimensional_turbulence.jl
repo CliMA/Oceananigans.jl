@@ -141,6 +141,8 @@ nothing #hide
 
 iter = Observable(0)
 
+# We open the saved output `.jld2` files and extract the vorticity and speed.
+
 using JLD2
 
 file = jldopen(filename * ".jld2")
@@ -149,7 +151,11 @@ grid = file["serialized/grid"]
 ω = @lift(Array(file["timeseries/ω/"   * string($iter)][:, :, 1]))
 s = @lift(Array(file["timeseries/s/"   * string($iter)][:, :, 1]))
 
+# We build the coordinates from the saved `grid`.
+
 x, y, z = nodes((Center, Center, Center), grid)
+
+# Now let's plot the vorticity and speed.
 
 kwargs = (extendlow = :auto, extendhigh = :auto)
 
@@ -163,6 +169,8 @@ s_levels = range(0, stop=s_lim, length=20)
 
 contourf!(ax_s, x, y, s; levels = s_levels, colormap=:speed, colorrange=(0, s_lim), kwargs...)
 
+# Finally, we record a movie.
+
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
 record(fig, filename * ".mp4", iterations, framerate=8) do i
@@ -172,3 +180,7 @@ end
 nothing #hide
 
 # ![](two_dimensional_turbulence.mp4)
+
+# Let's be tidy now and close the `.jld2` file.
+
+close(file)
