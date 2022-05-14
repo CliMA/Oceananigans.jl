@@ -570,6 +570,16 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
+
+
+#####
+##### Utilities
+#####
+
+return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+
+
+
 #####
 ##### Get minima of grid
 #####

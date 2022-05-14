@@ -1,6 +1,5 @@
 using MPI
 using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_domain, validate_topology
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
