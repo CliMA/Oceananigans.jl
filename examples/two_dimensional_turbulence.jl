@@ -118,39 +118,57 @@ nothing # hide
 
 # and animate the vorticity and fluid speed.
 
-using Plots
+using CairoMakie
 
 @info "Making a neat movie of vorticity and speed..."
 
-anim = @animate for (i, t) in enumerate(ω_timeseries.times)
+filename = "two_dimensional_turbulence"
 
-    @info "Plotting frame $i of $(length(ω_timeseries.times))..."
+fig = Figure(resolution = (1200, 600))
 
-    ωi = interior(ω_timeseries[i], :, :, 1)
-    si = interior(s_timeseries[i], :, :, 1)
+axis_kwargs = (xlabel = "x", xlabelsize = 24,
+               ylabel = "y", ylabelsize = 24,
+               titlesize = 32,
+               aspect = AxisAspect(1))
 
-    ω_lim = 2.0
-    ω_levels = range(-ω_lim, stop=ω_lim, length=20)
+ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...    )
+ax_s = Axis(fig[1, 2]; title = "speed", axis_kwargs...    )
 
-    s_lim = 0.2
-    s_levels = range(0, stop=s_lim, length=20)
+nothing #hide
 
-    kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
-              xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-    ω_plot = contourf(xω, yω, clamp.(ωi', -ω_lim, ω_lim);
-                       color = :balance,
-                      levels = ω_levels,
-                       clims = (-ω_lim, ω_lim),
-                      kwargs...)
+iter = Observable(0)
 
-    s_plot = contourf(xs, ys, clamp.(si', 0, s_lim);
-                       color = :thermal,
-                      levels = s_levels,
-                       clims = (0., s_lim),
-                      kwargs...)
+using JLD2
 
-    plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
+file = jldopen(filename * ".jld2")
+grid = file["serialized/grid"]
+
+ω = @lift(Array(file["timeseries/ω/"   * string($iter)][:, :, 1]))
+s = @lift(Array(file["timeseries/s/"   * string($iter)][:, :, 1]))
+
+x, y, z = nodes((Center, Center, Center), grid)
+
+ω_lim = 2.0
+ω_levels = range(-ω_lim, stop=ω_lim, length=20)
+
+s_lim = 0.2
+s_levels = range(0, stop=s_lim, length=20)
+
+# ax_ω = Axis(fig[1, 1], title="vorticity", titlesize = 32)
+contourf!(ax_ω, x, y, ω; levels = ω_levels, colormap=:balance, colorrange=(-ω_lim, ω_lim))
+
+# ax_s = Axis(fig[1, 2], title="speed", titlesize = 32)
+contourf!(ax_s, x, y, s; levels = s_levels, colormap=:speed, colorrange=(0, s_lim))
+
+iterations = parse.(Int, keys(file["timeseries/t"]))
+
+record(fig, filename * ".mp4", iterations, framerate=8) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
 end
+nothing #hide
 
-mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide
+# ![](two_dimensional_turbulence.mp4)
