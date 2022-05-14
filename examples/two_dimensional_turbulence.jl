@@ -157,11 +157,9 @@ x, y, z = nodes((Center, Center, Center), grid)
 s_lim = 0.2
 s_levels = range(0, stop=s_lim, length=20)
 
-# ax_ω = Axis(fig[1, 1], title="vorticity", titlesize = 32)
-contourf!(ax_ω, x, y, ω; levels = ω_levels, colormap=:balance, colorrange=(-ω_lim, ω_lim))
+contourf!(ax_ω, x, y, ω; levels = ω_levels, colormap=:balance, colorrange=(-ω_lim, ω_lim), extendlow = :auto, extendhigh = :auto)
 
-# ax_s = Axis(fig[1, 2], title="speed", titlesize = 32)
-contourf!(ax_s, x, y, s; levels = s_levels, colormap=:speed, colorrange=(0, s_lim))
+contourf!(ax_s, x, y, s; levels = s_levels, colormap=:speed, colorrange=(0, s_lim), extendlow = :auto, extendhigh = :auto)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
