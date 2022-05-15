@@ -145,8 +145,8 @@ n = Observable(1)
 
 title = @lift(string("t = ", string(round(times[$n], digits=2))))
 
-ω = @lift(interior(ω_timeseries[$n], :, :, 1))
-s = @lift(interior(s_timeseries[$n], :, :, 1))
+ω = @lift interior(ω_timeseries[$n], :, :, 1)
+s = @lift interior(s_timeseries[$n], :, :, 1)
 
 # Now let's plot the vorticity and speed.
 
