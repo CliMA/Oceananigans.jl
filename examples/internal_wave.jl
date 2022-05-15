@@ -175,10 +175,9 @@ x, y, z = nodes((Center, Center, Center), grid)
 # We plot the vertical velocity, ``w``.
 
 w_lim = 1e-8
-w_levels = range(-w_lim, stop=w_lim, length=10)
 
 contourf!(ax, x, z, w; 
-           levels = w_levels,
+           levels = range(-w_lim, stop=w_lim, length=10),
            colormap = :balance,
            colorrange = (-w_lim, w_lim),
            extendlow = :auto,

@@ -121,7 +121,7 @@ nothing # hide
 
 # and animate the vorticity and fluid speed.
 
-using GLMakie
+using CairoMakie
 
 @info "Making a neat movie of vorticity and speed..."
 
