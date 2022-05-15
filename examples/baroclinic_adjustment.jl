@@ -220,8 +220,7 @@ nothing #hide
 
 n = Observable(1)
 
-# We open the saved output `.jld2` files and extract the buoyancy surfaces on the top, bottom,
-# and east surface.
+# We load the saved buoyancy output on the top, bottom, and east surface as `FieldTimeSeries`es.
 
 sides = keys(slicers)
 
