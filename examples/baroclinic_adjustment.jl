@@ -279,7 +279,6 @@ title = @lift string("Buoyancy at t = ", string(round(times[$n] / day, digits=1)
 fig[1, 1] = Label(fig, title;
                   textsize = 24,
                   tellwidth = false,
-                  valing = :bottom,
                   padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
