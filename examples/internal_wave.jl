@@ -170,7 +170,7 @@ n = Observable(1)
 title = @lift(string("ωt = ",
               string(round(w_timeseries.times[$n] * ω, digits=2))))
 
-w = @lift(interior(w_timeseries[$n], :, 1, :))
+w = @lift interior(w_timeseries[$n], :, 1, :)
 
 
 # We plot the vertical velocity, ``w``.
