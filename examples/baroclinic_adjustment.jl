@@ -212,7 +212,7 @@ using CairoMakie
 filename = "baroclinic_adjustment"
 
 fig = Figure(resolution = (800, 500))
-ax_b = fig[2, 1] = LScene(fig)
+ax_b = fig[2, 1] = LScene(fig, show_axis=false)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
@@ -237,7 +237,7 @@ b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
 
 # We build the coordinates and we rescale the vertical coordinate for visualization purposes.
 
-x, y, z = nodes((Center, Center, Center), b_timeserieses[1].grid)
+x, y, z = nodes(b_timeserieses[1])
 
 yscale = 2.5
 zscale = 600
@@ -257,16 +257,21 @@ b_slices = (
 )
 
 clims_b = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
-kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
+kwargs_b = (colorrange = clims_b, colormap = :deep)
 
-surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
-surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
-surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
+surface!(ax_b, y, z, b_slices.east; transformation = (:yz, x[end]), kwargs_b...)
+surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]), kwargs_b...)
+surface!(ax_b, x, y, b_slices.top; transformation = (:xy, z[end]), kwargs_b...)
 
 b_avg = @lift interior(b_avg_timeseries[$n], 1, :, :)
 
-surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_b, colormap=:deep)
-contour!(ax_b, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]),
+         colorrange = clims_b,
+         colormap = :deep)
+
+contour!(ax_b, y, z, b_avg; levels = 15, transformation = (:yz, zonal_slice_displacement * x[end]),
+         linewidth = 2,
+         color = :black)
 
 rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
