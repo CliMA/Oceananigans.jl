@@ -184,7 +184,7 @@ contourf!(ax, x, z, w;
           extendlow = :auto,
           extendhigh = :auto)
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 
