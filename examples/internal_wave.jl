@@ -122,7 +122,7 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.05 * 2π/ω, stop_iteration = 50)
+simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 
 # and add an output writer that saves the vertical velocity field every two iterations:
 
