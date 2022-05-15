@@ -10,7 +10,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## The physical domain

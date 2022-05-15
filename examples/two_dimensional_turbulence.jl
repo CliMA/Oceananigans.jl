@@ -4,7 +4,6 @@
 # in a two-dimensional domain. This example demonstrates:
 #
 #   * How to run a model with no tracers and no buoyancy model.
-#   * How to use `AbstractOperations`.
 #   * How to use computed `Field`s to generate output.
 
 # ## Install dependencies
@@ -13,7 +12,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## Model setup

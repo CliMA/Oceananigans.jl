@@ -9,7 +9,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie, JLD2"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 using Oceananigans
