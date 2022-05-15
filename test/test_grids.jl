@@ -719,7 +719,7 @@ end
 
             # Testing show function
             Nz = 20
-            grid = RectilinearGrid(arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+            grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
             CUDA.allowscalar(false)           

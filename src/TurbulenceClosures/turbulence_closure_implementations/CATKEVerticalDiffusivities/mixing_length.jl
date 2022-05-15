@@ -65,29 +65,29 @@ annealing and noisy Ensemble Kalman Inversion methods.
 Base.@kwdef struct MixingLength{FT}
     Cᵇ    :: FT = Inf # Inf is the "inert" value for this parameter
     Cˢ    :: FT = Inf # Inf is the "inert" value for this parameter
-    Cᵇu   :: FT = 0.596
-    Cᵇc   :: FT = 0.0723
-    Cᵇe   :: FT = 0.637
-    Cˢu   :: FT = 0.628
-    Cˢc   :: FT = 0.426
-    Cˢe   :: FT = 0.711
+    Cᵇu   :: FT = 1.55
+    Cᵇc   :: FT = 0.01
+    Cᵇe   :: FT = 0.60
+    Cˢu   :: FT = 5.1
+    Cˢc   :: FT = 4.3
+    Cˢe   :: FT = 1.49
     Cᵟu   :: FT = 0.5
     Cᵟc   :: FT = 0.5
     Cᵟe   :: FT = 0.5
     Cᴬu   :: FT = 0.0
-    Cᴬc   :: FT = 1.41
+    Cᴬc   :: FT = 0.0
     Cᴬe   :: FT = 0.0
     Cᴬˢu  :: FT = 0.0
-    Cᴬˢc  :: FT = 0.812
+    Cᴬˢc  :: FT = 0.0
     Cᴬˢe  :: FT = 0.0
-    Cᴷu⁻  :: FT = 0.343
-    Cᴷuʳ  :: FT = -0.721
-    Cᴷc⁻  :: FT = 0.343
-    Cᴷcʳ  :: FT = -0.891
-    Cᴷe⁻  :: FT = 1.42
-    Cᴷeʳ  :: FT = 1.50
-    CᴷRiʷ :: FT = 0.101
-    CᴷRiᶜ :: FT = 2.03
+    Cᴷu⁻  :: FT = 0.14
+    Cᴷuʳ  :: FT = 0.1
+    Cᴷc⁻  :: FT = 0.35
+    Cᴷcʳ  :: FT = 0.05
+    Cᴷe⁻  :: FT = 0.49
+    Cᴷeʳ  :: FT = 17.0
+    CᴷRiʷ :: FT = 30.0
+    CᴷRiᶜ :: FT = 1.1
 end
 
 #####
@@ -114,7 +114,7 @@ end
     FT = eltype(grid)
     N⁺ = sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
     e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
-    return @inbounds ifelse(N⁺ == 0, FT(Inf), sqrt(e⁺) / N⁺)
+    return ifelse(N⁺ == 0, FT(Inf), sqrt(e⁺) / N⁺)
 end
 
 @inline function shear_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, velocities, tracers, buoyancy)
@@ -223,7 +223,9 @@ end
 
     σu = momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
-    return max(ℓʰ, σu * max(Cᵟu * ℓᵟ, ℓ★))
+    return σu * max(Cᵟu * ℓᵟ, ℓ★)
+
+    #return max(ℓʰ, σu * max(Cᵟu * ℓᵟ, ℓ★))
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
