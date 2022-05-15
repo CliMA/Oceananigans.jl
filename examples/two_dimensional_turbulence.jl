@@ -91,10 +91,11 @@ u, v, w = model.velocities
 s = sqrt(u^2 + v^2)
 
 # We pass these operations to an output writer below to calculate and output them during the simulation.
+filename = "two_dimensional_turbulence"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
                                                       schedule = TimeInterval(2),
-                                                      filename = "two_dimensional_turbulence.jld2",
+                                                      filename = filename * ".jld2",
                                                       overwrite_existing = true)
 
 # ## Running the simulation
@@ -105,10 +106,12 @@ run!(simulation)
 
 # ## Visualizing the results
 #
-# We load the output and make a movie.
+# We load the output.
 
-ω_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "ω")
-s_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "s")
+ω_timeseries = FieldTimeSeries(filename * ".jld2", "ω")
+s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
+
+times = ω_timeseries.times
 
 # Construct the ``x, y`` grid for plotting purposes,
 
@@ -118,17 +121,15 @@ nothing # hide
 
 # and animate the vorticity and fluid speed.
 
-using CairoMakie
+using GLMakie
 
 @info "Making a neat movie of vorticity and speed..."
 
-filename = "two_dimensional_turbulence"
+fig = Figure(resolution = (800, 400))
 
-fig = Figure(resolution = (1200, 600))
-
-axis_kwargs = (xlabel = "x", xlabelsize = 24,
-               ylabel = "y", ylabelsize = 24,
-               titlesize = 32,
+axis_kwargs = (xlabel = "x",
+               ylabel = "y",
+               titlesize = 24,
                aspect = AxisAspect(1))
 
 ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...)
@@ -139,17 +140,14 @@ nothing #hide
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-iter = Observable(0)
+iter = Observable(1)
+
+title = @lift(string("t = ", string(round(times[$iter], digits=2))))
 
 # We open the saved output `.jld2` files and extract the vorticity and speed.
 
-using JLD2
-
-file = jldopen(filename * ".jld2")
-grid = file["serialized/grid"]
-
-ω = @lift(Array(file["timeseries/ω/" * string($iter)][:, :, 1]))
-s = @lift(Array(file["timeseries/s/" * string($iter)][:, :, 1]))
+ω = @lift(Array(ω_timeseries[:, :, 1, $iter]))
+s = @lift(Array(s_timeseries[:, :, 1, $iter]))
 
 # We build the coordinates from the saved `grid`.
 
@@ -157,21 +155,21 @@ x, y, z = nodes((Center, Center, Center), grid)
 
 # Now let's plot the vorticity and speed.
 
-kwargs = (extendlow = :auto, extendhigh = :auto)
-
 ω_lim = 2.0
-ω_levels = range(-ω_lim, stop=ω_lim, length=20)
 
-contourf!(ax_ω, x, y, ω; levels = ω_levels, colormap=:balance, colorrange=(-ω_lim, ω_lim), kwargs...)
+heatmap!(ax_ω, x, y, ω;
+         colormap = :balance, colorrange = (-ω_lim, ω_lim))
 
 s_lim = 0.2
-s_levels = range(0, stop=s_lim, length=20)
 
-contourf!(ax_s, x, y, s; levels = s_levels, colormap=:speed, colorrange=(0, s_lim), kwargs...)
+heatmap!(ax_s, x, y, s;
+         colormap = :speed, colorrange = (0, s_lim))
+
+fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+iterations = 1:length(times)
 
 record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
@@ -180,7 +178,3 @@ end
 nothing #hide
 
 # ![](two_dimensional_turbulence.mp4)
-
-# Let's be tidy now and close the `.jld2` file.
-
-close(file)

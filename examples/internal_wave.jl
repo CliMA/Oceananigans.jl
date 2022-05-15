@@ -122,7 +122,7 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
+simulation = Simulation(model, Δt = 0.05 * 2π/ω, stop_iteration = 50)
 
 # and add an output writer that saves the vertical velocity field every two iterations:
 
@@ -137,10 +137,14 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load a FieldTimeSeries of w and make contour
+# To visualize the solution, we load a `FieldTimeSeries` of `w` and make contour
 # plots of vertical velocity.
 
-using GLMakie
+w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
+
+#-
+
+using CairoMakie
 
 filename = "internal_wave"
 
@@ -157,19 +161,12 @@ nothing #hide
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-iter = Observable(0)
-
-# We open the saved output `.jld2` files and extract the vorticity and speed.
-
-using JLD2
-
-file = jldopen(filename * ".jld2")
-grid = file["serialized/grid"]
+iter = Observable(1)
 
 title = @lift(string("ωt = ",
-              string(round(file["timeseries/t/" * string($iter)] * ω, digits=3))))
+              string(round(w_timeseries.times[$iter] * ω, digits=2))))
 
-w = @lift(Array(file["timeseries/w/" * string($iter)][:, 1, :]))
+w = @lift(Array(w_timeseries[:, 1, :, $iter]))
 
 # We build the coordinates from the saved `grid`.
 
@@ -181,26 +178,22 @@ w_lim = 1e-8
 w_levels = range(-w_lim, stop=w_lim, length=10)
 
 contourf!(ax, x, z, w; 
-          levels = w_levels,
-          colormap = :balance,
-          colorrange = (-w_lim, w_lim),
-          extendlow = :auto,
-          extendhigh = :auto)
+           levels = w_levels,
+           colormap = :balance,
+           colorrange = (-w_lim, w_lim),
+           extendlow = :auto,
+           extendhigh = :auto)
 
-fig[0, :] = Label(fig, title, textsize=24)
+fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+iterations = 1:length(w_timeseries.times)
 
-record(fig, filename * ".mp4", iterations, framerate=8) do i
+record(fig, filename * ".mp4", iterations, framerate=12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
 nothing #hide
 
 # ![](internal_wave.mp4)
-
-# Let's be tidy now and close the `.jld2` file.
-
-close(file)
