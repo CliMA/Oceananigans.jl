@@ -133,22 +133,20 @@ axis_kwargs = (xlabel = "x",
                limits = ((0, 2π), (0, 2π)),
                aspect = AxisAspect(1))
 
-ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...)
-ax_s = Axis(fig[1, 2]; title = "speed", axis_kwargs...)
+ax_ω = Axis(fig[2, 1]; title = "vorticity", axis_kwargs...)
+ax_s = Axis(fig[2, 2]; title = "speed", axis_kwargs...)
 
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-iter = Observable(1)
+n = Observable(1)
 
-title = @lift(string("t = ", string(round(times[$iter], digits=2))))
+title = @lift(string("t = ", string(round(times[$n], digits=2))))
 
-# We open the saved output `.jld2` files and extract the vorticity and speed.
-
-ω = @lift(Array(ω_timeseries[:, :, 1, $iter]))
-s = @lift(Array(s_timeseries[:, :, 1, $iter]))
+ω = @lift(interior(ω_timeseries[$n], :, :, 1))
+s = @lift(interior(s_timeseries[$n], :, :, 1))
 
 # Now let's plot the vorticity and speed.
 
@@ -162,15 +160,15 @@ s_lim = 0.2
 heatmap!(ax_s, xs, ys, s;
          colormap = :speed, colorrange = (0, s_lim))
 
-fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 
-iterations = 1:length(times)
+frames = 1:length(times)
 
-record(fig, filename * ".mp4", iterations, framerate=8) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    @info "Plotting iteration $i of $(frames[end])..."
+    n[] = i
 end
 nothing #hide
 

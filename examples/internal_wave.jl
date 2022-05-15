@@ -142,6 +142,10 @@ run!(simulation)
 
 w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
 
+# And build the the ``x, y`` grid for plotting purposes.
+
+x, y, z = nodes(w_timeseries)
+
 #-
 
 using CairoMakie
@@ -150,7 +154,7 @@ filename = "internal_wave"
 
 fig = Figure(resolution = (800, 400))
 
-ax = Axis(fig[1, 1];
+ax = Axis(fig[2, 1];
           xlabel = "x",
           ylabel = "z",
           limits = ((-π, π), (-π, π)),
@@ -161,37 +165,34 @@ nothing #hide
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-iter = Observable(1)
+n = Observable(1)
 
 title = @lift(string("ωt = ",
-              string(round(w_timeseries.times[$iter] * ω, digits=2))))
+              string(round(w_timeseries.times[$n] * ω, digits=2))))
 
-w = @lift(Array(w_timeseries[:, 1, :, $iter]))
+w = @lift(interior(w_timeseries[$n], :, 1, :))
 
-# We build the coordinates from the saved `grid`.
-
-x, y, z = nodes((Center, Center, Center), grid)
 
 # We plot the vertical velocity, ``w``.
 
 w_lim = 1e-8
 
 contourf!(ax, x, z, w; 
-           levels = range(-w_lim, stop=w_lim, length=10),
-           colormap = :balance,
-           colorrange = (-w_lim, w_lim),
-           extendlow = :auto,
-           extendhigh = :auto)
+          levels = range(-w_lim, stop=w_lim, length=10),
+          colormap = :balance,
+          colorrange = (-w_lim, w_lim),
+          extendlow = :auto,
+          extendhigh = :auto)
 
-fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 
-iterations = 1:length(w_timeseries.times)
+frames = 1:length(w_timeseries.times)
 
-record(fig, filename * ".mp4", iterations, framerate=8) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    @info "Plotting iteration $i of $(frames[end])..."
+    n[] = i
 end
 nothing #hide
 
