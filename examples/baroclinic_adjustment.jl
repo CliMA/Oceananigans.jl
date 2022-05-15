@@ -278,7 +278,7 @@ rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
 times = b_avg_timeseries.times
 
-title = @lift string("Buoyancy at t = ", string(round(times[$n] / day, digits=1)), " days")
+title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
 fig[1, 1] = Label(fig, title;
                   textsize = 24,
