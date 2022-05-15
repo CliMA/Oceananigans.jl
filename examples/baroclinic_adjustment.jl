@@ -112,11 +112,12 @@ b = model.tracers.b
 
 fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
                       colormap=:deep,
-                      axis = (xlabel = "y [km]", ylabel = "z [km]"))
+                      axis = (xlabel = "y [km]",
+                              ylabel = "z [km]",
+                              title = "b(x=0, y, z, t=0)",
+                              titlesize = 24))
 
 Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
-
-fig[0, :] = Label(fig, "b(x=0, y, z, t=0)")
 
 save("initial_buoyancy.svg", fig); nothing # hide
 
@@ -210,30 +211,33 @@ using CairoMakie
 
 filename = "baroclinic_adjustment"
 
-fig = Figure(resolution = (1000, 800))
-ax_b = fig[1, 1] = LScene(fig)
+fig = Figure(resolution = (800, 500))
+ax_b = fig[2, 1] = LScene(fig)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-iter = Observable(0)
+n = Observable(1)
 
 # We open the saved output `.jld2` files and extract the buoyancy surfaces on the top, bottom,
 # and east surface.
 
-using JLD2
-
-zonal_file = jldopen(filename * "_zonal_average.jld2")
-grid = zonal_file["serialized/grid"]
-
 sides = keys(slicers)
 
-slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
+slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
+
+b_timeserieses = (
+      east = FieldTimeSeries(slice_filenames.east, "b"),
+    bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
+       top = FieldTimeSeries(slice_filenames.top, "b")
+)
+
+b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
 
 # We build the coordinates and we rescale the vertical coordinate for visualization purposes.
 
-x, y, z = nodes((Center, Center, Center), grid)
+x, y, z = nodes((Center, Center, Center), b_timeserieses[1].grid)
 
 yscale = 2.5
 zscale = 600
@@ -247,19 +251,19 @@ nothing #hide
 # to plot the instantaneous zonal-average of the buoyancy.
 
 b_slices = (
-      east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/b/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/b/"    * string($iter)][:, :, 1]))
+      east = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
+    bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
+       top = @lift(interior(b_timeserieses.top[$n], :, :, 1))
 )
 
-clims_b = @lift 1.1 .* extrema(slice_files.top["timeseries/b/" * string($iter)][:])
+clims_b = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
 kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
 
 surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
 surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
 surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+b_avg = @lift interior(b_avg_timeseries[$n], 1, :, :)
 
 surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_b, colormap=:deep)
 contour!(ax_b, y, z, b_avg; levels = 15, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
@@ -268,25 +272,22 @@ rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
 
 # Finally, we add a figure title with the time of the snapshot and then record a movie.
 
-title = @lift(string("Buoyancy at t = ",
-                     string(slice_files[1]["timeseries/t/" * string($iter)]/day), " days"))
+times = b_avg_timeseries.times
 
-fig[0, :] = Label(fig, title, textsize=55)
+title = @lift string("Buoyancy at t = ", string(round(times[$n] / day, digits=1)), " days")
 
-iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
+fig[1, 1] = Label(fig, title;
+                  textsize = 24,
+                  tellwidth = false,
+                  valing = :bottom,
+                  padding = (0, 0, -120, 0))
 
-record(fig, filename * ".mp4", iterations, framerate=8) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
+frames = 1:length(times)
+
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    @info "Plotting frame $i of $(frames[end])..."
+    n[] = i
 end
 nothing #hide
 
 # ![](baroclinic_adjustment.mp4)
-
-# Let's be tidy now and close all the `.jld2` files we opened.
-
-for file in slice_files
-    close(file)
-end
-
-close(zonal_file)

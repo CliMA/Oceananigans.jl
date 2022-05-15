@@ -167,7 +167,7 @@ fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 frames = 1:length(times)
 
 record(fig, filename * ".mp4", frames, framerate=8) do frame
-       @info "Plotting iteration $i of $(frames[end])..."
+       @info "Plotting frame $i of $(frames[end])..."
        n[] = frame
 end
 nothing #hide
