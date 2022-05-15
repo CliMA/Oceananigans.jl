@@ -140,6 +140,8 @@ run!(simulation)
 # To visualize the solution, we load a `FieldTimeSeries` of `w` and make contour
 # plots of vertical velocity.
 
+filename = "internal_wave"
+
 w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
 
 # And build the the ``x, y, z`` grid for plotting purposes.
@@ -149,8 +151,6 @@ x, y, z = nodes(w_timeseries)
 #-
 
 using CairoMakie
-
-filename = "internal_wave"
 
 fig = Figure(resolution = (800, 400))
 
