@@ -130,6 +130,7 @@ fig = Figure(resolution = (800, 400))
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
                titlesize = 24,
+               limits = ((0, 2π), (0, 2π)),
                aspect = AxisAspect(1))
 
 ax_ω = Axis(fig[1, 1]; title = "vorticity", axis_kwargs...)
@@ -149,20 +150,16 @@ title = @lift(string("t = ", string(round(times[$iter], digits=2))))
 ω = @lift(Array(ω_timeseries[:, :, 1, $iter]))
 s = @lift(Array(s_timeseries[:, :, 1, $iter]))
 
-# We build the coordinates from the saved `grid`.
-
-x, y, z = nodes((Center, Center, Center), grid)
-
 # Now let's plot the vorticity and speed.
 
 ω_lim = 2.0
 
-heatmap!(ax_ω, x, y, ω;
+heatmap!(ax_ω, xω, yω, ω;
          colormap = :balance, colorrange = (-ω_lim, ω_lim))
 
 s_lim = 0.2
 
-heatmap!(ax_s, x, y, s;
+heatmap!(ax_s, xs, ys, s;
          colormap = :speed, colorrange = (0, s_lim))
 
 fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)

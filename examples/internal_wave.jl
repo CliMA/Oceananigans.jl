@@ -189,7 +189,7 @@ fig[0, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 iterations = 1:length(w_timeseries.times)
 
-record(fig, filename * ".mp4", iterations, framerate=12) do i
+record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
