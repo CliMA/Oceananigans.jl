@@ -142,7 +142,7 @@ run!(simulation)
 
 w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
 
-# And build the the ``x, y`` grid for plotting purposes.
+# And build the the ``x, y, z`` grid for plotting purposes.
 
 x, y, z = nodes(w_timeseries)
 
@@ -167,11 +167,9 @@ nothing #hide
 
 n = Observable(1)
 
-title = @lift(string("ωt = ",
-              string(round(w_timeseries.times[$n] * ω, digits=2))))
+title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
 
 w = @lift interior(w_timeseries[$n], :, 1, :)
-
 
 # We plot the vertical velocity, ``w``.
 

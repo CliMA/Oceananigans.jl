@@ -113,7 +113,7 @@ s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 
 times = ω_timeseries.times
 
-# Construct the ``x, y`` grid for plotting purposes,
+# Construct the ``x, y, z`` grid for plotting purposes,
 
 xω, yω, zω = nodes(ω_timeseries)
 xs, ys, zs = nodes(s_timeseries)
@@ -143,7 +143,7 @@ nothing #hide
 
 n = Observable(1)
 
-title = @lift(string("t = ", string(round(times[$n], digits=2))))
+title = @lift "t = " * string(round(times[$n], digits=2))
 
 ω = @lift interior(ω_timeseries[$n], :, :, 1)
 s = @lift interior(s_timeseries[$n], :, :, 1)
