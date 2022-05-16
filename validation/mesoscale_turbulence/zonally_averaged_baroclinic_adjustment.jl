@@ -23,7 +23,7 @@ Nz = 20
 
 save_fields_interval = 0.5day
 stop_time = 30days
-Δt₀ = 1minutes
+Δt₀ = 20minutes
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification

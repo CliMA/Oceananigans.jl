@@ -5,7 +5,7 @@ using Oceananigans
 using Oceananigans.Units
 using GLMakie
 
-using Oceananigans.TurbulenceClosures: FluxTapering, VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: FluxTapering
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
@@ -13,7 +13,7 @@ filename = "coarse_baroclinic_adjustment_" * gradient
 # Architecture
 architecture = CPU()
 
-# Domain parameters
+# Domain
 Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
@@ -21,52 +21,28 @@ save_fields_interval = 1hour
 stop_time = 60days
 Δt = 20minutes
 
-# Initial condition parameters
-N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
-
-Δy = 1 # degree
-Δz = 100
-
-Δc = 100kilometers * 2Δy
-Δb = 100kilometers * Δy * M²
-ϵb = 1e-2 * Δb # noise amplitude
-
-grid = LatitudeLongitudeGrid(architecture;
-                             topology = (Flat, Bounded, Bounded),
-                             size = (Ny, Nz), 
-                             longitude = (-5, 5),
-                             latitude = (40, 50),
-                             z = (-Lz, 0),
-                             halo = (3, 3))
-
-#=
 grid = LatitudeLongitudeGrid(architecture;
                              topology = (Bounded, Bounded, Bounded),
-                             size = (1, Ny, Nz), 
+                             size = (Ny, Ny, Nz), 
                              longitude = (-5, 5),
                              latitude = (40, 50),
                              z = (-Lz, 0),
                              halo = (3, 3, 3))
-=#
-
-#bump(λ, φ) = -Lz * (1 - 1/2 * exp(-λ^2 - (φ - 45)^2))
-#grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
 
 coriolis = HydrostaticSphericalCoriolis()
 
 Δy = 1000kilometers / Ny
 @show κh = νh = Δy^4 / 10days
-vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e0, κ=1e-4)
+vertical_closure = VerticalScalarDiffusivity(ν=1e-2, κ=1e-4)
 horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-1)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
-                                                                κ_symmetric = (b=0, c=1e3),
+                                                                #κ_symmetric = (b=0, c=1e3),
+                                                                skew_flux_scheme = WENO5(; grid), 
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 
-#closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
-closures = vertical_closure #, horizontal_closure) #, gent_mcwilliams_diffusivity)
+closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 
 @info "Building a model..."
 
@@ -95,6 +71,16 @@ function ramp(λ, y, Δ)
     gradient == "y" && return min(max(0, (y - 45) / Δ + 1/2), 1)
 end
 
+# Parameters
+N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
+M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
+
+Δy = 1 # degree
+Δz = 100
+
+Δc = 100kilometers * 2Δy
+Δb = 100kilometers * Δy * M²
+ϵb = 1e-2 * Δb # noise amplitude
 
 bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
 cᵢ(λ, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
@@ -108,7 +94,7 @@ set!(model, b=bᵢ, c=cᵢ)
 simulation = Simulation(model; Δt, stop_time)
 
 # add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=Δt)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=Δt)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback

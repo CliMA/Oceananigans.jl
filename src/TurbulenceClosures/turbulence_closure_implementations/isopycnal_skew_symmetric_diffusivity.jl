@@ -134,7 +134,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) w
 
         U★ = (u = Field{Face, Center, Center}(grid, boundary_conditions=u_bcs),
               v = Field{Center, Face, Center}(grid, boundary_conditions=v_bcs),
-              w = Field{Face, Center, Face}(grid, boundary_conditions=w_bcs))
+              w = Field{Center, Center, Face}(grid, boundary_conditions=w_bcs))
     end
 
     return (; ϵ_R₃₃, U★)
