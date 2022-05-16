@@ -6,6 +6,9 @@ const ε₂ = 1e-20
 
 @inline function div_Uc(i, j, k, grid, advection::PositiveWENO, U, c)
 
+    lower_limit = advection.bounds[1]
+    upper_limit = advection.bounds[2]
+
     cᵢⱼ  = c[i, j, k]
 
     cᵢ₊ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
@@ -17,7 +20,7 @@ const ε₂ = 1e-20
 
     M    = max(p̃ᵢ, cᵢ₊ᴸ, cᵢ₋ᴿ) 
     m    = min(p̃ᵢ, cᵢ₊ᴸ, cᵢ₋ᴿ) 
-    θ    = min(abs((1.0 - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((0.0 - cᵢⱼ)/(m - cᵢⱼ + ε₂)), 1.0)
+    θ    = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), 1.0)
     
     cᵢ₊ᴸ = θ * (cᵢ₊ᴸ - cᵢⱼ) + cᵢⱼ
     cᵢ₋ᴿ = θ * (cᵢ₋ᴿ - cᵢⱼ) + cᵢⱼ
@@ -34,7 +37,7 @@ const ε₂ = 1e-20
 
     M    = max(p̃ⱼ, cⱼ₊ᴸ, cⱼ₋ᴿ) 
     m    = min(p̃ⱼ, cⱼ₊ᴸ, cⱼ₋ᴿ) 
-    θ    = min(abs((1.0 - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((0.0 - cᵢⱼ)/(m - cᵢⱼ + ε₂)), 1.0)
+    θ    = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), 1.0)
 
     cⱼ₊ᴸ = θ * (cⱼ₊ᴸ - cᵢⱼ) + cᵢⱼ
     cⱼ₋ᴿ = θ * (cⱼ₋ᴿ - cᵢⱼ) + cᵢⱼ
