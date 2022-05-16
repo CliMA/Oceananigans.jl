@@ -10,7 +10,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## The physical domain
@@ -122,7 +122,7 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
+simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 
 # and add an output writer that saves the vertical velocity field every two iterations:
 
@@ -137,33 +137,61 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load a FieldTimeSeries of w and make contour
+# To visualize the solution, we load a `FieldTimeSeries` of `w` and make contour
 # plots of vertical velocity.
 
-using Printf, Plots
+filename = "internal_wave"
 
-w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
+
+# And build the the ``x, y, z`` grid for plotting purposes.
+
 x, y, z = nodes(w_timeseries)
 
-# and makes an animation with Plots.jl:
+#-
 
-anim = @animate for (i, t) in enumerate(w_timeseries.times)
+using CairoMakie
 
-    @info "Drawing frame $i from iteration $iter..."
+fig = Figure(resolution = (800, 400))
 
-    w = interior(w_timeseries[i], :, 1, :)
+ax = Axis(fig[2, 1];
+          xlabel = "x",
+          ylabel = "z",
+          limits = ((-π, π), (-π, π)),
+          aspect = AxisAspect(1))
 
-    contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
-                      levels = range(-1e-8, stop=1e-8, length=10),
-                       clims = (-1e-8, 1e-8),
-                      xlabel = "x",
-                      ylabel = "z",
-                       xlims = (-π, π),
-                       ylims = (-π, π),
-                   linewidth = 0,
-                       color = :balance,
-                      legend = false,
-                 aspectratio = :equal)
+nothing #hide
+
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+
+n = Observable(1)
+
+title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
+
+w = @lift interior(w_timeseries[$n], :, 1, :)
+
+# We plot the vertical velocity, ``w``.
+
+w_lim = 1e-8
+
+contourf!(ax, x, z, w; 
+          levels = range(-w_lim, stop=w_lim, length=10),
+          colormap = :balance,
+          colorrange = (-w_lim, w_lim),
+          extendlow = :auto,
+          extendhigh = :auto)
+
+fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
+
+# And, finally, we record a movie.
+
+frames = 1:length(w_timeseries.times)
+
+record(fig, filename * ".mp4", frames, framerate=8) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
 end
+nothing #hide
 
-mp4(anim, "internal_wave.mp4", fps = 8) # hide
+# ![](internal_wave.mp4)

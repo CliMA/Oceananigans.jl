@@ -17,19 +17,14 @@ import Oceananigans: fields, prognostic_fields
 
 function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
-    if arch.ranks[1] == 1 # we would have to allow different settings 
-        return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
-    else
-        @warn "A Distributed NonhydrostaticModel is allowed only when the x-direction is not parallelized"
-        return nothing
-    end
+    return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
 PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
 PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
+PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
 #####
 ##### NonhydrostaticModel definition

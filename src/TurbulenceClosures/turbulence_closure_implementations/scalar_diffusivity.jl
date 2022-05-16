@@ -55,6 +55,10 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     return ScalarDiffusivity{typeof(time_discretization), typeof(formulation)}(ν, κ)
 end
 
+# Explicit default
+ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Float64; kw...) =
+    ScalarDiffusivity(ExplicitTimeDiscretization(), formulation, FT; kw...)
+
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
 const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulation} where TD
 

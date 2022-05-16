@@ -3,8 +3,9 @@
 #####
 
 using OffsetArrays
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, return_metrics
 using Oceananigans.Architectures: arch_array, architecture
+using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 import Base: show
 
@@ -57,6 +58,19 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectio
     C3₀ :: FT
     C3₁ :: FT 
     C3₂ :: FT
+    
+    function WENO5{VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                           coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                           coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                           smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
+                           smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
+                           smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
+                           C3₀::FT, C3₁::FT, C3₂::FT) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF}
+
+            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                           smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
+                                                           C3₀, C3₁, C3₂)
+    end
 end
 
 """
@@ -142,11 +156,34 @@ Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Scheme
 Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation
     laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
-function WENO5(coeffs = nothing, FT = Float64; 
+
+WENO5(grid, FT::DataType=Float64; kwargs...) = WENO5(FT; grid = grid, kwargs...)
+
+function WENO5(FT::DataType = Float64; 
                grid = nothing, 
+               coeffs = nothing,
                stretched_smoothness = false, 
                zweno = true, 
                vector_invariant = nothing)
+    
+    if !(grid isa Nothing) 
+        FT = eltype(grid)
+    end
+
+    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
+
+    if coeffs isa Nothing
+        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
+    else
+        C3₀, C3₁, C3₂ = FT.(coeffs)
+    end
+
+    VI = typeof(vector_invariant)
+
+    return WENO5{VI, zweno}(weno_coefficients..., C3₀, C3₁, C3₂)
+end
+
+function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
@@ -162,38 +199,18 @@ function WENO5(coeffs = nothing, FT = Float64;
         metrics      = return_metrics(grid)
         dirsize      = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
 
-        FT       = eltype(grid)
         arch     = architecture(grid)
         new_grid = with_halo((4, 4, 4), grid)
-       
+
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
             @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
             @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
         end
     end
 
-    XT = typeof(coeff_xᶠᵃᵃ)
-    YT = typeof(coeff_yᵃᶠᵃ)
-    ZT = typeof(coeff_zᵃᵃᶠ)
-    XS = typeof(smooth_xᶠᵃᵃ)
-    YS = typeof(smooth_yᵃᶠᵃ)
-    ZS = typeof(smooth_zᵃᵃᶠ)
-
-    if coeffs isa Nothing
-        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
-    else
-        C3₀, C3₁, C3₂ = FT.(coeffs)
-    end
-
-    VI = typeof(vector_invariant)
-
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, zweno}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                                        smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ,
-                                                        C3₀, C3₁, C3₂)
+    return (coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+            smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
 end
-
-return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 # Flavours of WENO
 const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
@@ -213,24 +230,13 @@ function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
 end
 
 Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF} =
-     WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
-               typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
-               typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ)), VI, WF}(
-        Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-        Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
-        Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ), scheme.C3₀, scheme.C3₁, scheme.C3₂)
+     WENO5{VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
+                   scheme.C3₀, scheme.C3₁, scheme.C3₂)
 
 @inline boundary_buffer(::WENO5) = 2
 
@@ -325,9 +331,8 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) whe
         stencil = retrieve_left_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
-        # horrible but have to do this for GPU execution (broadcast doesn't work apparently)
         result = 0
-        for j = 1:3
+        @unroll for j = 1:3
             result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
         end
     end
@@ -339,9 +344,8 @@ end
         stencil = retrieve_right_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
-        # horrible but have to do this for GPU execution (broadcast doesn't work apparently sum(ψ.*(wᵢᵢ.*ψ.+wᵢⱼ.*dagger(ψ))) )
         result = 0
-        for j = 1:3
+        @unroll for j = 1:3
             result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
         end
     end
@@ -557,7 +561,6 @@ end
 @inline calc_smoothness_coefficients(FT, ::Val{false}, args...) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N) = nothing
-
 
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 

@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.BoundaryConditions: OBC
+using Oceananigans.BoundaryConditions: OBC, CBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
 
 using Adapt
@@ -13,18 +13,19 @@ import Statistics: norm, mean, mean!
 ##### The bees knees
 #####
 
-struct Field{LX, LY, LZ, O, G, I, D, T, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
     indices :: I
     operand :: O
     status :: S
+    boundary_buffers :: F
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S, I}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, I, D, T, B, S}(grid, data, bcs, indices, op, status)
+        return new{LX, LY, LZ, O, G, I, D, T, B, S, F}(grid, data, bcs, indices, op, status, buffers)
     end
 end
 
@@ -45,9 +46,9 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                  # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing}, ::Face, side) = nothing # only open or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing          # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing                        # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing, CBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                # its nothing or nothing
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -100,12 +101,13 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices::Tuple, op=nothing, status=nothing)
-    validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, bcs)
+function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
+    @apply_regionally validate_field_data(loc, data, grid, indices)
+    @apply_regionally validate_boundary_conditions(loc, grid, bcs)
     indices = validate_indices(indices, loc, grid)
+    buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
-    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status)
+    return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
 
 """
@@ -292,6 +294,9 @@ function Base.view(f::Field, i, j, k)
                  f.status)
 end
 
+const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
+
 # Conveniences
 Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
@@ -306,6 +311,8 @@ function boundary_conditions(f::Field)
         return FieldBoundaryConditions(f.indices, f.boundary_conditions)
     end
 end
+
+immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 
 data(field::Field) = field.data
 
@@ -478,6 +485,7 @@ function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
     return Field{LX, LY, LZ}(nothing,
                              adapt(to, reduced_field.data),
+                             nothing,
                              nothing,
                              nothing,
                              nothing,

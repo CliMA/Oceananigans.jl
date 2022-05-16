@@ -81,24 +81,36 @@ const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
+const CBC  = BoundaryCondition{<:Communication}
 
 # More readable BC constructors for the public API.
-    PeriodicBoundaryCondition() = BoundaryCondition(Periodic, nothing)
-      NoFluxBoundaryCondition() = BoundaryCondition(Flux,     nothing)
-ImpenetrableBoundaryCondition() = BoundaryCondition(Open,     nothing)
+    PeriodicBoundaryCondition()  = BoundaryCondition(Periodic,      nothing)
+      NoFluxBoundaryCondition()  = BoundaryCondition(Flux,          nothing)
+ImpenetrableBoundaryCondition()  = BoundaryCondition(Open,          nothing)
+CommunicationBoundaryCondition() = BoundaryCondition(Communication, nothing)
 
-    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
-   ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
-GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
+     FluxBoundaryCondition(val; kwargs...)     = BoundaryCondition(Flux, val; kwargs...)
+    ValueBoundaryCondition(val; kwargs...)     = BoundaryCondition(Value, val; kwargs...)
+ GradientBoundaryCondition(val; kwargs...)     = BoundaryCondition(Gradient, val; kwargs...)
+     OpenBoundaryCondition(val; kwargs...)     = BoundaryCondition(Open, val; kwargs...)
+CommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Communication, val; kwargs...)
 
-# Support for various types of boundary conditions
-@inline getbc(bc::BC{<:Open, Nothing}, i, j, grid, args...) = zero(eltype(grid))
-@inline getbc(bc::BC{<:Flux, Nothing}, i, j, grid, args...) = zero(eltype(grid))
+# Support for various types of boundary conditions.
+#
+# Notes:
+#     * "two-dimensional forms" (i, j, grid, ...) support boundary conditions on "native" grid boundaries:
+#       east, west, etc.
+#     * additional arguments to `fill_halo_regions` enter `getbc` after the `grid` argument:
+#           so `fill_halo_regions!(c, clock, fields)` translates to `getbc(bc, i, j, grid, clock, fields)`, etc.
 
-@inline getbc(bc::BC{C, <:Number},        args...)             where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, args...) where C = @inbounds bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields, args...) where C = bc.condition(i, j, grid, clock, model_fields, args...)
+@inline getbc(bc, args...) = bc.condition(args...) # fallback!
+
+@inline getbc(bc::BC{<:Open, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+@inline getbc(bc::BC{<:Flux, Nothing}, i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+@inline getbc(bc::Nothing,             i::Integer, j::Integer, grid::AbstractGrid, args...) = zero(eltype(grid))
+
+@inline getbc(bc::BC{C, <:Number}, args...) where C = bc.condition
+@inline getbc(bc::BC{C, <:AbstractArray}, i::Integer, j::Integer, grid::AbstractGrid, args...) where C = @inbounds bc.condition[i, j]
 
 Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
                                                                      Adapt.adapt(to, bc.condition))
@@ -107,7 +119,7 @@ Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt
 ##### Validation with topology
 #####
 
-validate_boundary_condition_topology(bc::Union{PBC, Nothing}, topo::Grids.Periodic, side) = nothing
+validate_boundary_condition_topology(bc::Union{PBC, CBC, Nothing}, topo::Grids.Periodic, side) = nothing
 validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 

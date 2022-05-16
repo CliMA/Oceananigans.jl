@@ -8,11 +8,14 @@ export
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields
+
+abstract type AbstractFreeSurface{E, G} end
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -25,7 +28,6 @@ FreeSurfaceDisplacementField(velocities, free_surface, grid) = Field{Center, Cen
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
-
 include("rigid_lid.jl")
 
 # Explicit free-surface solver functionality
