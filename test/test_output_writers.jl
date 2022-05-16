@@ -36,9 +36,8 @@ function test_output_construction(model)
     @test indices(u_sliced2) != indices(construct_output(u_sliced1, model.grid, indices2, false)) # u_sliced2 should have halo regions
     @test indices(u_sliced2) == indices(construct_output(u_sliced1, model.grid, indices2, true)) # both should have halo regions
 
-
     # Now we test abstract operations
-    op = u^2+v^2
+    op = u^2 + v^2
 
     @test construct_output(op, model.grid, indices1, false) isa Field
     @test construct_output(op, model.grid, indices2, false) isa Field
@@ -285,7 +284,7 @@ topo = (Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(; grid)
 
-        @info "Test that outputs are properly constructed"
+        @info "  Testing that outputs are properly constructed..."
         test_output_construction(model)
 
         @info "Testing that writers create file and append to it properly"

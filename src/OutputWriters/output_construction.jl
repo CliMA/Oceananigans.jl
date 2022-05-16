@@ -16,10 +16,10 @@ end
 ##### Function output fallback
 #####
 
-function construct_output(output, grid, indices, with_halos)
-    if !(indices isa typeof(default_indices(3)))
+function construct_output(output, grid, output_writer_indices, with_halos)
+    if !(output_writer_indices == (:, :, :))
         output_type = output isa Function ? "Function" : ""
-        @warn "Cannot slice $output_type $output with $indices: output will be unsliced."
+        @warn "Cannot slice $output_type $output with $output_writer_indices: output will be unsliced."
     end
 
     return output
@@ -29,65 +29,42 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
-function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
-    indices = validate_indices(indices, location(output), grid)
+function output_indices(output::Union{AbstractField, Reduction}, grid, output_writer_indices, with_halos)
+    output_writer_indices = validate_indices(output_writer_indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
         loc = location(output)
         topo = topology(grid)
-        indices = restrict_to_interior.(indices, loc, topo, size(grid))
+        output_writer_indices = restrict_to_interior.(output_writer_indices, loc, topo, size(grid))
     end
 
-    return indices
+    return output_writer_indices
 end
 
-function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
-    indices = output_indices(user_output, grid, user_indices, with_halos)
-    return construct_output(user_output, indices)
+function construct_output(user_output::Union{AbstractField, Reduction}, grid, output_writer_indices, with_halos)
+    output_writer_indices = output_indices(user_output, grid, output_writer_indices, with_halos)
+    return construct_output(user_output, output_writer_indices)
 end
 
-
-const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
-const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
-const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
-
-function construct_output(user_output::WindowedField, grid, user_indices, with_halos)
-    if !with_halos
-        new_indices = restrict_to_interior.(user_output.indices, location(user_output), topology(grid), size(grid))
-        return view(user_output, new_indices...)
-    end
-
-    return user_output
-end
-
-function construct_output(user_output::ComputedField, grid, user_indices, with_halos)
-    if indices(user_output) == (Colon(), Colon(), Colon())
-        return construct_output(user_output.operand, grid, user_indices, with_halos)
-    else
-        @info "Only change halos"
-        if !with_halos
-            new_indices = [ indexes == Colon() ? restrict_to_interior(indexes, loc, topo, grid_size) : indexes
-                           for (indexes, loc, topo, grid_size) in zip(indices(user_output), location(user_output), topology(grid), size(grid)) ]
-            @show new_indices summary(user_output.data)
-            return view(user_output, new_indices...)
-        end
-    end
-
-    return user_output
-end
-
-
-
-construct_output(user_output::Field, indices) = view(user_output, indices...)
+# The easy cases...
 construct_output(user_output::Reduction, indices) = Field(user_output; indices)
 construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
+function construct_output(user_output::Field, output_writer_indices)
+    if indices(user_output) === (:, :, :) # this field has default indices, let's re-index it:
+        return view(user_output, output_writer_indices...)
+    else # this field has non-default indices
+        output_writer_indices != (:, :, :) && @warn "Ignoring output writer indices for output with indices $(indices(user_output))"
+        return user_output
+    end
+end
+    
 #####
 ##### Time-averaging
 #####
 
-function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, indices, with_halos)
-    output = construct_output(averaged_output.operand, grid, indices, with_halos)
+function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, output_writer_indices, with_halos)
+    output = construct_output(averaged_output.operand, grid, output_writer_indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
 end
 

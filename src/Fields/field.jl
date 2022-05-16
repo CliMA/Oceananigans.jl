@@ -209,12 +209,6 @@ function Base.similar(f::Field, grid=f.grid)
                  deepcopy(f.status))
 end
 
-
-# "Recursive parent" utility for extracting underlying arrays from doubly (or more) nested array types
-const UnderlyingArrays = Union{Array, CuArray}
-@inline rparent(a) = rparent(parent(a))
-@inline rparent(a::UnderlyingArrays) = a
-
 """
     offset_windowed_data(data, loc, grid, indices)
 
@@ -226,14 +220,18 @@ function offset_windowed_data(data, loc, grid, indices)
     halo = halo_size(grid)
     topo = topology(grid)
 
-    if indices isa typeof(default_indices(3))
+    if indices === (:, :, :)
         windowed_parent = parent(data)
     else
+        # TODO: right now `parent_index_range` is only valid for 
+        # data that "covers" the whole grid. In the future parent_index_range
+        # should be extended to compute parent indices for "partial grid data".
         parent_indices = parent_index_range.(indices, loc, topo, halo)
-        windowed_parent = view(rparent(data), parent_indices...)
+        windowed_parent = view(parent(data), parent_indices...)
     end
 
     sz = size(grid)
+
     return offset_data(windowed_parent, loc, topo, sz, halo, indices)
 end
 
@@ -282,6 +280,9 @@ function Base.view(f::Field, i, j, k)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
     window_indices = validate_indices((i, j, k), loc, f.grid)
+
+    # TODO: compute the intersection between `i, j, k` and indices(f) to support
+    # "re-view"ing windowed fields.
     
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
