@@ -86,7 +86,7 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
                           size,
                           longitude,
                           latitude,
-                          z,
+                          z = nothing,
                           radius = R_Earth,
                           topology = nothing,
                           precompute_metrics = true,
@@ -108,11 +108,11 @@ Keyword arguments
 
 - `size` (required): A 3-tuple prescribing the number of grid points each direction.
 
-- `longitude`, `latitude`, `z` (required): Each is either a
-                                           (i) 2-tuple that specify the end points of the domain,
-                                           (ii) one-dimensional array specifying the cell interface locations or
-                                           (iii) a single-argument function that takes an index and returns
-                                                 cell interface location.
+- `longitude` (required), `latitude` (required), `z` (default: `nothing`):
+  Each is either a:
+  1. 2-tuple that specify the end points of the domain,
+  2. one-dimensional array specifying the cell interface locations, or
+  3. a single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 
