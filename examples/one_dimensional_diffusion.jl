@@ -16,7 +16,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## Using `Oceananigans.jl`
@@ -67,13 +67,18 @@ set!(model, T=initial_temperature)
 # which was initialized as `0`'s when the model was created.
 # To see the new data in `model.tracers.T`, we plot it:
 
-using Plots
+using CairoMakie
 
-linewidth = 2
+linewidth = 3
 z = znodes(model.tracers.T)
 
-T_plot = plot(interior(model.tracers.T, 1, 1, :), z; linewidth,
-              label = "t = 0", xlabel = "Temperature (ᵒC)", ylabel = "z")
+fig = Figure()
+
+lines(interior(model.tracers.T, 1, 1, :), z; linewidth, label = "t = 0",
+     axis = (xlabel = "Temperature (ᵒC)",
+             ylabel = "z",
+             xlabelsize = 20,
+             ylabelsize = 20))
 
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
 # physical points (excluding halos) at `(1, 1, :)`.
@@ -99,7 +104,10 @@ run!(simulation)
 using Printf
 
 label = @sprintf("t = %.3f", model.clock.time)
-plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
+
+lines!(interior(model.tracers.T, 1, 1, :), z; linewidth, label)
+
+axislegend()
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
@@ -107,8 +115,10 @@ plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers, filename = "one_dimensional_diffusion.jld2",
-                     schedule=IterationInterval(100), overwrite_existing = true)
+    JLD2OutputWriter(model, model.tracers,
+                     filename = "one_dimensional_diffusion.jld2",
+                     schedule=IterationInterval(100),
+                     overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 
@@ -120,13 +130,36 @@ run!(simulation)
 # iterations we ended up saving at, and plot the evolution of the
 # temperature profile in a loop over the iterations.
 
-T = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+T_timeseries = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+times = T_timeseries.times
 
-anim = @animate for (i, t) in enumerate(T.times)
-    Ti = interior(T[i], 1, 1, :)
+n = Observable(1)
 
-    plot(Ti, z; linewidth, title=@sprintf("t = %.3f", t),
-         label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
+T = @lift interior(T_timeseries[$n], 1, 1, :)
+
+label = @lift "t = " * string(round(times[$n], digits=3))
+
+fig = Figure()
+
+ax = Axis(fig[2, 1];
+          xlabel = "Temperature (ᵒC)",
+          ylabel = "z",
+          xlabelsize = 20,
+          ylabelsize = 20,
+          limits = ((0, 1), nothing))
+
+lines!(T, z; linewidth)
+
+fig[1, 1] = Label(fig, label, textsize=24, tellwidth=false)
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+record(fig, "one_dimensional_diffusion.mp4", frames, framerate=8) do i
+    @info "Plotting frame $i of $(frames[end])..."
+    n[] = i
 end
+nothing #hide
 
-mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide
+# ![](one_dimensional_diffusion.mp4)
