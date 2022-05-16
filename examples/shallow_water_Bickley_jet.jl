@@ -20,7 +20,7 @@
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, NCDatasets, Plots, Printf, Polynomials"
+# pkg"add Oceananigans, NCDatasets, Polynomials, CairoMakie"
 # ```
 
 using Oceananigans
@@ -159,7 +159,7 @@ run!(simulation)
 
 # Load required packages to read output and plot.
 
-using NCDatasets, Plots, Printf
+using NCDatasets, Printf, GLMakie
 nothing # hide
 
 # Define the coordinates for plotting.
@@ -167,47 +167,53 @@ nothing # hide
 x, y = xnodes(ω), ynodes(ω)
 nothing # hide
 
-# Define keyword arguments for plotting the contours.
-
-kwargs = (
-         xlabel = "x",
-         ylabel = "y",
-         aspect = 1,
-           fill = true,
-         levels = 20,
-      linewidth = 0,
-          color = :balance,
-       colorbar = true,
-           ylim = (-Ly/2, Ly/2),
-           xlim = (0, Lx)
-)
-nothing # hide
-
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-anim = @animate for (iter, t) in enumerate(ds["time"])
-    ω = ds["ω"][:, :, 1, iter]
-    ω′ = ds["ω′"][:, :, 1, iter]
+times = ds["time"][:]
 
-    ω′_max = maximum(abs, ω′)
+n = Observable(1)
 
-    plot_ω = contour(x, y, ω',
-                     clim = (-1, 1), 
-                     title = @sprintf("Total vorticity, ω, at t = %.1f", t); kwargs...)
-                      
-    plot_ω′ = contour(x, y, ω′',
-                      clim = (-ω′_max, ω′_max),
-                      title = @sprintf("Perturbation vorticity, ω - ω̄, at t = %.1f", t); kwargs...)
+ω = @lift ds["ω"][:, :, 1, $n]
+ω′ = @lift ds["ω′"][:, :, 1, $n]
 
-    plot(plot_ω, plot_ω′, layout = (1, 2), size = (800, 440))
+ω′_lims = @lift (-maximum(abs, ds["ω′"][:, 1, :, $n]), maximum(abs, ds["ω′"][:, 1, :, $n]))
+
+title = @lift @sprintf("t = %.1f", times[$n])
+
+fig = Figure(resolution = (800, 440))
+
+axis_kwargs = (xlabel = "x",
+               ylabel = "y",
+               aspect = AxisAspect(1),
+               limits = ((0, Lx), (-Ly/2, Ly/2)))
+
+ax_ω = Axis(fig[2, 1]; title = "total vorticity, ω", axis_kwargs...)
+ax_ω′ = Axis(fig[2, 2]; title = "perturbation vorticity, ω - ω̄", axis_kwargs...)
+
+heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
+
+heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
+
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
 end
+nothing #hide
+
+# ![](shallow_water_Bickley_jet.mp4)
+
+# It's always good practice to close the NetCDF files when we are done.
 
 close(ds)
-
-mp4(anim, "shallow_water_Bickley_jet.mp4", fps=15)
 
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
@@ -221,6 +227,8 @@ nothing # hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
+
+using Plots
 
 using Polynomials: fit
 
