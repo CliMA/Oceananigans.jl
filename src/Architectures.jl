@@ -139,6 +139,6 @@ end
 device_event(arch) = Event(device(arch))
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
-@inline unsafe_free!(a) = nothing
+@inline unsafe_free!(a)          = nothing
 
 end # module
