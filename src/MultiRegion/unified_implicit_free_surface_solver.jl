@@ -42,7 +42,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     
     arch = architecture(mrg) 
     right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
-    storage = similar(right_hand_side)
+    storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)

@@ -42,7 +42,8 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     arch = architecture(grid)
     right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
-    storage = similar(right_hand_side)
+    storage = deepcopy(right_hand_side)
+    
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
