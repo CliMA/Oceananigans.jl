@@ -1,6 +1,6 @@
 
-const ω̂₁ = 1/3
-const ω̂ₙ = 1/3 
+const ω̂₁ = 5/18 
+const ω̂ₙ = 5/18  
 
 const ε₂ = 1e-20
 
