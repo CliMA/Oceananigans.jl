@@ -13,19 +13,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: Fields
 filename = "baroclinic_adjustment"
 
 # Architecture
-architecture  = GPU()
+architecture  = CPU()
 
 # Domain
-Lx = 4000kilometers  # east-west extent [m]
+Lx = 1000kilometers  # east-west extent [m]
 Ly = 1000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 
-Nx = 512
+Nx = 128
 Ny = 128
-Nz = 40
+Nz = 16
 
 save_fields_interval = 1day
-stop_time = 80days
+stop_time = 60days
 Δt₀ = 5minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
@@ -39,34 +39,16 @@ grid = RectilinearGrid(architecture,
 
 coriolis = BetaPlane(latitude = -45)
 
-Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
-
-𝒜 = Δz/Δy   # Grid cell aspect ratio.
-
-κh = 0.1    # [m² s⁻¹] horizontal diffusivity
-νh = 0.1    # [m² s⁻¹] horizontal viscosity
-κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
-νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
-
-diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, ν = νz, κ = κz)
-
-horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 0.0)
-
 #####
 ##### Model building
 #####
 
 @info "Building a model..."
 
-closures = (diffusive_closure, horizontal_closure, convective_adjustment)
-
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
+                                    closure = nothing,
                                     tracers = (:b, :c),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
@@ -136,35 +118,35 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
+Nx, Ny, Nz = size(grid)
 
-slicers = (west = FieldSlicer(i=1),
-           east = FieldSlicer(i=grid.Nx),
-           south = FieldSlicer(j=1),
-           north = FieldSlicer(j=grid.Ny),
-           bottom = FieldSlicer(k=1),
-           top = FieldSlicer(k=grid.Nz))
+slice_indices = (west   = (1,   :,  :),
+                 east   = (Nx,  :,  :),
+                 south  = (:,   1,  :),
+                 north  = (:,  Ny,  :),
+                 bottom = (:,   :,  1),
+                 top    = (:,   :, Nz))
 
-for side in keys(slicers)
-    field_slicer = slicers[side]
+#=
+for side in keys(slice_indices)
+    indices = slice_indices[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
+    simulation.output_writers[side] = JLD2OutputWriter(model, fields(model); indices,
                                                        schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
                                                        filename = filename * "_$(side)_slice",
                                                        overwrite_existing = true)
 end
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      field_slicer = nothing,
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
 
-B = AveragedField(model.tracers.b, dims=1)
-C = AveragedField(model.tracers.c, dims=1)
-U = AveragedField(model.velocities.u, dims=1)
-V = AveragedField(model.velocities.v, dims=1)
-W = AveragedField(model.velocities.w, dims=1)
+B = Average(model.tracers.b, dims=1)
+C = Average(model.tracers.c, dims=1)
+U = Average(model.velocities.u, dims=1)
+V = Average(model.velocities.v, dims=1)
+W = Average(model.velocities.w, dims=1)
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
                                                      schedule = TimeInterval(save_fields_interval),
@@ -173,14 +155,10 @@ simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V,
 
 @info "Running the simulation..."
 
-try
-    run!(simulation, pickup=false)
-catch err
-    @info "run! threw an error! The error message is"
-    showerror(stdout, err)
-end
+run!(simulation, pickup=false)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
+=#
 
 #####
 ##### Visualize
@@ -194,7 +172,7 @@ ax_c = fig[1:5, 2] = LScene(fig)
 
 # Extract surfaces on all 6 boundaries
 iter = Node(0)
-sides = keys(slicers)
+sides = keys(slice_indices)
 
 zonal_file = jldopen(filename * "_zonal_average.jld2")
 slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
@@ -285,6 +263,7 @@ title = @lift(string("Buoyancy and tracer concentration at t = ",
 
 fig[0, :] = Label(fig, title, textsize=30)
 
+display(fig)
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 

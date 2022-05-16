@@ -1,23 +1,30 @@
 using Oceananigans.Operators: ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ, ℑxyᶜᶠᶜ, ℑyzᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶠᶜᶜ
+using Oceananigans.Advection: AbstractAdvectionScheme, div_Uc
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L} <: AbstractTurbulenceClosure{TD}
-                    κ_skew :: K
-               κ_symmetric :: S
-          isopycnal_tensor :: M
-             slope_limiter :: L
+struct DiffusiveSkewFluxScheme end
+
+struct IsopycnalSkewSymmetricDiffusivity{TD, A, K, S, M, L} <: AbstractTurbulenceClosure{TD}
+    κ_skew :: K
+    κ_symmetric :: S
+    isopycnal_tensor :: M
+    slope_limiter :: L
+    skew_flux_scheme :: A
     
     function IsopycnalSkewSymmetricDiffusivity{TD}(κ_skew :: K,
                                                    κ_symmetric :: S,
                                                    isopycnal_tensor :: I,
-                                                   slope_limiter :: L) where {TD, K, S, I, L}
+                                                   slope_limiter :: L, 
+                                                   skew_flux_scheme :: A) where {TD, K, S, I, L, A}
 
-        return new{TD, K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
+        return new{TD, A, K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter, skew_flux_scheme)
     end
 end
 
-const ISSD{TD} = IsopycnalSkewSymmetricDiffusivity{TD} where TD
-const ISSDVector{TD} = AbstractVector{<:ISSD{TD}} where TD
-const FlavorOfISSD{TD} = Union{ISSD{TD}, ISSDVector{TD}} where TD
+const ISSD{TD, A} = IsopycnalSkewSymmetricDiffusivity{TD, A} where {TD, A}
+const ISSDVector{TD, A} = AbstractVector{<:ISSD{TD, A}} where {TD, A}
+const FlavorOfISSD{TD, A} = Union{ISSD{TD, A}, ISSDVector{TD, A}} where {TD, A}
+const AdvectiveISSD = FlavorOfISSD{TD, <:AbstractAdvectionScheme} where TD
 const issd_coefficient_loc = (Center(), Center(), Center())
 
 """
@@ -25,7 +32,8 @@ const issd_coefficient_loc = (Center(), Center(), Center())
                                       κ_skew = 0,
                                       κ_symmetric = 0,
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                      slope_limiter = nothing)
+                                      slope_limiter = nothing,
+                                      skew_flux_scheme = DiffusiveSkewFluxScheme())
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
@@ -38,24 +46,34 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                           slope_limiter = nothing) where TD
+                                           slope_limiter = nothing,
+                                           skew_flux_scheme = DiffusiveSkewFluxScheme()) where TD
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
+    !(skew_flux_scheme isa DiffusiveSkewFluxScheme) && κ_symmetric != 0 &&
+        error("Cannot use an advective skew_flux_scheme with non-zero κ_symmetric.")
+
     return IsopycnalSkewSymmetricDiffusivity{TD}(convert_diffusivity(FT, κ_skew),
                                                  convert_diffusivity(FT, κ_symmetric),
                                                  isopycnal_tensor,
-                                                 slope_limiter)
+                                                 slope_limiter,
+                                                 skew_flux_scheme)
 end
 
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::ISSD{TD}) where TD
-    κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
+    # Only accept single skew diffusivities right now
+    # κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
-    return IsopycnalSkewSymmetricDiffusivity{TD}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
+    return IsopycnalSkewSymmetricDiffusivity{TD}(closure.κ_skew,
+                                                 κ_symmetric,
+                                                 closure.isopycnal_tensor,
+                                                 closure.slope_limiter,
+                                                 closure.skew_flux_scheme)
 end
 
 # For ensembles of closures
@@ -72,33 +90,87 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return arch_array(arch, closure_vector)
 end
 
-# Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) where TD
-    if TD() isa VerticallyImplicitTimeDiscretization
-        # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        return (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
-    else
-        return nothing
-    end
+#####
+##### Advective fluxes...
+#####
+
+@inline function ψʸ_GM_cff(i, j, k, grid, closure, buoyancy, tracers)
+    closure = getclosure(i, j, closure)
+    Sʸ = isopycnal_rotation_tensor_yz_cff(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    κ_skewᶜᶠᶠ = νᶜᶠᶠ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_skew)
+    return κ_skewᶜᶠᶠ * Sʸ
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model)
+@inline function ψˣ_GM_fcf(i, j, k, grid, closure, buoyancy, tracers)
+    closure = getclosure(i, j, closure)
+    Sˣ = isopycnal_rotation_tensor_xz_fcf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    κ_skewᶠᶜᶠ = νᶠᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_skew)
+    return κ_skewᶠᶜᶠ * Sˣ
+end
+
+@inline u★_GM(i, j, k, grid, closure, buoyancy, tracers) = - ∂zᶠᶜᶜ(i, j, k, grid, ψˣ_GM_fcf, closure, buoyancy, tracers)
+@inline v★_GM(i, j, k, grid, closure, buoyancy, tracers) = - ∂zᶜᶠᶜ(i, j, k, grid, ψʸ_GM_cff, closure, buoyancy, tracers)
+@inline w★_GM(i, j, k, grid, closure, buoyancy, tracers) =
+    ∂xᶜᶜᶠ(i, j, k, grid, ψˣ_GM_fcf, closure, buoyancy, tracers) + 
+    ∂yᶜᶜᶠ(i, j, k, grid, ψʸ_GM_cff, closure, buoyancy, tracers)
+
+# Note: computing diffusivities at cell centers for now.
+function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) where TD
+
+    ϵ_R₃₃ = nothing
+    u★ = nothing
+    v★ = nothing
+    w★ = nothing
+
+    if TD() isa VerticallyImplicitTimeDiscretization
+        # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
+        ϵ_R₃₃ = Field{Center, Center, Face}(grid)
+    end
+
+    if closure isa AdvectiveISSD
+        u_bcs = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :u)
+        v_bcs = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :v)
+        w_bcs = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :w)
+
+        U★ = (u = Field{Face, Center, Center}(grid, boundary_conditions=u_bcs),
+              v = Field{Center, Face, Center}(grid, boundary_conditions=v_bcs),
+              w = Field{Face, Center, Face}(grid, boundary_conditions=w_bcs))
+    end
+
+    return (; ϵ_R₃₃, U★)
+end
+
+function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD{TD}, model) where TD
 
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    event = launch!(arch, grid, :xyz,
-                    compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy,
-                    dependencies = device_event(arch))
+    if TD() isa VerticallyImplicitTimeDiscretization
+        R³³_event = launch!(arch, grid, :xyz,
+                            compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy,
+                            dependencies = device_event(arch))
+    else
+        R³³_event = NoneEvent()
+    end
 
-    wait(device(arch), event)
+    if closure isa AdvectiveISSD
+        u★_event = launch!(arch, grid, :xyz,
+                           compute_U★!, diffusivities.U★, grid, closure, tracers, buoyancy,
+                           dependencies = device_event(arch))
+    else
+        u★_event = NoneEvent()
+    end
+
+    wait(device(arch), MultiEvent((R³³_event, u★_event)))
+
+    fill_halo_regions!(diffusivities.U★)
 
     return nothing
 end
 
-@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) where LZ
+@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
 
     closure_ij = getclosure(i, j, closure)
@@ -108,6 +180,20 @@ end
     @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
 end
 
+@kernel function compute_U★!(U★, grid, closure, tracers, buoyancy)
+    i, j, k, = @index(Global, NTuple)
+
+    closure_ij = getclosure(i, j, closure)
+
+    @inbounds begin
+        U★.u[i, j, k] = u★_GM(i, j, k, grid, closure_ij, buoyancy, tracers)
+        U★.v[i, j, k] = v★_GM(i, j, k, grid, closure_ij, buoyancy, tracers)
+        U★.w[i, j, k] = w★_GM(i, j, k, grid, closure_ij, buoyancy, tracers)
+    end
+end
+
+@inline ∇_dot_qᶜ(i, j, k, grid, closure::AdvectiveISSD, K, ::Val{id}, velocities, tracers, args...) where id =
+    div_Uc(i, j, k, grid, closure.skew_flux_scheme, K.U★, tracers[id])
 
 #####
 ##### Tapering
@@ -255,6 +341,8 @@ end
     return - ϵ * κ_symmetric_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
                                          (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
+
+
 
 @inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
