@@ -281,7 +281,7 @@ function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, 
     halo = validate_halo(TX, TY, TZ, halo)
 
     # Validate the rectilinear domain
-    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     return TX, TY, TZ, size, halo, x, y, z
 end
@@ -413,6 +413,10 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                        new_properties...)
 end
+
+
+return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+
 
 #####
 ##### Get minima of grid
