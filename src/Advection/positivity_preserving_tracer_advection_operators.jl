@@ -4,7 +4,10 @@ const ω̂ₙ = 5/18
 
 const ε₂ = 1e-20
 
-@inline function div_Uc(i, j, k, grid, advection::PositiveWENO, U, c)
+# Here in the future we can easily add UpwindBiasedFifthOrder 
+const BoundPreservingScheme = PositiveWENO
+
+@inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c)
 
     div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c)
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, U.v, c)
@@ -12,7 +15,7 @@ const ε₂ = 1e-20
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (flux_div_x + flux_div_y + δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
 end
 
-@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::PositiveWENO, u, c)
+@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
 
     lower_limit = advection.bounds[1]
     upper_limit = advection.bounds[2]
@@ -36,8 +39,7 @@ end
            Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
 end
 
-
-@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::PositiveWENO, v, c)
+@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundPreservingScheme, v, c)
 
     lower_limit = advection.bounds[1]
     upper_limit = advection.bounds[2]
