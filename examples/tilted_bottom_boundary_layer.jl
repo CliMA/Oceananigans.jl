@@ -17,7 +17,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, NCDatasets, CairoMakie"
 # ```
 #
 # ## The domain
@@ -57,13 +57,13 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 # Let's make sure the grid spacing is both finer and near-uniform at the bottom,
 
-using Plots
+using CairoMakie
 
-plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-     marker = :circle,
-     ylabel = "Depth (m)",
-     xlabel = "Vertical spacing (m)",
-     legend = nothing)
+lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+      axis = (ylabel = "Depth (m)",
+              xlabel = "Vertical spacing (m)"))
+
+scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
 # ## Tilting the domain
 #
@@ -79,8 +79,8 @@ ĝ = (sind(θ), 0, cosd(θ))
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=ĝ)
-coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=ĝ)
+buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = ĝ)
+coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where we have used a constant Coriolis parameter ``f = 10⁻⁴ \rm{s}⁻¹``.
 # The tilting also affects the kind of density stratified flows we can model.
@@ -126,7 +126,8 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # and a constant viscosity and diffusivity.
 
 ν = 1e-4 # m² s⁻¹, small-ish
-closure = ScalarDiffusivity(ν=ν, κ=ν)
+κ = ν
+closure = ScalarDiffusivity(; ν, κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
@@ -190,48 +191,55 @@ run!(simulation)
 # First we load the required package to load NetCDF output files and define the coordinates for
 # plotting using existing objects:
 
-using NCDatasets
+using NCDatasets, CairoMakie
 
 xω, zω = xnodes(ω_y), znodes(ω_y)
 xv, zv = xnodes(total_v), znodes(total_v)
-
-kwargs = (xlabel = "along-slope distance",
-          zlabel = "across-slope distance",
-          fill = true,
-          levels = 20,
-          linewidth = 0,
-          color = :balance,
-          aspect = :equal,
-          colorbar = true,
-          xlim = (0, Lx),
-          zlim = (0, Lz))
 
 # Read in the simulation's `output_writer` for the two-dimensional fields and then create an
 # animation showing the ``y``-component of vorticity.
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-anim = @animate for (frame, time) in enumerate(ds["time"])
-    @info "Plotting frame $frame of $(length(ds["time"]))..."
+times = collect(ds["time"])
 
-    ω_y = ds["ω_y"][:, 1, :, frame]
-    total_v = ds["total_v"][:, 1, :, frame]
+n = Observable(1)
 
-    ω_max = maximum(abs, ω_y)
-    v_max = maximum(abs, total_v)
+ω_y = @lift ds["ω_y"][:, 1, :, $n]
+total_v = @lift ds["total_v"][:, 1, :, $n]
 
-    plot_ω = contour(xω, zω, ω_y', clim = (-0.015, +0.015),
-                     title = "y-vorticity, ω_y at t = " * prettytime(time);
-                     kwargs...)
+title = @lift "t = " * string(prettytime(times[$n]))
 
-    plot_v = contour(xv, zv, total_v', clim = (-V∞, +V∞),
-                     title = "Total along-slope velocity at t = " * prettytime(time);
-                     kwargs...)
+ω_max = @lift maximum(abs, ds["ω_y"][:, 1, :, $n])
+v_max = @lift maximum(abs, ds["total_v"][:, 1, :, $n])
 
-    plot(plot_ω, plot_v, layout = (2, 1), size = (800, 440))
+fig = Figure(resolution = (800, 440))
+
+axis_kwargs = (xlabel = "along-slope distance",
+               ylabel = "across-slope distance",
+               aspect = AxisAspect(1),
+               limits = ((0, Lx), (0, Lz)))
+
+ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
+ax_v = Axis(fig[2, 2]; title = "along-slope velocity", axis_kwargs...)
+
+heatmap!(ax_ω, xω, zω, ω_y, colorrange = (-0.015, +0.015), colormap = :balance)
+
+heatmap!(ax_v, xv, zv, total_v, colorrange = (-V∞, +V∞), colormap = :balance)
+
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
 end
+nothing #hide
 
-mp4(anim, "tilted_bottom_boundary_layer.mp4", fps=12)
+# ![](tilted_bottom_boundary_layer.mp4)
 
 # It's always good practice to close the NetCDF files when we are done.
 
