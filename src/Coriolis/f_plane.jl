@@ -1,4 +1,5 @@
 using Oceananigans.Grids: scalar_summary
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 
 """
     FPlane{FT} <: AbstractRotation

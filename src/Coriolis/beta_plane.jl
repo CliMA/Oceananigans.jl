@@ -1,3 +1,5 @@
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
+
 """
     BetaPlane{T} <: AbstractRotation
 
