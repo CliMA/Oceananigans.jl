@@ -14,19 +14,19 @@ using Oceananigans.Utils: tupleit
 import Oceananigans.Architectures: architecture
 
 function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
-
     u =  XFaceField(grid)
     v =  YFaceField(grid)
     h = CenterField(grid)
     tracers = TracerFields(tracer_names, grid)
+    
     return NamedTuple{prognostic_names}((u, v, h, Tuple(tracers)...))
 end
 
 function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
-
     u =  XFaceField(grid, boundary_conditions = getproperty(bcs, prognostic_names[1]))
     v =  YFaceField(grid, boundary_conditions = getproperty(bcs, prognostic_names[2]))
     h = CenterField(grid, boundary_conditions = getproperty(bcs, prognostic_names[3]))
+
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
@@ -45,9 +45,12 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
                        tracers :: C         # Container for tracer fields
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
-		           formulation :: FR        # Either conservative or vector-invariant
-
+                   formulation :: FR        # Either conservative or vector-invariant
 end
+
+struct ConservativeFormulation end
+
+struct VectorInvariantFormulation end
 
 """
     ShallowWaterModel(; grid,
@@ -86,11 +89,6 @@ Keyword arguments
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
                    `:RungeKutta3`.
 """
-
-struct ConservativeFormulation end
-
-struct VectorInvariantFormulation end
-
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
