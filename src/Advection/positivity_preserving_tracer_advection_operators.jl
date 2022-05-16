@@ -12,7 +12,7 @@ const BoundPreservingScheme = PositiveWENO
     div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c)
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, U.v, c)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (flux_div_x + flux_div_y + δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
 end
 
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
