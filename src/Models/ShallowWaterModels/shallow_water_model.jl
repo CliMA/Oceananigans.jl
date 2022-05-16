@@ -90,7 +90,7 @@ Keyword arguments
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                    `:RungeKutta3` (default).
-  - `formulation`: Whether the dynamics are expressed conservative form (`ConservativeFormulation()`;
+  - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
                    Coriolis terms (`VectorInvariantFormulation()`).
 """
