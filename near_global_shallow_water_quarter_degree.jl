@@ -101,8 +101,8 @@ bathymetry = arch_array(arch, bathymetry)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
 
-τˣ = arch_array(arch, - τˣ)
-τʸ = arch_array(arch, - τʸ)
+τˣ = arch_array(arch, τˣ)
+τʸ = arch_array(arch, τʸ)
     
 #####
 ##### Boundary conditions / time-dependent fluxes 
