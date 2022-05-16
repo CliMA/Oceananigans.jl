@@ -18,7 +18,7 @@ function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
     v =  YFaceField(grid)
     h = CenterField(grid)
     tracers = TracerFields(tracer_names, grid)
-    
+
     return NamedTuple{prognostic_names}((u, v, h, Tuple(tracers)...))
 end
 
@@ -64,7 +64,8 @@ struct VectorInvariantFormulation end
                             tracers = (),
                  diffusivity_fields = nothing,
     boundary_conditions::NamedTuple = NamedTuple(),
-                timestepper::Symbol = :RungeKutta3)
+                timestepper::Symbol = :RungeKutta3,
+                        formulation = ConservativeFormulation())
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
@@ -76,7 +77,8 @@ Keyword arguments
             of the grid.
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`. By default
+    `UpwindBiasedFifthOrder()` is used.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
@@ -86,8 +88,11 @@ Keyword arguments
   - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
                           calculated at each timestep.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
-                   `:RungeKutta3`.
+  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
+                   `:RungeKutta3` (default).
+  - `formulation`: Whether shallow water dynamics are expressed conservative form (`ConservativeFormulation()`;
+    default) or in non-conservative form with a vector-invariant formulation for the Coriolis terms
+    (`VectorInvariantFormulation()`).
 """
 function ShallowWaterModel(;
                            grid,
