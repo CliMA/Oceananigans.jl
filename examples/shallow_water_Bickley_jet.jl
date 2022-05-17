@@ -228,8 +228,6 @@ nothing # hide
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
 # perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
 
-using Plots
-
 using Polynomials: fit
 
 I = 6000:7000
@@ -247,20 +245,21 @@ constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
 
 best_fit = @. exp(constant + slope * t)
 
-plot(t, norm_v,
-        yaxis = :log,
-        ylims = (1e-3, 30),
-           lw = 4,
-        label = "norm(v)", 
-       xlabel = "time",
-       ylabel = "norm(v)",
-        title = "growth of perturbation norm",
-       legend = :bottomright)
+lines(t, norm_v;
+      linewidth = 4,
+      label = "norm(v)", 
+      axis = (yscale = log10,
+              limits = (nothing, (1e-3, 30)),
+              xlabel = "time",
+              ylabel = "norm(v)",
+               title = "growth of perturbation norm"))
 
-plot!(t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visualization
-           lw = 4,
-        label = "best fit")
-            
+lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visualization
+       linewidth = 4,
+       label = "best fit")
+
+axislegend()
+
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.
 
