@@ -114,7 +114,7 @@ where `c = C[tracer_index]`.
 
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+    return ( - div_Uc(i, j, k, grid, advection, velocities, c, val_tracer_index)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))

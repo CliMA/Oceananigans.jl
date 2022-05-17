@@ -7,19 +7,19 @@ const ε₂ = 1e-20
 # Here in the future we can easily add UpwindBiasedFifthOrder 
 const BoundPreservingScheme = PositiveWENO
 
-@inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c)
+@inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c, val_tracer_index)
 
-    div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c)
-    div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, U.v, c)
-    div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, U.w, c)
+    div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c, val_tracer_index)
+    div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, U.v, c, val_tracer_index)
+    div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, U.w, c, val_tracer_index)
 
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
 
-@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
+@inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c, val_tracer_index)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = advection.bounds[val_tracer_index][1]
+    upper_limit = advection.bounds[val_tracer_index][2]
 
     cᵢⱼ  = c[i, j, k]
 
@@ -40,10 +40,10 @@ end
            Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
 end
 
-@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundPreservingScheme, v, c)
+@inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundPreservingScheme, v, c, val_tracer_index)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = advection.bounds[val_tracer_index][1]
+    upper_limit = advection.bounds[val_tracer_index][2]
 
     cᵢⱼ  = c[i, j, k]
 
@@ -64,10 +64,10 @@ end
            Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v[i, j,   k], c₋ᴸ, c₋ᴿ)
 end
 
-@inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundPreservingScheme, w, c)
+@inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundPreservingScheme, w, c, val_tracer_index)
 
-    lower_limit = advection.bounds[1]
-    upper_limit = advection.bounds[2]
+    lower_limit = advection.bounds[val_tracer_index][1]
+    upper_limit = advection.bounds[val_tracer_index][2]
 
     cᵢⱼ  = c[i, j, k]
 

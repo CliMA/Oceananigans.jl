@@ -77,13 +77,13 @@ a velocity field U = (u, v), ∇·(Uc),
 
 which will end up at the location `ccc`.
 """
-@inline function div_Uc(i, j, k, grid, advection, solution, c)
+@inline function div_Uc(i, j, k, grid, advection, solution, c, val_tracer_index)
     1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution.uh, solution.h, c) +        
                              δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution.vh, solution.h, c))
 end
 
 # Support for no advection
-@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c) where FT = zero(FT)
+@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, val_tracer_index) where FT = zero(FT)
 
 @inline u(i, j, k, grid, solution) = @inbounds solution.uh[i, j, k] / solution.h[i, j, k]
 @inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / solution.h[i, j, k]

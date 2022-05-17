@@ -3,12 +3,12 @@ using Oceananigans.Fields: ZeroField
 
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
-@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c,     val_tracer_index) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField, val_tracer_index) = zero(eltype(grid))
 
-@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, ::Nothing, U, c,           val_tracer_index) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c,     val_tracer_index) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField, val_tracer_index) = zero(eltype(grid))
 
 #####
 ##### Tracer advection operator
@@ -24,7 +24,7 @@ a velocity field, ``𝛁⋅(𝐯 c)``,
 
 which ends up at the location `ccc`.
 """
-@inline function div_Uc(i, j, k, grid, advection, U, c)
+@inline function div_Uc(i, j, k, grid, advection, U, c, val_tracer_index)
     1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U.u, c) +
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U.v, c) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
