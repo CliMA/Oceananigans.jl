@@ -3,7 +3,7 @@
 #####
 
 using OffsetArrays
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, return_metrics
 using Oceananigans.Architectures: arch_array, architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
@@ -211,9 +211,6 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
     return (coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
             smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
 end
-
-return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 # Flavours of WENO
 const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
