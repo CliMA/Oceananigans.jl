@@ -88,7 +88,8 @@ bat = file_bathymetry["bathymetry"]
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 
 bat[ bat .> 0 ] .= 1000
-bat .-= 400
+
+hₘ = - mean(bat[bat .< 0])
 
 boundary   = Int.(bat .> 0)
 bat = arch_array(arch, - bat)
@@ -127,7 +128,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
     end
 
     if fields.h[i, j, k] > 0 
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / fields.h[i, j, k]
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / p.hₘ
     else
         return 0.0
     end
@@ -144,7 +145,7 @@ end
         τ₂ = p.τ[i, j, n₂]
     end
     if fields.h[i, j, k] > 0 
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / fields.h[i, j, k]
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / p.hₘ
     else
         return 0.0
     end
@@ -153,15 +154,15 @@ end
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ = τˣ))
-Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
+Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ = τˣ, hₘ = hₘ))
+Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ, hₘ = hₘ))
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil
 
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
-                          advection = WENO5(vector_invariant = VelocityStencil()),
+                          momentum_advection = WENO5(vector_invariant = VelocityStencil()),
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
             			  bathymetry = bat,
