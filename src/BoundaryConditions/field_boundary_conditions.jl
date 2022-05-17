@@ -166,7 +166,7 @@ regularize_boundary_condition(bc, args...) = bc # fallback
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
 regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) =
-    BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition)
+    BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
 
 """ 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
