@@ -14,6 +14,13 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 @inline x_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h)
 @inline y_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h)
 
+@inline x_bathymetry(i, j, k, grid, g, h, hb, formulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hb)
+@inline y_bathymetry(i, j, k, grid, g, h, hb, formulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hb)
+
+@inline x_bathymetry(i, j, k, grid, g, h, hb, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, hb)
+@inline y_bathymetry(i, j, k, grid, g, h, hb, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, hb)
+
+
 """
 Compute the tendency for the x-directional transport, uh
 """
@@ -35,6 +42,7 @@ Compute the tendency for the x-directional transport, uh
     return ( - div_hUu(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
+             + x_bathymetry(i, j, k, grid, g, solution.h, bathymetry, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -59,6 +67,7 @@ Compute the tendency for the y-directional transport, vh.
     return ( - div_hUv(i, j, k, grid, advection, solution, formulation)
              - y_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
+             + y_bathymetry(i, j, k, grid, g, solution.h, bathymetry, formulation)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -78,7 +87,7 @@ Compute the tendency for the height, h.
                                      clock,
                                      formulation)
 
-    return ( - div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
+    return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 

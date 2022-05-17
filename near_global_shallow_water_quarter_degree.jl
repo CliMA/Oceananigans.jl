@@ -160,7 +160,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = 5000.0 # .+ bathymetry
+h_init = - bathymetry
 set!(model, h=h_init)
 @info "model initialized"
 
@@ -168,48 +168,51 @@ set!(model, h=h_init)
 ##### Simulation setup
 #####
 
-#  Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
-#  
-#  simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
-#  
-#  start_time = [time_ns()]
-#  
-#  function progress(sim)
-#      wall_time = (time_ns() - start_time[1]) * 1e-9
-#  
-#      u = sim.model.solution.u
-#  
-#      @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
-#                      prettytime(sim.model.clock.time),
-#                      sim.model.clock.iteration, maximum(abs, u), # maximum(abs, η),
-#                      prettytime(wall_time))
-#  
-#      start_time[1] = time_ns()
-#  
-#      return nothing
-#  end
-#  
-#  simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
-#  
-#  u, v, h = model.solution
-#  
-#  save_interval = 5days
-#  
-#  simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h),
-#                                                                schedule = TimeInterval(save_interval),
-#                                                                filename = output_prefix * "_surface",
-#                                                                overwrite_existing = true)
-#  
-#  # Let's goo!
-#  @info "Running with Δt = $(prettytime(simulation.Δt))"
-#  
-#  run!(simulation, pickup = pickup_file)
-#  
-#  @info """
-#  
-#      Simulation took $(prettytime(simulation.run_wall_time))
-#      Free surface: $(typeof(model.free_surface).name.wrapper)
-#      Time step: $(prettytime(Δt))
-#  """
-#  
+ Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
+ 
+ simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+ 
+ start_time = [time_ns()]
+ 
+ function progress(sim)
+     wall_time = (time_ns() - start_time[1]) * 1e-9
+ 
+     u = sim.model.solution.u
+ 
+     @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
+                     prettytime(sim.model.clock.time),
+                     sim.model.clock.iteration, maximum(abs, u), # maximum(abs, η),
+                     prettytime(wall_time))
+ 
+     start_time[1] = time_ns()
+ 
+     return nothing
+ end
+ 
+ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+ 
+ u, v, h = model.solution
+ 
+ ζ = Field(∂x(v) - ∂y(u))
+ compute!(ζ)
+
+ save_interval = 5days
+ 
+ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, merge(model.solution, (; ζ)),
+                                                               schedule = TimeInterval(save_interval),
+                                                               filename = output_prefix * "_surface",
+                                                               overwrite_existing = true)
+ 
+ # Let's goo!
+ @info "Running with Δt = $(prettytime(simulation.Δt))"
+ 
+ run!(simulation, pickup = pickup_file)
+ 
+ @info """
+ 
+     Simulation took $(prettytime(simulation.run_wall_time))
+     Free surface: $(typeof(model.free_surface).name.wrapper)
+     Time step: $(prettytime(Δt))
+ """
+ 
 #  
