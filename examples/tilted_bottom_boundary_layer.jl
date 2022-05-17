@@ -221,13 +221,13 @@ axis_kwargs = (xlabel = "along-slope distance",
                limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
-ax_v = Axis(fig[2, 3]; title = "along-slope velocity", axis_kwargs...)
+ax_v = Axis(fig[3, 1]; title = "along-slope velocity", axis_kwargs...)
 
 hm_ω = heatmap!(ax_ω, xω, zω, ω_y, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
 
 hm_v = heatmap!(ax_v, xv, zv, total_v, colorrange = (-V∞, +V∞), colormap = :balance)
-Colorbar(fig[2, 4], hm_v; label = "m s⁻¹")
+Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
