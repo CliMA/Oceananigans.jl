@@ -213,7 +213,7 @@ return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ
 
 # Flavours of WENO
 const ZWENO        = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const PositiveWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF, PP}
