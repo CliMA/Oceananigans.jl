@@ -82,7 +82,7 @@ function calculate_interior_tendency_contributions!(tendencies,
     args_vel = (grid, gravitational_acceleration, advection.momentum, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
     args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
-                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
+                      solution, tracers, diffusivities, forcings, clock, formulation)
 
     Guh_event = calculate_Guh_kernel!(tendencies[1], args_vel...; dependencies = barrier)
     Gvh_event = calculate_Gvh_kernel!(tendencies[2], args_vel...; dependencies = barrier)
@@ -158,7 +158,6 @@ end
                                advection,
                                coriolis,
                                closure,
-                               bathymetry,
                                solution,
                                tracers,
                                diffusivities,
@@ -168,7 +167,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, bathymetry,
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure,
                                                 solution, tracers, diffusivities, forcings, clock, formulation)
 end
 

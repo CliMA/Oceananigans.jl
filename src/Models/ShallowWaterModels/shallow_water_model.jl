@@ -92,7 +92,7 @@ Keyword arguments
                    `:RungeKutta3` (default).
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
-                   Coriolis terms (`VectorInvariantFormulation()`).
+                   Non-linear terms (`VectorInvariantFormulation()`).
 """
 function ShallowWaterModel(;
                            grid,
@@ -133,6 +133,8 @@ function ShallowWaterModel(;
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
         fill_halo_regions!(bathymetry_field)
+    else
+        fill!(bathymetry_field, 0.0)
     end
 
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
