@@ -159,7 +159,7 @@ run!(simulation)
 
 # Load required packages to read output and plot.
 
-using NCDatasets, Printf, GLMakie
+using NCDatasets, Printf, CairoMakie
 nothing # hide
 
 # Define the coordinates for plotting.
