@@ -165,7 +165,7 @@ regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim,
 regularize_boundary_condition(bc, args...) = bc # fallback
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
-regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) =
+regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) where C =
     BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
 
 """ 
