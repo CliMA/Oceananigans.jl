@@ -159,6 +159,7 @@ Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ 
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil
+using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
@@ -166,7 +167,7 @@ model = ShallowWaterModel(grid = grid,
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
             			  bathymetry = bat,
-                          closure = 
+                          closure = ScalarDiffusivity(HorizontalDivergenceFormulation(), ν = 100),
 			              formulation = VectorInvariantFormulation())
 
 #####

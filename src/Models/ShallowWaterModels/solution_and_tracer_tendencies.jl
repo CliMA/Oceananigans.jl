@@ -2,7 +2,7 @@ using Oceananigans.Advection
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g) = @inbounds 1/2 * g * h[i, j, k]^2
 
@@ -42,6 +42,7 @@ Compute the tendency for the x-directional transport, uh
              - x_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + x_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -67,6 +68,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + y_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
