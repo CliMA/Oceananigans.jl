@@ -166,6 +166,7 @@ model = ShallowWaterModel(grid = grid,
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
             			  bathymetry = bat,
+                          closure = 
 			              formulation = VectorInvariantFormulation())
 
 #####
