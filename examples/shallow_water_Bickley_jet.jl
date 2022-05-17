@@ -194,11 +194,9 @@ ax_ω = Axis(fig[2, 1]; title = "total vorticity, ω", axis_kwargs...)
 ax_ω′ = Axis(fig[2, 3]; title = "perturbation vorticity, ω - ω̄", axis_kwargs...)
 
 hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
-
 Colorbar(fig[2, 2], hm_ω)
 
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
-
 Colorbar(fig[2, 4], hm_ω′)
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
