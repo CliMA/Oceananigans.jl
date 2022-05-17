@@ -263,32 +263,23 @@ xw, yw, zw = nodes(time_series.w)
 xu, yu, zu = nodes(time_series.u)
 nothing # hide
 
-# This utility is handy for calculating nice contour intervals:
-
-function nice_divergent_levels(c, clim; nlevels=20)
-    levels = range(-clim, stop=clim, length=nlevels)
-    cmax = maximum(abs, c)
-    clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
-
-    return (-clim, clim), levels
-end
-nothing # hide
-
 # Finally, we're ready to animate using Makie.
 
 fig = Figure(resolution = (800, 800))
 
-ax_B = Axis(fig[1, 3];
+ax_B = Axis(fig[1, 4];
             xlabel = "Buoyancy (m s⁻²)",
             ylabel = "z (m)")
 
-ax_U = Axis(fig[2, 3];
+ax_U = Axis(fig[2, 4];
             xlabel = "Velocities (m s⁻¹)",
-            ylabel = "z (m)")
+            ylabel = "z (m)",
+            limits = ((-0.07, 0.07), nothing))
 
-ax_fluxes = Axis(fig[3, 3];
+ax_fluxes = Axis(fig[3, 4];
                  xlabel = "Momentum fluxes (m² s⁻²)",
-                 ylabel = "z (m)")
+                 ylabel = "z (m)",
+                 limits = ((-3e-5, 3e-5), nothing))
 
 ax_wxy = Axis(fig[1, 1:2];
               xlabel = "x (m)",
@@ -332,8 +323,8 @@ wxyₙ = @lift collect(time_series.w[$n][:, :, k])
 wxzₙ = @lift collect(time_series.w[$n][:, 1, :])
 uxzₙ = @lift collect(time_series.u[$n][:, 1, :])
 
-wlims, wlevels = nice_divergent_levels(interior(w), 0.03)
-ulims, ulevels = nice_divergent_levels(interior(w), 0.05)
+wlims = (-0.03, 0.03)
+ulims = (-0.05, 0.05)
 
 lines!(ax_B, Bₙ, zu)
 
@@ -345,11 +336,23 @@ lines!(ax_fluxes, wuₙ, zw; label = L"mean $wu$")
 lines!(ax_fluxes, wvₙ, zw; label = L"mean $wv$")
 axislegend(ax_fluxes; position = :rb)
 
-heatmap!(ax_wxy, xw, yw, wxyₙ)
+hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
+                  colorrange = wlims,
+                  colormap = :balance)
 
-heatmap!(ax_wxz, xw, zw, wxzₙ)
+Colorbar(fig[1, 3], hm)
 
-heatmap!(ax_uxz, xu, zu, uxzₙ)
+hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
+                  colorrange = wlims,
+                  colormap = :balance)
+
+Colorbar(fig[2, 3], hm)
+
+ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
+                  colorrange = ulims,
+                  colormap = :balance)
+
+Colorbar(fig[3, 3], hm)
 
 # And, finally, we record a movie.
 
