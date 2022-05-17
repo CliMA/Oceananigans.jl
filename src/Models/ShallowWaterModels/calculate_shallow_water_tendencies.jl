@@ -90,7 +90,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     events = [Guh_event, Gvh_event, Gh_event]
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_advection = advection[tracer_name]
