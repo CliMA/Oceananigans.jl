@@ -18,10 +18,7 @@ using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_s
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 
-""" Returns a default_tracer_advection, tracer_advection `tuple`. """
-validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
-validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
-validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+import Oceananigans.Models.NonhydrostaticModels: validate_tracer_advection
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 

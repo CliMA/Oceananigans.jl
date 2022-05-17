@@ -5,7 +5,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: MultiArch
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: CenteredSecondOrder, AbstractAdvectionScheme
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
@@ -20,6 +20,11 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
+
+""" Returns a default_tracer_advection, tracer_advection `tuple`. """
+validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
@@ -50,7 +55,8 @@ end
 """
     NonhydrostaticModel(;     grid,
                               clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = CenteredSecondOrder(),
+                 momentum_advection = CenteredSecondOrder(),
+                   tracer_advection = CenteredSecondOrder(),
                            buoyancy = nothing,
                            coriolis = nothing,
                        stokes_drift = nothing,
@@ -78,7 +84,8 @@ Keyword arguments
   - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the `grid`.
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
+  - `advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
@@ -101,7 +108,8 @@ Keyword arguments
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
-                             advection = CenteredSecondOrder(),
+                    momentum_advection = CenteredSecondOrder(),
+                      tracer_advection = CenteredSecondOrder(), 
                               buoyancy = nothing,
                               coriolis = nothing,
                           stokes_drift = nothing,
@@ -142,7 +150,7 @@ function NonhydrostaticModel(;    grid,
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
     user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), momentum_advection, tracer_advection, closure)
     if any(user_halo .< required_halo) # Replace grid
         @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
               "The model grid will be different from the input grid. To avoid this warning, " *
@@ -191,6 +199,16 @@ function NonhydrostaticModel(;    grid,
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
+
+    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+
+    # Advection schemes
+    tracer_advection_tuple = with_tracers(tracernames(tracers),
+                                          tracer_advection,
+                                         (name, tracer_advection) -> default_tracer_advection,
+                                          with_velocities=false)
+
+    advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
