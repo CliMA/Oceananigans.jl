@@ -247,7 +247,7 @@ run!(simulation)
 # and plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
-using GLMakie
+using CairoMakie
 
 time_series = (;
      w = FieldTimeSeries("langmuir_turbulence_fields.jld2", "w"),
@@ -340,19 +340,19 @@ hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
-Colorbar(fig[1, 3], hm)
+Colorbar(fig[1, 3], hm_wxy)
 
 hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
-Colorbar(fig[2, 3], hm)
+Colorbar(fig[2, 3], hm_wxz)
 
 ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 
-Colorbar(fig[3, 3], hm)
+Colorbar(fig[3, 3], ax_uxz)
 
 # And, finally, we record a movie.
 
