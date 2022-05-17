@@ -264,6 +264,11 @@ xu, yu, zu = nodes(time_series.u)
 nothing # hide
 
 # Finally, we're ready to animate using Makie.
+n = Observable(1)
+
+wxy_title = @lift @sprintf("w(x, y, t) at z=-8 m and t = %s ", prettytime(times[$n]))
+wxz_title = @lift @sprintf("w(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
+uxz_title = @lift @sprintf("u(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
 
 fig = Figure(resolution = (800, 800))
 
@@ -279,36 +284,33 @@ ax_U = Axis(fig[2, 4];
 ax_fluxes = Axis(fig[3, 4];
                  xlabel = "Momentum fluxes (m² s⁻²)",
                  ylabel = "z (m)",
-                 limits = ((-3e-5, 3e-5), nothing))
+                 limits = ((-3.5e-5, 3.5e-5), nothing))
 
 ax_wxy = Axis(fig[1, 1:2];
               xlabel = "x (m)",
               ylabel = "y (m)",
               aspect = DataAspect(),
-              limits = ((0, grid.Lx), (0, grid.Ly)))
+              limits = ((0, grid.Lx), (0, grid.Ly)),
+              title = wxy_title)
 
 ax_wxz = Axis(fig[2, 1:2];
               xlabel = "x (m)",
               ylabel = "z (m)",
               aspect = AxisAspect(2),
-              limits = ((0, grid.Lx), (-grid.Lz, 0)))
+              limits = ((0, grid.Lx), (-grid.Lz, 0)),
+              title = wxz_title)
 
 ax_uxz = Axis(fig[3, 1:2];
               xlabel = "x (m)",
               ylabel = "z (m)",
               aspect = AxisAspect(2),
-              limits = ((0, grid.Lx), (-grid.Lz, 0)))
+              limits = ((0, grid.Lx), (-grid.Lz, 0)),
+              title = uxz_title)
 
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
-
-n = Observable(1)
-
-wxy_title = @lift @sprintf("w(x, y, t) (m s⁻¹) at z=-8 m and t = %s ", prettytime(times[$n]))
-wxz_title = @lift @sprintf("w(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(times[$n]))
-uxz_title = @lift @sprintf("u(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(times[$n]))
 
 wₙ = @lift time_series.w[$n]
 uₙ = @lift time_series.u[$n]
@@ -340,19 +342,19 @@ hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
-Colorbar(fig[1, 3], hm_wxy)
+Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
 hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
-Colorbar(fig[2, 3], hm_wxz)
+Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
 ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 
-Colorbar(fig[3, 3], ax_uxz)
+Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 
 # And, finally, we record a movie.
 
