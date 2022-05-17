@@ -87,9 +87,8 @@ bat = file_bathymetry["bathymetry"]
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 
-bat .*= 0.01 
-bat[ bat .> 0 ] .= 1.1e3 
-bat .-= 1e3
+bat[ bat .> 0 ] .= 1000
+bat .-= 400
 
 boundary   = Int.(bat .> 0)
 bat = arch_array(arch, - bat)
@@ -161,7 +160,7 @@ using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil
 
 model = ShallowWaterModel(grid = grid,
-			              gravitational_acceleration = 9.8065,
+			              gravitational_acceleration = 9.8055,
                           advection = WENO5(vector_invariant = VelocityStencil()),
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
@@ -180,9 +179,9 @@ set!(model, h=h_init)
 ##### Simulation setup
 #####
 
-Δt = 1seconds #1minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 10seconds #1minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = 1000)
+simulation = Simulation(model, Δt = Δt, stop_iteration = 1)
 
 start_time = [time_ns()]
 
@@ -203,18 +202,18 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-u, v, h = model.solution
+# u, v, h = model.solution
 
-ζ = Field(∂x(v) - ∂y(u))
-compute!(ζ)
+# ζ = Field(∂x(v) - ∂y(u))
+# compute!(ζ)
 
-save_interval = 5days
+# save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
-                                                            schedule = TimeInterval(save_interval),
-                                                            filename = output_prefix * "_surface",
-                                                            overwrite_existing = true)
+# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
+#                                                             schedule = TimeInterval(save_interval),
+#                                                             filename = output_prefix * "_surface",
+#                                                             overwrite_existing = true)
 
 # Let's go!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
-run!(simulation, pickup = pickup_file)
+run!(simulation)
