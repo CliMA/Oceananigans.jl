@@ -30,7 +30,7 @@ end
 ##### Grid
 #####
 
-arch = CPU()
+arch = GPU()
 reference_density = 1029
 
 latitude = (-75, 75)
@@ -76,20 +76,21 @@ for (data, file) in zip(datanames, files)
     @eval $file = jldopen($datadep_path)
 end
 
-bat = file_bathymetry["bathymetry"]
-
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
 
 # Files contain 1 year (1992) of 12 monthly averages
 τˣ = file_tau_x["field"] ./ reference_density
 τʸ = file_tau_y["field"] ./ reference_density
+τˣ = arch_array(arch, τˣ)
+τʸ = arch_array(arch, τʸ)
 
-# Remember the convention!! On the surface a negative flux increases a positive decreases
+smoothed_bathymetry = jldopen("smooth-bathymetry.jld2")
 
-bat[ bat .> 0 ] .= 1000
-
-hₘ = - mean(bat[bat .< 0])
+bat = smoothed_bathymetry["bathymetry"]
+# bat = file_bathymetry["bathymetry"]
+bat[ bat .> 0 ] .= 1000.0
+bat .-= 10.0
 
 boundary   = Int.(bat .> 0)
 bat = arch_array(arch, - bat)
@@ -105,9 +106,6 @@ bat = arch_array(arch, - bat)
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
-
-τˣ = arch_array(arch, τˣ)
-τʸ = arch_array(arch, τʸ)
     
 #####
 ##### Boundary conditions / time-dependent fluxes 
@@ -128,12 +126,11 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
     end
 
     if fields.h[i, j, k] > 0 
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / p.hₘ
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / fields.h[i, j, k]
     else
         return 0.0
     end
 end
-
 
 @inline function boundary_stress_v(i, j, k, grid, clock, fields, p)
     time = clock.time
@@ -145,7 +142,7 @@ end
         τ₂ = p.τ[i, j, n₂]
     end
     if fields.h[i, j, k] > 0 
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / p.hₘ
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / fields.h[i, j, k]
     else
         return 0.0
     end
@@ -154,20 +151,31 @@ end
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ = τˣ, hₘ = hₘ))
-Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ, hₘ = hₘ))
+Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ = τˣ))
+Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
 
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
-using Oceananigans.Advection: VelocityStencil
+using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
+
+νh = 1e+1
+
+using Oceananigans.Operators: Δx, Δy
+using Oceananigans.TurbulenceClosures
+
+@inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / 5days
+
+horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
+                                      
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO5(vector_invariant = VelocityStencil()),
+                          momentum_advection = WENO5(vector_invariant = VorticityStencil()),
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
             			  bathymetry = bat,
-                          closure = ScalarDiffusivity(HorizontalDivergenceFormulation(), ν = 100),
+                          closure = (horizontal_diffusivity, biharmonic_viscosity),
 			              formulation = VectorInvariantFormulation())
 
 #####
@@ -184,7 +192,7 @@ set!(model, h=h_init)
 
 Δt = 10seconds #1minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = 1)
+simulation = Simulation(model, Δt = Δt, stop_iteration = 5000000)
 
 start_time = [time_ns()]
 
@@ -192,10 +200,11 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     u = sim.model.solution.u
+    h = sim.model.solution.h
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u), # maximum(abs, η),
+                    sim.model.clock.iteration, maximum(abs, u), minimum(h),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -205,17 +214,17 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-# u, v, h = model.solution
+u, v, h = model.solution
 
-# ζ = Field(∂x(v) - ∂y(u))
-# compute!(ζ)
+ζ = Field(∂x(v) - ∂y(u))
+compute!(ζ)
 
-# save_interval = 5days
+save_interval = 2days
 
-# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
-#                                                             schedule = TimeInterval(save_interval),
-#                                                             filename = output_prefix * "_surface",
-#                                                             overwrite_existing = true)
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
+                                                            schedule = TimeInterval(save_interval),
+                                                            filename = output_prefix * "_surface",
+                                                            overwrite_existing = true)
 
 # Let's go!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
