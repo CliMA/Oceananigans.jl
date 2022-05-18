@@ -1,3 +1,4 @@
+using Oceananigans.Grids: AbstractGrid
 
 const ω̂₁ = 5/18 
 const ω̂ₙ = 5/18  
@@ -17,8 +18,6 @@ const BoundPreservingScheme = PositiveWENO
 end
 
 # Support for Flat directions
-using Oceananigans.Grids: AbstractGrid
-
 @inline bounded_tracer_flux_divergence_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, args...) where {FT, TY, TZ} = zero(FT)
 @inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, args...) where {FT, TX, TZ} = zero(FT)
 @inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, args...) where {FT, TX, TY} = zero(FT)
