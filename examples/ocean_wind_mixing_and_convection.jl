@@ -271,9 +271,9 @@ intro = searchsortedfirst(times, 10minutes)
 
 n = Observable(intro)
 
-wₙ = @lift interior(time_series.w[$n],  :, 1, :)
-Tₙ = @lift interior(time_series.T[$n],  :, 1, :)
-Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
+ wₙ = @lift interior(time_series.w[$n],  :, 1, :)
+ Tₙ = @lift interior(time_series.T[$n],  :, 1, :)
+ Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
 νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
 
 fig = Figure(resolution = (1000, 500))
