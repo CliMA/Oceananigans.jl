@@ -29,8 +29,8 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), x=(0, 2π), y=(0, 1), z=(0, 1),
 ├── Bounded  y ∈ [0.0, 1.0]     regularly spaced with Δy=0.0625
 └── Bounded  z ∈ [0.0, 1.0]     regularly spaced with Δz=0.0625
 
-julia> no_slip_bc = ValueBoundaryCondition(0)
-ValueBoundaryCondition: 0
+julia> no_slip_bc = ValueBoundaryCondition(0.0)
+ValueBoundaryCondition: 0.0
 ```
 
 A "no-slip" [`BoundaryCondition`](@ref) specifies that velocity components tangential to `Bounded`
@@ -52,10 +52,10 @@ julia> model.velocities.u.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: ValueBoundaryCondition: 0
-├── north: ValueBoundaryCondition: 0
-├── bottom: ValueBoundaryCondition: 0
-├── top: ValueBoundaryCondition: 0
+├── south: ValueBoundaryCondition: 0.0
+├── north: ValueBoundaryCondition: 0.0
+├── bottom: ValueBoundaryCondition: 0.0
+├── top: ValueBoundaryCondition: 0.0
 └── immersed: FluxBoundaryCondition: Nothing
 ```
 
@@ -81,9 +81,9 @@ julia> model.velocities.u.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: ValueBoundaryCondition: 0
-├── north: ValueBoundaryCondition: 0
-├── bottom: ValueBoundaryCondition: 0
+├── south: ValueBoundaryCondition: 0.0
+├── north: ValueBoundaryCondition: 0.0
+├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: FluxBoundaryCondition: Nothing
 
@@ -93,7 +93,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: PeriodicBoundaryCondition
 ├── south: OpenBoundaryCondition: Nothing
 ├── north: OpenBoundaryCondition: Nothing
-├── bottom: ValueBoundaryCondition: 0
+├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: FluxBoundaryCondition: Nothing
 ```
@@ -153,18 +153,18 @@ The default boundary condition can be changed by passing a positional argument t
 as in
 
 ```jldoctest
-julia> no_slip_bc = ValueBoundaryCondition(0)
-ValueBoundaryCondition: 0
+julia> no_slip_bc = ValueBoundaryCondition(0.0)
+ValueBoundaryCondition: 0.0
 
 julia> free_slip_surface_bcs = FieldBoundaryConditions(no_slip_bc, top=FluxBoundaryCondition(nothing))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+├── west: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── east: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
+├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
+└── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0.0)
 ```
 
 ## Boundary condition structures
@@ -365,7 +365,7 @@ To create a set of [`FieldBoundaryConditions`](@ref) for a temperature field,
 we write
 
 ```jldoctest
-julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
+julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
                                        bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
@@ -373,7 +373,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── bottom: GradientBoundaryCondition: 0.01
-├── top: ValueBoundaryCondition: 20
+├── top: ValueBoundaryCondition: 20.0
 └── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ```
 
@@ -398,7 +398,7 @@ julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topo
 julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
                                        bottom = ValueBoundaryCondition(-0.1));
 
-julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
+julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
                                        bottom = GradientBoundaryCondition(0.01));
 
 julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
@@ -449,16 +449,16 @@ julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 ├── Periodic y ∈ [-3.0, 3.0) regularly spaced with Δy=0.1875
 └── Bounded  z ∈ [0.0, 1.0]  regularly spaced with Δz=0.0625
 
-julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0));
+julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.0));
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
 
 julia> model.velocities.w.boundary_conditions.immersed
 ImmersedBoundaryCondition:
-├── west: ValueBoundaryCondition: 0
-├── east: ValueBoundaryCondition: 0
-├── south: ValueBoundaryCondition: 0
-├── north: ValueBoundaryCondition: 0
+├── west: ValueBoundaryCondition: 0.0
+├── east: ValueBoundaryCondition: 0.0
+├── south: ValueBoundaryCondition: 0.0
+├── north: ValueBoundaryCondition: 0.0
 ├── bottom: Nothing
 └── top: Nothing
 ```
@@ -474,7 +474,7 @@ ImmersedBoundaryCondition:
 ├── east: Nothing
 ├── south: Nothing
 ├── north: Nothing
-├── bottom: ValueBoundaryCondition: 0
+├── bottom: ValueBoundaryCondition: 0.0
 └── top: Nothing
 
 julia> velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
