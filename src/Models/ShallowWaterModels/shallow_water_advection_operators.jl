@@ -61,7 +61,7 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 #####
 
 """
-    div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
+    div_Uh(i, j, k, grid, advection, solution, formulation)
 
 Calculates the divergence of the mass flux into a cell,
 
@@ -69,20 +69,13 @@ Calculates the divergence of the mass flux into a cell,
 
 which will end up at the location `ccc`.
 """
-@inline function div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
+@inline function div_Uh(i, j, k, grid, advection, solution, formulation)
     return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + 
                                      δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 end
 
-@inline function div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation::VectorInvariantFormulation) 
-    h_term = 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], solution.h) +
-                                      δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], solution.h)) 
-
-    b_term = 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], bathymetry) +
-                                      δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], bathymetry)) 
-
-    return h_term + b_term
-end
+@inline div_Uh(i, j, k, grid, advection, solution, formulation::VectorInvariantFormulation) =
+        div_Uc(i, j, k, grid, advection, solution, solution[3], formulation)
 
 #####
 ##### Tracer advection operator

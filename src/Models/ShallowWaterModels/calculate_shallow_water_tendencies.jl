@@ -82,7 +82,7 @@ function calculate_interior_tendency_contributions!(tendencies,
     args_vel = (grid, gravitational_acceleration, advection.momentum, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
     args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
-                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
+                      solution, tracers, diffusivities, forcings, clock, formulation)
 
     Guh_event = calculate_Guh_kernel!(tendencies[1], args_vel...; dependencies = barrier)
     Gvh_event = calculate_Gvh_kernel!(tendencies[2], args_vel...; dependencies = barrier)
@@ -90,11 +90,12 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     events = [Guh_event, Gvh_event, Gh_event]
 
-    for tracer_index in 1:length(tracers)
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_advection = advection[tracer_name]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection.tracer, closure, solution,
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
                                         tracers, diffusivities, forcing, clock, formulation, dependencies=barrier)
 
         push!(events, Gc_event)
@@ -158,7 +159,6 @@ end
                                advection,
                                coriolis,
                                closure,
-                               bathymetry,
                                solution,
                                tracers,
                                diffusivities,
@@ -168,7 +168,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, bathymetry,
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure,
                                                 solution, tracers, diffusivities, forcings, clock, formulation)
 end
 

@@ -2,17 +2,23 @@ using Oceananigans.Advection
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
-
-@inline squared(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 @inline half_g_h²(i, j, k, grid, h, g) = @inbounds 1/2 * g * h[i, j, k]^2
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
-@inline y_pressure_gradient(i, j, k, grid, g, h, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+@inline h_minus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] - hB[i, j, k]
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h)
-@inline y_pressure_gradient(i, j, k, grid, g, h, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h)
+@inline x_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+@inline y_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+
+@inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h_minus_hB, h, hB)
+@inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h_minus_hB, h, hB)
+
+@inline x_bathymetry(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, hB)
+@inline y_bathymetry(i, j, k, grid, g, h, hB, formulation) = g * h[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, hB)
+
+@inline x_bathymetry(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
+@inline y_bathymetry(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = zero(grid)
 
 """
 Compute the tendency for the x-directional transport, uh
@@ -33,8 +39,10 @@ Compute the tendency for the x-directional transport, uh
     g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution, formulation)
-             - x_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
+             - x_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
+             + x_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -57,8 +65,10 @@ Compute the tendency for the y-directional transport, vh.
      g = gravitational_acceleration
 
     return ( - div_hUv(i, j, k, grid, advection, solution, formulation)
-             - y_pressure_gradient(i, j, k, grid, gravitational_acceleration, solution.h, formulation)
+             - y_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
+             + y_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -70,7 +80,6 @@ Compute the tendency for the height, h.
                                      advection,
                                      coriolis,
                                      closure,
-                                     bathymetry,
                                      solution,
                                      tracers,
                                      diffusivities,
@@ -78,8 +87,8 @@ Compute the tendency for the height, h.
                                      clock,
                                      formulation)
 
-    return ( - div_Uh(i, j, k, grid, advection, solution, bathymetry, formulation)
-             + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
+    return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
+             + forcings[3](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 @inline function tracer_tendency(i, j, k, grid,

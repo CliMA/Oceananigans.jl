@@ -62,6 +62,13 @@ Modules = [Oceananigans.Diagnostics]
 Private = false
 ```
 
+## Distributed
+
+```@autodocs
+Modules = [Oceananigans.Distributed]
+Private = false
+```
+
 ## Fields
 
 ```@autodocs
@@ -109,6 +116,13 @@ Pages   = ["Logger.jl"]
 
 ```@autodocs
 Modules = [Oceananigans.Models]
+Private = false
+```
+
+## MultiRegion
+
+```@autodocs
+Modules = [Oceananigans.MultiRegion]
 Private = false
 ```
 
