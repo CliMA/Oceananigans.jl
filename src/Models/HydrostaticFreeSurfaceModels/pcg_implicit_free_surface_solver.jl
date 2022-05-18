@@ -5,6 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device
+using FileIO
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
@@ -90,6 +91,8 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+
+    save("tdata.jld2", (η,rhs) )
     
     return nothing
 end
