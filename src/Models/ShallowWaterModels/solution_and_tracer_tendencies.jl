@@ -42,7 +42,7 @@ Compute the tendency for the x-directional transport, uh
              - x_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + x_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock, nothing)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -68,7 +68,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_pressure_gradient(i, j, k, grid, g, solution[3], bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + y_bathymetry(i, j, k, grid, g, solution[3], bathymetry, formulation)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, nothing)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
