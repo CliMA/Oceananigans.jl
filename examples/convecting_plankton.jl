@@ -226,7 +226,7 @@ nothing # hide
 
 # Finally, we animate plankton mixing and blooming,
 
-using GLMakie
+using CairoMakie
 
 @info "Making a movie about plankton..."
 
