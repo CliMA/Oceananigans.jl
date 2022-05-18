@@ -69,7 +69,7 @@ function calculate_interior_tendency_contributions!(model)
 
     Gu_event = calculate_Gu_kernel!(tendencies.u,
                                     grid,
-                                    advection.momentum,
+                                    advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
@@ -86,7 +86,7 @@ function calculate_interior_tendency_contributions!(model)
 
     Gv_event = calculate_Gv_kernel!(tendencies.v,
                                     grid,
-                                    advection.momentum,
+                                    advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
@@ -103,7 +103,7 @@ function calculate_interior_tendency_contributions!(model)
 
     Gw_event = calculate_Gw_kernel!(tendencies.w,
                                     grid,
-                                    advection.momentum,
+                                    advection,
                                     coriolis,
                                     stokes_drift,
                                     closure,
@@ -119,16 +119,15 @@ function calculate_interior_tendency_contributions!(model)
 
     events = [Gu_event, Gv_event, Gw_event]
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+    for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds c_advection = advection[tracer_name]
 
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
                                         Val(tracer_index),
-                                        c_advection,
+                                        advection,
                                         closure,
                                         c_immersed_bc,
                                         buoyancy,

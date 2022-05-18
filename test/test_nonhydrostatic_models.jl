@@ -44,19 +44,19 @@ include("dependencies_for_runtests.jl")
 
         # Model ensures that halos are at least of size 2
         for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
-            model = NonhydrostaticModel(momentum_advection=scheme, grid=minimal_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-            model = NonhydrostaticModel(momentum_advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
         # Model ensures that halos are at least of size 3
         for scheme in (WENO5(), UpwindBiasedFifthOrder())
-            model = NonhydrostaticModel(momentum_advection=scheme, grid=minimal_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
-            model = NonhydrostaticModel(momentum_advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
