@@ -262,6 +262,12 @@ function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
 
+Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),
+                                                                                     Adapt.adapt(to, bc.east),
+                                                                                     Adapt.adapt(to, bc.south),
+                                                                                     Adapt.adapt(to, bc.north),
+                                                                                     Adapt.adapt(to, bc.bottom),
+                                                                                     Adapt.adapt(to, bc.top))
 #####
 ##### Alternative implementation for immersed flux divergence
 #####
