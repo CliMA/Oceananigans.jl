@@ -263,14 +263,17 @@ xw, yw, zw = nodes(time_series.w)
 xu, yu, zu = nodes(time_series.u)
 nothing # hide
 
-# Finally, we're ready to animate using Makie.
+# We are now ready to animate using Makie. # We use Makie's `Observable` to animate
+# the data. To dive into how `Observable`s work we refer to
+# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+
 n = Observable(1)
 
 wxy_title = @lift @sprintf("w(x, y, t) at z=-8 m and t = %s ", prettytime(times[$n]))
 wxz_title = @lift @sprintf("w(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
 uxz_title = @lift @sprintf("u(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
 
-fig = Figure(resolution = (800, 800))
+fig = Figure(resolution = (850, 850))
 
 ax_B = Axis(fig[1, 4];
             xlabel = "Buoyancy (m s⁻²)",
@@ -308,9 +311,6 @@ ax_uxz = Axis(fig[3, 1:2];
               title = uxz_title)
 
 nothing #hide
-
-# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
 wₙ = @lift time_series.w[$n]
 uₙ = @lift time_series.u[$n]
