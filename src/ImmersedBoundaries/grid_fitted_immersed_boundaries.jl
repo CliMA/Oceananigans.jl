@@ -77,8 +77,8 @@ end
     return @inbounds z < ib.bottom_height[i, j]
 end
 
-on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
+on_architecture(arch, ib::AbstractGridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
+Adapt.adapt_structure(to, ib::AbstractGridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
 
 #####
 ##### Implicit vertical diffusion
@@ -155,9 +155,9 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
-on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
-on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
-on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
+on_architecture(arch, ib::AbstractGridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
+on_architecture(arch, ib::AbstractGridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
+on_architecture(arch, ib::AbstractGridFittedBoundary) = ib # need a workaround...
 
-Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
+Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 
