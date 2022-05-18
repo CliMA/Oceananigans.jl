@@ -16,6 +16,13 @@ const BoundPreservingScheme = PositiveWENO
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
 
+# Support for Flat directions
+using Oceananigans.Grids: AbstractGrid
+
+@inline bounded_tracer_flux_divergence_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, args...) where {FT, TY, TZ} = zero(FT)
+@inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, args...) where {FT, TX, TZ} = zero(FT)
+@inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, args...) where {FT, TX, TY} = zero(FT)
+
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
 
     lower_limit = advection.bounds[1]
