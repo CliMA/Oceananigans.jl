@@ -194,9 +194,11 @@ ax_ω = Axis(fig[2, 1]; title = "total vorticity, ω", axis_kwargs...)
 ax_ω′ = Axis(fig[2, 3]; title = "perturbation vorticity, ω - ω̄", axis_kwargs...)
 
 hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
+
 Colorbar(fig[2, 2], hm_ω)
 
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
+
 Colorbar(fig[2, 4], hm_ω′)
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
@@ -216,7 +218,6 @@ nothing #hide
 # It's always good practice to close the NetCDF files when we are done.
 
 close(ds)
-nothing # hide
 
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
@@ -263,7 +264,7 @@ lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visua
 
 axislegend()
 
-fig # hide
+current_figure() # hide
 
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.
