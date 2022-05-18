@@ -19,7 +19,7 @@
 #  ``μ₀`` is the phytoplankton growth rate at the surface, ``λ`` is the scale over
 # which sunlight attenuates away from the surface, and ``m`` is the mortality rate
 # of phytoplankton due to viruses and grazing by zooplankton. We use Oceananigans'
-#  `Forcing` abstraction to implement the phytoplankton dynamics described by the right
+# `Forcing` abstraction to implement the phytoplankton dynamics described by the right
 # side of the phytoplankton equation above.
 #
 # This example demonstrates
