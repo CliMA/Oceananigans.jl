@@ -265,7 +265,7 @@ nothing # hide
 times = time_series.w.times
 intro = searchsortedfirst(times, 10minutes)
 
-# We are now ready to animate using Makie. # We use Makie's `Observable` to animate
+# We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
 # [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
