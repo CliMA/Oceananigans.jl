@@ -138,8 +138,8 @@ end
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
                                    array_type = Array{Float32},
-                                   with_halos = false,
                                       indices = nothing,
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
