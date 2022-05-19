@@ -7,7 +7,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, JLD2, CairoMakie"
 # ```
 
 # ## The physical domain
@@ -27,7 +27,7 @@ grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
 # defined as,
 #
 # ```math
-# Ri = \frac{∂_z B}{(∂_z U)^2}
+# Ri = \frac{∂_z B}{(∂_z U)^2} ,
 # ```
 #
 # and the width of the stratification layer, ``h``.
@@ -43,20 +43,23 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 # Our basic state thus has a thin layer of stratification in the center of
 # the channel, embedded within a thicker shear layer surrounded by unstratified fluid.
 
-using Plots
+using GLMakie
 
 zF = znodes(Face, grid)
 zC = znodes(Center, grid)
 
 Ri, h = B.parameters
 
-kwargs = (ylabel="z", linewidth=3, label=nothing)
+fig = Figure(resolution = (850, 450))
+ 
+ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
+lines!(ax, shear_flow.(0, 0, zC, 0), zC; linewidth = 3)
 
- U_plot = plot(shear_flow.(0, 0, zC, 0), zC; xlabel="U(z)", kwargs...)
- B_plot = plot([stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; xlabel="B(z)", color=:red, kwargs...)
-Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:black, kwargs...) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
+ax = Axis(fig[1, 2], xlabel = "B(z)")
+lines!(ax, [stratification(0, 0, z, 0, (Ri=Ri, h=h)) for z in zC], zC; linewidth = 3, color = :red)
 
-plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
+ax = Axis(fig[1, 3], xlabel = "Ri(z)")
+lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, color = :black) # Ri(z)= ∂_z B / (∂_z U)²; derivatives computed by hand
 
 # In unstable flows it is often useful to determine the dominant spatial structure of the
 # instability and the growth rate at which the instability grows.
@@ -156,7 +159,7 @@ simulation = Simulation(model, Δt=0.1, stop_iteration=150)
 # over that period.
 
 """
-    grow_instability!(simulation, e)
+    grow_instability!(simulation, energy)
 
 Grow an instability by running `simulation`.
 
@@ -205,11 +208,11 @@ nothing # hide
 # buoyancy structure. In that case, the total perturbation energy is more adequate.)
 
 """
-    rescale!(model, energy; target_kinetic_energy=1e-3)
+    rescale!(model, energy; target_kinetic_energy = 1e-3)
 
 Rescales all model fields so that `energy = target_kinetic_energy`.
 """
-function rescale!(model, energy; target_kinetic_energy=1e-6)
+function rescale!(model, energy; target_kinetic_energy = 1e-6)
     compute!(energy)
     rescale_factor = √(target_kinetic_energy / energy[1, 1, 1])
 
@@ -406,7 +409,7 @@ function plot_energy_timeseries(t, measured_KE, σ, KEᵢ, stop_time)
               lw = 6,
               alpha = 0.5)
 
-    return energy_plot
+    return fig
 end
 
 filepath = simulation.output_writers[:vorticity].filepath
@@ -454,4 +457,3 @@ anim_total = @animate for (i, t) in enumerate(times)
 end
 
 mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
-
