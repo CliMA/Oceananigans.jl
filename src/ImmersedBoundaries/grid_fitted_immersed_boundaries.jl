@@ -155,9 +155,9 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
-on_architecture(arch, ib::AbstractGridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
-on_architecture(arch, ib::AbstractGridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
-on_architecture(arch, ib::AbstractGridFittedBoundary) = ib # need a workaround...
+on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
+on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
+on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 
