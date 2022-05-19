@@ -43,7 +43,10 @@ function Base.summary(ib::GridFittedBottom)
     return @sprintf("GridFittedBottom(min(h)=%.2e, max(h)=%.2e)", hmin, hmax)
 end
 
-Base.show(io, ib::GridFittedBottom) = print(io, summary(ib))
+Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)", ib.bottom_height)
+
+
+Base.show(io::IO, ib::GridFittedBottom) = print(io, summary(ib))
 
 """
     ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
