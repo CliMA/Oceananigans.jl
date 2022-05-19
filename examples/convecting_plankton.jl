@@ -238,11 +238,10 @@ wₙ = @lift interior(w_timeseries[$n], :, 1, :)
 Pₙ = @lift interior(P_timeseries[$n], :, 1, :)
 P_avgₙ = @lift interior(P_avg_timeseries[$n], 1, 1, :)
 
-P_lims = (0.95, 1.1)
-
 w_lim = maximum(abs, interior(w_timeseries))
 w_lims = (-w_lim, w_lim)
 
+P_lims = (0.95, 1.1)
 
 fig = Figure(resolution = (850, 850))
 
@@ -270,25 +269,27 @@ ax_P_avg = Axis(fig[3, 3];
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 hm_w = heatmap!(ax_w, xw, zw, wₙ;
-               colormap = :balance,
-               colorrange = w_lims)
+                colormap = :balance,
+                colorrange = w_lims)
 
 Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
 
 hm_P = heatmap!(ax_P, xp, zp, Pₙ;
-               colormap = :matter,
-               colorrange = P_lims)
+                colormap = :matter,
+                colorrange = P_lims)
 
 Colorbar(fig[3, 2], hm_P; label = "μM")
 
-b_flux_point = @lift Point2f(times[$n], buoyancy_flux_time_series[$n])
+lines!(ax_b, times ./ hour, buoyancy_flux_time_series;
+       linewidth = 1, color = :black, alpha = 0.4)
 
-lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :black, alpha = 0.4)
+b_flux_point = @lift Point2f[(times[$n] / hour, buoyancy_flux_time_series[$n])]
 
 scatter!(ax_b, b_flux_point;
          marker = :circle, markersize = 16, color = :black)
 
-lines!(ax_P_avg, P_avgₙ, zp; linewidth = 2)
+lines!(ax_P_avg, P_avgₙ, zp;
+       linewidth = 2)
 
 # And, finally, we record a movie.
 
