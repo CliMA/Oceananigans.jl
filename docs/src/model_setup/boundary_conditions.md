@@ -468,7 +468,7 @@ of a boundary-adjcent cell. Boundary conditions on specific faces of immersed-bo
 cells may also be specified by manually building `ImmersedBoundaryCondition`:
 
 ```jldoctest
-julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0))
+julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
