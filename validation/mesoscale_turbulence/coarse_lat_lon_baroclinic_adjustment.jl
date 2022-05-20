@@ -6,6 +6,7 @@ using Oceananigans.Units
 using GLMakie
 
 using Oceananigans.TurbulenceClosures: FluxTapering
+using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
@@ -17,8 +18,8 @@ architecture = CPU()
 Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
-save_fields_interval = 1hour
-stop_time = 60days
+save_fields_interval = 4hour
+stop_time = 40days
 Δt = 20minutes
 
 grid = LatitudeLongitudeGrid(architecture;
@@ -36,22 +37,22 @@ coriolis = HydrostaticSphericalCoriolis()
 vertical_closure = VerticalScalarDiffusivity(ν=1e-2, κ=1e-4)
 horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-1)
+gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
                                                                 #κ_symmetric = (b=0, c=1e3),
                                                                 skew_flux_scheme = WENO5(; grid), 
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 
-closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
+#closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
+closures = gent_mcwilliams_diffusivity
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
+                                    closure = nothing, #closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()), #VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     free_surface = ImplicitFreeSurface())
 
@@ -75,8 +76,8 @@ end
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-Δy = 1 # degree
-Δz = 100
+Δy = 2   # degree
+Δz = 100 # meters
 
 Δc = 100kilometers * 2Δy
 Δb = 100kilometers * Δy * M²
@@ -116,7 +117,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(save_fields_interval),

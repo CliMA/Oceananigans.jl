@@ -23,7 +23,7 @@ end
 
 const ISSD{TD, A} = IsopycnalSkewSymmetricDiffusivity{TD, A} where {TD, A}
 const ISSDVector{TD, A} = AbstractVector{<:ISSD{TD, A}} where {TD, A}
-const FlavorOfISSD{TD, A} = Union{ISSD{TD, A}, ISSDVector{TD, A}} where {TD, A}
+const FlavorOfISSD{TD, A, N} = Union{ISSD{TD, A}, ISSDVector{TD, A, N}} where {TD, A, N}
 const AdvectiveISSD = FlavorOfISSD{TD, <:AbstractAdvectionScheme} where TD
 const issd_coefficient_loc = (Center(), Center(), Center())
 
@@ -242,7 +242,7 @@ taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  closure::FlavorOfISSD, diffusivity_fields, ::Val{tracer_index},
                                   velocities, tracers, clock, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
@@ -277,7 +277,7 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  closure::FlavorOfISSD, diffusivity_fields, ::Val{tracer_index},
                                   velocities, tracers, clock, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
@@ -342,9 +342,7 @@ end
                                          (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
-
-
-@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
+@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     return κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
@@ -359,17 +357,17 @@ end
     return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, κ_symmetric)
 end
 
-@inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_uz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_ux(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_uy(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
 
-@inline viscous_flux_vx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_vy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_vz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vx(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_vy(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_vz(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
 
-@inline viscous_flux_wx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_wy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
-@inline viscous_flux_wz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wx(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_wy(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
+@inline viscous_flux_wz(i, j, k, grid, closure::FlavorOfISSD, args...) = zero(grid)
 
 #####
 ##### Show

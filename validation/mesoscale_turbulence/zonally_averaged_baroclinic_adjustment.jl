@@ -7,7 +7,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Fields: FunctionField
 using Oceananigans: fields
-using Oceananigans.TurbulenceClosures: FluxTapering, VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: FluxTapering, VerticallyImplicitTimeDiscretization, IsopycnalPotentialVorticityDiffusivity
 
 filename = "zonally_averaged_baroclinic_adjustment"
 
@@ -21,9 +21,9 @@ Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
 
-save_fields_interval = 0.5day
+save_fields_interval = 2hours
 stop_time = 30days
-Δt₀ = 20minutes
+Δt = 20minutes
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
@@ -46,15 +46,15 @@ grid = RectilinearGrid(architecture;
 
 coriolis = BetaPlane(latitude = -45)
 
-# f² / N² = 1e-8 / 4e-6 = 2.5e-3
-f²_N² = 2.5e-3
-νzz = 4e2 * f²_N²
-vertical_viscosity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νzz)
+κᴳᴹ = 1000 # m² / s
+f²_N² = coriolis.f₀^2 / N²
+νz = κᴳᴹ * f²_N²
+vertical_viscosity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz)
 
 κh = νh = (Ly / Ny)^4 / 10days
 horizontal_biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
-κᴳᴹ = 1000 # m² / s
+potential_vorticity_diffusivity = IsopycnalPotentialVorticityDiffusivity(κ_potential_vorticity=κᴳᴹ, κ_tracers=κᴳᴹ, f=coriolis.f₀)
 horizontal_viscosity = HorizontalScalarDiffusivity(ν=κᴳᴹ)
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 advective_gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κᴳᴹ,
@@ -69,11 +69,11 @@ redi_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_symmetric = 900,
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     #closure = advective_gent_mcwilliams_diffusivity,
-                                    closure = vertical_viscosity,
+                                    #closure = vertical_viscosity,
+                                    closure = potential_vorticity_diffusivity,
                                     tracers = (:b, :c),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
@@ -99,7 +99,7 @@ set!(model, u=uᵢ, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
-simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
+simulation = Simulation(model; Δt, stop_time)
 
 # add progress callback
 wall_clock = [time_ns()]
@@ -123,9 +123,7 @@ end
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 u, v, w = model.velocities
-ζz = ∂z(∂x(v) - ∂y(u))
-
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(fields(model), (; ζz)),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
@@ -149,7 +147,6 @@ filepath = filename * "_fields.jld2"
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
-ζzt = FieldTimeSeries(filepath, "ζz")
 
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
@@ -164,11 +161,10 @@ Nt = length(times)
 un(n) = interior(ut[n], 1, :, :)
 bn(n) = interior(bt[n], 1, :, :)
 cn(n) = interior(ct[n], 1, :, :)
-ζzn(n) = interior(ct[n], 1, :, :)
 
 @show min_c = 0
 @show max_c = 1
-@show max_u = maximum(abs, un(Nt)) / 2
+@show max_u = maximum(abs, un(1)) / 2
 min_u = - max_u
 
 y *= 1e-3
@@ -186,7 +182,6 @@ hm = heatmap!(axu, y, z, u, colorrange=(min_u, max_u), colormap=:balance)
 contour!(axu, y, z, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[2, 2], hm)
 
-#hm = heatmap!(axc, y, z, ζz, colorrange=(0, 0.5), colormap=:speed)
 hm = heatmap!(axc, y, z, c, colorrange=(0, 0.5), colormap=:speed)
 contour!(axc, y, z, b, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm)

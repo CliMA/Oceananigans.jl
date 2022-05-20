@@ -1,4 +1,4 @@
-using Oceananigans.Operators: ℑxzᶠᶜᶜ, ℑxzᶜᶜᶠ, ℑyzᶜᶠᶜ, ℑyzᶜᶜᶠ
+using Oceananigans.Operators: ℑxzᶠᶜᶜ, ℑxzᶜᶜᶠ, ℑyzᶜᶠᶜ, ℑyzᶜᶜᶠ, ℑxyzᶠᶜᶠ
 
 # tracer components of the Redi rotation tensor
 
@@ -96,6 +96,32 @@ end
     return ifelse(bz == 0, zero(FT), slope_x)
 end
 
+@inline function isopycnal_rotation_tensor_xz_cff(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
+    # fcc -> cff
+    bx = ℑxyzᶜᶠᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+
+    # ccf -> cff
+    bz = ℑyᶜᶠᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = max(bz, slope_model.minimum_bz)
+    
+    slope_x = - bx / bz
+    
+    return ifelse(bz == 0, zero(FT), slope_x)
+end
+
+@inline function isopycnal_rotation_tensor_yz_ffc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
+    # cfc -> ffc
+    by = ℑxzᶠᶠᶜ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+
+    # ccf -> ffc
+    bz = ℑxyzᶠᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = max(bz, slope_model.minimum_bz)
+    
+    slope_y = - by / bz
+    
+    return ifelse(bz == 0, zero(FT), slope_y)
+end
+
 @inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
 
@@ -117,6 +143,19 @@ end
     #by = ∂yᶜᶜᶠ(i, j, k, grid, ℑyzᶜᶠᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz = max(bz, slope_model.minimum_bz)
+    
+    slope_y = - by / bz
+    
+    return ifelse(bz == 0, zero(FT), slope_y)
+end
+
+@inline function isopycnal_rotation_tensor_yz_fcf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
+    # cfc -> fcf
+    by = ℑxyzᶠᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+
+    # ccf -> fcf
+    bz = ℑxᶠᶜᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bz = max(bz, slope_model.minimum_bz)
     
     slope_y = - by / bz
@@ -155,4 +194,39 @@ end
     return ifelse(bz == 0, zero(FT), slope²)
 end
 
+@inline function isopycnal_rotation_tensor_zz_fcf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
+    # fcc -> fcf
+    bx = ℑzᶠᶜᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+
+    # cfc -> fcf
+    by = ℑxyzᶠᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+
+    # ccf -> fcf
+    bz = ℑxᶠᶜᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = max(bz, slope_model.minimum_bz)
+
+    slope_x = - bx / bz
+    slope_y = - by / bz
+    slope² = slope_x^2 + slope_y^2
+    
+    return ifelse(bz == 0, zero(FT), slope²)
+end
+
+@inline function isopycnal_rotation_tensor_zz_cff(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
+    # fcc -> cff
+    bx = ℑxyzᶜᶠᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+
+    # cfc -> cff
+    by = ℑzᶜᶠᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+
+    # ccf -> cff
+    bz = ℑyᶜᶠᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = max(bz, slope_model.minimum_bz)
+
+    slope_x = - bx / bz
+    slope_y = - by / bz
+    slope² = slope_x^2 + slope_y^2
+    
+    return ifelse(bz == 0, zero(FT), slope²)
+end
 

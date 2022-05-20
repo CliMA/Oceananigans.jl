@@ -111,6 +111,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
+include("turbulence_closure_implementations/isopycnal_potential_vorticity_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
