@@ -46,13 +46,15 @@ grid = RectilinearGrid(architecture;
 
 coriolis = BetaPlane(latitude = -45)
 
-νzz = 1e0
+# f² / N² = 1e-8 / 4e-6 = 2.5e-3
+f²_N² = 2.5e-3
+νzz = 4e2 * f²_N²
 vertical_viscosity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νzz)
 
 κh = νh = (Ly / Ny)^4 / 10days
 horizontal_biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
-κᴳᴹ = 1000
+κᴳᴹ = 1000 # m² / s
 horizontal_viscosity = HorizontalScalarDiffusivity(ν=κᴳᴹ)
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 advective_gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κᴳᴹ,
@@ -70,10 +72,8 @@ redi_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_symmetric = 900,
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    #closure = (gent_mcwilliams_diffusivity, horizontal_viscosity),
-                                    closure = advective_gent_mcwilliams_diffusivity,
-                                    #closure = (vertical_viscosity, horizontal_biharmonic_viscosity),
-                                    #closure = vertical_viscosity,
+                                    #closure = advective_gent_mcwilliams_diffusivity,
+                                    closure = vertical_viscosity,
                                     tracers = (:b, :c),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
