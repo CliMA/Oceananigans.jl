@@ -24,7 +24,7 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
-    rhs = unpermuted_right_hand_side
+    rhs = solver.unpermuted_right_hand_side
     arch = architecture(solver)
     grid = solver.local_grid
 
