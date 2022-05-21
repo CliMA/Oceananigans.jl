@@ -43,7 +43,7 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 # Our basic state thus has a thin layer of stratification in the center of
 # the channel, embedded within a thicker shear layer surrounded by unstratified fluid.
 
-using GLMakie
+using CairoMakie
 
 zF = znodes(Face, grid)
 zC = znodes(Center, grid)
@@ -280,45 +280,9 @@ b = model.tracers.b
 
 perturbation_vorticity = Field(∂z(u) - ∂x(w))
 
-xF, yF, zF = nodes(perturbation_vorticity)
-xC, yC, zC = nodes(b)
+xω, yω, zω = nodes(perturbation_vorticity)
+xb, yb, zb = nodes(b)
 
-eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
-
-function eigenplot(ω, b, σ, t; ω_lim=maximum(abs, ω)+1e-16, b_lim=maximum(abs, b)+1e-16)
-
-    kwargs = (xlabel="x", ylabel="z", linewidth=0, label=nothing, color=:balance, aspectratio=1)
-    ω_title(t) = t == nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
-    b_title(t) = t == nothing ? @sprintf("buoyancy")  : @sprintf("buoyancy at t = %.2f", t)
-
-    plot_ω = contourf(xF, zF, clamp.(ω, -ω_lim, ω_lim)';
-                      levels = range(-ω_lim, stop=ω_lim, length=20),
-                       xlims = (xF[1], xF[grid.Nx]),
-                       ylims = (zF[1], zF[grid.Nz]),
-                       clims = (-ω_lim, ω_lim),
-                       title = ω_title(t), kwargs...)
-
-    plot_b = contourf(xC, zC, clamp.(b, -b_lim, b_lim)';
-                    levels = range(-b_lim, stop=b_lim, length=20),
-                     xlims = (xC[1], xC[grid.Nx]),
-                     ylims = (zC[1], zC[grid.Nz]),
-                     clims = (-b_lim, b_lim),
-                     title = b_title(t), kwargs...)
-
-    return plot(plot_ω, plot_b, layout=(1, 2), size=(800, 380))
-end
-
-function power_method_plot(ω, b, σ, t)
-    plot_growthrates = scatter(σ, xlabel = "Power iteration",
-                                  ylabel = "Growth rate",
-                                   title = eigentitle(σ, nothing),
-                                   label = nothing)
-
-    plot_eigenmode = eigenplot(ω, b, σ, nothing)
-
-    return plot(plot_growthrates, plot_eigenmode, layout=@layout([A{0.25h}; B]), size=(800, 600))
-end
-nothing # hide
 
 # # Rev your engines...
 #
@@ -337,13 +301,57 @@ growth_rates, power_method_data = estimate_growth_rate(simulation, mean_perturba
 # # Powerful convergence
 #
 # We animate the power method steps. A scatter plot illustrates how the growth rate converges
-# as the power method iterates,
+# as the power method iterates.
 
-anim_powermethod = @animate for i in 1:length(power_method_data)
-    power_method_plot(power_method_data[i].ω, power_method_data[i].b, power_method_data[i].σ, nothing)
+n = Observable(1)
+
+fig = Figure(resolution=(800, 600))
+
+kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+
+ω_title(t) = t === nothing ? @sprintf("vorticity") : @sprintf("vorticity at t = %.2f", t)
+b_title(t) = t === nothing ? @sprintf("buoyancy")  : @sprintf("buoyancy at t = %.2f", t)
+
+ax_ω = Axis(fig[2, 1]; title = ω_title(nothing), kwargs...)
+
+ax_b = Axis(fig[2, 3]; title = b_title(nothing), kwargs...)
+
+ωₙ = @lift power_method_data[$n].ω
+bₙ = @lift power_method_data[$n].b
+
+σₙ = @lift [(i-1, i==1 ? NaN : growth_rates[i-1]) for i in 1:$n]
+
+ω_lims = @lift (-maximum(abs, power_method_data[$n].ω) - 1e-16, maximum(abs, power_method_data[$n].ω) + 1e-16)
+b_lims = @lift (-maximum(abs, power_method_data[$n].b) - 1e-16, maximum(abs, power_method_data[$n].b) + 1e-16)
+
+hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+Colorbar(fig[2, 2], hm_ω)
+
+hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+Colorbar(fig[2, 4], hm_b)
+
+eigentitle(σ, t) = length(σ) > 0 ? @sprintf("Iteration #%i; growth rate %.2e", length(σ), σ[end]) : @sprintf("Initial perturbation fields")
+σ_title = @lift eigentitle(power_method_data[$n].σ, nothing)
+
+ax_σ = Axis(fig[1, :];
+            xlabel = "Power iteration",
+            ylabel = "Growth rate",
+            title = σ_title,
+            xticks = 1:length(power_method_data)-1,
+            limits = ((0.5, length(power_method_data)-0.5), (-0.25, 0.25)))
+
+scatter!(ax_σ, σₙ; color = :blue)
+
+frames = 1:length(power_method_data)
+
+record(fig, "powermethod.mp4", frames, framerate=1) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
 end
 
-mp4(anim_powermethod, "powermethod.mp4", fps = 1) # hide
+nothing #hide
+
+# ![](powermethod.mp4)
 
 # # Now for the fun part
 #
@@ -433,6 +441,14 @@ anim_perturbations = @animate for (i, t) in enumerate(times)
     plot(eigenmode_plot, energy_plot; layout, size=(800, 600))
 end
 
+record(fig, "kelvin_helmholtz_instability_perturbations.mp4", frames, framerate=8) do i
+    @info "Plotting frame $i of $(frames[end])..."
+    n[] = i
+end
+nothing #hide
+
+# ![](kelvin_helmholtz_instability_perturbations.mp4)
+
 mp4(anim_perturbations, "kelvin_helmholtz_instability_perturbations.mp4", fps = 8) # hide
 
 # And then the same for total vorticity & buoyancy of the fluid.
@@ -457,3 +473,11 @@ anim_total = @animate for (i, t) in enumerate(times)
 end
 
 mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
+
+record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
+end
+nothing #hide
+
+# ![](kelvin_helmholtz_instability_total.mp4)
