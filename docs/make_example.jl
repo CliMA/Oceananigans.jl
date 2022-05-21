@@ -13,7 +13,7 @@ push!(LOAD_PATH, "..")
 
 using Documenter
 using Literate
-using Plots  # to avoid capturing precompilation output by Literate
+using CairoMakie  # to avoid capturing precompilation output by Literate
 
 using Oceananigans
 using Oceananigans.Operators
