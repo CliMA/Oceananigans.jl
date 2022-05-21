@@ -11,7 +11,7 @@ using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, solid_node, solid_interface
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
 using CUDA: @allowscalar, device!
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -111,8 +111,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (1, 3))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (1, 3))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(1), devices = (1))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(1), devices = (1))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -147,8 +147,8 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 @inline next_time_index(time, tot_months)        = mod(unsafe_trunc(Int32, time / thirty_days) + 1, tot_months) + 1
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
-Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
-Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
+Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
 
 @inline function surface_wind_stress(i, j, grid, clock, fields, τ)
     time = clock.time
@@ -172,8 +172,8 @@ v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-@inline is_immersed_drag_u(i, j, k, grid) = Int(solid_interface(Face(), Center(), Center(), i, j, k-1, grid) & !solid_node(Face(), Center(), Center(), i, j, k, grid))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(solid_interface(Center(), Face(), Center(), i, j, k-1, grid) & !solid_node(Center(), Face(), Center(), i, j, k, grid))                                
+@inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(Face(), Center(), Center(), i, j, k-1, grid) & !inactive_node(Face(), Center(), Center(), i, j, k, grid))
+@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(Center(), Face(), Center(), i, j, k-1, grid) & !inactive_node(Center(), Face(), Center(), i, j, k, grid))                                
 
 # Keep a constant linear drag parameter independent on vertical level
 @inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
