@@ -401,8 +401,13 @@ filepath = simulation.output_writers[:vorticity].filepath
 
 ω_timeseries = FieldTimeSeries(filepath, "ω")
 b_timeseries = FieldTimeSeries(filepath, "b")
+Ω_timeseries = FieldTimeSeries(filepath, "Ω")
+B_timeseries = FieldTimeSeries(filepath, "B")
 KE_timeseries = FieldTimeSeries(filepath, "KE")
+
 times = ω_timeseries.times
+
+t_final = times[end]
 
 n = Observable(1)
 
@@ -421,9 +426,8 @@ ax_b = Axis(fig[2, 3]; title = "perturbation buoyancy", kwargs...)
 
 ax_KE = Axis(fig[3, :];
              yscale = log10,
-             limits = ((0, simulation.stop_time), (initial_eigenmode_energy, 1e-1)),
-             xlabel = "time",
-             ylabel = "kinetic energy")
+             limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
+             xlabel = "time")
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
@@ -439,17 +443,19 @@ Colorbar(fig[2, 4], hm_b)
 tₙ = @lift times[1:$n]
 KEₙ = @lift KE_timeseries[1:$n]
 
-t_segment = [0, simulation.stop_time]
-predicted_KE = @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment)
-
-lines!(ax_KE, t_segment, predicted_KE;
+lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment);
        label = "~ exp(2 σ t)",
        linewidth = 2,
        color = :black)
 
-lines!(ax_KE, tₙ, KEₙ;
+lines!(ax_KE, times, KE_timeseries[:];
        label = "perturbation kinetic energy",
-       linewidth = 6)
+       linewidth = 4, color = :blue, alpha = 0.4)
+
+KE_point = @lift Point2f[(times[$n], KE_timeseries[$n][1, 1, 1])]
+
+scatter!(ax_KE, KE_point;
+         marker = :circle, markersize = 16, color = :blue)
 
 frames = 1:length(times)
 
@@ -462,14 +468,10 @@ nothing #hide
 # ![](kelvin_helmholtz_instability_perturbations.mp4)
 
 # And then the same for total vorticity & buoyancy of the fluid.
-
-Ω_timeseries = FieldTimeSeries(filepath, "Ω")
-B_timeseries = FieldTimeSeries(filepath, "B")
-
 n = Observable(1)
 
-ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
-bₙ = @lift interior(B_timeseries, :, 1, :, $n)
+Ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
+Bₙ = @lift interior(B_timeseries, :, 1, :, $n)
 
 fig = Figure(resolution=(800, 600))
 
@@ -477,40 +479,44 @@ kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end
 
 title = @lift @sprintf("t = %.2f", times[$n])
 
-ax_ω = Axis(fig[2, 1]; title = "total vorticity", kwargs...)
+ax_Ω = Axis(fig[2, 1]; title = "total vorticity", kwargs...)
 
-ax_b = Axis(fig[2, 3]; title = "total buoyancy", kwargs...)
+ax_B = Axis(fig[2, 3]; title = "total buoyancy", kwargs...)
 
 ax_KE = Axis(fig[3, :];
              yscale = log10,
-             limits = ((0, simulation.stop_time), (initial_eigenmode_energy, 1e-1)),
-             xlabel = "time",
-             ylabel = "kinetic energy")
+             limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
+             xlabel = "time")
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = (-1, 1), colormap = :balance)
-Colorbar(fig[2, 2], hm_ω)
+hm_Ω = heatmap!(ax_Ω, xω, zω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
+Colorbar(fig[2, 2], hm_Ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
-Colorbar(fig[2, 4], hm_b)
+hm_B = heatmap!(ax_B, xb, zb, Bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
+Colorbar(fig[2, 4], hm_B)
 
 tₙ = @lift times[1:$n]
-KEₙ = @lift KE_timeseries[1:$n]
+KEₙ = @lift KE_timeseries[1, 1, 1, 1:$n]
 
-lines!(ax_KE, t_segment, predicted_KE;
+lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment);
        label = "~ exp(2 σ t)",
        linewidth = 2,
        color = :black)
 
-lines!(ax_KE, tₙ, KEₙ;
+lines!(ax_KE, times, KE_timeseries[:];
        label = "perturbation kinetic energy",
-       linewidth = 6)
+       linewidth = 4, color = :blue, alpha = 0.4)
+
+KE_point = @lift Point2f[(times[$n], KE_timeseries[$n][1, 1, 1])]
+
+scatter!(ax_KE, KE_point;
+         marker = :circle, markersize = 16, color = :blue)
+
+axislegend(ax_KE; position = :rb)
 
 record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
        @info "Plotting frame $i of $(frames[end])..."
        n[] = i
 end
 nothing #hide
-
-# ![](kelvin_helmholtz_instability_total.mp4)
