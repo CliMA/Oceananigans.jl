@@ -443,7 +443,7 @@ Colorbar(fig[2, 4], hm_b)
 tₙ = @lift times[1:$n]
 KEₙ = @lift KE_timeseries[1:$n]
 
-lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment);
+lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * [0, t_final]);
        label = "~ exp(2 σ t)",
        linewidth = 2,
        color = :black)
@@ -499,7 +499,7 @@ Colorbar(fig[2, 4], hm_B)
 tₙ = @lift times[1:$n]
 KEₙ = @lift KE_timeseries[1, 1, 1, 1:$n]
 
-lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment);
+lines!(ax_KE, [0, t_final], @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * [0, t_final]);
        label = "~ exp(2 σ t)",
        linewidth = 2,
        color = :black)
