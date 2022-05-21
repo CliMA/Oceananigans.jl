@@ -397,49 +397,61 @@ run!(simulation)
 
 @info "Making a neat movie of stratified shear flow..."
 
-function plot_energy_timeseries(t, measured_KE, σ, KEᵢ, stop_time)
-    t_segment = [0, stop_time]
-    predicted_KE = KEᵢ * exp.(2σ * [0, stop_time])
-
-    energy_plot = plot(t_segment, predicted_KE,
-             label = "~ exp(2 σ t)",
-            legend = :topleft,
-                lw = 2,
-             color = :black,
-             yaxis = :log,
-             xlims = (0, simulation.stop_time),
-             ylims = (initial_eigenmode_energy, 1e-1),
-            xlabel = "time",
-            ylabel = "kinetic energy")
-
-    energy_plot = plot!(t, measured_KE,
-              label = "perturbation kinetic energy",
-              lw = 6,
-              alpha = 0.5)
-
-    return fig
-end
-
 filepath = simulation.output_writers[:vorticity].filepath
+
 ω_timeseries = FieldTimeSeries(filepath, "ω")
 b_timeseries = FieldTimeSeries(filepath, "b")
 KE_timeseries = FieldTimeSeries(filepath, "KE")
 times = ω_timeseries.times
-KE = []
 
-anim_perturbations = @animate for (i, t) in enumerate(times)
-    @info "Plotting frame $i from iteration $iteration..."
+n = Observable(1)
 
-    ω_snapshot = interior(ω_timeseries, :, 1, :, i)
-    b_snapshot = interior(b_timeseries, :, 1, :, i)
-    push!(KE, KE_timeseries[i][1, 1, 1])
+ωₙ = @lift interior(ω_timeseries, :, 1, :, $n)
+bₙ = @lift interior(b_timeseries, :, 1, :, $n)
 
-    energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
-    eigenmode_plot = eigenplot(ω_snapshot, b_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
+fig = Figure(resolution=(800, 600))
 
-    layout = @layout [A{0.6h}; B]
-    plot(eigenmode_plot, energy_plot; layout, size=(800, 600))
-end
+kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
+
+title = @lift @sprintf("t = %.2f", times[$n])
+
+ax_ω = Axis(fig[2, 1]; title = "perturbation vorticity", kwargs...)
+
+ax_b = Axis(fig[2, 3]; title = "perturbation buoyancy", kwargs...)
+
+ax_KE = Axis(fig[3, :];
+             yscale = log10,
+             limits = ((0, simulation.stop_time), (initial_eigenmode_energy, 1e-1)),
+             xlabel = "time",
+             ylabel = "kinetic energy")
+
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+
+ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
+b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
+
+hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+Colorbar(fig[2, 2], hm_ω)
+
+hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+Colorbar(fig[2, 4], hm_b)
+
+tₙ = @lift times[1:$n]
+KEₙ = @lift KE_timeseries[1:$n]
+
+t_segment = [0, simulation.stop_time]
+predicted_KE = @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment)
+
+lines!(ax_KE, t_segment, predicted_KE;
+       label = "~ exp(2 σ t)",
+       linewidth = 2,
+       color = :black)
+
+lines!(ax_KE, tₙ, KEₙ;
+       label = "perturbation kinetic energy",
+       linewidth = 6)
+
+frames = 1:length(times)
 
 record(fig, "kelvin_helmholtz_instability_perturbations.mp4", frames, framerate=8) do i
     @info "Plotting frame $i of $(frames[end])..."
@@ -449,30 +461,57 @@ nothing #hide
 
 # ![](kelvin_helmholtz_instability_perturbations.mp4)
 
-mp4(anim_perturbations, "kelvin_helmholtz_instability_perturbations.mp4", fps = 8) # hide
-
 # And then the same for total vorticity & buoyancy of the fluid.
 
 Ω_timeseries = FieldTimeSeries(filepath, "Ω")
 B_timeseries = FieldTimeSeries(filepath, "B")
-times = Ω_timeseries.times
-KE = []
 
-anim_total = @animate for (i, t) in enumerate(times)
-    @info "Plotting frame $i from iteration $iteration..."
+n = Observable(1)
 
-    Ω_snapshot = interior(Ω_timeseries, :, 1, :, i)
-    B_snapshot = interior(B_timeseries, :, 1, :, i)
-    push!(KE, KE_timeseries[i][1, 1, 1])
+ωₙ = @lift interior(Ω_timeseries, :, 1, :, $n)
+bₙ = @lift interior(B_timeseries, :, 1, :, $n)
 
-    energy_plot = plot_energy_timeseries(times[1:i], KE, estimated_growth_rate, initial_eigenmode_energy, simulation.stop_time)
-    eigenmode_plot = eigenplot(Ω_snapshot, B_snapshot, nothing, t; ω_lim=1, b_lim=0.05)
+fig = Figure(resolution=(800, 600))
 
-    layout = @layout [A{0.6h}; B]
-    plot(eigenmode_plot, energy_plot; layout, size=(800, 600))
-end
+kwargs = (xlabel="x", ylabel="z", limits = ((xω[1], xω[end]), (zω[1], zω[end])), aspect=1,)
 
-mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
+title = @lift @sprintf("t = %.2f", times[$n])
+
+ax_ω = Axis(fig[2, 1]; title = "total vorticity", kwargs...)
+
+ax_b = Axis(fig[2, 3]; title = "total buoyancy", kwargs...)
+
+ax_KE = Axis(fig[3, :];
+             yscale = log10,
+             limits = ((0, simulation.stop_time), (initial_eigenmode_energy, 1e-1)),
+             xlabel = "time",
+             ylabel = "kinetic energy")
+
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+
+ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
+b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
+
+hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+Colorbar(fig[2, 2], hm_ω)
+
+hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+Colorbar(fig[2, 4], hm_b)
+
+tₙ = @lift times[1:$n]
+KEₙ = @lift KE_timeseries[1:$n]
+
+t_segment = [0, simulation.stop_time]
+predicted_KE = @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment)
+
+lines!(ax_KE, t_segment, predicted_KE;
+       label = "~ exp(2 σ t)",
+       linewidth = 2,
+       color = :black)
+
+lines!(ax_KE, tₙ, KEₙ;
+       label = "perturbation kinetic energy",
+       linewidth = 6)
 
 record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
        @info "Plotting frame $i of $(frames[end])..."
