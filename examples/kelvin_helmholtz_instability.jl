@@ -489,20 +489,14 @@ ax_KE = Axis(fig[3, :];
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
-ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
-b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
-
-hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = ω_lims, colormap = :balance)
+hm_ω = heatmap!(ax_ω, xω, zω, ωₙ; colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = b_lims, colormap = :balance)
+hm_b = heatmap!(ax_b, xb, zb, bₙ; colorrange = (-0.05, 0.05), colormap = :balance)
 Colorbar(fig[2, 4], hm_b)
 
 tₙ = @lift times[1:$n]
 KEₙ = @lift KE_timeseries[1:$n]
-
-t_segment = [0, simulation.stop_time]
-predicted_KE = @. initial_eigenmode_energy * exp(2 * estimated_growth_rate * t_segment)
 
 lines!(ax_KE, t_segment, predicted_KE;
        label = "~ exp(2 σ t)",
