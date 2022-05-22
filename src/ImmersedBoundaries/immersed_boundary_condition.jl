@@ -250,18 +250,22 @@ end
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    topo = topology(grid)
-
-    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   topo, loc, 1, LeftBoundary,  prognostic_field_names)
-    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   topo, loc, 1, RightBoundary, prognostic_field_names)
-    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  topo, loc, 2, LeftBoundary,  prognostic_field_names)
-    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  topo, loc, 2, RightBoundary, prognostic_field_names)
-    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, topo, loc, 3, LeftBoundary,  prognostic_field_names)
-    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    topo, loc, 3, RightBoundary, prognostic_field_names)
+    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names)
+    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names)
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
 
+Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),
+                                                                                     Adapt.adapt(to, bc.east),
+                                                                                     Adapt.adapt(to, bc.south),
+                                                                                     Adapt.adapt(to, bc.north),
+                                                                                     Adapt.adapt(to, bc.bottom),
+                                                                                     Adapt.adapt(to, bc.top))
 #####
 ##### Alternative implementation for immersed flux divergence
 #####

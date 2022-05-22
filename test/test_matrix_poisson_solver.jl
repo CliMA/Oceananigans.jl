@@ -32,7 +32,7 @@ function run_identity_operator_test(grid)
 
     b = arch_array(architecture(grid), rand(M))
 
-    storage = similar(b)
+    storage = deepcopy(b)
     solve!(storage, solver, b, 1.0)
 
     @test norm(Array(storage) .- Array(b)) .< solver.tolerance
@@ -89,7 +89,7 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
-    storage = similar(rhs)
+    storage = deepcopy(rhs)
     solve!(storage, solver, rhs, 1.0)
     set!(ϕ_solution, reshape(storage, solver.problem_size...))
     fill_halo_regions!(ϕ_solution) 
