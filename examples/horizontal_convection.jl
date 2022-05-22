@@ -340,3 +340,5 @@ lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 
 ax_Nu = Axis(fig[2, 1], xlabel = "time", ylabel = "Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
+
+current_figure()
