@@ -55,7 +55,7 @@ g = 9.8         # Gravitational acceleration
 
 model = ShallowWaterModel(
                           timestepper = :RungeKutta3,
-                          advection = WENO5(),
+                          momentum_advection = WENO5(),
                           grid = grid,
                           gravitational_acceleration = g,
                           coriolis = FPlane(f=f))
