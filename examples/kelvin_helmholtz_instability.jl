@@ -520,3 +520,5 @@ record(fig, "kelvin_helmholtz_instability_total.mp4", frames, framerate=8) do i
        n[] = i
 end
 nothing #hide
+
+# ![](kelvin_helmholtz_instability_total.mp4)
