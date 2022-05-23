@@ -5,8 +5,6 @@ using Plots
 using Oceananigans
 using Oceananigans.Units
 
-using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
@@ -111,14 +109,11 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(1), devices = (1))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(1), devices = (1))
+τˣ = arch_array(arch, - τˣ)
+τʸ = arch_array(arch, - τʸ)
 
-τˣ = multi_region_object_from_array(- τˣ, mrg)
-τʸ = multi_region_object_from_array(- τʸ, mrg)
-
-target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
-target_sea_surface_salinity    = S★ = multi_region_object_from_array(S★, mrg)
+target_sea_surface_temperature = T★ = arch_array(arch, T★)
+target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 
 #####
 ##### Physics and model setup
@@ -237,7 +232,7 @@ free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
-model = HydrostaticFreeSurfaceModel(grid = mrg,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -246,7 +241,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(underlying_mrg))
+                                    tracer_advection = WENO5(underlying_grid))
 
 #####
 ##### Initial condition:
@@ -258,8 +253,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = multi_region_object_from_array(file_init["T"], mrg)
-S_init = multi_region_object_from_array(file_init["S"], mrg)
+T_init = file_init["T"]
+S_init = file_init["S"]
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
@@ -278,7 +273,6 @@ simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 start_time = [time_ns()]
 
 using Oceananigans.Utils 
-using Oceananigans.MultiRegion: reconstruct_global_field
 
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
@@ -286,10 +280,9 @@ function progress(sim)
     u = sim.model.velocities.u
     η = sim.model.free_surface.η
 
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", 
-                    #"Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, #maximum(abs, u), maximum(abs, η),
+                    sim.model.clock.iteration, maximum(abs, u),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
