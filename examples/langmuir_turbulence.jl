@@ -100,7 +100,7 @@ u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-9 # m³ s⁻², surface buoyancy flux
+Qᵇ = 2.307e-9 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
 b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
