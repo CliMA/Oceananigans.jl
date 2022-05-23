@@ -130,7 +130,7 @@ function ShallowWaterModel(;
     momentum_advection = validate_momentum_advection(momentum_advection, formulation)
 
     if isnothing(tracer_advection)
-        tracer_advection = NamedTuple{tracernames(tracers)}(nothing for tracer in 1:length(tracers))
+        tracer_advection_tuple = NamedTuple{tracernames(tracers)}(nothing for tracer in 1:length(tracers))
     else
         default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
 
