@@ -1,4 +1,4 @@
-using Oceananigans.Operators: ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ, ℑxyᶜᶠᶜ, ℑyzᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶠᶜᶜ, ℑyzᶠᶠᶜ, ℑxzᶠᶠᶜ, ℑxyzᶠᶠᶜ, ℑyzᶠᶜᶠ, ℑxyᶜᶜᶜ, ℑyzᶜᶜᶜ, ℑxzᶜᶠᶠ, ℑxyzᶜᶠᶠ
+using Oceananigans.Operators: ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ, ℑxyᶜᶠᶜ, ℑyzᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶠᶜᶜ, ℑyzᶠᶠᶜ, ℑxzᶠᶠᶜ, ℑxyzᶠᶠᶜ, ℑyzᶠᶜᶠ, ℑxyᶜᶜᶜ, ℑyzᶜᶜᶜ, ℑxzᶜᶠᶠ, ℑxyzᶜᶠᶠ, ℑxyᶠᶜᶠ, ℑxyᶜᶠᶠ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 struct IsopycnalPotentialVorticityDiffusivity{TD, Q, K, M, F} <: AbstractTurbulenceClosure{TD}
@@ -189,6 +189,12 @@ end
 ##### Redi diffusion for momentum.
 #####
 
+function b_N²_ccf(i, j, k, grid, buoyancy, tracers)
+    b = ℑzᶜᶜᶠ(i, j, k, grid, buoyancy_perturbation, buoyancy, tracers)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return b * N²
+end
+
 # Defined at ccc
 @inline function viscous_flux_ux(i, j, k, grid, closure::FlavorOfIPVD, K, U, tracers, clock, buoyancy)
     closure = getclosure(i, j, closure)
@@ -231,11 +237,12 @@ end
 
     κ_∂z_u = explicit_κ_∂z_u(i, j, k, grid, TD(), U.u, κ, closure, buoyancy, tracers)
 
-    f_Sy = closure.f * R₃₂
+    Sy = ℑxyᶠᶜᶠ(i, j, k, grid, ∂yᶜᶠᶠ, b_N²_ccf, buoyancy, tracers)
+    f_Sy = closure.f * Sy
 
     #return - κ * f_Sy
     #return - κ_∂z_u - κ * (R₃₁ * ∂x_u + R₃₂ * ∂y_u)
-    return - κ_∂z_u - κ * (R₃₁ * ∂x_u + R₃₂ * ∂y_u + f_Sy)
+    return - κ_∂z_u - κ * (R₃₁ * ∂x_u + R₃₂ * ∂y_u + 2 * f_Sy)
 end
 
 # Defined at ffc
@@ -280,11 +287,12 @@ end
 
     κ_∂z_v = explicit_κ_∂z_v(i, j, k, grid, TD(), U.v, κ, closure, buoyancy, tracers)
 
-    f_Sx = closure.f * R₃₁
+    Sx = ℑxyᶜᶠᶠ(i, j, k, grid, ∂xᶠᶜᶠ, b_N²_ccf, buoyancy, tracers)
+    f_Sx = closure.f * Sx
 
     #return κ * f_Sx
     #return - κ_∂z_v - κ * (R₃₁ * ∂x_v + R₃₂ * ∂y_v)
-    return - κ_∂z_v - κ * (R₃₁ * ∂x_v + R₃₂ * ∂y_v - f_Sx)
+    return - κ_∂z_v - κ * (R₃₁ * ∂x_v + R₃₂ * ∂y_v - 2 * f_Sx)
 end
 
 @inline function explicit_κ_∂z_u(i, j, k, grid, ::ExplicitTimeDiscretization, u, κ, closure, buoyancy, tracers)

@@ -49,6 +49,7 @@ end
 
 @inline get_temperature_and_salinity(bm::Buoyancy, C) = get_temperature_and_salinity(bm.model, C)
 
+@inline buoyancy_perturbation(i, j, k, grid, b::Buoyancy, C) = buoyancy_perturbation(i, j, k, grid, b.model, C)
 @inline ∂x_b(i, j, k, grid, b::Buoyancy, C) = ∂x_b(i, j, k, grid, b.model, C)
 @inline ∂y_b(i, j, k, grid, b::Buoyancy, C) = ∂y_b(i, j, k, grid, b.model, C)
 @inline ∂z_b(i, j, k, grid, b::Buoyancy, C) = ∂z_b(i, j, k, grid, b.model, C)
