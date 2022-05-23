@@ -32,6 +32,7 @@ function run_identity_operator_test(grid)
 
     b = arch_array(architecture(grid), rand(M))
 
+    arch = architecture(grid)
     storage = arch_array(arch, zeros(size(b)))
     solve!(storage, solver, b, 1.0)
 
@@ -89,6 +90,7 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
+    arch = architecture(grid)
     storage = arch_array(arch, zeros(size(rhs)))
     solve!(storage, solver, rhs, 1.0)
     set!(ϕ_solution, reshape(storage, solver.problem_size...))
