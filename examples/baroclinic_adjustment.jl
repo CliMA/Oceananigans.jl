@@ -27,13 +27,11 @@ Nx = 64
 Ny = 64
 Nz = 40
 
-grid = RectilinearGrid(CPU();
-                       topology = (Periodic, Bounded, Bounded), 
-                       size = (Nx, Ny, Nz), 
+grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        x = (0, Lx),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
-                       halo = (3, 3, 3))
+                       topology = (Periodic, Bounded, Bounded))
 
 # ## Turbulence closures
 
@@ -41,7 +39,6 @@ grid = RectilinearGrid(CPU();
 # of the vertical and lateral grid spacing.
 
 Δx, Δz = Lx/Nx, Lz/Nz
-
 𝒜 = Δz/Δx # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
@@ -62,13 +59,13 @@ nothing #hide
 # Regarding Coriolis, we use a beta-plane centered at 45° South.
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                      coriolis = BetaPlane(latitude = -45),
-                                      buoyancy = BuoyancyTracer(),
-                                      tracers = :b,
-                                      closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                      momentum_advection = WENO5(),
-                                      tracer_advection = WENO5(),
-                                      free_surface = ImplicitFreeSurface())
+                                    coriolis = BetaPlane(latitude = -45),
+                                    buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
+                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                    momentum_advection = WENO5(),
+                                    tracer_advection = WENO5(),
+                                    free_surface = ImplicitFreeSurface())
 
 # We want to initialize our model with a baroclinically unstable front plus some small-amplitude
 # noise.
@@ -226,17 +223,15 @@ sides = keys(slicers)
 
 slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
 
-b_timeserieses = (
-      east = FieldTimeSeries(slice_filenames.east, "b"),
-    bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
-       top = FieldTimeSeries(slice_filenames.top, "b")
-)
+b_timeserieses = (east = FieldTimeSeries(slice_filenames.east, "b"),
+                  bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
+                  top = FieldTimeSeries(slice_filenames.top, "b"))
 
 b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
 
 # We build the coordinates and we rescale the vertical coordinate for visualization purposes.
 
-x, y, z = nodes(b_timeserieses[1])
+x, y, z = nodes(b_timeserieses.east)
 
 yscale = 2.5
 zscale = 600
@@ -249,11 +244,9 @@ nothing #hide
 # Now let's make a 3D plot of the buoyancy and in front of it we'll use the zonally-averaged output
 # to plot the instantaneous zonal-average of the buoyancy.
 
-b_slices = (
-      east = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
-    bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
-       top = @lift(interior(b_timeserieses.top[$n], :, :, 1))
-)
+b_slices = (east   = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
+            bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
+            top    = @lift(interior(b_timeserieses.top[$n], :, :, 1)))
 
 clims_b = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
 kwargs_b = (colorrange = clims_b, colormap = :deep)
@@ -280,10 +273,7 @@ times = b_avg_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
-fig[1, 1] = Label(fig, title;
-                  textsize = 24,
-                  tellwidth = false,
-                  padding = (0, 0, -120, 0))
+fig[1, 1] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
 
