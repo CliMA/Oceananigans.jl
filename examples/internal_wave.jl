@@ -20,8 +20,7 @@
 
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
-                       topology=(Periodic, Flat, Periodic))
+grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π), topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters
 #
@@ -42,10 +41,9 @@ coriolis = FPlane(f=0.2)
 
 ## Background fields are functions of `x, y, z, t`, and optional parameters.
 ## Here we have one parameter, the buoyancy frequency
-B_func(x, y, z, t, N) = N^2 * z
 
 N = 1 ## buoyancy frequency
-
+B_func(x, y, z, t, N) = N^2 * z
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
@@ -54,16 +52,13 @@ B = BackgroundField(B_func, parameters=N)
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
-model = NonhydrostaticModel(
-                 grid = grid,
-            advection = CenteredFourthOrder(),
-          timestepper = :RungeKutta3,
-              closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
-             coriolis = coriolis,
-              tracers = :b,
-    background_fields = (b=B,), # `background_fields` is a `NamedTuple`
-             buoyancy = BuoyancyTracer()
-)
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = CenteredFourthOrder(),
+                            timestepper = :RungeKutta3,
+                            closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            background_fields = (; b=B)) # `background_fields` is a `NamedTuple`
 
 # ## A Gaussian wavepacket
 #
@@ -152,7 +147,7 @@ x, y, z = nodes(w_timeseries)
 
 using CairoMakie
 
-fig = Figure(resolution = (800, 400))
+fig = Figure(resolution = (600, 600))
 
 ax = Axis(fig[2, 1];
           xlabel = "x",
@@ -167,13 +162,10 @@ nothing #hide
 
 n = Observable(1)
 
-title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
-
-w = @lift interior(w_timeseries[$n], :, 1, :)
-
 # We plot the vertical velocity, ``w``.
 
 w_lim = 1e-8
+w = @lift interior(w_timeseries[$n], :, 1, :)
 
 contourf!(ax, x, z, w; 
           levels = range(-w_lim, stop=w_lim, length=10),
@@ -182,15 +174,19 @@ contourf!(ax, x, z, w;
           extendlow = :auto,
           extendhigh = :auto)
 
+title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
 fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 
 frames = 1:length(w_timeseries.times)
 
+@info "Animating a propagating internal wave..."
+
 record(fig, filename * ".mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
