@@ -23,16 +23,12 @@
 
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), 
-                       topology=(Periodic, Periodic, Flat))
+grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                              advection = UpwindBiasedFifthOrder(),
-                                   grid = grid,
-                               buoyancy = nothing,
-                                tracers = nothing,
-                                closure = ScalarDiffusivity(ν=1e-5)
-                           )
+model = NonhydrostaticModel(; grid,
+                            timestepper = :RungeKutta3,
+                            advection = UpwindBiasedFifthOrder(),
+                            closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions
 #
@@ -57,8 +53,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50)
 #
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
-
+progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 # ## Output
@@ -93,7 +88,7 @@ s = sqrt(u^2 + v^2)
 filename = "two_dimensional_turbulence"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(2),
+                                                      schedule = TimeInterval(0.6),
                                                       filename = filename * ".jld2",
                                                       overwrite_existing = true)
 
@@ -124,7 +119,7 @@ using CairoMakie
 
 @info "Making a neat movie of vorticity and speed..."
 
-fig = Figure(resolution = (800, 400))
+fig = Figure(resolution = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
@@ -132,9 +127,8 @@ axis_kwargs = (xlabel = "x",
                limits = ((0, 2π), (0, 2π)),
                aspect = AxisAspect(1))
 
-ax_ω = Axis(fig[2, 1]; title = "vorticity", axis_kwargs...)
-ax_s = Axis(fig[2, 2]; title = "speed", axis_kwargs...)
-
+ax_ω = Axis(fig[2, 1]; title = "Vorticity", axis_kwargs...)
+ax_s = Axis(fig[2, 2]; title = "Speed", axis_kwargs...)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
@@ -149,25 +143,21 @@ s = @lift interior(s_timeseries[$n], :, :, 1)
 
 # Now let's plot the vorticity and speed.
 
-ω_lim = 2.0
+heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
+heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 
-heatmap!(ax_ω, xω, yω, ω;
-         colormap = :balance, colorrange = (-ω_lim, ω_lim))
-
-s_lim = 0.2
-
-heatmap!(ax_s, xs, ys, s;
-         colormap = :speed, colorrange = (0, s_lim))
-
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+Label(fig[1, 1:2], title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 
 frames = 1:length(times)
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+@info "Making a neat animation of vorticity and speed..."
+
+record(fig, filename * ".mp4", frames, framerate=24) do i
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
