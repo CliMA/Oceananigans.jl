@@ -407,7 +407,7 @@ end
 function define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions)
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           compression=compression, attrib=output_attributes, fillvalue=NaN)
+           compression=compression, attrib=output_attributes)
 end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
