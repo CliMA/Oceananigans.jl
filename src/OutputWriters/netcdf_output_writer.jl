@@ -8,6 +8,7 @@ using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_n
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
+import Base.length
 
 mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     filepath :: String
@@ -25,20 +26,25 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",)
-ydim(::Type{Face}) = ("yF",)
-zdim(::Type{Face}) = ("zF",)
+Base.length(::Colon) = Inf
 
-xdim(::Type{Center}) = ("xC",)
-ydim(::Type{Center}) = ("yC",)
-zdim(::Type{Center}) = ("zC",)
+xdim(::Type{Face}, inds) = length(inds) == 1 ? () : ("xF",)
+ydim(::Type{Face}, inds) = length(inds) == 1 ? () : ("yF",)
+zdim(::Type{Face}, inds) = length(inds) == 1 ? () : ("zF",)
 
-xdim(::Type{Nothing}) = ()
-ydim(::Type{Nothing}) = ()
-zdim(::Type{Nothing}) = ()
+xdim(::Type{Center}, inds) = length(inds) == 1 ? () : ("xC",)
+ydim(::Type{Center}, inds) = length(inds) == 1 ? () : ("yC",)
+zdim(::Type{Center}, inds) = length(inds) == 1 ? () : ("zC",)
 
-netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+xdim(::Type{Nothing}, inds) = ()
+ydim(::Type{Nothing}, inds) = ()
+zdim(::Type{Nothing}, inds) = ()
+
+function netcdf_spatial_dimensions(afield::AbstractField{LX, LY, LZ}) where {LX, LY, LZ}
+    indices = afield.indices
+    tuple(xdim(LX, indices[1])..., ydim(LY, indices[2])..., zdim(LZ, indices[3])...)
+end
+
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
@@ -398,10 +404,11 @@ end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
+function define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions)
     defVar(dataset, name, eltype(array_type),
            (netcdf_spatial_dimensions(output)..., "time"),
-           compression=compression, attrib=output_attributes)
+           compression=compression, attrib=output_attributes, fillvalue=NaN)
+end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
