@@ -169,7 +169,7 @@ using Printf
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
@@ -238,47 +238,26 @@ w_lims = (-w_lim, w_lim)
 
 P_lims = (0.95, 1.1)
 
-fig = Figure(resolution = (850, 850))
+fig = Figure(resolution = (1200, 1000))
 
-ax_w = Axis(fig[2, 1];
-            xlabel = "x (m)",
-            ylabel = "z (m)",
-            title = "vertical velocity",
-            aspect = 1)
+ax_w = Axis(fig[2, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
+ax_P = Axis(fig[3, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
+ax_b = Axis(fig[2, 3]; xlabel = "Time (hours)", ylabel = "Buoyancy flux (m² s⁻³)", yaxisposition = :right)
 
-ax_P = Axis(fig[3, 1];
-            xlabel = "x (m)",
-            ylabel = "z (m)",
-            title = "plankton concentration",
-            aspect = 1)
+ax_avg_P = Axis(fig[3, 3]; xlabel = "Plankton concentration (μM)", ylabel = "z (m)", yaxisposition = :right)
+xlims!(ax_avg_P, 0.85, 1.3)
 
-ax_b = Axis(fig[2, 3];
-            xlabel = "time (hours)",
-            ylabel = "buoyancy flux (m² s⁻³)")
+fig[1, 1:3] = Label(fig, title, tellwidth=false)
 
-ax_avg_P = Axis(fig[3, 3];
-                xlabel = "plankton concentration (μM)",
-                ylabel = "z (m)",
-                limits = ((0.85, 1.3), nothing))
+hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = w_lims)
+Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m s⁻¹)", flipaxis = false)
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
-
-hm_w = heatmap!(ax_w, xw, zw, wₙ;
-                colormap = :balance,
-                colorrange = w_lims)
-
-Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
-
-hm_P = heatmap!(ax_P, xp, zp, Pₙ;
-                colormap = :matter,
-                colorrange = P_lims)
-
-Colorbar(fig[3, 2], hm_P; label = "μM")
+hm_P = heatmap!(ax_P, xp, zp, Pₙ; colormap = :matter, colorrange = P_lims)
+Colorbar(fig[3, 1], hm_P; label = "Plankton 'concentration'", flipaxis = false)
 
 lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :black, alpha = 0.4)
 
-b_flux_point = @lift Point2f[(times[$n] / hour, buoyancy_flux_time_series[$n])]
-
+b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
 lines!(ax_avg_P, avg_Pₙ, zp)
 
@@ -286,9 +265,12 @@ lines!(ax_avg_P, avg_Pₙ, zp)
 
 frames = 1:length(times)
 
+@info "Making an animation of convecting plankton..."
+
 record(fig, "convecting_plankton.mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
