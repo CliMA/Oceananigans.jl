@@ -16,7 +16,7 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
-@inline function visualize(field, lev, dims) 
+@inline function visualize(field, lev, dims)
     (dims == 1) && (idx = (lev, :, :))
     (dims == 2) && (idx = (:, lev, :))
     (dims == 3) && (idx = (:, :, lev))
@@ -40,11 +40,11 @@ Nx = 1440
 Ny = 600
 
 const Nyears  = 1
-const Nmonths = 12 
+const Nmonths = 12
 const thirty_days = 30days
 
 output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)__fine"
-pickup_file   = false 
+pickup_file   = false
 
 #####
 ##### Load forcing files and inital conditions from ECCO version 4
@@ -85,6 +85,7 @@ end
 τˣ = arch_array(arch, τˣ)
 τʸ = arch_array(arch, τʸ)
 
+
 smoothed_bathymetry = jldopen("smooth-bathymetry.jld2")
 
 bat = smoothed_bathymetry["bathymetry"]
@@ -106,9 +107,9 @@ bat = arch_array(arch, - bat)
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
-    
+
 #####
-##### Boundary conditions / time-dependent fluxes 
+##### Boundary conditions / time-dependent fluxes
 #####
 
 @inline current_time_index(time, tot_months)     = mod(unsafe_trunc(Int32, time / thirty_days), tot_months) + 1
@@ -125,7 +126,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
         τ₂ = p.τ[i, j, n₂]
     end
 
-    if fields.h[i, j, k] > 0 
+    if fields.h[i, j, k] > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / fields.h[i, j, k]
     else
         return 0.0
@@ -141,7 +142,7 @@ end
         τ₁ = p.τ[i, j, n₁]
         τ₂ = p.τ[i, j, n₂]
     end
-    if fields.h[i, j, k] > 0 
+    if fields.h[i, j, k] > 0
         return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / fields.h[i, j, k]
     else
         return 0.0
@@ -159,7 +160,7 @@ using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 
-νh = 1e+1
+νh = 0e+1
 
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -168,15 +169,15 @@ using Oceananigans.TurbulenceClosures
 
 horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
 biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
-                                      
+
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
                           momentum_advection = WENO5(vector_invariant = VorticityStencil()),
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
             			  bathymetry = bat,
-                          closure = (horizontal_diffusivity, biharmonic_viscosity),
-			              formulation = VectorInvariantFormulation())
+                          #closure = (horizontal_diffusivity, biharmonic_viscosity),
+			  formulation = VectorInvariantFormulation())
 
 #####
 ##### Initial condition:
@@ -190,9 +191,9 @@ set!(model, h=h_init)
 ##### Simulation setup
 #####
 
-Δt = 10seconds #1minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 20seconds #1minutes  # for initialization, then we can go up to 6 minutes?
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = 5000000)
+simulation = Simulation(model, Δt = Δt, stop_time = 1years)
 
 start_time = [time_ns()]
 
@@ -202,7 +203,7 @@ function progress(sim)
     u = sim.model.solution.u
     h = sim.model.solution.h
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration, maximum(abs, u), minimum(h),
                     prettytime(wall_time))
@@ -216,10 +217,11 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 u, v, h = model.solution
 
-ζ = Field(∂x(v) - ∂y(u))
+ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid; computed_dependencies=(u, v)); 
+ζ = Field(ζ_op)
 compute!(ζ)
 
-save_interval = 2days
+save_interval = 1days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
                                                             schedule = TimeInterval(save_interval),

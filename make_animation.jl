@@ -4,8 +4,8 @@ using Oceananigans.Utils: prettytime, hours, day, days, years
 using Statistics
 using JLD2
 using Printf
-using GLMakie
-#using CairoMakie
+#using GLMakie
+using CairoMakie
 
 output_prefix = "near_global_lat_lon_1440_600__fine_surface"
 
@@ -26,6 +26,13 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
 
 x, y, z = nodes((Center, Center, Center), grid)
 
+smoothed_bathymetry = jldopen("smooth-bathymetry.jld2")
+
+bat = smoothed_bathymetry["bathymetry"]
+# bat = file_bathymetry["bathymetry"]
+bat[ bat .> 0 ] .= 1000.0
+bat .-= 10.0
+
 iter = Observable(0)
 iters = parse.(Int, keys(file["timeseries/t"]))
 ζ′ = @lift(file["timeseries/ζ/" * string($iter)][:, :, 1])
@@ -35,7 +42,8 @@ clims_ζ = @lift 1.1 .* extrema(file["timeseries/ζ/" * string($iter)][:])
 title = @lift(@sprintf("Vorticity in Shallow Water Model at time = %s", prettytime(file["timeseries/t/" * string($iter)])))
 fig = Figure(resolution = (2000, 1000))
 ax = Axis(fig[1,1], xlabel = "longitude", ylabel = "latitude", title=title)
-heatmap!(ax, x, y, ζ′, colormap=:balance, colorrange=(-2e-5, 2e-5))
+heatmap_plot = heatmap!(ax, x, y, ζ′, colormap=:balance, colorrange=(-2e-5, 2e-5))
+Colorbar(fig[1,2], heatmap_plot, width=25)
 
 display(fig)
 
@@ -43,6 +51,3 @@ record(fig, output_prefix * ".mp4", iters[2:end], framerate=12) do i
     @info "Plotting iteration $i of $(iters[end])..."
     iter[] = i
 end
-
-
-
