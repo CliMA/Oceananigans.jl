@@ -60,11 +60,15 @@ grid = RectilinearGrid(size = (32, 32, Nz),
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
-lines(grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz],
-      axis = (ylabel = "Depth (m)",
-              xlabel = "Vertical spacing (m)"))
+fig = Figure(resolution=(1200, 800))
+ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
+lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
+scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
-scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+save("ocean_wind_mixing_convection_grid_spacing.svg", fig)
+nothing #hide
+
+# ![](ocean_wind_mixing_convection_grid_spacing.svg)
 
 # ## Buoyancy that depends on temperature and salinity
 #
@@ -78,9 +82,9 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # We calculate the surface temperature flux associated with surface heating of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Qʰ = 200  # W m⁻², surface _heat_ flux
-ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
-cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
+Qʰ = 200.0  # W m⁻², surface _heat_ flux
+ρₒ = 1026.0 # kg m⁻³, average density at the surface of the world ocean
+cᴾ = 3991.0 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
@@ -138,12 +142,11 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # for large eddy simulation to model the effect of turbulent motions at
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
-model = NonhydrostaticModel(advection = UpwindBiasedFifthOrder(),
+model = NonhydrostaticModel(; grid, buoyancy,
+                            advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
-                            grid = grid,
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
-                            buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
@@ -184,20 +187,16 @@ simulation = Simulation(model, Δt=10.0, stop_time=40minutes)
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
 wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
 
 ## Print a progress message
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
-                                iteration(sim),
-                                prettytime(sim),
-                                prettytime(sim.Δt),
-                                maximum(abs, sim.model.velocities.w),
-                                prettytime(sim.run_wall_time))
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
 
 # We then set up the simulation:
 
@@ -283,13 +282,10 @@ axis_kwargs = (xlabel="x (m)",
                aspect = AxisAspect(grid.Lx/grid.Lz),
                limits = ((0, grid.Lx), (-grid.Lz, 0)))
 
-ax_w = Axis(fig[2, 1]; title = "vertical velocity", axis_kwargs...)
-
-ax_T = Axis(fig[2, 3]; title = "temperature", axis_kwargs...)
-
-ax_S = Axis(fig[3, 1]; title = "salinity", axis_kwargs...)
-
-ax_νₑ = Axis(fig[3, 3]; title = "eddy viscocity", axis_kwargs...)
+ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
+ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
+ax_S  = Axis(fig[3, 1]; title = "Salinity", axis_kwargs...)
+ax_νₑ = Axis(fig[3, 3]; title = "Eddy viscocity", axis_kwargs...)
 
 title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
@@ -310,14 +306,17 @@ Colorbar(fig[3, 2], hm_S; label = "g / kg")
 hm_νₑ = heatmap!(ax_νₑ, xT, zT, νₑₙ; colormap = :thermal, colorrange = νₑlims)
 Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And now record a movie.
 
 frames = intro:length(times)
 
+@info "Making a motion picture of ocean wind mixing and convection..."
+
 record(fig, filename * ".mp4", frames, framerate=8) do i
-    @info "Plotting frame $i of $(frames[end])..."
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
     n[] = i
 end
 nothing #hide
