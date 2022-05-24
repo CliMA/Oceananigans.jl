@@ -278,7 +278,8 @@ fig[1, 1] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0,
 frames = 1:length(times)
 
 record(fig, filename * ".mp4", frames, framerate=8) do i
-    @info "Plotting frame $i of $(frames[end])..."
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
     n[] = i
 end
 nothing #hide
