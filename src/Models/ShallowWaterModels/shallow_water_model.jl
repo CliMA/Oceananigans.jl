@@ -129,16 +129,19 @@ function ShallowWaterModel(;
 
     momentum_advection = validate_momentum_advection(momentum_advection, formulation)
 
-    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+    if isnothing(tracer_advection)
+        tracer_advection_tuple = NamedTuple{tracernames(tracers)}(nothing for tracer in 1:length(tracers))
+    else
+        default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
 
-    # Advection schemes
-    tracer_advection_tuple = with_tracers(tracernames(tracers),
-                                          tracer_advection,
-                                          (name, tracer_advection) -> default_tracer_advection,
-                                          with_velocities=false)
+        # Advection schemes
+        tracer_advection_tuple = with_tracers(tracernames(tracers),
+                                            tracer_advection,
+                                            (name, tracer_advection) -> default_tracer_advection,
+                                            with_velocities=false)
+    end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
-    
     
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)

@@ -5,7 +5,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, coriolis=coriolis,
-                              advection=advection, timestepper=:RungeKutta3)
+                              momentum_advection=advection, timestepper=:RungeKutta3)
     set!(model, h=1)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)

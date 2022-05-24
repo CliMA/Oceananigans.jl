@@ -130,6 +130,5 @@ which will end up at the location `ccc`.
 @inline c_div_U(i, j, k, grid, solution, c, ::VectorInvariantFormulation) = 
     @inbounds c[i, j, k] * 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, solution[2]))
 
-
 # Support for no advection
 @inline c_div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)

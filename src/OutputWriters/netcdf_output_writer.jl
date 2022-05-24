@@ -139,6 +139,7 @@ end
                                           dir = ".",
                                    array_type = Array{Float32},
                                       indices = nothing,
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -166,7 +167,7 @@ Keyword arguments
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: false.
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
