@@ -215,13 +215,13 @@ v_max = @lift maximum(abs, ds["total_v"][:, 1, :, $n])
 
 fig = Figure(resolution = (800, 440))
 
-axis_kwargs = (xlabel = "along-slope distance",
-               ylabel = "across-slope distance",
+axis_kwargs = (xlabel = "Along-slope distance",
+               ylabel = "Across-slope distance",
                aspect = AxisAspect(Lx/Lz),
                limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
-ax_v = Axis(fig[3, 1]; title = "along-slope velocity", axis_kwargs...)
+ax_v = Axis(fig[3, 1]; title = "Along-slope velocity", axis_kwargs...)
 
 hm_ω = heatmap!(ax_ω, xω, zω, ω_y, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
@@ -236,8 +236,9 @@ fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
