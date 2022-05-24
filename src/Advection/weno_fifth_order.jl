@@ -9,6 +9,10 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 import Base: show
 
+const C3₀ = 3/10
+const C3₁ = 3/5
+const C3₂ = 1/10 
+
 const two_32 = Int32(2)
 
 const ƞ = Int32(2) # WENO exponent
@@ -26,7 +30,7 @@ Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 
 $(TYPEDFIELDS)
 """
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
+struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdvectionScheme{2}
     
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -54,22 +58,20 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} <: AbstractUpwindBiasedAdvectio
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 
-    "coefficient for WENO reconstruction, optimal weights"
-    C3₀ :: FT
-    C3₁ :: FT 
-    C3₂ :: FT
+    "bounds for maximum-principle-satisfying WENO scheme"
+    bounds :: PP
     
-    function WENO5{VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                           coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                           coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                           smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
-                           smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
-                           smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                           C3₀::FT, C3₁::FT, C3₂::FT) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF}
+    function WENO5{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                               coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                               coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                               smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
+                               smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
+                               smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
+                               bounds::PP) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}
 
-            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                           smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
-                                                           C3₀, C3₁, C3₂)
+            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                               smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
+                                                               bounds)
     end
 end
 
@@ -161,10 +163,10 @@ WENO5(grid, FT::DataType=Float64; kwargs...) = WENO5(FT; grid = grid, kwargs...)
 
 function WENO5(FT::DataType = Float64; 
                grid = nothing, 
-               coeffs = nothing,
                stretched_smoothness = false, 
                zweno = true, 
-               vector_invariant = nothing)
+               vector_invariant = nothing,
+               bounds = nothing)
     
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -172,15 +174,9 @@ function WENO5(FT::DataType = Float64;
 
     weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
 
-    if coeffs isa Nothing
-        C3₀, C3₁, C3₂ = FT.((3/10, 3/5, 1/10))
-    else
-        C3₀, C3₁, C3₂ = FT.(coeffs)
-    end
-
     VI = typeof(vector_invariant)
 
-    return WENO5{VI, zweno}(weno_coefficients..., C3₀, C3₁, C3₂)
+    return WENO5{FT, VI, zweno}(weno_coefficients..., bounds)
 end
 
 function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
@@ -213,14 +209,15 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
 end
 
 # Flavours of WENO
-const ZWENO                   = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const ZWENO        = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const PositiveWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}  = 
-      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF}
-const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} = 
-      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF}
+const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF, PP}
+const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF, PP}
 
-const WENOVectorInvariant = WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF}
+const WENOVectorInvariant = WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
@@ -229,14 +226,14 @@ function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
-Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF} =
-     WENO5{VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
-                   scheme.C3₀, scheme.C3₁, scheme.C3₂)
+Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} =
+     WENO5{FT, VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.bounds))
 
 @inline boundary_buffer(::WENO5) = 2
 
@@ -388,13 +385,13 @@ for (side, coeffs) in zip([:left, :right], ([:C3₀, :C3₁, :C3₂], [:C3₂, :
             
             if scheme isa ZWENO
                 τ₅ = abs(β₂ - β₀)
-                α₀ = scheme.$(coeffs[1]) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-                α₁ = scheme.$(coeffs[2]) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-                α₂ = scheme.$(coeffs[3]) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+                α₀ = FT($(coeffs[1])) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = FT($(coeffs[2])) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+                α₂ = FT($(coeffs[3])) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
             else
-                α₀ = scheme.$(coeffs[1]) / (β₀ + FT(ε))^ƞ
-                α₁ = scheme.$(coeffs[2]) / (β₁ + FT(ε))^ƞ
-                α₂ = scheme.$(coeffs[3]) / (β₂ + FT(ε))^ƞ
+                α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
+                α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+                α₂ = FT($(coeffs[3])) / (β₂ + FT(ε))^ƞ
             end
         
             Σα = α₀ + α₁ + α₂
@@ -425,13 +422,13 @@ for (side, coeffs) in zip([:left, :right], ([:C3₀, :C3₁, :C3₂], [:C3₂, :
         
             if scheme isa ZWENO
                 τ₅ = abs(β₂ - β₀)
-                α₀ = scheme.$(coeffs[1]) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-                α₁ = scheme.$(coeffs[2]) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-                α₂ = scheme.$(coeffs[3]) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+                α₀ = FT($(coeffs[1])) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = FT($(coeffs[2])) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+                α₂ = FT($(coeffs[3])) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
             else    
-                α₀ = scheme.$(coeffs[1]) / (β₀ + FT(ε))^ƞ
-                α₁ = scheme.$(coeffs[2]) / (β₁ + FT(ε))^ƞ
-                α₂ = scheme.$(coeffs[3]) / (β₂ + FT(ε))^ƞ
+                α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
+                α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+                α₂ = FT($(coeffs[3])) / (β₂ + FT(ε))^ƞ
             end
                 
             Σα = α₀ + α₁ + α₂
@@ -453,13 +450,13 @@ for (side, coeffs) in zip([:left, :right], ([:C3₀, :C3₁, :C3₂], [:C3₂, :
         
             if scheme isa ZWENO
                 τ₅ = abs(β₂ - β₀)
-                α₀ = scheme.$(coeffs[1]) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
-                α₁ = scheme.$(coeffs[2]) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
-                α₂ = scheme.$(coeffs[3]) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+                α₀ = FT($(coeffs[1])) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = FT($(coeffs[2])) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+                α₂ = FT($(coeffs[3])) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
             else    
-                α₀ = scheme.$(coeffs[1]) / (β₀ + FT(ε))^ƞ
-                α₁ = scheme.$(coeffs[2]) / (β₁ + FT(ε))^ƞ
-                α₂ = scheme.$(coeffs[3]) / (β₂ + FT(ε))^ƞ
+                α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
+                α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+                α₂ = FT($(coeffs[3])) / (β₂ + FT(ε))^ƞ
             end
                 
             Σα = α₀ + α₁ + α₂

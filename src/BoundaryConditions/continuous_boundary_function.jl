@@ -69,7 +69,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       topo, loc, dim, Side, prognostic_field_names) where C
+                                       grid, loc, dim, Side, prognostic_field_names) where C
 
     boundary_func = bc.condition
 

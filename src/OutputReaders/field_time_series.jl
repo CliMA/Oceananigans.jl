@@ -170,6 +170,10 @@ function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     return Field(location(fts), fts.grid; data, boundary_conditions, indices)
 end
 
+# Making FieldTimeSeries behave like Vector
+Base.lastindex(fts::InMemoryFieldTimeSeries) = size(fts, 4)
+Base.firstindex(fts::InMemoryFieldTimeSeries) = 1
+
 #####
 ##### set!
 #####
