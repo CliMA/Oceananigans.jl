@@ -116,6 +116,7 @@ nothing # hide
 # and animate the vorticity and fluid speed.
 
 using CairoMakie
+set_theme!(Theme(fontsize = 24))
 
 @info "Making a neat movie of vorticity and speed..."
 
@@ -123,7 +124,6 @@ fig = Figure(resolution = (800, 500))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
-               titlesize = 24,
                limits = ((0, 2π), (0, 2π)),
                aspect = AxisAspect(1))
 
@@ -136,16 +136,15 @@ nothing #hide
 
 n = Observable(1)
 
-title = @lift "t = " * string(round(times[$n], digits=2))
+# Now let's plot the vorticity and speed.
 
 ω = @lift interior(ω_timeseries[$n], :, :, 1)
 s = @lift interior(s_timeseries[$n], :, :, 1)
 
-# Now let's plot the vorticity and speed.
-
 heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
 heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 
+title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.

@@ -121,9 +121,9 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 
 # and add an output writer that saves the vertical velocity field every two iterations:
 
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+filename = "internal_wave.jld2"
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities; filename,
                                                           schedule = IterationInterval(1),
-                                                          filename = "internal_wave.jld2",
                                                           overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
@@ -132,40 +132,31 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load a `FieldTimeSeries` of `w` and make contour
-# plots of vertical velocity.
-
-filename = "internal_wave"
-
-w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
-
-# And build the the ``x, y, z`` grid for plotting purposes.
-
-x, y, z = nodes(w_timeseries)
-
-#-
+# To animate a the propagating wavepacket we just simulated, we load CairoMakie
+# and make a Figure and an Axis for the animation,
 
 using CairoMakie
+set_theme!(Theme(fontsize = 24))
 
 fig = Figure(resolution = (600, 600))
 
-ax = Axis(fig[2, 1];
-          xlabel = "x",
-          ylabel = "z",
-          limits = ((-π, π), (-π, π)),
-          aspect = AxisAspect(1))
+ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
+          limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))
 
 nothing #hide
 
-# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# Next, we load `w` data with `FieldTimeSeries` of `w` and make contour
+# plots of vertical velocity. We use Makie's `Observable` to animate the data.
+# To dive into how `Observable`s work, refer to
+# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
 n = Observable(1)
 
-# We plot the vertical velocity, ``w``.
+w_timeseries = FieldTimeSeries(filename, "w")
+x, y, z = nodes(w_timeseries)
 
-w_lim = 1e-8
 w = @lift interior(w_timeseries[$n], :, 1, :)
+w_lim = 1e-8
 
 contourf!(ax, x, z, w; 
           levels = range(-w_lim, stop=w_lim, length=10),

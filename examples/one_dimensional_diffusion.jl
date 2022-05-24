@@ -68,8 +68,8 @@ set!(model, T=initial_temperature)
 # To see the new data in `model.tracers.T`, we plot it:
 
 using CairoMakie
-
 set_theme!(Theme(fontsize = 24, linewidth=3))
+
 fig = Figure()
 axis = (xlabel = "Temperature (ᵒC)", ylabel = "z")
 label = "t = 0"
