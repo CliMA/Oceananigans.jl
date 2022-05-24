@@ -143,10 +143,11 @@ Label(fig[1, 1], label, tellwidth=false)
 
 frames = 1:length(times)
 
-print("Making an animation...")
+@info "Making an animation..."
 
 record(fig, "one_dimensional_diffusion.mp4", frames, framerate=24) do i
-    print(".")
+    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    print(msg * " \r")
     n[] = i
 end
 nothing #hide
