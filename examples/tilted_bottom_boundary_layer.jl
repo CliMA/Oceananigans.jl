@@ -167,7 +167,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 #
 # We add outputs to our model using the `NetCDFOutputWriter`,
 
-u, v′, w = model.velocities
+u, v, w = model.velocities
 b = model.tracers.b
 B∞ = model.background_fields.tracers.b
 
