@@ -149,6 +149,8 @@ Label(fig[1, 1:2], title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 
+using Printf
+
 frames = 1:length(times)
 
 @info "Making a neat animation of vorticity and speed..."
