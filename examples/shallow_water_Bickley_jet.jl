@@ -228,7 +228,8 @@ nothing # hide
 
 using Polynomials: fit
 
-I = 6000:7000
+Nt = length(t)
+I = Nt-10:Nt
 
 degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
