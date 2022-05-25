@@ -65,6 +65,8 @@ lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
+current_figure() # hide
+
 # ## Tilting the domain
 #
 # We use a domain that's tilted with respect to gravity by
