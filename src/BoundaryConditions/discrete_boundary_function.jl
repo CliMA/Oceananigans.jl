@@ -45,7 +45,6 @@ const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 @inline getbc(bc::DBFBC, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, args...) =
     bc.condition.func(i, j, k, grid, clock, model_fields, bc.condition.parameters)
 
-
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
 
