@@ -169,6 +169,7 @@ title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
 fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
+using Printf
 
 frames = 1:length(w_timeseries.times)
 
