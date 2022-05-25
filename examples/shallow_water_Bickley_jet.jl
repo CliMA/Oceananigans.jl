@@ -201,7 +201,7 @@ fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
 frames = 1:length(times)
 
 record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
-    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
 end

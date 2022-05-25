@@ -315,7 +315,7 @@ frames = intro:length(times)
 @info "Making a motion picture of ocean wind mixing and convection..."
 
 record(fig, filename * ".mp4", frames, framerate=8) do i
-    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
 end

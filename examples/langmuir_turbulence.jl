@@ -360,7 +360,7 @@ Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 frames = 1:length(times)
 
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-    msg = @sprintf("Plotting frame %d of %d...", i, frames[end])
+    msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
 end
