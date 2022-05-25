@@ -40,6 +40,12 @@ field matrix_constructors.
 
 In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
 
+```julia
+    Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηₖ₋₁ 
+    - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
+    +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ  = b
+```
+
 To have the equation solved on Center, Center, Center, the coefficients should be specified
 as follows:
 
@@ -48,12 +54,6 @@ as follows:
 - `Az` -> Center, Center, Face
 - `C`  -> Center, Center, Center
 - `D`  -> Center, Center, Center
-
-```julia
-b = Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηⱼ₋₁ 
-    - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
-    +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ
-```
 
 `solver.matrix` is precomputed with a value of `Δt = -1.0`
 
