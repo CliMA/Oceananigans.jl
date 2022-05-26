@@ -188,8 +188,8 @@ nothing # hide
 χ_timeseries = deepcopy(b_timeseries)
 
 for i in 1:length(times)
-  b = b_timeseries[i]
-  χ_timeseries[i] .= κ * (∂x(b)^2 + ∂z(b)^2)
+  bᵢ = b_timeseries[i]
+  χ_timeseries[i] .= κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
 end
 
 
