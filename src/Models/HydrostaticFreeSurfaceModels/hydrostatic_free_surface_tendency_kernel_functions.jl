@@ -37,7 +37,7 @@ implicitly during time-stepping.
                                                               forcings,
                                                               clock)
 
-    model_fields = merge(velocities, tracers, (; η = displacement(model.free_surface)), auxiliary_fields)
+    model_fields = merge(velocities, tracers, (; η = displacement(free_surface)), auxiliary_fields)
  
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
@@ -74,7 +74,7 @@ implicitly during time-stepping.
                                                               forcings,
                                                               clock)
 
-    model_fields = merge(velocities, tracers, (; η = displacement(model.free_surface)), auxiliary_fields)
+    model_fields = merge(velocities, tracers, (; η = displacement(free_surface)), auxiliary_fields)
 
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
