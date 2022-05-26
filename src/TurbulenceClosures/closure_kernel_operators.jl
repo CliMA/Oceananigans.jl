@@ -114,14 +114,14 @@ const f = Face()
 @inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::F, args...) where F<:Function = κ(node(c, c, f, i, j, k, grid)..., clock.time)
 
 # "DiscreteDiffusionFunction"
-@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, c, c, c)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, f, c, f)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, c, f, f)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, f, f, c)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, fields) = ν.func(i, j, k, grid, c, c, c, fields)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, fields) = ν.func(i, j, k, grid, f, c, f, fields)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, fields) = ν.func(i, j, k, grid, c, f, f, fields)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, fields) = ν.func(i, j, k, grid, f, f, c, fields)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, f, c, c)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, c, f, c)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, c, c, f)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, fields) = κ.func(i, j, k, grid, f, c, c, fields)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, fields) = κ.func(i, j, k, grid, c, f, c, fields)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, fields) = κ.func(i, j, k, grid, c, c, f, fields)
 
 #####
 ##### Immersed flux divergences
