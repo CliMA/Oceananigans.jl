@@ -29,13 +29,15 @@ end
 """
     HeptadiagonalIterativeSolver(coeffs;
                                  grid,
-                                 iterative_solver = cg,
+                                 iterative_solver = cg!,
                                  maximum_iterations = prod(size(grid)),
                                  tolerance = 1e-13,
                                  reduced_dim = (false, false, false), 
                                  placeholder_timestep = -1.0, 
                                  preconditioner_method = :Default, 
-                                 preconditioner_settings = nothing)
+                                 preconditioner_settings = nothing,
+                                 template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                 verbose = false)
 
 `HeptadiagonalIterativeSolver` is a framework to solve the problem `A * x = b`
 (provided that `A` is a symmetric matrix).
@@ -81,11 +83,11 @@ heavy and destroy all the computational advantage, therefore it is switched off 
 parallel backward/forward substitution is implemented. It is also updated based on the
 matrix when `Δt != Δt_previous`
     
-The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
-The default solver is a Conjugate Gradient (cg)
+The iterative_solver used can is to be chosen from the IterativeSolvers.jl package.
+The default solver is a Conjugate Gradient (`cg`).
 
 ```julia
-solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
+solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid)
 ```
 """
 function HeptadiagonalIterativeSolver(coeffs;
@@ -120,19 +122,19 @@ function HeptadiagonalIterativeSolver(coeffs;
     state_vars = CGStateVariables(zero(template), deepcopy(template), deepcopy(template))
 
     return HeptadiagonalIterativeSolver(grid,
-                                 problem_size, 
-                                 matrix_constructors,
-                                 diagonal,
-                                 placeholder_matrix,
-                                 preconditioner,
-                                 preconditioner_method,
-                                 settings,
-                                 iterative_solver, 
-                                 state_vars,
-                                 tolerance,
-                                 placeholder_timestep,
-                                 maximum_iterations,
-                                 verbose)
+                                        problem_size, 
+                                        matrix_constructors,
+                                        diagonal,
+                                        placeholder_matrix,
+                                        preconditioner,
+                                        preconditioner_method,
+                                        settings,
+                                        iterative_solver, 
+                                        state_vars,
+                                        tolerance,
+                                        placeholder_timestep,
+                                        maximum_iterations,
+                                        verbose)
 end
 
 architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
@@ -296,7 +298,6 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
 end
 
 function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
-
     arch = architecture(solver.matrix)
     
     # update matrix and preconditioner if time step changes
