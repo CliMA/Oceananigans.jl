@@ -213,8 +213,8 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, F, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, F, ∂yᶜᶠᶠ, F.w)
 
 # General functions (eg for vertically periodic)
-@inline viscous_flux_uz(i, j, k, grid,  ::VITD, clo::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, clo, args...)
-@inline viscous_flux_vz(i, j, k, grid,  ::VITD, clo::AIDorAVD, args...) = ivd_viscous_flux_vz(i, j, k, grid, clo, args...)
+@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, clo, args...)
+@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_vz(i, j, k, grid, clo, args...)
 @inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
                   
