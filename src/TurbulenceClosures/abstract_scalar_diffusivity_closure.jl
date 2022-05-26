@@ -106,14 +106,14 @@ for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
         ν = Symbol(:ν, dir, code)
         @eval begin
-            @inline $ν(i, j, k, grid, clo::$Clo, args...) = zero(eltype(grid))
+            @inline $ν(i, j, k, grid, clo::$Clo, K, clock, F) = zero(eltype(grid))
         end
     end
 
     for code in (:ᶠᶜᶜ, :ᶜᶠᶜ, :ᶜᶜᶠ)
         κ = Symbol(:κ, dir, code)
         @eval begin
-            @inline $κ(i, j, k, grid, clo::$Clo, args...) = zero(eltype(grid))
+            @inline $κ(i, j, k, grid, clo::$Clo, K, id, clock, F) = zero(eltype(grid))
         end
     end
 end

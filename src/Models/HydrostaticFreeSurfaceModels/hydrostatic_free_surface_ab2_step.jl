@@ -73,6 +73,8 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         push!(explicit_velocity_step_events, event)
     end
 
+    model_fields = merge(velocities, model.tracers, (; η = displacement(model.free_surface)), model.auxiliary_fields)
+
     for (i, name) in enumerate((:u, :v))
         velocity_field = model.velocities[name]
 
@@ -85,6 +87,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.diffusivity_fields,
                        nothing,
                        model.clock,
+                       model_fields, 
                        Δt,
                        dependencies = explicit_velocity_step_events[i])
     end
@@ -117,6 +120,8 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         push!(explicit_tracer_step_events, event)
     end
 
+    model_fields = merge(model.velocities, tracers, (; η = displacement(model.free_surface)), model.auxiliary_fields)
+
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         tracer_field = tracers[tracer_name]
         explicit_tracer_step_event = explicit_tracer_step_events[tracer_index]
@@ -128,6 +133,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
+                       model_fields, 
                        Δt,
                        dependencies = explicit_tracer_step_event)
     end
