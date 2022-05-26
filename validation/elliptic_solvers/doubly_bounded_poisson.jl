@@ -19,13 +19,6 @@ N = 16
 # 21 = 144.703125  = (21/4)^3
 # 24 = 162  = (24/4)^3
 
-function setup_2D(n=N, T::Type=Float64)
-    L = zeros(T, n+2, n+2, 2); L[3:n+1, 2:n+1, 1] .= 1; L[2:n+1, 3:n+1, 2] .= 1; 
-    x = T[i-1 for i ∈ 1:n+2, j ∈ 1:n+2]
-    Poisson(L), FieldVector(x)
-end
-
-
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
 r = CenterField(grid)
@@ -58,20 +51,24 @@ hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid, preconditione
 arch = architecture(grid)
 matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, (Ax, Ay, Az, C, D), (false, false, false))  
 
+# Solve ∇²ϕ = r with `AlgebraicMultigrid`
 A = arch_sparse_matrix(arch, matrix_constructors)
 b = collect(reshape(interior(r), (Nx*Ny, )))
 
-x = solve(A, b, RugeStubenAMG())
+@info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
+@time ϕ_mg = solve(A, b, RugeStubenAMG())
 
-fig = Figure(resolution=(1200, 600))
-ax_r = Axis(fig[1, 1], title="RHS")
-ax_ϕ_fft = Axis(fig[1, 2], title="FFT-based solution")
-ax_ϕ_hd = Axis(fig[1, 3], title="Heptadiagonal Iterative solution")
-ax_ϕ_mg = Axis(fig[1, 4], title="Multigrid solution")
+fig = Figure(resolution=(1000, 1200))
+
+ax_r = Axis(fig[2, 1], title="RHS")
+ax_ϕ_fft = Axis(fig[2, 1], title="FFT-based solution")
+ax_ϕ_hd = Axis(fig[2, 2], title="Heptadiagonal Iterative solution")
+ax_ϕ_mg = Axis(fig[2, 3], title="Multigrid solution")
+
 heatmap!(ax_r, interior(r, :, :, 1))
 heatmap!(ax_ϕ_fft, interior(ϕ_fft, :, :, 1))
 heatmap!(ax_ϕ_hd, interior(ϕ_hd, :, :, 1))
-heatmap!(ax_ϕ_mg, reshape(x, (Nx,Ny)))
+heatmap!(ax_ϕ_mg, reshape(ϕ_mg, (Nx, Ny)))
 
 display(fig)
 
