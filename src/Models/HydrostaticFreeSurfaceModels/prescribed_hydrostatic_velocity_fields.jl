@@ -83,6 +83,7 @@ FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFiel
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
 
+
 apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =

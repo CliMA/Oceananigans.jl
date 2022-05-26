@@ -13,7 +13,7 @@ using Oceananigans.Solvers
 using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
-import Oceananigans: fields, prognostic_fields
+import Oceananigans: fields, prognostic_fields, model_fields
 
 function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
@@ -46,6 +46,7 @@ Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.
 """
 fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 prognostic_fields(model::NonhydrostaticModel) = fields(model)
+model_fields(model::NonhydrostaticModel) = fields(model)
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
