@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, arch_array
 using IterativeSolvers
 using AlgebraicMultigrid
 using GLMakie
@@ -20,6 +20,8 @@ N = 16
 # 24 = 162  = (24/4)^3
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
+
+Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
 r = CenterField(grid)
 ϕ_fft = CenterField(grid)
@@ -44,11 +46,18 @@ Ay = [Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i
 Az = [Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 
 hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid, preconditioner_method = nothing)
+
+arch = architecture(grid)
+
+solution = arch_array(arch, zeros(Nx * Ny * Nz))
+r_hd = arch_array(arch, interior(r)[:])
+
 @info "Solving the Poisson equation with a heptadiagonal iterative solver..."
-@time solve!(ϕ_hd, hd_solver, r, 1.0)
+@time solve!(solution, hd_solver, r_hd, 1.0)
+
+interior(ϕ_hd) .= reshape(solution, Nx, Ny, Nz)
 
 # Create matrix
-arch = architecture(grid)
 matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, (Ax, Ay, Az, C, D), (false, false, false))  
 
 # Solve ∇²ϕ = r with `AlgebraicMultigrid`
@@ -58,9 +67,9 @@ b = collect(reshape(interior(r), (Nx*Ny, )))
 @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
 @time ϕ_mg = solve(A, b, RugeStubenAMG())
 
-fig = Figure(resolution=(1000, 1200))
+fig = Figure(resolution=(1500, 1200))
 
-ax_r = Axis(fig[2, 1], title="RHS")
+ax_r = Axis(fig[1, 2], title="RHS")
 ax_ϕ_fft = Axis(fig[2, 1], title="FFT-based solution")
 ax_ϕ_hd = Axis(fig[2, 2], title="Heptadiagonal Iterative solution")
 ax_ϕ_mg = Axis(fig[2, 3], title="Multigrid solution")
