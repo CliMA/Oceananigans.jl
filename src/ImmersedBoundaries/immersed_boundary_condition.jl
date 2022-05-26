@@ -160,25 +160,25 @@ for side in sides
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, args...) = $_flux(i, j, k, ibg, bc::VBCorGBC, args...)
         @inline $_flux(i, j, k, ibg, bc::VBCorGBC, args...) = zero(ibg) # fallback for non-ASD closures
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
              $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields)
     end
@@ -262,6 +262,12 @@ function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
 
+Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),
+                                                                                     Adapt.adapt(to, bc.east),
+                                                                                     Adapt.adapt(to, bc.south),
+                                                                                     Adapt.adapt(to, bc.north),
+                                                                                     Adapt.adapt(to, bc.bottom),
+                                                                                     Adapt.adapt(to, bc.top))
 #####
 ##### Alternative implementation for immersed flux divergence
 #####

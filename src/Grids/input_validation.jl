@@ -65,7 +65,7 @@ end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
-function validate_dimension_specification(T, ξ, dir, FT)
+function validate_dimension_specification(T, ξ, dir, size_dir, FT)
 
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
@@ -75,7 +75,7 @@ function validate_dimension_specification(T, ξ, dir, FT)
     return FT.(ξ)
 end
 
-function validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     # Find domain endpoints or domain extent, depending on user input:
     if !isnothing(extent) # the user has specified an extent!
@@ -95,21 +95,25 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
         z = FT.((-Lz, 0))
 
     else # isnothing(extent) === true implies that user has not specified a length
-        x = validate_dimension_specification(TX, x, :x, FT)
-        y = validate_dimension_specification(TY, y, :y, FT)
-        z = validate_dimension_specification(TZ, z, :z, FT)
+        x = validate_dimension_specification(TX, x, :x, size[1], FT)
+        y = validate_dimension_specification(TY, y, :y, size[2], FT)
+        z = validate_dimension_specification(TZ, z, :z, size[3], FT)
     end
 
     return x, y, z
 end
 
-validate_dimension_specification(T, ξ::AbstractVector, dir, FT) = FT.(ξ)
-validate_dimension_specification(T, ξ::Function,       dir, FT) = ξ
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, FT) = FT.((ξ[1], ξ[1]))
-validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, FT) = FT.((ξ(1), ξ(1)))
-validate_dimension_specification(::Type{Flat}, ξ::Tuple, dir, FT)  = FT.(ξ)
-validate_dimension_specification(::Type{Flat}, ::Nothing, dir, FT) = FT.((0, 0))
-validate_dimension_specification(::Type{Flat}, ξ::Number, dir, FT) = FT.((ξ, ξ))
+function validate_dimension_specification(T, ξ::AbstractVector, dir, size_dir, FT)
+    ξ_FT = FT.(ξ)
+    length(ξ_FT) != (size_dir + 1) && throw(ArgumentError("`length($dir)` must be equal to size passed to `size` argument."))
+    return ξ_FT
+end
+validate_dimension_specification(T, ξ::Function,       dir, size_dir, FT) = ξ
+validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, size_dir, FT) = FT.((ξ[1], ξ[1]))
+validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, size_dir, FT) = FT.((ξ(1), ξ(1)))
+validate_dimension_specification(::Type{Flat}, ξ::Tuple, dir, size_dir, FT)  = FT.(ξ)
+validate_dimension_specification(::Type{Flat}, ::Nothing, dir, size_dir, FT) = FT.((0, 0))
+validate_dimension_specification(::Type{Flat}, ξ::Number, dir, size_dir, FT) = FT.((ξ, ξ))
 
 default_horizontal_extent(T, extent) = (0, extent[i])
 default_vertical_extent(T, extent) = (-extent[3], 0)

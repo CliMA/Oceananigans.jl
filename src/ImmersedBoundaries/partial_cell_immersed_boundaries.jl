@@ -20,8 +20,11 @@ function Base.summary(ib::PartialCellBottom)
                     hmin, hmax, ib.minimum_fractional_Δz)
 end
 
+Base.summary(ib::PartialCellBottom{<:Function}) = @sprintf("GridFittedBottom(%s, ϵ=%.1f)", ib.bottom_height, ib.minimum_fractional_Δz)
+
+
 # TODO: nicer show method?
-Base.show(io, ib::PartialCellBottom) = print(io, summary(ib))
+Base.show(io::IO, ib::PartialCellBottom) = print(io, summary(ib))
 
 """
     PartialCellBottom(bottom, minimum_height)

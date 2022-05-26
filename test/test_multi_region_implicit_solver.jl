@@ -69,18 +69,14 @@ for arch in archs
                         topology = topology_type)
 
             ηs = geostrophic_adjustment_test(free_surface, grid);
-            ηs = interior(ηs);
+            ηs = Array(interior(ηs));
 
             for regions in [2, 4]
                 @info "  Testing $regions partitions on $(topology_type) on the $arch"
                 η = geostrophic_adjustment_test(free_surface, grid, regions = regions)
-                η = construct_regionally(interior, η)
+                η = Array(interior(reconstruct_global_field(η)))
                 
-                for region in regions[end]:regions[end]
-                    init = Int(size(ηs, 1) / regions) * (region - 1) + 1
-                    fin  = Int(size(ηs, 1) / regions) * region
-                    @test all(Array(η[region]) .≈ Array(ηs)[init:fin, :, :])
-                end
+                @test all(η .≈ ηs)
             end
         end
     end
