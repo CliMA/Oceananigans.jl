@@ -173,7 +173,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_𝐯w(i, j, k, grid, advection, background_fields.velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, model_fields, clock, buoyancy)
+             - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
