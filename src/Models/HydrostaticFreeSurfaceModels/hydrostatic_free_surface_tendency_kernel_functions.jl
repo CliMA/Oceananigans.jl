@@ -111,11 +111,11 @@ where `c = C[tracer_index]`.
                                                           clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
-    model_fields = merge(velocities, tracers, (; η = displacement(model.free_surface)), auxiliary_fields)
+    model_fields = merge(velocities, tracers, (; η = displacement(free_surface)), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
-            - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, clock, model_fields, buoyancy)
-            - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 

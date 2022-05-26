@@ -47,7 +47,7 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
     U, C = velocities, tracers
 
     K, b = nothing, nothing
-    closure_args = (U, C, clock, b)
+    closure_args = (clock, model_fields, b)
 
     @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), closure_args...) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
