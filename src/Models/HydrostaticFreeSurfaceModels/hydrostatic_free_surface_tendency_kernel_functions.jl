@@ -102,7 +102,7 @@ where `c = C[tracer_index]`.
                                                           tracers,
                                                           top_tracer_bcs,
                                                           diffusivities,
-                                                          mdoel_fields,
+                                                          model_fields,
                                                           forcing,
                                                           clock) where tracer_index
 
