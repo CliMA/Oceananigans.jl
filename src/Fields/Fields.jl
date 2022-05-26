@@ -16,6 +16,7 @@ using Oceananigans.BoundaryConditions
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
+include("field_boundary_buffers.jl")
 include("field.jl")
 include("field_reductions.jl")
 include("regridding_fields.jl")

@@ -134,4 +134,4 @@ A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of sc
 """
 const TiB = 1024GiB
 
-end
+end # module

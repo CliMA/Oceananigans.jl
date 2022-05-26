@@ -19,7 +19,7 @@
 #  ``μ₀`` is the phytoplankton growth rate at the surface, ``λ`` is the scale over
 # which sunlight attenuates away from the surface, and ``m`` is the mortality rate
 # of phytoplankton due to viruses and grazing by zooplankton. We use Oceananigans'
-#  `Forcing` abstraction to implement the phytoplankton dynamics described by the right
+# `Forcing` abstraction to implement the phytoplankton dynamics described by the right
 # side of the phytoplankton equation above.
 #
 # This example demonstrates
@@ -37,7 +37,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots, JLD2, Measures"
+# pkg"add Oceananigans, Measures, CairoMakie"
 # ```
 
 # ## The grid
@@ -65,13 +65,17 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # constant during the first phase of the simulation. We produce a plot of this time-dependent
 # buoyancy flux for the visually-oriented,
 
-using Plots, Measures
+using CairoMakie, Measures
 
 times = range(0, 12hours, length=100)
 
-flux_plot = plot(times ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times],
-                 linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
-                 size = (800, 300), margin = 5mm, label = nothing)
+fig = Figure(resolution = (800, 300))
+
+ax = Axis(fig[1, 1];
+          xlabel = "Time (hours)",
+          ylabel = "Surface buoyancy flux (m² s⁻³)")
+
+lines!(ax, times ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]; linewidth = 2)
 
 # The buoyancy flux effectively shuts off after 6 hours of simulation time.
 #
@@ -204,8 +208,6 @@ run!(simulation)
 # We'd like to a make a plankton movie. First we load the output file
 # and build a time-series of the buoyancy flux,
 
-using JLD2
-
 filepath = simulation.output_writers[:simple_output].filepath
 
 w_timeseries = FieldTimeSeries(filepath, "w")
@@ -224,83 +226,79 @@ nothing # hide
 
 # Finally, we animate plankton mixing and blooming,
 
-using Plots
+using CairoMakie
 
 @info "Making a movie about plankton..."
 
+n = Observable(1)
+
+title = @lift @sprintf("t = %s", prettytime(times[$n]))
+
+wₙ = @lift interior(w_timeseries[$n], :, 1, :)
+Pₙ = @lift interior(P_timeseries[$n], :, 1, :)
+P_avgₙ = @lift interior(P_avg_timeseries[$n], 1, 1, :)
+
 w_lim = maximum(abs, interior(w_timeseries))
+w_lims = (-w_lim, w_lim)
 
-anim = @animate for i in 1:length(times)
+P_lims = (0.95, 1.1)
 
-    @info "Plotting frame $i of $(length(times))..."
+fig = Figure(resolution = (850, 850))
 
-    t = times[i]
-    w = interior(w_timeseries[i], :, 1, :)
-    P = interior(P_timeseries[i], :, 1, :)
-    P_avg = interior(P_avg_timeseries[i], 1, 1, :)
+ax_w = Axis(fig[2, 1];
+            xlabel = "x (m)",
+            ylabel = "z (m)",
+            title = "vertical velocity",
+            aspect = 1)
 
-    P_min = minimum(P) - 1e-9
-    P_max = maximum(P) + 1e-9
-    P_lims = (0.95, 1.1)
+ax_P = Axis(fig[3, 1];
+            xlabel = "x (m)",
+            ylabel = "z (m)",
+            title = "plankton concentration",
+            aspect = 1)
 
-    w_levels = range(-w_lim, stop=w_lim, length=20)
+ax_b = Axis(fig[2, 3];
+            xlabel = "time (hours)",
+            ylabel = "buoyancy flux (m² s⁻³)")
 
-    P_levels = collect(range(P_lims[1], stop=P_lims[2], length=20))
-    P_lims[1] > P_min && pushfirst!(P_levels, P_min)
-    P_lims[2] < P_max && push!(P_levels, P_max)
+ax_P_avg = Axis(fig[3, 3];
+                xlabel = "plankton concentration (μM)",
+                ylabel = "z (m)",
+                limits = ((0.85, 1.3), nothing))
 
-    kwargs = (xlabel="x (m)", ylabel="y (m)", aspectratio=1, linewidth=0, colorbar=true,
-              xlims=(0, model.grid.Lx), ylims=(-model.grid.Lz, 0))
+fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
-    w_contours = contourf(xw, zw, w';
-                          color = :balance,
-                          levels = w_levels,
-                          clims = (-w_lim, w_lim),
-                          kwargs...)
+hm_w = heatmap!(ax_w, xw, zw, wₙ;
+                colormap = :balance,
+                colorrange = w_lims)
 
-    P_contours = contourf(xp, zp, clamp.(P, P_lims[1], P_lims[2])';
-                          color = :matter,
-                          levels = P_levels,
-                          clims = P_lims,
-                          kwargs...)
+Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
 
-    P_profile = plot(P_avg, zp,
-                     linewidth = 2,
-                     label = nothing,
-                     xlims = (0.9, 1.3),
-                     ylabel = "z (m)",
-                     xlabel = "Plankton concentration (μM)")
+hm_P = heatmap!(ax_P, xp, zp, Pₙ;
+                colormap = :matter,
+                colorrange = P_lims)
 
-    flux_plot = plot(times ./ hour, buoyancy_flux_time_series,
-                     linewidth = 1,
-                     label = "Buoyancy flux time series",
-                     color = :black,
-                     alpha = 0.4,
-                     legend = :topright,
-                     xlabel = "Time (hours)",
-                     ylabel = "Buoyancy flux (m² s⁻³)",
-                     ylims = (0.0, 1.1 * buoyancy_flux_parameters.initial_buoyancy_flux))
+Colorbar(fig[3, 2], hm_P; label = "μM")
 
-    plot!(flux_plot, times[1:i] ./ hour, buoyancy_flux_time_series[1:i],
-          color = :steelblue,
-          linewidth = 6,
-          label = nothing)
+lines!(ax_b, times ./ hour, buoyancy_flux_time_series;
+       linewidth = 1, color = :black, alpha = 0.4)
 
-    scatter!(flux_plot, times[i:i] / hour, buoyancy_flux_time_series[i:i],
-             markershape = :circle,
-             color = :steelblue,
-             markerstrokewidth = 0,
-             markersize = 15,
-             label = "Current buoyancy flux")
+b_flux_point = @lift Point2f[(times[$n] / hour, buoyancy_flux_time_series[$n])]
 
-    layout = Plots.grid(2, 2, widths=(0.7, 0.3))
+scatter!(ax_b, b_flux_point;
+         marker = :circle, markersize = 16, color = :black)
 
-    w_title = @sprintf("Vertical velocity (m s⁻¹) at %s", prettytime(t))
-    P_title = @sprintf("Plankton concentration (μM) at %s", prettytime(t))
+lines!(ax_P_avg, P_avgₙ, zp;
+       linewidth = 2)
 
-    plot(w_contours, flux_plot, P_contours, P_profile,
-         title=[w_title "" P_title ""],
-         layout=layout, size=(1000.5, 1000.5))
+# And, finally, we record a movie.
+
+frames = 1:length(times)
+
+record(fig, "convecting_plankton.mp4", frames, framerate=8) do i
+       @info "Plotting frame $i of $(frames[end])..."
+       n[] = i
 end
+nothing #hide
 
-mp4(anim, "convecting_plankton.mp4", fps = 8) # hide
+# ![](convecting_plankton.mp4)

@@ -110,7 +110,7 @@ Keyword arguments
                      `k` as argument and retuns the location of the faces for indices `k = 1` through `k = Nz + 1`,
                      where `Nz` is the `size` of the stretched `z` dimension.
 
-*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
+**Note**: _Either_ `extent`, or _all_ of `x`, `y`, and `z` must be specified.
 
 - `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
           the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.
@@ -194,7 +194,7 @@ julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bound
 1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-128.0, 0.0] regularly spaced with Δz=0.5
+└── Bounded  z ∈ [-128.0, 0.0]    regularly spaced with Δz=0.5
 ```
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
@@ -281,7 +281,7 @@ function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, 
     halo = validate_halo(TX, TY, TZ, halo)
 
     # Validate the rectilinear domain
-    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     return TX, TY, TZ, size, halo, x, y, z
 end
@@ -307,7 +307,7 @@ function Base.summary(grid::RectilinearGrid)
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-function Base.show(io::IO, grid::RectilinearGrid)
+function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
     x₁, x₂ = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
@@ -324,10 +324,13 @@ function Base.show(io::IO, grid::RectilinearGrid)
     y_summary = dimension_summary(TY(), "y", y₁, y₂, grid.Δyᵃᶜᵃ, longest - length(y_summary))
     z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
-    return print(io, summary(grid), '\n',
-                 "├── ", x_summary, '\n',
-                 "├── ", y_summary, '\n',
-                 "└── ", z_summary)
+    if withsummary
+        print(io, summary(grid), '\n')
+    end
+
+    return print(io, "├── ", x_summary, '\n',
+                     "├── ", y_summary, '\n',
+                     "└── ", z_summary)
 end
 
 #####
@@ -410,6 +413,10 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                        new_properties...)
 end
+
+
+return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+
 
 #####
 ##### Get minima of grid

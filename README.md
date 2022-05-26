@@ -50,9 +50,10 @@
   </a>
 </p>
 
-Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and more!
-
-We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
+Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
+and hydrostatic Boussinesq equations on CPUs and GPUs.
+It runs on GPUs (wow, fast!), though we believe Oceananigans makes the biggest waves
+with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
 
 Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.caltech.edu) and heroic external collaborators.
 
@@ -60,80 +61,70 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 * [Installation instructions](#installation-instructions)
 * [Running your first model](#running-your-first-model)
-* [Getting help](#getting-help)
+* [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
+* [Citing](#citing)
 * [Contributing](#contributing)
 * [Movies](#movies)
 * [Performance benchmarks](#performance-benchmarks)
 
 ## Installation instructions
 
-You can install the latest version of Oceananigans using the built-in package manager (accessed by pressing `]` in the Julia command prompt) to add the package and instantiate/build all depdendencies
+Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
+
+1. [Download Julia](https://julialang.org/downloads/).
+
+2. Launch Julia and type
 
 ```julia
-julia>]
-(v1.6) pkg> add Oceananigans
-(v1.6) pkg> instantiate
+julia> using Pkg
+
+julia> Pkg.add("Oceananigans")
 ```
 
-We recommend installing Oceananigans with the built-in Julia package manager, because this installs a stable, tagged release. Oceananigans.jl can be updated to the latest tagged release from the package manager by typing
+This installs the latest version that's _compatible with your current environment_.
+Don't forget to *be careful* 🏄 and check which Oceananigans you installed:
 
 ```julia
-(v1.6) pkg> update Oceananigans
+julia> Pkg.status("Oceananigans")
 ```
-
-At this time, updating should be done with care, as Oceananigans is under rapid development and breaking changes to the user API occur often. But if anything does happen, please open an issue!
-
-**Note**: The latest version of Oceananigans requires at least Julia v1.6 to run. Installing Oceananigans with an older version of Julia will install an older version of Oceananigans (the latest version compatible with your version of Julia).
 
 ## Running your first model
 
-Let's initialize a 3D horizontally periodic model with 100×100×50 grid points on a 2×2×1 km domain and simulate it for 1 hour using a constant time step of 60 seconds.
+Let's run a two-dimensional, horizontally-periodic simulation of turbulence using 128² finite volume cells for 4 non-dimensional time units:
 
 ```julia
 using Oceananigans
-grid = RectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
-model = NonhydrostaticModel(grid=grid)
-simulation = Simulation(model, Δt=60, stop_time=3600)
+grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
+model = NonhydrostaticModel(; grid, advection=WENO5())
+ϵ(x, y, z) = 2rand() - 1
+set!(model, u=ϵ, v=ϵ)
+simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-You just simulated what might have been a 3D patch of ocean, it's that easy! It was a still lifeless ocean so nothing interesting happened but now you can add interesting dynamics and visualize the output.
+But there's more: changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
 
-### More interesting example
+Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
+Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 
-Let's add something to make the dynamics a bit more interesting. We can add a hot bubble in the middle of the domain and watch it rise to the surface. This example also shows how to set an initial condition.
+## The Oceananigans knowledge base
 
-```julia
-using Oceananigans
+It's _deep_ and includes:
 
-N = Nx = Ny = Nz = 128   # Number of grid points in each dimension.
-L = Lx = Ly = Lz = 2000  # Length of each dimension.
-topology = (Periodic, Periodic, Bounded)
-
-model = NonhydrostaticModel(
-            grid = RectilinearGrid(CPU(); topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-         tracers = (:T, :S),
-        buoyancy = SeawaterBuoyancy(),
-         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-)
-
-# Set a temperature perturbation with a Gaussian profile located at the center.
-# This will create a buoyant thermal bubble that will rise with time.
-x₀, z₀ = Lx/2, Lz/2
-T₀(x, y, z) = 20 + 0.01 * exp(-100 * ((x - x₀)^2 + (z - z₀)^2) / (Lx^2 + Lz^2))
-set!(model, T=T₀)
-
-simulation = Simulation(model, Δt=10, stop_iteration=5000)
-run!(simulation)
-```
-
-By changing the first positional argument of `RectilinearGrid` from `CPU()` to `GPU()` the example will run on a CUDA-enabled Nvidia GPU!
-
-You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
-
-## Getting help
-
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! If you're trying to set up a model then check out the examples and model setup documentation. Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/main/examples) and please feel free to [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions) if you have any questions, comments, suggestions, etc! There is also an #oceananigans channel on the [Julia Slack](https://julialang.org/slack/).
+* [Documentation](https://clima.github.io/OceananigansDocumentation/stable) that provides
+    * example Oceananigans scripts,
+    * tutorials that describe key Oceananigans objects and functions,
+    * explanations of Oceananigans finite-volume-based numerical methods,
+    * details of the dynamical equations solved by Oceananigans models, and
+    * a library documenting all user-facing Oceananigans objects and functions.
+* [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
+    * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
+    * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
+  
+    If you've got a question or something, anything! to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
+* The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
+* The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
+* [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
 ## Citing
 
@@ -154,15 +145,16 @@ If you use Oceananigans.jl as part of your research, teaching, or other activiti
 }
 ```
 
-We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans.jl). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
+We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
 
-If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developers have missed.
+If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make!
+Cause we're all in this together.
 
-Let us know by [opening an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
+If you'd like to work on a new feature, or if you're new to open source and want to crowd-source neat projects that fit your interests, you should [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?) right away.
 
-For more information, check out our [contributor's guide](https://github.com/clima/Oceananigans.jl/blob/main/CONTRIBUTING.md).
+For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
 
 ## Movies
 

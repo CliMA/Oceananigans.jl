@@ -21,41 +21,38 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-struct MatrixImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
-    vertically_integrated_lateral_areas :: V
+struct MatrixImplicitFreeSurfaceSolver{S, R, T}
     "The matrix iterative solver"
     matrix_iterative_solver :: S
     "The right hand side of the free surface evolution equation"
     right_hand_side :: R
+    storage :: T
+end
 
-    function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
-        
-        # Initialize vertically integrated lateral face areas
-        ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-        ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
-        vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-    
-        compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    
-        arch = architecture(grid)
-        right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
-    
-        # Set maximum iterations to Nx * Ny if not set
-        settings = Dict{Symbol, Any}(settings)
-        maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
-        settings[:maximum_iterations] = maximum_iterations
-    
-        coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-        solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
+    # Initialize vertically integrated lateral face areas
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
 
-        V = typeof(vertically_integrated_lateral_areas)
-        S = typeof(solver)
-        R = typeof(right_hand_side)
+    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
+
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+
+    arch = architecture(grid)
+    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
-        return new{V, S, R}(vertically_integrated_lateral_areas, solver, right_hand_side)
-    end
+    storage = deepcopy(right_hand_side)
+    
+    # Set maximum iterations to Nx * Ny if not set
+    settings = Dict{Symbol, Any}(settings)
+    maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
+    settings[:maximum_iterations] = maximum_iterations
+
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
+    solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
+
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
@@ -66,8 +63,13 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 #####
 
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
-    solver = implicit_free_surface_solver.matrix_iterative_solver
-    solve!(η, solver, rhs, Δt)
+    solver  = implicit_free_surface_solver.matrix_iterative_solver
+    storage = implicit_free_surface_solver.storage
+    
+    solve!(storage, solver, rhs, Δt)
+        
+    set!(η, reshape(storage, solver.problem_size...))
+
     return nothing
 end
 
@@ -83,8 +85,9 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                     implicit_linearized_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
 		            dependencies = device_event(arch))
-
-    return event
+    
+    wait(device(arch), event)
+    return nothing
 end
 
 # linearized right hand side

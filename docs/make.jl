@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots # to avoid capturing precompilation output by Literate
+using CairoMakie # to avoid capturing precompilation output by Literate
 using Glob
 
 using Oceananigans
@@ -128,8 +128,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
-    "Installation instructions" => "installation_instructions.md",
-    "Using GPUs" => "using_gpus.md",
+    "Quick start" => "quick_start.md",
     "Examples" => example_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,

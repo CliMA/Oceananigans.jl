@@ -1,6 +1,7 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
+using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
@@ -19,12 +20,9 @@ function identity_operator!(b, x)
 end
 
 function run_identity_operator_test(grid)
-    arch = architecture(grid)
-
     N = size(grid)
     M = prod(N)
 
-    b = zeros(grid, M)
     A = zeros(grid, N...)
     D = zeros(grid, N...)
     C = zeros(grid, N...)
@@ -32,16 +30,13 @@ function run_identity_operator_test(grid)
 
     solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
-    fill!(b, rand())
+    b = arch_array(architecture(grid), rand(M))
 
-    initial_guess = solution = CenterField(grid)
-    set!(initial_guess, (x, y, z) -> rand())
-    
-    solve!(initial_guess, solver, b, 1.0)
+    arch = architecture(grid)
+    storage = arch_array(arch, zeros(size(b)))
+    solve!(storage, solver, b, 1.0)
 
-    b = reshape(b, size(grid)...)
-
-    @test norm(interior(solution) .- b) .< solver.tolerance
+    @test norm(Array(storage) .- Array(b)) .< solver.tolerance
 end
 
 @kernel function _multiply_by_volume!(r, grid)
@@ -95,8 +90,12 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
-    solve!(ϕ_solution, solver, rhs, 1.0)
-
+    arch = architecture(grid)
+    storage = arch_array(arch, zeros(size(rhs)))
+    solve!(storage, solver, rhs, 1.0)
+    set!(ϕ_solution, reshape(storage, solver.problem_size...))
+    fill_halo_regions!(ϕ_solution) 
+    
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
     calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)

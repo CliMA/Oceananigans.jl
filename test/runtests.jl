@@ -114,6 +114,14 @@ include("dependencies_for_runtests.jl")
     end
     
     # Model enhancements: cubed sphere, distributed, etc
+    if group == :multi_region || group == :all
+        @testset "Multi Region tests" begin
+            include("test_multi_region_unit.jl")
+            include("test_multi_region_advection_diffusion.jl")
+            include("test_multi_region_implicit_solver.jl")
+        end
+    end
+
     if group == :cubed_sphere || group == :all
         @testset "Cubed sphere tests" begin
             include("test_cubed_spheres.jl")

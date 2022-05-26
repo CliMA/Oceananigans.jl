@@ -103,8 +103,8 @@ end
 """
     set_source_term!(solver, source_term)
 
-Sets the source term in the discrete Poisson equation `solver`
-to `source_term` by multiplying it by the vertical grid spacing at z cell centers.
+Sets the source term in the discrete Poisson equation `solver` to `source_term` by
+multiplying it by the vertical grid spacing at ``z`` cell centers.
 """
 function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid

@@ -15,7 +15,7 @@ The split-explicit free surface solver.
 
 $(TYPEDFIELDS)
 """
-struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ}
+struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurface{𝒩, 𝒫}
     "The instantaneous free surface (`ReducedField`)"
     η :: 𝒩
     "The entire state for the split-explicit (`SplitExplicitState`)"
