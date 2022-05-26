@@ -31,7 +31,7 @@ using Oceananigans.Models: ShallowWaterModel
 # The shallow water model is a two-dimensional model and thus the number of vertical
 # points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
 
-Lx, Ly, Lz = 2π, 20, 1
+Lx, Ly, Lz = 2π, 20, 10
 Nx, Ny = 128, 128
 
 grid = RectilinearGrid(size = (Nx, Ny),
@@ -228,8 +228,7 @@ nothing # hide
 
 using Polynomials: fit
 
-Nt = length(t)
-I = Nt-10:Nt
+I = 6000:7000
 
 degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
