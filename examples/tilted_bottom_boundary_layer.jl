@@ -217,7 +217,7 @@ fig = Figure(resolution = (800, 440))
 
 axis_kwargs = (xlabel = "along-slope distance",
                ylabel = "across-slope distance",
-               aspect = AxisAspect(1),
+               aspect = AxisAspect(Lx/Lz),
                limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
