@@ -51,77 +51,77 @@ end
 ##### Products of viscosity and stress, divergence, vorticity
 #####
 
-@inline ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock) * σᶜᶜᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clock, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock) * σᶠᶠᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock) * σᶠᶜᶠ(i, j, k, grid, args...)
-@inline ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock) * σᶜᶠᶠ(i, j, k, grid, args...)
+@inline ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * σᶠᶠᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
+@inline ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
-@inline ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, u, v) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
-@inline ν_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, u, v) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+@inline ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+@inline ν_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
-@inline κ_σᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clock) * σᶠᶜᶜ(i, j, k, grid, args...)
-@inline κ_σᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clock) * σᶜᶠᶜ(i, j, k, grid, args...)
-@inline κ_σᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clock) * σᶜᶜᶠ(i, j, k, grid, args...)
+@inline κ_σᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶠᶜᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶠᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶜᶠ(i, j, k, grid, args...)
 
 #####
 ##### Viscosity "extractors"
 #####
 
 # Number
-@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::Number) = ν
-@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::Number) = ν
-@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::Number) = ν
-@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::Number) = ν
+@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::Number, args...) = ν
+@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::Number, args...) = ν
+@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::Number, args...) = ν
+@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::Number, args...) = ν
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::Number) = κ
-@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::Number) = κ
-@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::Number) = κ
+@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::Number, args...) = κ
+@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::Number, args...) = κ
+@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::Number, args...) = κ
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = @inbounds ν[i, j, k]
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxzᶠᵃᶠ(i, j, k, grid, ν)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑyzᵃᶠᶠ(i, j, k, grid, ν)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray) = ℑxyᶠᶠᵃ(i, j, k, grid, ν)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = @inbounds ν[i, j, k]
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, ν)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, ν::AbstractArray, args...) = ℑxyᶠᶠᵃ(i, j, k, grid, ν)
                                         
-@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
 
 # Array / Field at `Center, Center, Face`
 const Lᶜᶜᶠ = Tuple{Center, Center, Face}
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑzᵃᵃᶜ(i, j, k, grid, ν)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, ν)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑzᵃᵃᶜ(i, j, k, grid, ν)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, ν::AbstractArray, args...) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray) = @inbounds κ[i, j, k]
+@inline κᶠᶜᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = @inbounds κ[i, j, k]
 
 # Function
 
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::F) where F<:Function = ν(node(c, c, c, i, j, k, grid)..., clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::F) where F<:Function = ν(node(f, c, f, i, j, k, grid)..., clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::F) where F<:Function = ν(node(c, f, f, i, j, k, grid)..., clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::F) where F<:Function = ν(node(f, f, c, i, j, k, grid)..., clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::F, args...) where F<:Function = ν(node(c, c, c, i, j, k, grid)..., clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::F, args...) where F<:Function = ν(node(f, c, f, i, j, k, grid)..., clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::F, args...) where F<:Function = ν(node(c, f, f, i, j, k, grid)..., clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::F, args...) where F<:Function = ν(node(f, f, c, i, j, k, grid)..., clock.time)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::F) where F<:Function = κ(node(f, c, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::F) where F<:Function = κ(node(c, f, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::F) where F<:Function = κ(node(c, c, f, i, j, k, grid)..., clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::F, args...) where F<:Function = κ(node(f, c, c, i, j, k, grid)..., clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::F, args...) where F<:Function = κ(node(c, f, c, i, j, k, grid)..., clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::F, args...) where F<:Function = κ(node(c, c, f, i, j, k, grid)..., clock.time)
 
 # "DiscreteDiffusionFunction"
-@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, c, c, c)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, f, c, f)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, c, f, f)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction) = ν.func(i, j, k, grid, f, f, c)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, c, c, c)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, f, c, f)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, c, f, f)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, loc, ν::DiscreteDiffusionFunction, args...) = ν.func(i, j, k, grid, f, f, c)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, f, c, c)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, c, f, c)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction) = κ.func(i, j, k, grid, c, c, f)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, f, c, c)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, c, f, c)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, loc, κ::DiscreteDiffusionFunction, args...) = κ.func(i, j, k, grid, c, c, f)
 
 #####
 ##### Immersed flux divergences

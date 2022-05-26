@@ -76,31 +76,31 @@ const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-@inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk)     = νᶜᶜᶜ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K)) 
-@inline νᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clk)     = νᶠᶠᶜ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K))
-@inline νᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clk)     = νᶠᶜᶠ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K))
-@inline νᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clk)     = νᶜᶠᶠ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K))
+@inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶜᶜᶜ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K), F) 
+@inline νᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶠᶠᶜ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K), F)
+@inline νᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶠᶜᶠ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K), F)
+@inline νᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶜᶠᶠ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, K), F)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clk) = κᶠᶜᶜ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id))
-@inline κᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clk) = κᶜᶠᶜ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id))
-@inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clk) = κᶜᶜᶠ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id))
+@inline κᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶠᶜᶜ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id), F)
+@inline κᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶜᶠᶜ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id), F)
+@inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶜᶜᶠ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id), F)
 
 # Vertical and horizontal diffusivity
-@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clk) 
-@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock) 
-@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock) 
-@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock) 
-@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
+@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, F) 
+@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, F) 
+@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, F) 
+@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, F) 
+@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
 
-@inline νhᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock) 
-@inline νhᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock) 
-@inline νhᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock) 
-@inline νhᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock) 
-@inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
+@inline νhᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, F) 
+@inline νhᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, F) 
+@inline νhᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, F) 
+@inline νhᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, F) 
+@inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
 
 for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
@@ -121,24 +121,24 @@ end
 const F = Face
 const C = Center
 
-@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock) = κzᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock) = κzᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
+@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock, F) = κzᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock, F) = κzᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock, F) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
 
-@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock) = κhᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock) = κhᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock) = κhᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
+@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock, F) = κhᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock, F) = κhᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock, F) = κhᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
 
 # "diffusivity" with "nothing" index => viscosity of course
-@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, clock)
-@inline z_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock) = νzᶠᶠᶜ(i, j, k, grid, clo, K, clock)
-@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, clock)
-@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, clock)
+@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock, F) = νzᶜᶜᶜ(i, j, k, grid, clo, K, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock, F) = νzᶠᶠᶜ(i, j, k, grid, clo, K, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock, F) = νzᶠᶜᶠ(i, j, k, grid, clo, K, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock, F) = νzᶜᶠᶠ(i, j, k, grid, clo, K, clock, F)
 
-@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock) = νhᶜᶜᶜ(i, j, k, grid, clo, K, clock)
-@inline h_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock) = νhᶠᶠᶜ(i, j, k, grid, clo, K, clock)
-@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock) = νhᶠᶜᶠ(i, j, k, grid, clo, K, clock)
-@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock) = νhᶜᶠᶠ(i, j, k, grid, clo, K, clock)
+@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock, F) = νhᶜᶜᶜ(i, j, k, grid, clo, K, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock, F) = νhᶠᶠᶜ(i, j, k, grid, clo, K, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock, F) = νhᶠᶜᶠ(i, j, k, grid, clo, K, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock, F) = νhᶜᶠᶠ(i, j, k, grid, clo, K, clock, F)
 
 #####
 ##### Stress divergences
@@ -165,32 +165,32 @@ const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
-    
-@inline viscous_flux_ux(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, Σ₁₁, U.u, U.v, U.w)
-@inline viscous_flux_vx(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, Σ₂₁, U.u, U.v, U.w)
-@inline viscous_flux_wx(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, Σ₃₁, U.u, U.v, U.w)
-@inline viscous_flux_uy(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, Σ₁₂, U.u, U.v, U.w)
-@inline viscous_flux_vy(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, Σ₂₂, U.u, U.v, U.w)
-@inline viscous_flux_wy(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, Σ₃₂, U.u, U.v, U.w)
 
-@inline viscous_flux_ux(i, j, k, grid, clo::AHD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
-@inline viscous_flux_vx(i, j, k, grid, clo::AHD, K, U, C, clk, b) = - ν_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
-@inline viscous_flux_uy(i, j, k, grid, clo::AHD, K, U, C, clk, b) = + ν_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)   
-@inline viscous_flux_vy(i, j, k, grid, clo::AHD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
-@inline viscous_flux_wx(i, j, k, grid, clo::AHD, K, U, C, clk, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, ∂xᶠᶜᶠ, U.w)
-@inline viscous_flux_wy(i, j, k, grid, clo::AHD, K, U, C, clk, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, ∂yᶜᶠᶠ, U.w)
+@inline viscous_flux_ux(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, Σ₁₁, F.u, F.v, F.w)
+@inline viscous_flux_vx(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, F, Σ₂₁, F.u, F.v, F.w)
+@inline viscous_flux_wx(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, F, Σ₃₁, F.u, F.v, F.w)
+@inline viscous_flux_uy(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, F, Σ₁₂, F.u, F.v, F.w)
+@inline viscous_flux_vy(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, Σ₂₂, F.u, F.v, F.w)
+@inline viscous_flux_wy(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, F, Σ₃₂, F.u, F.v, F.w)
 
-@inline viscous_flux_uz(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, Σ₁₃, U.u, U.v, U.w)
-@inline viscous_flux_vz(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, Σ₂₃, U.u, U.v, U.w)
-@inline viscous_flux_wz(i, j, k, grid, clo::AID, K, U, C, clk, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, Σ₃₃, U.u, U.v, U.w)
+@inline viscous_flux_ux(i, j, k, grid, clo::AHD, K, clk, F, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)
+@inline viscous_flux_vx(i, j, k, grid, clo::AHD, K, clk, F, b) = - ν_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)
+@inline viscous_flux_uy(i, j, k, grid, clo::AHD, K, clk, F, b) = + ν_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)   
+@inline viscous_flux_vy(i, j, k, grid, clo::AHD, K, clk, F, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)
+@inline viscous_flux_wx(i, j, k, grid, clo::AHD, K, clk, F, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, F, ∂xᶠᶜᶠ, F.w)
+@inline viscous_flux_wy(i, j, k, grid, clo::AHD, K, clk, F, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, F, ∂yᶜᶠᶠ, F.w)
 
-@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, ∂zᶠᶜᶠ, U.u)
-@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, ∂zᶜᶠᶠ, U.v)
-@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, U, C, clk, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, ∂zᶜᶜᶜ, U.w)
+@inline viscous_flux_uz(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, F, Σ₁₃, F.u, F.v, F.w)
+@inline viscous_flux_vz(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, F, Σ₂₃, F.u, F.v, F.w)
+@inline viscous_flux_wz(i, j, k, grid, clo::AID, K, clk, F, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, Σ₃₃, F.u, F.v, F.w)
+
+@inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, F, b) = - ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, F, ∂zᶠᶜᶠ, F.u)
+@inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, F, b) = - ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, F, ∂zᶜᶠᶠ, F.v)
+@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, F, b) = - ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, ∂zᶜᶜᶜ, F.w)
 
 # "Divergence damping"
-@inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
-@inline viscous_flux_vy(i, j, k, grid, clo::ADD, K, U, C, clk, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, U.u, U.v)
+@inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, clk, F, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)
+@inline viscous_flux_vy(i, j, k, grid, clo::ADD, K, clk, F, b) = - ν_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, F, F.u, F.v)
 
 #####
 ##### Diffusive fluxes
@@ -199,9 +199,9 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂xᶠᶜᶜ(i, j, k, grid, C[id])
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk) * ∂yᶜᶠᶜ(i, j, k, grid, C[id])
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, U, C, clk, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk) * ∂zᶜᶜᶠ(i, j, k, grid, C[id])
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, clk, F, b) where id = - κᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂xᶠᶜᶜ(i, j, k, grid, F[id])
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, clk, F, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂yᶜᶠᶜ(i, j, k, grid, F[id])
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, clk, F, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂zᶜᶜᶠ(i, j, k, grid, F[id])
 
 #####
 ##### Support for VerticallyImplicit
@@ -209,8 +209,8 @@ const AIDorAVD = Union{AID, AVD}
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline ivd_viscous_flux_uz(i, j, k, grid, closure, K, U, C, clock, b) = - ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, ∂xᶠᶜᶠ, U.w)
-@inline ivd_viscous_flux_vz(i, j, k, grid, closure, K, U, C, clock, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, ∂yᶜᶠᶠ, U.w)
+@inline ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, F, b) = - ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, F, ∂xᶠᶜᶠ, F.w)
+@inline ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, F, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, F, ∂yᶜᶠᶠ, F.w)
 
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, clo::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, clo, args...)
