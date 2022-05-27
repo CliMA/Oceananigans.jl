@@ -203,7 +203,7 @@ end
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, fields, closure.slope_limiter)
 
