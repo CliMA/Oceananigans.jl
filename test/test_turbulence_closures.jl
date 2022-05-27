@@ -43,13 +43,11 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
     fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
-
-    U, C = velocities, tracers
-
+     
     K, b = nothing, nothing
     closure_args = (clock, model_fields, b)
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), closure_args...) == - 2κ
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), tracers, closure_args...) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
     @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 4ν
     @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 6ν

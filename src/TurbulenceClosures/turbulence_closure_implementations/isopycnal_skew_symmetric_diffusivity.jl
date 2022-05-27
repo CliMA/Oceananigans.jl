@@ -155,7 +155,7 @@ taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
                                   closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where tracer_index
+                                  tracers, clock, velocities, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
     closure = getclosure(i, j, closure)
@@ -186,7 +186,7 @@ end
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
                                   closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where tracer_index
+                                  tracers, clock, velocities, buoyancy) where tracer_index
 
     c = tracers[tracer_index]
     closure = getclosure(i, j, closure)
@@ -217,7 +217,7 @@ end
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
                                   closure::FlavorOfISSD{TD}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where {tracer_index, TD}
+                                  tracers, clock, velocities, buoyancy) where {tracer_index, TD}
 
     c = tracers[tracer_index]
     closure = getclosure(i, j, closure)

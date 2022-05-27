@@ -60,12 +60,12 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, clo::AIBD, K, ::Val{id}, clk, F, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, F[id])
-@inline diffusive_flux_y(i, j, k, grid, clo::AIBD, K, ::Val{id}, clk, F, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, F[id])
-@inline diffusive_flux_z(i, j, k, grid, clo::AIBD, K, ::Val{id}, clk, F, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, F[id])
-@inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, ::Val{id}, clk, F, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, F[id])
-@inline diffusive_flux_y(i, j, k, grid, clo::AHBD, K, ::Val{id}, clk, F, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, F[id])
-@inline diffusive_flux_z(i, j, k, grid, clo::AVBD, K, ::Val{id}, clk, F, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_z, ∂³zᶜᶜᶠ, F[id])
+@inline diffusive_flux_x(i, j, k, grid, clo::AIBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, C[id])
+@inline diffusive_flux_y(i, j, k, grid, clo::AIBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, C[id])
+@inline diffusive_flux_z(i, j, k, grid, clo::AIBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, C[id])
+@inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, C[id])
+@inline diffusive_flux_y(i, j, k, grid, clo::AHBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_y, ∂y_∇²h_cᶜᶠᶜ, C[id])
+@inline diffusive_flux_z(i, j, k, grid, clo::AVBD, K, ::Val{id}, C, clk, F, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, F, biharmonic_mask_z, ∂³zᶜᶜᶠ, C[id])
 
 #####
 ##### Biharmonic-specific viscous operators

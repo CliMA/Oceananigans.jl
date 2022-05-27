@@ -153,8 +153,8 @@ end
     @inbounds e = tracers[tracer_index]
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, clock, tracers, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, tracers, model_fields)
              + shear_production(i, j, k, grid, closure, velocities, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)

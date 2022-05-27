@@ -161,7 +161,7 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        fields,
+                        model_fields,
                         Δt; dependencies)
     
    loc = location(field)
@@ -192,7 +192,7 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, fields, Δt, κz;
+                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, model_fields, Δt, κz;
                   dependencies)
 end
 

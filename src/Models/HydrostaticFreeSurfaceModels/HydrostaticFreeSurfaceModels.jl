@@ -79,9 +79,9 @@ Returns a flattened `NamedTuple` of the prognostic fields associated with `Hydro
                                                
 @inline hydrostatic_all_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
                                                                            v = velocities.v,
-                                                                           w = velocities.w,
-                                                                           η = free_surface.η),
-                                                                           tracers)
+                                                                           w = velocities.w),
+                                                                           tracers,
+                                                                           (; η = free_surface.η))
 
 @inline hydrostatic_all_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                         v = velocities.v,

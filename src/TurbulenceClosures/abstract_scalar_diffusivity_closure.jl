@@ -199,9 +199,9 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, clk, F, b) where id = - κᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂xᶠᶜᶜ(i, j, k, grid, F[id])
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, clk, F, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂yᶜᶠᶜ(i, j, k, grid, F[id])
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, clk, F, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂zᶜᶜᶠ(i, j, k, grid, F[id])
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, C, clk, F, b) where id = - κᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂xᶠᶜᶜ(i, j, k, grid, C[id])
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, C, clk, F, b) where id = - κᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂yᶜᶠᶜ(i, j, k, grid, C[id])
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, C, clk, F, b) where id = - κᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, F) * ∂zᶜᶜᶠ(i, j, k, grid, C[id])
 
 #####
 ##### Support for VerticallyImplicit
