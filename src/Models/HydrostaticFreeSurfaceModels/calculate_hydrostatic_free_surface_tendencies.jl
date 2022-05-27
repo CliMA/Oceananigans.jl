@@ -44,7 +44,7 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
                        model.velocities,
                        model.free_surface,
                        model.tracers,
-                       fields(model),
+                       model.auxiliary_fields,
                        model.forcing,
                        model.clock;
                        dependencies = dependencies)
@@ -73,7 +73,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                                 model.buoyancy,
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
-                                fields(model),
+                                model.auxiliary_fields,
                                 model.forcing,
                                 model.clock)
 
@@ -149,7 +149,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            model.tracers,
                            top_tracer_bcs,
                            model.diffusivity_fields,
-                           fields(model),
+                           model.auxiliary_fields,
                            c_forcing,
                            model.clock;
                            dependencies = barrier)

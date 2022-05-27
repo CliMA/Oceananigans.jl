@@ -84,8 +84,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock,
-                       fields(model), 
+                       model.clock, 
                        Δt,
                        dependencies = explicit_velocity_step_events[i])
     end
@@ -129,7 +128,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
-                       fields(model), 
                        Δt,
                        dependencies = explicit_tracer_step_event)
     end

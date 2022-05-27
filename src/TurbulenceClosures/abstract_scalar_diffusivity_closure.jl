@@ -86,34 +86,34 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶜᶜᶠ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id), F)
 
 # Vertical and horizontal diffusivity
-@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, F) 
-@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, F) 
-@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, F) 
-@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, F) 
-@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
+@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, args...) 
+@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, args...) 
+@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, args...) 
+@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, args...) 
+@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, args...)
+@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, args...)
+@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, args...)
 
-@inline νhᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, F) 
-@inline νhᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, F) 
-@inline νhᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, F) 
-@inline νhᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, F)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, F) 
-@inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, F) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
+@inline νhᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock, args...) 
+@inline νhᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock, args...) 
+@inline νhᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock, args...) 
+@inline νhᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock, args...)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock, args...) 
+@inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, args...)
+@inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, args...)
+@inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock, args...) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, args...)
 
 for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
         ν = Symbol(:ν, dir, code)
         @eval begin
-            @inline $ν(i, j, k, grid, clo::$Clo, K, clock, F) = zero(eltype(grid))
+            @inline $ν(i, j, k, grid, clo::$Clo, K, clock, args...) = zero(eltype(grid))
         end
     end
 
     for code in (:ᶠᶜᶜ, :ᶜᶠᶜ, :ᶜᶜᶠ)
         κ = Symbol(:κ, dir, code)
         @eval begin
-            @inline $κ(i, j, k, grid, clo::$Clo, K, id, clock, F) = zero(eltype(grid))
+            @inline $κ(i, j, k, grid, clo::$Clo, K, id, clock, args...) = zero(eltype(grid))
         end
     end
 end
@@ -121,24 +121,24 @@ end
 const F = Face
 const C = Center
 
-@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock, F) = κzᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock, F) = κzᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock, F) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, args...) = κzᶠᶜᶜ(i, j, k, grid, clo, K, id, args...)
+@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, args...) = κzᶜᶠᶜ(i, j, k, grid, clo, K, id, args...)
+@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, args...) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, args...)
 
-@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, clock, F) = κhᶠᶜᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, clock, F) = κhᶜᶠᶜ(i, j, k, grid, clo, K, id, clock, F)
-@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, clock, F) = κhᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::C, clo::ASD, K, id, args...) = κhᶠᶜᶜ(i, j, k, grid, clo, K, id, args...)
+@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::C, clo::ASD, K, id, args...) = κhᶜᶠᶜ(i, j, k, grid, clo, K, id, args...)
+@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo::ASD, K, id, args...) = κhᶜᶜᶠ(i, j, k, grid, clo, K, id, args...)
 
 # "diffusivity" with "nothing" index => viscosity of course
-@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock, F) = νzᶜᶜᶜ(i, j, k, grid, clo, K, clock, F)
-@inline z_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock, F) = νzᶠᶠᶜ(i, j, k, grid, clo, K, clock, F)
-@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock, F) = νzᶠᶜᶠ(i, j, k, grid, clo, K, clock, F)
-@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock, F) = νzᶜᶠᶠ(i, j, k, grid, clo, K, clock, F)
+@inline z_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, args...) = νzᶜᶜᶜ(i, j, k, grid, clo, K, args...)
+@inline z_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, args...) = νzᶠᶠᶜ(i, j, k, grid, clo, K, args...)
+@inline z_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, args...) = νzᶠᶜᶠ(i, j, k, grid, clo, K, args...)
+@inline z_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, args...) = νzᶜᶠᶠ(i, j, k, grid, clo, K, args...)
 
-@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, clock, F) = νhᶜᶜᶜ(i, j, k, grid, clo, K, clock, F)
-@inline h_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, clock, F) = νhᶠᶠᶜ(i, j, k, grid, clo, K, clock, F)
-@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, clock, F) = νhᶠᶜᶠ(i, j, k, grid, clo, K, clock, F)
-@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, clock, F) = νhᶜᶠᶠ(i, j, k, grid, clo, K, clock, F)
+@inline h_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo::ASD, K, ::Nothing, args...) = νhᶜᶜᶜ(i, j, k, grid, clo, K, args...)
+@inline h_diffusivity(i, j, k, grid, ::F, ::F, ::C, clo::ASD, K, ::Nothing, args...) = νhᶠᶠᶜ(i, j, k, grid, clo, K, args...)
+@inline h_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo::ASD, K, ::Nothing, args...) = νhᶠᶜᶠ(i, j, k, grid, clo, K, args...)
+@inline h_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo::ASD, K, ::Nothing, args...) = νhᶜᶠᶠ(i, j, k, grid, clo, K, args...)
 
 #####
 ##### Stress divergences
