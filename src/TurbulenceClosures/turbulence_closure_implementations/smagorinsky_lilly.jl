@@ -96,7 +96,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function ν_non_linearᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
+@inline function calc_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
     N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
