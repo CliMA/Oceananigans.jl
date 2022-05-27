@@ -189,7 +189,6 @@ hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
 ω′ = @lift ds["ω′"][:, :, 1, $n]
-ω′_lims = @lift (-maximum(abs, ds["ω′"][:, 1, :, $n]), maximum(abs, ds["ω′"][:, 1, :, $n]))
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
@@ -256,7 +255,7 @@ lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visua
        linewidth = 4,
        label = "best fit")
 
-axislegend()
+axislegend(position = :rb)
 
 current_figure() # hide
 
