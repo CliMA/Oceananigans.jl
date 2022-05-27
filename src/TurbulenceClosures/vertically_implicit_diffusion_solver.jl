@@ -17,13 +17,13 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 # Fallbacks: extend these function for `closure` to support.
 # TODO: docstring
-@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, fields, Δt, κz) =
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
     zero(grid)
 
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, F) = zero(grid) # u
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, F) = zero(grid) # v
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, F) = zero(grid) # w
-@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock, F) = zero(grid) # tracers
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # w
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock, args...) = zero(grid) # tracers
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
@@ -137,8 +137,8 @@ end
 #####
 
 # Special viscosity extractors with tracer_index === nothing
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶠᶜᶠ(i, j, k, grid, clo, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶜᶠᶠ(i, j, k, grid, clo, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
 
 is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
