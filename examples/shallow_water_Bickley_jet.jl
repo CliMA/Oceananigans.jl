@@ -168,7 +168,7 @@ nothing # hide
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
 
-fig = Figure(resolution = (800, 440))
+fig = Figure(resolution = (1200, 660))
 
 axis_kwargs = (xlabel = "x",
                ylabel = "y",
