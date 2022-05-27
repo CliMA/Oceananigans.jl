@@ -107,3 +107,22 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
 
     return indices, interps
 end
+
+# Adds a interpolate function which takes i, j, k, grid, from, and to as an argument
+for LX in (:Center, :Face), LY in (:Center, Face), LZ in (:Center, :Face)
+    for IX in (:Center, :Face), IY in (:Center, :Face), IZ in (:Center, :Face)
+        from = (eval(LX), eval(LY), eval(LZ))
+        to   = (eval(IX), eval(IY), eval(LZ))
+        interp_func = Symbol(interpolation_operator(from, to))
+        if length(string(interp_func)) > 7 && string(interp_func)[1:8] == "identity" 
+            interp_func = :identity
+        end
+        @eval begin
+            interpolate(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+                $interp_func(i, j, k, grid, c)
+         
+            interpolate(i, j, k, grid, from::F, to::T, f, args...) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+                $interp_func(i, j, k, grid, f, args...)
+        end
+    end
+end

@@ -29,6 +29,7 @@ export
 
 using CUDA
 using KernelAbstractions
+using Adapt 
 
 import Oceananigans.Utils: with_tracers
 
