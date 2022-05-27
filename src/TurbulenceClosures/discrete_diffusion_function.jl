@@ -16,9 +16,9 @@ function DiscreteDiffusionFunction(func; parameters, loc)
     return DiscreteDiffusionFunction{typeof(loc[1]), typeof(loc[2]), typeof(loc[3])}(func, parameters)
 end
 
-const UnparameterizedDDF           = DiscreteDiffusionFunction{<:Any, <:Any, <:Any,  <:Nothing}
-const UnlocalizedDDF               = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing}
-const UnlocalizedUnparametrizedDDF = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing, <:Nothing}
+const UnparameterizedDDF{LX, LY, LZ} = DiscreteDiffusionFunction{LX, LY, LZ, <:Nothing} where {LX, LY, LZ}
+const UnlocalizedDDF                 = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing}
+const UnlocalizedUnparametrizedDDF   = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
 @inline function getdiffusion(dd::DiscreteDiffusionFunction{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
