@@ -245,19 +245,19 @@ isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
 ##### (the diffusivities on the immersed boundaries are kept)
 #####
 
-# for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
-#                             (:κᶜᶠᶜ, (c, f, c)),
-#                             (:κᶜᶜᶠ, (c, c, f)),
-#                             (:νᶜᶜᶜ, (c, c, c)),
-#                             (:νᶠᶠᶜ, (f, f, c)),
-#                             (:νᶠᶜᶠ, (f, c, f)),
-#                             (:νᶜᶠᶠ, (c, f, f)))
+for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
+                            (:κᶜᶠᶜ, (c, f, c)),
+                            (:κᶜᶜᶠ, (c, c, f)),
+                            (:νᶜᶜᶜ, (c, c, c)),
+                            (:νᶠᶠᶜ, (f, f, c)),
+                            (:νᶠᶜᶠ, (f, c, f)),
+                            (:νᶜᶠᶠ, (c, f, f)))
 
-#     @eval begin
-#         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, args...) where FT =
-#             ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, args...), zero(FT))
-#     end
-# end
+    @eval begin
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, args...) where FT =
+            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, args...), zero(FT))
+    end
+end
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
