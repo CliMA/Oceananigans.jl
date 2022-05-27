@@ -4,7 +4,7 @@ using Oceananigans.Utils: instantiate
 """
     struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
 
-A wrapper for a diffusivity functions with optional parameters at specified locations.
+A wrapper for a diffusivity functions with optional parameters at a specified locations.
 
     If LX == LY == LZ == nothing the function call requires locations in the signature
 When `parameters=nothing`, the diffusivity `func` is called with the signature
