@@ -76,14 +76,14 @@ const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-@inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶜᶜᶜ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), clk, F) 
-@inline νᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶠᶠᶜ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), clk, F)
-@inline νᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶠᶜᶠ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), clk, F)
-@inline νᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clk, F)     = νᶜᶠᶠ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), clk, F)
+@inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), args...) 
+@inline νᶠᶠᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), args...)
+@inline νᶠᶜᶠ(i, j, k, grid, clo::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), args...)
+@inline νᶜᶠᶠ(i, j, k, grid, clo::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), args...)
 
-@inline κᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), clk, F)
-@inline κᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶜᶠᶜ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), clk, F)
-@inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clk, F) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), clk, F)
+@inline κᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, args...) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), args...)
+@inline κᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, args...) = κᶜᶠᶜ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), args...)
+@inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, args...) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), args...)
 
 # Vertical and horizontal diffusivity
 @inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, clo, K, args...) 
