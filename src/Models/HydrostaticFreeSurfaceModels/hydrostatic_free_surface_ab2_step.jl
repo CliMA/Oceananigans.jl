@@ -129,7 +129,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.diffusivity_fields,
                        Val(tracer_index),
                        model.clock,
-                       model_field(model), 
+                       model_fields(model), 
                        Δt,
                        dependencies = explicit_tracer_step_event)
     end
