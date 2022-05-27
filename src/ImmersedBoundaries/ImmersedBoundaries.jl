@@ -254,8 +254,8 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
                             (:νᶜᶠᶠ, (c, f, f)))
 
     @eval begin
-        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, args...) where FT =
+            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, args...), zero(FT))
     end
 end
 
