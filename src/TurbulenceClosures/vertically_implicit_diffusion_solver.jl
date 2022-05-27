@@ -86,7 +86,7 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, fields, Δt, κz) =
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) =
     one(eltype(grid)) -
         Δt * maybe_tupled_implicit_linear_coefficient(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
                       maybe_tupled_ivd_upper_diagonal(i, j, k,   grid, closure, K, id, LX, LY, LZ, clock, Δt, κz) -
