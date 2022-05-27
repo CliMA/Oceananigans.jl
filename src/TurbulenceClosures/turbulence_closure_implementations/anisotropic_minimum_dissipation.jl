@@ -157,7 +157,7 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, clk, U) where {tracer_index}
+@inline function calc_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
