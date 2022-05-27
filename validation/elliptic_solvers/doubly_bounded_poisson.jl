@@ -50,6 +50,7 @@ hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid, preconditione
 arch = architecture(grid)
 
 solution = arch_array(arch, zeros(Nx * Ny * Nz))
+solution .= interior(r)[:]
 r_hd = arch_array(arch, interior(r)[:])
 
 @info "Solving the Poisson equation with a heptadiagonal iterative solver..."
@@ -65,19 +66,23 @@ A = arch_sparse_matrix(arch, matrix_constructors)
 b = collect(reshape(interior(r), (Nx*Ny, )))
 
 @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
-@time ϕ_mg = solve(A, b, RugeStubenAMG())
+@time ϕ_mg = solve(A, b, RugeStubenAMG(), maxiter=1000, verbose=true)
 
-fig = Figure(resolution=(1500, 1200))
+fig = Figure(resolution=(1600, 1000))
 
-ax_r = Axis(fig[1, 2], title="RHS")
-ax_ϕ_fft = Axis(fig[2, 1], title="FFT-based solution")
-ax_ϕ_hd = Axis(fig[2, 2], title="Heptadiagonal Iterative solution")
-ax_ϕ_mg = Axis(fig[2, 3], title="Multigrid solution")
+ax_r = Axis(fig[1, 3], aspect=1, title="RHS")
+ax_ϕ_fft = Axis(fig[2, 1], aspect=1, title="FFT-based solution")
+ax_ϕ_hd = Axis(fig[2, 3], aspect=1, title="Heptadiagonal Iterative solution")
+ax_ϕ_mg = Axis(fig[2, 5], aspect=1, title="Multigrid solution")
 
-heatmap!(ax_r, interior(r, :, :, 1))
-heatmap!(ax_ϕ_fft, interior(ϕ_fft, :, :, 1))
-heatmap!(ax_ϕ_hd, interior(ϕ_hd, :, :, 1))
-heatmap!(ax_ϕ_mg, reshape(ϕ_mg, (Nx, Ny)))
+hm_r = heatmap!(ax_r, interior(r, :, :, 1))
+Colorbar(fig[1, 4], hm_r)
+hm_fft = heatmap!(ax_ϕ_fft, interior(ϕ_fft, :, :, 1))
+Colorbar(fig[2, 2], hm_fft)
+hm_hd = heatmap!(ax_ϕ_hd, interior(ϕ_hd, :, :, 1))
+Colorbar(fig[2, 4], hm_hd)
+hm_mg = heatmap!(ax_ϕ_mg, reshape(ϕ_mg, (Nx, Ny)))
+Colorbar(fig[2, 6], hm_mg)
 
 display(fig)
 
