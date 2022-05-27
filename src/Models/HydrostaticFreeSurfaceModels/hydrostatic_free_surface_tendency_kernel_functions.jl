@@ -37,7 +37,7 @@ implicitly during time-stepping.
                                                               forcings,
                                                               clock)
  
-    model_fields = merge(hydrostatic_all_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
@@ -74,7 +74,7 @@ implicitly during time-stepping.
                                                               forcings,
                                                               clock)
     
-    model_fields = merge(hydrostatic_all_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
@@ -111,7 +111,7 @@ where `c = C[tracer_index]`.
                                                           clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
-    model_fields = merge(hydrostatic_all_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
@@ -135,7 +135,7 @@ The tendency is called ``G_η`` and defined via
                                        clock)
 
     k_surface = grid.Nz + 1
-    model_fields = merge(hydrostatic_all_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return @inbounds (   velocities.w[i, j, k_surface]
                        + forcings.η(i, j, k_surface, grid, clock, model_fields))
@@ -157,7 +157,7 @@ end
                                                                clock) where tracer_index
 
     @inbounds e = tracers[tracer_index]
-    model_fields = merge(hydrostatic_all_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, e, clock, model_fields, buoyancy)
