@@ -1,7 +1,7 @@
 using Oceananigans.Operators: interpolate
+using Oceananigans.Utils: instantiate
 
 # To allow indexing a diffusivity with (i, j, k, grid, Lx, Ly, Lz)
-
 struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
     func :: F
     parameters :: P
@@ -12,6 +12,7 @@ struct DiscreteDiffusionFunction{LX, LY, LZ, P, F}
 end
 
 function DiscreteDiffusionFunction(func; parameters, loc)
+    loc = instantiate.(loc)
     return DiscreteDiffusionFunction{typeof(loc[1]), typeof(loc[2]), typeof(loc[3])}(func, parameters)
 end
 
@@ -28,7 +29,7 @@ end
 @inline function getdiffusion(dd::UnparameterizedDDF{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
         from = (LX(), LY(), LZ())
-    return dd.interpolate(i, j, k, grid, from, location, dd.func, clock, fields)
+    return interpolate(i, j, k, grid, from, location, dd.func, clock, fields)
 end
 
 @inline getdiffusion(dd::UnlocalizedDDF, i, j, k, grid, location, clock, fields) = 

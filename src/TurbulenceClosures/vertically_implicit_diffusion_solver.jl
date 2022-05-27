@@ -39,8 +39,6 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 
 @inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
-instantiate(X) = X()
-
 # Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)

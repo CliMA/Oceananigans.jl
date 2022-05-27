@@ -114,9 +114,6 @@ for LX in (:Center, :Face), LY in (:Center, Face), LZ in (:Center, :Face)
         from = (eval(LX), eval(LY), eval(LZ))
         to   = (eval(IX), eval(IY), eval(LZ))
         interp_func = Symbol(interpolation_operator(from, to))
-        if length(string(interp_func)) > 7 && string(interp_func)[1:8] == "identity" 
-            interp_func = :identity
-        end
         @eval begin
             interpolate(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
                 $interp_func(i, j, k, grid, c)
