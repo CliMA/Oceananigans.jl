@@ -1,7 +1,42 @@
 using Oceananigans.Operators: interpolate
 using Oceananigans.Utils: instantiate
 
-# To allow indexing a diffusivity with (i, j, k, grid, Lx, Ly, Lz)
+"""
+    struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
+
+A wrapper for a diffusivity functions with optional parameters at specified locations.
+
+    If LX == LY == LZ == nothing the function call requires locations in the signature
+When `parameters=nothing`, the diffusivity `func` is called with the signature
+
+```
+func(i, j, k, grid, lx, ly, lz, clock, model_fields)
+```
+
+where `i, j, k` are the indices,
+where `grid` is `model.grid`, `clock.time` is the current simulation time and
+`clock.iteration` is the current model iteration, and
+`model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers` and the `model.auxiliary_fields`,
+
+When `parameters` is not `nothing`, the boundary condition `func` is called with
+the signature
+
+```
+func(i, j, k, grid, lx, ly, lz, clock, model_fields, parameters)
+```
+
+If LX, LY, LZ != (nothing, nothing, nothing) the function call does requires locations in the signature
+and the output will be automatically interpolated on the correct location
+
+without parameters
+```
+func(i, j, k, grid, clock, model_fields)
+```
+with parameters
+```
+func(i, j, k, grid, clock, model_fields, parameters)
+```
+"""
 struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
     func :: F
     parameters :: P
