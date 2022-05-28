@@ -180,13 +180,13 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, u);
+    simulation.output_writers[side] = JLD2OutputWriter(model, (; b);
                                                        filename = filename * "_$(side)_slice",
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B,);
                                                      schedule = TimeInterval(save_fields_interval),
                                                      filename = filename * "_zonal_average")
 
@@ -227,8 +227,8 @@ nothing #hide
 
 x, y, z = nodes(b_timeserieses.east)
 
-x = x .* 1e-3
-y = y .* 1e-3
+x = x .* 1e-3 # convert m -> km
+y = y .* 1e-3 # convert m -> km
 
 x_xz = repeat(x, 1, Nz)
 y_xz_north = y[end] * ones(Nx, Nz)
