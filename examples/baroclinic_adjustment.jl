@@ -285,7 +285,7 @@ surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
 surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
 surface!(ax, x_xy, y_xy, z_xy_top;     color = b_slices.top, kwargs...)
 
-sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz; color = b_avg, kwargs...)
+sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz; color = avg_b, kwargs...)
 
 contour!(ax, y, z, avg_b; transformation = (:yz, zonal_slice_displacement * x[end]),
          levels = 15, linewidth = 2, color = :black)
