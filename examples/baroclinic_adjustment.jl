@@ -206,6 +206,22 @@ run!(simulation)
 
 using CairoMakie
 
+# We load the saved buoyancy output on the top, bottom, and east surface as `FieldTimeSeries`es.
+
+filename = "baroclinic_adjustment"
+
+sides = keys(slicers)
+
+slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
+
+b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
+                  north  = FieldTimeSeries(slice_filenames.north, "b"),
+                  bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
+                  top    = FieldTimeSeries(slice_filenames.top, "b"))
+
+b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
+
+nothing #hide
 
 # We build the coordinates. We rescale horizontal coordinates so that they correspond to kilometers.
 
@@ -249,23 +265,6 @@ nothing #hide
 # refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
 n = Observable(1)
-
-# We load the saved buoyancy output on the top, bottom, and east surface as `FieldTimeSeries`es.
-
-filename = "baroclinic_adjustment"
-
-sides = keys(slicers)
-
-slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
-
-b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
-                  north  = FieldTimeSeries(slice_filenames.north, "b"),
-                  bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
-                  top    = FieldTimeSeries(slice_filenames.top, "b"))
-
-b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
-
-nothing #hide
 
 # Now let's make a 3D plot of the buoyancy and in front of it we'll use the zonally-averaged output
 # to plot the instantaneous zonal-average of the buoyancy.
