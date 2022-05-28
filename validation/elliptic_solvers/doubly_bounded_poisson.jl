@@ -25,9 +25,8 @@ Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
 r = CenterField(grid)
 ϕ_fft = CenterField(grid)
-ϕ_hd = CenterField(grid)
 
-r₀(x, y, z) = (x^2 + y^2) > 1 ? 1 : 0 #exp(-x^2 - y^2)
+r₀(x, y, z) = (x^2 + y^2) < 1 ? 1 : 0 #exp(-x^2 - y^2)
 set!(r, r₀)
 fill_halo_regions!(r, grid.architecture)
 
@@ -45,7 +44,7 @@ Ax = [Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i
 Ay = [Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 Az = [Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 
-hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid, preconditioner_method = nothing)
+hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid)
 
 arch = architecture(grid)
 
@@ -56,6 +55,7 @@ r_hd = arch_array(arch, interior(r)[:])
 @info "Solving the Poisson equation with a heptadiagonal iterative solver..."
 @time solve!(solution, hd_solver, r_hd, 1.0)
 
+ϕ_hd = CenterField(grid)
 interior(ϕ_hd) .= reshape(solution, Nx, Ny, Nz)
 
 # Create matrix
@@ -66,7 +66,7 @@ A = arch_sparse_matrix(arch, matrix_constructors)
 b = collect(reshape(interior(r), (Nx*Ny, )))
 
 @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
-@time ϕ_mg = solve(A, b, RugeStubenAMG(), maxiter=1000, verbose=true)
+@time ϕ_mg = solve(A, b, RugeStubenAMG(), maxiter=100, verbose=true)
 
 fig = Figure(resolution=(1600, 1000))
 
