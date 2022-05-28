@@ -135,19 +135,13 @@ using CairoMakie
 
 fig = Figure(resolution=(800, 900))
 
-lines(fig[1, 1], grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny];
-                 axis = (xlabel = "y (m)",
-                         ylabel = "y-spacing (m)",
-                         limits = (nothing, (0, 250))))
+ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250))
+lines!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
+scatter!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
 
-scatter!(fig[1, 1], grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
-
-lines(fig[2, 1], grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz];
-                 axis = (xlabel = "z-spacing (m)",
-                         ylabel = "z (m)",
-                         limits = ((0, 50), nothing)))
-
-scatter!(fig[2, 1], grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing)))
+lines!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+scatter!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
 save("plot_stretched_grid.svg"); nothing # hide
 ```
