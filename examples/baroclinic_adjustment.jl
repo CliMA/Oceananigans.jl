@@ -253,7 +253,7 @@ zonal_slice_displacement = 1.2
 
 ax = Axis3(fig[2, 1], aspect=(1, 1, 1/5),
            xlabel="x (km)", ylabel="y (km)", zlabel="z (m)",
-           limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end]))
+           limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end])),
            elevation = 0.45, azimuth = 6.8,
            xspinesvisible = false, zgridvisible=false,
            protrusions=40,
