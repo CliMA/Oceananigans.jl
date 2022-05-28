@@ -219,7 +219,7 @@ b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
                   bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
                   top    = FieldTimeSeries(slice_filenames.top, "b"))
 
-b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
+avg_b_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
 
 nothing #hide
 
@@ -274,32 +274,27 @@ b_slices = (east   = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
             bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
             top    = @lift(interior(b_timeserieses.top[$n], :, :, 1)))
 
+avg_b = @lift interior(avg_b_timeseries[$n], 1, :, :)
+
 clims = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
+
 kwargs = (colorrange = clims, colormap = :deep)
 
-surface!(ax, x_yz_east, y_yz, z_yz; color=b_slices.east, kwargs...)
-surface!(ax, x_xz, y_xz_north, z_xz; color=b_slices.north, kwargs...)
-surface!(ax, x_xy, y_xy, z_xy_bottom ; color=b_slices.bottom, kwargs...)
-surface!(ax, x_xy, y_xy, z_xy_top; color=b_slices.top, kwargs...)
+surface!(ax, x_yz_east, y_yz, z_yz;    color = b_slices.east, kwargs...)
+surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
+surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
+surface!(ax, x_xy, y_xy, z_xy_top;     color = b_slices.top, kwargs...)
 
-b_avg = @lift interior(b_avg_timeseries[$n], 1, :, :)
+sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz; color = b_avg, kwargs...)
 
-sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz;
-              color = b_avg,
-              colorrange = clims_b,
-              colormap = :deep)
-
-contour!(ax, y, z, b_avg;
-         transformation = (:yz, zonal_slice_displacement * x[end]),
-         levels = 15, 
-         linewidth = 2,
-         color = :black)
+contour!(ax, y, z, avg_b; transformation = (:yz, zonal_slice_displacement * x[end]),
+         levels = 15, linewidth = 2, color = :black)
 
 Colorbar(fig[2, 2], sf, label = "m s⁻²", height = 200, tellheight=false)
 
 # Finally, we add a figure title with the time of the snapshot and then record a movie.
 
-times = b_avg_timeseries.times
+times = avg_b_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
