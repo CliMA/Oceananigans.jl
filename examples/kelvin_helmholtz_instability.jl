@@ -1,4 +1,3 @@
-
 # # Stratified Kelvin-Helmholtz instability
 #
 # ## Install dependencies

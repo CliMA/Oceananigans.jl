@@ -26,6 +26,7 @@ docs/src/generated
 
 # Plots
 *.png
+*.svg
 *.gif
 *.mp4
 
