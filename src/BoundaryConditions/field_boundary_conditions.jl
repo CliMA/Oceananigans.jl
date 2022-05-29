@@ -148,9 +148,10 @@ end
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition)
         msg = """
-              $field_name was assigned an immersed $ibc, but this is not supported on
+              $field_name was assigned an immersed $ibc, but
               $(summary(grid))
-              The immersed boundary condition on $field_name will have no effect.
+              is not an ImmersedBoundaryGrid. The immersed boundary condition
+              on $field_name will have no effect.
           """
 
         @warn msg

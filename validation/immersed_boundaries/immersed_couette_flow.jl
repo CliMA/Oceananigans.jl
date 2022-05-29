@@ -8,19 +8,22 @@ using GLMakie
 Nz = 32
 Lz = 1
 
-underlying_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bounded))
+grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bounded))
 
 @inline bottom_height(x, y) = 0.1
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+# Uncomment to run without immersed boundary grid
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
 
 c_immersed_bc = ValueBoundaryCondition(1)
+c_bottom_bc = ValueBoundaryCondition(1)
 c_top_bc = ValueBoundaryCondition(-1)
-c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc, top=c_top_bc)
+c_bcs = FieldBoundaryConditions(immersed=c_immersed_bc, top=c_top_bc, bottom=c_bottom_bc)
 
 u_drag_func(i, j, k, grid, clock, model_fields) = - 1e-3 * model_fields.u[i, j, k]^2
 u_immersed_bc = ValueBoundaryCondition(-1)
+u_bottom_bc = ValueBoundaryCondition(-1)
 u_top_bc = ValueBoundaryCondition(1)
-u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
+u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc, bottom=u_bottom_bc)
 
 model = NonhydrostaticModel(; grid,
                             advection = nothing,
@@ -53,6 +56,10 @@ z = znodes(ut)
 fig = Figure()
 axc = Axis(fig[2, 1], xlabel="c", ylabel="z")
 axu = Axis(fig[2, 2], xlabel="u", ylabel="z")
+
+xlims!(axc, -1.1, 1.1)
+xlims!(axu, -1.1, 1.1)
+
 slider = Slider(fig[3, 1:2], range=1:Nt, startvalue=1)
 n = slider.value
 

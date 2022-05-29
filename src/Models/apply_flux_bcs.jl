@@ -5,13 +5,18 @@ using Oceananigans.Architectures: AbstractArchitecture, architecture, device
 using Oceananigans.BoundaryConditions: west_flux, east_flux, south_flux, north_flux, bottom_flux, top_flux
 using Oceananigans.BoundaryConditions: ZFBC
 using Oceananigans.Fields: Field
-using Oceananigans.Grids: AbstractGrid, flip, XBoundedGrid, YBoundedGrid, ZBoundedGrid
+using Oceananigans.Grids: AbstractGrid, flip
 using Oceananigans.Operators: idxᴿ, idxᴸ, Ax, Ay, Az, volume
 using Oceananigans.Utils: work_layout, launch!
 
 using KernelAbstractions: @kernel, @index, MultiEvent
 
 import Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
+
+const SortaBounded = Union{Bounded, LeftConnected, RightConnected}
+const XBoundedGrid = AbstractGrid{<:Any, <:SortaBounded}
+const YBoundedGrid = AbstractGrid{<:Any, <:Any, <:SortaBounded}
+const ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:SortaBounded}
 
 # Unpack
 # args has to be (closure, diffusivity_fields, id, clock, model_fields) --- see below.
@@ -30,7 +35,9 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the west and east boundary.
 """
 apply_x_bcs!(Gc, grid::XBoundedGrid, dependencies, c, west_bc, east_bc, args...) =
-    launch!(architecture(grid), grid, :yz, _apply_x_bcs!, Gc, grid, west_bc, east_bc, instantiated_location(c), c, args...; dependencies)
+    launch!(architecture(grid), grid, :yz,
+            _apply_x_bcs!, Gc, grid, west_bc, east_bc, instantiated_location(c), c, args...;
+            dependencies)
 
 """
     apply_y_bcs!(Gc, grid::YBoundedGrid, dependencies, c, south_bc, north_bc, args...)
@@ -39,7 +46,9 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the south and north boundary.
 """
 apply_y_bcs!(Gc, grid::YBoundedGrid, dependencies, c, south_bc, north_bc, args...) =
-    launch!(architecture(grid), grid, :xz, _apply_y_bcs!, Gc, grid, south_bc, north_bc, instantiated_location(c), c, args...; dependencies)
+    launch!(architecture(grid), grid, :xz,
+            _apply_y_bcs!, Gc, grid, south_bc, north_bc, instantiated_location(c), c, args...;
+            dependencies)
 
 """
     apply_z_bcs!(Gc, grid::ZBoundedGrid, c, bottom_bc, top_bc, dep, args...)
@@ -48,7 +57,9 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the top and bottom boundary.
 """
 apply_z_bcs!(Gc, grid::ZBoundedGrid, dependencies, c, bottom_bc, top_bc, args...) =
-    launch!(architecture(grid), grid, :xy, _apply_z_bcs!, Gc, grid, bottom_bc, top_bc, instantiated_location(c), c, args...; dependencies)
+    launch!(architecture(grid), grid, :xy,
+            _apply_z_bcs!, Gc, grid, bottom_bc, top_bc, instantiated_location(c), c, args...;
+            dependencies)
 
 """
     _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
@@ -61,15 +72,14 @@ Apply a west and/or east boundary condition to variable `c`.
     Nx = grid.Nx
     LX, LY, LZ = loc
 
-    # West flux across i = 1
-    qᵂ = west_flux(1, j, k, grid, west_bc, loc, c, closure, K, id, clock, fields)
-    Axᵂ =       Ax(1, j, k, grid, LX, LY, LZ)
-    Vᵂ  =   volume(1, j, k, grid, LX, LY, LZ)
+    qᵂ = west_flux(1,  j, k, grid, west_bc, loc, c, closure, K, id, clock, fields)
+    qᴱ = east_flux(Nx, j, k, grid, east_bc, loc, c, closure, K, id, clock, fields)
 
-    # Flux across i = Nx
-    qᴱ = east_flux(Nx+1, j, k, grid, east_bc, loc, c, closure, K, id, clock, fields)
-    Axᴱ =       Ax(Nx+1, j, k, grid, LX, LY, LZ)
-    Vᴱ  =   volume(Nx,   j, k, grid, LX, LY, LZ)
+    Axᵂ = Ax(1,    j, k, grid, flip(LX), LY, LZ)
+    Axᴱ = Ax(Nx+1, j, k, grid, flip(LX), LY, LZ)
+
+    Vᵂ  = volume(1,  j, k, grid, LX, LY, LZ)
+    Vᴱ  = volume(Nx, j, k, grid, LX, LY, LZ)
 
     @inbounds Gc[1,  j, k] += qᵂ * Axᵂ / Vᵂ
     @inbounds Gc[Nx, j, k] -= qᴱ * Axᴱ / Vᴱ
@@ -86,15 +96,14 @@ Apply a south and/or north boundary condition to variable `c`.
     Ny = grid.Ny
     LX, LY, LZ = loc
 
-    # Flux across j = 1
-    qˢ  = south_flux(i, 1, k, grid, south_bc, loc, c, closure, K, id, clock, fields)
-    Ayˢ =         Ay(i, 1, k, grid, LX, LY, LZ)
-    Vˢ  =     volume(i, 1, k, grid, LX, LY, LZ)
+    qˢ  = south_flux(i, 1,  k, grid, south_bc, loc, c, closure, K, id, clock, fields)
+    qᴺ  = north_flux(i, Ny, k, grid, north_bc, loc, c, closure, K, id, clock, fields)
 
-    # Flux across j = Ny
-    qᴺ  = north_flux(i, Ny+1, k, grid, north_bc, loc, c, closure, K, id, clock, fields)
-    Ayᴺ =         Ay(i, Ny+1, k, grid, LX, LY, LZ)
-    Vᴺ  =     volume(i, Ny,   k, grid, LX, LY, LZ)
+    Ayˢ = Ay(i, 1,    k, grid, LX, flip(LY), LZ)
+    Ayᴺ = Ay(i, Ny+1, k, grid, LX, flip(LY), LZ)
+
+    Vˢ  = volume(i,     1, k, grid, LX, LY, LZ)
+    Vᴺ  = volume(i, Ny, k, grid, LX, LY, LZ)
 
     @inbounds Gc[i, 1,  k] += qˢ * Ayˢ / Vˢ
     @inbounds Gc[i, Ny, k] -= qᴺ * Ayᴺ / Vᴺ 
@@ -111,15 +120,14 @@ Apply a top and/or bottom boundary condition to variable `c`.
     Nz = grid.Nz
     LX, LY, LZ = loc
 
-    # Flux across southern domain boundary
-    qᴮ  = bottom_flux(i, j, 1, grid, bottom_bc, loc, c, closure, K, id, clock, fields)
-    Azᴮ =          Az(i, j, 1, grid, LX, LY, LZ)
-    Vᴮ  =      volume(i, j, 1, grid, LX, LY, LZ)
+    qᴮ  = bottom_flux(i, j, 1,  grid, bottom_bc, loc, c, closure, K, id, clock, fields)
+    qᵀ  =    top_flux(i, j, Nz, grid, top_bc,    loc, c, closure, K, id, clock, fields)
 
-    # Flux across northern domain boundary
-    qᵀ  = top_flux(i, j, Nz+1, grid, top_bc, loc, c, closure, K, id, clock, fields)
-    Azᵀ =       Ay(i, j, Nz+1, grid, LX, LY, LZ)
-    Vᵀ  =   volume(i, j, Nz,   grid, LX, LY, LZ)
+    Azᴮ = Az(i, j, 1,    grid, LX, LY, flip(LZ))
+    Azᵀ = Az(i, j, Nz+1, grid, LX, LY, flip(LZ))
+
+    Vᴮ  = volume(i, j, 1,  grid, LX, LY, LZ)
+    Vᵀ  = volume(i, j, Nz, grid, LX, LY, LZ)
 
     @inbounds Gc[i, j, 1]  += qᴮ * Azᴮ / Vᴮ
     @inbounds Gc[i, j, Nz] -= qᵀ * Azᵀ / Vᵀ 
@@ -145,7 +153,7 @@ function calculate_boundary_tendency_contributions!(model)
 
     Φ = prognostic_fields(model)
     Nfields = length(Φ)
-    ids = [q > 3 ? Val(q) : nothing for q = 1:Nfields]
+    ids = [q > 3 ? Val(q-3) : nothing for q = 1:Nfields]
     events = Any[barrier for _ = 1:Nfields]
 
     if grid isa XBoundedGrid

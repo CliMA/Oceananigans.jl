@@ -63,57 +63,23 @@ function calculate_interior_tendency_contributions!(model)
 
     barrier = Event(device(arch))
 
+    momentum_kernel_args = (advection,
+                            coriolis,
+                            stokes_drift,
+                            closure,
+                            buoyancy,
+                            background_fields,
+                            velocities,
+                            tracers,
+                            diffusivities,
+                            forcings,
+                            hydrostatic_pressure,
+                            clock)
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    u_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
-
-    Gv_event = calculate_Gv_kernel!(tendencies.v,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    v_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
-
-    Gw_event = calculate_Gw_kernel!(tendencies.w,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    w_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    diffusivities,
-                                    forcings,
-                                    clock,
-                                    dependencies=barrier)
-
+    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, u_immersed_bc, momentum_kernel_args...; dependencies=barrier)
+    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, v_immersed_bc, momentum_kernel_args...; dependencies=barrier)
+    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, w_immersed_bc, momentum_kernel_args...; dependencies=barrier)
+    
     events = [Gu_event, Gv_event, Gw_event]
 
     for tracer_index in 1:length(tracers)
@@ -123,10 +89,10 @@ function calculate_interior_tendency_contributions!(model)
 
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
+                                        c_immersed_bc,
                                         Val(tracer_index),
                                         advection,
                                         closure,
-                                        c_immersed_bc,
                                         buoyancy,
                                         background_fields,
                                         velocities,
