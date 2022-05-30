@@ -109,7 +109,7 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3,
-		 	             formulation = ConservativeFormulation())
+                         formulation = ConservativeFormulation())
 
     arch = architecture(grid)
 
