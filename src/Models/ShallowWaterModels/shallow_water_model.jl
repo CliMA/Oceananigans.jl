@@ -197,4 +197,9 @@ validate_momentum_advection(momentum_advection, formulation) = momentum_advectio
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) = throw(ArgumentError("you have to use VectorInvariant advection for VectorInvariantFormulation"))
 validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::VectorInvariantFormulation) = momentum_advection
 
+formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
+
+shallow_water_velocities(model::ShallowWaterModel) = formulation(model) isa VectorInvariantFormulation ? 
+                                                     (model.solution.u, model.solution.v) :
+                                                     (model.solution.uh / model.solution.h, model.solution.vh / model.solution.h) 
