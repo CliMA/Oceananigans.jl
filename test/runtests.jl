@@ -144,6 +144,10 @@ include("dependencies_for_runtests.jl")
         include("test_hydrostatic_regression.jl")
     end
 
+    if group == :shallowwater_regression || group == :all
+        include("test_shallow_water_regression.jl")
+    end
+
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
