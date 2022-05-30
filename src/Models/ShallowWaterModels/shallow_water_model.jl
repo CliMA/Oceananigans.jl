@@ -77,8 +77,11 @@ Keyword arguments
             of the grid.
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`. By default
-    `UpwindBiasedFifthOrder()` is used.
+  - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
+    Default: `UpwindBiasedFifthOrder()`.
+  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO5()`.
+  - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
+    `WENO5()`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
@@ -92,7 +95,7 @@ Keyword arguments
                    `:RungeKutta3` (default).
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
-                   Non-linear terms (`VectorInvariantFormulation()`).
+                   non-linear terms (`VectorInvariantFormulation()`).
 """
 function ShallowWaterModel(;
                            grid,
@@ -109,7 +112,7 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3,
-		 	             formulation = ConservativeFormulation())
+                         formulation = ConservativeFormulation())
 
     arch = architecture(grid)
 
