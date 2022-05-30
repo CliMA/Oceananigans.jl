@@ -1,4 +1,4 @@
-using Oceananigans.Operators: interpolate
+using Oceananigans.Operators: ℑxyz
 using Oceananigans.Utils: instantiate
 
 """
@@ -57,13 +57,13 @@ const UnlocalizedUnparametrizedDDF   = DiscreteDiffusionFunction{<:Nothing, <:No
 @inline function getdiffusion(dd::DiscreteDiffusionFunction{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
         from = (LX(), LY(), LZ())
-        return interpolate(i, j, k, grid, from, location, dd.func, clock, fields, dd.parameters)
+        return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields, dd.parameters)
 end
 
 @inline function getdiffusion(dd::UnparameterizedDDF{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
         from = (LX(), LY(), LZ())
-    return interpolate(i, j, k, grid, from, location, dd.func, clock, fields)
+    return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields)
 end
 
 @inline getdiffusion(dd::UnlocalizedDDF, i, j, k, grid, location, clock, fields) = 
