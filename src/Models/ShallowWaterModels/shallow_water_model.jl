@@ -92,7 +92,7 @@ Keyword arguments
                    `:RungeKutta3` (default).
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
-                   Non-linear terms (`VectorInvariantFormulation()`).
+                   non-linear terms (`VectorInvariantFormulation()`).
 """
 function ShallowWaterModel(;
                            grid,
