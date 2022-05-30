@@ -84,7 +84,7 @@ end
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
     m   = min(p̃, c₊ᴸ, c₋ᴿ) 
-    θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), 1.0)
+    θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ

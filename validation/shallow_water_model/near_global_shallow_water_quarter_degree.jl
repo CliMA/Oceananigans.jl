@@ -10,7 +10,8 @@ using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, inactive_node, peripheral_node
+using Oceananigans.Grids: boundary_node, inactive_node, peripheral_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary 
 using CUDA: @allowscalar, device!
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -26,6 +27,8 @@ using Oceananigans: prognostic_fields
     return r
 end
 
+device!(2)
+
 #####
 ##### Grid
 #####
@@ -39,11 +42,11 @@ latitude = (-75, 75)
 Nx = 1440
 Ny = 600
 
-const Nyears  = 1
+const Nyears  = 2
 const Nmonths = 12
 const thirty_days = 30days
 
-output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)__fine"
+output_prefix = "near_global_shallow_water_$(Nx)_$(Ny)"
 pickup_file   = false
 
 #####
@@ -56,9 +59,7 @@ using DataDeps
 
 path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
 
-datanames = ["z_faces-50-levels",
-             "bathymetry-1440x600",
-             "tau_x-1440x600-latitude-75",
+datanames = ["tau_x-1440x600-latitude-75",
              "tau_y-1440x600-latitude-75"]
 
 dh = DataDep("quarter_degree_near_global_lat_lon",
@@ -70,7 +71,7 @@ DataDeps.register(dh)
 
 datadep"quarter_degree_near_global_lat_lon"
 
-files = [:file_z_faces, :file_bathymetry, :file_tau_x, :file_tau_y]
+files = [:file_tau_x, :file_tau_y]
 for (data, file) in zip(datanames, files)
     datadep_path = @datadep_str "quarter_degree_near_global_lat_lon/" * data * ".jld2"
     @eval $file = jldopen($datadep_path)
@@ -87,14 +88,13 @@ end
 
 
 smoothed_bathymetry = jldopen("smooth-bathymetry.jld2")
-
 bat = smoothed_bathymetry["bathymetry"]
-# bat = file_bathymetry["bathymetry"]
+
 bat[ bat .> 0 ] .= 1000.0
 bat .-= 10.0
 
-boundary   = Int.(bat .> 0)
-bat = arch_array(arch, - bat)
+boundary = Int.(bat .> 0)
+bat = -bat
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
@@ -116,6 +116,8 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
 @inline next_time_index(time, tot_months)        = mod(unsafe_trunc(Int32, time / thirty_days) + 1, tot_months) + 1
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+
 @inline function boundary_stress_u(i, j, k, grid, clock, fields, p)
     time = clock.time
     n₁ = current_time_index(time, Nmonths)
@@ -126,8 +128,9 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(boundary))
         τ₂ = p.τ[i, j, n₂]
     end
 
-    if fields.h[i, j, k] > 0
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / fields.h[i, j, k]
+    h_int = ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
+    if h_int > 0
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / h_int
     else
         return 0.0
     end
@@ -142,8 +145,10 @@ end
         τ₁ = p.τ[i, j, n₁]
         τ₂ = p.τ[i, j, n₂]
     end
-    if fields.h[i, j, k] > 0
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / fields.h[i, j, k]
+
+    h_int =  ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
+    if h_int > 0
+        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / h_int
     else
         return 0.0
     end
@@ -159,7 +164,6 @@ using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
-
 νh = 0e+1
 
 using Oceananigans.Operators: Δx, Δy
@@ -173,11 +177,11 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
                           momentum_advection = WENO5(vector_invariant = VorticityStencil()),
+                          mass_advection = WENO5(bounds = (0, Inf)),
+                          bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
-            			  bathymetry = bat,
-                          #closure = (horizontal_diffusivity, biharmonic_viscosity),
-			  formulation = VectorInvariantFormulation())
+			              formulation = VectorInvariantFormulation())
 
 #####
 ##### Initial condition:
@@ -185,15 +189,17 @@ model = ShallowWaterModel(grid = grid,
 
 h_init = bat
 set!(model, h=h_init)
+fill_halo_regions!(model.solution.h)
+
 @info "model initialized"
 
 #####
 ##### Simulation setup
 #####
 
-Δt = 20seconds #1minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 20seconds 
 
-simulation = Simulation(model, Δt = Δt, stop_time = 1years)
+simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
