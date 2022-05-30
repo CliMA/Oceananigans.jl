@@ -15,9 +15,7 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
-
-@inline function visualize(field, lev, dims)
+@inline function visualize(field, lev, dims) 
     (dims == 1) && (idx = (lev, :, :))
     (dims == 2) && (idx = (:, lev, :))
     (dims == 3) && (idx = (:, :, lev))
@@ -39,14 +37,14 @@ latitude = (-75, 75)
 # 0.25 degree resolution
 Nx = 1440
 Ny = 600
-Nz = 1
+Nz = 48
 
 const Nyears  = 1
-const Nmonths = 12
+const Nmonths = 12 
 const thirty_days = 30days
 
 output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_fine"
-pickup_file   = false
+pickup_file   = false 
 
 #####
 ##### Load forcing files and inital conditions from ECCO version 4
@@ -82,17 +80,23 @@ for (data, file) in zip(datanames, files)
 end
 
 bathymetry = file_bathymetry["bathymetry"]
-bathymetry[bathymetry .< 0] .= -10e3
 
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
+T★ = zeros(Nx, Ny, Nmonths)
+S★ = zeros(Nx, Ny, Nmonths)
 
 # Files contain 1 year (1992) of 12 monthly averages
 τˣ = file_tau_x["field"] ./ reference_density
 τʸ = file_tau_y["field"] ./ reference_density
+T★ = file_temp["field"] 
+S★ = file_salt["field"] 
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 bathymetry = arch_array(arch, bathymetry)
+
+# Stretched faces taken from ECCO Version 4 (50 levels in the vertical)
+z_faces = file_z_faces["z_faces"][3:end]
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
@@ -100,8 +104,7 @@ bathymetry = arch_array(arch, bathymetry)
                                               longitude = (-180, 180),
                                               latitude = latitude,
                                               halo = (3, 3, 3),
-                                              z = (-10e3, 0),
-                                              #z = z_faces,
+                                              z = z_faces,
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
@@ -109,8 +112,30 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 τˣ = arch_array(arch, - τˣ)
 τʸ = arch_array(arch, - τʸ)
 
+target_sea_surface_temperature = T★ = arch_array(arch, T★)
+target_sea_surface_salinity    = S★ = arch_array(arch, S★)
+
 #####
-##### Boundary conditions / time-dependent fluxes
+##### Physics and model setup
+#####
+
+νh = 1e+1
+νz = 5e-3
+κh = 1e+1
+κz = 1e-4
+
+using Oceananigans.Operators: Δx, Δy
+using Oceananigans.TurbulenceClosures
+
+@inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / 5days
+
+horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
+vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
+convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
+biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
+                                                    
+#####
+##### Boundary conditions / time-dependent fluxes 
 #####
 
 @inline current_time_index(time, tot_months)     = mod(unsafe_trunc(Int32, time / thirty_days), tot_months) + 1
@@ -143,7 +168,7 @@ v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 μ = 0.001 # ms⁻¹
 
 @inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(Face(), Center(), Center(), i, j, k-1, grid) & !inactive_node(Face(), Center(), Center(), i, j, k, grid))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(Center(), Face(), Center(), i, j, k-1, grid) & !inactive_node(Center(), Face(), Center(), i, j, k, grid))
+@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(Center(), Face(), Center(), i, j, k-1, grid) & !inactive_node(Center(), Face(), Center(), i, j, k, grid))                                
 
 # Keep a constant linear drag parameter independent on vertical level
 @inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
@@ -155,8 +180,52 @@ Fv = Forcing(v_immersed_bottom_drag, discrete_form = true, parameters = μ)
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
 
+@inline function surface_temperature_relaxation(i, j, grid, clock, fields, p)
+    time = clock.time
+
+    n₁ = current_time_index(time, Nmonths)
+    n₂ = next_time_index(time, Nmonths)
+
+    @inbounds begin
+        T★₁ = p.T★[i, j, n₁]
+        T★₂ = p.T★[i, j, n₂]
+        T_surface = fields.T[i, j, grid.Nz]
+    end
+
+    T★ = cyclic_interpolate(T★₁, T★₂, time)
+                                
+    return p.λ * (T_surface - T★)
+end
+
+@inline function surface_salinity_relaxation(i, j, grid, clock, fields, p)
+    time = clock.time
+
+    n₁ = current_time_index(time, Nmonths)
+    n₂ = next_time_index(time, Nmonths)
+
+    @inbounds begin
+        S★₁ = p.S★[i, j, n₁]
+        S★₂ = p.S★[i, j, n₂]
+        S_surface = fields.S[i, j, grid.Nz]
+    end
+
+    S★ = cyclic_interpolate(S★₁, S★₂, time)
+                                
+    return p.λ * (S_surface - S★)
+end
+
+T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
+                                                discrete_form = true,
+                                                parameters = (λ = Δz_top/7days, T★ = target_sea_surface_temperature))
+
+S_surface_relaxation_bc = FluxBoundaryCondition(surface_salinity_relaxation,
+                                                discrete_form = true,
+                                                parameters = (λ = Δz_top/7days, S★ = target_sea_surface_salinity))
+
 u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc)
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
+T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
+S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 # free_surface = ExplicitFreeSurface()
@@ -167,8 +236,12 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                    buoyancy = nothing,
-                                    boundary_conditions = (u=u_bcs, v=v_bcs))
+                                    buoyancy = buoyancy,
+                                    tracers = (:T, :S),
+                                    closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
+                                    boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
+                                    forcing = (u=Fu, v=Fv),
+                                    tracer_advection = WENO5(underlying_grid))
 
 #####
 ##### Initial condition:
@@ -176,6 +249,16 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 
 u, v, w = model.velocities
 η = model.free_surface.η
+T = model.tracers.T
+S = model.tracers.S
+
+@info "Reading initial conditions"
+T_init = file_init["T"]
+S_init = file_init["S"]
+
+set!(model, T=T_init, S=S_init)
+fill_halo_regions!(T)
+fill_halo_regions!(S)
 
 @info "model initialized"
 
@@ -183,11 +266,10 @@ u, v, w = model.velocities
 ##### Simulation setup
 #####
 
-ζ = VerticalVorticityField(model)
-compute!(ζ)
-
 Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
+
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+
 start_time = [time_ns()]
 
 using Oceananigans.Utils 
@@ -211,22 +293,25 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 u, v, w = model.velocities
+T = model.tracers.T
+S = model.tracers.S
 η = model.free_surface.η
 
-output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
-save_interval = 1days
+output_fields = (; u, v, T, S, η)
+save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, output_fields, #(; u, v, T, S, η),
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
                                                               schedule = TimeInterval(save_interval),
                                                               filename = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
                                                               overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1day),
+                                                        schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
                                                         overwrite_existing = true)
 
+# Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
 
 run!(simulation, pickup = pickup_file)
@@ -237,3 +322,5 @@ run!(simulation, pickup = pickup_file)
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """
+
+

@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots # to avoid capturing precompilation output by Literate
+using CairoMakie # to avoid capturing precompilation output by Literate
 using Glob
 
 using Oceananigans
@@ -18,12 +18,6 @@ using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
-
-# Gotta set this environment variable when using the GR run-time on a remote machine.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-
-ENV["GKSwstype"] = "100"
 
 #####
 ##### Generate examples

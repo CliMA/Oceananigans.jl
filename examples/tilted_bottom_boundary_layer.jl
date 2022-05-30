@@ -65,6 +65,8 @@ lines(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 scatter!(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
+current_figure() # hide
+
 # ## Tilting the domain
 #
 # We use a domain that's tilted with respect to gravity by
@@ -169,13 +171,13 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 u, v, w = model.velocities
 b = model.tracers.b
-B = model.background_fields.tracers.b
+B∞ = model.background_fields.tracers.b
 
-total_b = b + B
-total_v = v + V∞
-ω_y = ∂z(u) - ∂x(w)
+B = b + B∞
+V = v + V∞
+ωy = ∂z(u) - ∂x(w)
 
-outputs = (; u, total_v, w, total_b, ω_y)
+outputs = (; u, V, w, B, ωy)
 
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
                                                         filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
@@ -193,42 +195,38 @@ run!(simulation)
 
 using NCDatasets, CairoMakie
 
-xω, zω = xnodes(ω_y), znodes(ω_y)
-xv, zv = xnodes(total_v), znodes(total_v)
+xω, yω, zω = nodes(ωy)
+xv, yv, zv = nodes(V)
 
 # Read in the simulation's `output_writer` for the two-dimensional fields and then create an
 # animation showing the ``y``-component of vorticity.
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-times = collect(ds["time"])
-
-n = Observable(1)
-
-ω_y = @lift ds["ω_y"][:, 1, :, $n]
-total_v = @lift ds["total_v"][:, 1, :, $n]
-
-title = @lift "t = " * string(prettytime(times[$n]))
-
-ω_max = @lift maximum(abs, ds["ω_y"][:, 1, :, $n])
-v_max = @lift maximum(abs, ds["total_v"][:, 1, :, $n])
-
 fig = Figure(resolution = (800, 440))
 
-axis_kwargs = (xlabel = "along-slope distance",
-               ylabel = "across-slope distance",
-               aspect = AxisAspect(1),
+axis_kwargs = (xlabel = "Along-slope distance",
+               ylabel = "Across-slope distance",
+               aspect = AxisAspect(Lx / Lz),
                limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
-ax_v = Axis(fig[3, 1]; title = "along-slope velocity", axis_kwargs...)
+ax_v = Axis(fig[3, 1]; title = "Along-slope velocity", axis_kwargs...)
 
-hm_ω = heatmap!(ax_ω, xω, zω, ω_y, colorrange = (-0.015, +0.015), colormap = :balance)
+n = Observable(1)
+
+ωy = @lift ds["ωy"][:, 1, :, $n]
+hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "m s⁻¹")
 
-hm_v = heatmap!(ax_v, xv, zv, total_v, colorrange = (-V∞, +V∞), colormap = :balance)
+V = @lift ds["V"][:, 1, :, $n]
+V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
+
+hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
+times = collect(ds["time"])
+title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
 # Finally, we record a movie.
@@ -236,13 +234,14 @@ fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
 # ![](tilted_bottom_boundary_layer.mp4)
 
-# It's always good practice to close the NetCDF files when we are done.
+# Don't forget to close the NetCDF file!
 
 close(ds)
