@@ -8,11 +8,11 @@ but with varying fluid depth ``h(x, y, t)`` and whose velocity only varies in th
 `VectorInvariantFormulation()` and `ConservativeFormulation()`.
 
 The `VectorInvariantFormulation` uses the velocity ``\boldsymbol{u}=(u, v)`` and the total depth of the fluid, ``h``,
-as the dynamical variables. Furthermore, it utilizes the identity:
+as the dynamical variables. Furthermore, the advective terms are rewritten via the vector identity:
 ```math
-\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{u} = (\boldsymbol{\nabla} \times \boldsymbol{u}) \times \boldsymbol{u} - \boldsymbol{\nabla} \left( \frac1{2} \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{u}) \, ,
+\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{u} = (\boldsymbol{\nabla} \times \boldsymbol{u}) \times \boldsymbol{u} + \boldsymbol{\nabla} \left( \frac1{2} \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{u}) \, .
 ```
-and thus, the shallow water dynamics in vector-invariant form become:
+Thus, the shallow water dynamics in vector-invariant form become:
 
 ```math
 \begin{align}
