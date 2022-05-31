@@ -105,8 +105,18 @@ end
 
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
+
+    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
     Nξ = length(ξ)
-    Nξ != (N + 1) && throw(ArgumentError("length($dir) = $Nξ must be equal to N$dir+1=$(N+1), where N$dir is passed to `size`."))
+    N⁺¹ = N + 1
+    if Nξ < N⁺¹
+        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $N!"))
+    elseif Nξ > N⁺¹
+        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
+              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
+        @warn msg
+    end
+
     return ξ
 end
 
