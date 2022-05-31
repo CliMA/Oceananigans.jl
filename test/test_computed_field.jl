@@ -547,9 +547,9 @@ for arch in archs
                 # If we're testing IBM on GPUs, some tests are broken. If not, all tests
                 # should pass
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    var"@test_excluding_gpu_ibm" = var"@test_broken"
+                    const var"@test_excluding_gpu_ibm" = var"@test_broken"
                 else
-                    var"@test_excluding_gpu_ibm" = var"@test"
+                    const var"@test_excluding_gpu_ibm" = var"@test"
                 end
 
                 computed_tke = Field(tke_ccc);
