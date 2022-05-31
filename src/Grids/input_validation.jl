@@ -65,7 +65,7 @@ end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
-function validate_dimension_specification(T, ξ, dir, size_dir, FT)
+function validate_dimension_specification(T, ξ, dir, N, FT)
 
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
@@ -103,17 +103,20 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
     return x, y, z
 end
 
-function validate_dimension_specification(T, ξ::AbstractVector, dir, size_dir, FT)
-    ξ_FT = FT.(ξ)
-    length(ξ_FT) != (size_dir + 1) && throw(ArgumentError("`length($dir)` must be equal to size passed to `size` argument."))
-    return ξ_FT
+function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
+    ξ = FT.(ξ)
+    Nξ = length(ξ)
+    Nξ != (N + 1) && throw(ArgumentError("length($dir) = $Nξ must be equal N$dir-1=$(N-1), where N$dir is passed to `size`."))
+    return ξ
 end
-validate_dimension_specification(T, ξ::Function,       dir, size_dir, FT) = ξ
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, size_dir, FT) = FT.((ξ[1], ξ[1]))
-validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, size_dir, FT) = FT.((ξ(1), ξ(1)))
-validate_dimension_specification(::Type{Flat}, ξ::Tuple, dir, size_dir, FT)  = FT.(ξ)
-validate_dimension_specification(::Type{Flat}, ::Nothing, dir, size_dir, FT) = FT.((0, 0))
-validate_dimension_specification(::Type{Flat}, ξ::Number, dir, size_dir, FT) = FT.((ξ, ξ))
+
+validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
+
+validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
+validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
+validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = FT.(ξ)
+validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = (zero(FT), zero(FT))
+validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = (FT(ξ), FT(ξ))
 
 default_horizontal_extent(T, extent) = (0, extent[i])
 default_vertical_extent(T, extent) = (-extent[3], 0)
