@@ -145,12 +145,13 @@ function FieldTimeSeries(path, name, backend::InMemory;
             domain = Dict()
             for (i, ξ) in enumerate((x, y, z))
                 if topo[i] !== Flat
-                    ξ = (x, y, z)[i]
                     if !(ξ isa Tuple)
-                        ξ = ξ[1:N[i]+1]
+                        chopped_ξ = ξ[1:N[i]+1]
+                    else
+                        chopped_ξ = ξ
                     end
                     sξ = (:x, :y, :z)[i]
-                    domain[sξ] = ξ
+                    domain[sξ] = chopped_ξ
                 end
             end
 
