@@ -155,7 +155,7 @@ end
 φ_cgmg = CenterField(grid)
 cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp)
 
-@info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver..."
+@info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver WITH algebraic multigrid as preconditioner..."
 @time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
 
 fill_halo_regions!(φ_cgmg)
@@ -190,7 +190,7 @@ Colorbar(fig[1, 4], hm_r)
 
 hm_fft = heatmap!(ax_φ_fft, interior(φ_fft, :, :, 1))
 Colorbar(fig[2, 2], hm_fft)
-hm_cg = heatmap!(ax_φ_cg, interior(φ_cg, :, :, 1), colorrange = cg_lims)
+hm_cg = heatmap!(ax_φ_cg, interior(φ_cg, :, :, 1))
 Colorbar(fig[2, 4], hm_cg)
 hm_mg = heatmap!(ax_φ_mg, interior(φ_mg, :, :, 1))
 Colorbar(fig[2, 6], hm_mg)
@@ -207,6 +207,3 @@ hm_∇²cgmg = heatmap!(ax_∇²φ_cgmg, reshape(∇²φ_cgmg, (Nx, Ny)))
 Colorbar(fig[3, 8], hm_∇²cgmg)
 
 display(fig)
-
-# fft_int = reshape(interior(φ_fft, :, :, 1), Nx*Ny)
-# @show b[1]/(A*fft_int)[1]
