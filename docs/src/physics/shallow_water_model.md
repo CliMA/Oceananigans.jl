@@ -34,7 +34,7 @@ The `ConservativeFormulation()` uses the volume transport along each direction `
 depth of the fluid ``h`` as the dynamical variables.  The shallow water dynamics in conservative form is:
 ```math
 \begin{align}
-  \partial_t (\boldsymbol{u} h) + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} \boldsymbol{u} h \right ) + \boldsymbol{f} \times (\boldsymbol{u} h) & = - g \boldsymbol{\nabla} \left ( \frac1{2} h^2 \right ) \, ,\\
+  \partial_t (\boldsymbol{u} h) + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} \boldsymbol{u} h \right ) + \boldsymbol{f} \times (\boldsymbol{u} h) & = - g \boldsymbol{\nabla} \left ( \frac1{2} h^2 + h b \right ) \, ,\\
   \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}
 ```
