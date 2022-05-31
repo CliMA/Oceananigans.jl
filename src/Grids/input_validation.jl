@@ -106,7 +106,7 @@ end
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
     Nξ = length(ξ)
-    Nξ != (N + 1) && throw(ArgumentError("length($dir) = $Nξ must be equal N$dir-1=$(N-1), where N$dir is passed to `size`."))
+    Nξ != (N + 1) && throw(ArgumentError("length($dir) = $Nξ must be equal N$dir+1=$(N+1), where N$dir is passed to `size`."))
     return ξ
 end
 

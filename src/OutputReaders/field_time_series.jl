@@ -123,7 +123,7 @@ function FieldTimeSeries(path, name, backend::InMemory;
     # This should be removed in a month or two (4/5/2022).
     grid = try
         on_architecture(architecture, grid)
-    catch err # Likely, the grid has CuArrays in it...
+    catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
             Nx = file["grid/Nx"]
             Ny = file["grid/Ny"]
@@ -139,9 +139,22 @@ function FieldTimeSeries(path, name, backend::InMemory;
             z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
             topo = topology(grid)
 
+            N = (Nx, Ny, Nz)
+
             # Reduce for Flat dimensions
-            domain = NamedTuple((:x, :y, :z)[i] => (x, y, z)[i] for i=1:3 if topo[i] !== Flat)
-            size = Tuple((Nx, Ny, Nz)[i] for i=1:3 if topo[i] !== Flat)
+            domain = Dict()
+            for (i, ξ) in enumerate((x, y, z))
+                if topo[i] !== Flat
+                    ξ = (x, y, z)[i]
+                    if !(ξ isa Tuple)
+                        ξ = ξ[1:N[i]+1]
+                    end
+                    sξ = (:x, :y, :z)[i]
+                    domain[sξ] = ξ
+                end
+            end
+
+            size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
             halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
 
             RectilinearGrid(architecture; size, halo, topology=topo, domain...)
