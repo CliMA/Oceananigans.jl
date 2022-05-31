@@ -42,11 +42,11 @@ pressure anomaly.
 `clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function u_velocity_tendency(i, j, k, grid,
+                                     u_immersed_bc,
                                      advection,
                                      coriolis,
                                      stokes_drift,
                                      closure,
-                                     u_immersed_bc,
                                      buoyancy,
                                      background_fields,
                                      velocities,
@@ -99,11 +99,11 @@ pressure anomaly.
 `clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function v_velocity_tendency(i, j, k, grid,
+                                     v_immersed_bc,
                                      advection,
                                      coriolis,
                                      stokes_drift,
                                      closure,
-                                     v_immersed_bc,
                                      buoyancy,
                                      background_fields,
                                      velocities,
@@ -154,17 +154,18 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 `clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function w_velocity_tendency(i, j, k, grid,
+                                     w_immersed_bc,
                                      advection,
                                      coriolis,
                                      stokes_drift,
                                      closure,
-                                     w_immersed_bc,
                                      buoyancy,
                                      background_fields,
                                      velocities,
                                      tracers,
                                      diffusivities,
                                      forcings,
+                                     hydrostatic_pressure, # not used
                                      clock)
 
     model_fields = merge(velocities, tracers)
@@ -207,10 +208,10 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 `clock` keeps track of `clock.time` and `clock.iteration`.
 """
 @inline function tracer_tendency(i, j, k, grid,
+                                 c_immersed_bc,
                                  val_tracer_index::Val{tracer_index},
                                  advection,
                                  closure,
-                                 c_immersed_bc,
                                  buoyancy,
                                  background_fields,
                                  velocities,

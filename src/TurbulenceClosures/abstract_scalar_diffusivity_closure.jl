@@ -262,6 +262,10 @@ end
 
 const VBCorGBC = Union{VBC, GBC}
 
+# TODO: How do we write this code to support both VBC and GBC _arrays or functions_
+# for both immersed and non-immersed boundary conditions? In the immersed case we need `getbc(bc, i, j, k, ...)`,
+# in the non-immersed case we either need `getbc(bc, i, j, ...)`, or we need to change the user API.
+
 # "Gradient" utility for Value or Gradient boundary conditions
 @inline right_gradient(i, j, k, grid, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, grid, clock, fields)
 @inline left_gradient(i, j, k, grid, κ, Δ, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, grid, clock, fields)
@@ -281,42 +285,42 @@ end
 # Metric and index gymnastics for the 6 facets of the cube
 
 @inline function _west_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(idxᴸ(i, LX), j, k, grid, LX, LY, LZ)
+    Δ = Δx(i, j, k, grid, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, grid, flip(LX), LY, LZ, closure, K, id, clock)
     ∇c = left_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _east_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(idxᴿ(i, LX), j, k, grid, LX, LY, LZ)
+    Δ = Δx(i, j, k, grid, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, grid, flip(LX), LY, LZ, closure, K, id, clock)
     ∇c = right_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _south_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, idxᴸ(j, LY), k, grid, LX, LY, LZ)
+    Δ = Δy(i, j, k, grid, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, grid, LX, flip(LY), LZ, closure, K, id, clock)
     ∇c = left_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _north_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, idxᴿ(j, LY), k, grid, LX, LY, LZ)
+    Δ = Δy(i, j, k, grid, LX, LY, LZ)
     κ = h_diffusivity(i, j, k, grid, LX, flip(LY), LZ, closure, K, id, clock)
     ∇c = right_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _bottom_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, idxᴸ(k, LZ), grid, LX, LY, LZ)
+    Δ = Δz(i, j, k, grid, LX, LY, LZ)
     κ = z_diffusivity(i, j, k, grid, LX, LY, flip(LZ), closure, K, id, clock)
     ∇c = left_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _top_flux(i, j, k, grid, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, idxᴿ(k, LZ), grid, LX, LY, LZ)
+    Δ = Δz(i, j, k, grid, LX, LY, LZ)
     κ = z_diffusivity(i, j, k, grid, LX, LY, flip(LZ), closure, K, id, clock)
     ∇c = right_gradient(i, j, k, grid, κ, Δ, bc, c, clock, fields)
     return - κ * ∇c
