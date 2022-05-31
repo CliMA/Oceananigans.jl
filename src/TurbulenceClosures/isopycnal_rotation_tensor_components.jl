@@ -56,6 +56,64 @@ end
 
 SmallSlopeIsopycnalTensor(; minimum_bz = 0) = SmallSlopeIsopycnalTensor(minimum_bz)
 
+#####
+##### _triads_
+#####
+##### There are two horizontal slopes: Sx and Sy
+#####
+##### Both slopes are "located" at tracer cell centers.
+#####
+##### The slopes are computed by a directional derivative, which lends an
+##### "orientation" to the slope. For example, the x-slope `Sx` computed
+##### with a "+" directional derivative in x, and a "+" directional derivative
+##### in z, is
+#####
+##### Sx⁺⁺ᵢₖ = Δz / Δx * (bᵢ₊₁ - bᵢ) / (bₖ₊₁ - bₖ)
+#####
+##### The superscript codes ⁺⁺, ⁺⁻, ⁻⁺, ⁻⁻, denote the direction of the derivative
+##### in (h, z).
+#####
+
+@inline function triad_Sx(ix, jx, kx, iz, jz, kz, grid, buoyancy, tracers)
+    bx = ∂x_b(ix, jx, kx, grid, buoyancy, tracers)
+    bz = ∂z_b(iz, jz, kz, grid, buoyancy, tracers)
+    bz = max(bz, zero(grid))
+    return ifelse(bz == 0, zero(grid), - bx / bz)
+end
+
+@inline function triad_Sy(iy, jy, ky, iz, jz, kz, grid, buoyancy, tracers)
+    by = ∂y_b(iy, jy, ky, grid, buoyancy, tracers)
+    bz = ∂z_b(iz, jz, kz, grid, buoyancy, tracers)
+    bz = max(bz, zero(grid))
+    return ifelse(bz == 0, zero(grid), - by / bz)
+end
+
+@inline Sx⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, j, k, i, j, k+1, grid, buoyancy, tracers)
+@inline Sx⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, j, k, i, j, k,   grid, buoyancy, tracers)
+@inline Sx⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   j, k, i, j, k+1, grid, buoyancy, tracers)
+@inline Sx⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   j, k, i, j, k,   grid, buoyancy, tracers)
+
+@inline Sy⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, i, j, k+1, grid, buoyancy, tracers)
+@inline Sy⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, i, j, k,   grid, buoyancy, tracers)
+@inline Sy⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, i, j, k+1, grid, buoyancy, tracers)
+@inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, i, j, k,   grid, buoyancy, tracers)
+
+# Tensor components
+@inline Sxᶠᶜᶜ(i, j, k, grid, args...) = (Sx⁻⁺(i,   j, k, grid, args...) + Sx⁻⁻(i,   j, k, grid, args...) +    # west cell, z-average
+                                         Sx⁻⁺(i-1, j, k, grid, args...) + Sx⁻⁻(i-1, j, k, grid, args...)) / 4 # east cell, z-average
+
+@inline Syᶜᶠᶜ(i, j, k, grid, args...) = (Sy⁻⁺(i, j,   k, grid, args...) + Sy⁻⁻(i, j,   k, grid, args...) +    # south cell, z-average
+                                         Sy⁻⁺(i, j-1, k, grid, args...) + Sy⁻⁻(i, j-1, k, grid, args...)) / 4 # north cell, z-average
+
+@inline Syᶜᶜᶠ(i, j, k, grid, args...) = (Sy⁺⁻(i, j, k,   grid, args...) + Sy⁻⁻(i, j, k,   grid, args...) +    # top cell, y-average
+                                         Sy⁺⁺(i, j, k-1, grid, args...) + Sy⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, y-average
+
+@inline Sxᶜᶜᶠ(i, j, k, grid, args...) = (Sx⁺⁻(i, j, k,   grid, args...) + Sx⁻⁻(i, j, k,   grid, args...) +    # top cell, x-average
+                                         Sx⁺⁺(i, j, k-1, grid, args...) + Sx⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, x-average
+
+@inline Syᶜᶜᶠ(i, j, k, grid, args...) = (Sy⁺⁻(i, j, k,   grid, args...) + Sy⁻⁻(i, j, k,   grid, args...) +    # top cell, y-average
+                                         Sy⁺⁺(i, j, k-1, grid, args...) + Sy⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, y-average
+
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
 

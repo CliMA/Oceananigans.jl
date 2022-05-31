@@ -1,5 +1,6 @@
 using Oceananigans.Operators: ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ, ℑxyᶜᶠᶜ, ℑyzᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶠᶜᶜ, ℑyzᶠᶠᶜ, ℑxzᶠᶠᶜ, ℑxyzᶠᶠᶜ, ℑyzᶠᶜᶠ, ℑxyᶜᶜᶜ, ℑyzᶜᶜᶜ, ℑxzᶜᶠᶠ, ℑxyzᶜᶠᶠ, ℑxyᶠᶜᶠ, ℑxyᶜᶠᶠ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Coriolis: fᶠᶠᵃ
 
 struct IsopycnalPotentialVorticityDiffusivity{TD, Q, K, M, F} <: AbstractTurbulenceClosure{TD}
     κ_potential_vorticity :: Q
@@ -72,13 +73,15 @@ end
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfIPVD{TD}) where TD
 
     R₃₃ = nothing
+    νz = nothing
 
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the 33 component of the isopycnal rotation tensor
         R₃₃ = Field{Center, Center, Face}(grid)
+        νz = Field{Center, Center, Face}(grid)
     end
 
-    return (; R₃₃)
+    return (; R₃₃, νz)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfIPVD{TD}, model) where TD
@@ -87,95 +90,127 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfIPVD{TD}, mode
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
+    coriolis = model.coriolis
 
     if TD() isa VerticallyImplicitTimeDiscretization
-        R³³_event = launch!(arch, grid, :xyz,
-                            compute_R₃₃!, diffusivities.R₃₃, grid, closure, tracers, buoyancy,
-                            dependencies = device_event(arch))
+        event = launch!(arch, grid, :xyz,
+                        compute_νz_and_R₃₃!, diffusivities.R₃₃, diffusivities.νz, grid, closure, coriolis, buoyancy, tracers,
+                        dependencies = device_event(arch))
     else
-        R³³_event = NoneEvent()
+        event = NoneEvent()
     end
 
-    wait(device(arch), R³³_event)
+    wait(device(arch), event)
 
     return nothing
 end
 
-@kernel function compute_R₃₃!(R₃₃, grid, closure, tracers, buoyancy)
+@kernel function compute_νz_and_R₃₃!(R₃₃, νz, grid, closure, coriolis, buoyancy, tracers)
     i, j, k, = @index(Global, NTuple)
-    closure_ij = getclosure(i, j, closure)
-    @inbounds R₃₃[i, j, k] = 0.0 #isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure_ij.isopycnal_tensor)
-end
 
-# defined at fcc
-@inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{IPVD, IPVDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where tracer_index
-
-    c = tracers[tracer_index]
     closure = getclosure(i, j, closure)
 
-    κ = get_tracer_κ(closure.κ_tracers, tracer_index)
+    Sx = Sxᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
+    Sy = Syᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
+    @inbounds R₃₃[i, j, k] = Sx^2 + Sy^2
+
+    f = ℑxyᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    ϵ = one(grid) # tapering, Ry * bz / (Ry * by)
+    @inbounds νz[i, j, k] = ifelse(N² == 0, zero(grid), ϵ * f^2 * closure.κ_potential_vorticity / N²)
+end
+
+# Triad diagram key
+# =================
+#
+#   * ┗ : Sx⁺⁺ / Sy⁺⁺
+#   * ┛ : Sx⁻⁺ / Sy⁻⁺
+#   * ┓ : Sx⁻⁻ / Sy⁻⁻
+#   * ┏ : Sx⁺⁻ / Sy⁺⁻
+#
+
+# defined at fcc
+@inline function diffusive_flux_x(i, j, k, grid, closure::FlavorOfIPVD, K, ::Val{id}, U, C, clock, b) where id
+    c = C[id]
+    closure = getclosure(i, j, closure)
+
+    κ = get_tracer_κ(closure.κ_tracers, id)
     κ = κᶠᶜᶜ(i, j, k, grid, clock, ipvd_coefficient_loc, κ)
 
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    # Small slope approximation
+    R₁₁_∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    R₁₂_∂y_c = zero(grid)
 
-    # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    #       i-1     i 
+    # k+1  -------------
+    #           |      |
+    #       ┏┗  ∘  ┛┓  | k
+    #           |      |
+    # k   ------|------|
 
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₁₃_∂z_c = (Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c) +
+                Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c) +
+                Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c) +
+                Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c)) / 4
     
-    return - κ * (R₁₁ * ∂x_c + R₁₂ * ∂y_c + R₁₃ * ∂z_c)
+    return - κ * (R₁₁_∂x_c + R₁₂_∂y_c + R₁₃_∂z_c)
 end
 
 # defined at cfc
-@inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{IPVD, IPVDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, closure::FlavorOfIPVD, K, ::Val{id}, U, C, clock, b) where id
 
-    c = tracers[tracer_index]
+    c = C[id]
     closure = getclosure(i, j, closure)
 
-    κ = get_tracer_κ(closure.κ_tracers, tracer_index)
+    κ = get_tracer_κ(closure.κ_tracers, id)
     κ = κᶜᶠᶜ(i, j, k, grid, clock, ipvd_coefficient_loc, κ)
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    # Small slope approximation
+    R₂₁_∂x_c = zero(grid)
+    R₂₂_∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    R₂₃_∂z_c = (Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c) +
+                Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c) +
+                Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c) +
+                Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c)) / 4
     
-    R₂₁ = zero(grid)
-    R₂₂ = one(grid)
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-
-    return - κ * (R₂₁ * ∂x_c + R₂₂ * ∂y_c + R₂₃ * ∂z_c)
+    return - κ * (R₂₁_∂x_c + R₂₂_∂y_c + R₂₃_∂z_c)
 end
 
 # defined at ccf
-@inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::FlavorOfIPVD{TD}, diffusivity_fields, ::Val{tracer_index},
-                                  velocities, tracers, clock, buoyancy) where {tracer_index, TD}
-
-    c = tracers[tracer_index]
+@inline function diffusive_flux_z(i, j, k, grid, closure::FlavorOfIPVD{TD}, K, ::Val{id}, U, C, clock, b) where {TD, id}
+    c = C[id]
     closure = getclosure(i, j, closure)
 
-    κ = get_tracer_κ(closure.κ_tracers, tracer_index)
+    κ = get_tracer_κ(closure.κ_tracers, id)
     κ = κᶜᶜᶠ(i, j, k, grid, clock, ipvd_coefficient_loc, κ)
 
-    # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    # Triad diagram:
+    #
+    #   i-1    i    i+1
+    # -------------------
+    # |     |     |     |
+    # |     | ┓ ┏ |  k  |
+    # |     |     |     |
+    # -  k  -- ∘ --     -
+    # |     |     |     |
+    # |     | ┛ ┗ | k-1 |
+    # |     |     |     |
+    # --------------------
+    
+    R₃₁_∂x_c = (Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
+                Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
+                Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
+                Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₃₂_∂y_c = (Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
+                Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
+                Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
+                Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
-    κ_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ, closure, buoyancy, tracers)
+    R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, κ, closure, b, C)
 
-    return - κ_∂z_c - κ * (R₃₁ * ∂x_c + R₃₂ * ∂y_c)
+    return - κ * (R₃₁_∂x_c + R₃₂_∂y_c + R₃₃_∂z_c)
 end
 
 @inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfIPVD, K, ::Val{id}, clock) where id
@@ -189,126 +224,204 @@ end
 ##### Redi diffusion for momentum.
 #####
 
-function b_N²_ccf(i, j, k, grid, buoyancy, tracers)
-    b = ℑzᶜᶜᶠ(i, j, k, grid, buoyancy_perturbation, buoyancy, tracers)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return b * N²
-end
-
 # Defined at ccc
-@inline function viscous_flux_ux(i, j, k, grid, closure::FlavorOfIPVD, K, U, tracers, clock, buoyancy)
+@inline function viscous_flux_ux(i, j, k, grid, closure::FlavorOfIPVD, K, U, C, clock, b)
     closure = getclosure(i, j, closure)
     κ = νᶜᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_u = ∂xᶜᶜᶜ(i, j, k, grid, U.u)
-    ∂y_u = ℑxyᶜᶜᶜ(i, j, k, grid, ∂yᶠᶠᶜ, U.u)
-    ∂z_u = ℑxzᶜᶜᶜ(i, j, k, grid, ∂zᶠᶜᶠ, U.u)
 
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = zero(grid) #isopycnal_rotation_tensor_xz_ccc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    # Small angle approximation
+    R₁₁_∂x_u = ∂xᶜᶜᶜ(i, j, k, grid, U.u)
+    R₁₂_∂y_u = zero(grid)
 
-    return - κ * (R₁₁ * ∂x_u + R₁₂ * ∂y_u + R₁₃ * ∂z_u)
+    #       ┏┗  ∘  ┛┓  | k
+    #  ┓┏ 
+    # ----
+    #  ┛┗   
+    #=
+    R₁₃_∂z_u = (Sx⁺⁻(i, j, k, grid, b, C) * ∂zᶠᶜᶠ(i,   j, k,   grid, U.u) +
+                Sx⁻⁻(i, j, k, grid, b, C) * ∂zᶠᶜᶠ(i-1, j, k,   grid, U.u) +
+                Sx⁺⁺(i, j, k, grid, b, C) * ∂zᶠᶜᶠ(i,   j, k+1, grid, U.u) +
+                Sx⁻⁺(i, j, k, grid, b, C) * ∂zᶠᶜᶠ(i-1, j, k+1, grid, U.u)) / 4
+    =#
+    R₁₃_∂z_u = zero(grid)
+
+    return - κ * (R₁₁_∂x_u + R₁₂_∂y_u + R₁₃_∂z_u)
 end
 
 # Defined at ffc
-@inline function viscous_flux_uy(i, j, k, grid, closure::FlavorOfIPVD, K, U, tracers, clock, buoyancy)
+@inline function viscous_flux_uy(i, j, k, grid, closure::FlavorOfIPVD, K, U, C, clock, b)
     closure = getclosure(i, j, closure)
     κ = νᶠᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_u = ℑxyᶠᶠᶜ(i, j, k, grid, ∂xᶜᶜᶜ, U.u)
-    ∂y_u = ∂yᶠᶠᶜ(i, j, k, grid, U.u)
-    ∂z_u = ℑyzᶠᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, U.u)
 
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = zero(grid) #isopycnal_rotation_tensor_yz_ffc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    # Small angles
+    R₂₁_∂x_u = zero(grid)
+    R₂₂_∂y_u = ∂yᶠᶠᶜ(i, j, k, grid, U.u)
 
-    return - κ * (R₁₁ * ∂x_u + R₁₂ * ∂y_u + R₁₃ * ∂z_u)
+    #=
+    R₂₃_∂z_u = (Sy⁻⁺(i,   j,   k, grid, b, C) * ∂zᶠᶜᶠ(i, j,   k+1, grid, U.u) +
+                Sy⁻⁻(i,   j,   k, grid, b, C) * ∂zᶠᶜᶠ(i, j,   k,   grid, U.u) +
+                Sy⁻⁺(i-1, j,   k, grid, b, C) * ∂zᶠᶜᶠ(i, j,   k+1, grid, U.u) +
+                Sy⁻⁻(i-1, j,   k, grid, b, C) * ∂zᶠᶜᶠ(i, j,   k,   grid, U.u) +
+                Sy⁺⁺(i,   j-1, k, grid, b, C) * ∂zᶠᶜᶠ(i, j-1, k+1, grid, U.u) +
+                Sy⁺⁻(i,   j-1, k, grid, b, C) * ∂zᶠᶜᶠ(i, j-1, k,   grid, U.u) +
+                Sy⁺⁺(i-1, j-1, k, grid, b, C) * ∂zᶠᶜᶠ(i, j-1, k+1, grid, U.u) +
+                Sy⁺⁻(i-1, j-1, k, grid, b, C) * ∂zᶠᶜᶠ(i, j-1, k,   grid, U.u)) / 8
+    =#
+    R₂₃_∂z_u = zero(grid)
+
+    return - κ * (R₂₁_∂x_u + R₂₂_∂y_u + R₂₃_∂z_u)
+end
+
+@inline function b_N⁻²_ccf(i, j, k, grid, buoyancy, tracers)
+    b = ℑzᶜᶜᶠ(i, j, k, grid, buoyancy_perturbation, buoyancy, tracers)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return ifelse(N² == 0, zero(grid), b / N²)
 end
 
 # Defined at fcf
-@inline function viscous_flux_uz(i, j, k, grid, closure::FlavorOfIPVD{TD}, K, U, tracers, clock, buoyancy) where TD
+@inline function viscous_flux_uz(i, j, k, grid, closure::FlavorOfIPVD{TD}, K, U, C, clock, b) where TD
     closure = getclosure(i, j, closure)
     κ = νᶠᶜᶠ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_u = ℑxzᶠᶜᶠ(i, j, k, grid, ∂xᶜᶜᶜ, U.u)
-    ∂y_u = ℑyzᶠᶜᶠ(i, j, k, grid, ∂yᶠᶠᶜ, U.u)
 
-    R₃₁ = zero(grid) #isopycnal_rotation_tensor_xz_fcf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    R₃₂ = zero(grid) #isopycnal_rotation_tensor_yz_fcf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    #=
+    R₃₁_∂x_u = (Sx⁻⁻(i,   j, k,   grid, b, C) * ∂xᶜᶜᶜ(i,   j, k,   grid, U.u) +
+                Sx⁺⁻(i-1, j, k,   grid, b, C) * ∂xᶜᶜᶜ(i-1, j, k,   grid, U.u) +
+                Sx⁻⁺(i,   j, k-1, grid, b, C) * ∂xᶜᶜᶜ(i,   j, k-1, grid, U.u) +
+                Sx⁺⁺(i-1, j, k-1, grid, b, C) * ∂xᶜᶜᶜ(i-1, j, k-1, grid, U.u))
 
-    κ_∂z_u = explicit_κ_∂z_u(i, j, k, grid, TD(), U.u, κ, closure, buoyancy, tracers)
+    R₃₂_∂y_u = (Sy⁻⁺(i,   j,   k, grid, b, C) * ∂yᶠᶠᶜ(i, j,   k+1, grid, U.u) +
+                Sy⁻⁻(i,   j,   k, grid, b, C) * ∂yᶠᶠᶜ(i, j,   k,   grid, U.u) +
+                Sy⁻⁺(i-1, j,   k, grid, b, C) * ∂yᶠᶠᶜ(i, j,   k+1, grid, U.u) +
+                Sy⁻⁻(i-1, j,   k, grid, b, C) * ∂yᶠᶠᶜ(i, j,   k,   grid, U.u) +
+                Sy⁺⁺(i,   j-1, k, grid, b, C) * ∂yᶠᶠᶜ(i, j-1, k+1, grid, U.u) +
+                Sy⁺⁻(i,   j-1, k, grid, b, C) * ∂yᶠᶠᶜ(i, j-1, k,   grid, U.u) +
+                Sy⁺⁺(i-1, j-1, k, grid, b, C) * ∂yᶠᶠᶜ(i, j-1, k+1, grid, U.u) +
+                Sy⁺⁻(i-1, j-1, k, grid, b, C) * ∂yᶠᶠᶜ(i, j-1, k,   grid, U.u)) / 8
+    =#
+    R₃₁_∂x_u = zero(grid)
+    R₃₂_∂y_u = zero(grid)
+    R₃₃_∂z_u = explicit_R₃₃_∂z_u(i, j, k, grid, TD(), U.u, closure, K, b, C)
 
-    Sy = ℑxyᶠᶜᶠ(i, j, k, grid, ∂yᶜᶠᶠ, b_N²_ccf, buoyancy, tracers)
-    f_Sy = closure.f * Sy
+    # |---|---|---|
+    # | ∘ | ∘ | ∘ |
+    # |---|--fcf--|
+    # | ∘ | ∘ | ∘ |
+    # |---|---|---|
+    
+    #=
+    Sy = (Sy⁺⁻(i,   j, k,   grid, b, C) +
+          Sy⁻⁻(i,   j, k,   grid, b, C) +
+          Sy⁺⁻(i-1, j, k,   grid, b, C) +
+          Sy⁻⁻(i-1, j, k,   grid, b, C) +
+          Sy⁺⁺(i,   j, k-1, grid, b, C) +
+          Sy⁻⁺(i,   j, k-1, grid, b, C) +
+          Sy⁺⁺(i-1, j, k-1, grid, b, C) +
+          Sy⁻⁺(i-1, j, k-1, grid, b, C)) / 8   
+    =#
 
-    #return - κ * f_Sy
-    #return - κ_∂z_u - κ * (R₃₁ * ∂x_u + R₃₂ * ∂y_u)
-    return - κ_∂z_u - κ * (R₃₁ * ∂x_u + R₃₂ * ∂y_u + 2 * f_Sy)
+    # by = ℑxyzᶠᶜᶠ(i, j, k, grid, ∂y_b, b, C)
+    # bz =   ℑxᶠᶜᶠ(i, j, k, grid, ∂z_b, b, C)
+    # Sy = ifelse(bz == 0, zero(grid), - by / bz)
+    
+    Sy = ℑxyᶠᶜᶠ(i, j, k, grid, ∂yᶜᶠᶠ, b_N⁻²_ccf, b, C)
+    f_Sy = zero(grid) #closure.f * Sy
+
+    return - κ * (R₃₁_∂x_u + R₃₂_∂y_u + R₃₃_∂z_u + 2 * f_Sy)
 end
 
 # Defined at ffc
-@inline function viscous_flux_vx(i, j, k, grid, closure::FlavorOfIPVD, K, U, tracers, clock, buoyancy)
+@inline function viscous_flux_vx(i, j, k, grid, closure::FlavorOfIPVD, K, U, C, clock, b)
     closure = getclosure(i, j, closure)
     κ = νᶠᶠᶜ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_v = ∂xᶠᶠᶜ(i, j, k, grid, U.v)
-    ∂y_v = ℑxyᶠᶠᶜ(i, j, k, grid, ∂yᶜᶜᶜ, U.v)
-    ∂z_v = ℑxzᶠᶠᶜ(i, j, k, grid, ∂zᶜᶠᶠ, U.v)
 
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = zero(grid) #isopycnal_rotation_tensor_xz_ffc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₁₁_∂x_v = ∂xᶠᶠᶜ(i, j, k, grid, U.v)
+    R₁₂_∂y_v = zero(grid)
 
-    return - κ * (R₁₁ * ∂x_v + R₁₂ * ∂y_v + R₁₃ * ∂z_v)
+    #R₁₃ = isopycnal_rotation_tensor_xz_ffc(i, j, k, grid, b, C, closure.isopycnal_tensor)
+    #∂z_v = ℑxzᶠᶠᶜ(i, j, k, grid, ∂zᶜᶠᶠ, U.v)
+    R₁₃_∂z_v = zero(grid)
+
+    return - κ * (R₁₁_∂x_v + R₁₂_∂y_v + R₁₃_∂z_v)
 end
 
 # Defined at ccc
-@inline function viscous_flux_vy(i, j, k, grid, closure::FlavorOfIPVD, K, U, tracers, clock, buoyancy)
+@inline function viscous_flux_vy(i, j, k, grid, closure::FlavorOfIPVD, K, U, C, clock, b)
     closure = getclosure(i, j, closure)
     κ = νᶜᶜᶜ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_v = ℑxyᶜᶜᶜ(i, j, k, grid, ∂xᶠᶠᶜ, U.v)
-    ∂y_v = ∂yᶜᶜᶜ(i, j, k, grid, U.v)
-    ∂z_v = ℑyzᶜᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, U.v)
 
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = zero(grid) #isopycnal_rotation_tensor_yz_ffc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₁₁_∂x_v = zero(grid)
+    R₁₂_∂y_v = ∂yᶜᶜᶜ(i, j, k, grid, U.v)
+    R₁₃_∂z_v = zero(grid)
 
-    return - κ * (R₁₁ * ∂x_v + R₁₂ * ∂y_v + R₁₃ * ∂z_v)
+    return - κ * (R₁₁_∂x_v + R₁₂_∂y_v + R₁₃_∂z_v)
 end
 
 # Defined at cff
-@inline function viscous_flux_vz(i, j, k, grid, closure::FlavorOfIPVD{TD}, K, U, tracers, clock, buoyancy) where TD
+@inline function viscous_flux_vz(i, j, k, grid, closure::FlavorOfIPVD{TD}, K, U, C, clock, b) where TD
     closure = getclosure(i, j, closure)
     κ = νᶜᶠᶠ(i, j, k, grid, clock, issd_coefficient_loc, closure.κ_potential_vorticity)
-    ∂x_v = ℑxzᶜᶠᶠ(i, j, k, grid, ∂xᶠᶠᶜ, U.v)
-    ∂y_v = ℑyzᶜᶠᶠ(i, j, k, grid, ∂yᶜᶜᶜ, U.v)
 
-    R₃₁ = zero(grid) #isopycnal_rotation_tensor_xz_cff(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    R₃₂ = zero(grid) #isopycnal_rotation_tensor_yz_cff(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₃₁_∂x_v = zero(grid)
+    R₃₂_∂y_v = zero(grid)
+    R₃₃_∂z_v = explicit_R₃₃_∂z_v(i, j, k, grid, TD(), U.v, closure, K, b, C)
 
-    κ_∂z_v = explicit_κ_∂z_v(i, j, k, grid, TD(), U.v, κ, closure, buoyancy, tracers)
+    #=
+    Sx = (Sx⁺⁻(i, j,   k,   grid, b, C) +
+          Sx⁻⁻(i, j,   k,   grid, b, C) +
+          Sx⁺⁻(i, j-1, k,   grid, b, C) +
+          Sx⁻⁻(i, j-1, k,   grid, b, C) +
+          Sx⁺⁺(i, j,   k-1, grid, b, C) +
+          Sx⁻⁺(i, j,   k-1, grid, b, C) +
+          Sx⁺⁺(i, j-1, k-1, grid, b, C) +
+          Sx⁻⁺(i, j-1, k-1, grid, b, C)) / 8   
+    =#
 
-    Sx = ℑxyᶜᶠᶠ(i, j, k, grid, ∂xᶠᶜᶠ, b_N²_ccf, buoyancy, tracers)
-    f_Sx = closure.f * Sx
+    #bx = ℑxyzᶜᶠᶠ(i, j, k, grid, ∂x_b, b, C)
+    #bz =   ℑyᶜᶠᶠ(i, j, k, grid, ∂z_b, b, C)
+    #Sx = ifelse(bz == 0, zero(grid), - bx / bz)
 
-    #return κ * f_Sx
-    #return - κ_∂z_v - κ * (R₃₁ * ∂x_v + R₃₂ * ∂y_v)
-    return - κ_∂z_v - κ * (R₃₁ * ∂x_v + R₃₂ * ∂y_v - 2 * f_Sx)
+    Sx = ℑxyᶜᶠᶠ(i, j, k, grid, ∂xᶠᶜᶠ, b_N⁻²_ccf, b, C)
+    f_Sx = zero(grid) #closure.f * Sx
+
+    return - κ * (R₃₁_∂x_v + R₃₂_∂y_v + R₃₃_∂z_v - 2 * f_Sx)
 end
 
-@inline function explicit_κ_∂z_u(i, j, k, grid, ::ExplicitTimeDiscretization, u, κ, closure, buoyancy, tracers)
-    ∂z_u = ∂zᶠᶜᶠ(i, j, k, grid, u)
-    R₃₃ = isopycnal_rotation_tensor_zz_fcf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    return κ * R₃₃ * ∂z_u
+# ccf
+@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, K, b, C)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+    Sx = Sxᶜᶜᶠ(i, j, k, grid, b, C)
+    Sy = Syᶜᶜᶠ(i, j, k, grid, b, C)
+    R₃₃ = Sx^2 + Sy^2
+    return R₃₃ * ∂z_c
 end
 
-@inline function explicit_κ_∂z_v(i, j, k, grid, ::ExplicitTimeDiscretization, v, κ, closure, buoyancy, tracers)
-    ∂z_v = ∂zᶜᶠᶠ(i, j, k, grid, v)
-    R₃₃ = isopycnal_rotation_tensor_zz_cff(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    return κ * R₃₃ * ∂z_v
+@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, ::Val{id}, clock) where id
+    closure = getclosure(i, j, closure)
+    κc = get_tracer_κ(closure.κ_tracers, id)
+    R₃₃ = @inbounds K.R₃₃[i, j, k]
+    return R₃₃ * κᶜᶜᶠ(i, j, k, grid, clock, ipvd_coefficient_loc, κc)
 end
 
-@inline explicit_κ_∂z_u(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
-@inline explicit_κ_∂z_v(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
+# fcf
+@inline function explicit_R₃₃_∂z_u(i, j, k, grid, ::ExplicitTimeDiscretization, u, closure, K, b, C)
+    R₃₃_∂z_u = zero(grid)
+    return R₃₃_∂z_u
+end
+
+# cff
+@inline function explicit_R₃₃_∂z_v(i, j, k, grid, ::ExplicitTimeDiscretization, v, closure, K, b, C)
+    R₃₃_∂z_v = zero(grid)
+    return R₃₃_∂z_v
+end
+
+# @inline νzᶜᶜᶜ(i, j, k, grid, clo::IPVD, K, clock) = ℑzᶜᶜᶜ(i, j, k, grid, K.νz)
+# @inline νzᶠᶠᶜ(i, j, k, grid, clo::IPVD, K, clock) = ℑxyzᶠᶠᶜ(i, j, k, grid, K.νz)
+@inline νzᶠᶜᶠ(i, j, k, grid, clo::IPVD, K, clock) = ℑxᶠᶜᶠ(i, j, k, grid, K.νz)
+@inline νzᶜᶠᶠ(i, j, k, grid, clo::IPVD, K, clock) = ℑyᶜᶠᶠ(i, j, k, grid, K.νz)
+
+@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
+@inline explicit_R₃₃_∂z_u(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
+@inline explicit_R₃₃_∂z_v(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
 @inline viscous_flux_wx(i, j, k, grid, closure::FlavorOfIPVD, args...) = zero(grid)
 @inline viscous_flux_wy(i, j, k, grid, closure::FlavorOfIPVD, args...) = zero(grid)
