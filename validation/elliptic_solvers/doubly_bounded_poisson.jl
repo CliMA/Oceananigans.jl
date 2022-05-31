@@ -81,10 +81,6 @@ Nx, Ny, Nz = size(grid)
 C = zeros(Nx, Ny, Nz)
 D = zeros(Nx, Ny, Nz)
 
-Ax = [Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
-Ay = [Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
-Az = [Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
-
 Ax = [1 / Δxᶠᶜᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
 Ay = [1 / Δyᶜᶠᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
 Az = [1 / Δzᵃᵃᶠ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
