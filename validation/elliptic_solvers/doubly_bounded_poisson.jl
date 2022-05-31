@@ -1,17 +1,20 @@
 using Oceananigans
-using Oceananigans.Architectures: child_architecture
+using Oceananigans.Architectures: child_architecture, device
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver
 using Oceananigans.Architectures: architecture, arch_array
+using Statistics: mean
 using IterativeSolvers
 using Statistics: mean
 using AlgebraicMultigrid
 using GLMakie
 
-N = 16
+import Oceananigans.Solvers: precondition!
+
+N = 24
 # 6 = 5.0625
 # 8 = 16
 # 10 = 39
@@ -31,6 +34,7 @@ Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 r = CenterField(grid)
 r₀(x, y, z) = (x^2 + y^2) < 1 ? 1 : 0 #exp(-x^2 - y^2)
 set!(r, r₀)
+r .-= mean(r)
 fill_halo_regions!(r, grid.architecture)
 
 # Solve ∇²φ = r with `FFTBasedPoissonSolver`
@@ -68,7 +72,7 @@ cg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field
 @info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver..."
 @time solve!(φ_cg, cg_solver, r, arch, grid)
 
-fill_halo_regions!(ϕ_cg)
+fill_halo_regions!(φ_cg)
 
 
 # Solve ∇²φ = r with `HeptadiagonalIterativeSolver`
@@ -76,9 +80,14 @@ fill_halo_regions!(ϕ_cg)
 Nx, Ny, Nz = size(grid)
 C = zeros(Nx, Ny, Nz)
 D = zeros(Nx, Ny, Nz)
+
 Ax = [Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 Ay = [Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
 Az = [Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid) for i=1:Nx, j=1:Ny, k=1:Nz]
+
+Ax = [1 / Δxᶠᶜᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
+Ay = [1 / Δyᶜᶠᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
+Az = [1 / Δzᵃᵃᶠ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
 
 hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid)
 
@@ -101,56 +110,92 @@ matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, gri
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
 A = arch_sparse_matrix(arch, matrix_constructors)
-r_array = collect(reshape(interior(r), (Nx * Ny, )))
+r_array = collect(reshape(interior(r), Nx * Ny * Nz))
 
 @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
-@time φ_mg_array = solve(A, r_array, RugeStubenAMG(), maxiter=100, verbose=true)
+@time φ_mg_array = solve(A, r_array, RugeStubenAMG(), maxiter=100)
+# AlgebraicMultigrid.solve!(φ_mg_array, ...)
 
 φ_mg = CenterField(grid)
 interior(φ_mg) .= reshape(φ_mg_array, Nx, Ny, Nz)
-interior(φ_mg) .-= mean(interior(φ_mg))
+# interior(φ_mg) .-= mean(interior(φ_mg))
 fill_halo_regions!(φ_mg)
+
+
+# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
+
+struct MultigridPreconditioner{M, A}
+    matrix_operator :: M
+    maxiter :: Int
+    amg_algorithm :: A
+end
+
+mgp = MultigridPreconditioner(A, 10, RugeStubenAMG())
+
+"""
+    precondition!(z, mgp::MultigridPreconditioner, r, args...)
+
+Return `z` (Field)
+"""
+function precondition!(z, mgp::MultigridPreconditioner, r, args...)
+    Nx, Ny, Nz = r.grid.Nx, r.grid.Ny, r.grid.Nz
+    
+    r_array = collect(reshape(interior(r), Nx * Ny * Nz))
+
+    z_array = solve(mgp.matrix_operator, r_array, mgp.amg_algorithm, maxiter=mgp.maxiter)
+
+    interior(z) .= reshape(z_array, Nx, Ny, Nz)
+    fill_halo_regions!(z)
+
+    return z
+end
+
+
+
+φ_cgmg = CenterField(grid)
+cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp)
+
+@info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver..."
+@time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
+
+fill_halo_regions!(φ_cgmg)
 
 ∇²φ_fft = CenterField(grid)
 ∇²φ_cg = CenterField(grid)
 ∇²φ_mg = CenterField(grid)
+∇²φ_cgmg = CenterField(grid)
 
 compute_∇²!(∇²φ_fft, φ_fft, arch, grid)
 compute_∇²!(∇²φ_cg, φ_cg, arch, grid)
 compute_∇²!(∇²φ_mg, φ_mg, arch, grid)
+compute_∇²!(∇²φ_cgmg, φ_cgmg, arch, grid)
 
 # Plot results
-fig = Figure(resolution=(1200, 1200))
+fig = Figure(resolution=(1600, 1200))
 
 ax_r = Axis(fig[1, 3], aspect=1, title="RHS")
 
 ax_φ_fft = Axis(fig[2, 1], aspect=1, title="FFT-based solution")
 ax_φ_cg = Axis(fig[2, 3], aspect=1, title="PreconditionedCG solution")
 ax_φ_mg = Axis(fig[2, 5], aspect=1, title="Multigrid solution")
+ax_φ_cgmg = Axis(fig[2, 7], aspect=1, title="PreconditionedCG MG solution")
 
 ax_∇²φ_fft = Axis(fig[3, 1], aspect=1, title="FFT-based ∇²φ")
 ax_∇²φ_cg = Axis(fig[3, 3], aspect=1, title="PreconditionedCG ∇²φ")
 ax_∇²φ_mg = Axis(fig[3, 5], aspect=1, title="Multigrid ∇²φ")
+ax_∇²φ_cgmg = Axis(fig[3, 7], aspect=1, title="PreconditionedCG MG ∇²φ")
 
 hm_r = heatmap!(ax_r, interior(r, :, :, 1))
 Colorbar(fig[1, 4], hm_r)
 
 hm_fft = heatmap!(ax_φ_fft, interior(φ_fft, :, :, 1))
 Colorbar(fig[2, 2], hm_fft)
-
-cg_lims = extrema(interior(φ_cg))
-if abs(cg_lims[1]-cg_lims[2]) < 1e-13
-    cg_lims = (cg_lims[1]-1e-13, cg_ligs[2]+1e-13)
-end
-
-if abs(cg_lims[1]-cg_lims[2]) > 1e13
-    cg_lims = (-1e12, 1e12)
-end
-
 hm_cg = heatmap!(ax_φ_cg, interior(φ_cg, :, :, 1), colorrange = cg_lims)
 Colorbar(fig[2, 4], hm_cg)
 hm_mg = heatmap!(ax_φ_mg, interior(φ_mg, :, :, 1))
 Colorbar(fig[2, 6], hm_mg)
+hm_cgmg = heatmap!(ax_φ_cgmg, interior(φ_cgmg, :, :, 1))
+Colorbar(fig[2, 8], hm_cgmg)
 
 hm_∇²fft = heatmap!(ax_∇²φ_fft, interior(∇²φ_fft, :, :, 1))
 Colorbar(fig[3, 2], hm_∇²fft)
@@ -158,6 +203,8 @@ hm_∇²cg = heatmap!(ax_∇²φ_cg, interior(∇²φ_cg, :, :, 1))
 Colorbar(fig[3, 4], hm_∇²cg)
 hm_∇²mg = heatmap!(ax_∇²φ_mg, reshape(∇²φ_mg, (Nx, Ny)))
 Colorbar(fig[3, 6], hm_∇²mg)
+hm_∇²cgmg = heatmap!(ax_∇²φ_cgmg, reshape(∇²φ_cgmg, (Nx, Ny)))
+Colorbar(fig[3, 8], hm_∇²cgmg)
 
 display(fig)
 
