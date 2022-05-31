@@ -18,7 +18,7 @@ and thus, the shallow water dynamics in vector-invariant form become:
 \begin{align}
   \partial_t \boldsymbol{u} + (\zeta + f) \boldsymbol{\hat k} \times\boldsymbol{u} & = 
   - \boldsymbol{\nabla} \left [ g (h +b) + \frac12 \boldsymbol{u} \cdot \boldsymbol{u} \right ] \, , \\
-  \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (h \boldsymbol{u}) & = 0 \, ,
+  \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}
 ```
 where ``\zeta(x, y, t) =  \partial_x v - \partial_y u`` is the vertical component of the relative vorticity.
