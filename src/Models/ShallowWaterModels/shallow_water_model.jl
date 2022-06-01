@@ -6,7 +6,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
@@ -96,6 +96,9 @@ Keyword arguments
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
+
+  !!! warning "`ConservativeFormulation()` grid requirements"
+      The `ConservativeFormulation()` requires a rectilinear `grid`!
 """
 function ShallowWaterModel(;
                            grid,
@@ -118,9 +121,14 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
-                                       "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
-                                       "when constructing `grid`."
+    topology(grid, 3) === Flat ||
+        throw(ArgumentError("ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
+                            "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
+                            "when constructing `grid`."))
+
+    (typeof(grid) <: RectilinearGrid || formulation == VectorInvariantFormulation()) ||
+        throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
+                            "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), momentum_advection, tracer_advection, mass_advection, closure)
     any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
