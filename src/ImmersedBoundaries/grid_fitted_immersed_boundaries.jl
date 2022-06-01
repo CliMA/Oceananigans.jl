@@ -28,14 +28,20 @@ const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstract
 
 abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 
+struct CenterImmersedCondition end
+struct InterfaceImmersedCondition end
+
 """
-    GridFittedBottom(bottom)
+    GridFittedBottom(bottom_height, [immersed_condition=CenterImmersedCondition()])
 
 Return an immersed boundary with an irregular bottom fit to the underlying grid.
 """
-struct GridFittedBottom{H} <: AbstractGridFittedBottom{H}
+struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     bottom_height :: H
+    immersed_condition :: I
 end
+
+GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
     hmax = maximum(ib.bottom_height)
@@ -44,7 +50,6 @@ function Base.summary(ib::GridFittedBottom)
 end
 
 Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)", ib.bottom_height)
-
 
 Base.show(io::IO, ib::GridFittedBottom) = print(io, summary(ib))
 
@@ -75,8 +80,14 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
-@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
+@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(c, c, f, i, j, k+1, underlying_grid)
+    h = @inbounds ib.bottom_height[i, j]
+    return z <= h
+end
+
+@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
+    z = znode(c, c, c, i, j, k, underlying_grid)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
