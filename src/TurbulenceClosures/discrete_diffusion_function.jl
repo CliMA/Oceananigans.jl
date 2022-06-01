@@ -67,7 +67,7 @@ end
 end
 
 @inline getdiffusion(dd::UnlocalizedDDF, i, j, k, grid, location, clock, fields) = 
-        dd.func(i, j, k, grid, location..., clock, fields, dd.parametrs)
+        dd.func(i, j, k, grid, location..., clock, fields, dd.parameters)
 
 @inline getdiffusion(dd::UnlocalizedUnparametrizedDDF, i, j, k, grid, location, clock, fields) = 
         dd.func(i, j, k, grid, location..., clock, fields)
