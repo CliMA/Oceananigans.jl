@@ -11,20 +11,11 @@ using IterativeSolvers
 using Statistics: mean
 using AlgebraicMultigrid
 using GLMakie
+using AlgebraicMultigrid: _solve!
 
 import Oceananigans.Solvers: precondition!
 
 N = 24
-# 6 = 5.0625
-# 8 = 16
-# 10 = 39
-# 12 = 81
-# Out by a factor of (N/4)^4
-# 7 = 37.515625 = 7^4/4^3
-# 16 = 85.3333 = 16^2/3
-# 20 = 156.25 = 20^4/4^5
-# 21 = 144.703125  = (21/4)^3
-# 24 = 162  = (24/4)^3
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -109,8 +100,13 @@ A = arch_sparse_matrix(arch, matrix_constructors)
 r_array = collect(reshape(interior(r), Nx * Ny * Nz))
 
 @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
-@time φ_mg_array = solve(A, r_array, RugeStubenAMG(), maxiter=100)
-# AlgebraicMultigrid.solve!(φ_mg_array, ...)
+ml = ruge_stuben(A, maxiter=100)
+n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
+V = promote_type(eltype(ml.workspace), eltype(r_array))
+φ_mg_array = zeros(V, size(r_array))
+@show @allocated _solve!(φ_mg_array, ml, r_array)
+# @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver (not in-place)..."
+# @time φ_mg_array2 = solve(A, r_array, RugeStubenAMG(), maxiter=100)
 
 φ_mg = CenterField(grid)
 interior(φ_mg) .= reshape(φ_mg_array, Nx, Ny, Nz)
