@@ -4,7 +4,7 @@ using Oceananigans: instantiated_location, prognostic_fields
 using Oceananigans.Architectures: AbstractArchitecture, architecture, device
 using Oceananigans.BoundaryConditions: west_flux, east_flux, south_flux, north_flux, bottom_flux, top_flux
 using Oceananigans.BoundaryConditions: ZFBC
-using Oceananigans.Fields: Field
+using Oceananigans.Fields: Field, location
 using Oceananigans.Grids: AbstractGrid, flip
 using Oceananigans.Operators: idxᴿ, idxᴸ, Ax, Ay, Az, volume
 using Oceananigans.Utils: work_layout, launch!
@@ -158,19 +158,25 @@ function calculate_boundary_tendency_contributions!(model)
 
     if grid isa XBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_x_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            if model isa NonhydrostaticModel || keys(Φ)[q] != :η # no support for boundary conditions on η
+                events[q] = apply_x_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            end
         end
     end
 
     if grid isa YBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_y_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            if model isa NonhydrostaticModel || keys(Φ)[q] != :η # no support for boundary conditions on η
+                events[q] = apply_y_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            end
         end
     end
 
     if grid isa ZBoundedGrid
         for q = 1:Nfields
-            events[q] = apply_z_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            if model isa NonhydrostaticModel || keys(Φ)[q] != :η # no support for boundary conditions on η
+                events[q] = apply_z_bcs!(Gⁿ[q], barrier, Φ[q], closure, K, ids[q], clock, Φ)
+            end
         end
     end
 

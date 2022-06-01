@@ -96,9 +96,13 @@ end
     q̃ᴮ = bottom_flux(i, j, k, ibg, bc.bottom, loc, c, closure, K, id, clock, fields)
     q̃ᵀ =    top_flux(i, j, k, ibg, bc.top,    loc, c, closure, K, id, clock, fields)
 
-    iᵂ, jˢ, kᴮ = idxᴿ.((i, j, k), loc)
-    iᴱ, jᴺ, kᵀ = idxᴸ.((i, j, k), loc)
+    iᵂ, jˢ, kᴮ = idxᴸ.((i, j, k), loc)
+    iᴱ, jᴺ, kᵀ = idxᴿ.((i, j, k), loc)
     LX, LY, LZ = loc
+
+    if immersed_z_boundary(i, j, kᴮ, ibg, LX, LY, flip(LZ))
+        @show (LX, LY, flip(LZ), kᴮ)
+    end
 
     # Impose i) immersed fluxes if we're on an immersed boundary or ii) zero otherwise.
     qᵂ = conditional_x_flux(iᵂ, j, k, ibg, flip(LX), LY, LZ, q̃ᵂ, zero(ibg))

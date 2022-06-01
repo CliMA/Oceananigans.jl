@@ -141,19 +141,19 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 ##### With these rules, cells that lie outside `Bounded` are never "touched".
 #####
 
-# Indexing conventions
+# Grab index to the ᴿight or ᴸeft of the current location
 @inline idxᴿ(i, ::Face)   = i
 @inline idxᴸ(i, ::Face)   = i-1
 @inline idxᴿ(i, ::Center) = i+1
 @inline idxᴸ(i, ::Center) = i
 
-@inline flip(::Face)   = c
-@inline flip(::Center) = f
+@inline flip(::Face)   = Center()
+@inline flip(::Center) = Face()
 
 """
     x_boundary(i, j, k, grid, ℓx, ℓy, ℓz)
 
-Return true if one or both of the nodes to the east or west of the location `(ℓx, ℓy, ℓz)`
+Return true if one or both of the nodes to the left or right of the location `(ℓx, ℓy, ℓz)`
 at `i, j, k` in `x` has `inactive_node`.
 """
 @inline x_boundary(i, j, k, grid, ℓx, ℓy, ℓz) = inactive_node(idxᴸ(i, ℓx), j, k, grid, flip(ℓx), ℓy, ℓz) | inactive_node(idxᴿ(i, ℓx), j, k, grid, flip(ℓx), ℓy, ℓz)

@@ -210,9 +210,11 @@ end
             # "View" fields
             for f in [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
 
-                test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
-                test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3))]
-                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))] 
+                pf = parent(f)
+
+                test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :), (:, :, 8)]
+                test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3)), (size(f, 1), size(f, 2), 1)]
+                test_parent_sizes = [size(pf), (2, 2, 2), (1, 6, size(pf, 3)), (size(pf, 1), size(pf, 2), 1)] 
 
                 for (t, indices) in enumerate(test_indices)
                     field_sz = test_field_sizes[t]

@@ -10,7 +10,7 @@ Lz = 1
 
 grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bounded))
 
-@inline bottom_height(x, y) = 0.1
+@inline bottom_height(x, y) = 0.2
 # Uncomment to run without immersed boundary grid
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
 
