@@ -106,6 +106,6 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, arch)
+function generate_coordinate(FT, ::Type{Flat}, N, H, coord, arch)
     return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
 end
