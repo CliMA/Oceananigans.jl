@@ -182,8 +182,8 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology)
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -237,35 +237,40 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology)
-
-    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
-
-    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
-
-    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-    @assert -90 <= φ₁ <= φ₂ <= 90
-
-    (φ₁ == -90 || φ₂ == 90) &&
-        @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
-
-    Lλ = λ₂ - λ₁
+function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
     if !isnothing(topology)
         TX, TY, TZ = topology
+        Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+        Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
+        Nλ, Nφ, Nz = N = size
+        Hλ, Hφ, Hz = H = halo
+        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+        @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
+
+        φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+        @assert -90 <= φ₁ <= φ₂ <= 90
+
+        (φ₁ == -90 || φ₂ == 90) &&
+            @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
+
+        Lλ = λ₂ - λ₁
+
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
         TZ = Bounded
     end
 
-    latitude  = validate_dimension_specification(TX, latitude,  :x, size[1], FT)
-    longitude = validate_dimension_specification(TY, longitude, :y, size[2], FT)
-    z         = validate_dimension_specification(TZ, z,         :z, size[3], FT)
+    if TX == Flat || TY == Flat 
+        precompute_metrics = false
+    end
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ)
+    longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)
+    latitude  = validate_dimension_specification(TY, latitude,  :y, Nφ, FT)
+    z         = validate_dimension_specification(TZ, z,         :z, Nz, FT)
+
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ), precompute_metrics
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
