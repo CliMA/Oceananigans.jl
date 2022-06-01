@@ -13,6 +13,8 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 import Oceananigans.Architectures: architecture
 
+const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
+
 function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
     u =  XFaceField(grid)
     v =  YFaceField(grid)
@@ -126,7 +128,7 @@ function ShallowWaterModel(;
                             "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
                             "when constructing `grid`."))
 
-    (typeof(grid) <: Union{RectilinearGrid, ImmersedBoundaryGrid{<:RectilinearGrid}} || formulation == VectorInvariantFormulation()) ||
+    (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
