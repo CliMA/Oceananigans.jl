@@ -96,6 +96,9 @@ Keyword arguments
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
+
+  !!! warning "An optional title"
+      The `ConservativeFormulation()` requires a rectilinear `grid`!
 """
 function ShallowWaterModel(;
                            grid,
@@ -121,6 +124,9 @@ function ShallowWaterModel(;
     @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
                                        "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
                                        "when constructing `grid`."
+
+    @assert ((typeof(grid) <: RectilinearGrid) && formulation == ConservativeFormulation()) "`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
+                                                                                            "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), momentum_advection, tracer_advection, mass_advection, closure)
     any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
