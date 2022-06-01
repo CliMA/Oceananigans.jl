@@ -126,7 +126,7 @@ function ShallowWaterModel(;
                                                 "when constructing `grid`.")
 
     (formulation == ConservativeFormulation && typeof(grid) <: RectilinearGrid) || ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
-                                                                                                   "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one.")
+                                                                                                 "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one.")
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), momentum_advection, tracer_advection, mass_advection, closure)
     any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
