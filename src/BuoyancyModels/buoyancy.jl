@@ -32,7 +32,6 @@ function Buoyancy(; model, gravity_unit_vector=ZDirection())
     return Buoyancy(model, gravity_unit_vector)
 end
 
-
 @inline ĝ_x(buoyancy) = @inbounds buoyancy.gravity_unit_vector[1]
 @inline ĝ_y(buoyancy) = @inbounds buoyancy.gravity_unit_vector[2]
 @inline ĝ_z(buoyancy) = @inbounds buoyancy.gravity_unit_vector[3]
@@ -50,9 +49,10 @@ end
 @inline get_temperature_and_salinity(bm::Buoyancy, C) = get_temperature_and_salinity(bm.model, C)
 
 @inline buoyancy_perturbation(i, j, k, grid, b::Buoyancy, C) = buoyancy_perturbation(i, j, k, grid, b.model, C)
-@inline ∂x_b(i, j, k, grid, b::Buoyancy, C) = ∂x_b(i, j, k, grid, b.model, C)
-@inline ∂y_b(i, j, k, grid, b::Buoyancy, C) = ∂y_b(i, j, k, grid, b.model, C)
-@inline ∂z_b(i, j, k, grid, b::Buoyancy, C) = ∂z_b(i, j, k, grid, b.model, C)
+
+@inline ∂x_b(i, j, k, grid, b::Buoyancy, C, args...) = ∂x_b(i, j, k, grid, b.model, C, args...)
+@inline ∂y_b(i, j, k, grid, b::Buoyancy, C, args...) = ∂y_b(i, j, k, grid, b.model, C, args...)
+@inline ∂z_b(i, j, k, grid, b::Buoyancy, C, args...) = ∂z_b(i, j, k, grid, b.model, C, args...)
 
 @inline top_buoyancy_flux(i, j, grid, b::Buoyancy, args...) = top_buoyancy_flux(i, j, grid, b.model, args...)
 

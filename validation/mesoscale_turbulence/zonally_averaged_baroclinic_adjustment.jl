@@ -55,6 +55,8 @@ vertical_viscosity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretizat
 horizontal_biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νh)
 
 potential_vorticity_diffusivity = IsopycnalPotentialVorticityDiffusivity(κ_potential_vorticity=κᴳᴹ, κ_tracers=κᴳᴹ, f=coriolis.f₀)
+#potential_vorticity_diffusivity = IsopycnalPotentialVorticityDiffusivity(κ_potential_vorticity=0.0, κ_tracers=κᴳᴹ, f=coriolis.f₀)
+
 horizontal_viscosity = HorizontalScalarDiffusivity(ν=κᴳᴹ)
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
 advective_gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = κᴳᴹ,
@@ -74,6 +76,7 @@ model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     #closure = advective_gent_mcwilliams_diffusivity,
                                     #closure = vertical_viscosity,
                                     closure = potential_vorticity_diffusivity,
+                                    #closure = (potential_vorticity_diffusivity, vertical_viscosity),
                                     tracers = (:b, :c),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),

@@ -44,6 +44,8 @@ end
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 @inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = zero(eltype(grid))
 
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
+
 function Base.summary(fplane::FPlane{FT}) where FT 
     fstr = scalar_summary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
