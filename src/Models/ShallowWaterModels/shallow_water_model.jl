@@ -6,7 +6,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
@@ -126,7 +126,7 @@ function ShallowWaterModel(;
                             "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
                             "when constructing `grid`."))
 
-    (formulation == ConservativeFormulation && typeof(grid) <: RectilinearGrid) ||
+    (typeof(grid) <: RectilinearGrid || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
