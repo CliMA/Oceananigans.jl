@@ -174,16 +174,16 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
                                size,
-                               longitude,
-                               latitude,
+                               longitude = nothing,
+                               latitude = nothing,
                                z = nothing,
                                radius = R_Earth,
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology =
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -237,13 +237,16 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
+function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology)
 
-    λ₁, λ₂ = get_domain_extent(longitude, size[1])
-    @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
+    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    φ₁, φ₂ = get_domain_extent(latitude, size[2])
-    @assert -90 <= φ₁ < φ₂ <= 90
+    λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+    @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
+
+    φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+    @assert -90 <= φ₁ <= φ₂ <= 90
 
     (φ₁ == -90 || φ₂ == 90) &&
         @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
@@ -258,10 +261,11 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
         TZ = Bounded
     end
 
-    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
-    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
+    latitude  = validate_dimension_specification(TX, latitude,  :x, size[1], FT)
+    longitude = validate_dimension_specification(TY, longitude, :y, size[2], FT)
+    z         = validate_dimension_specification(TZ, z,         :z, size[3], FT)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ)
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)

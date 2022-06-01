@@ -3,6 +3,7 @@
 @inline adapt_if_vector(to, var) = var
 @inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
 
+get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
@@ -106,6 +107,6 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Type{Flat}, N, H, coord, arch)
+function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, arch)
     return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
 end
