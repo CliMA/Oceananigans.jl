@@ -76,8 +76,9 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
 end
 
 @inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    z = znode(c, c, c, i, j, k, underlying_grid)
-    return @inbounds z < ib.bottom_height[i, j]
+    z = znode(c, c, f, i, j, k+1, underlying_grid)
+    h = @inbounds ib.bottom_height[i, j]
+    return z <= h
 end
 
 on_architecture(arch, ib::AbstractGridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
