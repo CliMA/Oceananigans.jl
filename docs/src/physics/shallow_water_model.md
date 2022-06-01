@@ -16,7 +16,7 @@ Thus, the shallow water dynamics in vector-invariant form become:
 
 ```math
 \begin{align}
-  \partial_t \boldsymbol{u} + (\zeta + f) \boldsymbol{\hat k} \times\boldsymbol{u} & = 
+  \partial_t \boldsymbol{u} + (\zeta \boldsymbol{\hat k} + \boldsymbol{f})  \times\boldsymbol{u} & = 
   - \boldsymbol{\nabla} \left [ g (h +b) + \frac12 \boldsymbol{u} \cdot \boldsymbol{u} \right ] \, , \\
   \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}
@@ -34,7 +34,7 @@ The `ConservativeFormulation()` uses the volume transport along each direction `
 depth of the fluid ``h`` as the dynamical variables.  The shallow water dynamics in conservative form is:
 ```math
 \begin{align}
-  \partial_t (\boldsymbol{u} h) + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} \boldsymbol{u} h \right ) + f \boldsymbol{\hat k} \times (\boldsymbol{u} h) & = - g h \boldsymbol{\nabla} \left ( h + b \right ) \, ,\\
+  \partial_t (\boldsymbol{u} h) + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} \boldsymbol{u} h \right ) + \boldsymbol{f} \times (\boldsymbol{u} h) & = - g h \boldsymbol{\nabla} \left ( h + b \right ) \, ,\\
   \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}
 ```
