@@ -209,7 +209,7 @@ using Oceananigans.Advection: VectorInvariantSchemes
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. "* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::VectorInvariantFormulation) = momentum_advection
 
