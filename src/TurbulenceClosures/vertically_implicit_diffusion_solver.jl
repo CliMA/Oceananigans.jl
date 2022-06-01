@@ -135,8 +135,8 @@ end
 #####
 
 # Special viscosity extractors with tracer_index === nothing
-@inline νzᶠᶜᶠ(i, j, k, grid, clo, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
-@inline νzᶜᶠᶠ(i, j, k, grid, clo, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
 
 is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 

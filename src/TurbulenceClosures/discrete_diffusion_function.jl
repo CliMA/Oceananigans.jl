@@ -54,22 +54,22 @@ const UnparameterizedDDF{LX, LY, LZ} = DiscreteDiffusionFunction{LX, LY, LZ, <:N
 const UnlocalizedDDF                 = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing}
 const UnlocalizedUnparametrizedDDF   = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
-@inline function getdiffusion(dd::DiscreteDiffusionFunction{LX, LY, LZ}, 
+@inline function getdiffusivity(dd::DiscreteDiffusionFunction{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
         from = (LX(), LY(), LZ())
         return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields, dd.parameters)
 end
 
-@inline function getdiffusion(dd::UnparameterizedDDF{LX, LY, LZ}, 
+@inline function getdiffusivity(dd::UnparameterizedDDF{LX, LY, LZ}, 
                               i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
         from = (LX(), LY(), LZ())
     return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields)
 end
 
-@inline getdiffusion(dd::UnlocalizedDDF, i, j, k, grid, location, clock, fields) = 
+@inline getdiffusivity(dd::UnlocalizedDDF, i, j, k, grid, location, clock, fields) = 
         dd.func(i, j, k, grid, location..., clock, fields, dd.parameters)
 
-@inline getdiffusion(dd::UnlocalizedUnparametrizedDDF, i, j, k, grid, location, clock, fields) = 
+@inline getdiffusivity(dd::UnlocalizedUnparametrizedDDF, i, j, k, grid, location, clock, fields) = 
         dd.func(i, j, k, grid, location..., clock, fields)
 
 Adapt.adapt_structure(to, dd::DiscreteDiffusionFunction{LX, LY, LZ}) where {LX, LY, LZ} =
