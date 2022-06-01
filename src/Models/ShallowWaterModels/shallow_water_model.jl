@@ -97,7 +97,7 @@ Keyword arguments
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
 
-  !!! warning "An optional title"
+  !!! warning "`ConservativeFormulation()` grid requirements"
       The `ConservativeFormulation()` requires a rectilinear `grid`!
 """
 function ShallowWaterModel(;
