@@ -126,7 +126,7 @@ function ShallowWaterModel(;
                             "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
                             "when constructing `grid`."))
 
-    (typeof(grid) <: RectilinearGrid || formulation == VectorInvariantFormulation()) ||
+    (typeof(grid) <: Union{RectilinearGrid, ImmersedBoundaryGrid{<:RectilinearGrid}} || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
@@ -202,7 +202,7 @@ end
 using Oceananigans.Advection: VectorInvariantSchemes
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
-validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) = throw(ArgumentError("you have to use VectorInvariant advection for VectorInvariantFormulation"))
+validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) = throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme."))
 validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::VectorInvariantFormulation) = momentum_advection
 
 formulation(model::ShallowWaterModel)  = model.formulation
