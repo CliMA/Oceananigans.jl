@@ -6,10 +6,12 @@ using Oceananigans
 using Oceananigans.Units
 
 using Oceananigans.Fields: interpolate, Field
+using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
+using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 using CUDA: @allowscalar, device!
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -119,9 +121,7 @@ target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 ##### Physics and model setup
 #####
 
-νh = 1e+1
 νz = 5e-3
-κh = 1e+1
 κz = 1e-4
 
 using Oceananigans.Operators: Δx, Δy
@@ -129,11 +129,12 @@ using Oceananigans.TurbulenceClosures
 
 @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / 5days
 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
 convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
-                                                    
+biharmonic_viscosity   = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), ν=νhb, discrete_form=true)
+     
+closures = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity)
+
 #####
 ##### Boundary conditions / time-dependent fluxes 
 #####
@@ -228,7 +229,6 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -238,7 +238,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
-                                    closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
+                                    closure = closures,
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
                                     tracer_advection = WENO5(underlying_grid))
