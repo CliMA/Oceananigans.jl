@@ -371,9 +371,9 @@ all_y_nodes(::Type{Center}, grid::RectilinearGrid) = grid.yᵃᶜᵃ
 all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
 all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
 
-@inline cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
-@inline cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
-@inline cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
+cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
+cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
+cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
 
 function with_halo(new_halo, old_grid::RectilinearGrid)
 
