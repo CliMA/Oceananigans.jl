@@ -245,7 +245,6 @@ function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topo
         Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
         Nλ, Nφ, Nz = N = size
-        Hλ, Hφ, Hz = H = halo
         λ₁, λ₂ = get_domain_extent(longitude, Nλ)
         @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
 
@@ -265,6 +264,8 @@ function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topo
     if TX == Flat || TY == Flat 
         precompute_metrics = false
     end
+
+    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
     longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)
     latitude  = validate_dimension_specification(TY, latitude,  :y, Nφ, FT)
