@@ -66,6 +66,9 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
    
     run!(simulation)
 
+    u, v = shallow_water_velocities(model)
+    h = model.solution.h
+
     # Test results
     test_fields = (
         u = Array(interior(u)),
@@ -79,9 +82,9 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
         file = jldopen(regression_data_path)
 
         truth_fields = (
-            u = file["timeseries/u/$stop_iteration"][:, :, :],
-            v = file["timeseries/v/$stop_iteration"][:, :, :],
-            h = file["timeseries/h/$stop_iteration"][:, :, :],
+            u = file["timeseries/u/$stop_iteration"][:, :, 1],
+            v = file["timeseries/v/$stop_iteration"][:, :, 1],
+            h = file["timeseries/h/$stop_iteration"][:, :, 1],
         )
 
         close(file)

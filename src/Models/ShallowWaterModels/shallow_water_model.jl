@@ -1,12 +1,13 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
+using Oceananigans.AbstractOperations: @at
 using Oceananigans.Distributed
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
+using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
@@ -211,6 +212,16 @@ validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::Vector
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
 
-shallow_water_velocities(model::ShallowWaterModel) = formulation(model) isa VectorInvariantFormulation ? 
-                                                     (model.solution.u, model.solution.v) :
-                                                     (model.solution.uh / model.solution.h, model.solution.vh / model.solution.h) 
+function shallow_water_velocities(model::ShallowWaterModel)
+    if formulation(model) isa VectorInvariantFormulation 
+        return (model.solution.u, model.solution.v) 
+    else
+        u = Field(@at (Face, Center, Center) model.solution.uh / model.solution.h)
+        v = Field(@at (Center, Face, Center) model.solution.vh / model.solution.h)
+
+        compute!(u)
+        compute!(v)
+
+        return (u, v)
+    end
+end
