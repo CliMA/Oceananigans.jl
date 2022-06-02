@@ -117,7 +117,8 @@ end
 
 simulation = Simulation(model,
                         Δt = 3600,
-                        stop_time = 1years)
+                        stop_time = 1day)
+#                       stop_time = 1years)
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
@@ -129,6 +130,8 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(10day),
                                                       filename = output_prefix,
                                                       overwrite_existing = true)
+
+save("tdata.jld2",Dict())
 
 run!(simulation)
 

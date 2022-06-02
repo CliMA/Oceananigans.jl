@@ -92,8 +92,6 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
 
-    save("tdata.jld2", (η,rhs) )
-    
     return nothing
 end
 

@@ -7,6 +7,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
+using JLD2
+
 using Adapt
 using KernelAbstractions: NoneEvent
 
@@ -123,6 +125,14 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     start_time = time_ns()
 
     solve!(η, solver, rhs, g, Δt)
+
+    # WRITE OUT η and rhs here
+    curt=model.clock.time
+    fld_dict=Dict("η" => η.data.parent,"rhs" => rhs)
+    d_record=Dict(string(curt) => fld_dict )
+    jldopen("tdata.jld2", "a+") do file
+        file[string(curt)] = d_record
+    end
 
     @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
