@@ -102,7 +102,7 @@ Keyword arguments
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
 
-!!! warning "`ConservativeFormulation()` grid requirements"
+!!! warning "Formulation-grid compatibility requirements"
     The `ConservativeFormulation()` requires a rectilinear `grid`. If you want to use a
     latitude-longitude grid then you'd need to use `VectorInvariantFormulation()`.
 """
