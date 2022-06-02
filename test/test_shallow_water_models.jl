@@ -53,11 +53,11 @@ end
     @info "Testing shallow water models..."
 
     @testset "Must be Flat in the vertical" begin
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Bounded))
-        @test_throws AssertionError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+        @test_throws ArgumentError ShallowWaterModel(grid=grid, gravitational_acceleration=1)
 
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Periodic))
-        @test_throws AssertionError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
+        @test_throws ArgumentError ShallowWaterModel(grid=grid, gravitational_acceleration=1)
     end
 
     @testset "Model constructor errors" begin

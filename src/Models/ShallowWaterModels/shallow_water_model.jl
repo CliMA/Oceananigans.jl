@@ -60,7 +60,9 @@ struct VectorInvariantFormulation end
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
                               clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = UpwindBiasedFifthOrder(),
+                 momentum_advection = UpwindBiasedFifthOrder(),
+                   tracer_advection = WENO5(),
+                     mass_advection = WENO5(),
                            coriolis = nothing,
                 forcing::NamedTuple = NamedTuple(),
                             closure = nothing,
@@ -101,8 +103,9 @@ Keyword arguments
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
 
-  !!! warning "`ConservativeFormulation()` grid requirements"
-      The `ConservativeFormulation()` requires a rectilinear `grid`!
+!!! warning "Formulation-grid compatibility requirements"
+    The `ConservativeFormulation()` requires `RectilinearGrid`.
+    Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
 function ShallowWaterModel(;
                            grid,
@@ -206,7 +209,9 @@ end
 using Oceananigans.Advection: VectorInvariantSchemes
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
-validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) = throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme."))
+validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+                        "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::VectorInvariantFormulation) = momentum_advection
 
 formulation(model::ShallowWaterModel)  = model.formulation

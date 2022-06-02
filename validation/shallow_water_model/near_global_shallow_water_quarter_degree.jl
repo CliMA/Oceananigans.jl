@@ -101,7 +101,6 @@ bat = -bat
                                               size = (Nx, Ny),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              z = (0, 0),
                                               halo = (4, 4),
                                               topology = (Periodic, Bounded, Flat),
                                               precompute_metrics = true)
