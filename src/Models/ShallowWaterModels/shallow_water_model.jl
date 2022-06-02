@@ -103,8 +103,8 @@ Keyword arguments
                    non-linear terms (`VectorInvariantFormulation()`).
 
 !!! warning "Formulation-grid compatibility requirements"
-    The `ConservativeFormulation()` requires a rectilinear `grid`. If you want to use a
-    latitude-longitude grid then you'd need to use `VectorInvariantFormulation()`.
+    The `ConservativeFormulation()` requires `RectilinearGrid`.
+    Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
 function ShallowWaterModel(;
                            grid,
