@@ -1,4 +1,4 @@
-# include("dependencies_for_runatests.jl")
+include("dependencies_for_runtests.jl")
 
 include("regression_tests/shallow_water_bickley_jet_regression.jl")
 
