@@ -8,6 +8,7 @@ using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_n
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
+import Base.length
 
 mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
     filepath :: String
@@ -25,20 +26,25 @@ ext(::Type{NetCDFOutputWriter}) = ".nc"
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",)
-ydim(::Type{Face}) = ("yF",)
-zdim(::Type{Face}) = ("zF",)
+Base.length(::Colon) = Inf
 
-xdim(::Type{Center}) = ("xC",)
-ydim(::Type{Center}) = ("yC",)
-zdim(::Type{Center}) = ("zC",)
+xdim(::Type{Face}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("xF",)
+ydim(::Type{Face}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("yF",)
+zdim(::Type{Face}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("zF",)
 
-xdim(::Type{Nothing}) = ()
-ydim(::Type{Nothing}) = ()
-zdim(::Type{Nothing}) = ()
+xdim(::Type{Center}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("xC",)
+ydim(::Type{Center}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("yC",)
+zdim(::Type{Center}, inds, user_inds) = (length(inds) == 1) & (length(user_inds) != 1) ? () : ("zC",)
 
-netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+xdim(::Type{Nothing}, inds, user_inds) = ()
+ydim(::Type{Nothing}, inds, user_inds) = ()
+zdim(::Type{Nothing}, inds, user_inds) = ()
+
+function netcdf_spatial_dimensions(afield::AbstractField{LX, LY, LZ}, user_def_indices) where {LX, LY, LZ}
+    indices = afield.indices
+    tuple(xdim(LX, indices[1], user_def_indices[1])..., ydim(LY, indices[2], user_def_indices[2])..., zdim(LZ, indices[3], user_def_indices[3])...)
+end
+
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
@@ -372,7 +378,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions)
+            define_output_variable!(dataset, output, name, array_type, compression, attributes, dimensions, indices)
         end
 
         sync(dataset)
@@ -388,7 +394,7 @@ end
 #####
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output, name, array_type, compression, output_attributes, dimensions, user_def_indices)
     name ∉ keys(dimensions) && error("Custom output $name needs dimensions!")
 
     defVar(dataset, name, eltype(array_type), (dimensions[name]..., "time"),
@@ -399,10 +405,11 @@ end
 
 
 """ Defines empty field variable. """
-define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions) =
+function define_output_variable!(dataset, output::AbstractField, name, array_type, compression, output_attributes, dimensions, user_def_indices)
     defVar(dataset, name, eltype(array_type),
-           (netcdf_spatial_dimensions(output)..., "time"),
+           (netcdf_spatial_dimensions(output, user_def_indices)..., "time"),
            compression=compression, attrib=output_attributes)
+end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
@@ -515,7 +522,7 @@ end
 #####
 
 """ Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions)
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type, compression, output_attributes, dimensions, user_def_indices)
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     for particle_field in particle_fields
         defVar(dataset, particle_field, eltype(array_type),

@@ -7,6 +7,58 @@ using Dates: Millisecond
 using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.OutputWriters: construct_output
+using Oceananigans.Fields: indices
+
+
+function test_output_construction(model)
+
+    u, v, w = model.velocities
+    set!(model, u=(x, y, z)->y)
+
+    indices1 = (:, :, :)
+    indices2 = (1, 2:3, :)
+
+    # First we test fields
+    @test construct_output(u, model.grid, indices1, false) isa Field
+    @test construct_output(u, model.grid, indices2, false) isa Field
+
+    # Now we test windowed fields
+    u_sliced1 = Field(u, indices=indices1)
+    u_sliced2 = Field(u, indices=indices2)
+
+    @test construct_output(u_sliced1, model.grid, indices1, false) isa Field
+    @test construct_output(u_sliced1, model.grid, indices2, false) isa Field
+
+    @test construct_output(u_sliced2, model.grid, indices1, false) isa Field
+    @test construct_output(u_sliced2, model.grid, indices2, false) isa Field
+
+    @test indices(u_sliced2) != indices(construct_output(u_sliced1, model.grid, indices2, false)) # u_sliced2 should have halo regions
+    @test indices(u_sliced2) == indices(construct_output(u_sliced1, model.grid, indices2, true)) # both should have halo regions
+
+    # Now we test abstract operations
+    op = u^2 + v^2
+
+    @test construct_output(op, model.grid, indices1, false) isa Field
+    @test construct_output(op, model.grid, indices2, false) isa Field
+
+    op_sliced1 = Field(op, indices=indices1)
+    op_sliced2 = Field(op, indices=indices2)
+    compute!(op_sliced1)
+    compute!(op_sliced2)
+
+    @test construct_output(op_sliced1, model.grid, indices1, false) isa Field
+    @test construct_output(op_sliced1, model.grid, indices2, false) isa Field
+
+    @test construct_output(op_sliced2, model.grid, indices1, false) isa Field
+    @test construct_output(op_sliced2, model.grid, indices2, false) isa Field
+
+    @test indices(op_sliced2) != indices(construct_output(op_sliced1, model.grid, indices2, false)) # op_sliced2 should have halo regions
+    @test indices(op_sliced2) == indices(construct_output(op_sliced1, model.grid, indices2, true)) # both should have halo regions
+
+    return nothing
+end
+
 
 #####
 ##### WindowedTimeAverage tests
@@ -218,25 +270,30 @@ function test_windowed_time_averaging_simulation(model)
     return nothing
 end
 
+
+
 #####
 ##### Run output writer tests!
 #####
 
+topo = (Periodic, Periodic, Bounded)
 @testset "Output writers" begin
     @info "Testing output writers..."
 
-    topo = (Periodic, Periodic, Bounded)
     for arch in archs
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(; grid)
+
+        @info "  Testing that outputs are properly constructed..."
+        test_output_construction(model)
 
         @info "Testing that writers create file and append to it properly"
         for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
-            grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
-            model = NonhydrostaticModel(grid=grid)
+            model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)
         end
 
         # Some tests can reuse this same grid and model.
-        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
@@ -254,7 +311,6 @@ end
     include("test_checkpointer.jl")
 
     for arch in archs
-        topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
