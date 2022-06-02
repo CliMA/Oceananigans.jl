@@ -108,7 +108,7 @@ end
     return sqrt(N²⁺)  
 end
 
-@inline ψ⁺(i, j, k, grid, ψ) = @inbounds max(zero(eltype(grid)), ψ[i, j, k])
+@inline ψ⁺(i, j, k, grid, ψ) = @inbounds max(zero(grid), ψ[i, j, k])
 
 @inline function buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     FT = eltype(grid)

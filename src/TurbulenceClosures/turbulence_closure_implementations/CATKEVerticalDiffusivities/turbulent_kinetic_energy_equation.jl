@@ -34,7 +34,9 @@ const VITD = VerticallyImplicitTimeDiscretization
     FT = eltype(grid)
     @inbounds e⁺ = abs(e[i, j, k])
 
-    ℓ = ℑzᵃᵃᶜ(i, j, k, grid, TKE_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓu = ℑzᵃᵃᶜ(i, j, k, grid, momentum_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓc = ℑzᵃᵃᶜ(i, j, k, grid, tracer_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓ = max(ℓu, ℓc)
     Cᴰ = closure.Cᴰ
 
     # Note:
