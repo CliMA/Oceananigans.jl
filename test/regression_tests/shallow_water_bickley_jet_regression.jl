@@ -31,7 +31,7 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
 
     small_amplitude = 1e-4
     
-    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) 
+    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * cos(8π * x / Lx)
     uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
 
     if formulation isa VectorInvariantFormulation
