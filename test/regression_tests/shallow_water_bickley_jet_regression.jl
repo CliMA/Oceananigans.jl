@@ -9,7 +9,6 @@ Nx, Ny = 128, 128
 advection(formulation::ConservativeFormulation) = WENO5()
 advection(formulation::VectorInvariantFormulation) = WENO5(vector_invariant=VelocityStencil())
 
-
 function run_shallow_water_regression(arch, formulation; regenerate_data = false)
     grid = RectilinearGrid(arch, size = (Nx, Ny),
                         x = (0, Lx), y = (-Ly/2, Ly/2),
@@ -32,7 +31,7 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
 
     small_amplitude = 1e-4
     
-    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
+    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) 
     uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
 
     if formulation isa VectorInvariantFormulation
