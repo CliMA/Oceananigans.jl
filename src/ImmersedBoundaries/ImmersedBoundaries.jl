@@ -161,12 +161,6 @@ is not part of the prognostic state.
 @inline immersed_cell(i, j, k, grid::ImmersedBoundaryGrid) =
     immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
 
-using Oceananigans.Grids: AbstractGrid
-
-@inline immersed_cell(i, j, k, grid::AbstractGrid{Flat}, immersed_boundary)               = immersed_cell(1, j, k, grid, immersed_boundary)
-@inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat}, immersed_boundary)        = immersed_cell(i, 1, k, grid, immersed_boundary)
-@inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, immersed_boundary) = immersed_cell(i, j, 1, grid, immersed_boundary)
-
 """
     inactive_cell(i, j, k, grid::ImmersedBoundaryGrid)
 
