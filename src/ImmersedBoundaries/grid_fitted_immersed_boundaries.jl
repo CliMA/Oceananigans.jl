@@ -145,3 +145,13 @@ on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 
+# support for Flat grids
+using Oceananigans.Grids: AbstractGrid
+for ImmBoundary in [:GridFittedBottom, :GridFittedBoundary]
+    @eval begin
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat}, ib::$Boundary)               = immersed_cell(1, j, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat}, ib::$Boundary)        = immersed_cell(i, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, ib::$Boundary) = immersed_cell(i, j, 1, grid, ib)
+    end
+end
+
