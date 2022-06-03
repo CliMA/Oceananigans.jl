@@ -86,7 +86,7 @@ regular_dimensions(::ZRegLatLonGrid) = tuple(3)
                           size,
                           longitude,
                           latitude,
-                          z,
+                          z = nothing,
                           radius = R_Earth,
                           topology = nothing,
                           precompute_metrics = true,
@@ -108,11 +108,11 @@ Keyword arguments
 
 - `size` (required): A 3-tuple prescribing the number of grid points each direction.
 
-- `longitude`, `latitude`, `z` (required): Each is either a
-                                           (i) 2-tuple that specify the end points of the domain,
-                                           (ii) one-dimensional array specifying the cell interface locations or
-                                           (iii) a single-argument function that takes an index and returns
-                                                 cell interface location.
+- `longitude` (required), `latitude` (required), `z` (default: `nothing`):
+  Each is either a:
+  1. 2-tuple that specify the end points of the domain,
+  2. one-dimensional array specifying the cell interface locations, or
+  3. a single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
 
@@ -174,20 +174,20 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
                                size,
-                               longitude,
-                               latitude,
-                               z,
+                               longitude = nothing,
+                               latitude = nothing,
+                               z = nothing,
                                radius = R_Earth,
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
-
+  
     if architecture == GPU() && !has_cuda() 
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
-
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topology =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
+    
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
@@ -241,32 +241,41 @@ function with_precomputed_metrics(grid)
                                              Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, grid.radius)
 end
 
-function validate_lat_lon_grid_args(latitude, longitude, size, halo, topology)
-
-    λ₁, λ₂ = get_domain_extent(longitude, size[1])
-    @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
-
-    φ₁, φ₂ = get_domain_extent(latitude, size[2])
-    @assert -90 <= φ₁ < φ₂ <= 90
-
-    (φ₁ == -90 || φ₂ == 90) &&
-        @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
-
-    Lλ = λ₂ - λ₁
+function validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
 
     if !isnothing(topology)
         TX, TY, TZ = topology
-        TZ === Bounded || throw(ArgumentError("z topology must be Bounded"))
+        Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+        Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
     else
+        Nλ, Nφ, Nz = N = size
+        λ₁, λ₂ = get_domain_extent(longitude, Nλ)
+        @assert λ₁ <= λ₂ && λ₂ - λ₁ ≤ 360
+
+        φ₁, φ₂ = get_domain_extent(latitude, Nφ)
+        @assert -90 <= φ₁ <= φ₂ <= 90
+
+        (φ₁ == -90 || φ₂ == 90) &&
+            @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
+
+        Lλ = λ₂ - λ₁
+
         TX = Lλ == 360 ? Periodic : Bounded
         TY = Bounded
         TZ = Bounded
     end
 
-    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+    if TX == Flat || TY == Flat 
+        precompute_metrics = false
+    end
+
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, (TX, TY, TZ)
+    longitude = validate_dimension_specification(TX, longitude, :x, Nλ, FT)
+    latitude  = validate_dimension_specification(TY, latitude,  :y, Nφ, FT)
+    z         = validate_dimension_specification(TZ, z,         :z, Nz, FT)
+
+    return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, (TX, TY, TZ), precompute_metrics
 end
 
 function Base.summary(grid::LatitudeLongitudeGrid)

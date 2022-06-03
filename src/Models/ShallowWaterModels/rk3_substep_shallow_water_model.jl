@@ -44,9 +44,9 @@ Time step solution fields with a 3rd-order Runge-Kutta method.
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.uh[i, j, k] += Δt * (γⁿ * Gⁿ.uh[i, j, k] + ζⁿ * G⁻.uh[i, j, k])
-        U.vh[i, j, k] += Δt * (γⁿ * Gⁿ.vh[i, j, k] + ζⁿ * G⁻.vh[i, j, k])
-        U.h[i, j, k]  += Δt * (γⁿ * Gⁿ.h[i, j, k]  + ζⁿ * G⁻.h[i, j, k])
+        U[1][i, j, k] += Δt * (γⁿ * Gⁿ[1][i, j, k] + ζⁿ * G⁻[1][i, j, k])
+        U[2][i, j, k] += Δt * (γⁿ * Gⁿ[2][i, j, k] + ζⁿ * G⁻[2][i, j, k])
+        U[3][i, j, k] += Δt * (γⁿ * Gⁿ[3][i, j, k] + ζⁿ * G⁻[3][i, j, k])
     end
 end
 
@@ -57,8 +57,8 @@ Time step solution fields with a 3rd-order Runge-Kutta method.
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.uh[i, j, k] += Δt * γ¹ * G¹.uh[i, j, k]
-        U.vh[i, j, k] += Δt * γ¹ * G¹.vh[i, j, k]
-        U.h[i, j, k]  += Δt * γ¹ * G¹.h[i, j, k]
+        U[1][i, j, k] += Δt * γ¹ * G¹[1][i, j, k]
+        U[2][i, j, k] += Δt * γ¹ * G¹[2][i, j, k]
+        U[3][i, j, k] += Δt * γ¹ * G¹[3][i, j, k]
     end
 end
