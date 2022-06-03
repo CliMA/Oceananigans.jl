@@ -16,7 +16,6 @@ import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
@@ -103,16 +102,6 @@ end
 
 @inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
-
-""" Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
-    top_tracer_bcs = parameters.top_tracer_boundary_conditions
-    top_velocity_bcs = parameters.top_velocity_boundary_conditions
-    @inbounds closure = closure_array[i, j]
-
-    return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
-                         buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
-end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
                                                                val_tracer_index::Val{tracer_index},

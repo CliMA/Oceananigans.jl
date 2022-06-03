@@ -102,9 +102,8 @@ end
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
 @inline function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
-    FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = max(zero(FT), N²)
+    N²⁺ = max(zero(grid), N²)
     return sqrt(N²⁺)  
 end
 
@@ -155,31 +154,32 @@ end
     ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
 
     # Are we convecting?
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
+    # N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    # convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
+    
+    d = depthᶜᶜᶠ(i, j, k, grid)
+    convecting = (d < ℓʰ) & (Qᵇ > 0) & (e⁺ > 0)
 
-    return ifelse(convecting, ℓʰ, zero(eltype(grid)))
+    return ifelse(convecting, ℓʰ, zero(grid))
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    FT = eltype(grid)
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
+    return ifelse(N² == 0, zero(grid), N² / (∂z_u² + ∂z_v²))
 end
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    FT = eltype(grid)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
+    return ifelse(N² == 0, zero(grid), N² / (∂z_u² + ∂z_v²))
 end
 
-@inline step(x, c, w) = (1 + tanh(x / w - c)) / 2
+@inline step(x, c, w) = max(zero(x), min(one(x), x / w - c)) # (1 + tanh(x / w - c)) / 2
 @inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
 
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
