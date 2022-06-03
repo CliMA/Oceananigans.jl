@@ -146,41 +146,55 @@ end
 #####
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function _top_tke_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfCATKE, buoyancy)
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfCATKE, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     closure = getclosure(i, j, closure)
+    tke_parameters = closure.turbulent_kinetic_energy_equation
 
-    return top_tke_flux(i, j, grid, closure.turbulent_kinetic_energy_equation, closure,
+    return _top_tke_flux(i, j, grid, tke_parameters, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline  top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = zero(grid)
-@inline _top_tke_flux(args...) = top_tke_flux(args...)
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = zero(grid)
+@inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = zero(grid)
+
+#=
+@inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple{}, buoyancy) = zero(grid)
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple{}, buoyancy) = zero(grid)
+
+@inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:FlavorOfCATKE}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:FlavorOfCATKE}, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any}, buoyancy) =
-    _top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
-    _top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy)
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy)
+
+@inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
-    _top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy)
+    inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy)
 
-@inline _top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple, buoyancy) =
-    _top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+
+@inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy) +
+=#
 
-@inline function top_tke_flux(i, j, grid, tke::TurbulentKineticEnergyEquation, closure::FlavorOfCATKE,
-                              buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+@inline function _top_tke_flux(i, j, grid, tke::TurbulentKineticEnergyEquation, closure::CATKEVD,
+                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 
     wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
-    Cᴰ = tke.Cᴰ
+    Cᴰ = tke.Cᴰ⁻
     Cᵂu★ = tke.Cᵂu★
     CᵂwΔ = tke.CᵂwΔ
 
@@ -197,10 +211,9 @@ end
 
 """ Computes the convective velocity w★. """
 @inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
-    FT = eltype(grid)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return max(zero(FT), Qᵇ) * Δz   
+    return max(zero(grid), Qᵇ) * Δz   
 end
 
 struct TKETopBoundaryConditionParameters{C, U}
