@@ -11,7 +11,6 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
-using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 using CUDA: @allowscalar, device!
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -131,7 +130,7 @@ using Oceananigans.TurbulenceClosures
 
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
 convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
-biharmonic_viscosity   = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), ν=νhb, discrete_form=true)
+biharmonic_viscosity   = HorizontalDivergenceScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
      
 closures = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity)
 
