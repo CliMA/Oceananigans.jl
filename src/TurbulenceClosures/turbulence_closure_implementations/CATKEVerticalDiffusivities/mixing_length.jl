@@ -103,11 +103,11 @@ end
 
 @inline function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = max(zero(grid), N²)
+    N²⁺ = clip(N²)
     return sqrt(N²⁺)  
 end
 
-@inline ψ⁺(i, j, k, grid, ψ) = @inbounds max(zero(grid), ψ[i, j, k])
+@inline ψ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
 
 @inline function buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     FT = eltype(grid)
@@ -154,8 +154,8 @@ end
     ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
 
     # Are we convecting?
-    # N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    # convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
+    #N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    #convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
     
     d = depthᶜᶜᶠ(i, j, k, grid)
     convecting = (d < ℓʰ) & (Qᵇ > 0) & (e⁺ > 0)
@@ -223,9 +223,7 @@ end
 
     σu = momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
 
-    return σu * max(Cᵟu * ℓᵟ, ℓ★)
-
-    #return max(ℓʰ, σu * max(Cᵟu * ℓᵟ, ℓ★))
+    return max(ℓʰ, σu * max(Cᵟu * ℓᵟ, ℓ★))
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)

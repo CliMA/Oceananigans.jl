@@ -99,7 +99,7 @@ end
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, args...) =
     @inbounds - tracers.e[i, j, k] * implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...)
 
-@inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(eltype(grid))
+@inline implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE, args...) = zero(grid)
 
 #####
 ##### For closure tuples...
@@ -198,7 +198,8 @@ end
     Cᵂu★ = tke.Cᵂu★
     CᵂwΔ = tke.CᵂwΔ
 
-    return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
+    #return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
+    return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
 end
 
 """ Computes the friction velocity u★ based on fluxes of u and v. """
@@ -213,7 +214,7 @@ end
 @inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return max(zero(grid), Qᵇ) * Δz   
+    return clip(Qᵇ) * Δz   
 end
 
 struct TKETopBoundaryConditionParameters{C, U}
