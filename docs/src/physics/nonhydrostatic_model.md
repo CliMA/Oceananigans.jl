@@ -68,7 +68,7 @@ The conservation law for tracers is
     \end{align}
 ```
 where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary
-source term. Arbitrary tracers are permitted and thus an arbitrary number of tracer equations
+source term. An arbitrary tracers are permitted and thus an arbitrary number of tracer equations
 can be solved simultaneously alongside with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
