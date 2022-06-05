@@ -5,7 +5,7 @@ The buoyancy model determines the relationship between tracers and the buoyancy 
 ## Buoyancy tracer
 
 The simplest buoyancy model uses buoyancy ``b`` itself as a tracer: ``b`` obeys the tracer
-conservation equation and is used directly in the momentum equations in the momentum equation.
+conservation equation and is used directly the momentum equations.
 
 ## Seawater buoyancy
 
