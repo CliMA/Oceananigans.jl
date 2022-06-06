@@ -91,12 +91,12 @@ nothing # hide
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
 model = NonhydrostaticModel(; grid,
-              advection = WENO5(),
-            timestepper = :RungeKutta3,
-                tracers = :b,
-               buoyancy = BuoyancyTracer(),
-                closure = ScalarDiffusivity(; ν, κ),
-    boundary_conditions = (; b=b_bcs))
+                            advection = WENO5(),
+                            timestepper = :RungeKutta3,
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            closure = ScalarDiffusivity(; ν, κ),
+                            boundary_conditions = (; b=b_bcs))
 
 # ## Simulation set-up
 #
@@ -188,8 +188,8 @@ nothing # hide
 χ_timeseries = deepcopy(b_timeseries)
 
 for i in 1:length(times)
-  b = b_timeseries[i]
-  χ_timeseries[i] .= κ * (∂x(b)^2 + ∂z(b)^2)
+  bᵢ = b_timeseries[i]
+  χ_timeseries[i] .= κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
 end
 
 
@@ -258,8 +258,9 @@ Colorbar(fig[5, 2], hm_χ)
 frames = 1:length(times)
 
 record(fig, "horizontal_convection.mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 
