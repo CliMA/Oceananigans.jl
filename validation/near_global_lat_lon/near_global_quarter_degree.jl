@@ -6,6 +6,7 @@ using Oceananigans
 using Oceananigans.Units
 
 using Oceananigans.Fields: interpolate, Field
+using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
@@ -119,9 +120,7 @@ target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 ##### Physics and model setup
 #####
 
-νh = 1e+1
 νz = 5e-3
-κh = 1e+1
 κz = 1e-4
 
 using Oceananigans.Operators: Δx, Δy
@@ -129,11 +128,12 @@ using Oceananigans.TurbulenceClosures
 
 @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / 5days
 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
 convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
-biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
-                                                    
+biharmonic_viscosity   = HorizontalDivergenceScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
+     
+closures = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity)
+
 #####
 ##### Boundary conditions / time-dependent fluxes 
 #####
@@ -161,21 +161,16 @@ end
 u_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = true, parameters = τˣ)
 v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = true, parameters = τʸ)
 
-@inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
-@inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
-
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-@inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(Face(), Center(), Center(), i, j, k-1, grid) & !inactive_node(Face(), Center(), Center(), i, j, k, grid))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(Center(), Face(), Center(), i, j, k-1, grid) & !inactive_node(Center(), Face(), Center(), i, j, k, grid))                                
+@inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
+@inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
+@inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, k] 
+@inline v_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, k] 
 
-# Keep a constant linear drag parameter independent on vertical level
-@inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
-@inline v_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_v(i, j, k, grid) * fields.v[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
-
-Fu = Forcing(u_immersed_bottom_drag, discrete_form = true, parameters = μ)
-Fv = Forcing(v_immersed_bottom_drag, discrete_form = true, parameters = μ)
+u_immersed_bc = ImmersedBoundaryCondition(bottom = FluxBoundaryCondition(u_immersed_bottom_drag, discrete_form = true, parameters = μ))
+v_immersed_bc = ImmersedBoundaryCondition(bottom = FluxBoundaryCondition(v_immersed_bottom_drag, discrete_form = true, parameters = μ))
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -222,25 +217,23 @@ S_surface_relaxation_bc = FluxBoundaryCondition(surface_salinity_relaxation,
                                                 discrete_form = true,
                                                 parameters = (λ = Δz_top/7days, S★ = target_sea_surface_salinity))
 
-u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc)
-v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
+u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc, immersed = u_immersed_bc)
+v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc, immersed = v_immersed_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = WENO5(vector_invariant = VelocityStencil()),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
-                                    forcing = (u=Fu, v=Fv),
                                     tracer_advection = WENO5(underlying_grid))
 
 #####
