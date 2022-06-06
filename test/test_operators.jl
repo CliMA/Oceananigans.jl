@@ -101,14 +101,14 @@ function test_function_interpolation(T=Float64)
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
     return (
-        ℑxᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_c &&
-        ℑxᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_f &&
+        ℑxᶜᶜᶜ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_c &&
+        ℑxᶠᶜᶜ(2, 2, 2, grid, f, ϕ) == ℑx_ϕ_f &&
 
-        ℑyᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_c &&
-        ℑyᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_f &&
+        ℑyᶜᶜᶜ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_c &&
+        ℑyᶜᶠᶜ(2, 2, 2, grid, f, ϕ) == ℑy_ϕ_f &&
 
-        ℑzᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_c &&
-        ℑzᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_f
+        ℑzᶜᶜᶜ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_c &&
+        ℑzᶜᶜᶠ(2, 2, 2, grid, f, ϕ) == ℑz_ϕ_f
     )
 end
 

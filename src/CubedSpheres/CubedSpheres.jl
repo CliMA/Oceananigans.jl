@@ -91,18 +91,6 @@ end
 ##### Applying flux boundary conditions
 #####
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
-
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, args...)
-
-    for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
-        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
-                        Tuple(get_face(a, face_index) for a in args)...)
-    end
-
-    return nothing
-end
-
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: top_tracer_boundary_conditions
 
 function face_tracers(tracers, face)

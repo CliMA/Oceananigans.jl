@@ -66,17 +66,17 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline fʸw_minus_fᶻv(i, j, k, grid, coriolis, U) =
-    coriolis.fy * ℑzᵃᵃᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᵃᶜᵃ(i, j, k, grid, U.v)
+    coriolis.fy * ℑzᶜᶜᶜ(i, j, k, grid, U.w) - coriolis.fz * ℑyᶜᶜᶜ(i, j, k, grid, U.v)
 
 @inline fᶻu_minus_fˣw(i, j, k, grid, coriolis, U) =
-    coriolis.fz * ℑxᶜᵃᵃ(i, j, k, grid, U.u) - coriolis.fx * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
+    coriolis.fz * ℑxᶜᶜᶜ(i, j, k, grid, U.u) - coriolis.fx * ℑzᶜᶜᶜ(i, j, k, grid, U.w)
 
 @inline fˣv_minus_fʸu(i, j, k, grid, coriolis, U) =
-    coriolis.fx * ℑyᵃᶜᵃ(i, j, k, grid, U.v) - coriolis.fy * ℑxᶜᵃᵃ(i, j, k, grid, U.u)
+    coriolis.fx * ℑyᶜᶜᶜ(i, j, k, grid, U.v) - coriolis.fy * ℑxᶜᶜᶜ(i, j, k, grid, U.u)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
-@inline y_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑyᵃᶠᵃ(i, j, k, grid, fᶻu_minus_fˣw, coriolis, U)
-@inline z_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑzᵃᵃᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
+@inline x_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑxᶠᶜᶜ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
+@inline y_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑyᶜᶠᶜ(i, j, k, grid, fᶻu_minus_fˣw, coriolis, U)
+@inline z_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑzᶜᶜᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
 
 Base.show(io::IO, f_plane::ConstantCartesianCoriolis{FT}) where FT =
     print(io, "ConstantCartesianCoriolis{$FT}: ", @sprintf("fx = %.2e, fy = %.2e, fz = %.2e", f_plane.fx, f_plane.fy, f_plane.fz))

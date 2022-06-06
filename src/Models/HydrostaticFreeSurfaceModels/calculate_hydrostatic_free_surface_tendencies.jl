@@ -188,18 +188,3 @@ end
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, 1] = free_surface_tendency(i, j, grid, args...)
 end
-
-#####
-##### Boundary contributions to hydrostatic free surface model
-#####
-
-apply_flux_bcs!(::Nothing, args...) = nothing
-
-function apply_flux_bcs!(Gcⁿ, events, barrier, c, closure, K, id, clock, model_fields)
-    x_bcs_event = apply_x_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
-    y_bcs_event = apply_y_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
-    z_bcs_event = apply_z_bcs!(Gcⁿ, barrier, c, closure, K, id, clock, model_fields)
-    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
-    return nothing
-end
-

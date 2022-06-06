@@ -1,5 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
@@ -41,10 +41,10 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 const CoriolisEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyConservingScheme}
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+    @inbounds - ℑyᶠᶜᶜ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxᶠᶜᶜ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds + ℑxᶜᶠᶜ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑyᶜᶠᶜ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -52,8 +52,8 @@ const CoriolisEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyCons
 
 const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConservingScheme}
 
-@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
-@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᶠᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᶠᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnergyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)

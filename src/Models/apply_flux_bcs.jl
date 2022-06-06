@@ -102,7 +102,7 @@ Apply a south and/or north boundary condition to variable `c`.
     Ayˢ = Ay(i, 1,    k, grid, LX, flip(LY), LZ)
     Ayᴺ = Ay(i, Ny+1, k, grid, LX, flip(LY), LZ)
 
-    Vˢ  = volume(i,     1, k, grid, LX, LY, LZ)
+    Vˢ  = volume(i, 1,  k, grid, LX, LY, LZ)
     Vᴺ  = volume(i, Ny, k, grid, LX, LY, LZ)
 
     @inbounds Gc[i, 1,  k] += qˢ * Ayˢ / Vˢ

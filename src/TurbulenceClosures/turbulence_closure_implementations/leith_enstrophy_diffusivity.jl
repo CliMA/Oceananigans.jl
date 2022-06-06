@@ -1,5 +1,5 @@
 using Oceananigans.Fields: AbstractField
-using Oceananigans.Operators: ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑxᶜᵃᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
+using Oceananigans.Operators
 
 #####
 ##### The turbulence closure proposed by Leith
@@ -68,10 +68,10 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
 end
 
 @inline function abs²_∇h_ζ(i, j, k, grid, U)
-    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, U.v)
-    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, U.u)
-    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, U.u)
-    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, U.v)
+    vxx = ℑyᶜᶜᶜ(i, j, k, grid, ∂²xᶜᶠᶜ, U.v)
+    uyy = ℑxᶜᶜᶜ(i, j, k, grid, ∂²yᶠᶜᶜ, U.u)
+    uxy = ℑyᶜᶜᶜ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, U.u)
+    vxy = ℑxᶜᶜᶜ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, U.v)
 
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
@@ -82,8 +82,8 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = @inbounds ψ[i, j, k]^2
 
 @inline function abs²_∇h_wz(i, j, k, grid, w)
-    wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᶜᶜ, ∂zᶜᶜᶜ, w)
-    wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᶜᶠᶜ, ∂zᶜᶜᶜ, w)
+    wxz² = ℑxᶜᶜᶜ(i, j, k, grid, ψ², ∂xᶠᶜᶜ, ∂zᶜᶜᶜ, w)
+    wyz² = ℑyᶜᶜᶜ(i, j, k, grid, ψ², ∂yᶜᶠᶜ, ∂zᶜᶜᶜ, w)
     return wxz² + wyz²
 end
 
@@ -134,10 +134,10 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑxᶠᶜᶜ(i, j, k, grid, νₑ)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
 
@@ -154,7 +154,7 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑyᶜᶠᶜ(i, j, k, grid, νₑ)
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
@@ -173,10 +173,10 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑzᶜᶜᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)

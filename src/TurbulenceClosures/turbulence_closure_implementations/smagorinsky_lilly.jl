@@ -1,5 +1,4 @@
-using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑyzᵃᶜᶠ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ, ℑxzᶜᵃᶠ, ℑxyᶜᶠᵃ
-using Oceananigans.Operators: ℑxyᶜᶜᵃ, ℑxzᶜᵃᶜ, ℑyzᵃᶜᶜ, ℑxzᶠᵃᶠ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ
+using Oceananigans.Operators
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
@@ -101,7 +100,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
-    N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
+    N² = max(zero(FT), ℑzᶜᶜᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
@@ -149,48 +148,48 @@ const Δᶠ_cff = Δᶠ
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
     return (
                    tr_Σ²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑxyᶜᶜᶜ(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ℑxzᶜᶜᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ℑyzᶜᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `ffc`."
 @inline function ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
     return (
-                  ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w)
+                  ℑxyᶠᶠᶜ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 *   Σ₁₂²(i, j, k, grid, u, v, w)
-            + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑyzᶠᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 * ℑxzᶠᶠᶜ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `fcf`."
 @inline function ΣᵢⱼΣᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)
     return (
-                  ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
+                  ℑxzᶠᶜᶠ(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ℑyzᶠᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
             + 2 *   Σ₁₃²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 * ℑxyᶠᶜᶠ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 
 "Return the double dot product of strain at `cff`."
 @inline function ΣᵢⱼΣᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)
     return (
-                  ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ², u, v, w)
-            + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ₁₃², u, v, w)
+                  ℑyzᶜᶠᶠ(i, j, k, grid, tr_Σ², u, v, w)
+            + 2 * ℑxzᶜᶠᶠ(i, j, k, grid, Σ₁₂², u, v, w)
+            + 2 * ℑxyᶜᶠᶠ(i, j, k, grid, Σ₁₃², u, v, w)
             + 2 *   Σ₂₃²(i, j, k, grid, u, v, w)
             )
 end
 
 @inline function ΣᵢⱼΣᵢⱼᶜᶜᶠ(i, j, k, grid, u, v, w)
     return (
-                    ℑzᵃᵃᶠ(i, j, k, grid, tr_Σ², u, v, w)
+                    ℑzᶜᶜᶠ(i, j, k, grid, tr_Σ², u, v, w)
             + 2 * ℑxyzᶜᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w)
-            + 2 *   ℑxᶜᵃᵃ(i, j, k, grid, Σ₁₃², u, v, w)
-            + 2 *   ℑyᵃᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
+            + 2 *   ℑxᶜᶜᶠ(i, j, k, grid, Σ₁₃², u, v, w)
+            + 2 *   ℑyᶜᶜᶠ(i, j, k, grid, Σ₂₃², u, v, w)
             )
 end
 

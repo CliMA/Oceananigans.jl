@@ -24,7 +24,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 100, 200, 300
 
     grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
-                           halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
+                           halo=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
 
     field = CenterField(grid)
 
@@ -34,10 +34,9 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     data = field.data
 
-    (all(data[1-Hx:0,   1:Ny,       1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
-     all(data[1:Nx,   1-Hy:0,       1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
-     all(data[1:Nx,     1:Ny,       0:0] .== data[1:Nx,        1:Ny,       1:1]) &&
-     all(data[1:Nx,     1:Ny, Nz+1:Nz+1] .== data[1:Nx,        1:Ny,     Nz:Nz]))
+    (all(data[1-Hx:0,   1:Ny,    1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
+     all(data[1:Nx,   1-Hy:0,    1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
+     all(data[1:Nx,     1:Ny,  1-Hz:0] .== data[1:Nx,        1:Ny,    Nz-Hz+1:Nz]))
 end
 
 @testset "Halo regions" begin
