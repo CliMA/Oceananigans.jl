@@ -31,25 +31,54 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, bcs, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kwargs...)
+
+    arch = architecture(grid)
+
+    halo_tuple = permute_boundary_conditions(boundary_conditions)
    
-
-    west_bc   = extract_west_bc(bcs)
-    east_bc   = extract_east_bc(bcs)
-    south_bc  = extract_south_bc(bcs)
-    north_bc  = extract_north_bc(bcs)
-    bottom_bc = extract_bottom_bc(bcs)
-    top_bc    = extract_top_bc(bcs)
-
-    barrier = device_event(arch)
-    event_x =   fill_west_and_east_halo!(c, west_bc,   east_bc,  loc, arch, barrier, grid, args...; kwargs...)
-    event_y = fill_south_and_north_halo!(c, south_bc,  north_bc, loc, arch, barrier, grid, args...; kwargs...)
-    event_z =  fill_bottom_and_top_halo!(c, bottom_bc, top_bc,   loc, arch, barrier, grid, args...; kwargs...)
-
-    # Wait for all halo regions to be filled.
-    wait(MultiEvent(tuple(event_x, event_y, event_z)))
+    for task = 1:3
+        barrier = device_event(arch)
+        fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+    end
 
     return nothing
+end
+
+function fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+    fill_halo! = halo_tuple[1][task]
+    bc_left    = halo_tuple[2][task]
+    bc_right   = halo_tuple[3][task]
+    event      = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+end
+
+function permute_boundary_conditions(boundary_conditions)
+
+    fill_halos! = [
+        fill_west_and_east_halo!,
+        fill_south_and_north_halo!,
+        fill_bottom_and_top_halo!,
+    ]
+
+    boundary_conditions_array_left = [
+        extract_west_bc(boundary_conditions),
+        extract_south_bc(boundary_conditions),
+        extract_bottom_bc(boundary_conditions)
+    ]
+
+    boundary_conditions_array_right = [
+        extract_east_bc(boundary_conditions),
+        extract_north_bc(boundary_conditions),
+        extract_top_bc(boundary_conditions),
+    ]
+
+    perm = sortperm(boundary_conditions_array_left, lt=fill_first)
+    fill_halos! = fill_halos![perm]
+    boundary_conditions_array_left  = boundary_conditions_array_left[perm]
+    boundary_conditions_array_right = boundary_conditions_array_right[perm]
+
+    return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
 
 @inline validate_event(::Nothing) = NoneEvent()
@@ -61,6 +90,16 @@ end
 
 const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
 const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
+
+fill_first(bc1::PBCT, bc2)       = false
+fill_first(bc1::CBCT, bc2)       = false
+fill_first(bc1::PBCT, bc2::CBCT) = false
+fill_first(bc1::CBCT, bc2::PBCT) = true
+fill_first(bc1, bc2::PBCT)       = true
+fill_first(bc1, bc2::CBCT)       = true
+fill_first(bc1::PBCT, bc2::PBCT) = true
+fill_first(bc1::CBCT, bc2::CBCT) = true
+fill_first(bc1, bc2)             = true
 
 #####
 ##### General fill_halo! kernels
