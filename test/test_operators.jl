@@ -242,21 +242,21 @@ end
                               (31, 1, 7), (31, 1, 8), (32, 1, 7), (32, 1, 8)]
 
         for idx in test_indices_2d_yz
-            @test δxᶜᵃᵃ(idx..., grid_yz, A2yz) ≈ 0
-            @test δxᶠᵃᵃ(idx..., grid_yz, A2yz) ≈ 0
-            @test δyᵃᶜᵃ(idx..., grid_yz, A2yz) ≈ δyᵃᶜᵃ(idx..., grid_yz, A3)
-            @test δyᵃᶠᵃ(idx..., grid_yz, A2yz) ≈ δyᵃᶠᵃ(idx..., grid_yz, A3)
-            @test δzᵃᵃᶜ(idx..., grid_yz, A2yz) ≈ δzᵃᵃᶜ(idx..., grid_yz, A3)
-            @test δzᵃᵃᶠ(idx..., grid_yz, A2yz) ≈ δzᵃᵃᶠ(idx..., grid_yz, A3)
+            @test δxᶜᶜᶜ(idx..., grid_yz, A2yz) ≈ 0
+            @test δxᶠᶜᶜ(idx..., grid_yz, A2yz) ≈ 0
+            @test δyᶜᶜᶜ(idx..., grid_yz, A2yz) ≈ δyᶜᶜᶜ(idx..., grid_yz, A3)
+            @test δyᶜᶠᶜ(idx..., grid_yz, A2yz) ≈ δyᶜᶠᶜ(idx..., grid_yz, A3)
+            @test δzᶜᶜᶜ(idx..., grid_yz, A2yz) ≈ δzᶜᶜᶜ(idx..., grid_yz, A3)
+            @test δzᶜᶜᶠ(idx..., grid_yz, A2yz) ≈ δzᶜᶜᶠ(idx..., grid_yz, A3)
         end
 
         for idx in test_indices_2d_xz
-            @test δxᶜᵃᵃ(idx..., grid_xz, A2xz) ≈ δxᶜᵃᵃ(idx..., grid_xz, A3)
-            @test δxᶠᵃᵃ(idx..., grid_xz, A2xz) ≈ δxᶠᵃᵃ(idx..., grid_xz, A3)
-            @test δyᵃᶜᵃ(idx..., grid_xz, A2xz) ≈ 0
-            @test δyᵃᶠᵃ(idx..., grid_xz, A2xz) ≈ 0
-            @test δzᵃᵃᶜ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶜ(idx..., grid_xz, A3)
-            @test δzᵃᵃᶠ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶠ(idx..., grid_xz, A3)
+            @test δxᶜᶜᶜ(idx..., grid_xz, A2xz) ≈ δxᶜᶜᶜ(idx..., grid_xz, A3)
+            @test δxᶠᶜᶜ(idx..., grid_xz, A2xz) ≈ δxᶠᶜᶜ(idx..., grid_xz, A3)
+            @test δyᶜᶜᶜ(idx..., grid_xz, A2xz) ≈ 0
+            @test δyᶜᶠᶜ(idx..., grid_xz, A2xz) ≈ 0
+            @test δzᶜᶜᶜ(idx..., grid_xz, A2xz) ≈ δzᶜᶜᶜ(idx..., grid_xz, A3)
+            @test δzᶜᶜᶠ(idx..., grid_xz, A2xz) ≈ δzᶜᶜᶠ(idx..., grid_xz, A3)
         end
     end
 end
