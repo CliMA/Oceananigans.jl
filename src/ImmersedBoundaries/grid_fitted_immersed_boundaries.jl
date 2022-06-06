@@ -149,12 +149,13 @@ Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to,
 using Oceananigans.Grids: AbstractGrid
 for ImmBoundary in [:GridFittedBottom, :GridFittedBoundary]
     @eval begin
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat}, ib::$ImmBoundary)               = immersed_cell(1, j, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat}, ib::$ImmBoundary)        = immersed_cell(i, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat}, ib::$ImmBoundary)         = immersed_cell(1, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, <:Any}, ib::$ImmBoundary) = immersed_cell(1, j, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any}, ib::$ImmBoundary) = immersed_cell(i, 1, k, grid, ib)
         @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, ib::$ImmBoundary) = immersed_cell(i, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, Flat}, ib::$ImmBoundary)  = immersed_cell(1, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, Flat}, ib::$ImmBoundary)   = immersed_cell(1, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, <:Any},  ib::$ImmBoundary) = immersed_cell(1, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, Flat},  ib::$ImmBoundary) = immersed_cell(1, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat},  ib::$ImmBoundary) = immersed_cell(i, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, Flat},   ib::$ImmBoundary) = immersed_cell(1, 1, 1, grid, ib)
     end
 end
 
