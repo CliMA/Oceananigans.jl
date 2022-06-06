@@ -53,7 +53,7 @@ end
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
 
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f₀ + coriolis.β * ynode(Face(), Face(), Center(), i, j, k, grid)
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(Face(), Face(), Center(), i, j, k, grid)
 
 function Base.summary(βplane::BetaPlane{FT}) where FT 
     fstr = scalar_summary(βplane.f₀)
