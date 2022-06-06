@@ -128,10 +128,7 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    topology(grid, 3) === Flat ||
-        throw(ArgumentError("ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
-                            "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
-                            "when constructing `grid`."))
+    topology(grid, 3) === Flat || @info "Single-layer shallow water"
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
