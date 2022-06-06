@@ -95,6 +95,7 @@ physics_pages = [
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
         ],
+    "Boundary conditions" => "physics/boundary_conditions.md",
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
