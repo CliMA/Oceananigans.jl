@@ -107,12 +107,12 @@ region of the grid.
 #####
 
 """
-    peripheral_node(ℓx, ℓy, ℓz, i, j, k, grid)
+    peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
 Return `true` when the location `(ℓx, ℓy, ℓz)`, is _either_ inactive or
 lies on the boundary between inactive and active cells in a `Bounded` direction.
 """
-@inline peripheral_node(ℓx, ℓy, ℓz, i, j, k, grid) = inactive_cell(i, j, k, grid)
+@inline peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) = inactive_cell(i, j, k, grid)
 
 @inline peripheral_node(i, j, k, grid, ::Face, ℓy, ℓz) = inactive_cell(i, j, k, grid) | inactive_cell(i-1, j, k, grid)
 @inline peripheral_node(i, j, k, grid, ℓx, ::Face, ℓz) = inactive_cell(i, j, k, grid) | inactive_cell(i, j-1, k, grid)
