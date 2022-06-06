@@ -56,7 +56,7 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom{<:OffsetArray})
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
-@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
     z = znode(c, c, c, i, j, k, underlying_grid)
     return @inbounds z < ib.bottom_height[i, j]
 end
@@ -107,9 +107,9 @@ struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end
 
-@inline immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
+@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
-@inline function immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
     return ib.mask(x, y, z)
 end
@@ -145,17 +145,20 @@ on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::GridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
 
+# fallback
+immersed_cell(i, j, k, grid, ib) = _immersed_cell(i, j, k, grid, ib)
+
 # support for Flat grids
 using Oceananigans.Grids: AbstractGrid
 for ImmBoundary in [:GridFittedBottom, :GridFittedBoundary]
     @eval begin
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, <:Any}, ib::$ImmBoundary) = immersed_cell(1, j, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any}, ib::$ImmBoundary) = immersed_cell(i, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, ib::$ImmBoundary) = immersed_cell(i, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, <:Any},  ib::$ImmBoundary) = immersed_cell(1, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, Flat},  ib::$ImmBoundary) = immersed_cell(1, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat},  ib::$ImmBoundary) = immersed_cell(i, 1, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, Flat},   ib::$ImmBoundary) = immersed_cell(1, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, <:Any}, ib::$ImmBoundary) = _immersed_cell(1, j, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any}, ib::$ImmBoundary) = _immersed_cell(i, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, ib::$ImmBoundary) = _immersed_cell(i, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, <:Any},  ib::$ImmBoundary) = _immersed_cell(1, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, Flat},  ib::$ImmBoundary) = _immersed_cell(1, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat},  ib::$ImmBoundary) = _immersed_cell(i, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, Flat},   ib::$ImmBoundary) = _immersed_cell(1, 1, 1, grid, ib)
     end
 end
 
