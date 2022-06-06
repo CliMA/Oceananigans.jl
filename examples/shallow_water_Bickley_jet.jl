@@ -49,7 +49,7 @@ coriolis = FPlane(f=1)
 
 model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
-                          advection = WENO5())
+                          momentum_advection = WENO5())
 
 # Use `architecture = GPU()` to run this problem on a GPU.
 
