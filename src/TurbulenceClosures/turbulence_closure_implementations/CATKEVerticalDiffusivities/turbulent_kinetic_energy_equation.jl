@@ -20,12 +20,12 @@ turbulent velocity scale associated with the surface vertical grid spacing `Δz`
 surface buoyancy flux `Qᵇ`.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    Cᴰ⁻   :: FT = 0.81
-    Cᴰʳ   :: FT = 0.0
-    CᴰRiᶜ :: FT = 0.0
-    CᴰRiʷ :: FT = 0.0
-    Cᵂu★  :: FT = 0.01
-    CᵂwΔ  :: FT = 40.0
+    Cᴰ⁻   :: FT = 1.70
+    Cᴰʳ   :: FT = 6.34
+    CᴰRiᶜ :: FT = 1.09
+    CᴰRiʷ :: FT = 1.57
+    Cᵂu★  :: FT = 9.90
+    CᵂwΔ  :: FT = 8.26
 end
 
 #####
@@ -279,6 +279,7 @@ end
 
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "TurbulentKineticEnergyEquation: \n" *
-              "           Cᴰ: $(tke.Cᴰ), \n" *
+              "          Cᴰ⁻: $(tke.Cᴰ⁻), \n" *
+              "          Cᴰʳ: $(tke.Cᴰʳ), \n" *
               "         Cᵂu★: $(tke.Cᵂu★), \n" *
               "         CᵂwΔ: $(tke.CᵂwΔ)")
