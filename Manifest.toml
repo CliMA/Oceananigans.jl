@@ -502,12 +502,6 @@ version = "1.3.1"
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
-[[SafeTestsets]]
-deps = ["Test"]
-git-tree-sha1 = "36ebc5622c82eb9324005cc75e7e2cc51181d181"
-uuid = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
-version = "0.0.1"
-
 [[SeawaterPolynomials]]
 git-tree-sha1 = "a2c62188adfabee9dd25a8bbe6d117ec8ca74169"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"

@@ -3,11 +3,11 @@
 #####
 
 """
-    struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme{1}
+    struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme{2}
 
 Upwind-biased third-order advection scheme.
 """
-struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
+struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme{2} end
 
 const U3 = UpwindBiasedThirdOrder
 
