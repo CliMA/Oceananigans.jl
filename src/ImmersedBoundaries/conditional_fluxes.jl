@@ -96,6 +96,11 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg)
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg)
 
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i-3, j, k, ibg) | inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg) | inactive_cell(i+3, j, k, ibg) 
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i, j-3, k, ibg) | inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg) | inactive_cell(i, j+3, k, ibg) 
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg) 
+
+
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
 
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 

@@ -426,6 +426,18 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     return string(prefix, padding, coordinate_summary(spacing, name))
 end
 
+function flip_metric(metric)
+    metric_string = string(metric)
+    m1 = Symbol(metric_string[1])
+    m2 = flip_symbol(metric_string[2])
+    m3 = flip_symbol(metric_string[5])
+    m4 = flip_symbol(metric_string[8])
+    return Symbol(m1, m2, m3, m4)
+end 
+
+flip_symbol(sym) = Symbol(sym) == :ᶜ ? :ᶠ : Symbol(sym) == :ᶠ ? :ᶜ : Symbol(sym)
+
+
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
                                                        name, scalar_summary(minimum(parent(Δ))),
