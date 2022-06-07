@@ -14,6 +14,7 @@ export offset_data, new_data
 export on_architecture
 
 using CUDA
+using CUDA: has_cuda
 using Adapt
 using OffsetArrays
 

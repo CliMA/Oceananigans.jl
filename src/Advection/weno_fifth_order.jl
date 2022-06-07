@@ -24,13 +24,13 @@ struct VorticityStencil <:SmoothnessStencil end
 struct VelocityStencil <:SmoothnessStencil end
 
 """
-    struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{2}
+    struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{3}
 
 Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 
 $(TYPEDFIELDS)
 """
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdvectionScheme{2}
+struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdvectionScheme{3}
     
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -192,8 +192,8 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
     else
         !(grid isa RectilinearGrid) && (@warn "WENO on a curvilinear stretched coordinate is not validated, use at your own risk!!")
 
-        metrics      = return_metrics(grid)
-        dirsize      = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
+        metrics = return_metrics(grid)
+        dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
 
         arch     = architecture(grid)
         new_grid = with_halo((4, 4, 4), grid)
@@ -577,7 +577,7 @@ function create_interp_coefficients(FT, r, cpu_coord, arch, N)
     stencil = NTuple{3, FT}[]
     @inbounds begin
         for i = 0:N+1
-            push!(stencil, interp_weights(r, cpu_coord, i, 0, -))     
+            push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord))     
         end
     end
     return OffsetArray(arch_array(arch, stencil), -1)
@@ -585,8 +585,7 @@ end
 
 function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
 
-    cpu_coord = Array(parent(coord))
-    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
+    cpu_coord = arch_array(CPU(), coord)
 
     s1 = create_smoothness_coefficients(FT, 0, -, cpu_coord, arch, N)
     s2 = create_smoothness_coefficients(FT, 1, -, cpu_coord, arch, N)
@@ -736,39 +735,20 @@ function der1_interp_weights(r, coord, i, bias, op)
     return coeff
 end
 
-# ENO coefficients for 2nd order polynomial reconstruction at the face
-function interp_weights(r, coord, i, bias, op)
+num_prod(i, m, l, r, xr, xi, shift, op, order) = prod(xr[i+shift] - xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 
-    coeff = ()
-    for j = 0:2
-        c = 0
-        @inbounds begin
-            for m = j+1:3
-                num = 0
-                for l = 0:3
-                    if l != m
-                        prod = 1
-                        for q = 0:3
-                            if q != m && q != l 
-                                prod *= (coord[i+bias] - coord[op(i, r-q+1)])
-                            end
-                        end
-                        num += prod
-                    end
-                end
-                den = 1
-                for l = 0:3
-                    if l!= m
-                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
-                    end
-                end
-                c += num / den
-            end 
+# Coefficients for (order-1)/2 finite-volume polynomial reconstruction.
+function stencil_coefficients(i, r, xr, xi, shift=0, op=Base.:(-), order=3)
+    coeffs = zeros(order)
+    for j in 0:order-1
+        for m in j+1:order
+            numerator = sum(num_prod(i, m, l, r, xr, xi, shift, op, order) for l=0:order if l != m)
+            denominator = prod(xi[op(i, r-m+1)] - xi[op(i, r-l+1)] for l=0:order if l != m)
+            coeffs[j+1] += numerator / denominator * (xi[op(i, r-j)] - xi[op(i, r-j+1)])
         end
-        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
     end
 
-    return coeff
+    return tuple(coeffs...)
 end
 
 

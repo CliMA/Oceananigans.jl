@@ -19,12 +19,6 @@ using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
-# Gotta set this environment variable when using the GR run-time on a remote machine.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-
-ENV["GKSwstype"] = "100"
-
 #####
 ##### Generate examples
 #####
@@ -101,6 +95,7 @@ physics_pages = [
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
         ],
+    "Boundary conditions" => "physics/boundary_conditions.md",
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
