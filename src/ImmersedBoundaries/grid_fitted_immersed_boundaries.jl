@@ -152,13 +152,13 @@ immersed_cell(i, j, k, grid, ib) = _immersed_cell(i, j, k, grid, ib)
 using Oceananigans.Grids: AbstractGrid
 for ImmBoundary in [:GridFittedBottom, :GridFittedBoundary]
     @eval begin
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, <:Any}, ib::$ImmBoundary) = _immersed_cell(1, j, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any}, ib::$ImmBoundary) = _immersed_cell(i, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat}, ib::$ImmBoundary) = _immersed_cell(i, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, <:Any},  ib::$ImmBoundary) = _immersed_cell(1, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, <:Any, Flat},  ib::$ImmBoundary) = _immersed_cell(1, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat},  ib::$ImmBoundary) = _immersed_cell(i, 1, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{Flat, Flat, Flat},   ib::$ImmBoundary) = _immersed_cell(1, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, <:Any}, ib::$ImmBoundary) = _immersed_cell(1, j, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, <:Any}, ib::$ImmBoundary) = _immersed_cell(i, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}, ib::$ImmBoundary) = _immersed_cell(i, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, <:Any},  ib::$ImmBoundary) = _immersed_cell(1, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, Flat},  ib::$ImmBoundary) = _immersed_cell(1, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, Flat},  ib::$ImmBoundary) = _immersed_cell(i, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, Flat},   ib::$ImmBoundary) = _immersed_cell(1, 1, 1, grid, ib)
     end
 end
 
