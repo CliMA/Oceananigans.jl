@@ -154,11 +154,9 @@ end
     ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
 
     # Are we convecting?
-    #N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    #convecting = (N² < 0) & (Qᵇ > 0) & (e⁺ > 0)
-    
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     d = depthᶜᶜᶠ(i, j, k, grid)
-    convecting = (d < ℓʰ) & (Qᵇ > 0) & (e⁺ > 0)
+    convecting = ((N² < 0) | (d < ℓʰ)) & (Qᵇ > 0) & (e⁺ > 0)
 
     return ifelse(convecting, ℓʰ, zero(grid))
 end
