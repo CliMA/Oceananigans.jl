@@ -147,6 +147,8 @@ end
 @inline viscosity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
 @inline diffusivity_location(::FlavorOfCATKE) = (Center(), Center(), Face())
 
+@inline clip(x) = max(zero(x), x)
+
 function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
     arch = model.architecture
@@ -157,12 +159,17 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
+
     event = launch!(arch, grid, :xyz,
                     calculate_CATKE_diffusivities!,
                     diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
+
+    # clip TKE
+    # e = parent(tracers.e)
+    # e .= clip.(e)
 
     return nothing
 end
@@ -186,7 +193,7 @@ end
     return @inbounds L[i, j, k]
 end
 
-@inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(max(zero(eltype(grid)), e[i, j, k]))
+@inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(clip(e[i, j, k]))
 
 @inline function Kuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)

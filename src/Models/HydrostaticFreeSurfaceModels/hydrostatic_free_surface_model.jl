@@ -112,9 +112,6 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     arch = architecture(grid)
 
-    arch == GPU() && !has_cuda() &&
-         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-
     @apply_regionally validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
