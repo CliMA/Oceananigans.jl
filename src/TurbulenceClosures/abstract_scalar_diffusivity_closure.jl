@@ -86,7 +86,6 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, args...) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(clo), diffusivity(clo, K, id), args...)
 
 # Vertical and horizontal diffusivity
-<<<<<<< HEAD
 @inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, clo, K, args...) 
 @inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶠᶠᶜ(i, j, k, grid, clo, K, args...) 
 @inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, clo, K, args...) 
@@ -105,23 +104,6 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, args...) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, args...)
 @inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, args...) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, args...)
 @inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, args...) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, args...)
-=======
-@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk)       = νᶜᶜᶜ(i, j, k, grid, clo, K, clk) 
-@inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock) 
-@inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock) 
-@inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock) 
-@inline κzᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κzᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κzᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
-
-@inline νhᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clock) 
-@inline νhᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock) 
-@inline νhᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock) 
-@inline νhᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock) 
-@inline κhᶠᶜᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶠᶜᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κhᶜᶠᶜ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶠᶜ(i, j, k, grid, clo, K, id, clock)
-@inline κhᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clock) = κᶜᶜᶠ(i, j, k, grid, clo, K, id, clock)
->>>>>>> origin/ss/advection_refactor
 
 for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
