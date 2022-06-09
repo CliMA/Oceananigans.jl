@@ -159,11 +159,12 @@ makedocs(bib,
 )
 
 deploydocs(
-          repo = "github.com/CliMA/OceananigansDocumentation.git",
-      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-     forcepush = true,
-  push_preview = true,
-     devbranch = "main"
+             repo = "github.com/CliMA/OceananigansDocumentation.git",
+         versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+        forcepush = true,
+     push_preview = true,
+  branch_previews = "gh-pages-reviews",
+        devbranch = "main"
 )
 
 @info "Cleaning up temporary .jld2 and .nc files created by doctests..."
