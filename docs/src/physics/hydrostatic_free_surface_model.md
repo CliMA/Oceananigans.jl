@@ -1,7 +1,7 @@
 # Hydrostatic model with a free surface
 
-The `HydrostaticFreeSurfaceModel` solves the incompressible Navier-Stokes equations under the 
-Boussinesq and hydrostatic approximations and with an arbitrary number of tracer conservation 
+The [`HydrostaticFreeSurfaceModel`](@ref) solves the incompressible Navier-Stokes equations under
+the Boussinesq and hydrostatic approximations and with an arbitrary number of tracer conservation 
 equations. Physics associated with individual terms in the momentum and tracer conservation
 equations --- the background rotation rate of the equation's reference frame,
 gravitational effects associated with buoyant tracers under the Boussinesq
@@ -60,7 +60,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 
 ## The tracer conservation equation
 
-The conservation law for tracers in Oceananigans.jl is
+The conservation law for tracers is
 ```math
     \begin{align}
     \partial_t c = - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c
@@ -70,8 +70,8 @@ The conservation law for tracers in Oceananigans.jl is
     \end{align}
 ```
 where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
-Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer equations to 
-be solved simultaneously with the momentum equations.
+An arbitrary tracers are permitted and thus an arbitrary number of tracer equations
+can be solved simultaneously alongside with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation 
 equation are
@@ -79,6 +79,3 @@ equation are
 * tracer advection: ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
 * molecular or turbulent diffusion: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
 * an arbitrary internal source of tracer: ``F_c``.
-
-The following subsections provide more details on the possible forms that each individual term 
-in the momentum and tracer equations can take in Oceananigans.jl.

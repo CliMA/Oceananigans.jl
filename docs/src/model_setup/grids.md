@@ -115,9 +115,8 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
 
 ```@setup 1
 using Oceananigans
-using Plots
-Plots.scalefontsizes(1.25)
-Plots.default(lw=3)
+using CairoMakie
+CairoMakie.activate!(type = "svg")
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3
 chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
@@ -132,25 +131,19 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 We can easily visualize the spacing of ``y`` and ``z`` directions.
 
 ```@example 1
-using Plots
+using CairoMakie
 
-py = plot(grid.yᵃᶜᵃ[1:Ny],  grid.Δyᵃᶜᵃ[1:Ny],
-           marker = :circle,
-           ylabel = "y-spacing (m)",
-           xlabel = "y (m)",
-           legend = nothing,
-           ylims = (0, 250))
+fig = Figure(resolution=(800, 900))
 
-pz = plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-          marker = :square,
-          ylabel = "z (m)",
-          xlabel = "z-spacing (m)",
-          legend = nothing,
-          xlims = (0, 50))
+ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
+lines!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
+scatter!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
 
-plot(py, pz, layout=(2, 1), size=(800, 900))
+ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
+lines!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+scatter!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
-savefig("plot_stretched_grid.svg"); nothing # hide
+save("plot_stretched_grid.svg"); nothing # hide
 ```
 
 ![](plot_stretched_grid.svg)

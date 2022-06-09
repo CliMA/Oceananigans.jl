@@ -24,7 +24,7 @@ that
 ```math
     \boldsymbol{f} = f_x \boldsymbol{\hat x} + f_y \boldsymbol{\hat y} + f_z \boldsymbol{\hat z} \, ,
 ```
-where ``f_x``, ``f_y`` and ``f_z`` are constants determined by the user.
+where ``f_x``, ``f_y``, and ``f_z`` are constants determined by the user.
 
 
 [^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on anisotropic 
