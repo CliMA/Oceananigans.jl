@@ -49,12 +49,14 @@ grid = RectilinearGrid(CPU();
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
+horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = (b = κh, r = 0.0))
 
 vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
-                                                       ν = νz, κ = κz)
+                                                       ν = νz, κ = (b = κz, r = 0.0))
 nothing #hide
 
+
+r_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0), bottom = ValueBoundaryCondition(-Lz))
 
 # ## Model
 
@@ -64,8 +66,9 @@ nothing #hide
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis = BetaPlane(latitude = -45),
                                       buoyancy = BuoyancyTracer(),
-                                      tracers = :b,
+                                      tracers = (:b, :r),
                                       closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                      boundary_conditions = (; r = r_bcs),
                                       momentum_advection = WENO5(),
                                       tracer_advection = WENO5(),
                                       free_surface = ImplicitFreeSurface())
@@ -100,7 +103,9 @@ M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
 
-set!(model, b=bᵢ)
+rᵢ(x, y, z) = z
+
+set!(model, b=bᵢ, r=rᵢ)
 
 # Let's visualize the initial buoyancy distribution.
 
@@ -167,8 +172,12 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 
+b = model.tracers.b
+r = model.tracers.r
+
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
+R = Field(Average(r, dims=1))
 
 filename = "baroclinic_adjustment"
 save_fields_interval = 0.5day
@@ -183,13 +192,13 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, u);
+    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, r, u);
                                                        filename = filename * "_$(side)_slice",
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, r=R);
                                                      schedule = TimeInterval(save_fields_interval),
                                                      filename = filename * "_zonal_average")
 
@@ -227,12 +236,12 @@ sides = keys(slicers)
 slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
 
 b_timeserieses = (
-      east = FieldTimeSeries(slice_filenames.east, "b"),
-    bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
-       top = FieldTimeSeries(slice_filenames.top, "b")
+      east = FieldTimeSeries(slice_filenames.east, "r"),
+    bottom = FieldTimeSeries(slice_filenames.bottom, "r"),
+       top = FieldTimeSeries(slice_filenames.top, "r")
 )
 
-b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
+b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "r")
 
 # We build the coordinates and we rescale the vertical coordinate for visualization purposes.
 
