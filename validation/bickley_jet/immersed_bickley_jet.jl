@@ -1,6 +1,6 @@
 ENV["GKSwstype"] = "nul"
 
-# using Plots
+using Plots
 
 using Printf
 using Statistics
@@ -27,7 +27,7 @@ include("bickley_utils.jl")
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
+function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
                            momentum_advection = VectorInvariant())
 
     grid = bickley_grid(; arch, Nh, halo=(4, 4, 4))
@@ -38,7 +38,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     @inline botrgt(x, y) = (((x < -π/2) & (x > -3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
     @inline bottom(x, y) = Int(toplft(x, y) | toprgt(x, y) | botlft(x, y) | botrgt(x, y))
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -1))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     c = sqrt(10.0)
     Δt = 0.1 * grid.Δxᶜᵃᵃ / c
@@ -93,7 +93,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         name = "WENOVectorInvariantVort"
     end
 
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
+    @show experiment_name = "immersed_bickley_jet_Nh_$(Nh)_$(name)"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
@@ -110,66 +110,66 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     return experiment_name 
 end
     
-# """
-#     visualize_bickley_jet(experiment_name)
+"""
+    visualize_bickley_jet(experiment_name)
 
-# Visualize the Bickley jet data associated with `experiment_name`.
-# """
-# function visualize_bickley_jet(experiment_name)
+Visualize the Bickley jet data associated with `experiment_name`.
+"""
+function visualize_bickley_jet(experiment_name)
 
-#     @info "Making a fun movie about an unstable Bickley jet..."
+    @info "Making a fun movie about an unstable Bickley jet..."
 
-#     filepath = experiment_name * ".jld2"
+    filepath = experiment_name * ".jld2"
 
-#     ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
-#     c_timeseries = FieldTimeSeries(filepath, "c", boundary_conditions=nothing, location=(Face, Center, Center))
+    ζ_timeseries = FieldTimeSeries(filepath, "ζ", boundary_conditions=nothing, location=(Face, Face, Center))
+    c_timeseries = FieldTimeSeries(filepath, "c", boundary_conditions=nothing, location=(Face, Center, Center))
 
-#     grid = c_timeseries.grid
+    grid = c_timeseries.grid
 
-#     xζ, yζ, zζ = nodes(ζ_timeseries)
-#     xc, yc, zc = nodes(c_timeseries)
+    xζ, yζ, zζ = nodes(ζ_timeseries)
+    xc, yc, zc = nodes(c_timeseries)
 
-#     anim = @animate for (i, iteration) in enumerate(c_timeseries.times)
+    anim = @animate for (i, iteration) in enumerate(c_timeseries.times)
 
-#         @info "    Plotting frame $i from iteration $iteration..."
+        @info "    Plotting frame $i from iteration $iteration..."
 
-#         ζ = ζ_timeseries[i]
-#         c = c_timeseries[i]
-#         t = ζ_timeseries.times[i]
+        ζ = ζ_timeseries[i]
+        c = c_timeseries[i]
+        t = ζ_timeseries.times[i]
 
-#         ζi = interior(ζ)[:, :, 1]
-#         ci = interior(c)[:, :, 1]
+        ζi = interior(ζ)[:, :, 1]
+        ci = interior(c)[:, :, 1]
 
-#         kwargs = Dict(
-#                       :aspectratio => 1,
-#                       :linewidth => 0,
-#                       :colorbar => :none,
-#                       :ticks => nothing,
-#                       :clims => (-1, 1),
-#                       :xlims => (-grid.Lx/2, grid.Lx/2),
-#                       :ylims => (-grid.Ly/2, grid.Ly/2)
-#                      )
+        kwargs = Dict(
+                      :aspectratio => 1,
+                      :linewidth => 0,
+                      :colorbar => :none,
+                      :ticks => nothing,
+                      :clims => (-1, 1),
+                      :xlims => (-grid.Lx/2, grid.Lx/2),
+                      :ylims => (-grid.Ly/2, grid.Ly/2)
+                     )
 
-#         ζ_plot = heatmap(xζ, yζ, clamp.(ζi, -1, 1)'; color = :balance, kwargs...)
-#         c_plot = heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
+        ζ_plot = heatmap(xζ, yζ, clamp.(ζi, -1, 1)'; color = :balance, kwargs...)
+        c_plot = heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
 
-#         ζ_title = @sprintf("ζ at t = %.1f", t)
-#         c_title = @sprintf("u at t = %.1f", t)
+        ζ_title = @sprintf("ζ at t = %.1f", t)
+        c_title = @sprintf("u at t = %.1f", t)
 
-#         plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
-#     end
+        plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
+    end
 
-#     mp4(anim, experiment_name * ".mp4", fps = 8)
-# end
+    mp4(anim, experiment_name * ".mp4", fps = 8)
+end
 
-advection_schemes = [WENO3(vector_invariant=VelocityStencil()),
-                     WENO3(vector_invariant=VorticityStencil()),
-                     WENO5(),
-                     VectorInvariant()]
+advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
+                     WENO5(vector_invariant=VorticityStencil())]
+                    #  WENO5(),
+                    #  VectorInvariant()]
 
 for Nx in [128]
     for advection in advection_schemes
-        experiment_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
-        # visualize_bickley_jet(experiment_name)
+        experiment_name = run_immersed_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
+        visualize_bickley_jet(experiment_name)
     end
 end

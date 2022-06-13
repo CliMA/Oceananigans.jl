@@ -86,7 +86,7 @@ end
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N; order) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N; order) = nothing
 
-function calc_interpolating_coefficients(FT, coord, arch, N; order = 3) 
+function calc_interpolating_coefficients(FT, coord, arch, N; order) 
 
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
@@ -99,7 +99,7 @@ function calc_interpolating_coefficients(FT, coord, arch, N; order = 3)
     return (s1, s2, s3, s4)
 end
 
-function create_interp_coefficients(FT, r, cpu_coord, arch, N; order = 3)
+function create_interp_coefficients(FT, r, cpu_coord, arch, N; order)
 
     stencil = NTuple{order, FT}[]
     @inbounds begin
@@ -110,10 +110,12 @@ function create_interp_coefficients(FT, r, cpu_coord, arch, N; order = 3)
     return OffsetArray(arch_array(arch, stencil), -1)
 end
 
-function calc_smoothness_coefficients(FT, beta, coord, arch, N; order = 3) 
+function calc_smoothness_coefficients(FT, beta, coord, arch, N; order) 
 
     cpu_coord = arch_array(CPU(), coord)
 
+    order == 3 || throw(ArgumentError("The stretched smoothness coefficients are only implemented for order == 3"))
+    
     s1 = create_smoothness_coefficients(FT, 0, -, cpu_coord, arch, N; order)
     s2 = create_smoothness_coefficients(FT, 1, -, cpu_coord, arch, N; order)
     s3 = create_smoothness_coefficients(FT, 2, -, cpu_coord, arch, N; order)
