@@ -101,9 +101,9 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg) 
 
 
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
+using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVel5, WENOVectorInvariantVel3, VorticityStencil, VelocityStencil
 
-@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel5) 
     return inactive_node(c, f, c, i, j, k, ibg)     |       
            inactive_node(c, f, c, i-3, j, k, ibg)   | inactive_node(c, f, c, i+3, j, k, ibg) |
            inactive_node(c, f, c, i-2, j, k, ibg)   | inactive_node(c, f, c, i+2, j, k, ibg) |
@@ -116,9 +116,34 @@ using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, Velocity
            inactive_node(f, c, c, i, j+1, k, ibg) 
 end
 
-@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel) 
+@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel5) 
     return inactive_node(f, c, c, i, j, k, ibg)     | 
            inactive_node(f, c, c, i, j+3, k, ibg)   | inactive_node(f, c, c, i, j+3, k, ibg) |
+           inactive_node(f, c, c, i, j+2, k, ibg)   | inactive_node(f, c, c, i, j+2, k, ibg) |
+           inactive_node(f, c, c, i, j+1, k, ibg)   | inactive_node(f, c, c, i, j+1, k, ibg) |     
+           inactive_node(c, f, c, i, j, k, ibg)     | 
+           inactive_node(c, f, c, i, j-2, k, ibg)   | inactive_node(c, f, c, i, j+2, k, ibg) |
+           inactive_node(c, f, c, i, j-1, k, ibg)   | inactive_node(c, f, c, i, j+1, k, ibg) | 
+           inactive_node(c, f, c, i+1, j-2, k, ibg) | inactive_node(c, f, c, i+1, j+2, k, ibg) |
+           inactive_node(c, f, c, i+1, j-1, k, ibg) | inactive_node(c, f, c, i+1, j+1, k, ibg) |
+           inactive_node(c, f, c, i+1, j, k, ibg) 
+end
+
+
+@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel3) 
+    return inactive_node(c, f, c, i, j, k, ibg)     |       
+           inactive_node(c, f, c, i-2, j, k, ibg)   | inactive_node(c, f, c, i+2, j, k, ibg) |
+           inactive_node(c, f, c, i-1, j, k, ibg)   | inactive_node(c, f, c, i+1, j, k, ibg) | 
+           inactive_node(f, c, c, i, j, k, ibg)     |
+           inactive_node(f, c, c, i-2, j, k, ibg)   | inactive_node(f, c, c, i+2, j, k, ibg) |
+           inactive_node(f, c, c, i-1, j, k, ibg)   | inactive_node(f, c, c, i+1, j, k, ibg) |
+           inactive_node(f, c, c, i-2, j+1, k, ibg) | inactive_node(f, c, c, i+2, j+1, k, ibg) |
+           inactive_node(f, c, c, i-1, j+1, k, ibg) | inactive_node(f, c, c, i+1, j+1, k, ibg) |
+           inactive_node(f, c, c, i, j+1, k, ibg) 
+end
+
+@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel3) 
+    return inactive_node(f, c, c, i, j, k, ibg)     | 
            inactive_node(f, c, c, i, j+2, k, ibg)   | inactive_node(f, c, c, i, j+2, k, ibg) |
            inactive_node(f, c, c, i, j+1, k, ibg)   | inactive_node(f, c, c, i, j+1, k, ibg) |     
            inactive_node(c, f, c, i, j, k, ibg)     | 
