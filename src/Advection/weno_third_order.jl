@@ -83,7 +83,7 @@ function WENO3(FT::DataType = Float64;
         FT = eltype(grid)
     end
 
-    stretched_smoothness == true || @warn "stretched smoothness not implemented for WENO order 3"
+    stretched_smoothness == false || @warn "stretched smoothness not implemented for WENO order 3"
     weno_coefficients = compute_stretched_weno_coefficients(grid, false, FT; order = 2)
 
     VI = typeof(vector_invariant)
