@@ -466,3 +466,7 @@ end
 @inline coeff_left_p₀(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),    FT(5/6), - FT(1/6))
 @inline coeff_left_p₁(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (- FT(1/6),    FT(5/6),   FT(1/3))
 @inline coeff_left_p₂(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),  - FT(7/6),  FT(11/6))
+
+@inline coeff_right_p₀(scheme::WENO5, ::Type{Nothing}, args...) = reverse(coeff_left_p₂(scheme, Nothing, args...)) 
+@inline coeff_right_p₁(scheme::WENO5, ::Type{Nothing}, args...) = reverse(coeff_left_p₁(scheme, Nothing, args...)) 
+@inline coeff_right_p₂(scheme::WENO5, ::Type{Nothing}, args...) = reverse(coeff_left_p₀(scheme, Nothing, args...)) 

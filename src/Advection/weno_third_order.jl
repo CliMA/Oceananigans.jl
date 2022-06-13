@@ -102,7 +102,7 @@ function Base.show(io::IO, a::WENO3{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
 end
 
 Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, PP} =
-     WENO5{FT, VI}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+     WENO3{FT, VI}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
                    Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
                    Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
                    Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
@@ -175,9 +175,6 @@ Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}) whe
  
 #####
 ##### VectorInvariant reconstruction (based on JS or Z) (z-direction Val{3} is different from x- and y-directions)
-#####
-##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws)
-#####
 ##### JS-WENO-5 reconstruction
 #####
 
@@ -272,3 +269,6 @@ end
 
 @inline coeff_left_p₀(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = ( FT(1/2), FT(1/2))
 @inline coeff_left_p₁(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = (FT(-1/2), FT(3/2))
+
+@inline coeff_right_p₀(scheme::WENO3, ::Type{Nothing}, args...) = reverse(coeff_left_p₁(scheme, Nothing, args...)) 
+@inline coeff_right_p₁(scheme::WENO3, ::Type{Nothing}, args...) = reverse(coeff_left_p₀(scheme, Nothing, args...)) 

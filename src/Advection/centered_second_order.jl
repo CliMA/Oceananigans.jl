@@ -26,6 +26,15 @@ const centered_second_order = C2()
 @inline advective_momentum_flux_Vw(i, j, k, grid, ::C2, V, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_qᶜᶠᶜ, V) * ℑyᵃᶠᵃ(i, j, k, grid, w)
 @inline advective_momentum_flux_Ww(i, j, k, grid, ::C2, W, w) = ℑzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, W) * ℑzᵃᵃᶜ(i, j, k, grid, w)
 
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, ::C2, u) = ℑxᶜᵃᵃ(i, j, k, grid, u)
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::C2, c) = ℑxᶠᵃᵃ(i, j, k, grid, c)
+
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, ::C2, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::C2, c) = ℑyᵃᶠᵃ(i, j, k, grid, c)
+
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, ::C2, w) = ℑzᵃᵃᶜ(i, j, k, grid, w)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::C2, c) = ℑzᵃᵃᶠ(i, j, k, grid, c)
+
 # Calculate the flux of a tracer quantity c through the faces of a cell.
 # In this case, the fluxes are given by u*Ax*c̄ˣ, v*Ay*c̄ʸ, and w*Az*c̄ᶻ.
 @inline advective_tracer_flux_x(i, j, k, grid, ::C2, U, c) = Ax_qᶠᶜᶜ(i, j, k, grid, U) * ℑxᶠᵃᵃ(i, j, k, grid, c)

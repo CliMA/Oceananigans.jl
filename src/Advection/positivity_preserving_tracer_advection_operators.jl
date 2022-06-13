@@ -5,7 +5,7 @@ const ω̂ₙ = 5/18
 const ε₂ = 1e-20
 
 # Here in the future we can easily add UpwindBiasedFifthOrder 
-const BoundPreservingScheme = PositiveWENO
+const BoundPreservingScheme = Union{PositiveWENO5, PositiveWENO3}
 
 @inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c)
 
