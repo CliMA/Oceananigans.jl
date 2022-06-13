@@ -3,15 +3,19 @@
 #####
 
 """
-    struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1}
+    struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{0}
 
 Upwind-biased first-order advection scheme.
 """
-struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
+struct UpwindBiasedFirstOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{0} 
+    child_advection_scheme :: CA
+end
+
+UpwindBiasedFirstOrder() = UpwindBiasedFirstOrder(nothing)
 
 const U1 = UpwindBiasedFirstOrder
 
-@inline boundary_buffer(::U1) = 1
+@inline boundary_buffer(::U1) = 0
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, c) = ℑxᶠᵃᵃ(i, j, k, grid, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, c) = ℑyᵃᶠᵃ(i, j, k, grid, c)

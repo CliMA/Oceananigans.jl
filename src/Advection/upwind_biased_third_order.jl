@@ -7,7 +7,11 @@
 
 Upwind-biased third-order advection scheme.
 """
-struct UpwindBiasedThirdOrder <: AbstractUpwindBiasedAdvectionScheme{2} end
+struct UpwindBiasedThirdOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{2} 
+    child_advection_scheme :: CA
+end
+
+UpwindBiasedThirdOrder() = UpwindBiasedThirdOrder(UpwindBiasedFirstOrder())
 
 const U3 = UpwindBiasedThirdOrder
 

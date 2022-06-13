@@ -6,16 +6,6 @@ const C3₀ = 3/10
 const C3₁ = 3/5
 const C3₂ = 1/10 
 
-const two_32 = Int32(2)
-
-const ƞ = Int32(2) # WENO exponent
-const ε = 1e-6
-
-abstract type SmoothnessStencil end
-
-struct VorticityStencil <:SmoothnessStencil end
-struct VelocityStencil <:SmoothnessStencil end
-
 """
     struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{3}
 
@@ -23,7 +13,7 @@ Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 
 $(TYPEDFIELDS)
 """
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdvectionScheme{3}
+struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiasedAdvectionScheme{3}
     
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -51,6 +41,8 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdve
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 
+    child_advection_scheme :: CA
+
     "bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
 
@@ -60,11 +52,11 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdve
                                smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
                                smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
                                smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                               bounds::PP) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}
+                               bounds::PP, child_advection_scheme::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
 
-            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                               smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
-                                                               bounds)
+            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                                   smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
+                                                                   bounds, child_advection_scheme)
     end
 end
 
@@ -169,12 +161,14 @@ function WENO5(FT::DataType = Float64;
 
     VI = typeof(vector_invariant)
 
-    return WENO5{FT, VI, zweno}(weno_coefficients..., bounds)
+    child_advection = WENO3(FT; grid, stretched_smoothness, zweno, vector_invariant, bounds)
+
+    return WENO5{FT, VI, zweno}(weno_coefficients..., bounds, child_advection)
 end
 
 # Flavours of WENO
-const ZWENO        = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const ZWENO         = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const PositiveWENO5 = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
 const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF, PP}
@@ -197,9 +191,10 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP})
                        Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
                        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
                        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
-                       Adapt.adapt(to, scheme.bounds))
+                       Adapt.adapt(to, scheme.bounds),
+                       Adapt.adapt(to, scheme.child_advection_scheme))
 
-@inline boundary_buffer(::WENO5) = 2
+@inline boundary_buffer(::WENO5) = 3
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_fourth_order, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO5, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_fourth_order, c)

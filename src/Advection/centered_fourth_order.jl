@@ -7,7 +7,11 @@
 
 Centered fourth-order advection scheme.
 """
-struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme{2} end
+struct CenteredFourthOrder{CA} <: AbstractCenteredAdvectionScheme{2} 
+    child_advection_scheme :: CA
+end
+
+CenteredFourthOrder() = CenteredFourthOrder(CenteredSecondOrder())
 
 const C4 = CenteredFourthOrder
 const centered_fourth_order = C4()

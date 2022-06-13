@@ -7,7 +7,11 @@
 
 Centered second-order advection scheme.
 """
-struct CenteredSecondOrder <: AbstractAdvectionScheme{1} end
+struct CenteredSecondOrder{CA} <: AbstractAdvectionScheme{0} 
+    child_advection_scheme :: CA
+end
+
+CenteredSecondOrder() = CenteredSecondOrder(nothing)
 
 boundary_buffer(::CenteredSecondOrder) = 0
 

@@ -1,16 +1,19 @@
 #####
-##### Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme
+##### Weighted Essentially Non-Oscillatory (WENO) third-order advection scheme
 #####
-
-using OffsetArrays
-using Oceananigans.Grids: with_halo, return_metrics
-using Oceananigans.Architectures: arch_array, architecture
-using KernelAbstractions.Extras.LoopInfo: @unroll
-using Adapt
-import Base: show
 
 const C2₀ = 2/3
 const C2₁ = 1/3
+
+const two_32 = Int32(2)
+
+const ƞ = Int32(2) # WENO exponent
+const ε = 1e-6
+
+abstract type SmoothnessStencil end
+
+struct VorticityStencil <:SmoothnessStencil end
+struct VelocityStencil <:SmoothnessStencil end
 
 """
     struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{3}
@@ -19,7 +22,7 @@ Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
 
 $(TYPEDFIELDS)
 """
-struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} <: AbstractUpwindBiasedAdvectionScheme{2}
+struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiasedAdvectionScheme{2}
     
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
@@ -47,20 +50,22 @@ struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} <: AbstractUpwindBiasedAdvectio
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 
+    child_advection_scheme :: CA
+
     "bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
 
-    function WENO3{FT, VI}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                           coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                           coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                           smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
-                           smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
-                           smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                           bounds::PP) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}
+    function WENO3{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
+                               coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
+                               coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
+                               smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
+                               smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
+                               smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
+                               bounds::PP, child_advection_scheme::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
 
-            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                           smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
-                                                           bounds)
+            return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
+                                                                   smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
+                                                                   bounds, child_advection_scheme)
     end
 end
 
@@ -81,18 +86,19 @@ function WENO3(FT::DataType = Float64;
 
     VI = typeof(vector_invariant)
 
-    return WENO3{FT, VI}(weno_coefficients..., bounds)
+    return WENO3{FT, VI, zweno}(weno_coefficients..., bounds)
 end
 
 # Flavours of WENO
-const PositiveWENO3 = WENO3{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const ZWENO3        = WENO3{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const PositiveWENO3 = WENO3{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-const WENOVectorInvariantVel3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}  = 
-      WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, PP}
-const WENOVectorInvariantVort3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} = 
-      WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, PP}
+const WENOVectorInvariantVel3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
+      WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF, PP}
+const WENOVectorInvariantVort3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
+      WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF, PP}
 
-const WENOVectorInvariant3 = WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, PP}
+const WENOVectorInvariant3 = WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
 
 function Base.show(io::IO, a::WENO3{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO3 advection scheme with: \n",
@@ -101,14 +107,15 @@ function Base.show(io::IO, a::WENO3{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
-Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, PP} =
-     WENO3{FT, VI}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                   Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
-                   Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
-                   Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
-                   Adapt.adapt(to, scheme.bounds))
+Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} =
+     WENO3{FT, VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ), Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
+                       Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
+                       Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
+                       Adapt.adapt(to, scheme.bounds),
+                       Adapt.adapt(to, scheme.child_advection_scheme))
 
 @inline boundary_buffer(::WENO3) = 1
 
@@ -171,8 +178,12 @@ Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}) whe
 ##### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998)
 #####
 
-@inline biased_β_3(FT, ψ, ::Type{Nothing}, scheme::WENO3, args...) = @inbounds (ψ[1] - ψ[2])^two_32
- 
+@inline left_biased_β₀(FT, ψ, ::Type{Nothing}, scheme::WENO3, args...) = @inbounds (ψ[2] - ψ[1])^two_32
+@inline left_biased_β₁(FT, ψ, ::Type{Nothing}, scheme::WENO3, args...) = @inbounds (ψ[2] - ψ[1])^two_32
+
+@inline right_biased_β₀(FT, ψ, ::Type{Nothing}, scheme::WENO3, args...) = @inbounds (ψ[2] - ψ[1])^two_32
+@inline right_biased_β₁(FT, ψ, ::Type{Nothing}, scheme::WENO3, args...) = @inbounds (ψ[2] - ψ[1])^two_32
+
 #####
 ##### VectorInvariant reconstruction (based on JS or Z) (z-direction Val{3} is different from x- and y-directions)
 ##### JS-WENO-5 reconstruction
@@ -180,6 +191,9 @@ Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, PP}) whe
 
 for (side, coeffs) in zip([:left, :right], ([:C2₀, :C2₁], [:C2₁, :C2₀]))
     biased_weno3_weights = Symbol(side, :_biased_weno3_weights)
+    
+    biased_β₀ = Symbol(side, :_biased_β₀)
+    biased_β₁ = Symbol(side, :_biased_β₁)
 
     tangential_stencil_u = Symbol(:tangential_, side, :_stencil_u_3)
     tangential_stencil_v = Symbol(:tangential_, side, :_stencil_v_3)
@@ -187,12 +201,18 @@ for (side, coeffs) in zip([:left, :right], ([:C2₀, :C2₁], [:C2₁, :C2₀]))
     @eval begin
         @inline function $biased_weno3_weights(FT, ψₜ, T, scheme, dir, idx, loc, args...)
             ψ₁, ψ₀ = ψₜ 
-            β₀ = biased_β_3(FT, ψ₀, T, scheme, dir, idx, loc)
-            β₁ = biased_β_3(FT, ψ₁, T, scheme, dir, idx, loc)
+            β₀ = $biased_β₀(FT, ψ₀, T, scheme, dir, idx, loc)
+            β₁ = $biased_β₁(FT, ψ₁, T, scheme, dir, idx, loc)
 
-            α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
-            α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
-        
+            if scheme isa ZWENO3
+                τ₅ = abs(β₁ - β₀)
+                α₀ = FT($(coeffs[1])) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = FT($(coeffs[2])) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+            else
+                α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
+                α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+            end
+
             Σα = α₀ + α₁
             w₀ = α₀ / Σα
             w₁ = α₁ / Σα
@@ -206,17 +226,23 @@ for (side, coeffs) in zip([:left, :right], ([:C2₀, :C2₁], [:C2₁, :C2₀]))
             u₁, u₀ = $tangential_stencil_u(i, j, k, dir, u)
             v₁, v₀ = $tangential_stencil_v(i, j, k, dir, v)
     
-            βu₀ = biased_β_3(FT, u₀, T, scheme, Val(2), idx, loc)
-            βu₁ = biased_β_3(FT, u₁, T, scheme, Val(2), idx, loc)
+            βu₀ = $biased_β₀(FT, u₀, T, scheme, Val(2), idx, loc)
+            βu₁ = $biased_β₁(FT, u₁, T, scheme, Val(2), idx, loc)
         
-            βv₀ = biased_β_3(FT, v₀, T, scheme, Val(1), idx, loc)
-            βv₁ = biased_β_3(FT, v₁, T, scheme, Val(1), idx, loc)
+            βv₀ = $biased_β₀(FT, v₀, T, scheme, Val(1), idx, loc)
+            βv₁ = $biased_β₁(FT, v₁, T, scheme, Val(1), idx, loc)
                    
             β₀ = 0.5*(βu₀ + βv₀)  
             β₁ = 0.5*(βu₁ + βv₁)     
         
-            α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
-            α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+            if scheme isa ZWENO3
+                τ₅ = abs(β₁ - β₀)
+                α₀ = FT($(coeffs[1])) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+                α₁ = FT($(coeffs[2])) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+            else
+                α₀ = FT($(coeffs[1])) / (β₀ + FT(ε))^ƞ
+                α₁ = FT($(coeffs[2])) / (β₁ + FT(ε))^ƞ
+            end
                 
             Σα = α₀ + α₁
             w₀ = α₀ / Σα
@@ -267,8 +293,8 @@ end
 ##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)
 #####
 
-@inline coeff_left_p₀(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = ( FT(1/2), FT(1/2))
-@inline coeff_left_p₁(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = (FT(-1/2), FT(3/2))
+@inline coeff_left_p₀(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/2), FT(1/2))
+@inline coeff_left_p₁(scheme::WENO3{FT}, ::Type{Nothing}, args...) where FT = (- FT(1/2), FT(3/2))
 
 @inline coeff_right_p₀(scheme::WENO3, ::Type{Nothing}, args...) = reverse(coeff_left_p₁(scheme, Nothing, args...)) 
 @inline coeff_right_p₁(scheme::WENO3, ::Type{Nothing}, args...) = reverse(coeff_left_p₀(scheme, Nothing, args...)) 

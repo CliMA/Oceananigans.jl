@@ -47,13 +47,13 @@ include("flat_advective_fluxes.jl")
 
 include("weno_utils.jl")
 
-include("upwind_biased_first_order.jl")
 include("centered_second_order.jl")
-include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
+include("upwind_biased_first_order.jl")
+include("upwind_biased_third_order.jl")
 include("upwind_biased_fifth_order.jl")
-include("weno_fifth_order.jl")
 include("weno_third_order.jl")
+include("weno_fifth_order.jl")
 include("vector_invariant_advection.jl")
 
 include("topologically_conditional_interpolation.jl")

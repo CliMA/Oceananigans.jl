@@ -7,11 +7,15 @@
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{3} end
+struct UpwindBiasedFifthOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{3} 
+    child_advection_scheme :: CA
+end
+
+UpwindBiasedFifthOrder() = UpwindBiasedFifthOrder(UpwindBiasedThirdOrder())
 
 const U5 = UpwindBiasedFifthOrder
 
-@inline boundary_buffer(::U5) = 2
+@inline boundary_buffer(::U5) = 3
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U5, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_fourth_order, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U5, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_fourth_order, c)
