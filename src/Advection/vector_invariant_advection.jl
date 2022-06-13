@@ -3,11 +3,12 @@ using Oceananigans.Operators
 struct EnergyConservingScheme end
 struct EnstrophyConservingScheme end
 
-struct VectorInvariant{S}
+struct VectorInvariant{S, CA}
     scheme :: S
+    child_advection :: CA
 end
 
-VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme)
+VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme, nothing)
 
 const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
 

@@ -9,7 +9,7 @@ Upwind-biased first-order advection scheme.
 """
 struct UpwindBiasedFirstOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{0} 
     "advection scheme used near boundaries"
-    child_advection_scheme :: CA
+    child_advection :: CA
 end
 
 UpwindBiasedFirstOrder() = UpwindBiasedFirstOrder(nothing)

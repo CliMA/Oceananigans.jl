@@ -141,7 +141,6 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
         for loc in (:ᶜ, :ᶠ)
             code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
 
@@ -154,7 +153,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $second_order_interp(i, j, k, ibg.underlying_grid, ψ),
+                           $alt_interp(i, j, k, ibg, scheme.child_advection, ψ),
                            $interp(i, j, k, ibg.underlying_grid, scheme, ψ))
             end
             if ξ == :z
@@ -164,7 +163,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $second_order_interp(i, j, k, ibg.underlying_grid, ∂z, u),
+                            $alt_interp(i, j, k, ibg, scheme.child_advection, ∂z, u),
                             $interp(i, j, k, ibg.underlying_grid, scheme, ∂z, VI, u))
                 end
             else    
@@ -174,7 +173,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                                $second_order_interp(i, j, k, ibg.underlying_grid, ζ, u, v),
+                                $alt_interp(i, j, k, ibg, scheme.child_advection, ζ, u, v),
                                 $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VI, u, v))
                 end    
             end

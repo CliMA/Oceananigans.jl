@@ -46,36 +46,36 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::ADV, ψ) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $second_order_interp(i, j, k, grid, ψ))
+                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::WVI, ζ, VI, u, v) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                             $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                            $second_order_interp(i, j, k, grid, ζ, u, v))
+                            $alt_interp(i, j, k, grid, scheme.child_advection, ζ, VI, u, v))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::ADV, ψ) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $second_order_interp(i, j, k, grid, ψ))
+                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::WVI, ζ, VI, u, v) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $second_order_interp(i, j, k, grid, ζ, u, v))
+                               $alt_interp(i, j, k, grid, scheme.child_advection, ζ, VI, u, v))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::ADV, ψ) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $second_order_interp(i, j, k, grid, ψ))
+                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::WVI, ∂z, VI, u) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                 $interp(i, j, k, grid, scheme, ∂z, VI, u),
-                                $second_order_interp(i, j, k, grid, ∂z, u))
+                                $alt_interp(i, j, k, grid, scheme.child_advection, ∂z, VI, u))
                 end
             end
         end

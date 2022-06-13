@@ -9,7 +9,7 @@ Upwind-biased third-order advection scheme.
 """
 struct UpwindBiasedThirdOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{2} 
     "advection scheme used near boundaries"
-    child_advection_scheme :: CA
+    child_advection :: CA
 end
 
 UpwindBiasedThirdOrder() = UpwindBiasedThirdOrder(UpwindBiasedFirstOrder())
