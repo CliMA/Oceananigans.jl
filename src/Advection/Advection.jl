@@ -22,6 +22,7 @@ export
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
+    WENO3, 
     WENO5,
     VectorInvariant,
     EnergyConservingScheme,
