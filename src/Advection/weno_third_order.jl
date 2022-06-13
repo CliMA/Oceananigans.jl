@@ -122,7 +122,7 @@ Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP})
                        Adapt.adapt(to, scheme.bounds),
                        Adapt.adapt(to, scheme.child_advection))
 
-@inline boundary_buffer(::WENO3) = 1
+@inline boundary_buffer(::WENO3) = 2
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO3, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_second_order, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO3, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_second_order, c)
