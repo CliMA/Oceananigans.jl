@@ -104,7 +104,7 @@ function visualize_bickley_jet(name)
     end
 end
 
-advection_schemes = [CenteredSecondOrder(), WENO5()]
+advection_schemes = [CenteredSecondOrder(), WENO3(), WENO5()]
 
 #=
 advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
@@ -113,7 +113,7 @@ advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
                      VectorInvariant()]
 =#
 
-arch = CPU()
+arch = GPU()
 for Nh in [128]
     for momentum_advection in advection_schemes
         name = run_bickley_jet(; arch, momentum_advection, Nh)

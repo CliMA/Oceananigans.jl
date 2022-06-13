@@ -3,15 +3,16 @@
 #####
 
 """
-    struct CenteredSecondOrder <: AbstractAdvectionScheme{0}
+    struct CenteredSecondOrder <: AbstractAdvectionScheme{1}
 
 Centered second-order advection scheme.
 """
-struct CenteredSecondOrder <: AbstractAdvectionScheme{0} end
+struct CenteredSecondOrder <: AbstractAdvectionScheme{1} end
 
 boundary_buffer(::CenteredSecondOrder) = 0
 
 const C2 = CenteredSecondOrder
+const centered_second_order = C2()
 
 @inline advective_momentum_flux_Uu(i, j, k, grid, ::C2, U, u) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U) * ℑxᶜᵃᵃ(i, j, k, grid, u)
 @inline advective_momentum_flux_Vu(i, j, k, grid, ::C2, V, u) = ℑxᶠᵃᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V) * ℑyᵃᶠᵃ(i, j, k, grid, u)

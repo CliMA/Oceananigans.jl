@@ -2,13 +2,6 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme
 #####
 
-using OffsetArrays
-using Oceananigans.Grids: with_halo, return_metrics
-using Oceananigans.Architectures: arch_array, architecture
-using KernelAbstractions.Extras.LoopInfo: @unroll
-using Adapt
-import Base: show
-
 const C3₀ = 3/10
 const C3₁ = 3/5
 const C3₂ = 1/10 
@@ -60,7 +53,7 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} <: AbstractUpwindBiasedAdve
 
     "bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
-    
+
     function WENO5{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
                                coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
@@ -179,35 +172,6 @@ function WENO5(FT::DataType = Float64;
     return WENO5{FT, VI, zweno}(weno_coefficients..., bounds)
 end
 
-function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
-    
-    rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
-    if grid isa Nothing
-        @warn "defaulting to uniform WENO scheme with $(FT) precision, use WENO5(grid = grid) if this was not intended"
-        for metric in rect_metrics
-            @eval $(Symbol(:coeff_ , metric)) = nothing
-            @eval $(Symbol(:smooth_, metric)) = nothing
-        end
-    else
-        !(grid isa RectilinearGrid) && (@warn "WENO on a curvilinear stretched coordinate is not validated, use at your own risk!!")
-
-        metrics = return_metrics(grid)
-        dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
-
-        arch     = architecture(grid)
-        new_grid = with_halo((4, 4, 4), grid)
-
-        for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
-            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
-        end
-    end
-
-    return (coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-            smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
-end
-
 # Flavours of WENO
 const ZWENO        = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 const PositiveWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
@@ -291,18 +255,6 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP})
 @inline tangential_right_stencil_u(i, j, k, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, ℑyᵃᶠᵃ, u)
 @inline tangential_right_stencil_v(i, j, k, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, ℑxᶠᵃᵃ, v)
 @inline tangential_right_stencil_v(i, j, k, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, ℑxᶠᵃᵃ, v)
-
-#####
-##### biased pₖ for û calculation
-#####
-
-@inline left_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_left_p₀(scheme, args...) .* ψ)
-@inline left_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_left_p₁(scheme, args...) .* ψ)
-@inline left_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_left_p₂(scheme, args...) .* ψ)
-
-@inline right_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_right_p₀(scheme, args...) .* ψ)
-@inline right_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_right_p₁(scheme, args...) .* ψ)
-@inline right_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_right_p₂(scheme, args...) .* ψ)
 
 #####
 ##### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998)
@@ -511,245 +463,6 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
     end
 end
 
-#####
-##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)
-#####
-
 @inline coeff_left_p₀(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),    FT(5/6), - FT(1/6))
 @inline coeff_left_p₁(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (- FT(1/6),    FT(5/6),   FT(1/3))
 @inline coeff_left_p₂(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),  - FT(7/6),  FT(11/6))
-
-@inline coeff_right_p₀(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₂(scheme, Nothing, args...)) 
-@inline coeff_right_p₁(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₁(scheme, Nothing, args...)) 
-@inline coeff_right_p₂(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₀(scheme, Nothing, args...)) 
-
-@inline coeff_left_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
-@inline coeff_left_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
-@inline coeff_left_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
-
-@inline coeff_right_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
-@inline coeff_right_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
-@inline coeff_right_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
-
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.coeff_xᶠᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.coeff_xᶜᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.coeff_yᵃᶠᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.coeff_yᵃᶜᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.coeff_zᵃᵃᶠ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.coeff_zᵃᵃᶜ[r+2][i] 
-
-@inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.smooth_xᶠᵃᵃ[r+1][i] 
-@inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.smooth_xᶜᵃᵃ[r+1][i] 
-@inline retrieve_left_smooth(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.smooth_yᵃᶠᵃ[r+1][i] 
-@inline retrieve_left_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+1][i] 
-@inline retrieve_left_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+1][i] 
-@inline retrieve_left_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+1][i] 
-
-@inline retrieve_right_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.smooth_xᶠᵃᵃ[r+4][i] 
-@inline retrieve_right_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.smooth_xᶜᵃᵃ[r+4][i] 
-@inline retrieve_right_smooth(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.smooth_yᵃᶠᵃ[r+4][i] 
-@inline retrieve_right_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+4][i] 
-@inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+4][i] 
-@inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+4][i] 
-
-@inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
-@inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N)                              = nothing
-
-@inline calc_smoothness_coefficients(FT, ::Val{false}, args...) = nothing
-@inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
-@inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N) = nothing
-
-function calc_interpolating_coefficients(FT, coord, arch, N) 
-
-    cpu_coord = Array(parent(coord))
-    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
-
-    s1 = create_interp_coefficients(FT,-1, cpu_coord, arch, N)
-    s2 = create_interp_coefficients(FT, 0, cpu_coord, arch, N)
-    s3 = create_interp_coefficients(FT, 1, cpu_coord, arch, N)
-    s4 = create_interp_coefficients(FT, 2, cpu_coord, arch, N)
-
-    return (s1, s2, s3, s4)
-end
-
-function create_interp_coefficients(FT, r, cpu_coord, arch, N)
-
-    stencil = NTuple{3, FT}[]
-    @inbounds begin
-        for i = 0:N+1
-            push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord))     
-        end
-    end
-    return OffsetArray(arch_array(arch, stencil), -1)
-end
-
-function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
-
-    cpu_coord = arch_array(CPU(), coord)
-
-    s1 = create_smoothness_coefficients(FT, 0, -, cpu_coord, arch, N)
-    s2 = create_smoothness_coefficients(FT, 1, -, cpu_coord, arch, N)
-    s3 = create_smoothness_coefficients(FT, 2, -, cpu_coord, arch, N)
-    s4 = create_smoothness_coefficients(FT, 0, +, cpu_coord, arch, N)
-    s5 = create_smoothness_coefficients(FT, 1, +, cpu_coord, arch, N)
-    s6 = create_smoothness_coefficients(FT, 2, +, cpu_coord, arch, N)
-    
-    return (s1, s2, s3, s4, s5, s6)
-end
-
-function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N)
-
-    # derivation written on overleaf
-    
-    stencil = NTuple{2, NTuple{3, FT}}[]   
-    @inbounds begin
-        for i = 0:N+1
-       
-            bias1 = Int(op == +)
-            bias2 = bias1 - 1
-
-            Δcᵢ = cpu_coord[i + bias1] - cpu_coord[i + bias2]
-        
-            Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias1, op)
-            bᵢ  =      interp_weights(r, cpu_coord, i, bias1, op)
-            bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias1, op)
-            Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias2, op)
-            aᵢ  =      interp_weights(r, cpu_coord, i, bias2, op)
-            aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias2, op)
-
-            pₓₓ = der2_interp_weights(r, cpu_coord, i, op)
-            Pᵢ  =  (Bᵢ .- Aᵢ)
-
-            wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
-            wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
-                                                 Δcᵢ^4 .* star(pₓₓ, pₓₓ)
-
-            push!(stencil, (wᵢᵢ, wᵢⱼ))
-        end
-    end
-
-    return OffsetArray(arch_array(arch, stencil), -1)
-end
-
-@inline dagger(ψ)    = (ψ[2], ψ[3], ψ[1])
-@inline star(ψ₁, ψ₂) = (ψ₁ .* dagger(ψ₂) .+ dagger(ψ₁) .* ψ₂)
-
-# Integral of ENO coefficients for 2nd order polynomial reconstruction at the face
-function prim_interp_weights(r, coord, i, bias, op)
-
-    coeff = ()
-    for j = 0:2
-        c = 0
-        @inbounds begin
-            for m = j+1:3
-                num = 0
-                for l = 0:3
-                    if l != m
-                        prod = 1
-                        sum  = 0 
-                        for q = 0:3
-                            if q != m && q != l 
-                                prod *= coord[op(i, r-q+1)]
-                                sum  += coord[op(i, r-q+1)]
-                            end
-                        end
-                        num += coord[i+bias]^3 / 3 - sum * coord[i+bias]^2 / 2 + prod * coord[i+bias]
-                    end
-                end
-                den = 1
-                for l = 0:3
-                    if l!= m
-                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
-                    end
-                end
-                c += num / den
-            end 
-        end
-        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
-    end
-
-    return coeff
-end
-
-# Second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der2_interp_weights(r, coord, i, op)
-
-    coeff = ()
-    for j = 0:2
-        c = 0
-        @inbounds begin
-            for m = j+1:3
-                num = 0
-                for l = 0:3
-                    if l != m
-                        num += 2 
-                    end
-                end
-                den = 1
-                for l = 0:3
-                    if l!= m
-                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
-                    end
-                end
-                c += num / den
-            end 
-        end
-        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
-    end
-
-    return coeff
-end
-
-# first derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der1_interp_weights(r, coord, i, bias, op)
-
-    coeff = ()
-    for j = 0:2
-        c = 0
-        @inbounds begin
-            for m = j+1:3
-                num = 0
-                for l = 0:3
-                    if l != m
-                        sum = 0
-                        for q = 0:3
-                            if q != m && q != l 
-                                sum += coord[op(i, r-q+1)]
-                            end
-                        end
-                        num += 2 * coord[i+bias] - sum
-                    end
-                end
-                den = 1
-                for l = 0:3
-                    if l!= m
-                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
-                    end
-                end
-                c += num / den
-            end 
-        end
-        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
-    end
-
-    return coeff
-end
-
-num_prod(i, m, l, r, xr, xi, shift, op, order) = prod(xr[i+shift] - xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
-
-# Coefficients for (order-1)/2 finite-volume polynomial reconstruction.
-function stencil_coefficients(i, r, xr, xi, shift=0, op=Base.:(-), order=3)
-    coeffs = zeros(order)
-    for j in 0:order-1
-        for m in j+1:order
-            numerator = sum(num_prod(i, m, l, r, xr, xi, shift, op, order) for l=0:order if l != m)
-            denominator = prod(xi[op(i, r-m+1)] - xi[op(i, r-l+1)] for l=0:order if l != m)
-            coeffs[j+1] += numerator / denominator * (xi[op(i, r-j)] - xi[op(i, r-j+1)])
-        end
-    end
-
-    return tuple(coeffs...)
-end
-
-
-

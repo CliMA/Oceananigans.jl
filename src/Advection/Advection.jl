@@ -16,6 +16,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
+    AdvectionScheme,
     CenteredSecondOrder,
     UpwindBiasedFirstOrder,
     UpwindBiasedThirdOrder,
@@ -37,11 +38,13 @@ abstract type AbstractAdvectionScheme{Buffer} end
 abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 
-required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer + 1
+required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 include("flat_advective_fluxes.jl")
+
+include("weno_utils.jl")
 
 include("upwind_biased_first_order.jl")
 include("centered_second_order.jl")
@@ -49,6 +52,7 @@ include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 include("upwind_biased_fifth_order.jl")
 include("weno_fifth_order.jl")
+include("weno_third_order.jl")
 include("vector_invariant_advection.jl")
 
 include("topologically_conditional_interpolation.jl")
