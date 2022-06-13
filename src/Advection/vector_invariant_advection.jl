@@ -17,8 +17,8 @@ VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvar
 const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
-const WENOVectorInvariantVort = Union{WENOVectorInvariant3,    WENOVectorInvariant5}
-const WENOVectorInvariantVel  = Union{WENOVectorInvariantVel3, WENOVectorInvariantVel5}
+const WENOVectorInvariantVort = Union{WENOVectorInvariantVort3, WENOVectorInvariantVort5}
+const WENOVectorInvariantVel  = Union{WENOVectorInvariantVel3,  WENOVectorInvariantVel5}
 const WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI} = 
     Union{WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI}, 
           WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil}

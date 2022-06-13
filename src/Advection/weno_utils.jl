@@ -70,8 +70,8 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; ord
         new_grid = with_halo((4, 4, 4), grid)
 
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir; order)
-            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir; order) 
+            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir; $order)
+            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir; $order) 
         end
     end
 
