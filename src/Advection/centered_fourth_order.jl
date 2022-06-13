@@ -8,6 +8,7 @@
 Centered fourth-order advection scheme.
 """
 struct CenteredFourthOrder{CA} <: AbstractCenteredAdvectionScheme{2} 
+    "advection scheme used near boundaries"
     child_advection_scheme :: CA
 end
 

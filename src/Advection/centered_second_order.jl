@@ -8,6 +8,7 @@
 Centered second-order advection scheme.
 """
 struct CenteredSecondOrder{CA} <: AbstractAdvectionScheme{0} 
+    "advection scheme used near boundaries"
     child_advection_scheme :: CA
 end
 

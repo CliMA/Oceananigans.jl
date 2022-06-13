@@ -41,10 +41,11 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 
-    child_advection_scheme :: CA
-
     "bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
+
+    "advection scheme used near boundaries"
+    child_advection_scheme :: CA
 
     function WENO5{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 

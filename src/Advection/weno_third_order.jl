@@ -50,10 +50,11 @@ struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
     "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 
-    child_advection_scheme :: CA
-
     "bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
+
+    "advection scheme used near boundaries"
+    child_advection_scheme :: CA
 
     function WENO3{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
@@ -86,7 +87,9 @@ function WENO3(FT::DataType = Float64;
 
     VI = typeof(vector_invariant)
 
-    return WENO3{FT, VI, zweno}(weno_coefficients..., bounds)
+    child_advection_scheme = UpwindBiasedFirstOrder()
+
+    return WENO3{FT, VI, zweno}(weno_coefficients..., bounds, child_advection_scheme)
 end
 
 # Flavours of WENO
