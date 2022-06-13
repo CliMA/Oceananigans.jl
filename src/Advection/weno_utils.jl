@@ -50,7 +50,7 @@ import Base: show
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+4][i] 
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+4][i] 
 
-function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; order = 3)
+function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; order)
     
     rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
@@ -70,8 +70,8 @@ function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; ord
         new_grid = with_halo((4, 4, 4), grid)
 
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir; $order)
-            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir; $order) 
+            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir; order = $order)
+            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir; order = $order) 
         end
     end
 
@@ -101,7 +101,7 @@ end
 
 function create_interp_coefficients(FT, r, cpu_coord, arch, N; order = 3)
 
-    stencil = NTuple{3, FT}[]
+    stencil = NTuple{order, FT}[]
     @inbounds begin
         for i = 0:N+1
             push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
@@ -131,7 +131,7 @@ struct Primitive end
 function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N; order)
 
     # derivation written on overleaf
-    stencil = NTuple{2, NTuple{3, FT}}[]   
+    stencil = NTuple{2, NTuple{order, FT}}[]   
     @inbounds begin
         for i = 0:N+1
        
