@@ -20,8 +20,10 @@ const AUG = AbstractUnderlyingGrid
 @inline  outside_left_biased_buffer(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 - (boundary_buffer(adv) - 1)
 @inline outside_right_biased_buffer(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 -  boundary_buffer(adv)
 
-const ADV = AbstractAdvectionScheme
-const WVI = WENOVectorInvariant
+# Separate High order advection from low order advection
+const HOADV = Union{UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO3, WENO5, CenteredFourthOrder}
+const LOADV = Union{UpwindBiasedFirstOrder, CenteredSecondOrder}
+const WVI   = WENOVectorInvariant
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
@@ -35,15 +37,16 @@ for bias in (:symmetric, :left_biased, :right_biased)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
 
-            # Simple translation for Periodic directions (fallback)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::ADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            # Simple translation for Periodic directions and Boundary safe advection (fallback)
+            @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             outside_buffer = Symbol(:outside_, bias, :_buffer)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::ADV, ψ) where FT =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::HOADV, ψ) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
@@ -55,7 +58,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::ADV, ψ) where {FT, TX} =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::HOADV, ψ) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
@@ -67,7 +70,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             elseif ξ == :z
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::ADV, ψ) where {FT, TX, TY} =
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::HOADV, ψ) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.child_advection, ψ))

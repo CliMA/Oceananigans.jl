@@ -101,7 +101,8 @@ const WENOVectorInvariantVel3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  =
 const WENOVectorInvariantVort3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
       WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF, PP}
 
-const WENOVectorInvariant3 = WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
+const WENOVectorInvariant3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
+      WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
 
 function Base.show(io::IO, a::WENO3{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO3 advection scheme with: \n",
@@ -259,6 +260,9 @@ end
 #####
 ##### Biased interpolation functions
 #####
+
+pass_stencil(ψ, i, j, k, stencil) = ψ 
+pass_stencil(ψ, i, j, k, ::Type{VelocityStencil}) = (i, j, k)
 
 for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT], [:XS, :YS, :ZS]) 
     for side in (:left, :right)

@@ -10,10 +10,16 @@ end
 
 VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme, nothing)
 
-const VectorInvariantSchemes = Union{VectorInvariant, WENOVectorInvariant}
-
 const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
+
+const WENOVectorInvariantVort = Union{WENOVectorInvariant3,    WENOVectorInvariant5}
+const WENOVectorInvariantVel  = Union{WENOVectorInvariantVel3, WENOVectorInvariantVel5}
+const WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI} = 
+    Union{WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI}, 
+          WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI}} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil}
+
+const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme

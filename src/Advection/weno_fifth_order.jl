@@ -171,12 +171,13 @@ end
 const ZWENO         = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 const PositiveWENO5 = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-const WENOVectorInvariantVel{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
+const WENOVectorInvariantVel5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP}  = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VelocityStencil, WF, PP}
-const WENOVectorInvariantVort{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
+const WENOVectorInvariantVort5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
       WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:VorticityStencil, WF, PP}
 
-const WENOVectorInvariant = WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
+const WENOVectorInvariant5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} = 
+      WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP} where {FT, XT, YT, ZT, XS, YS, ZS, VI<:SmoothnessStencil, WF, PP}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",
@@ -421,9 +422,6 @@ end
 ##### Biased interpolation functions
 #####
 
-pass_stencil(ψ, i, j, k, stencil) = ψ 
-pass_stencil(ψ, i, j, k, ::Type{VelocityStencil}) = (i, j, k)
-
 for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT], [:XS, :YS, :ZS]) 
     for side in (:left, :right)
         interpolate_func = Symbol(:weno_, side, :_biased_interpolate_, interp)
@@ -446,7 +444,7 @@ for (interp, dir, val, cT, cS) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS}, 
+                                               scheme::WENOVectorInvariant5{FT, XT, YT, ZT, XS, YS, ZS}, 
                                                ψ, idx, loc, VI, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
 
                 ψ₂, ψ₁, ψ₀ = ψₜ = $stencil(i, j, k, ψ, grid, args...)

@@ -104,7 +104,7 @@ Visualize the Bickley jet data in `name * ".jld2"`.
 #     end
 # end
 
-advection_schemes = [WENO3(vector_invariant = VelocityStencil()), UpwindBiasedThirdOrder()]
+advection_schemes = [WENO3(), UpwindBiasedThirdOrder()]
 
 #=
 advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
