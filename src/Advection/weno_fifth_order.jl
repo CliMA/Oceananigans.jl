@@ -158,7 +158,7 @@ function WENO5(FT::DataType = Float64;
         FT = eltype(grid)
     end
 
-    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT)
+    weno_coefficients = compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; order = 3)
 
     VI = typeof(vector_invariant)
 
