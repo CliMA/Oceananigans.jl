@@ -117,3 +117,12 @@ end
 
 @inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 @inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+
+# For vector Invariant downgrading near the boundaries 
+@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i-1, j, k, grid, u, v) 
+@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i, j-1, k, grid, u, v)
+@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i, j, k-1, grid, u, v)
+
+@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i, j, k, grid, u, v) 
+@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i, j, k, grid, u, v)
+@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, ζ, VI::Type{SmoothnessStencil}, u, v) = @inbounds ζ(i, j, k, grid, u, v)

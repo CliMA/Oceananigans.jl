@@ -177,7 +177,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
 
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, ψ) = $interp(i, j, k, ibg.underlying_grid, scheme, ψ)
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
             end
 
             # Conditional high-order interpolation in Bounded directions
@@ -185,10 +185,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
 
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ψ) =
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt_interp(i, j, k, ibg, scheme.child_advection, ψ),
-                           $interp(i, j, k, ibg.underlying_grid, scheme, ψ))
+                           $alt_interp(i, j, k, ibg, scheme.child_advection, args...),
+                           $interp(i, j, k, ibg.underlying_grid, scheme, args...))
             end
             if ξ == :z
                 @eval begin

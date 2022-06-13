@@ -93,7 +93,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
         name = "WENOVectorInvariantVort"
     end
 
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_Upwind"
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(name)"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
