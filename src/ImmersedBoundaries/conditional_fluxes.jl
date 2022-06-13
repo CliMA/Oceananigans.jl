@@ -129,7 +129,6 @@ end
            inactive_node(c, f, c, i+1, j, k, ibg) 
 end
 
-
 @inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel3) 
     return inactive_node(c, f, c, i, j, k, ibg)     |       
            inactive_node(c, f, c, i-2, j, k, ibg)   | inactive_node(c, f, c, i+2, j, k, ibg) |
@@ -159,6 +158,8 @@ end
 # @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
 # @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
 
+using Oceananigans.Advection: LOADV, HOADV
+
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
 
@@ -171,12 +172,20 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
             near_boundary = Symbol(:near_, ξ, :_boundary)
 
+            # Fallback for low order interpolation
+            @eval begin
+                import Oceananigans.Advection: $alt_interp
+                using Oceananigans.Advection: $interp
+
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, ψ) = $interp(i, j, k, ibg.underlying_grid, scheme, ψ)
+            end
+
             # Conditional high-order interpolation in Bounded directions
             @eval begin
                 import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
 
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ψ) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.child_advection, ψ),
                            $interp(i, j, k, ibg.underlying_grid, scheme, ψ))

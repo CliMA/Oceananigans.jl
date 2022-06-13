@@ -6,6 +6,10 @@ struct EnstrophyConservingScheme end
 struct VectorInvariant{S, CA}
     scheme :: S
     child_advection :: CA
+
+    function VectorInvariant{S}(scheme::S, child_advection::CA) where {S, CA}
+        return new{S, CA}(scheme, child_advection)
+    end
 end
 
 VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme, nothing)

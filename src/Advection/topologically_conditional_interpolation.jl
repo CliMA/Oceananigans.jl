@@ -22,7 +22,7 @@ const AUG = AbstractUnderlyingGrid
 
 # Separate High order advection from low order advection
 const HOADV = Union{UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO3, WENO5, CenteredFourthOrder}
-const LOADV = Union{UpwindBiasedFirstOrder, CenteredSecondOrder}
+const LOADV = Union{UpwindBiasedFirstOrder, CenteredSecondOrder, VectorInvariant}
 const WVI   = WENOVectorInvariant
 
 for bias in (:symmetric, :left_biased, :right_biased)
