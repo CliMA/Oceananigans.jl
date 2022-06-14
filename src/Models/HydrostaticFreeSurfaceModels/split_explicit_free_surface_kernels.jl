@@ -77,9 +77,7 @@ function barotropic_mode!(U, V, grid, u, v)
     sum!(U, u * Δz)
     sum!(V, v * Δz)
 
-    arch = architecture(grid)
-    fill_halo_regions!(U)
-    fill_halo_regions!(V)
+    fill_halo_regions!((U, V))
 end
 
 function set_average_to_zero!(free_surface_state)

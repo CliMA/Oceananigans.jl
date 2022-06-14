@@ -9,6 +9,19 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
 
+mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    overwrite_existing :: Bool
+    array_type :: A
+    previous :: Float64
+    verbose :: Bool
+end
+
+ext(::Type{NetCDFOutputWriter}) = ".nc"
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
@@ -122,26 +135,11 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 """
-    mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
-
-An output writer for writing to NetCDF files.
-"""
-mutable struct NetCDFOutputWriter{D, O, T, A} <: AbstractOutputWriter
-    filepath :: String
-    dataset :: D
-    outputs :: O
-    schedule :: T
-    overwrite_existing :: Bool
-    array_type :: A
-    previous :: Float64
-    verbose :: Bool
-end
-
-"""
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
                                    array_type = Array{Float32},
                                       indices = nothing,
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -169,7 +167,7 @@ Keyword arguments
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: false.
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 

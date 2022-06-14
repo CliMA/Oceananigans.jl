@@ -23,8 +23,8 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct SurfaceTKEFlux{FT}
-    Cᵂu★ :: FT = 4.56
-    CᵂwΔ :: FT = 4.46
+    Cᵂu★ :: FT = 0.01
+    CᵂwΔ :: FT = 40.0
 end
 
 #####
@@ -89,8 +89,11 @@ using Oceananigans.BoundaryConditions: Flux
 const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
 const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
 
-@inline getbc(bc::TKEBoundaryCondition, i, j, grid, clock, model_fields, closure, buoyancy) =
+@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, closure, buoyancy) =
     bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters, closure, buoyancy)
+
+@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, model_fields, closure, buoyancy) =
+    bc.condition.func(i, j, k, grid, clock, model_fields, bc.condition.parameters, closure, buoyancy)
 
 #####
 ##### Utilities for model constructors
@@ -105,7 +108,7 @@ end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
-    default_top_bc = default_prognostic_bc(topology(grid, 3)(), Center())
+    default_top_bc = default_prognostic_bc(topology(grid, 3)(), Center(), DefaultBoundaryCondition())
 
     user_bc_names = keys(user_bcs)
     u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : default_top_bc

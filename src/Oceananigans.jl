@@ -10,18 +10,22 @@ end
 
 export
     # Architectures
-    CPU, GPU,
+    CPU, GPU, 
 
     # Logging
     OceananigansLogger,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat,
+    Periodic, Bounded, Flat, 
+    FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
+
+    # Immersed boundaries
+    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
@@ -72,7 +76,7 @@ export
     # Models
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
-    ShallowWaterModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     PressureField,
     fields,
 
@@ -103,18 +107,17 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Cubed sphere
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, XPartition, 
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime
-
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
-
 using CUDA
 using Adapt
 using DocStringExtensions
@@ -168,7 +171,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
@@ -210,6 +212,7 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
+include("MultiRegion/MultiRegion.jl")
 include("CubedSpheres/CubedSpheres.jl")
 
 #####
@@ -230,6 +233,7 @@ using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
+using .ImmersedBoundaries
 using .Distributed
 using .Models
 using .TimeSteppers
@@ -238,6 +242,7 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
+using .MultiRegion
 using .CubedSpheres
 
 function __init__()

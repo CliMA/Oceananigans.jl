@@ -98,7 +98,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
     Δt = 0.1 * min_Δx(grid)
 
     if adv == 7 
-        scheme = WENO5( grid = grid )
+        scheme = WENO5( grid )
     end
 
     model = ShallowWaterModel(CPU(), grid = grid,

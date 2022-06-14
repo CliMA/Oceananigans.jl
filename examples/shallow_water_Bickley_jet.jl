@@ -20,7 +20,7 @@
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, NCDatasets, Plots, Printf, Polynomials"
+# pkg"add Oceananigans, NCDatasets, Polynomials, CairoMakie"
 # ```
 
 using Oceananigans
@@ -31,34 +31,25 @@ using Oceananigans.Models: ShallowWaterModel
 # The shallow water model is a two-dimensional model and thus the number of vertical
 # points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
 
-Lx, Ly, Lz = 2π, 20, 1
+Lx, Ly, Lz = 2π, 20, 10
 Nx, Ny = 128, 128
 
 grid = RectilinearGrid(size = (Nx, Ny),
                        x = (0, Lx), y = (-Ly/2, Ly/2),
                        topology = (Periodic, Bounded, Flat))
 
-# ## Physical parameters
-#
-# We choose non-dimensional parameters
-
-const U = 1.0         # Maximum jet velocity
-
-f = 1           # Coriolis parameter
-g = 9.8         # Gravitational acceleration
-Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
-
 # ## Building a `ShallowWaterModel`
 #
-# We build a `ShallowWaterModel` with the `WENO5` advection scheme and
-# 3rd-order Runge-Kutta time-stepping,
+# We build a `ShallowWaterModel` with the `WENO5` advection scheme,
+# 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis and
+# gravitational acceleration
 
-model = ShallowWaterModel(
+gravitational_acceleration = 1
+coriolis = FPlane(f=1)
+
+model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
-                          advection = WENO5(),
-                          grid = grid,
-                          gravitational_acceleration = g,
-                          coriolis = FPlane(f=f))
+                          momentum_advection = WENO5())
 
 # Use `architecture = GPU()` to run this problem on a GPU.
 
@@ -67,6 +58,11 @@ model = ShallowWaterModel(
 # The background velocity ``ū`` and free-surface ``η̄`` correspond to a
 # geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum 
 # free-surface deformation of ``Δη``,
+
+U = 1 # Maximum jet velocity
+f = coriolis.f
+g = gravitational_acceleration
+Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
 h̄(x, y, z) = Lz - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
@@ -137,16 +133,18 @@ perturbation_norm(args...) = norm(v)
 # Build the `output_writer` for the two-dimensional fields to be output.
 # Output every `t = 1.0`.
 
+fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
 simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc"),
+                                                        filename = fields_filename,
                                                         schedule = TimeInterval(1),
                                                         overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
 
+growth_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc")
 simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                        filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc"),
+                                                        filename = growth_filename,
                                                         schedule = IterationInterval(1),
                                                         dimensions = (; perturbation_norm = ()),
                                                         overwrite_existing = true)
@@ -159,7 +157,7 @@ run!(simulation)
 
 # Load required packages to read output and plot.
 
-using NCDatasets, Plots, Printf
+using NCDatasets, Printf, CairoMakie
 nothing # hide
 
 # Define the coordinates for plotting.
@@ -167,47 +165,52 @@ nothing # hide
 x, y = xnodes(ω), ynodes(ω)
 nothing # hide
 
-# Define keyword arguments for plotting the contours.
-
-kwargs = (
-         xlabel = "x",
-         ylabel = "y",
-         aspect = 1,
-           fill = true,
-         levels = 20,
-      linewidth = 0,
-          color = :balance,
-       colorbar = true,
-           ylim = (-Ly/2, Ly/2),
-           xlim = (0, Lx)
-)
-nothing # hide
-
 # Read in the `output_writer` for the two-dimensional fields and then create an animation 
 # showing both the total and perturbation vorticities.
 
+fig = Figure(resolution = (1200, 660))
+
+axis_kwargs = (xlabel = "x",
+               ylabel = "y",
+               aspect = AxisAspect(1),
+               limits = ((0, Lx), (-Ly/2, Ly/2)))
+
+ax_ω  = Axis(fig[2, 1]; title = "Total vorticity, ω", axis_kwargs...)
+ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwargs...)
+
+n = Observable(1)
+
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-anim = @animate for (iter, t) in enumerate(ds["time"])
-    ω = ds["ω"][:, :, 1, iter]
-    ω′ = ds["ω′"][:, :, 1, iter]
+times = ds["time"][:]
 
-    ω′_max = maximum(abs, ω′)
+ω = @lift ds["ω"][:, :, 1, $n]
+hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
+Colorbar(fig[2, 2], hm_ω)
 
-    plot_ω = contour(x, y, ω',
-                     clim = (-1, 1), 
-                     title = @sprintf("Total vorticity, ω, at t = %.1f", t); kwargs...)
-                      
-    plot_ω′ = contour(x, y, ω′',
-                      clim = (-ω′_max, ω′_max),
-                      title = @sprintf("Perturbation vorticity, ω - ω̄, at t = %.1f", t); kwargs...)
+ω′ = @lift ds["ω′"][:, :, 1, $n]
+hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
+Colorbar(fig[2, 4], hm_ω′)
 
-    plot(plot_ω, plot_ω′, layout = (1, 2), size = (800, 440))
+title = @lift @sprintf("t = %.1f", times[$n])
+fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+record(fig, "shallow_water_Bickley_jet.mp4", frames, framerate=12) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
+nothing #hide
+
+# ![](shallow_water_Bickley_jet.mp4)
+
+# It's always good practice to close the NetCDF files when we are done.
 
 close(ds)
-
-mp4(anim, "shallow_water_Bickley_jet.mp4", fps=15)
 
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
@@ -239,20 +242,23 @@ constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
 
 best_fit = @. exp(constant + slope * t)
 
-plot(t, norm_v,
-        yaxis = :log,
-        ylims = (1e-3, 30),
-           lw = 4,
-        label = "norm(v)", 
-       xlabel = "time",
-       ylabel = "norm(v)",
-        title = "growth of perturbation norm",
-       legend = :bottomright)
+lines(t, norm_v;
+      linewidth = 4,
+      label = "norm(v)", 
+      axis = (yscale = log10,
+              limits = (nothing, (1e-3, 30)),
+              xlabel = "time",
+              ylabel = "norm(v)",
+               title = "growth of perturbation norm"))
 
-plot!(t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visualization
-           lw = 4,
-        label = "best fit")
-            
+lines!(t[I], 2 * best_fit[I]; # factor 2 offsets fit from curve for better visualization
+       linewidth = 4,
+       label = "best fit")
+
+axislegend(position = :rb)
+
+current_figure() # hide
+
 # The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
 # grows in the simulation. Let's see how this compares with the theoretical growth rate.
 

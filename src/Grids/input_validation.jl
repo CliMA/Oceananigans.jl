@@ -65,7 +65,7 @@ end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
-function validate_dimension_specification(T, ξ, dir, FT)
+function validate_dimension_specification(T, ξ, dir, N, FT)
 
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
@@ -75,7 +75,7 @@ function validate_dimension_specification(T, ξ, dir, FT)
     return FT.(ξ)
 end
 
-function validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     # Find domain endpoints or domain extent, depending on user input:
     if !isnothing(extent) # the user has specified an extent!
@@ -95,21 +95,38 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
         z = FT.((-Lz, 0))
 
     else # isnothing(extent) === true implies that user has not specified a length
-        x = validate_dimension_specification(TX, x, :x, FT)
-        y = validate_dimension_specification(TY, y, :y, FT)
-        z = validate_dimension_specification(TZ, z, :z, FT)
+        x = validate_dimension_specification(TX, x, :x, size[1], FT)
+        y = validate_dimension_specification(TY, y, :y, size[2], FT)
+        z = validate_dimension_specification(TZ, z, :z, size[3], FT)
     end
 
     return x, y, z
 end
 
-validate_dimension_specification(T, ξ::AbstractVector, dir, FT) = FT.(ξ)
-validate_dimension_specification(T, ξ::Function,       dir, FT) = ξ
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, FT) = FT.((ξ[1], ξ[1]))
-validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, FT) = FT.((ξ(1), ξ(1)))
-validate_dimension_specification(::Type{Flat}, ξ::Tuple, dir, FT)  = FT.(ξ)
-validate_dimension_specification(::Type{Flat}, ::Nothing, dir, FT) = FT.((0, 0))
-validate_dimension_specification(::Type{Flat}, ξ::Number, dir, FT) = FT.((ξ, ξ))
+function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
+    ξ = FT.(ξ)
+
+    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
+    Nξ = length(ξ)
+    N⁺¹ = N + 1
+    if Nξ < N⁺¹
+        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $N!"))
+    elseif Nξ > N⁺¹
+        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
+              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
+        @warn msg
+    end
+
+    return ξ
+end
+
+validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
+
+validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
+validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
+validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = FT.(ξ)
+validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = (zero(FT), zero(FT))
+validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = (FT(ξ), FT(ξ))
 
 default_horizontal_extent(T, extent) = (0, extent[i])
 default_vertical_extent(T, extent) = (-extent[3], 0)

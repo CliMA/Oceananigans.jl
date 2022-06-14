@@ -68,7 +68,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, overwrite_existing = true,
-                                                          prefix = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
+                                                          filename = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
                                                           field_slicer = nothing,
                                                           schedule = TimeInterval(stop_iteration * Δt / 2))
 
@@ -114,7 +114,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, overwrite_existing = true,
-                                                          prefix = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
+                                                          filename = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
                                                           field_slicer = nothing,
                                                           schedule = TimeInterval(stop_iteration * Δt / 2))
 

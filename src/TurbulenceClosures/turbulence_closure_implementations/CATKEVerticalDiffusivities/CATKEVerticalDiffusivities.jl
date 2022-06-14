@@ -8,7 +8,7 @@ using Oceananigans.Grids
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: ZeroField
-using Oceananigans.BoundaryConditions: default_prognostic_bc
+using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -105,7 +105,7 @@ Turbulent Kinetic Energy (TKE).
 CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
-                                  Cᴰ = 2.91,
+                                  Cᴰ = 0.81,
                                   mixing_length = MixingLength{FT}(),
                                   surface_TKE_flux = SurfaceTKEFlux{FT}(),
                                   warning = true)
