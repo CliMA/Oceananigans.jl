@@ -46,14 +46,12 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
 νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
 
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = (b = κh, r = 0.0))
+horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
-                                                       ν = νz, κ = (b = κz, r = 0.0))
+                                                       ν = νz, κ = κz)
 nothing #hide
 
-
-r_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0), bottom = ValueBoundaryCondition(-Lz))
 
 # ## Model
 
@@ -61,16 +59,6 @@ r_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0), bottom = ValueB
 # Regarding Coriolis, we use a beta-plane centered at 45° South.
 
 model = HydrostaticFreeSurfaceModel(; grid,
-<<<<<<< HEAD
-                                      coriolis = BetaPlane(latitude = -45),
-                                      buoyancy = BuoyancyTracer(),
-                                      tracers = (:b, :r),
-                                      closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                      boundary_conditions = (; r = r_bcs),
-                                      momentum_advection = WENO5(),
-                                      tracer_advection = WENO5(),
-                                      free_surface = ImplicitFreeSurface())
-=======
                                     coriolis = BetaPlane(latitude = -45),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
@@ -78,7 +66,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
                                     free_surface = ImplicitFreeSurface())
->>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
 
 # We want to initialize our model with a baroclinically unstable front plus some small-amplitude
 # noise.
@@ -110,9 +97,7 @@ M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
 
-rᵢ(x, y, z) = z
-
-set!(model, b=bᵢ, r=rᵢ)
+set!(model, b=bᵢ)
 
 # Let's visualize the initial buoyancy distribution.
 
@@ -179,12 +164,8 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 
-b = model.tracers.b
-r = model.tracers.r
-
 B = Field(Average(b, dims=1))
 U = Field(Average(u, dims=1))
-R = Field(Average(r, dims=1))
 
 filename = "baroclinic_adjustment"
 save_fields_interval = 0.5day
@@ -199,21 +180,13 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-<<<<<<< HEAD
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, r, u);
-=======
     simulation.output_writers[side] = JLD2OutputWriter(model, (; b);
->>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
                                                        filename = filename * "_$(side)_slice",
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices)
 end
 
-<<<<<<< HEAD
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, r=R);
-=======
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B,);
->>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
                                                      schedule = TimeInterval(save_fields_interval),
                                                      filename = filename * "_zonal_average")
 
@@ -265,15 +238,6 @@ x_yz_east = x[end] * ones(Ny, Nz)
 y_yz = repeat(y, 1, Nz)
 z_yz = repeat(reshape(z, 1, Nz), grid.Ny, 1)
 
-<<<<<<< HEAD
-b_timeserieses = (
-      east = FieldTimeSeries(slice_filenames.east, "r"),
-    bottom = FieldTimeSeries(slice_filenames.bottom, "r"),
-       top = FieldTimeSeries(slice_filenames.top, "r")
-)
-
-b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "r")
-=======
 x_xy = x
 y_xy = y
 z_xy_top = z[end] * ones(grid.Nx, grid.Ny)
@@ -282,7 +246,6 @@ nothing #hide
 
 # Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
 # zonal average flow is located.
->>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
 
 fig = Figure(resolution = (900, 520))
 
