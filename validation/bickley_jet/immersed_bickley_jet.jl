@@ -87,10 +87,10 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     name = typeof(model.advection.momentum).name.wrapper
     if model.advection.momentum isa WENOVectorInvariantVel
-        name = "WENOVectorInvariantVel"
+        name = string(name) * "VectorInvariantVel"
     end
     if model.advection.momentum isa WENOVectorInvariantVort
-        name = "WENOVectorInvariantVort"
+        name = string(name) * "VectorInvariantVort"
     end
 
     @show experiment_name = "immersed_bickley_jet_Nh_$(Nh)_$(name)"
@@ -162,9 +162,12 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO3()]
-                    #  VectorInvariant()]
+advection_schemes = [WENO3(vector_invariant=VelocityStencil()),
+                     WENO5(vector_invariant=VelocityStencil()),
+                     WENO3(vector_invariant=VorticityStencil()),
+                     WENO5(vector_invariant=VorticityStencil()),
+                     WENO3(),
+                     WENO5()]
 
 for Nx in [128]
     for advection in advection_schemes

@@ -135,9 +135,9 @@ function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :
 end
 
 for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right)), side in (:ᶜ, :ᶠ)
-    near_x_boundary = Symbol(:near_x_boundary_, bias, side)
-    near_y_boundary = Symbol(:near_y_boundary_, bias, side)
-    near_z_boundary = Symbol(:near_z_boundary_, bias, side)
+    near_x_boundary = Symbol(:near_x_immersed_boundary_, bias, side)
+    near_y_boundary = Symbol(:near_y_immersed_boundary_, bias, side)
+    near_z_boundary = Symbol(:near_z_immersed_boundary_, bias, side)
 
     @eval begin
         @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
@@ -173,11 +173,6 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     end
 end
 
-# Takes forever to compile, but works.
-# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
-# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
-# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
-
 using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil, LOADV, HOADV
 
 for bias in (:symmetric, :left_biased, :right_biased)
@@ -190,7 +185,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
 
-            near_boundary = Symbol(:near_, ξ, :_boundary_, bias, loc)
+            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
 
             # Fallback for low order interpolation
             @eval begin

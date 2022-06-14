@@ -15,10 +15,14 @@ using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded
 const AUG = AbstractUnderlyingGrid
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
-                                                                              # outside left | outside right buffer
-@inline    outside_symmetric_buffer(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 -  boundary_buffer(adv)
-@inline  outside_left_biased_buffer(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 - (boundary_buffer(adv) - 1)
-@inline outside_right_biased_buffer(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 -  boundary_buffer(adv)
+# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
+
+@inline    outside_symmetric_bufferᶠ(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 - boundary_buffer(adv)
+@inline    outside_symmetric_bufferᶜ(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 - boundary_buffer(adv)
+@inline  outside_left_biased_bufferᶠ(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 - (boundary_buffer(adv) - 1)
+@inline  outside_left_biased_bufferᶜ(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 - (boundary_buffer(adv) - 1)
+@inline outside_right_biased_bufferᶠ(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 - boundary_buffer(adv)
+@inline outside_right_biased_bufferᶜ(i, N, adv) = i > boundary_buffer(adv) - 2 && i < N + 1 - boundary_buffer(adv)
 
 # Separate High order advection from low order advection
 const HOADV = Union{UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO3, WENO5, CenteredFourthOrder}
@@ -41,7 +45,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
-            outside_buffer = Symbol(:outside_, bias, :_buffer)
+            outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
@@ -53,8 +57,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::WVI, ζ, VI, u, v) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                            $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                            $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
+                               $interp(i, j, k, grid, scheme, ζ, VI, u, v),
+                               $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
                 end
             elseif ξ == :y
                 @eval begin
