@@ -163,8 +163,7 @@ function visualize_bickley_jet(experiment_name)
 end
 
 advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VorticityStencil())]
-                    #  WENO5(),
+                     WENO3()]
                     #  VectorInvariant()]
 
 for Nx in [128]

@@ -147,9 +147,9 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
     for buffer in [1, 2, 3]
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side))...)
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side))...)
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side))...)
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side)...))
         end
     end
 end
@@ -160,15 +160,15 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
     for buffer in [1, 2, 3]
         @eval begin
-            @inline $near_x_horizontal_boundary(i, j, k, ::AbstractAdvectionScheme{$buffer}) = 
-                (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ))
-                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ))
-                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)))
+            @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
+                (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
+                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
+                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
 
-            @inline $near_y_horizontal_boundary(i, j, k, ::AbstractAdvectionScheme{$buffer}) = 
-                (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ))
-                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ))
-                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)))
+            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
+                (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...), 
+                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
+                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
@@ -240,8 +240,8 @@ for bias in (:left_biased, :right_biased)
         interp     = Symbol(bias, :_interpolate_, dir)
         alt_interp = Symbol(:_, interp)
 
-        near_horizontal_boundary = Symbol(:near_, d, :horizontal_boundary_, bias)
-        
+        near_horizontal_boundary = Symbol(:near_, d, :_horizontal_boundary_, bias)
+
         @eval begin
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
