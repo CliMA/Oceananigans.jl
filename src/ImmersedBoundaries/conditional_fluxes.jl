@@ -106,7 +106,7 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
  :(inactive_node(c, c, c, i + 1, j, k, ibg))
 
 """
-function calc_inactive_stencil(buffer, shift, dir, side) 
+function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ, xshift = 0, yshift = 0, zshift = 0) 
    
     N = buffer * 2
     if shift != :none
@@ -121,12 +121,14 @@ function calc_inactive_stencil(buffer, shift, dir, side)
 
     for (idx, n) in enumerate(rng)
         c = side == :ᶠ ? n - buffer - 1 : n - buffer 
-        flipside = side == :ᶠ ? :c : :f
+        xflipside = xside == :ᶠ ? :c : :f
+        yflipside = yside == :ᶠ ? :c : :f
+        zflipside = zside == :ᶠ ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node($flipside, c, c, i + $c, j, k, ibg)) :
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $c + $xshift, j + $yshift, k + $zshift, ibg)) :
                                dir == :y ?
-                               :(inactive_node(c, $flipside, c, i, j + $c, k, ibg)) :
-                               :(inactive_node(c, c, $flipside, i, j, k + $c, ibg))                    
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $c + $yshift, k + $zshift, ibg)) :
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $yshift, k + $c + $zshift, ibg))                    
     end
 
     return inactive_cells
@@ -145,63 +147,30 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
     for buffer in [1, 2, 3]
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side))...)
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side))...)
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side))...)
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side))...)
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side))...)
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side))...)
         end
     end
 end
 
-using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVel5, WENOVectorInvariantVel3, VorticityStencil, VelocityStencil
+# Horizontal inactive stencil calculation for vector invariant WENO schemes that use velocity as a smoothness indicator
+for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right))
+    near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
+    near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
+    for buffer in [1, 2, 3]
+        @eval begin
+            @inline $near_x_horizontal_boundary(i, j, k, ::AbstractAdvectionScheme{$buffer}) = 
+                (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ))
+                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ))
+                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)))
 
-@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel5) 
-    return inactive_node(c, f, c, i, j, k, ibg)     |       
-           inactive_node(c, f, c, i-3, j, k, ibg)   | inactive_node(c, f, c, i+3, j, k, ibg) |
-           inactive_node(c, f, c, i-2, j, k, ibg)   | inactive_node(c, f, c, i+2, j, k, ibg) |
-           inactive_node(c, f, c, i-1, j, k, ibg)   | inactive_node(c, f, c, i+1, j, k, ibg) | 
-           inactive_node(f, c, c, i, j, k, ibg)     |
-           inactive_node(f, c, c, i-2, j, k, ibg)   | inactive_node(f, c, c, i+2, j, k, ibg) |
-           inactive_node(f, c, c, i-1, j, k, ibg)   | inactive_node(f, c, c, i+1, j, k, ibg) |
-           inactive_node(f, c, c, i-2, j+1, k, ibg) | inactive_node(f, c, c, i+2, j+1, k, ibg) |
-           inactive_node(f, c, c, i-1, j+1, k, ibg) | inactive_node(f, c, c, i+1, j+1, k, ibg) |
-           inactive_node(f, c, c, i, j+1, k, ibg) 
-end
-
-@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel5) 
-    return inactive_node(f, c, c, i, j, k, ibg)     | 
-           inactive_node(f, c, c, i, j+3, k, ibg)   | inactive_node(f, c, c, i, j+3, k, ibg) |
-           inactive_node(f, c, c, i, j+2, k, ibg)   | inactive_node(f, c, c, i, j+2, k, ibg) |
-           inactive_node(f, c, c, i, j+1, k, ibg)   | inactive_node(f, c, c, i, j+1, k, ibg) |     
-           inactive_node(c, f, c, i, j, k, ibg)     | 
-           inactive_node(c, f, c, i, j-2, k, ibg)   | inactive_node(c, f, c, i, j+2, k, ibg) |
-           inactive_node(c, f, c, i, j-1, k, ibg)   | inactive_node(c, f, c, i, j+1, k, ibg) | 
-           inactive_node(c, f, c, i+1, j-2, k, ibg) | inactive_node(c, f, c, i+1, j+2, k, ibg) |
-           inactive_node(c, f, c, i+1, j-1, k, ibg) | inactive_node(c, f, c, i+1, j+1, k, ibg) |
-           inactive_node(c, f, c, i+1, j, k, ibg) 
-end
-
-@inline function near_horizontal_boundary_x(i, j, k, ibg, scheme::WENOVectorInvariantVel3) 
-    return inactive_node(c, f, c, i, j, k, ibg)     |       
-           inactive_node(c, f, c, i-2, j, k, ibg)   | inactive_node(c, f, c, i+2, j, k, ibg) |
-           inactive_node(c, f, c, i-1, j, k, ibg)   | inactive_node(c, f, c, i+1, j, k, ibg) | 
-           inactive_node(f, c, c, i, j, k, ibg)     |
-           inactive_node(f, c, c, i-2, j, k, ibg)   | inactive_node(f, c, c, i+2, j, k, ibg) |
-           inactive_node(f, c, c, i-1, j, k, ibg)   | inactive_node(f, c, c, i+1, j, k, ibg) |
-           inactive_node(f, c, c, i-2, j+1, k, ibg) | inactive_node(f, c, c, i+2, j+1, k, ibg) |
-           inactive_node(f, c, c, i-1, j+1, k, ibg) | inactive_node(f, c, c, i+1, j+1, k, ibg) |
-           inactive_node(f, c, c, i, j+1, k, ibg) 
-end
-
-@inline function near_horizontal_boundary_y(i, j, k, ibg, scheme::WENOVectorInvariantVel3) 
-    return inactive_node(f, c, c, i, j, k, ibg)     | 
-           inactive_node(f, c, c, i, j+2, k, ibg)   | inactive_node(f, c, c, i, j+2, k, ibg) |
-           inactive_node(f, c, c, i, j+1, k, ibg)   | inactive_node(f, c, c, i, j+1, k, ibg) |     
-           inactive_node(c, f, c, i, j, k, ibg)     | 
-           inactive_node(c, f, c, i, j-2, k, ibg)   | inactive_node(c, f, c, i, j+2, k, ibg) |
-           inactive_node(c, f, c, i, j-1, k, ibg)   | inactive_node(c, f, c, i, j+1, k, ibg) | 
-           inactive_node(c, f, c, i+1, j-2, k, ibg) | inactive_node(c, f, c, i+1, j+2, k, ibg) |
-           inactive_node(c, f, c, i+1, j-1, k, ibg) | inactive_node(c, f, c, i+1, j+1, k, ibg) |
-           inactive_node(c, f, c, i+1, j, k, ibg) 
+            @inline $near_y_horizontal_boundary(i, j, k, ::AbstractAdvectionScheme{$buffer}) = 
+                (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ))
+                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ))
+                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)))
+        end
+    end
 end
 
 # Takes forever to compile, but works.
@@ -209,7 +178,7 @@ end
 # @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
 # @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> inactive_node(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
 
-using Oceananigans.Advection: LOADV, HOADV
+using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil, LOADV, HOADV
 
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -271,7 +240,8 @@ for bias in (:left_biased, :right_biased)
         interp     = Symbol(bias, :_interpolate_, dir)
         alt_interp = Symbol(:_, interp)
 
-        near_horizontal_boundary = Symbol(:near_horizontal_boundary_, d)
+        near_horizontal_boundary = Symbol(:near_, d, :horizontal_boundary_, bias)
+        
         @eval begin
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
