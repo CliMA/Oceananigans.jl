@@ -84,22 +84,73 @@ This can be used either to condition intrinsic flux functions, or immersed bound
 ##### Don't reconstruct with immersed cells!
 #####
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+"""
+    Calculate the correct stencil needed for each indiviual reconstruction (i.e., symmetric, left biased and right biased, 
+on `Face`s and on `Center`s)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg)
+example
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg)
+julia> calc_inactive_cells(2, :none, :z, :ᶜ)
+4-element Vector{Any}:
+ :(inactive_node(c, c, f, i, j, k + -1, ibg))
+ :(inactive_node(c, c, f, i, j, k + 0, ibg))
+ :(inactive_node(c, c, f, i, j, k + 1, ibg))
+ :(inactive_node(c, c, f, i, j, k + 2, ibg))
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i-3, j, k, ibg) | inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg) | inactive_cell(i+3, j, k, ibg) 
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i, j-3, k, ibg) | inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg) | inactive_cell(i, j+3, k, ibg) 
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg) 
+julia> calc_inactive_cells(3, :left, :x, :ᶠ)
+5-element Vector{Any}:
+ :(inactive_node(c, c, c, i + -3, j, k, ibg))
+ :(inactive_node(c, c, c, i + -2, j, k, ibg))
+ :(inactive_node(c, c, c, i + -1, j, k, ibg))
+ :(inactive_node(c, c, c, i + 0, j, k, ibg))
+ :(inactive_node(c, c, c, i + 1, j, k, ibg))
+ 
+"""
+function calc_inactive_cells(buffer, shift, dir, side) 
+   
+    N = buffer * 2
+    if shift != :none
+        N -=1
+    end
+    inactive_cells  = Vector(undef, N)
 
+    rng = 1:N
+    if shift == :right
+        rng = rng .+ 1
+    end
+
+    for (idx, n) in enumerate(rng)
+        c = side == :ᶠ ? n - buffer - 1 : n - buffer 
+        flipside = side == :ᶠ ? :c : :f
+        inactive_cells[idx] =  dir == :x ? 
+                               :(inactive_node($flipside, c, c, i + $c, j, k, ibg)) :
+                               dir == :y ?
+                               :(inactive_node(c, $flipside, c, i, j + $c, k, ibg)) :
+                               :(inactive_node(c, c, $flipside, i, j, k + $c, ibg))                    
+    end
+
+    return inactive_cells
+end
+
+for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right)), side in (:ᶜ, :ᶠ)
+    near_x_boundary = Symbol(:near_x_boundary_, bias, side)
+    near_y_boundary = Symbol(:near_y_boundary_, bias, side)
+    near_z_boundary = Symbol(:near_z_boundary_, bias, side)
+
+    @eval begin
+        @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+        @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+        @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+    end
+
+    for buffer in [1, 2, 3]
+        @eval begin
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :x, side))...)
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :y, side))...)
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :z, side))...)
+        end
+    end
+end
 
 using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVel5, WENOVectorInvariantVel3, VorticityStencil, VelocityStencil
 
@@ -170,7 +221,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
 
-            near_boundary = Symbol(:near_, ξ, :_boundary)
+            near_boundary = Symbol(:near_, ξ, :_boundary_, bias, loc)
 
             # Fallback for low order interpolation
             @eval begin
