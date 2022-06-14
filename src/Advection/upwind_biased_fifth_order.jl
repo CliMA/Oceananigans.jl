@@ -3,11 +3,11 @@
 #####
 
 """
-    struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{2}
+    struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{3}
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{2} end
+struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{3} end
 
 const U5 = UpwindBiasedFifthOrder
 

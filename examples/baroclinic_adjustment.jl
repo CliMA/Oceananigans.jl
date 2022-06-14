@@ -27,13 +27,11 @@ Nx = 64
 Ny = 64
 Nz = 40
 
-grid = RectilinearGrid(CPU();
-                       topology = (Periodic, Bounded, Bounded), 
-                       size = (Nx, Ny, Nz), 
+grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        x = (0, Lx),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
-                       halo = (3, 3, 3))
+                       topology = (Periodic, Bounded, Bounded))
 
 # ## Turbulence closures
 
@@ -41,7 +39,6 @@ grid = RectilinearGrid(CPU();
 # of the vertical and lateral grid spacing.
 
 Δx, Δz = Lx/Nx, Lz/Nz
-
 𝒜 = Δz/Δx # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
@@ -64,6 +61,7 @@ r_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0), bottom = ValueB
 # Regarding Coriolis, we use a beta-plane centered at 45° South.
 
 model = HydrostaticFreeSurfaceModel(; grid,
+<<<<<<< HEAD
                                       coriolis = BetaPlane(latitude = -45),
                                       buoyancy = BuoyancyTracer(),
                                       tracers = (:b, :r),
@@ -72,6 +70,15 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       momentum_advection = WENO5(),
                                       tracer_advection = WENO5(),
                                       free_surface = ImplicitFreeSurface())
+=======
+                                    coriolis = BetaPlane(latitude = -45),
+                                    buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
+                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
+                                    momentum_advection = WENO5(),
+                                    tracer_advection = WENO5(),
+                                    free_surface = ImplicitFreeSurface())
+>>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
 
 # We want to initialize our model with a baroclinically unstable front plus some small-amplitude
 # noise.
@@ -192,13 +199,21 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
+<<<<<<< HEAD
     simulation.output_writers[side] = JLD2OutputWriter(model, (; b, r, u);
+=======
+    simulation.output_writers[side] = JLD2OutputWriter(model, (; b);
+>>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
                                                        filename = filename * "_$(side)_slice",
                                                        schedule = TimeInterval(save_fields_interval),
                                                        indices)
 end
 
+<<<<<<< HEAD
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, r=R);
+=======
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B,);
+>>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
                                                      schedule = TimeInterval(save_fields_interval),
                                                      filename = filename * "_zonal_average")
 
@@ -218,23 +233,39 @@ run!(simulation)
 
 using CairoMakie
 
-filename = "baroclinic_adjustment"
-
-fig = Figure(resolution = (800, 500))
-ax_b = fig[2, 1] = LScene(fig, show_axis=false)
-nothing #hide
-
-# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
-
-n = Observable(1)
-
 # We load the saved buoyancy output on the top, bottom, and east surface as `FieldTimeSeries`es.
+
+filename = "baroclinic_adjustment"
 
 sides = keys(slicers)
 
 slice_filenames = NamedTuple(side => filename * "_$(side)_slice.jld2" for side in sides)
 
+b_timeserieses = (east   = FieldTimeSeries(slice_filenames.east, "b"),
+                  north  = FieldTimeSeries(slice_filenames.north, "b"),
+                  bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
+                  top    = FieldTimeSeries(slice_filenames.top, "b"))
+
+avg_b_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "b")
+
+nothing #hide
+
+# We build the coordinates. We rescale horizontal coordinates so that they correspond to kilometers.
+
+x, y, z = nodes(b_timeserieses.east)
+
+x = x .* 1e-3 # convert m -> km
+y = y .* 1e-3 # convert m -> km
+
+x_xz = repeat(x, 1, Nz)
+y_xz_north = y[end] * ones(Nx, Nz)
+z_xz = repeat(reshape(z, 1, Nz), Nx, 1)
+
+x_yz_east = x[end] * ones(Ny, Nz)
+y_yz = repeat(y, 1, Nz)
+z_yz = repeat(reshape(z, 1, Nz), grid.Ny, 1)
+
+<<<<<<< HEAD
 b_timeserieses = (
       east = FieldTimeSeries(slice_filenames.east, "r"),
     bottom = FieldTimeSeries(slice_filenames.bottom, "r"),
@@ -242,62 +273,75 @@ b_timeserieses = (
 )
 
 b_avg_timeseries = FieldTimeSeries(filename * "_zonal_average.jld2", "r")
-
-# We build the coordinates and we rescale the vertical coordinate for visualization purposes.
-
-x, y, z = nodes(b_timeserieses[1])
-
-yscale = 2.5
-zscale = 600
-z = z .* zscale
-y = y .* yscale
-
-zonal_slice_displacement = 1.5
+=======
+x_xy = x
+y_xy = y
+z_xy_top = z[end] * ones(grid.Nx, grid.Ny)
+z_xy_bottom = z[1] * ones(grid.Nx, grid.Ny)
 nothing #hide
+
+# Then we create a 3D axis. We use `zonal_slice_displacement` to control where the plot of the instantaneous
+# zonal average flow is located.
+>>>>>>> 935fee60d6e2e5ddc87ab5cb3698ad3ba3cc4f25
+
+fig = Figure(resolution = (900, 520))
+
+zonal_slice_displacement = 1.2
+
+ax = Axis3(fig[2, 1], aspect=(1, 1, 1/5),
+           xlabel="x (km)", ylabel="y (km)", zlabel="z (m)",
+           limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end])),
+           elevation = 0.45, azimuth = 6.8,
+           xspinesvisible = false, zgridvisible=false,
+           protrusions=40,
+           perspectiveness=0.7)
+
+nothing #hide
+
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+
+n = Observable(1)
 
 # Now let's make a 3D plot of the buoyancy and in front of it we'll use the zonally-averaged output
 # to plot the instantaneous zonal-average of the buoyancy.
 
-b_slices = (
-      east = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
-    bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
-       top = @lift(interior(b_timeserieses.top[$n], :, :, 1))
-)
+b_slices = (east   = @lift(interior(b_timeserieses.east[$n], 1, :, :)),
+            north  = @lift(interior(b_timeserieses.north[$n], :, 1, :)),
+            bottom = @lift(interior(b_timeserieses.bottom[$n], :, :, 1)),
+            top    = @lift(interior(b_timeserieses.top[$n], :, :, 1)))
 
-clims_b = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
-kwargs_b = (colorrange = clims_b, colormap = :deep)
+avg_b = @lift interior(avg_b_timeseries[$n], 1, :, :)
 
-surface!(ax_b, y, z, b_slices.east; transformation = (:yz, x[end]), kwargs_b...)
-surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]), kwargs_b...)
-surface!(ax_b, x, y, b_slices.top; transformation = (:xy, z[end]), kwargs_b...)
+clims = @lift 1.1 .* extrema(b_timeserieses.top[$n][:])
 
-b_avg = @lift interior(b_avg_timeseries[$n], 1, :, :)
+kwargs = (colorrange = clims, colormap = :deep)
 
-surface!(ax_b, y, z, b_avg; transformation = (:yz, zonal_slice_displacement * x[end]),
-         colorrange = clims_b,
-         colormap = :deep)
+surface!(ax, x_yz_east, y_yz, z_yz;    color = b_slices.east, kwargs...)
+surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
+surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
+surface!(ax, x_xy, y_xy, z_xy_top;     color = b_slices.top, kwargs...)
 
-contour!(ax_b, y, z, b_avg; levels = 15, transformation = (:yz, zonal_slice_displacement * x[end]),
-         linewidth = 2,
-         color = :black)
+sf = surface!(ax, zonal_slice_displacement .* x_yz_east, y_yz, z_yz; color = avg_b, kwargs...)
 
-rotate_cam!(ax_b.scene, (π/20, -π/6, 0))
+contour!(ax, y, z, avg_b; transformation = (:yz, zonal_slice_displacement * x[end]),
+         levels = 15, linewidth = 2, color = :black)
+
+Colorbar(fig[2, 2], sf, label = "m s⁻²", height = 200, tellheight=false)
 
 # Finally, we add a figure title with the time of the snapshot and then record a movie.
 
-times = b_avg_timeseries.times
+times = avg_b_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
-fig[1, 1] = Label(fig, title;
-                  textsize = 24,
-                  tellwidth = false,
-                  padding = (0, 0, -120, 0))
+fig[1, 1:2] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
 
 record(fig, filename * ".mp4", frames, framerate=8) do i
-    @info "Plotting frame $i of $(frames[end])..."
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
     n[] = i
 end
 nothing #hide

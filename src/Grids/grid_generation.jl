@@ -3,6 +3,7 @@
 @inline adapt_if_vector(to, var) = var
 @inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
 
+get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])

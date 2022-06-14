@@ -239,9 +239,9 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
-@inline cpu_face_constructor_x(grid) = all_x_nodes(Face, adapt(CPU(), grid))[1:grid.Nx+1]
-@inline cpu_face_constructor_y(grid) = all_y_nodes(Face, adapt(CPU(), grid))[1:grid.Ny+1]
-@inline cpu_face_constructor_z(grid) = all_z_nodes(Face, adapt(CPU(), grid))[1:grid.Nz+1]
+@inline cpu_face_constructor_x(grid) = Array(all_x_nodes(Face, grid)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
 
 all_x_nodes(::Type{Nothing}, grid) = 1:1
 all_y_nodes(::Type{Nothing}, grid) = 1:1
@@ -425,6 +425,18 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     padding = " "^(pad_domain+1) 
     return string(prefix, padding, coordinate_summary(spacing, name))
 end
+
+function flip_metric(metric)
+    metric_string = string(metric)
+    m1 = Symbol(metric_string[1])
+    m2 = flip_symbol(metric_string[2])
+    m3 = flip_symbol(metric_string[5])
+    m4 = flip_symbol(metric_string[8])
+    return Symbol(m1, m2, m3, m4)
+end 
+
+flip_symbol(sym) = Symbol(sym) == :ᶜ ? :ᶠ : Symbol(sym) == :ᶠ ? :ᶜ : Symbol(sym)
+
 
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",

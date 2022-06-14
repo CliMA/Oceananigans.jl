@@ -1,6 +1,7 @@
 module ShallowWaterModels
 
-export ShallowWaterModel
+export ShallowWaterModel,
+       ConservativeFormulation, VectorInvariantFormulation
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
