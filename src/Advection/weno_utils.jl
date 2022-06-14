@@ -12,10 +12,16 @@ import Base: show
 @inline left_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_left_p₀(scheme, args...) .* ψ)
 @inline left_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_left_p₁(scheme, args...) .* ψ)
 @inline left_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_left_p₂(scheme, args...) .* ψ)
+@inline left_biased_p₃(scheme, ψ, args...) = @inbounds sum(coeff_left_p₃(scheme, args...) .* ψ)
+@inline left_biased_p₄(scheme, ψ, args...) = @inbounds sum(coeff_left_p₄(scheme, args...) .* ψ)
+@inline left_biased_p₅(scheme, ψ, args...) = @inbounds sum(coeff_left_p₅(scheme, args...) .* ψ)
 
 @inline right_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_right_p₀(scheme, args...) .* ψ)
 @inline right_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_right_p₁(scheme, args...) .* ψ)
 @inline right_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_right_p₂(scheme, args...) .* ψ)
+@inline right_biased_p₃(scheme, ψ, args...) = @inbounds sum(coeff_right_p₃(scheme, args...) .* ψ)
+@inline right_biased_p₄(scheme, ψ, args...) = @inbounds sum(coeff_right_p₄(scheme, args...) .* ψ)
+@inline right_biased_p₅(scheme, ψ, args...) = @inbounds sum(coeff_right_p₅(scheme, args...) .* ψ)
 
 #####
 ##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)
@@ -24,10 +30,16 @@ import Base: show
 @inline coeff_left_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
 @inline coeff_left_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
 @inline coeff_left_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
+@inline coeff_left_p₃(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 3, dir, i ,loc)
+@inline coeff_left_p₄(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 4, dir, i ,loc)
+@inline coeff_left_p₅(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 5, dir, i ,loc)
 
 @inline coeff_right_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
 @inline coeff_right_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
 @inline coeff_right_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
+@inline coeff_right_p₃(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  2, dir, i ,loc)
+@inline coeff_right_p₄(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  3, dir, i ,loc)
+@inline coeff_right_p₅(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  4, dir, i ,loc)
 
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.coeff_xᶠᵃᵃ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.coeff_xᶜᵃᵃ[r+2][i] 
