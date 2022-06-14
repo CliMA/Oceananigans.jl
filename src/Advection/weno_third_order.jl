@@ -16,9 +16,9 @@ struct VorticityStencil <:SmoothnessStencil end
 struct VelocityStencil <:SmoothnessStencil end
 
 """
-    struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, WF} <: AbstractUpwindBiasedAdvectionScheme{3}
+    struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, WF, PP, CA} <: AbstractUpwindBiasedAdvectionScheme{2}
 
-Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
+Weighted Essentially Non-Oscillatory (WENO) third-order advection scheme.
 
 $(TYPEDFIELDS)
 """
@@ -54,7 +54,7 @@ struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
     bounds :: PP
 
     "advection scheme used near boundaries"
-    child_advection :: CA
+    boundary_scheme :: CA
 
     function WENO3{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
@@ -62,11 +62,11 @@ struct WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
                                smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
                                smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
                                smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                               bounds::PP, child_advection::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
+                               bounds::PP, boundary_scheme::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
 
             return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
                                                                    smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
-                                                                   bounds, child_advection)
+                                                                   bounds, boundary_scheme)
     end
 end
 
@@ -88,9 +88,9 @@ function WENO3(FT::DataType = Float64;
 
     VI = typeof(vector_invariant)
 
-    child_advection = UpwindBiasedFirstOrder()
+    boundary_scheme = UpwindBiasedFirstOrder()
 
-    return WENO3{FT, VI, zweno}(weno_coefficients..., bounds, child_advection)
+    return WENO3{FT, VI, zweno}(weno_coefficients..., bounds, boundary_scheme)
 end
 
 # Flavours of WENO
@@ -120,7 +120,7 @@ Adapt.adapt_structure(to, scheme::WENO3{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP})
                        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
                        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
                        Adapt.adapt(to, scheme.bounds),
-                       Adapt.adapt(to, scheme.child_advection))
+                       Adapt.adapt(to, scheme.boundary_scheme))
 
 @inline boundary_buffer(::WENO3) = 2
 

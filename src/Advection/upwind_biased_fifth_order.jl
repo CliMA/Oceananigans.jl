@@ -9,7 +9,7 @@ Upwind-biased fifth-order advection scheme.
 """
 struct UpwindBiasedFifthOrder{CA} <: AbstractUpwindBiasedAdvectionScheme{3} 
     "advection scheme used near boundaries"
-    child_advection :: CA
+    boundary_scheme :: CA
 end
 
 UpwindBiasedFifthOrder() = UpwindBiasedFifthOrder(UpwindBiasedThirdOrder())

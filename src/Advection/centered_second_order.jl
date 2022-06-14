@@ -3,13 +3,13 @@
 #####
 
 """
-    struct CenteredSecondOrder <: AbstractAdvectionScheme{1}
+    struct CenteredSecondOrder <: AbstractAdvectionScheme{0}
 
 Centered second-order advection scheme.
 """
 struct CenteredSecondOrder{CA} <: AbstractAdvectionScheme{0} 
     "advection scheme used near boundaries"
-    child_advection :: CA
+    boundary_scheme :: CA
 end
 
 CenteredSecondOrder() = CenteredSecondOrder(nothing)

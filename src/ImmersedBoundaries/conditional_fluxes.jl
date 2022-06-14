@@ -238,7 +238,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt_interp(i, j, k, ibg, scheme.child_advection, args...),
+                           $alt_interp(i, j, k, ibg, scheme.boundary_scheme, args...),
                            $interp(i, j, k, ibg.underlying_grid, scheme, args...))
             end
             if ξ == :z
@@ -248,7 +248,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $alt_interp(i, j, k, ibg, scheme.child_advection, ∂z, VI, u),
+                            $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ∂z, VI, u),
                             $interp(i, j, k, ibg.underlying_grid, scheme, ∂z, VI, u))
                 end
             else    
@@ -258,7 +258,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
     
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
-                                $alt_interp(i, j, k, ibg, scheme.child_advection, ζ, VI, u, v),
+                                $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ζ, VI, u, v),
                                 $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VI, u, v))
                 end    
             end

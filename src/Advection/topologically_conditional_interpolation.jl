@@ -49,36 +49,36 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::HOADV, ψ) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
+                               $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::WVI, ζ, VI, u, v) where FT =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                             $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                            $alt_interp(i, j, k, grid, scheme.child_advection, ζ, VI, u, v))
+                            $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::HOADV, ψ) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
+                               $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::WVI, ζ, VI, u, v) where {FT, TX} =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
-                               $alt_interp(i, j, k, grid, scheme.child_advection, ζ, VI, u, v))
+                               $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::HOADV, ψ) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.child_advection, ψ))
+                               $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
                     @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::WVI, ∂z, VI, u) where {FT, TX, TY} =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                 $interp(i, j, k, grid, scheme, ∂z, VI, u),
-                                $alt_interp(i, j, k, grid, scheme.child_advection, ∂z, VI, u))
+                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ∂z, VI, u))
                 end
             end
         end

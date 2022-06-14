@@ -5,10 +5,10 @@ struct EnstrophyConservingScheme end
 
 struct VectorInvariant{S, CA}
     scheme :: S
-    child_advection :: CA
+    boundary_scheme :: CA
 
-    function VectorInvariant{S}(scheme::S, child_advection::CA) where {S, CA}
-        return new{S, CA}(scheme, child_advection)
+    function VectorInvariant{S}(scheme::S, boundary_scheme::CA) where {S, CA}
+        return new{S, CA}(scheme, boundary_scheme)
     end
 end
 

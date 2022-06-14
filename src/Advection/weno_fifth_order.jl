@@ -45,7 +45,7 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
     bounds :: PP
 
     "advection scheme used near boundaries"
-    child_advection :: CA
+    boundary_scheme :: CA
 
     function WENO5{FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
@@ -53,11 +53,11 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA} <: AbstractUpwindBiased
                                smooth_xᶠᵃᵃ::XS, smooth_xᶜᵃᵃ::XS, 
                                smooth_yᵃᶠᵃ::YS, smooth_yᵃᶜᵃ::YS, 
                                smooth_zᵃᵃᶠ::ZS, smooth_zᵃᵃᶜ::ZS, 
-                               bounds::PP, child_advection::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
+                               bounds::PP, boundary_scheme::CA) where {FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}
 
             return new{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP, CA}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
                                                                    smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ, 
-                                                                   bounds, child_advection)
+                                                                   bounds, boundary_scheme)
     end
 end
 
@@ -162,9 +162,9 @@ function WENO5(FT::DataType = Float64;
 
     VI = typeof(vector_invariant)
 
-    child_advection = WENO3(FT; grid, stretched_smoothness, zweno, vector_invariant, bounds)
+    boundary_scheme = WENO3(FT; grid, stretched_smoothness, zweno, vector_invariant, bounds)
 
-    return WENO5{FT, VI, zweno}(weno_coefficients..., bounds, child_advection)
+    return WENO5{FT, VI, zweno}(weno_coefficients..., bounds, boundary_scheme)
 end
 
 # Flavours of WENO
@@ -194,7 +194,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, VI, WF, PP})
                        Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ), Adapt.adapt(to, scheme.smooth_yᵃᶜᵃ),
                        Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ), Adapt.adapt(to, scheme.smooth_zᵃᵃᶜ),
                        Adapt.adapt(to, scheme.bounds),
-                       Adapt.adapt(to, scheme.child_advection))
+                       Adapt.adapt(to, scheme.boundary_scheme))
 
 @inline boundary_buffer(::WENO5) = 3
 
