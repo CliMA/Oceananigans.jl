@@ -104,9 +104,9 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
  :(inactive_node(c, c, c, i + -1, j, k, ibg))
  :(inactive_node(c, c, c, i + 0, j, k, ibg))
  :(inactive_node(c, c, c, i + 1, j, k, ibg))
- 
+
 """
-function calc_inactive_cells(buffer, shift, dir, side) 
+function calc_inactive_stencil(buffer, shift, dir, side) 
    
     N = buffer * 2
     if shift != :none
@@ -145,9 +145,9 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
     for buffer in [1, 2, 3]
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :x, side))...)
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :y, side))...)
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_cells(buffer, shift, :z, side))...)
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side))...)
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side))...)
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side))...)
         end
     end
 end
