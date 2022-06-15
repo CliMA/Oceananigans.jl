@@ -19,8 +19,8 @@ model = HydrostaticFreeSurfaceModel(grid = ibg,
                                 buoyancy = nothing, 
                                  tracers = :c, 
                         tracer_advection = UpwindBiasedThirdOrder(),
-                    #   momentum_advection = WENO3())
-                     momentum_advection = WENO3(vector_invariant = VelocityStencil()))
+                      momentum_advection = WENO3())
+                    #   momentum_advection = WENO3(vector_invariant = VelocityStencil()))
 
 u = model.velocities.u
 v = model.velocities.v
@@ -28,7 +28,7 @@ w = model.velocities.w
 c = model.tracers.c
 
 set!(u, 1.0)
-set!(v, 1.0)
+set!(v, -1.0)
 set!(w, 1.0)
 set!(c, 1.0)
 
@@ -42,18 +42,19 @@ fill_halo_regions!((c, u, v, w))
 using Oceananigans.Advection: 
         _advective_tracer_flux_x,
         _advective_tracer_flux_y, 
-        _advective_tracer_flux_z
+        _advective_tracer_flux_z,
+        div_Uc
 
 atx = zeros(Nx, Ny, Nz)
 aty = zeros(Nx, Ny, Nz)
 atz = zeros(Nx, Ny, Nz)
+ttC = zeros(Nx, Ny, Nz)
 
 for i in 1:Nx, j in 1:Ny, k in 1:Nz
     atx[i, j, k] = _advective_tracer_flux_x(i, j, k, ibg, model.advection.c, u, c)
     aty[i, j, k] = _advective_tracer_flux_y(i, j, k, ibg, model.advection.c, v, c)
     atz[i, j, k] = _advective_tracer_flux_z(i, j, k, ibg, model.advection.c, w, c)
 end
-
 
 using Oceananigans.Advection:
       vertical_vorticity_U,
@@ -64,7 +65,6 @@ using Oceananigans.Advection:
       _advective_momentum_flux_Vu,
       _advective_momentum_flux_Uv,
       _advective_momentum_flux_Vv
-
 
 set!(u, 0.0)
 set!(w, 0.0)

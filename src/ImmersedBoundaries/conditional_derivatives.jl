@@ -18,10 +18,10 @@ import Oceananigans.Operators:
 @inline translate_loc(a) = a == :ᶠ ? :f : :c
 
 for (d, ξ) in enumerate((:x, :y, :z))
-    for locx in (:ᶠ, :ᶜ), locy in (:ᶠ, :ᶜ), locz in (:ᶠ, :ᶜ)
+    for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
-        der             = Symbol(:∂, ξ, locx, locy, locz)
-        location        = translate_loc.((locx, locy, locz))
+        der             = Symbol(:∂, ξ, LX, LY, LZ)
+        location        = translate_loc.((LX, LY, LZ))
         conditional_der = Symbol(:conditional_, ξ, :_derivative_, location[d])
         loc = []
         for l in 1:3 

@@ -147,9 +147,9 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
     for buffer in [1, 2, 3]
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side)...))
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side)...))
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side)...))
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side)...))
         end
     end
 end
