@@ -22,7 +22,7 @@ using Oceananigans.Advection:
                              WENO5()]
 
         for adv in advection_schemes
-            @testset " Test immersed reconstruction [$(typeof(arch)), $(typeof(adv))]"
+            @testset " Test immersed reconstruction [$(typeof(arch)), $(typeof(adv))]" begin
                 @info "Testing immersed reconstruction [$(typeof(arch)), $(typeof(adv))]"
                 
                 grid = RectilinearGrid(size=(10, 10), extent=(10, 10), topology=(Bounded, Bounded, Flat))
@@ -46,7 +46,7 @@ using Oceananigans.Advection:
             grid = RectilinearGrid(size=(10, 8, 1), extent=(10, 8, 1), halo = (4, 4, 4), topology=(Bounded, Periodic, Bounded))
             ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
             for g in [grid, ibg]
-                @testset " Test immersed tracer conservation [$(typeof(arch)), $(typeof(adv)), $(typeof(g).name.wrapper)]"
+                @testset " Test immersed tracer conservation [$(typeof(arch)), $(typeof(adv)), $(typeof(g).name.wrapper)]" begin
                     @info "Testing immersed tracer conservation [$(typeof(arch)), $(typeof(adv)), $(typeof(g).name.wrapper)]"
 
                     model = HydrostaticFreeSurfaceModel(grid = g, tracers = :c, 
