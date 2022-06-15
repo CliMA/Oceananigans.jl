@@ -11,19 +11,18 @@ using Oceananigans.Advection:
         _right_biased_interpolate_yᵃᶜᵃ,
         _right_biased_interpolate_yᵃᶠᵃ
 
-@testset "Immersed Advection" begin
+@testset "Immersed tracer advection" begin
     @info "Running immersed advection tests..."
     for arch in archs
-        advection_schemes = [CenteredSecondOrder(),
-                             CenteredFourthOrder(),
-                             UpwindBiasedFirstOrder(),
+        advection_schemes = [UpwindBiasedFirstOrder(),
                              UpwindBiasedThirdOrder(),
                              UpwindBiasedFifthOrder(), 
+                             WENO3(),
                              WENO5()]
 
         for adv in advection_schemes
-            @testset " Test immersed reconstruction [$(typeof(arch)), $(typeof(adv))]" begin
-                @info "Testing immersed reconstruction [$(typeof(arch)), $(typeof(adv))]"
+            @testset " Test immersed tracer reconstruction [$(typeof(arch)), $(typeof(adv))]" begin
+                @info "Testing immersed tracer reconstruction [$(typeof(arch)), $(typeof(adv))]"
                 
                 grid = RectilinearGrid(size=(10, 10), extent=(10, 10), topology=(Bounded, Bounded, Flat))
                 ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
@@ -75,6 +74,51 @@ using Oceananigans.Advection:
                     @test maximum(c) ≈ 1.0 
                     @test minimum(c) ≈ 1.0 
                     @test mean(c)    ≈ 1.0
+                end
+            end
+        end
+    end
+end
+
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, WENOVectorInvariant
+
+@testset "Immersed momentum advection" begin
+    @info "Running immersed advection tests..."
+    for arch in archs
+        advection_schemes = [UpwindBiasedFirstOrder(),
+                             UpwindBiasedThirdOrder(),
+                             UpwindBiasedFifthOrder(), 
+                             WENO3(),
+                             WENO5()]
+
+        for adv in advection_schemes
+            @testset " Test immersed momentum reconstruction [$(typeof(arch)), $(typeof(adv))]" begin
+                @info "Testing immersed momentum reconstruction [$(typeof(arch)), $(typeof(adv))]"
+                
+                grid = RectilinearGrid(size=(10, 10), extent=(10, 10), topology=(Bounded, Bounded, Flat))
+                ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+
+                u = XFaceField(ibg)
+                v = XFaceField(ibg)
+                set!(u, 1.0)
+                set!(v, 1.0)
+                
+                wait(mask_immersed_field!(u))
+                wait(mask_immersed_field!(v))
+
+                fill_halo_regions!(u)
+                fill_halo_regions!(v)
+
+                for i in 7:9, j in 7:9
+                    @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, adv, u) ≈ 1.0
+                    @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, adv, u) ≈ 1.0
+                    @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, adv, u) ≈ 1.0
+                    @test CUDA.@allowscalar _right_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, adv, u) ≈ 1.0
+
+                    @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, adv, v) ≈ 1.0
+                    @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, adv, v) ≈ 1.0
+                    @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, adv, v) ≈ 1.0
+                    @test CUDA.@allowscalar _right_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, adv, v) ≈ 1.0
                 end
             end
         end
