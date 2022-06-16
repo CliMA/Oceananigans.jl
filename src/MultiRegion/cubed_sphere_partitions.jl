@@ -1,24 +1,38 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 using Oceananigans.BoundaryConditions: CBC, PBC
 
-struct CubedSpherePartition{N, M, P} <: AbstractPartition
-    div :: N
-    div_per_face :: M
-    div_per_side :: P
-    function CubedSpherePartition(sizes) 
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
-        div_per_face = (length(p) ÷ 6)
-        div_per_side = √div_per_face
-        return new{typeof(sizes), typeof(div_per_face)}(sizes, div_per_face)
+struct CubedSpherePartition{M, P} <: AbstractPartition
+    div :: Int
+    div_per_side_x :: M
+    div_per_side_y :: P
+    function CubedSpherePartition(div, div_per_side_x, div_per_side_y)
+        return new{typeof(div), typeof(div_per_face), typeof{div_per_face}}(div, div_per_side_x, div_per_side_y)
     end
 end
 
-const RegularCubedSpherePartition = CubedSpherePartition{<:Number}
+function CubedSpherePartition(; div_per_side_x = 1, div_per_side_y = 1) 
 
-Base.length(p::CubedSpherePartition)        = length(p.div)
-Base.length(p::RegularCubedSpherePartition) = p.div
+    if div_per_side_x isa Number 
+        if div_per_side_y isa Number
+            div_per_side_x != div_per_side_y $$ throw(ArgumentError("Regular cubed sphere must have div_per_side_x == div_per_side_y!!"))
+            div = 6 * div_per_side_x * div_per_side_y
+        else
+            div = sum(div_per_side_y .* div_per_side_x)
+        end
+    else
+        div = sum(div_per_side_y .* div_per_side_x)
+    end
+    
+    div < 6 && throw(ArgumentError("Cubed sphere requires at least 6 regions!"))
+
+    return CubedSpherePartition(div, div_per_side_x, div_per_side_y)
+end
+
+const RegularCubedSpherePartition  = CubedSpherePartition{<:Number, <:Number}
+const XRegularCubedSpherePartition = CubedSpherePartition{<:Number}
+const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
+
+Base.length(p::CubedSpherePartition) = p.div
 
 @inline face_index(r, p::CubedSpherePartition)         = r ÷ p.div_per_face + 1
 @inline intra_face_index(r, p::CubedSpherePartition)   = mod(r, p.div_per_face) + 1
@@ -208,14 +222,4 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 
     return bc
-end
-
-####
-#### Global index flattening
-####
-
-@inline function displaced_xy_index(i, j, grid, region, p::XPartition)
-    i′ = i + grid.Nx * (region - 1) 
-    t  = i′ + (j - 1) * grid.Nx * length(p)
-    return t
 end
