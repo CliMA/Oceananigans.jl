@@ -54,6 +54,8 @@ include("upwind_biased_third_order.jl")
 include("upwind_biased_fifth_order.jl")
 include("weno_third_order.jl")
 include("weno_fifth_order.jl")
+include("weno_nth_order.jl")
+include("weno_tables.jl")
 include("vector_invariant_advection.jl")
 
 include("topologically_conditional_interpolation.jl")

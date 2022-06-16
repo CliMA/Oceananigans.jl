@@ -169,7 +169,7 @@ advection_schemes = [WENO3(vector_invariant=VelocityStencil()),
                      WENO3(),
                      WENO5()]
 
-for Nx in [128]
+for Nx in [64]
     for advection in advection_schemes
         experiment_name = run_immersed_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)

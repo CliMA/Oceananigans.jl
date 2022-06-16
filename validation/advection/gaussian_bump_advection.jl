@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Utils: prettytime
 using Oceananigans.ImmersedBoundaries
 
 arch = CPU()
@@ -25,22 +26,44 @@ gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2))
 
 grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4), 
                        x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0), 
-                       topology = (Periodic, Periodic, Bounded))
+                       topology = (Periodic, Bounded, Bounded))
 
 ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_bump))
 
 restoring_bounds = Int(Nx / 8)
-λ = 1/1hours
+λᶠ(i) = 1/1minutes * (restoring_bounds - i) / restoring_bounds
+bz = N^2
+@inline initial_buoyancy(x, y, z) = bz * (z + H)
 
 @inline function velocity_restoring(i, j, k, grid, clock, fields, p)
-    if i < p.bounds || i > grid.Nx - p.bounds
-        return - p.λ * (fields.u[i, j, k] - p.u₀)
+    if i < p.bounds 
+        return - p.λ(i) * (fields.u[i, j, k] - p.u₀)
+    elseif i > grid.Nx - p.bounds
+        return - p.λ(grid.Nx - i) * (fields.u[i, j, k] - p.u₀)
     else
         return zero(grid)
     end
 end
 
-u_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(u₀ = 0.25, bounds = restoring_bounds, λ = λ))
+u_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(u₀ = 0.25, bounds = restoring_bounds, λ = λᶠ))
+v_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(v₀ = 0.00, bounds = restoring_bounds, λ = λᶠ))
+
+@inline function buoyancy_restoring(i, j, k, grid, clock, fields, p)
+
+    x = xnode(i, j, k, grid)
+    y = ynode(i, j, k, grid)
+    z = znode(i, j, k, grid)
+
+    if i < p.bounds 
+        return - p.λ(i) * (fields.u[i, j, k] - p.u₀)
+    elseif i > grid.Nx - p.bounds
+        return - p.λ(grid.Nx - i) * (fields.b[i, j, k] - p.b₀(x, y, z))
+    else
+        return zero(grid)
+    end
+end
+
+B_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(b₀ = initial_buoyancy, bounds = restoring_bounds, λ = λᶠ))
 
 buoyancy = BuoyancyTracer()
 
@@ -71,29 +94,21 @@ model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
                                     tracers = :b, tracer_advection = WENO5(),
-                                    forcing = (; u = u_forcing),
+                                    forcing = (; u = u_forcing, v = v_forcing, b = B_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
                                     momentum_advection = WENO5())
 
 g  = model.free_surface.gravitational_acceleration
-ΔB = 2e-2
-h  = 1000.0
-@inline initial_buoyancy(x, y, z) = ΔB * (exp(z / h) - exp( - H / h)) / (1 - exp( - H / h))
-
 b = model.tracers.b
 u, v, w = model.velocities
 set!(b, initial_buoyancy)
 
 wave_speed = sqrt(g * H)
-
 Δt = min(10minutes, 10*Δx / wave_speed)
+simulation = Simulation(model, Δt = Δt, stop_time = 10days)
 
-for i in 1:1000
-    if mod(i, 10) == 0
-        maxu = maximum(u)
-        maxw = maximum(w)
-        @info "iteration $i, maximum u, w: $maxu ms⁻¹, $maxw ms⁻¹"
-    end
-    time_step!(model, Δt)
-end
+progress(sim) = @info "time $(prettytime(sim.model.clock.time)), maximum u: $(maximum(sim.model.velocities.u))"
 
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+
+run!(simulation)

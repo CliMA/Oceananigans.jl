@@ -100,15 +100,14 @@ end
 
 function calc_interpolating_coefficients(FT, coord, arch, N; order) 
 
-    cpu_coord = Array(parent(coord))
-    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
+    cpu_coord = arch_array(arch, coord)
 
-    s1 = create_interp_coefficients(FT,-1, cpu_coord, arch, N; order)
-    s2 = create_interp_coefficients(FT, 0, cpu_coord, arch, N; order)
-    s3 = create_interp_coefficients(FT, 1, cpu_coord, arch, N; order)
-    s4 = create_interp_coefficients(FT, 2, cpu_coord, arch, N; order)
+    s = []
+    for r in -1:order-1
+        push!(s, create_interp_coefficients(FT, r, cpu_coord, arch, N; order))
+    end
 
-    return (s1, s2, s3, s4)
+    return tuple(s...)
 end
 
 function create_interp_coefficients(FT, r, cpu_coord, arch, N; order)
