@@ -80,7 +80,7 @@ end
 
 # Flavours of WENO
 const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,  <:Tuple}
 
 const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
@@ -90,8 +90,10 @@ const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} =
 const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
 
+formulation(scheme::WENO) = scheme isa WENOVectorInvariant ? "Vector Invariant" : "Flux"
+
 function Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ}) where {N, FT, RX, RY, RZ}
-    print(io, "WENO advection scheme order $(N*2 -1): \n",
+    print(io, "WENO advection scheme order $(N*2 -1) and a $(formulation(a)) form: \n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )

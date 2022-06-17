@@ -58,14 +58,14 @@ const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
 @inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 @inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
-@inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, v) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+@inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
     ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
-@inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, v) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+@inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
     û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
@@ -83,14 +83,14 @@ end
 @inline vertical_advection_V(i, j, k, grid, ::VectorInvariantSchemes, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 #= 
-@inline function vertical_advection_U(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, u, w) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+@inline function vertical_advection_U(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, w) where {N, FT, XT, YT, ZT, VI}
     ŵ  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δx_qᶜᶜᶠ, w) / Δxᶠᶜᶜ(i, j, k, grid) 
     ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
     ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
     return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
 end
 
-@inline function vertical_advection_V(i, j, k, grid, scheme::WENOVectorInvariant{FT, XT, YT, ZT, XS, YS, ZS, VI}, v, w) where {FT, XT, YT, ZT, XS, YS, ZS, VI}
+@inline function vertical_advection_V(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, v, w) where {N, FT, XT, YT, ZT, VI}
     ŵ  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δy_qᶜᶜᶠ, w) / Δyᶜᶠᶜ(i, j, k, grid)
     ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
     ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
@@ -120,3 +120,11 @@ end
 @inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...) 
 @inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
 @inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, f::Function, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+
+@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i-1, j, k, grid, args...) 
+@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i, j-1, k, grid, args...)
+@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i, j, k-1, grid, args...)
+
+@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i, j, k, grid, args...) 
+@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i, j, k, grid, args...)
+@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, f::Function, VI::Type{Nothing}, args...) = @inbounds f(i, j, k, grid, args...)

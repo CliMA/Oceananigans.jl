@@ -5,42 +5,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 import Base: show
 
-#####
-##### biased pₖ for û calculation
-#####
-
-@inline left_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_left_p₀(scheme, args...) .* ψ)
-@inline left_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_left_p₁(scheme, args...) .* ψ)
-@inline left_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_left_p₂(scheme, args...) .* ψ)
-@inline left_biased_p₃(scheme, ψ, args...) = @inbounds sum(coeff_left_p₃(scheme, args...) .* ψ)
-@inline left_biased_p₄(scheme, ψ, args...) = @inbounds sum(coeff_left_p₄(scheme, args...) .* ψ)
-@inline left_biased_p₅(scheme, ψ, args...) = @inbounds sum(coeff_left_p₅(scheme, args...) .* ψ)
-
-@inline right_biased_p₀(scheme, ψ, args...) = @inbounds sum(coeff_right_p₀(scheme, args...) .* ψ)
-@inline right_biased_p₁(scheme, ψ, args...) = @inbounds sum(coeff_right_p₁(scheme, args...) .* ψ)
-@inline right_biased_p₂(scheme, ψ, args...) = @inbounds sum(coeff_right_p₂(scheme, args...) .* ψ)
-@inline right_biased_p₃(scheme, ψ, args...) = @inbounds sum(coeff_right_p₃(scheme, args...) .* ψ)
-@inline right_biased_p₄(scheme, ψ, args...) = @inbounds sum(coeff_right_p₄(scheme, args...) .* ψ)
-@inline right_biased_p₅(scheme, ψ, args...) = @inbounds sum(coeff_right_p₅(scheme, args...) .* ψ)
-
-#####
-##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)
-#####
-
-@inline coeff_left_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
-@inline coeff_left_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
-@inline coeff_left_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
-@inline coeff_left_p₃(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 3, dir, i ,loc)
-@inline coeff_left_p₄(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 4, dir, i ,loc)
-@inline coeff_left_p₅(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 5, dir, i ,loc)
-
-@inline coeff_right_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
-@inline coeff_right_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
-@inline coeff_right_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
-@inline coeff_right_p₃(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  2, dir, i ,loc)
-@inline coeff_right_p₄(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  3, dir, i ,loc)
-@inline coeff_right_p₅(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  4, dir, i ,loc)
-
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.coeff_xᶠᵃᵃ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.coeff_xᶜᵃᵃ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.coeff_yᵃᶠᵃ[r+2][i] 
@@ -61,6 +25,48 @@ import Base: show
 @inline retrieve_right_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+4][i] 
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+4][i] 
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+4][i] 
+
+#####
+##### Stretched smoothness indicators gathered from precomputed values.
+##### The stretched values for β coefficients are calculated from 
+##### Shu, NASA/CR-97-206253, ICASE Report No. 97-65
+##### by hardcoding that p(x) is a 2nd order polynomial
+#####
+
+@inline function biased_left_β(ψ, scheme, r, dir, i, location) 
+    @inbounds begin
+        stencil = retrieve_left_smooth(scheme, r, dir, i, location)
+        wᵢᵢ = stencil[1]   
+        wᵢⱼ = stencil[2]
+        result = 0
+        @unroll for j = 1:3
+            result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
+        end
+    end
+    return result
+end
+
+@inline function biased_right_β(ψ, scheme, r, dir, i, location) 
+    @inbounds begin
+        stencil = retrieve_right_smooth(scheme, r, dir, i, location)
+        wᵢᵢ = stencil[1]   
+        wᵢⱼ = stencil[2]
+        result = 0
+        @unroll for j = 1:3
+            result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
+        end
+    end
+    return result
+end
+
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 0, args...) 
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 1, args...) 
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 2, args...) 
+
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 2, args...) 
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 1, args...) 
+@inline right_biased_β₂(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 0, args...) 
+
 
 function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; order)
     

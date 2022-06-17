@@ -193,7 +193,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
 
-                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
             end
 
             # Conditional high-order interpolation in Bounded directions
@@ -204,7 +204,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.boundary_scheme, args...),
-                           $interp(i, j, k, ibg.underlying_grid, scheme, args...))
+                           $interp(i, j, k, ibg, scheme, args...))
             end
             if ξ == :z
                 @eval begin
@@ -214,7 +214,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
                             $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ∂z, VI, u),
-                            $interp(i, j, k, ibg.underlying_grid, scheme, ∂z, VI, u))
+                            $interp(i, j, k, ibg, scheme, ∂z, VI, u))
                 end
             else    
                 @eval begin
@@ -224,7 +224,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
                         ifelse($near_boundary(i, j, k, ibg, scheme),
                                 $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ζ, VI, u, v),
-                                $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VI, u, v))
+                                $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
                 end    
             end
         end
@@ -242,7 +242,7 @@ for bias in (:left_biased, :right_biased)
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
                $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
-               $interp(i, j, k, ibg.underlying_grid, scheme, ζ, VelocityStencil, u, v))
+               $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
         end
     end
 end

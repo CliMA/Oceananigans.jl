@@ -43,24 +43,13 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # For stretched WENO coefficients
-@inline coeff_left_p(scheme, ::Val{0}, T, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
-@inline coeff_left_p(scheme, ::Val{1}, T, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
-@inline coeff_left_p(scheme, ::Val{2}, T, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
-@inline coeff_left_p(scheme, ::Val{3}, T, dir, i, loc) = retrieve_coeff(scheme, 3, dir, i ,loc)
-@inline coeff_left_p(scheme, ::Val{4}, T, dir, i, loc) = retrieve_coeff(scheme, 4, dir, i ,loc)
-@inline coeff_left_p(scheme, ::Val{5}, T, dir, i, loc) = retrieve_coeff(scheme, 5, dir, i ,loc)
-
-@inline coeff_right_p(scheme, ::Val{0}, T, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
-@inline coeff_right_p(scheme, ::Val{1}, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
-@inline coeff_right_p(scheme, ::Val{2}, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
-@inline coeff_right_p(scheme, ::Val{3}, T, dir, i, loc) = retrieve_coeff(scheme,  2, dir, i ,loc)
-@inline coeff_right_p(scheme, ::Val{4}, T, dir, i, loc) = retrieve_coeff(scheme,  3, dir, i ,loc)
-@inline coeff_right_p(scheme, ::Val{5}, T, dir, i, loc) = retrieve_coeff(scheme,  4, dir, i ,loc)
-
-for buffer in [0, 1, 2, 3, 4, 5]
+for stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline  left_biased_p(scheme, ::Val{$buffer}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, Val($buffer), T, dir, i, loc) .* ψ)
-        @inline right_biased_p(scheme, ::Val{$buffer}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, Val($buffer), T, dir, i, loc) .* ψ)
+        @inline  coeff_left_p(scheme, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $stencil,   dir, i, loc)
+        @inline coeff_right_p(scheme, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $stencil-1, dir, i, loc)
+
+        @inline  left_biased_p(scheme, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
+        @inline right_biased_p(scheme, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
     end
 end
 
