@@ -106,7 +106,7 @@ end
 
 function calc_interpolating_coefficients(FT, coord, arch, N; order) 
 
-    cpu_coord = arch_array(arch, coord)
+    cpu_coord = arch_array(CPU(), coord)
 
     s = []
     for r in -1:order-1
