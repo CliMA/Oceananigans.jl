@@ -139,9 +139,9 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)             = $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, ψ, β, τ₅, coeff, FT) = $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, ψ, β, coeff, FT)     = $(metaprogrammed_js_alpha_loop(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ₅, coeff, FT) = $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
@@ -163,9 +163,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
             if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
+                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, ψ, β, $coeff, FT)
+                α  = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
@@ -183,9 +183,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
             if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
+                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, ψ, β, $coeff, FT)
+                α  = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
@@ -200,9 +200,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
             if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
+                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, ψ, β, $coeff, FT)
+                α  = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
