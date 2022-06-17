@@ -50,7 +50,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         grid = grid,
                                         tracers = :c,
                                         closure = nothing,

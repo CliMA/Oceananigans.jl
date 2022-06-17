@@ -127,7 +127,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO5(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),

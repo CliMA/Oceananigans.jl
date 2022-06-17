@@ -12,7 +12,7 @@ format the benchmark results.
 ## Shallow Water Model
 
 This benchmark tests the performance of the shallow water model run in a doubly periodic domain (`topology = (Periodic, Periodic, Flat)`)
-on a CPU versus a GPU.  We find that with the `WENO5` advection scheme we get a maximum speedup of more than 400 times on a `16384^2` grid.
+on a CPU versus a GPU.  We find that with the `WENO` advection scheme we get a maximum speedup of more than 400 times on a `16384^2` grid.
 
 ```
 Oceananigans v0.58.1
@@ -86,7 +86,7 @@ The time graph below shows that execution times on GPU are negligebly small up u
 
 ## Nonhydrostatic Model
 
-Similar to to shallow water model, the nonhydrostatic model benchmark tests for its performance on both a CPU and a GPU. It was also benchmarked with the `WENO5` advection scheme. The nonhydrostatic model is 3-dimensional unlike the 2-dimensional shallow water model. Total number of grid points is Ns cubed.
+Similar to to shallow water model, the nonhydrostatic model benchmark tests for its performance on both a CPU and a GPU. It was also benchmarked with the `WENO` advection scheme. The nonhydrostatic model is 3-dimensional unlike the 2-dimensional shallow water model. Total number of grid points is Ns cubed.
 
 ```
 Oceananigans v0.58.8

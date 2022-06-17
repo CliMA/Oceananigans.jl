@@ -69,7 +69,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1)
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                          tracer_advection = WENO5(),
+                                          tracer_advection = WENO(),
                                                       grid = grid,
                                                    tracers = :c,
                                                    closure = nothing,
@@ -197,10 +197,10 @@ function visualize_bickley_jet(experiment_name)
 end
 
 # experiment_name = run_bickley_jet(momentum_advection=VectorInvariant(), Nh=128)
-# experiment_name = run_bickley_jet(momentum_advection=WENO5(zweno=true, vector_invariant=true), Nh=128)
+# experiment_name = run_bickley_jet(momentum_advection=WENO(zweno=true, vector_invariant=true), Nh=128)
 
-advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VorticityStencil()),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
                      VectorInvariant()]
 
 for Nx in [64, 128, 256, 512, 1024]

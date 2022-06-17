@@ -51,12 +51,12 @@ grid_str  = RectilinearGrid(arch, size = N, x = Fsaw,  halo = 3, topology = (Per
 grid_str2 = RectilinearGrid(arch, size = N, x = Fstr2, halo = 3, topology = (Periodic, Flat, Flat))    
 
 # placeholder for the four different advection schemes 
-#  (1) WENO5(), 
-#  (2) WENO5(grid=grid),
-#  (3) WENO5(grid=grid, stretched_smoothness=true),
-#  (4) WENO5(grid=grid, stretched_smoothness=true, zweno=true)
+#  (1) WENO(), 
+#  (2) WENO(grid=grid),
+#  (3) WENO(grid=grid, stretched_smoothness=true),
+#  (4) WENO(grid=grid, stretched_smoothness=true, zweno=true)
 
-advection = [WENO5(), WENO5(), WENO5(), WENO5()]
+advection = [WENO(), WENO(), WENO(), WENO()]
 schemes   = [:wreg, :wstr, :wstrS, :wstrZ]
 
 # mask for the initial condition
@@ -75,13 +75,13 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
                                             
     for (adv, scheme) in enumerate(advection) 
         if adv == 2
-            scheme = WENO5(grid)
+            scheme = WENO(grid)
         end
         if adv == 3
-            scheme = WENO5(grid, stretched_smoothness = true)
+            scheme = WENO(grid, stretched_smoothness = true)
         end
         if adv == 4
-            scheme = WENO5(grid, stretched_smoothness = true, zweno = true)
+            scheme = WENO(grid, stretched_smoothness = true, zweno = true)
         end
 
         model = HydrostaticFreeSurfaceModel(        grid = grid,
@@ -151,13 +151,13 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
     for (adv, scheme) in enumerate(advection) 
 
         if adv == 2
-            scheme = WENO5(grid)
+            scheme = WENO(grid)
         end
         if adv == 3
-            scheme = WENO5(grid, stretched_smoothness = true)
+            scheme = WENO(grid, stretched_smoothness = true)
         end
         if adv == 4
-            scheme = WENO5(grid, stretched_smoothness = true, zweno = true)
+            scheme = WENO(grid, stretched_smoothness = true, zweno = true)
         end
 
         model = HydrostaticFreeSurfaceModel(        grid = grid,

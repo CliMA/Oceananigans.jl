@@ -228,13 +228,13 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO5(vector_invariant = VelocityStencil()),
+                                    momentum_advection = WENO(vector_invariant = VelocityStencil()),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
-                                    tracer_advection = WENO5(underlying_grid))
+                                    tracer_advection = WENO(underlying_grid))
 
 #####
 ##### Initial condition:

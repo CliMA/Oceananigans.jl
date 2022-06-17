@@ -18,7 +18,7 @@ using Oceananigans.Advection:
                              UpwindBiasedThirdOrder(),
                              UpwindBiasedFifthOrder(), 
                              WENO3(),
-                             WENO5()]
+                             WENO()]
 
         for adv in advection_schemes
             @testset " Test immersed tracer reconstruction [$(typeof(arch)), $(typeof(adv))]" begin
@@ -89,7 +89,7 @@ using Oceananigans.Advection: VelocityStencil, VorticityStencil, WENOVectorInvar
                              UpwindBiasedThirdOrder(),
                              UpwindBiasedFifthOrder(), 
                              WENO3(),
-                             WENO5()]
+                             WENO()]
 
         for adv in advection_schemes
             @testset " Test immersed momentum reconstruction [$(typeof(arch)), $(typeof(adv))]" begin

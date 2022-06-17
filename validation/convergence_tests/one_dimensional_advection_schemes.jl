@@ -39,7 +39,7 @@ end
 arch = CUDA.has_cuda() ? GPU() : CPU()
 
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(),
-                     UpwindBiasedFifthOrder(), WENO5())
+                     UpwindBiasedFifthOrder(), WENO())
 
 U = 1
 κ = 1e-8
@@ -55,20 +55,20 @@ rate_of_convergence(::CenteredSecondOrder) = 2
 rate_of_convergence(::CenteredFourthOrder) = 4
 rate_of_convergence(::UpwindBiasedThirdOrder) = 3
 rate_of_convergence(::UpwindBiasedFifthOrder) = 5
-rate_of_convergence(::WENO5) = 5
+rate_of_convergence(::WENO) = 5
 # rate_of_convergence(::WENO{K}) where K = 2K-1
 
 test_resolution(::CenteredSecondOrder)    = 512
 test_resolution(::CenteredFourthOrder)    = 512
 test_resolution(::UpwindBiasedThirdOrder) = 512
 test_resolution(::UpwindBiasedFifthOrder) = 512
-test_resolution(::WENO5)                  = 512
+test_resolution(::WENO)                  = 512
 
 tolerance(::CenteredSecondOrder)    = 0.02
 tolerance(::CenteredFourthOrder)    = 0.06
 tolerance(::UpwindBiasedThirdOrder) = 0.08
 tolerance(::UpwindBiasedFifthOrder) = 0.2
-tolerance(::WENO5)                  = 0.4
+tolerance(::WENO)                  = 0.4
 
 colors = ("xkcd:royal blue", "xkcd:light red")
 

@@ -14,35 +14,35 @@ rate_of_convergence(::CenteredSecondOrder)    = 2
 rate_of_convergence(::UpwindBiasedThirdOrder) = 3
 rate_of_convergence(::CenteredFourthOrder)    = 4
 rate_of_convergence(::UpwindBiasedFifthOrder) = 5
-rate_of_convergence(::WENO5)                  = 5
+rate_of_convergence(::WENO)                  = 5
 
 labels(::UpwindBiasedFirstOrder) = "Upwind1ˢᵗ"
 labels(::CenteredSecondOrder)    = "Center2ⁿᵈ"
 labels(::UpwindBiasedThirdOrder) = "Upwind3ʳᵈ"
 labels(::CenteredFourthOrder)    = "Center4ᵗʰ"
 labels(::UpwindBiasedFifthOrder) = "Upwind5ᵗʰ"
-labels(::WENO5)                  = "WENO5ᵗʰ "
+labels(::WENO)                  = "WENOᵗʰ "
 
 shapes(::UpwindBiasedFirstOrder) = :square
 shapes(::CenteredSecondOrder)    = :diamond
 shapes(::UpwindBiasedThirdOrder) = :dtriangle
 shapes(::CenteredFourthOrder)    = :rect
 shapes(::UpwindBiasedFifthOrder) = :star5
-shapes(::WENO5)                  = :star6
+shapes(::WENO)                  = :star6
 
 colors(::UpwindBiasedFirstOrder) = :black
 colors(::CenteredSecondOrder)    = :green
 colors(::UpwindBiasedThirdOrder) = :red
 colors(::CenteredFourthOrder)    = :cyan
 colors(::UpwindBiasedFifthOrder) = :magenta
-colors(::WENO5)                  = :purple
+colors(::WENO)                  = :purple
 
 halos(::UpwindBiasedFirstOrder) = 1
 halos(::CenteredSecondOrder)    = 1
 halos(::UpwindBiasedThirdOrder) = 2
 halos(::CenteredFourthOrder)    = 2
 halos(::UpwindBiasedFifthOrder) = 3
-halos(::WENO5)                  = 3 
+halos(::WENO)                  = 3 
 
 L  = 2
 U  = 1
@@ -60,7 +60,7 @@ schemes = (
  UpwindBiasedThirdOrder(), 
  CenteredFourthOrder(), 
  UpwindBiasedFifthOrder(), 
- WENO5()
+ WENO()
 );
 
 error = Dict()
@@ -98,7 +98,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
     Δt = 0.1 * min_Δx(grid)
 
     if adv == 7 
-        scheme = WENO5( grid )
+        scheme = WENO( grid )
     end
 
     model = ShallowWaterModel(CPU(), grid = grid,

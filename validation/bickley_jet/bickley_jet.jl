@@ -104,13 +104,12 @@ Visualize the Bickley jet data in `name * ".jld2"`.
 #     end
 # end
 
-using Oceananigans.Advection: WENO
 advection_schemes = [WENO(order = 11, vector_invariant = VelocityStencil())]
 
 #=
-advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VorticityStencil()),
-                     WENO5(),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
+                     WENO(),
                      VectorInvariant()]
 =#
 

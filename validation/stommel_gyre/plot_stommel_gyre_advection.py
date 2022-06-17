@@ -6,7 +6,7 @@ import cmocean
 import ffmpeg
 
 shapes = ("Gaussian", "Square")
-schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO5")
+schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO")
 Ns = (32, 256)
 CFLs = (0.05, 0.30)
 

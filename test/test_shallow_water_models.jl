@@ -164,7 +164,7 @@ end
         end
 
         # Advection = nothing is broken as halo does not have a maximum
-        for advection in (nothing, CenteredSecondOrder(), WENO5())
+        for advection in (nothing, CenteredSecondOrder(), WENO())
             @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."
                 @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, advection)

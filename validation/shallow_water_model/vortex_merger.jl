@@ -18,8 +18,8 @@ R = (g*H)^0.5 / f
 model = ShallowWaterModel(grid = grid,
                         gravitational_acceleration = g,
                         coriolis = FPlane(f = f),
-                        mass_advection = WENO5(),
-                        momentum_advection = WENO5(vector_invariant = stencil()),
+                        mass_advection = WENO(),
+                        momentum_advection = WENO(vector_invariant = stencil()),
                         formulation = VectorInvariantFormulation())
 
 # Model initialization

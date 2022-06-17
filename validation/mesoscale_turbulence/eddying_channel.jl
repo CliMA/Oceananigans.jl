@@ -175,8 +175,8 @@ catke = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     closure = (horizontal_closure, vertical_closure, catke),

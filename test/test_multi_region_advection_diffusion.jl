@@ -34,7 +34,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure  = nothing)
@@ -78,7 +78,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         tracers = :c,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         buoyancy = nothing,
                                         closure = nothing)
 
