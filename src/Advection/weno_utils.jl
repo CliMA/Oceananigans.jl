@@ -1,6 +1,6 @@
 using OffsetArrays
 using Oceananigans.Grids: with_halo, return_metrics
-using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.Architectures: arch_array, architecture, CPU
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt
 import Base: show
