@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.Advection: WENO
 
 arch = CPU()
 
@@ -24,7 +25,7 @@ N  = 1.5*f*L/H
 
 gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2)) 
 
-grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4), 
+grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (7, 7, 7), 
                        x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0), 
                        topology = (Periodic, Bounded, Bounded))
 
@@ -46,24 +47,7 @@ bz = N^2
 end
 
 u_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(u₀ = 0.25, bounds = restoring_bounds, λ = λᶠ))
-v_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(v₀ = 0.00, bounds = restoring_bounds, λ = λᶠ))
-
-@inline function buoyancy_restoring(i, j, k, grid, clock, fields, p)
-
-    x = xnode(i, j, k, grid)
-    y = ynode(i, j, k, grid)
-    z = znode(i, j, k, grid)
-
-    if i < p.bounds 
-        return - p.λ(i) * (fields.u[i, j, k] - p.u₀)
-    elseif i > grid.Nx - p.bounds
-        return - p.λ(grid.Nx - i) * (fields.b[i, j, k] - p.b₀(x, y, z))
-    else
-        return zero(grid)
-    end
-end
-
-B_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(b₀ = initial_buoyancy, bounds = restoring_bounds, λ = λᶠ))
+v_forcing =  Forcing(velocity_restoring, discrete_form=true, parameters=(u₀ = 0.00, bounds = restoring_bounds, λ = λᶠ))
 
 buoyancy = BuoyancyTracer()
 
@@ -93,10 +77,10 @@ v_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = v_immersed
 model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
-                                    tracers = :b, tracer_advection = WENO5(),
-                                    forcing = (; u = u_forcing, v = v_forcing, b = B_forcing),
+                                    tracers = :b, tracer_advection = WENO(order = 5),
+                                    forcing = (; u = u_forcing, v = v_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
-                                    momentum_advection = WENO5())
+                                    momentum_advection = WENO(order = 5))
 
 g  = model.free_surface.gravitational_acceleration
 b = model.tracers.b

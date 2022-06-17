@@ -24,7 +24,7 @@ function run_bickley_jet(;
                          tracer_advection = WENO5(),
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
-    grid = bickley_grid(; arch, Nh)
+    grid = bickley_grid(; arch, Nh, halo = (7, 7, 7))
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection,
                                         free_surface, tracers = :c, buoyancy=nothing)
     set_bickley_jet!(model)
@@ -104,7 +104,8 @@ Visualize the Bickley jet data in `name * ".jld2"`.
 #     end
 # end
 
-advection_schemes = [WENO3(), UpwindBiasedThirdOrder()]
+using Oceananigans.Advection: WENO
+advection_schemes = [WENO(order = 9)]
 
 #=
 advection_schemes = [WENO5(vector_invariant=VelocityStencil()),

@@ -13,7 +13,7 @@ using Oceananigans.Units
 using Oceananigans.Advection: EnergyConservingScheme
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: ZWENO, WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
+using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -30,7 +30,7 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, 
                            momentum_advection = VectorInvariant())
 
-    grid = bickley_grid(; arch, Nh, halo=(4, 4, 4))
+    grid = bickley_grid(; arch, Nh, halo=(7, 7, 7))
     
     @inline toplft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y > π/3) & (y < 2π/3)) | ((y > 4π/3) & (y < 5π/3))))
     @inline botlft(x, y) = (((x > π/2) & (x < 3π/2)) & (((y < -π/3) & (y > -2π/3)) | ((y < -4π/3) & (y > -5π/3))))
@@ -103,9 +103,13 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
+
     start_time = time_ns()
 
     run!(simulation)
+
+    elapsed = 1e-9 * (time_ns() - start_time)
+    @info "... the bickley jet simulation took " * prettytime(elapsed)
 
     return experiment_name 
 end
@@ -162,16 +166,11 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO3(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VelocityStencil()),
-                     WENO3(vector_invariant=VorticityStencil()),
-                     WENO5(vector_invariant=VorticityStencil()),
-                     WENO3(),
-                     WENO5()]
+advection_schemes = [WENO(order = 9)]
 
-for Nx in [64]
+for Nx in [128]
     for advection in advection_schemes
         experiment_name = run_immersed_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
-        visualize_bickley_jet(experiment_name)
+        # visualize_bickley_jet(experiment_name)
     end
 end

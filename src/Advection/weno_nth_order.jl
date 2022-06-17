@@ -54,8 +54,7 @@ function WENO(FT::DataType = Float64;
         return UpwindBiasedFirstOrder()
     else
         VI = typeof(vector_invariant)
-        N  = (order + 1) /2
-        @show N
+        N  = Int((order + 1) /2)
 
         weno_coefficients = compute_stretched_weno_coefficients(grid, false, FT; order = N)
         boundary_scheme = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
@@ -123,7 +122,7 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N,
 @inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-function calc_stencil(buffer, shift, dir; func = true) 
+function calc_stencil(buffer, shift, dir; func = false) 
     N = buffer * 2
     if shift != :none
         N -=1
