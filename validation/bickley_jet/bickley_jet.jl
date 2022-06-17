@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, boundary_buffer
 
 using Printf
 # using GLMakie
@@ -20,8 +20,8 @@ function run_bickley_jet(;
                          arch = CPU(),
                          Nh = 64, 
                          free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0),
-                         momentum_advection = WENO5(),
-                         tracer_advection = WENO5(),
+                         momentum_advection = WENO(order = 5),
+                         tracer_advection = WENO(order = 5),
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
     grid = bickley_grid(; arch, Nh, halo = (7, 7, 7))
@@ -47,7 +47,7 @@ function run_bickley_jet(;
     u, v, w = model.velocities
     outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.η))
 
-    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name
+    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
@@ -105,7 +105,7 @@ Visualize the Bickley jet data in `name * ".jld2"`.
 # end
 
 using Oceananigans.Advection: WENO
-advection_schemes = [WENO(order = 9)]
+advection_schemes = [WENO(order = 11, vector_invariant = VelocityStencil())]
 
 #=
 advection_schemes = [WENO5(vector_invariant=VelocityStencil()),

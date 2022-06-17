@@ -61,8 +61,8 @@ struct VectorInvariantFormulation end
                         gravitational_acceleration,
                               clock = Clock{eltype(grid)}(0, 0, 1),
                  momentum_advection = UpwindBiasedFifthOrder(),
-                   tracer_advection = WENO5(),
-                     mass_advection = WENO5(),
+                   tracer_advection = WENO(),
+                     mass_advection = WENO(),
                            coriolis = nothing,
                 forcing::NamedTuple = NamedTuple(),
                             closure = nothing,
@@ -85,9 +85,9 @@ Keyword arguments
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
     Default: `UpwindBiasedFifthOrder()`.
-  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO5()`.
+  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO(order = 5)`.
   - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
-    `WENO5()`.
+    `WENO(order = 5)`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
@@ -112,8 +112,8 @@ function ShallowWaterModel(;
                            gravitational_acceleration,
                                clock = Clock{eltype(grid)}(0, 0, 1),
                   momentum_advection = UpwindBiasedFifthOrder(),
-                    tracer_advection = WENO5(),
-                      mass_advection = WENO5(),
+                    tracer_advection = WENO(),
+                      mass_advection = WENO(),
                             coriolis = nothing,
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,

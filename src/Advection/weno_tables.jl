@@ -172,7 +172,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             
             β = beta_loop(scheme, ψ, $biased_β)
             
-            if scheme isa ZWENON
+            if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
                 α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
             else
@@ -192,7 +192,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
 
             β = 0.5 .* (βᵤ .* βᵥ)
             
-            if scheme isa ZWENON
+            if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
                 α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
             else
@@ -209,7 +209,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             β = beta_loop(scheme, uₛ, $biased_β)
             α = zeros(FT, N)
             
-            if scheme isa ZWENON
+            if scheme isa ZWENO
                 τ₅ = abs(β[end] - β[1])
                 α  = zweno_alpha_loop(scheme, ψ, β, τ₅, $coeff, FT)
             else
@@ -236,6 +236,9 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
+pass_stencil(ψ, i, j, k, stencil) = ψ 
+pass_stencil(ψ, i, j, k, ::Type{VelocityStencil}) = (i, j, k)
+
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
     for side in (:left, :right)
@@ -255,7 +258,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariantN{N, FT, XT, YT, ZT}, 
+                                               scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, VI, args...) where {N, FT, XT, YT, ZT}
 
                 ψₜ = reverse($stencil(i, j, k, scheme, ψ, grid, args...))

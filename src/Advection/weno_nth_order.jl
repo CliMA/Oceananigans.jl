@@ -2,6 +2,16 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme
 #####
 
+const two_32 = Int32(2)
+
+const ƞ = Int32(2) # WENO exponent
+const ε = 1e-6
+
+abstract type SmoothnessStencil end
+
+struct VorticityStencil <:SmoothnessStencil end
+struct VelocityStencil <:SmoothnessStencil end
+
 struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N}
     
     "coefficient for ENO reconstruction on x-faces" 
@@ -69,15 +79,15 @@ function WENO(FT::DataType = Float64;
 end
 
 # Flavours of WENO
-const ZWENON        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENON = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
+const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-const WENOVectorInvariantVelN{N, FT, XT, YT, ZT, VI, WF, PP}  = 
+const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
-const WENOVectorInvariantVortN{N, FT, XT, YT, ZT, VI, WF, PP} = 
+const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:VorticityStencil, WF, PP}
 
-const WENOVectorInvariantN{N, FT, XT, YT, ZT, VI, WF, PP} = 
+const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
 
 function Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ}) where {N, FT, RX, RY, RZ}
