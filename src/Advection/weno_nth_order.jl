@@ -134,7 +134,7 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N,
 @inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-function calc_stencil(buffer, shift, dir; func = false) 
+function calc_stencil(buffer, shift, dir, func) 
     N = buffer * 2
     if shift != :none
         N -=1
@@ -173,8 +173,8 @@ for side in (:left, :right), dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds ($(calc_stencil(buffer, side, dir)...),)
-            $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds ($(calc_stencil(buffer, side, dir; func = true)...),)
+            $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds ($(calc_stencil(buffer, side, dir, false)...),)
+            $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds ($(calc_stencil(buffer, side, dir,  true)...),)
         end
     end
 end
