@@ -104,19 +104,17 @@ Visualize the Bickley jet data in `name * ".jld2"`.
 #     end
 # end
 
-advection_schemes = [WENO(order = 11, vector_invariant = VelocityStencil())]
-
 #=
 advection_schemes = [WENO(vector_invariant=VelocityStencil()),
                      WENO(vector_invariant=VorticityStencil()),
                      WENO(),
                      VectorInvariant()]
 =#
+advection_schemes = [WENO(vector_invariant = VelocityStencil())]
 
-arch = CPU()
-for Nh in [128]
-    for momentum_advection in advection_schemes
-        name = run_bickley_jet(; arch, momentum_advection, Nh)
-        # visualize_bickley_jet(name)
+for Nx in [128]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        # visualize_bickley_jet(experiment_name)
     end
 end

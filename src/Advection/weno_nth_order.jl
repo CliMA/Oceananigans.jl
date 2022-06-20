@@ -170,9 +170,9 @@ function calc_stencil(buffer, shift, dir, func)
                                     :(ψ[i, j, k + $c])
             end                
         end
-        stencil_full[stencil] = :($(stencil_point...), )
+        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
     end
-    return stencil_full
+    return :($(stencil_full...), )
 end
 
 for side in (:left, :right), dir in (:x, :y, :z)
@@ -180,8 +180,8 @@ for side in (:left, :right), dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds ($(calc_stencil(buffer, side, dir, false)...),)
-            $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds ($(calc_stencil(buffer, side, dir,  true)...),)
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_stencil(buffer, side, dir, false))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_stencil(buffer, side, dir,  true))
         end
     end
 end

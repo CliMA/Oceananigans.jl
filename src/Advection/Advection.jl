@@ -29,6 +29,8 @@ export
 
 using DocStringExtensions
 
+using Base: @propagate_inbounds
+
 using Oceananigans.Grids
 using Oceananigans.Operators
 

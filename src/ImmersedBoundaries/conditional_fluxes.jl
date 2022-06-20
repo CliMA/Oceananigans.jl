@@ -125,10 +125,10 @@ function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $c + $xshift, j + $yshift, k + $zshift, ibg)) :
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $(c + xshift), j + $yshift, k + $zshift, ibg)) :
                                dir == :y ?
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $c + $yshift, k + $zshift, ibg)) :
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $yshift, k + $c + $zshift, ibg))                    
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $(c + yshift), k + $zshift, ibg)) :
+                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $yshift, k + $(c + zshift), ibg))                    
     end
 
     return inactive_cells

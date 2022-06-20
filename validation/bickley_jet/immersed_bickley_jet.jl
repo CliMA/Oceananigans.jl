@@ -13,7 +13,7 @@ using Oceananigans.Units
 using Oceananigans.Advection: EnergyConservingScheme
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
+using Oceananigans.Advection: WENO5VectorInvariantVel, WENO5VectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -50,7 +50,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO(),
+                                        tracer_advection = WENO5(),
                                         grid = grid,
                                         tracers = :c,
                                         closure = nothing,
@@ -86,10 +86,10 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
     name = typeof(model.advection.momentum).name.wrapper
-    if model.advection.momentum isa WENOVectorInvariantVel
+    if model.advection.momentum isa WENO5VectorInvariantVel
         name = string(name) * "VectorInvariantVel"
     end
-    if model.advection.momentum isa WENOVectorInvariantVort
+    if model.advection.momentum isa WENO5VectorInvariantVort
         name = string(name) * "VectorInvariantVort"
     end
 
@@ -102,10 +102,6 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
                                 overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
-
-    for i in 1:10 # warmup
-        time_step!(model, Δt)
-    end
 
     start_time = time_ns()
 
@@ -169,9 +165,9 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO()]
+advection_schemes = [WENO5(vector_invariant = VelocityStencil())]
 
-for Nx in [1024]
+for Nx in [512]
     for advection in advection_schemes
         experiment_name = run_immersed_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
         # visualize_bickley_jet(experiment_name)
