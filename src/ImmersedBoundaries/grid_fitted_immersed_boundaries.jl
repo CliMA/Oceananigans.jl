@@ -41,8 +41,8 @@ Return a grid with `GridFittedBottom` immersed boundary.
 Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
-    arch = grid.architecture
-    bottom_field = Field{Center, Center, Nothing}(grid)
+    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
+    bottom_field = Field{Center, Center, Nothing}(helper_grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
@@ -115,8 +115,8 @@ end
 end
 
 function compute_mask(grid, ib)
-    arch = architecture(grid)
-    mask_field = Field{Center, Center, Center}(grid, Bool)
+    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
+    mask_field = Field{Center, Center, Center}(helper_grid, Bool)
     set!(mask_field, ib.mask)
     fill_halo_regions!(mask_field)
     return mask_field

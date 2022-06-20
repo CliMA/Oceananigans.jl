@@ -103,6 +103,9 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
+    for i in 1:10 # warmup
+        time_step!(model, Δt)
+    end
 
     start_time = time_ns()
 
@@ -166,11 +169,11 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO(order = 7, vector_invariant = VelocityStencil())]
+advection_schemes = [WENO()]
 
-for Nx in [128]
+for Nx in [1024]
     for advection in advection_schemes
-        experiment_name = run_immersed_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
+        experiment_name = run_immersed_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
         # visualize_bickley_jet(experiment_name)
     end
 end

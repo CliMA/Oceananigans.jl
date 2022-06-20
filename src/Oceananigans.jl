@@ -28,7 +28,7 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO, WENO3, WENO5, WENO7, WENO9, WENO11,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions

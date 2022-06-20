@@ -7,6 +7,7 @@ const ε₂ = 1e-20
 # Here in the future we can easily add UpwindBiasedFifthOrder 
 const BoundPreservingScheme = PositiveWENO
 
+# Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
 @inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c)
 
     div_x = bounded_tracer_flux_divergence_x(i, j, k, grid, advection, U.u, c)
@@ -33,7 +34,7 @@ end
     c₋ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
     c₋ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
 
-    p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
+    p̃   = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
     m   = min(p̃, c₊ᴸ, c₋ᴿ) 
     θ   = min(abs((upper_limit - cᵢⱼ)/(M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ)/(m - cᵢⱼ + ε₂)), one(grid))

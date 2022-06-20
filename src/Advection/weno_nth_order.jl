@@ -49,7 +49,14 @@ end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid = grid, kwargs...)
 
-function WENO(FT::DataType = Float64; 
+# Some usefull aliases
+WENO3(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 3,  kwargs...)
+WENO5(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 5,  kwargs...)
+WENO7(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 7,  kwargs...)
+WENO9(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 9,  kwargs...)
+WENO11(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid = grid, order = 11, kwargs...)
+
+function WENO(FT::DataType=Float64; 
                order = 5,
                grid = nothing, 
                zweno = true, 
@@ -80,7 +87,7 @@ end
 
 # Flavours of WENO
 const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,  <:Tuple}
+const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
 const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
