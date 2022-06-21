@@ -1,5 +1,5 @@
 #####
-##### Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme
+##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
 const two_32 = Int32(2)
