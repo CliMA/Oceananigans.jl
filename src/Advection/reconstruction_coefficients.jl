@@ -49,7 +49,7 @@ for buffer in [1, 2, 3, 4, 5]
     coeff_left  = Symbol(:coeff, order_bias, :_left)
     coeff_right = Symbol(:coeff, order_bias, :_right)
     @eval begin
-        $coeff_symm  = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
+        const $coeff_symm  = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
         if $order_bias > 1
             const $coeff_left  = stencil_coefficients(50, $(buffer - 2), collect(1:100), collect(1:100); order = $order_bias)
             const $coeff_right = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_bias)
