@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Advection: VelocityStencil, VorticityStencil, WENOVectorInvariant, WENO
 
-grid = RectilinearGrid(size = (20, 1, 1), extent = (20, 1, 1), halo = (7, 7, 7), topology = (Bounded, Bounded, Bounded))
+grid = RectilinearGrid(size = (10, 1, 1), x = (0, 10), y =(0, 1), z = (0, 1), halo = (7, 7, 7), topology = (Bounded, Bounded, Bounded))
 
 Nx, Ny, Nz = size(grid)
 
@@ -17,8 +17,8 @@ model = HydrostaticFreeSurfaceModel(grid = ibg,
                                  closure = nothing, 
                                 buoyancy = nothing, 
                                  tracers = :c, 
-                        tracer_advection = WENO(order = 9),
-                      momentum_advection = WENO(order = 9))
+                        tracer_advection = WENO(grid, order = 5),
+                      momentum_advection = WENO(grid, order = 5, vector_invariant = VelocityStencil()))
 
 u = model.velocities.u
 v = model.velocities.v

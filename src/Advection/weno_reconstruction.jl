@@ -71,7 +71,7 @@ function WENO(FT::DataType=Float64;
         return UpwindBiasedFirstOrder()
     else
         VI = typeof(vector_invariant)
-        N  = Int((order + 1) /2)
+        N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_stretched_weno_coefficients(grid, false, FT; order = N)
         boundary_scheme = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
@@ -114,7 +114,61 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N,
                          Adapt.adapt(to, scheme.boundary_scheme),
                          Adapt.adapt(to, scheme.symmetric_scheme))
 
-@inline boundary_buffer(::WENO{N}) where N = N
+# pre-compute coefficients for stretched WENO
+function compute_stretched_weno_coefficients(grid, stretched_smoothness, FT; order)
+    
+    rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+
+    if grid isa Nothing
+        @warn "defaulting to uniform WENO scheme with $(FT) precision, use WENO(grid = grid) if this was not intended"
+        for metric in rect_metrics
+            @eval $(Symbol(:coeff_ , metric)) = nothing
+            @eval $(Symbol(:smooth_, metric)) = nothing
+        end
+    else
+        !(grid isa RectilinearGrid) && (@warn "WENO on a curvilinear stretched coordinate is not validated, use at your own risk!!")
+
+        metrics = return_metrics(grid)
+        dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
+
+        arch       = architecture(grid)
+        Hx, Hy, Hz = halo_size(grid)
+        new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
+
+        for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
+            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir; order = $order)
+            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir; order = $order) 
+        end
+    end
+
+    return (coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+            smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
+end
+
+@inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N; order) = nothing
+@inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N; order)                              = nothing
+function calc_interpolating_coefficients(FT, coord, arch, N; order) 
+
+    cpu_coord = arch_array(CPU(), coord)
+
+    s = []
+    for r in -1:order-1
+        push!(s, create_interp_coefficients(FT, r, cpu_coord, arch, N; order))
+    end
+
+    return tuple(s...)
+end
+
+function create_interp_coefficients(FT, r, cpu_coord, arch, N; order)
+
+    stencil = NTuple{order, FT}[]
+    @inbounds begin
+        for i = 0:N+1
+            push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
+        end
+    end
+    return OffsetArray(arch_array(arch, stencil), -1)
+end
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.symmetric_scheme, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.symmetric_scheme, c)
@@ -140,60 +194,3 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N,
 @inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
 @inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO, ψ, args...) = weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
-
-function calc_stencil(buffer, shift, dir, func) 
-    N = buffer * 2
-    if shift != :none
-        N -=1
-    end
-    stencil_full = Vector(undef, buffer)
-    rng = 1:N
-    if shift == :right
-        rng = rng .+ 1
-    end
-    for stencil in 1:buffer
-        stencil_point = Vector(undef, buffer)
-        rngstencil = rng[stencil:stencil+buffer-1]
-        for (idx, n) in enumerate(rngstencil)
-            c = n - buffer - 1
-            if func 
-                stencil_point[idx] =  dir == :x ? 
-                                    :(ψ(i + $c, j, k, args...)) :
-                                    dir == :y ?
-                                    :(ψ(i, j + $c, k, args...)) :
-                                    :(ψ(i, j, k + $c, args...))
-            else    
-                stencil_point[idx] =  dir == :x ? 
-                                    :(ψ[i + $c, j, k]) :
-                                    dir == :y ?
-                                    :(ψ[i, j + $c, k]) :
-                                    :(ψ[i, j, k + $c])
-            end                
-        end
-        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
-    end
-    return :($(stencil_full...), )
-end
-
-for side in (:left, :right), dir in (:x, :y, :z)
-    stencil = Symbol(side, :_stencil_, dir)
-
-    for buffer in [2, 3, 4, 5, 6]
-        @eval begin
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_stencil(buffer, side, dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_stencil(buffer, side, dir,  true))
-        end
-    end
-end
-
-# Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
-# Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_left_stencil_u(i, j, k, scheme::WENO, ::Val{1}, u)  = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, scheme::WENO, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, scheme::WENO, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, scheme::WENO, ::Val{2}, v)  = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-
-@inline tangential_right_stencil_u(i, j, k, scheme::WENO, ::Val{1}, u)  = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, scheme::WENO, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, scheme::WENO, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, scheme::WENO, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)

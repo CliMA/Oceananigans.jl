@@ -7,48 +7,40 @@
 @inline Cl(::WENO{5}, ::Val{0}) = 1/126; @inline Cl(::WENO{5}, ::Val{1}) = 10/63; @inline Cl(::WENO{5}, ::Val{2}) = 10/21; @inline Cl(::WENO{5}, ::Val{3}) = 20/63;   @inline Cl(::WENO{5}, ::Val{4}) = 5/126
 @inline Cl(::WENO{6}, ::Val{0}) = 1/462; @inline Cl(::WENO{6}, ::Val{1}) = 5/77;  @inline Cl(::WENO{6}, ::Val{2}) = 25/77; @inline Cl(::WENO{6}, ::Val{3}) = 100/231; @inline Cl(::WENO{6}, ::Val{4}) = 25/154; @inline Cl(::WENO{6}, ::Val{5}) = 1/77
 
-# ENO reconstruction coefficients (uniform grid)
-@inline coeff_left_p(scheme::WENO{2, FT}, ::Val{0}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/2, 1/2))
-@inline coeff_left_p(scheme::WENO{2, FT}, ::Val{1}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/2, 3/2))
-
-@inline coeff_left_p(scheme::WENO{3, FT}, ::Val{0}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/3,  5/6, -1/6))
-@inline coeff_left_p(scheme::WENO{3, FT}, ::Val{1}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/6,  5/6,  1/3))
-@inline coeff_left_p(scheme::WENO{3, FT}, ::Val{2}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/3, -7/6,  11/6))
-
-@inline coeff_left_p(scheme::WENO{4, FT}, ::Val{0}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/4,   13/12, -5/12,   1/12))
-@inline coeff_left_p(scheme::WENO{4, FT}, ::Val{1}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/12,  7/12,   7/12,  -1/12))
-@inline coeff_left_p(scheme::WENO{4, FT}, ::Val{2}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/12, -5/12,   13/12,  1/4))
-@inline coeff_left_p(scheme::WENO{4, FT}, ::Val{3}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/4,   13/12, -23/12,  25/12))
-
-@inline coeff_left_p(scheme::WENO{5, FT}, ::Val{0}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/5,   77/60, -43/60,   17/60, -1/20))
-@inline coeff_left_p(scheme::WENO{5, FT}, ::Val{1}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/20,  9/20,   47/60,  -13/60,  1/30))
-@inline coeff_left_p(scheme::WENO{5, FT}, ::Val{2}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/30, -13/60,  47/60,   9/20,  -1/20))
-@inline coeff_left_p(scheme::WENO{5, FT}, ::Val{3}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/20,  17/60, -43/60,   77/60,  1/5))
-@inline coeff_left_p(scheme::WENO{5, FT}, ::Val{4}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/5,  -21/20,  137/60, -163/60, 137/60))
-
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{0}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/6,   29/20, -21/20,  37/60, -13/60,  1/30))
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{1}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/30,  11/30,  19/20, -23/60,  7/60,  -1/60))
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{2}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/60, -2/15,   37/60,  37/60, -2/15,   1/60))
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{3}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/60,  7/60,  -23/60,  19/20,  11/30, -1/30))
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{4}, ::Type{Nothing}, dir, i, loc) where FT = FT.(( 1/30, -13/60,  37/60, -21/20,  29/20,  1/6))
-@inline coeff_left_p(scheme::WENO{6, FT}, ::Val{5}, ::Type{Nothing}, dir, i, loc) where FT = FT.((-1/6,   31/30, -163/60, 79/20, -71/20,  49/20))
-
+# ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
     for stencil in collect(0:1:buffer-1)
-        @eval begin
-            @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil})                                      = Cl(scheme, Val($(buffer-stencil-1)))
-            @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, ::Type{Nothing}, args...) = reverse(coeff_left_p(scheme, Val($(buffer-stencil-1)), Nothing, args...)) 
 
+        # ENO coefficients for uniform direction (::Type{Nothing}) and stretched directions (T) directions 
+        @eval begin
+            @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = Cl(scheme, Val($(buffer-stencil-1)))
+
+            # uniform coefficients are independent on direction and location
+            @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
+            @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
+
+            # stretched coefficients are precalculated
             @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $stencil,     dir, i, loc)
             @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
+        end
     
+        # left biased and right biased reconstruction value for each stencil
+        @eval begin
             @inline  left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) =  sum(coeff_left_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
             @inline right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = sum(coeff_right_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
-            end
+        end
     end
 end
 
-# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are not allowed unless for 5th order WENO)
+# Retrieve precomputed coefficients (+2 for julia's 1 based indices)
+@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+2][i] 
+
+# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{0}) where FT = FT.((1, -2, 1))
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{1}) where FT = FT.((1, -2, 1))
 
@@ -205,6 +197,62 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     end
 end
 
+
+function calc_weno_stencil(buffer, shift, dir, func) 
+    N = buffer * 2
+    if shift != :none
+        N -=1
+    end
+    stencil_full = Vector(undef, buffer)
+    rng = 1:N
+    if shift == :right
+        rng = rng .+ 1
+    end
+    for stencil in 1:buffer
+        stencil_point = Vector(undef, buffer)
+        rngstencil = rng[stencil:stencil+buffer-1]
+        for (idx, n) in enumerate(rngstencil)
+            c = n - buffer - 1
+            if func 
+                stencil_point[idx] =  dir == :x ? 
+                                    :(ψ(i + $c, j, k, args...)) :
+                                    dir == :y ?
+                                    :(ψ(i, j + $c, k, args...)) :
+                                    :(ψ(i, j, k + $c, args...))
+            else    
+                stencil_point[idx] =  dir == :x ? 
+                                    :(ψ[i + $c, j, k]) :
+                                    dir == :y ?
+                                    :(ψ[i, j + $c, k]) :
+                                    :(ψ[i, j, k + $c])
+            end                
+        end
+        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
+    end
+    return :($(stencil_full...), )
+end
+
+for side in (:left, :right), dir in (:x, :y, :z)
+    stencil = Symbol(side, :_stencil_, dir)
+
+    for buffer in [2, 3, 4, 5, 6]
+        @eval begin
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true))
+        end
+    end
+end
+
+# Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
+# Parallel to the interpolation direction! (same as left/right stencil)
+for (vel, interp) in zip([:u, :v], [:ℑyᵃᶠᵃ, :ℑxᶠᵃᵃ]), side in [:left, :right], (dir, ξ) in zip([1, 2], (:x, :y))
+    tangential_stencil = Symbol(:tangential_, side, :_stencil_, vel)
+    biased_stencil = Symbol(side, :_stencil_, ξ)
+    @eval begin
+        @inline $tangential_stencil(i, j, k, scheme::WENO, ::Val{$dir}, $vel) = @inbounds $biased_stencil(i, j, k, scheme, $interp, $vel)
+    end
+end
+
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
@@ -255,7 +303,6 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                 w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
                 return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
             end
-
         end
     end
 end

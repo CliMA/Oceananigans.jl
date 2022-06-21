@@ -17,11 +17,8 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    CenteredSecondOrder,
-    UpwindBiasedFirstOrder,
-    UpwindBiasedThirdOrder,
-    UpwindBiasedFifthOrder,
-    CenteredFourthOrder,
+    Centered, CenteredSecondOrder, CenteredFourthOrder,
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENO3, WENO5, WENO7, WENO9, WENO11,
     VectorInvariant,
     EnergyConservingScheme,
@@ -30,32 +27,36 @@ export
 using DocStringExtensions
 
 using Base: @propagate_inbounds
+using Adapt 
+using OffsetArrays
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids
+using Oceananigans.Grids: with_halo, return_metrics
+using Oceananigans.Architectures: arch_array, architecture, CPU
+
 using Oceananigans.Operators
 
+import Base: show
 import Oceananigans.Grids: required_halo_size
 
 abstract type AbstractAdvectionScheme{Buffer} end
 abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 
-required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
+@inline boundary_buffer(::AbstractAdvectionScheme{N}) where N = N
+@inline required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 include("flat_advective_fluxes.jl")
 
-include("centered_second_order.jl")
-include("centered_fourth_order.jl")
-include("upwind_biased_first_order.jl")
-include("upwind_biased_third_order.jl")
-include("upwind_biased_fifth_order.jl")
-# include("weno_third_order.jl")
-# include("weno_fifth_order.jl")
-include("weno_utils.jl")
-include("weno_nth_order.jl")
-include("weno_tables.jl")
+include("reconstruction_coefficients.jl")
+include("centered_reconstruction.jl")
+include("upwind_biased_reconstruction.jl")
+include("weno_reconstruction.jl")
+include("weno_interpolants.jl")
+include("stretched_weno_smoothness.jl")
 include("vector_invariant_advection.jl")
 
 include("topologically_conditional_interpolation.jl")

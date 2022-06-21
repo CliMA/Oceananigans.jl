@@ -25,8 +25,8 @@ const AUG = AbstractUnderlyingGrid
 @inline outside_right_biased_bufferᶜ(i, N, adv) = i > boundary_buffer(adv) - 2 && i < N + 1 - boundary_buffer(adv)
 
 # Separate High order advection from low order advection
-const HOADV = Union{UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO, CenteredFourthOrder}
-const LOADV = Union{UpwindBiasedFirstOrder, CenteredSecondOrder, VectorInvariant}
+const HOADV = Union{WENO, Centered, UpwindBiased}
+const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
 const WVI   = WENOVectorInvariant
 
 for bias in (:symmetric, :left_biased, :right_biased)
