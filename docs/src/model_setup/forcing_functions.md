@@ -303,7 +303,7 @@ w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
 
 # output
-AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+AdvectiveForcing with the UpwindBiased scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-0.00352102)
