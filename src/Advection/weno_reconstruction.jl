@@ -32,6 +32,7 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
 
     "advection scheme used near boundaries"
     boundary_scheme :: CA
+    "reconstruction scheme used for symmetric interpolation"
     symmetric_scheme :: SI
 
     function WENO{N, FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
@@ -68,18 +69,15 @@ function WENO(FT::DataType=Float64;
     end
 
     if order < 3
-        return UpwindBiasedFirstOrder()
+        # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
+        return UpwindBiased(order = 1)
     else
         VI = typeof(vector_invariant)
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_stretched_weno_coefficients(grid, false, FT; order = N)
-        boundary_scheme = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
-        if N > 2
-            symmetric_scheme = CenteredFourthOrder()
-        else
-            symmetric_scheme = CenteredSecondOrder()
-        end
+        boundary_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
+        symmetric_scheme  = Centered(order = order - 1)
     end
 
     return WENO{N, FT, VI, zweno}(weno_coefficients[1:6]..., bounds, boundary_scheme, symmetric_scheme)
@@ -99,12 +97,19 @@ const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} =
 
 formulation(scheme::WENO) = scheme isa WENOVectorInvariant ? "Vector Invariant" : "Flux"
 
-function Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ}) where {N, FT, RX, RY, RZ}
-    print(io, "WENO advection scheme order $(N*2 -1) and a $(formulation(a)) form: \n",
+Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, " in ", formulation(a), " form")
+
+Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ}) where {N, FT, RX, RY, RZ} =
+    print(io, summary(a), " \n",
+              " Boundary scheme : ", "\n",
+              "    └── ", summary(a.boundary_scheme) , "\n",
+              " Symmetric scheme : ", "\n",
+              "    └── ", summary(a.symmetric_scheme) , "\n",
+              " Directions:", "\n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
-end
+
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N, FT, XT, YT, ZT, VI, WF, PP} =
      WENO{N, FT, VI, WF}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),

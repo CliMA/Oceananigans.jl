@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.Grids: znode
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
 
 arch = GPU()
@@ -17,14 +18,11 @@ L  = 25.0e3
 Lx = Δx*Nx
 Ly = Δx*Ny  
 
-args = ()
-
 f  = 1e-4
 N  = 1.5*f*L/H 
-bz = N * N
 
-gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2)) 
-@inline initial_buoyancy(x, y, z) = bz * (z + H)
+@inline gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2)) 
+@inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 
 grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4), 
                        x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0), 
@@ -32,31 +30,31 @@ grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4),
 
 ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_bump))
 
-restoring_bounds = Int(Nx / 8)
-λ = 1/(1days)
+parameters = (ΔB = 0.04,
+              h  = 1000.0,
+              Lz = H,
+              u₀ = 0.25,
+              v₀ = 0.0,
+              λ = 1/(5hours),
+              Nx = Nx,
+              bounds = (Nx ÷ 8))
 
-@inline function velocity_restoring_u(i, j, k, grid, clock, fields, p)
-    if i < p.bounds 
-        return - p.λ * (fields.u[i, j, k] - p.u₀) * (p.bounds - i) / p.bounds
-    elseif i > grid.Nx - p.bounds
-        return - p.λ * (fields.u[i, j, k] - p.u₀) * (i - grid.Nx + p.bounds) / p.bounds
-    else
-        return zero(grid)
-    end
+@inline mask(i, p) = i < p.bounds ? (p.bounds - i) / p.bounds : i > p.Nx - p.bounds ? (i - p.Nx + p.bounds) / p.bounds : 0.0
+
+@inline velocity_restoring_v(i, j, k, grid, clock, fields, p) = - p.λ * (fields.v[i, j, k] - p.v₀) * mask(i, p)
+@inline velocity_restoring_u(i, j, k, grid, clock, fields, p) = - p.λ * (fields.u[i, j, k] - p.u₀) * mask(i, p)
+
+@inline function buoyancy_restoring_b(i, j, k, grid, clock, fields, p)
+    z = znode(Center(), k, grid)
+    target_b = initial_buoyancy(z, p)
+    b = @inbounds fields.b[i, j, k]
+
+    return - p.λ * mask(i, p) * (b - target_b)
 end
 
-@inline function velocity_restoring_v(i, j, k, grid, clock, fields, p)
-    if i < p.bounds 
-        return - p.λ * (fields.v[i, j, k] - p.u₀) * (p.bounds - i) / p.bounds
-    elseif i > grid.Nx - p.bounds
-        return - p.λ * (fields.v[i, j, k] - p.u₀) * (i - grid.Nx + p.bounds) / p.bounds
-    else
-        return zero(grid)
-    end
-end
-
-u_forcing =  Forcing(velocity_restoring_u, discrete_form=true, parameters=(u₀ = 0.25, bounds = restoring_bounds, λ = λ))
-v_forcing =  Forcing(velocity_restoring_v, discrete_form=true, parameters=(u₀ = 0.00, bounds = restoring_bounds, λ = λ))
+u_forcing =  Forcing(velocity_restoring_u; discrete_form=true, parameters)
+v_forcing =  Forcing(velocity_restoring_v; discrete_form=true, parameters)
+b_forcing =  Forcing(buoyancy_restoring_b; discrete_form=true, parameters)
 
 buoyancy = BuoyancyTracer()
 
@@ -88,7 +86,7 @@ model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     free_surface = ImplicitFreeSurface(),
                                     tracers = :b, 
                                     tracer_advection = WENO5(nothing),
-                                    forcing = (; u = u_forcing), #, v = v_forcing),
+                                    forcing = (; u = u_forcing, v = v_forcing, b = b_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
                                     momentum_advection = WENO5(nothing, vector_invariant = VelocityStencil()))
 

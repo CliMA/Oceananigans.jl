@@ -1,11 +1,11 @@
 #####
-##### Centered fourth-order advection scheme
+##### Centered advection scheme
 #####
 
 """
-    struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme{2}
+    struct Centered <: AbstractCenteredAdvectionScheme{2}
 
-Centered fourth-order advection scheme.
+Centered reconstruction scheme.
 """
 struct Centered{N, CA} <: AbstractCenteredAdvectionScheme{N} 
     "advection scheme used near boundaries"
@@ -17,17 +17,21 @@ struct Centered{N, CA} <: AbstractCenteredAdvectionScheme{N}
 end
 
 function Centered(; order = 2) 
-
     N  = Int(order ÷ 2)
-
     if N > 1 
         boundary_scheme = Centered(order = order - 2)
     else
         boundary_scheme = nothing
     end
-
     return Centered{N}(boundary_scheme)
 end
+
+Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
+
+Base.show(io::IO, a::Centered{N}) where {N} =
+    print(io, summary(a), " \n",
+              " Boundary scheme : ", "\n",
+              "    └── ", summary(a.boundary_scheme))
 
 # Useful aliases
 CenteredSecondOrder() = Centered(order = 2)

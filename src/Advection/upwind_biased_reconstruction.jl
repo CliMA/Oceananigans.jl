@@ -8,8 +8,9 @@
 Upwind-biased fifth-order advection scheme.
 """
 struct UpwindBiased{N, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N} 
-    "advection scheme used near boundaries"
+    "reconstruction scheme used near boundaries"
     boundary_scheme :: CA
+    "reconstruction scheme used for symmetric interpolation"
     symmetric_scheme :: SI
 
     function UpwindBiased{N}(boundary_scheme::CA, symmetric_scheme::SI) where {N, CA, SI}
@@ -22,7 +23,7 @@ function UpwindBiased(; order = 5)
     N  = Int((order + 1) ÷ 2)
 
     if N > 1
-        symmetric_scheme = CenteredFourthOrder()
+        symmetric_scheme = Centered(order = order - 1)
         boundary_scheme = UpwindBiased(order = order - 2)
     else
         symmetric_scheme = CenteredSecondOrder()
@@ -31,6 +32,16 @@ function UpwindBiased(; order = 5)
 
     return UpwindBiased{N}(boundary_scheme, symmetric_scheme)
 end
+
+
+Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)
+
+Base.show(io::IO, a::UpwindBiased{N}) where {N} =
+    print(io, summary(a), " \n",
+              " Boundary scheme : ", "\n",
+              "    └── ", summary(a.boundary_scheme) , "\n",
+              " Symmetric scheme : ", "\n",
+              "    └── ", summary(a.symmetric_scheme))
 
 # Usefull aliases
 UpwindBiasedFirstOrder() = UpwindBiased(order = 1)

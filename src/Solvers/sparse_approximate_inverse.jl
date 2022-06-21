@@ -73,6 +73,7 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
 
     # this loop can be parallelized!
     for j = 1:n 
+        @show j, n
         # maximum number of elements in a column
         ncolmax = nzrel * nnz(A[:, j])
 

@@ -37,7 +37,7 @@ using Oceananigans.Architectures: arch_array, architecture, CPU
 
 using Oceananigans.Operators
 
-import Base: show
+import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 
 abstract type AbstractAdvectionScheme{Buffer} end
