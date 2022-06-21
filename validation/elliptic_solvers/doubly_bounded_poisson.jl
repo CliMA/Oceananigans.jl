@@ -4,7 +4,7 @@ using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, 
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver, MultigridSolver
 using Oceananigans.Architectures: architecture, arch_array
 using Statistics: mean
 using IterativeSolvers
@@ -12,35 +12,25 @@ using Statistics: mean
 using AlgebraicMultigrid
 using GLMakie
 using AlgebraicMultigrid: _solve!
+using SparseArrays
+using OffsetArrays
 
 import Oceananigans.Solvers: precondition!
 
-N = 24
+N = 64
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
 arch = architecture(grid)
 Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
+# Select RHS
 r = CenterField(grid)
 r₀(x, y, z) = (x^2 + y^2) < 1 ? 1 : 0 #exp(-x^2 - y^2)
 set!(r, r₀)
 r .-= mean(r)
 fill_halo_regions!(r, grid.architecture)
 
-# Solve ∇²φ = r with `FFTBasedPoissonSolver`
-φ_fft = CenterField(grid)
-
-fft_solver = FFTBasedPoissonSolver(grid)
-fft_solver.storage .= interior(r)
-
-@info "Solving the Poisson equation with an FFT-based solver..."
-@time solve!(φ_fft, fft_solver, fft_solver.storage)
-
-fill_halo_regions!(φ_fft)
-
-
-# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver`
 
 @kernel function ∇²!(∇²f, grid, f)
     i, j, k = @index(Global, NTuple)
@@ -57,60 +47,63 @@ function compute_∇²!(∇²φ, φ, arch, grid)
     return nothing
 end
 
+# Solve ∇²φ = r with `FFTBasedPoissonSolver`
+φ_fft = CenterField(grid)
+fft_solver = FFTBasedPoissonSolver(grid)
+fft_solver.storage .= interior(r)
+
+@info "Solving the Poisson equation with an FFT-based solver..."
+@time solve!(φ_fft, fft_solver, fft_solver.storage)
+
+fill_halo_regions!(φ_fft)
+
+
+# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver`
 φ_cg = CenterField(grid)
 cg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)))
 
-@info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver..."
+@info "Solving the Poisson equation with a conjugate gradient iterative solver..."
 @time solve!(φ_cg, cg_solver, r, arch, grid)
 
 fill_halo_regions!(φ_cg)
 
 
-# Solve ∇²φ = r with `HeptadiagonalIterativeSolver`
-
-Nx, Ny, Nz = size(grid)
-C = zeros(Nx, Ny, Nz)
-D = zeros(Nx, Ny, Nz)
-
-Ax = [1 / Δxᶠᶜᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
-Ay = [1 / Δyᶜᶠᵃ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
-Az = [1 / Δzᵃᵃᶠ(i, j, k, grid)^2 for i=1:Nx, j=1:Ny, k=1:Nz]
-
-hd_solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid)
-
-arch = architecture(grid)
-
-solution = arch_array(arch, zeros(Nx * Ny * Nz))
-solution .= interior(r)[:]
-r_hd = arch_array(arch, interior(r)[:])
-
-@info "Solving the Poisson equation with a heptadiagonal iterative solver..."
-@time solve!(solution, hd_solver, r_hd, 1.0)
-
-φ_hd = CenterField(grid)
-interior(φ_hd) .= reshape(solution, Nx, Ny, Nz)
-fill_halo_regions!(φ_hd)
-
-# Create matrix
-matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, (Ax, Ay, Az, C, D), (false, false, false))  
-
-
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
-A = arch_sparse_matrix(arch, matrix_constructors)
+function create_matrix(grid, linear_operator!, args...)
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    # Currently assuming Nz = 1
+    A = spzeros(Float64, Nx*Ny, Nx*Ny)
+
+    make_column(f) = reshape(interior(f), (Nx*Ny*Nz, 1))
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        eᵢⱼₖ = CenterField(grid)
+        eᵢⱼₖ[i, j, k] = 1
+        fill_halo_regions!(eᵢⱼₖ)
+        ∇²eᵢⱼₖ = CenterField(grid)
+
+        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
+
+        A[:, Nx*(j-1)+i] = make_column(∇²eᵢⱼₖ)  
+    end
+    return A
+end
+
+
+@info "Solving the Poisson equation with the Algebraic Multigrid solver..."
+A = create_matrix(grid, compute_∇²!, arch, grid)
 r_array = collect(reshape(interior(r), Nx * Ny * Nz))
 
-@info "Solving the Poisson equation with the Algebraic Multigrid iterative solver..."
 ml = ruge_stuben(A, maxiter=100)
 n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
 V = promote_type(eltype(ml.workspace), eltype(r_array))
 φ_mg_array = zeros(V, size(r_array))
 @show @allocated _solve!(φ_mg_array, ml, r_array)
-# @info "Solving the Poisson equation with the Algebraic Multigrid iterative solver (not in-place)..."
-# @time φ_mg_array2 = solve(A, r_array, RugeStubenAMG(), maxiter=100)
+# @info "Solving the Poisson equation with the Algebraic Multigrid solver (not in-place)..."
+# @time φ_mg_array = solve(A, r_array, RugeStubenAMG(), maxiter=100, verbose=true)
 
 φ_mg = CenterField(grid)
 interior(φ_mg) .= reshape(φ_mg_array, Nx, Ny, Nz)
-# interior(φ_mg) .-= mean(interior(φ_mg))
 fill_halo_regions!(φ_mg)
 
 
@@ -122,7 +115,7 @@ struct MultigridPreconditioner{M, A}
     amg_algorithm :: A
 end
 
-mgp = MultigridPreconditioner(A, 10, RugeStubenAMG())
+mgp = MultigridPreconditioner(A, 5, RugeStubenAMG())
 
 """
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
