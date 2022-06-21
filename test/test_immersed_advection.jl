@@ -44,7 +44,7 @@ end
 
 function run_tracer_conservation_test(grid, scheme)
 
-    model = HydrostaticFreeSurfaceModel(grid = g, tracers = :c, 
+    model = HydrostaticFreeSurfaceModel(grid = grid, tracers = :c, 
                                         free_surface = ExplicitFreeSurface(),
                                         tracer_advection = scheme, 
                                         buoyancy = nothing,
