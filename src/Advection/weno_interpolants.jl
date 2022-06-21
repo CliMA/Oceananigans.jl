@@ -197,7 +197,6 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     end
 end
 
-
 function calc_weno_stencil(buffer, shift, dir, func) 
     N = buffer * 2
     if shift != :none

@@ -38,8 +38,8 @@ function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3
 end
 
 # Coefficients for uniform centered and upwind schemes
-coeff1_left  = 1.0
-coeff1_right = 1.0
+const coeff1_left  = 1.0
+const coeff1_right = 1.0
 
 for buffer in [1, 2, 3, 4, 5]
     order_bias = 2buffer - 1
