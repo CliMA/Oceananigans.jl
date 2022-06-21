@@ -14,6 +14,11 @@ using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded
 
 const AUG = AbstractUnderlyingGrid
 
+# Bounded underlying Grids
+const AUGX = AUG{<:Any, <:Bounded}
+const AUGY = AUG{<:Any, <:Any, <:Bounded}
+const AUGZ = AUG{<:Any, <:Any, <:Any, <:Bounded}
+
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
@@ -46,45 +51,45 @@ for bias in (:symmetric, :left_biased, :right_biased)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
-            @eval $alt_interp(i, j, k, grid::AUG{<:Any, <:Bounded}, scheme::LOADV, args...)               = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUG{<:Any, <:Any, <:Bounded}, scheme::LOADV, args...)        = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUG{<:Any, <:Any, <:Any, <:Bounded}, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUGX, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUGY, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUGZ, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             
             outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::HOADV, ψ) where FT =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::WVI, ζ, VI, u, v) where FT =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WVI, ζ, VI, u, v) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
                 end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::HOADV, ψ) where {FT, TX} =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme::WVI, ζ, VI, u, v) where {FT, TX} =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WVI, ζ, VI, u, v) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ζ, VI, u, v))
                 end
             elseif ξ == :z
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::HOADV, ψ) where {FT, TX, TY} =
+                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ) =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme::WVI, ∂z, VI, u) where {FT, TX, TY} =
+                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::WVI, ∂z, VI, u) =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                 $interp(i, j, k, grid, scheme, ∂z, VI, u),
                                 $alt_interp(i, j, k, grid, scheme.boundary_scheme, ∂z, VI, u))
