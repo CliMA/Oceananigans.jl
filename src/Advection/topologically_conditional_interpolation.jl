@@ -15,9 +15,13 @@ using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded
 const AUG = AbstractUnderlyingGrid
 
 # Bounded underlying Grids
-const AUGX = AUG{<:Any, <:Bounded}
-const AUGY = AUG{<:Any, <:Any, <:Bounded}
-const AUGZ = AUG{<:Any, <:Any, <:Any, <:Bounded}
+const AUGX   = AUG{<:Any, <:Bounded}
+const AUGY   = AUG{<:Any, <:Any, <:Bounded}
+const AUGZ   = AUG{<:Any, <:Any, <:Any, <:Bounded}
+const AUGXY  = AUG{<:Any, <:Bounded, <:Bounded}
+const AUGXZ  = AUG{<:Any, <:Bounded, <:Any, <:Bounded}
+const AUGYZ  = AUG{<:Any, <:Any, <:Bounded, <:Bounded}
+const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
@@ -51,10 +55,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
-            @eval $alt_interp(i, j, k, grid::AUGX, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUGY, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUGZ, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            
+            for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
+                @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            end
+
             outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
             # Conditional high-order interpolation in Bounded directions
