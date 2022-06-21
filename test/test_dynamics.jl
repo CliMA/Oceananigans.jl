@@ -720,7 +720,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    # This alone runs for 2 hours on the GPU!!!!! (I Remove it for now...)
+    # This test alone runs for 2 hours on the GPU!!!!! (I Remove it for now...)
     @testset "Background rotation about arbitrary axis" begin
         for arch in archs
             if arch == CPU()
