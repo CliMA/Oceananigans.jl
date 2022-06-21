@@ -129,6 +129,7 @@ for arch in archs
                 @testset " Test immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]" begin
                     @info "Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                     run_tracer_conservation_test(g, scheme)
+                end
             end
         end
     end
