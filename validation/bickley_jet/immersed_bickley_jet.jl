@@ -46,9 +46,6 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     timescale = (5days / (6minutes) * Δt)
     @show prettytime(timescale)
 
-    @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
-    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
-
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                         tracer_advection = WENO(),
                                         grid = grid,
@@ -165,11 +162,11 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO(vector_invariant = VelocityStencil())]
+advection_schemes = [WENO(vector_invariant = VelocityStencil()), WENO()]
 
-for Nx in [512]
+for Nx in [256]
     for advection in advection_schemes
         experiment_name = run_immersed_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
-        # visualize_bickley_jet(experiment_name)
+        visualize_bickley_jet(experiment_name)
     end
 end

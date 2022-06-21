@@ -21,8 +21,8 @@ abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 #####
-##### For a grid fitted boundary we require one additional halo to check if the faces in the 
-##### advection stencil are immersed
+##### ImmersedBoundaryGrids require one additional halo to check `inactive_node` for
+##### Faces on the first halo
 #####
 
 #####

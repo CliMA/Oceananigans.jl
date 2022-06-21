@@ -64,7 +64,11 @@ for (gr, grid) in enumerate([grid_reg, grid_str])
             U = Field{Face, Center, Center}(grid)
             parent(U) .= vel
         
-            scheme = eval(Scheme)(grid, order = advection_order(buffer, eval(Scheme)))
+            if Scheme == :WENO
+                scheme = eval(Scheme)(grid, order = advection_order(buffer, eval(Scheme)), bounds = (0, 10))
+            else
+                scheme = eval(Scheme)(grid, order = advection_order(buffer, eval(Scheme)))
+            end
             @info "Scheme $(summary(scheme)) with velocity $vel"
 
             model  = HydrostaticFreeSurfaceModel(       grid = grid,

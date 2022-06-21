@@ -14,9 +14,9 @@ Nz = 40
 H  = 4500.0
 L  = 25.0e3
 Δh = 0.9H
-Δx = 5.0e3
-Lx = Δx*Nx
-Ly = Δx*Ny  
+dx = 5.0e3
+Lx = dx*Nx
+Ly = dx*Ny  
 
 f  = 1e-4
 N  = 1.5*f*L/H 
@@ -34,7 +34,7 @@ parameters = (ΔB = 0.04,
               Lz = H,
               u₀ = 0.25,
               v₀ = 0.0,
-              λ = 1/(5hours),
+              λ = 1/(1hours),
               Nx = Nx,
               bounds = (Nx ÷ 8))
 
@@ -97,7 +97,7 @@ u, v, w = model.velocities
 set!(b, (x, y, z) -> initial_buoyancy(z, parameters))
 
 wave_speed = sqrt(g * H)
-Δt = min(10minutes, 10*Δx / wave_speed)
+Δt = min(10minutes, 10*dx / wave_speed)
 
 simulation = Simulation(model, Δt = Δt, stop_time = 10days)
 
