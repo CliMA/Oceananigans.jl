@@ -56,7 +56,7 @@ function run_tracer_conservation_test(grid, scheme)
 
     η = model.free_surface.η
 
-    indices = model.grid == ibg ? (5:7, 3:6, 1) : (2:5, 3:6, 1)
+    indices = model.grid isa ImmersedBoundaryGrid ? (5:7, 3:6, 1) : (2:5, 3:6, 1)
 
     interior(η, indices...) .= - 0.05
     fill_halo_regions!(η)
