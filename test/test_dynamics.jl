@@ -720,10 +720,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
+    # This alone runs for 2 hours on the GPU!!!!! (I Remove it for now...)
     @testset "Background rotation about arbitrary axis" begin
         for arch in archs
-            @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
-            inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
+            if arch == CPU()
+                @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
+                inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
+            end
         end
     end
 end
