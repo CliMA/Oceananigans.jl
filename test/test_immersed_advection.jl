@@ -124,7 +124,7 @@ for arch in archs
             end
 
             grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
-            ibg  = ImmersedBoundaryGrid(arch, grid, GridFittedBoundary((x, y, z) -> (x < 2)))
+            ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
             for g in [grid, ibg]
                 @testset " Test immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]" begin
                     @info "Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
