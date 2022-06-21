@@ -115,7 +115,7 @@ for arch in archs
     @testset "Immersed tracer advection" begin
         @info "Running immersed advection tests..."
 
-        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5, 6]
+        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
             
             @testset " Test immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]" begin
@@ -123,7 +123,7 @@ for arch in archs
                 run_tracer_interpolation_test(arch, scheme)
             end
 
-            grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (4, 4, 4), topology=(Bounded, Periodic, Bounded))
+            grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
             ibg  = ImmersedBoundaryGrid(arch, grid, GridFittedBoundary((x, y, z) -> (x < 2)))
             for g in [grid, ibg]
                 @testset " Test immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]" begin
