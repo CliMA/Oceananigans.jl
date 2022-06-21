@@ -22,7 +22,6 @@ f  = 1e-4
 N  = 1.5*f*L/H 
 
 @inline gaussian_bump(x, y) = - H + Δh * exp( - (x^2 + y^2) / (2*L^2)) 
-@inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 
 grid = RectilinearGrid(arch, size = (Nx, Ny, Nz), halo = (4, 4, 4), 
                        x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-H, 0), 
@@ -39,7 +38,9 @@ parameters = (ΔB = 0.04,
               Nx = Nx,
               bounds = (Nx ÷ 8))
 
-@inline mask(i, p) = i < p.bounds ? (p.bounds - i) / p.bounds : i > p.Nx - p.bounds ? (i - p.Nx + p.bounds) / p.bounds : 0.0
+@inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
+
+@inline mask(i, p) = i < p.bounds ? (p.bounds - i) / (p.bounds - 1) : i > p.Nx - p.bounds ? (i - p.Nx + p.bounds) / p.bounds : 0.0
 
 @inline velocity_restoring_v(i, j, k, grid, clock, fields, p) = - p.λ * (fields.v[i, j, k] - p.v₀) * mask(i, p)
 @inline velocity_restoring_u(i, j, k, grid, clock, fields, p) = - p.λ * (fields.u[i, j, k] - p.u₀) * mask(i, p)
@@ -49,7 +50,7 @@ parameters = (ΔB = 0.04,
     target_b = initial_buoyancy(z, p)
     b = @inbounds fields.b[i, j, k]
 
-    return - p.λ * mask(i, p) * (b - target_b)
+    return - p.λ * (b - target_b) * mask(i, p) 
 end
 
 u_forcing =  Forcing(velocity_restoring_u; discrete_form=true, parameters)
@@ -85,15 +86,15 @@ model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
                                     tracers = :b, 
-                                    tracer_advection = WENO5(nothing),
+                                    tracer_advection = WENOFifthOrder(nothing),
                                     forcing = (; u = u_forcing, v = v_forcing, b = b_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
-                                    momentum_advection = WENO5(nothing, vector_invariant = VelocityStencil()))
+                                    momentum_advection = WENOFifthOrder(nothing, vector_invariant = VelocityStencil()))
 
 g  = model.free_surface.gravitational_acceleration
 b = model.tracers.b
 u, v, w = model.velocities
-set!(b, initial_buoyancy)
+set!(b, (x, y, z) -> initial_buoyancy(z, parameters))
 
 wave_speed = sqrt(g * H)
 Δt = min(10minutes, 10*Δx / wave_speed)

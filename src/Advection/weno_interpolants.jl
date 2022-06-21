@@ -32,14 +32,6 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
-# Retrieve precomputed coefficients (+2 for julia's 1 based indices)
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+2][i] 
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+2][i] 
-
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{0}) where FT = FT.((1, -2, 1))
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{1}) where FT = FT.((1, -2, 1))
@@ -96,7 +88,7 @@ end
 
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, reverse(ψ), coeff_β(scheme, Val($stencil)))
         @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($(buffer-stencil-1))))
     end
 end
@@ -271,7 +263,7 @@ end
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
     for side in (:left, :right)
-        interpolate_func = Symbol(:weno_, side, :_biased_interpolate_, interp)
+        interpolate_func = Symbol(:stretched_, side, :_biased_interpolate_, interp)
         stencil       = Symbol(side, :_stencil_, dir)
         weno_weights = Symbol(side, :_biased_weno_weights)
         biased_p = Symbol(side, :_biased_p)

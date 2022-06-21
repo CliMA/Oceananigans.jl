@@ -19,7 +19,7 @@ export
     AdvectionScheme,
     Centered, CenteredSecondOrder, CenteredFourthOrder,
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
-    WENO, WENO3, WENO5, WENO7, WENO9, WENO11,
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant,
     EnergyConservingScheme,
     EnstrophyConservingScheme

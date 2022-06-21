@@ -18,9 +18,9 @@ const BoundPreservingScheme = PositiveWENO
 end
 
 # Support for Flat directions
-@inline bounded_tracer_flux_divergence_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, args...) where {FT, TY, TZ} = zero(FT)
-@inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, args...) where {FT, TX, TZ} = zero(FT)
-@inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, args...) where {FT, TX, TY} = zero(FT)
+@inline bounded_tracer_flux_divergence_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, advection::BoundPreservingScheme, args...) where {FT, TY, TZ} = zero(FT)
+@inline bounded_tracer_flux_divergence_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, advection::BoundPreservingScheme, args...) where {FT, TX, TZ} = zero(FT)
+@inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, advection::BoundPreservingScheme, args...) where {FT, TX, TY} = zero(FT)
 
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundPreservingScheme, u, c)
 

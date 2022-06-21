@@ -21,6 +21,11 @@ abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 #####
+##### For a grid fitted boundary we require one additional halo to check if the faces in the 
+##### advection stencil are immersed
+#####
+
+#####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
 
@@ -47,7 +52,7 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
     new_ib = GridFittedBottom(offset_bottom_array)
-    return ImmersedBoundaryGrid(grid, new_ib)
+    return ImmersedBoundaryGrid(helper_grid, new_ib)
 end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom{<:OffsetArray})
@@ -115,8 +120,7 @@ end
 end
 
 function compute_mask(grid, ib)
-    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
-    mask_field = Field{Center, Center, Center}(helper_grid, Bool)
+    mask_field = Field{Center, Center, Center}(grid, Bool)
     set!(mask_field, ib.mask)
     fill_halo_regions!(mask_field)
     return mask_field
@@ -124,19 +128,22 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true)
     TX, TY, TZ = topology(grid)
+    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
 
     if precompute_mask
-        mask_field = compute_mask(grid, ib)
+        mask_field = compute_mask(helper_grid, ib)
         new_ib = GridFittedBoundary(mask_field)
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, new_ib)
     else
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, ib)
     end
 end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
+
+    return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, ib)
 end
 
 on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))

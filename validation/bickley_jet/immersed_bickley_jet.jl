@@ -13,7 +13,7 @@ using Oceananigans.Units
 using Oceananigans.Advection: EnergyConservingScheme
 using Oceananigans.OutputReaders: FieldTimeSeries
 
-using Oceananigans.Advection: WENO5VectorInvariantVel, WENO5VectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
+using Oceananigans.Advection: WENOVectorInvariantVel, WENOVectorInvariantVort, VectorInvariant, VelocityStencil, VorticityStencil
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom   
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
@@ -50,7 +50,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true) 
 
     model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         grid = grid,
                                         tracers = :c,
                                         closure = nothing,
@@ -86,10 +86,10 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 
     name = typeof(model.advection.momentum).name.wrapper
-    if model.advection.momentum isa WENO5VectorInvariantVel
+    if model.advection.momentum isa WENOVectorInvariantVel
         name = string(name) * "VectorInvariantVel"
     end
-    if model.advection.momentum isa WENO5VectorInvariantVort
+    if model.advection.momentum isa WENOVectorInvariantVort
         name = string(name) * "VectorInvariantVort"
     end
 
@@ -165,7 +165,7 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO5(vector_invariant = VelocityStencil())]
+advection_schemes = [WENO(vector_invariant = VelocityStencil())]
 
 for Nx in [512]
     for advection in advection_schemes
