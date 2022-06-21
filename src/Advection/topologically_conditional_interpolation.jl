@@ -45,6 +45,11 @@ for bias in (:symmetric, :left_biased, :right_biased)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
+            # Disambiguation
+            @eval $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme::LOADV, args...)               = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUG{FT, <:Any, <:Bounded}, scheme::LOADV, args...)        = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUG{FT, <:Any, <:Any, <:Bounded}, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            
             outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
 
             # Conditional high-order interpolation in Bounded directions

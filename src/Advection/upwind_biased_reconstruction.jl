@@ -11,16 +11,20 @@ struct UpwindBiased{N, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N}
     "advection scheme used near boundaries"
     boundary_scheme :: CA
     symmetric_scheme :: SI
+
+    function UpwindBiased{N}(boundary_scheme::CA, symmetric_scheme::SI) where {N, CA, SI}
+        return new{N, CA, SI}(boundary_scheme, symmetric_scheme)
+    end
 end
 
 function UpwindBiased(; order = 5) 
 
     N  = Int((order + 1) ÷ 2)
 
-    if N >= 2
+    if N > 1
         symmetric_scheme = CenteredFourthOrder()
         boundary_scheme = UpwindBiased(order = order - 2)
-    elseif N == 1
+    else
         symmetric_scheme = CenteredSecondOrder()
         boundary_scheme = nothing
     end
