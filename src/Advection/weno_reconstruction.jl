@@ -170,14 +170,6 @@ function create_interp_coefficients(FT, r, cpu_coord, arch, N; order)
     return OffsetArray(arch_array(arch, stencil), -1)
 end
 
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.symmetric_scheme, c)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO, c) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.symmetric_scheme, c)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO, c) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.symmetric_scheme, c)
-
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO, u) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.symmetric_scheme, u)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO, v) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.symmetric_scheme, v)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO, w) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.symmetric_scheme, w)
-
 # Unroll the functions to pass the coordinates in case of a stretched grid
 @inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO, ψ, args...)  = weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
 @inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO, ψ, args...)  = weno_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
