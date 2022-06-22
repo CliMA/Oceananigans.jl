@@ -68,7 +68,7 @@ Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} 
               "    └── ", summary(a.boundary_scheme) , "\n",
               " Symmetric scheme : ", "\n",
               "    └── ", summary(a.symmetric_scheme), "\n",
-              " Directions:", "\n",
+              " Directions :", "\n",
               "    ├── X $(XT == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(YT == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )

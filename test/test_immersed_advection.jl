@@ -20,16 +20,8 @@ advection_schemes = [Centered, UpwindBiased, WENO]
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
 
-function run_tracer_interpolation_test(arch, scheme)
-    grid = RectilinearGrid(size=(20, 20), extent=(20, 20), topology=(Bounded, Bounded, Flat))
-    ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+function run_tracer_interpolation_test(c, ibg, scheme)
 
-    c = CenterField(ibg)
-    set!(c, 1.0)
-    
-    wait(mask_immersed_field!(c))
-
-    fill_halo_regions!(c)
     for i in 6:19, j in 6:19
         if typeof(scheme) <: Centered
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c, 1) ≈ 1.0
@@ -74,20 +66,7 @@ function run_tracer_conservation_test(grid, scheme)
     return nothing
 end
 
-function run_momentum_interpolation_test(arch, scheme)
-    grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), topology=(Bounded, Bounded, Flat))
-    ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
-
-    u = XFaceField(ibg)
-    v = XFaceField(ibg)
-    set!(u, 1.0)
-    set!(v, 1.0)
-    
-    wait(mask_immersed_field!(u))
-    wait(mask_immersed_field!(v))
-
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+function run_momentum_interpolation_test(u, v, ibg, scheme)
 
     for i in 7:19, j in 7:19
         if typeof(scheme) <: Centered
@@ -112,37 +91,63 @@ function run_momentum_interpolation_test(arch, scheme)
 end
 
 for arch in archs
-    @testset "Immersed tracer advection" begin
-        @info "Running immersed advection tests..."
+    @testset "Immersed tracer reconstruction" begin
+        @info "Running immersed tracer reconstruction tests..."
 
+        grid = RectilinearGrid(size=(20, 20), extent=(20, 20), topology=(Bounded, Bounded, Flat))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+    
+        c = CenterField(ibg)
+        set!(c, 1.0)
+        wait(mask_immersed_field!(c))
+        fill_halo_regions!(c)
+    
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
             
-            @testset " Test immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]" begin
-                @info "Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
-                run_tracer_interpolation_test(arch, scheme)
-            end
+            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
+            run_tracer_interpolation_test(c, ibg, scheme)
+        end
+    end
 
-            grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
-            ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
+    @testset "Immersed tracer conservation" begin
+        @info "Running immersed tracer conservation tests..."
+
+        grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
+    
+        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
+            scheme = adv(order = advective_order(buffer, adv))
+        
             for g in [grid, ibg]
-                @testset " Test immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]" begin
-                    @info "Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
-                    run_tracer_conservation_test(g, scheme)
-                end
+                @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
+                run_tracer_conservation_test(g, scheme)
             end
         end
     end
 
-    @testset "Immersed momentum advection" begin
-        @info "Running immersed advection tests..."
+    @testset "Immersed momentum reconstruction" begin
+        @info "Running immersed momentum recontruction tests..."
+
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), topology=(Bounded, Bounded, Flat), halo = (6, 6, 6))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+
+        u = XFaceField(ibg)
+        v = XFaceField(ibg)
+        set!(u, 1.0)
+        set!(v, 1.0)
+
+        wait(mask_immersed_field!(u))
+        wait(mask_immersed_field!(v))
+
+        fill_halo_regions!(u)
+        fill_halo_regions!(v)
+
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
             
-            @testset " Test immersed momentum reconstruction [$(typeof(arch)), $(summary(adv))]" begin
-                @info "Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(adv))]"
-                run_momentum_interpolation_test(arch, scheme)
-            end
+            @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(adv))]"
+            run_momentum_interpolation_test(u, v, scheme, ibg)
         end
     end
 end

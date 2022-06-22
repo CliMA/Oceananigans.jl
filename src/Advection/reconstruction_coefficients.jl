@@ -160,7 +160,6 @@ function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
     return Expr(:call, :+, stencil_full...)
 end
 
-
 #####
 ##### Shenanigans for stretched directions
 #####

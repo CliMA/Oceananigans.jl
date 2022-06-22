@@ -110,7 +110,7 @@ function WENO(FT::DataType=Float64;
     end
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
-
+    
     if order < 3
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
         return UpwindBiased(order = 1)
@@ -144,17 +144,21 @@ const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} =
 const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} = 
       WENO{N, FT, XT, YT, ZT, VI, WF, PP} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
 
-formulation(scheme::WENO) = scheme isa WENOVectorInvariant ? "Vector Invariant" : "Flux"
+formulation(scheme::WENO)                = "Flux form"
+formulation(scheme::WENOVectorInvariant) = "Vector Invariant form"
 
-Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, " in ", formulation(a), " form")
+Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, " in ", formulation(a))
 
-Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ}) where {N, FT, RX, RY, RZ} =
+Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, RZ, VI, WF, PP} =
     print(io, summary(a), " \n",
+              " Smoothness formulation : ", "\n",
+              "    └── $(WF ? "Z-weno" : "JS-weno") $(VI<:SmoothnessStencil ? "using $VI" : "") \n",
+              a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
               " Boundary scheme : ", "\n",
               "    └── ", summary(a.boundary_scheme) , "\n",
               " Symmetric scheme : ", "\n",
               "    └── ", summary(a.symmetric_scheme) , "\n",
-              " Directions:", "\n",
+              " Directions :", "\n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
