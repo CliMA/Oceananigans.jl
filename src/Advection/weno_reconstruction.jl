@@ -48,12 +48,62 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
     end
 end
 
+"""
+    WENO(FT::DataType=Float64; 
+         order = 5,
+         grid = nothing, 
+         zweno = true, 
+         vector_invariant = nothing,
+         bounds = nothing)
+               
+Construct a weigthed essentially non-oscillatory advection scheme of order `order`.
+
+Keyword arguments
+=================
+
+- `order`: The order of the WENO advection scheme.
+- `grid`: (defaults to `nothing`)
+- `vector_invariant`: The stencil for which the vector-invariant form of the advection
+                      scheme would use. Options `VelocityStencil()` or `VorticityStencil()`;
+                      defaults to `nothing`.
+
+- `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation.
+           (defaults to `false`)
+
+Examples
+========
+```jldoctest
+julia> WENO()
+WENO reconstruction order 5 in Flux form
+ Boundary scheme :
+    └── WENO reconstruction order 3 in Flux form
+ Symmetric scheme :
+    └── Centered reconstruction order 4
+ Directions:
+    ├── X regular
+    ├── Y regular
+    └── Z regular
+```
+
+```jldoctest
+julia> WENO(order=7)
+WENO reconstruction order 7 in Flux form
+ Boundary scheme :
+    └── WENO reconstruction order 5 in Flux form
+ Symmetric scheme :
+    └── Centered reconstruction order 6
+ Directions:
+    ├── X regular
+    ├── Y regular
+    └── Z regular
+```
+"""
 function WENO(FT::DataType=Float64; 
-               order = 5,
-               grid = nothing, 
-               zweno = true, 
-               vector_invariant = nothing,
-               bounds = nothing)
+              order = 5,
+              grid = nothing, 
+              zweno = true, 
+              vector_invariant = nothing,
+              bounds = nothing)
     
     if !(grid isa Nothing) 
         FT = eltype(grid)
