@@ -165,8 +165,6 @@ save("plot_stretched_grid.svg", fig); nothing # hide
 A simple latitude-longitude grid with `Float64` type can be constructed by
 
 ```jldoctest
-julia> using Oceananigans
-
 julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
                                     longitude = (-180, 180),
                                     latitude = (-85, 85),
