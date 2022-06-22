@@ -133,7 +133,7 @@ for arch in archs
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
 
         u = XFaceField(ibg)
-        v = XFaceField(ibg)
+        v = YFaceField(ibg)
         set!(u, 1.0)
         set!(v, 1.0)
 
