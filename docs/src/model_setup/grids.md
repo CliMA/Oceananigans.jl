@@ -69,7 +69,7 @@ julia> grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded), size = (6
 └── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=31.25
 ```
 
-The `Flat` topology comes handy when running problems with less than 3 dimensions. As an example,
+The `Flat` topology comes in handy when running problems with fewer than 3 dimensions. As an example,
 to use a two-dimensional horizontal, doubly periodic domain the topology is `(Periodic, Periodic, Flat)`.
 In that case, the `size` and `extent` are 2-tuples, e.g.,
 
