@@ -4,7 +4,7 @@ using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, 
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver, MultigridSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver
 using Oceananigans.Architectures: architecture, arch_array
 using Statistics: mean
 using IterativeSolvers
@@ -72,19 +72,21 @@ fill_halo_regions!(φ_cg)
 function create_matrix(grid, linear_operator!, args...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     # Currently assuming Nz = 1
-    A = spzeros(Float64, Nx*Ny, Nx*Ny)
+    A = spzeros(eltype(grid), Nx*Ny, Nx*Ny)
 
     make_column(f) = reshape(interior(f), (Nx*Ny*Nz, 1))
 
+    eᵢⱼₖ = CenterField(grid)
+    ∇²eᵢⱼₖ = CenterField(grid)
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ = CenterField(grid)
+        eᵢⱼₖ .= 0
+        ∇²eᵢⱼₖ .= 0
         eᵢⱼₖ[i, j, k] = 1
         fill_halo_regions!(eᵢⱼₖ)
-        ∇²eᵢⱼₖ = CenterField(grid)
 
         linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
 
-        A[:, Nx*(j-1)+i] = make_column(∇²eᵢⱼₖ)  
+        A[:, Nx*(j-1)+i] = make_column(∇²eᵢⱼₖ)
     end
     return A
 end
