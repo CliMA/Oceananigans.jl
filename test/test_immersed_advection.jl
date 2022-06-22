@@ -136,7 +136,7 @@ for arch in archs
 
     @testset "Immersed momentum advection" begin
         @info "Running immersed advection tests..."
-        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5, 6]
+        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
             
             @testset " Test immersed momentum reconstruction [$(typeof(arch)), $(summary(adv))]" begin

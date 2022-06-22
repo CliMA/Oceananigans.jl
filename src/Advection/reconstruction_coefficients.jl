@@ -105,13 +105,13 @@ for buffer in [1, 2, 3, 4, 5, 6]
 end
 
 """ 
-    Stencils for reconstruction calculations 
+    Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
 
 The first argument is the buffer, not the order!! 
 
 `order = 2 * buffer`   for Centered reconstruction
 `order = 2 * buffer-1` for Upwind reconstruction
-
+   
 examples:
 julia> calc_reconstruction_stencil(1, :right, :x)
 :(+(coeff1_right[1] * ψ[i + 0, j, k]))
