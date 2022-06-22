@@ -1,9 +1,12 @@
 # Grids
 
-We currently `RectilinearGrid`s with either constant or variable grid spacings and also
-`LatitudeLongitudeGrid` on the sphere.
+The grids currently supported are:
+- `RectilinearGrid`s with either constant or variable grid spacings and
+- `LatitudeLongitudeGrid` on the sphere.
 
-The spacings can be different for each dimension.
+Each dimension can have different spacings.
+
+## `RectilinearGrid`
 
 A `RectilinearGrid` is constructed by specifying the `size` of the grid (a `Tuple` specifying
 the number of grid points in each direction) and either the `extent` (a `Tuple` specifying the
@@ -34,7 +37,7 @@ julia> grid = RectilinearGrid(size=(32, 64, 256), extent=(128, 256, 512))
     When using the `extent` keyword, e.g., `extent = (Lx, Ly, Lz)`, then the ``x \in [0, L_x]``,
     ``y \in [0, L_y]``, and ``z \in [-L_z, 0]`` -- a sensible choice for oceanographic applications.
 
-## Specifying the grid's architecture
+### Specifying the grid's architecture
 
 The first positional argument in either `RectilinearGrid` or `LatitudeLongitudeGrid` is the grid's
 architecture. By default `architecture = CPU()`. By providing `GPU()` as the `architecture` argument
@@ -48,7 +51,7 @@ julia> grid = RectilinearGrid(GPU(), size=(32, 64, 256), extent=(128, 256, 512))
 └── Bounded  z ∈ [-512.0, 0.0] regularly spaced with Δz=2.0
 ```
 
-## Specifying the grid's topology
+### Specifying the grid's topology
 
 Another crucial keyword is a 3-`Tuple` that specifies the grid's `topology`.
 In each direction the grid may be `Periodic`, `Bounded` or `Flat`.
@@ -67,10 +70,19 @@ julia> grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), size=(64, 6
 └── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=31.25
 ```
 
-The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
+The `Flat` topology comes handy when running problems with less than 3 dimensions. As an example,
 to use a two-dimensional horizontal, doubly periodic domain the topology is `(Periodic, Periodic, Flat)`.
+In that case, the `size` and `extent` are 2-tuples, e.g.,
 
-## Specifying domain end points
+```jldoctest
+julia> grid = RectilinearGrid(topology=(Periodic, Periodic, Flat), size=(32, 32), extent=(10, 20))
+32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [0.0, 10.0)      regularly spaced with Δx=0.3125
+├── Periodic y ∈ [0.0, 20.0)      regularly spaced with Δy=0.625
+└── Flat z
+```
+
+### Specifying domain end points
 
 To specify a domain with a different origin than the default, the `x`, `y`, and `z` keyword arguments must be used.
 For example, a grid with ``x \in [-100, 100]`` meters, ``y \in [0, 12.5]`` meters, and ``z \in [-\pi, \pi]`` meters
@@ -84,7 +96,7 @@ julia> grid = RectilinearGrid(size=(32, 16, 256), x=(-100, 100), y=(0, 12.5), z=
 └── Bounded  z ∈ [-3.14159, 3.14159] regularly spaced with Δz=0.0245437
 ```
 
-## Grids with non-regular spacing in some of the directions
+### Grids with non-regular spacing in some of the directions
 
 For a "channel" model, as the one we constructed above, one would probably like to have finer resolution near
 the channel walls. We construct a grid that has non-regular spacing in the bounded dimensions, here ``y`` and ``z``
@@ -148,6 +160,7 @@ save("plot_stretched_grid.svg", fig); nothing # hide
 
 ![](plot_stretched_grid.svg)
 
+## `LatitudeLongitudeGrid`
 
 A simple latitude-longitude grid with `Float64` type can be constructed by
 
