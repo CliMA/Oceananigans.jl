@@ -86,16 +86,27 @@ WENO reconstruction order 5 in Flux form
 ```
 
 ```jldoctest
-julia> WENO(order=7)
-WENO reconstruction order 7 in Flux form
+julia> Nx, Nz = 16, 10;
+
+julia> Lx, Lz = 1e4, 1e3;
+
+julia> chebychev_spaced_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+
+julia> grid = RectilinearGrid(size = (Nx, Nz), topology=(Periodic, Flat, Bounded),
+                              x = (0, Lx), z = chebychev_spaced_z_faces);
+
+julia> WENO(order=5; grid)
+WENO reconstruction order 5 in Flux form
+ Smoothness formulation:
+    └── Z-weno
  Boundary scheme:
-    └── WENO reconstruction order 5 in Flux form
+    └── WENO reconstruction order 3 in Flux form
  Symmetric scheme:
-    └── Centered reconstruction order 6
+    └── Centered reconstruction order 4
  Directions:
     ├── X regular
     ├── Y regular
-    └── Z regular
+    └── Z stretched
 ```
 """
 function WENO(FT::DataType=Float64; 
