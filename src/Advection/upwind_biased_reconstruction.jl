@@ -83,9 +83,9 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
 # Usefull aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
 
-UpwindBiasedFirstOrder(FT::DataType=Float64) = UpwindBiased(nothing, FT; order = 1)
-UpwindBiasedThirdOrder(FT::DataType=Float64) = UpwindBiased(nothing, FT; order = 3)
-UpwindBiasedFifthOrder(FT::DataType=Float64) = UpwindBiased(nothing, FT; order = 5)
+UpwindBiasedFirstOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 1)
+UpwindBiasedThirdOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 3)
+UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 5)
 
 # symmetric interpolation for UpwindBiased and WENO
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.symmetric_scheme, c)

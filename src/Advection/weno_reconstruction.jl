@@ -76,11 +76,11 @@ function WENO(FT::DataType=Float64;
     return WENO{N, FT, VI, zweno}(weno_coefficients..., bounds, boundary_scheme, symmetric_scheme)
 end
 
-WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid = grid, kwargs...)
+WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
 
 # Some usefull aliases
-WENOThirdOrder(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 3,  kwargs...)
-WENOFifthOrder(grid, FT::DataType=Float64;  kwargs...) = WENO(FT; grid = grid, order = 5,  kwargs...)
+WENOThirdOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=3, kwargs...)
+WENOFifthOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=5, kwargs...)
 
 # Flavours of WENO
 const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}

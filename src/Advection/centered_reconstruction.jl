@@ -76,8 +76,8 @@ Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 
-CenteredSecondOrder(FT::DataType=Float64) = Centered(nothing, FT; order = 2)
-CenteredFourthOrder(FT::DataType=Float64) = Centered(nothing, FT; order = 4)
+CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
+CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
 # uniform centered reconstruction
 for buffer in [1, 2, 3, 4, 5]
