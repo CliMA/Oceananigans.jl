@@ -143,7 +143,7 @@ ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 
 lines!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 scatter!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
-save("plot_stretched_grid.svg"); nothing # hide
+save("plot_stretched_grid.svg", fig); nothing # hide
 ```
 
 ![](plot_stretched_grid.svg)
