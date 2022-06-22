@@ -41,15 +41,19 @@ function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive)
 end
 
 """
-Coefficients for finite-volume polynomial reconstruction of order `order` at stencil r 
-xi and xr are respectively:
+    stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
 
-- the locations of the reconstructing value 
-   i.e. either the center coordinate, for centered quantities or face coordinate for staggered
-- the opposite of the reconstruction location desired
-   i.e., if a recostruction at `Center`s is required xr is the face coordinate
+Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 
-On a uniform grid coefficients are independent of the xr and xi values.
+Positional Arguments
+====================
+
+- `xi`: the locations of the reconstructing value, i.e. either the center coordinate,
+  for centered quantities or face coordinate for staggered
+- `xr`: the opposite of the reconstruction location desired, i.e., if a recostruction at
+  `Center`s is required xr is the face coordinate
+
+On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
 function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
     coeffs = zeros(order)
