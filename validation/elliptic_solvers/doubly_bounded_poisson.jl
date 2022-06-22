@@ -94,7 +94,8 @@ end
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
 A = create_matrix(grid, compute_∇²!, arch, grid)
-r_array = collect(reshape(interior(r), Nx * Ny * Nz))
+
+r_array = array_type(arch)(reshape(interior(r), Nx * Ny * Nz))
 
 ml = ruge_stuben(A, maxiter=100)
 n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
@@ -127,7 +128,7 @@ Return `z` (Field)
 function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     Nx, Ny, Nz = r.grid.Nx, r.grid.Ny, r.grid.Nz
     
-    r_array = collect(reshape(interior(r), Nx * Ny * Nz))
+    r_array = array_type(arch)(reshape(interior(r), Nx * Ny * Nz))
 
     z_array = solve(mgp.matrix_operator, r_array, mgp.amg_algorithm, maxiter=mgp.maxiter)
 
