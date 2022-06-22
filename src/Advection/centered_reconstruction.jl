@@ -80,7 +80,7 @@ CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; ord
 CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
 # uniform centered reconstruction
-for buffer in [1, 2, 3, 4, 5]
+for buffer in [1, 2, 3, 4, 5, 6]
     @eval begin
         @inline stretched_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT= @inbounds $(calc_reconstruction_stencil(buffer, :symm, :x, false))
         @inline stretched_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT= @inbounds $(calc_reconstruction_stencil(buffer, :symm, :x,  true))
@@ -97,7 +97,7 @@ end
 for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
     stencil = Symbol(:stretched_symmetric_interpolate_, dir)
 
-    for buffer in [1, 2, 3, 4, 5]
+    for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
             @inline $stencil(i, j, k, grid, scheme::Centered{$buffer}, ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, :symm, ξ, false)) .* retrieve_coeff(scheme, Val($val), idx, loc))
             @inline $stencil(i, j, k, grid, scheme::Centered{$buffer}, ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, :symm, ξ,  true)) .* retrieve_coeff(scheme, Val($val), idx, loc))
