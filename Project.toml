@@ -40,6 +40,7 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 Adapt = "^3"
+AlgebraicMultigrid = "0.5"
 CUDA = "3.8, 3.9"
 CUDAKernels = "0.3.3, 0.4"
 Crayons = "^4"
