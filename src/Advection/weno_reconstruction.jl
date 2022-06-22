@@ -75,9 +75,9 @@ Examples
 ```jldoctest
 julia> WENO()
 WENO reconstruction order 5 in Flux form
- Boundary scheme :
+ Boundary scheme:
     └── WENO reconstruction order 3 in Flux form
- Symmetric scheme :
+ Symmetric scheme:
     └── Centered reconstruction order 4
  Directions:
     ├── X regular
@@ -88,9 +88,9 @@ WENO reconstruction order 5 in Flux form
 ```jldoctest
 julia> WENO(order=7)
 WENO reconstruction order 7 in Flux form
- Boundary scheme :
+ Boundary scheme:
     └── WENO reconstruction order 5 in Flux form
- Symmetric scheme :
+ Symmetric scheme:
     └── Centered reconstruction order 6
  Directions:
     ├── X regular
@@ -151,14 +151,14 @@ Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, "
 
 Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, RZ, VI, WF, PP} =
     print(io, summary(a), " \n",
-              " Smoothness formulation : ", "\n",
+              " Smoothness formulation: ", "\n",
               "    └── $(WF ? "Z-weno" : "JS-weno") $(VI<:SmoothnessStencil ? "using $VI" : "") \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Boundary scheme : ", "\n",
+              " Boundary scheme: ", "\n",
               "    └── ", summary(a.boundary_scheme) , "\n",
-              " Symmetric scheme : ", "\n",
+              " Symmetric scheme: ", "\n",
               "    └── ", summary(a.symmetric_scheme) , "\n",
-              " Directions :", "\n",
+              " Directions:", "\n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
