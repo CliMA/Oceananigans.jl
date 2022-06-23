@@ -2,10 +2,10 @@
 
 # Optimal WENO coefficients
 @inline Cl(::WENO{2}, ::Val{0}) = 2/3;   @inline Cl(::WENO{2}, ::Val{1}) = 1/3
-@inline Cl(::WENO{3}, ::Val{0}) = 3/10;  @inline Cl(::WENO{3}, ::Val{1}) = 3/5;   @inline Cl(::WENO{3}, ::Val{2}) = 1/10
-@inline Cl(::WENO{4}, ::Val{0}) = 1/35;  @inline Cl(::WENO{4}, ::Val{1}) = 12/35; @inline Cl(::WENO{4}, ::Val{2}) = 18/35; @inline Cl(::WENO{4}, ::Val{3}) = 4/35
-@inline Cl(::WENO{5}, ::Val{0}) = 1/126; @inline Cl(::WENO{5}, ::Val{1}) = 10/63; @inline Cl(::WENO{5}, ::Val{2}) = 10/21; @inline Cl(::WENO{5}, ::Val{3}) = 20/63;   @inline Cl(::WENO{5}, ::Val{4}) = 5/126
-@inline Cl(::WENO{6}, ::Val{0}) = 1/462; @inline Cl(::WENO{6}, ::Val{1}) = 5/77;  @inline Cl(::WENO{6}, ::Val{2}) = 25/77; @inline Cl(::WENO{6}, ::Val{3}) = 100/231; @inline Cl(::WENO{6}, ::Val{4}) = 25/154; @inline Cl(::WENO{6}, ::Val{5}) = 1/77
+@inline Cl(::WENO{3}, ::Val{0}) = 3/10;  @inline Cl(::WENO{3}, ::Val{1}) = 3/5;    @inline Cl(::WENO{3}, ::Val{2}) = 1/10
+@inline Cl(::WENO{4}, ::Val{0}) = 4/35;  @inline Cl(::WENO{4}, ::Val{1}) = 18/35;  @inline Cl(::WENO{4}, ::Val{2}) = 12/35;   @inline Cl(::WENO{4}, ::Val{3}) = 1/35;  
+@inline Cl(::WENO{5}, ::Val{0}) = 5/126; @inline Cl(::WENO{5}, ::Val{1}) = 20/63;  @inline Cl(::WENO{5}, ::Val{2}) = 10/21;   @inline Cl(::WENO{5}, ::Val{3}) = 10/63; @inline Cl(::WENO{5}, ::Val{4}) = 1/126; 
+@inline Cl(::WENO{6}, ::Val{0}) = 1/77;  @inline Cl(::WENO{6}, ::Val{1}) = 25/154; @inline Cl(::WENO{6}, ::Val{2}) = 100/231; @inline Cl(::WENO{6}, ::Val{3}) = 25/77; @inline Cl(::WENO{6}, ::Val{4}) = 5/77;  @inline Cl(::WENO{6}, ::Val{5}) = 1/462;
 
 # ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
@@ -40,23 +40,23 @@ end
 @inline coeff_β(scheme::WENO{3, FT}, ::Val{1}) where FT = FT.((4,  -13, 5,  13, -13, 4))
 @inline coeff_β(scheme::WENO{3, FT}, ::Val{2}) where FT = FT.((4,  -19, 11, 25, -31, 10))
 
-@inline coeff_β(scheme::WENO{4, FT}, ::Val{0}) where FT = FT.((547,  -3882, 4642, -1854, 7043,  -17246, 7042, 11003, -9402, 2107))
-@inline coeff_β(scheme::WENO{4, FT}, ::Val{1}) where FT = FT.((267,  -1642, 1602, -494,  2843,  -5966,  1922, 3443,  -2522,  547))
-@inline coeff_β(scheme::WENO{4, FT}, ::Val{2}) where FT = FT.((547,  -2522, 1922, -494,  3443,  -5966,  1602, 2843,  -1642,  267))
-@inline coeff_β(scheme::WENO{4, FT}, ::Val{3}) where FT = FT.((2107, -9402, 7042, -1854, 11003, -17246, 4642, 7043,  -3882,  547))
+@inline coeff_β(scheme::WENO{4, FT}, ::Val{0}) where FT = FT.((2107, -9402, 7042, -1854, 11003, -17246, 4642, 7043,  -3882,  547))
+@inline coeff_β(scheme::WENO{4, FT}, ::Val{1}) where FT = FT.((547,  -2522, 1922, -494,  3443,  -5966,  1602, 2843,  -1642,  267))
+@inline coeff_β(scheme::WENO{4, FT}, ::Val{2}) where FT = FT.((267,  -1642, 1602, -494,  2843,  -5966,  1922, 3443,  -2522,  547))
+@inline coeff_β(scheme::WENO{4, FT}, ::Val{3}) where FT = FT.((547,  -3882, 4642, -1854, 7043,  -17246, 7042, 11003, -9402, 2107))
 
-@inline coeff_β(scheme::WENO{5, FT}, ::Val{0}) where FT = FT.((22658,  -208501, 364863, -288007, 86329, 482963,  -1704396, 1358458, -411487, 1521393, -2462076, 758823, 1020563, -649501, 107918))
-@inline coeff_β(scheme::WENO{5, FT}, ::Val{1}) where FT = FT.((6908,   -60871,  99213,  -70237,  18079, 138563,  -464976,  337018,  -88297,  406293,  -611976,  165153, 242723,  -140251,  22658))
+@inline coeff_β(scheme::WENO{5, FT}, ::Val{0}) where FT = FT.((107918, -649501, 758823, -411487, 86329, 1020563, -2462076, 1358458, -288007, 1521393, -1704396, 364863, 482963,  -208501,  22658))
+@inline coeff_β(scheme::WENO{5, FT}, ::Val{1}) where FT = FT.((22658,  -140251, 165153, -88297,  18079, 242723,  -611976,  337018,  -70237,  406293,  -464976,  99213,  138563,  -60871,    6908))
 @inline coeff_β(scheme::WENO{5, FT}, ::Val{2}) where FT = FT.((6908,   -51001,  67923,  -38947,  8209,  104963,  -299076,  179098,  -38947,  231153,  -299076,  67923,  104963,  -51001,    6908))
-@inline coeff_β(scheme::WENO{5, FT}, ::Val{3}) where FT = FT.((22658,  -140251, 165153, -88297,  18079, 242723,  -611976,  337018,  -70237,  406293,  -464976,  99213,  138563,  -60871,    6908))
-@inline coeff_β(scheme::WENO{5, FT}, ::Val{4}) where FT = FT.((107918, -649501, 758823, -411487, 86329, 1020563, -2462076, 1358458, -288007, 1521393, -1704396, 364863, 482963,  -208501,  22658))
+@inline coeff_β(scheme::WENO{5, FT}, ::Val{3}) where FT = FT.((6908,   -60871,  99213,  -70237,  18079, 138563,  -464976,  337018,  -88297,  406293,  -611976,  165153, 242723,  -140251,  22658))
+@inline coeff_β(scheme::WENO{5, FT}, ::Val{4}) where FT = FT.((22658,  -208501, 364863, -288007, 86329, 482963,  -1704396, 1358458, -411487, 1521393, -2462076, 758823, 1020563, -649501, 107918))
 
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{0}) where FT = FT.((1152561, -12950184, 29442256, -33918804, 19834350, -4712740, 36480687, -166461044, 192596472, -113206788, 27060170, 190757572, -444003904, 262901672, -63394124, 260445372, -311771244, 76206736, 94851237, -47460464, 6150211))
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{1}) where FT = FT.((271779,  -3015728,  6694608,  -7408908,  4067018,  -880548,  8449957,  -37913324,  42405032,  -23510468,  5134574,  43093692,  -97838784,  55053752,  -12183636, 56662212,  -65224244,  14742480, 19365967, -9117992,  1152561))
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{2}) where FT = FT.((139633,  -1429976,  2863984,  -2792660,  1325006,  -245620,  3824847,  -15880404,  15929912,  -7727988,   1458762,  17195652,  -35817664,  17905032,  -3462252,  19510972,  -20427884,  4086352,  5653317,  -2380800,  271779))
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{3}) where FT = FT.((271779,  -2380800,  4086352,  -3462252,  1458762,  -245620,  5653317,  -20427884,  17905032,  -7727988,   1325006,  19510972,  -35817664,  15929912,  -2792660,  17195652,  -15880404,  2863984,  3824847,  -1429976,  139633))
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{4}) where FT = FT.((1152561, -9117992,  14742480, -12183636, 5134574,  -880548,  19365967, -65224244,  55053752,  -23510468,  4067018,  56662212,  -97838784,  42405032,  -7408908,  43093692,  -37913324,  6694608,  8449957,  -3015728,  271779))
-@inline coeff_β(scheme::WENO{6, FT}, ::Val{5}) where FT = FT.((6150211, -47460464, 76206736, -63394124, 27060170, -4712740, 94851237, -311771244, 262901672, -113206788, 19834350, 260445372, -444003904, 192596472, -33918804, 190757572, -166461044, 29442256, 36480687, -12950184, 1152561))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{0}) where FT = FT.((6150211, -47460464, 76206736, -63394124, 27060170, -4712740, 94851237, -311771244, 262901672, -113206788, 19834350, 260445372, -444003904, 192596472, -33918804, 190757572, -166461044, 29442256, 36480687, -12950184, 1152561))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{1}) where FT = FT.((1152561, -9117992,  14742480, -12183636, 5134574,  -880548,  19365967, -65224244,  55053752,  -23510468,  4067018,  56662212,  -97838784,  42405032,  -7408908,  43093692,  -37913324,  6694608,  8449957,  -3015728,  271779))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{2}) where FT = FT.((271779,  -2380800,  4086352,  -3462252,  1458762,  -245620,  5653317,  -20427884,  17905032,  -7727988,   1325006,  19510972,  -35817664,  15929912,  -2792660,  17195652,  -15880404,  2863984,  3824847,  -1429976,  139633))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{3}) where FT = FT.((139633,  -1429976,  2863984,  -2792660,  1325006,  -245620,  3824847,  -15880404,  15929912,  -7727988,   1458762,  17195652,  -35817664,  17905032,  -3462252,  19510972,  -20427884,  4086352,  5653317,  -2380800,  271779))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{4}) where FT = FT.((271779,  -3015728,  6694608,  -7408908,  4067018,  -880548,  8449957,  -37913324,  42405032,  -23510468,  5134574,  43093692,  -97838784,  55053752,  -12183636, 56662212,  -65224244,  14742480, 19365967, -9117992,  1152561))
+@inline coeff_β(scheme::WENO{6, FT}, ::Val{5}) where FT = FT.((1152561, -12950184, 29442256, -33918804, 19834350, -4712740, 36480687, -166461044, 192596472, -113206788, 27060170, 190757572, -444003904, 262901672, -63394124, 260445372, -311771244, 76206736, 94851237, -47460464, 6150211))
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
@@ -88,8 +88,8 @@ end
 
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, reverse(ψ), coeff_β(scheme, Val($stencil)))
-        @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($(buffer-stencil-1))))
+        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, reverse(ψ), coeff_β(scheme, Val($(buffer-stencil-1))))
     end
 end
 
@@ -122,7 +122,7 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline       beta_loop(scheme::WENO{$buffer}, ψ, func)           = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ₅, coeff, FT) = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
         @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end

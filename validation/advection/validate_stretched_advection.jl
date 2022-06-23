@@ -58,18 +58,14 @@ for (gr, grid) in enumerate([grid_reg, grid_str])
     end_time = 2.0
     @show tot_iter = end_time ÷ Δt_max
                                             
-    for buffer in [1, 2, 3, 4, 5]
-        for Scheme in Schemes[2:3], vel in [1, -1]
+    for buffer in [1, 2, 3, 4, 5, 6]
+        for Scheme in Schemes[1:3], advection_grid in [nothing, grid]
             
             U = Field{Face, Center, Center}(grid)
-            parent(U) .= vel
+            parent(U) .= 1
         
-            if Scheme == :WENO
-                scheme = eval(Scheme)(grid, order = advection_order(buffer, eval(Scheme)), bounds = (0, 10))
-            else
-                scheme = eval(Scheme)(grid, order = advection_order(buffer, eval(Scheme)))
-            end
-            @info "Scheme $(summary(scheme)) with velocity $vel"
+            scheme = eval(Scheme)(advection_grid, order = advection_order(buffer, eval(Scheme)))
+            @info "Scheme $(summary(scheme))" # with velocity $vel"
 
             model  = HydrostaticFreeSurfaceModel(       grid = grid,
                                                     tracers = :c,
@@ -84,7 +80,7 @@ for (gr, grid) in enumerate([grid_reg, grid_str])
         
             for i = 1:tot_iter÷10
                 csim  = Array(interior(c, :, 1, 1))
-                solution[(Scheme, Int(i), Int(vel != 1))] = csim
+                solution[(Scheme, Int(i), grid_or_not(advection_grid))] = csim
                 for j = 1:10
                     time_step!(model, Δt_max)
                 end
@@ -96,13 +92,23 @@ for (gr, grid) in enumerate([grid_reg, grid_str])
 
         anim = @animate for i ∈ 1:tot_iter÷10
             plot(x, c₀_1D(x, 1, 1), seriestype=:scatter, ylims = (-3, 13), legend = false, title ="red: Centered, blue: Upwind, green: WENO, buffer = $buffer") 
-            # plot!(x, solution[(Schemes[1], Int(i), 1)], ylims = (-3, 13), linewidth = 1, linecolor =:red  , legend = false) 
+            plot!(x, solution[(Schemes[1], Int(i), 1)], ylims = (-3, 13), linewidth = 1, linecolor =:red  , legend = false) 
             plot!(x, solution[(Schemes[2], Int(i), 1)], ylims = (-3, 13), linewidth = 1, linecolor =:blue , legend = false) 
             plot!(x, solution[(Schemes[3], Int(i), 1)], ylims = (-3, 13), linewidth = 1, linecolor =:green, legend = false)
-            # plot!(x, reverse(solution[(Schemes[1], Int(i), 0)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:red  , legend = false) 
-            plot!(x, reverse(solution[(Schemes[2], Int(i), 0)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:blue , legend = false) 
-            plot!(x, reverse(solution[(Schemes[3], Int(i), 0)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:green, legend = false)
+            plot!(x, reverse(solution[(Schemes[1], Int(i), 2)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:red  , legend = false) 
+            plot!(x, reverse(solution[(Schemes[2], Int(i), 2)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:blue , legend = false) 
+            plot!(x, reverse(solution[(Schemes[3], Int(i), 2)]), ylims = (-3, 13), linestyle=:dash, linewidth = 1, linecolor =:green, legend = false)
         end 
         mp4(anim, "anim_1D_$(gr)_$(buffer).mp4", fps = 15)
     end
+end
+
+zttv1 = []
+zttv2 = []
+for Nh in [100, 200, 800]
+    filev1 = jldopen("energy_vorticity_$(Nh)_VorticityStencil.jld2")
+    filev2 = jldopen("energy_vorticity_$(Nh)_VelocityStencil.jld2")
+
+    push!(zttv1, filev1["vorticity"])
+    push!(zttv2, filev2["vorticity"])
 end

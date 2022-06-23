@@ -5,8 +5,10 @@ using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Statistics: mean
 
 arch = GPU()
-Nh = 400
-stencil = VelocityStencil
+
+for Nh in [1600], stencil in [VorticityStencil, VelocityStencil]
+# Nh = 200
+# stencil = VorticityStencil
 
 grid = RectilinearGrid(arch, size = (Nh, Nh), x = (0, 1), y = (0, 1), halo = (4, 4), topology = (Bounded, Bounded, Flat))
 
@@ -16,11 +18,11 @@ H  = 1.0
 R = (g*H)^0.5 / f
 
 model = ShallowWaterModel(grid = grid,
-                        gravitational_acceleration = g,
-                        coriolis = FPlane(f = f),
-                        mass_advection = WENO(),
-                        momentum_advection = WENO(vector_invariant = stencil()),
-                        formulation = VectorInvariantFormulation())
+                          gravitational_acceleration = g,
+                          coriolis = FPlane(f = f),
+                          mass_advection = WENO(),
+                          momentum_advection = WENO(vector_invariant = stencil()),
+                          formulation = VectorInvariantFormulation())
 
 # Model initialization
 h₀ = 0.2
@@ -43,9 +45,9 @@ g = model.gravitational_acceleration
 gravity_wave_speed = sqrt(g * maximum(model.solution.h)) # hydrostatic (shallow water) gravity wave speed
 
 # Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = (grid.Lx / grid.Nx) / gravity_wave_speed
+wave_propagation_time_scale = grid.Δx / gravity_wave_speed
 
-Δt = wave_propagation_time_scale * 0.1
+Δt = wave_propagation_time_scale * 0.05
 
 simulation = Simulation(model, Δt = Δt, stop_time = 10)
 start_time = [time_ns()]
@@ -79,9 +81,12 @@ PE = Field(g * h^2)
 compute!(KE)
 compute!(PE)
 
+PV = Field((ζ + f) / h)
+compute!(PV)
+
 save_interval = 0.1
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ, KE, PE),
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ, KE, PE, PV),
                                                             schedule = TimeInterval(save_interval),
                                                             filename = "vortex_merger_$(Nh)_$stencil",
                                                             overwrite_existing = true)
@@ -111,7 +116,7 @@ end
 
 jldsave("energy_vorticity_$(Nh)_$stencil.jld2", energy = ett, vorticity = ztt)
 
-file = jldopen("vortex_merger_1600_VelocityStencil.jld2")
+file = jldopen("vortex_merger_$(Nh)_$stencil.jld2")
 using CairoMakie
 
 iter = Observable(0)
@@ -119,6 +124,9 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 ζ′ = @lift(file["timeseries/ζ/" * string($iter)][:, 1:end-1, 1])
 h′ = @lift(file["timeseries/h/" * string($iter)][:, 1:end-1, 1])
+
+PV = @lift(file["timeseries/PV/" * string($iter)][:, :, 1]')
+
 xζ, yζ, z = nodes((Face, Face, Center), grid)
 xh, yh, z = nodes((Center, Center, Center), grid)
 
@@ -126,10 +134,15 @@ title = @lift(@sprintf("Vorticity in Shallow Water Model at time = %s", prettyti
 fig = CairoMakie.Figure(resolution = (1000, 600))
 
 ax = CairoMakie.Axis(fig[1,1], xlabel = "longitude", ylabel = "latitude", title=title)
-heatmap_plot = CairoMakie.heatmap!(ax, xζ, yζ, ζ′, colormap=Reverse(:balance), colorrange = (-9.0, 4.5))
+heatmap_plot = CairoMakie.heatmap!(ax, yζ, xζ, PV, colormap=Reverse(:balance), colorrange = (-9.0, 9.0))
 CairoMakie.Colorbar(fig[1,2], heatmap_plot, width=25)
 
 CairoMakie.record(fig, "vortex_merger.mp4", iterations[1:end], framerate=2) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
+end
+
+iter = iterations[end]
+save("vortex_merger_$(Nh)_$stencil.png", fig)
+
 end

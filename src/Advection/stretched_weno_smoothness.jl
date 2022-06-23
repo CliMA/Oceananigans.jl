@@ -91,13 +91,12 @@ function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N; order)
             Aᵢ  = stencil_coefficients(i, r, cpu_coord, cpu_coord; order, op, shift = bias2, der = Primitive())
             aᵢ  = stencil_coefficients(i, r, cpu_coord, cpu_coord; order, op, shift = bias2)
             aₓᵢ = stencil_coefficients(i, r, cpu_coord, cpu_coord; order, op, shift = bias2, der = FirstDerivative())
-
             pₓₓ = stencil_coefficients(i, r, cpu_coord, cpu_coord; order, op, shift = bias1, der = SecondDerivative())
+
             Pᵢ  =  (Bᵢ .- Aᵢ)
 
-            wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
-            wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
-                                                 Δcᵢ^4 .* star(pₓₓ, pₓₓ)
+            wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)              .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
+            wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+ Δcᵢ^4 .* star(pₓₓ, pₓₓ)
 
             push!(stencil, (wᵢᵢ, wᵢⱼ))
         end
