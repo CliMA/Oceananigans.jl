@@ -41,15 +41,19 @@ function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive)
 end
 
 """
-Coefficients for finite-volume polynomial reconstruction of order `order` at stencil r 
-xi and xr are respectively:
+    stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
 
-- the locations of the reconstructing value 
-   i.e. either the center coordinate, for centered quantities or face coordinate for staggered
-- the opposite of the reconstruction location desired
-   i.e., if a recostruction at `Center`s is required xr is the face coordinate
+Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 
-On a uniform grid coefficients are independent of the xr and xi values.
+Positional Arguments
+====================
+
+- `xi`: the locations of the reconstructing value, i.e. either the center coordinate,
+  for centered quantities or face coordinate for staggered
+- `xr`: the opposite of the reconstruction location desired, i.e., if a recostruction at
+  `Center`s is required xr is the face coordinate
+
+On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
 function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
     coeffs = zeros(order)
@@ -105,14 +109,20 @@ for buffer in [1, 2, 3, 4, 5, 6]
 end
 
 """ 
-    Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
+    calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
 
-The first argument is the buffer, not the order!! 
+Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
 
-`order = 2 * buffer`   for Centered reconstruction
-`order = 2 * buffer-1` for Upwind reconstruction
+The first argument is the `buffer`, not the `order`! 
+- `order = 2 * buffer` for Centered reconstruction
+- `order = 2 * buffer - 1` for Upwind reconstruction
    
-examples:
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans.Advection: calc_reconstruction_stencil
+
 julia> calc_reconstruction_stencil(1, :right, :x)
 :(+(coeff1_right[1] * ψ[i + 0, j, k]))
 
@@ -127,9 +137,9 @@ julia> calc_reconstruction_stencil(2, :symm, :x)
 
 julia> calc_reconstruction_stencil(3, :left, :x)
 :(coeff5_left[5] * ψ[i + -3, j, k] + coeff5_left[4] * ψ[i + -2, j, k] + coeff5_left[3] * ψ[i + -1, j, k] + coeff5_left[2] * ψ[i + 0, j, k] + coeff5_left[1] * ψ[i + 1, j, k])
-
+```
 """
-function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false) 
+function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
     N = buffer * 2
     order = shift == :symm ? N : N - 1
     if shift != :symm

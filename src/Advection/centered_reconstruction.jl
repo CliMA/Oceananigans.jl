@@ -60,9 +60,9 @@ Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", 
 
 Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
-              " Boundary scheme : ", "\n",
+              " Boundary scheme: ", "\n",
               "    └── ", summary(a.boundary_scheme), "\n",
-              " Directions :", "\n",
+              " Directions:", "\n",
               "    ├── X $(XT == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(YT == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(ZT == Nothing ? "regular" : "stretched")" )

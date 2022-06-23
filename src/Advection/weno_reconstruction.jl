@@ -75,9 +75,9 @@ Examples
 ```jldoctest
 julia> WENO()
 WENO reconstruction order 5 in Flux form
- Boundary scheme :
+ Boundary scheme:
     └── WENO reconstruction order 3 in Flux form
- Symmetric scheme :
+ Symmetric scheme:
     └── Centered reconstruction order 4
  Directions:
     ├── X regular
@@ -86,16 +86,27 @@ WENO reconstruction order 5 in Flux form
 ```
 
 ```jldoctest
-julia> WENO(order=7)
-WENO reconstruction order 7 in Flux form
- Boundary scheme :
-    └── WENO reconstruction order 5 in Flux form
- Symmetric scheme :
-    └── Centered reconstruction order 6
+julia> Nx, Nz = 16, 10;
+
+julia> Lx, Lz = 1e4, 1e3;
+
+julia> chebychev_spaced_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+
+julia> grid = RectilinearGrid(size = (Nx, Nz), topology=(Periodic, Flat, Bounded),
+                              x = (0, Lx), z = chebychev_spaced_z_faces);
+
+julia> WENO(order=5; grid)
+WENO reconstruction order 5 in Flux form
+ Smoothness formulation:
+    └── Z-weno
+ Boundary scheme:
+    └── WENO reconstruction order 3 in Flux form
+ Symmetric scheme:
+    └── Centered reconstruction order 4
  Directions:
     ├── X regular
     ├── Y regular
-    └── Z regular
+    └── Z stretched
 ```
 """
 function WENO(FT::DataType=Float64; 
@@ -151,14 +162,14 @@ Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, "
 
 Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, RZ, VI, WF, PP} =
     print(io, summary(a), " \n",
-              " Smoothness formulation : ", "\n",
+              " Smoothness formulation: ", "\n",
               "    └── $(WF ? "Z-weno" : "JS-weno") $(VI<:SmoothnessStencil ? "using $VI" : "") \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Boundary scheme : ", "\n",
+              " Boundary scheme: ", "\n",
               "    └── ", summary(a.boundary_scheme) , "\n",
-              " Symmetric scheme : ", "\n",
+              " Symmetric scheme: ", "\n",
               "    └── ", summary(a.symmetric_scheme) , "\n",
-              " Directions :", "\n",
+              " Directions:", "\n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
               "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
