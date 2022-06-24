@@ -28,7 +28,7 @@ end
 """
     TimeInterval(interval)
 
-Returns a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
+Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
 """
 TimeInterval(interval) = TimeInterval(Float64(interval), 0.0)
@@ -65,7 +65,7 @@ end
 """
     IterationInterval(interval; offset=0)
 
-Returns a callable `IterationInterval` that "actuates" (schedules output or callback execution)
+Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
 For example, 
@@ -89,7 +89,7 @@ end
 """
     WallTimeInterval(interval; start_time = time_ns() * 1e-9)
 
-Returns a callable `WallTimeInterval` that schedules periodic output or diagnostic evaluation
+Return a callable `WallTimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of "wall time" while a simulation runs, in units of seconds.
 
 The "wall time" is the actual real world time in seconds, as kept by an actual
@@ -116,17 +116,23 @@ end
 ##### SpecifiedTimes
 #####
 
-"""
-    struct SpecifiedTimes <: AbstractSchedule
-
-Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
-according to `model.clock.time`.
-"""
 mutable struct SpecifiedTimes <: AbstractSchedule
     times :: Vector{Float64}
     previous_actuation :: Int
 end
 
+"""
+    SpecifiedTimes(times)
+
+Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
+whenever the model's clock equals the specified values in `times`. For example, 
+
+* `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
+
+!!! info "Sorting specified times"
+    The specified times in `times` need not be ordered as the `SpecifiedTimes` constructor
+    will check and order them in ascending order if needed.
+"""
 SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 SpecifiedTimes(times) = SpecifiedTimes(times...)
 
