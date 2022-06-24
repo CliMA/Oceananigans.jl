@@ -112,7 +112,7 @@ advection_schemes = [WENO(vector_invariant=VelocityStencil()),
 =#
 using Oceananigans.Advection: MultiDimensionalScheme
 
-advection_schemes = [MultiDimensionalScheme(WENO()), WENO()]
+advection_schemes = [MultiDimensionalScheme(WENO(vector_invariant = VelocityStencil())), WENO()]
 
 for Nx in [64]
     for advection in advection_schemes

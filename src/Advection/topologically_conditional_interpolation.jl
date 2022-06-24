@@ -106,21 +106,24 @@ end
 @inline outside_multi_dimensional_buffer(i, N) = i > boundary_buffer(adv) && i < N - boundary_buffer(adv)
 
 for (dir, ξ) in enumerate((:x, :y))
-    md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
-    alt_md_interpolate = Symbol(:_multi_dimensional_interpolate_, ξ)
+    md_interp = Symbol(:multi_dimensional_interpolate_, ξ)
+    alt_md_interp = Symbol(:_multi_dimensional_interpolate_, ξ)
+
+    # Fallback for periodic directions
+    @eval $alt_md_interp(i, j, k, grid::AUG, scheme::MDS, args...) = $md_interp(i, j, k, grid, scheme, args...)
 
     if ξ == :x
         @eval begin
-            @inline $alt_md_interpolate(i, j, k, grid::AUGX, coeff, scheme::MDS, func, args...) = 
+            @inline $alt_md_interp(i, j, k, grid::AUGX, coeff, scheme::MDS, func, args...) = 
                         ifelse(outside_multi_dimensional_buffer(i, grid.Nx),
-                               $md_interpolate(i, j, k, grid, coeff, scheme, func, args...),
+                               $md_interp(i, j, k, grid, coeff, scheme, func, args...),
                                func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
          end
     elseif ξ == :y
         @eval begin
-            @inline $alt_md_interpolate(i, j, k, grid::AUGY, coeff, scheme::MDS, func, args...) = 
+            @inline $alt_md_interp(i, j, k, grid::AUGY, coeff, scheme::MDS, func, args...) = 
                         ifelse(outside_multi_dimensional_buffer(j, grid.Ny),
-                               $md_interpolate(i, j, k, grid, coeff, scheme, func, args...),
+                               $md_interp(i, j, k, grid, coeff, scheme, func, args...),
                                func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
          end
     end

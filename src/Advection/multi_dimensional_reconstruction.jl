@@ -28,11 +28,12 @@ Base.show(io::IO, a::MultiDimensionalScheme{N, FT}) where {N, FT} =
 Adapt.adapt_structure(to, scheme::MultiDimensionalScheme{N, FT}) where {N, FT} =
             MultiDimensionalScheme{N, FT}(Adapt.adapt(to, scheme.one_dimensional_scheme))
 
-coeff4_multi_Q = (-1/24,  26/24, -1/24)
-coeff4_multi_F = ( 1/24,  22/24,  1/24)
+# Coefficients for 
+const coeff4_multi_Q = (-1/24,  2/24, -1/24)
+const coeff4_multi_F = ( 1/24, -2/24,  1/24)
 
-coeff6_multi_Q = (3/640,    -29/480,  1067/960,  -29/480,   3/640)
-coeff6_multi_F = (-17/5760, 77/1440,   863/960, 77/1440, -17/5760)
+const coeff6_multi_Q = (-3/640,   29/480,  -107/960,  29/480,  -3/640)
+const coeff6_multi_F = (-17/5760, 77/1440, -97/960,   77/1440, -17/5760)
 
 const MDS{N, FT} = MultiDimensionalScheme{N, FT} where {N, FT}
 
@@ -55,18 +56,31 @@ for side in (:symmetric, :left, :right), loc in (:ᶠ, :ᶜ)
 end
 
 for buffer in (2, 3)
-    @eval @inline stencil_x(i, j, k, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :x, true)) 
-    @eval @inline stencil_y(i, j, k, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :y, true)) 
+    @eval @inline mds_stencil_x(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :x, true)) 
+    @eval @inline mds_stencil_y(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :y, true)) 
 end
+
+const MDS2 = MultiDimensionalScheme{<:Any, <:Any, <:AbstractAdvectionScheme{1}}
 
 for (dir, ξ) in enumerate((:x, :y))
     md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
-    stencil        = Symbol(:stencil_, ξ)
+    mds_stencil    = Symbol(:mds_stencil_, ξ)
 
-    @eval begin
-        @inline function $md_interpolate(i, j, k, grid, coeff, scheme::MDS, func, ψ, args...)
-            ψₜ = stencil(i, j, k, grid, func, scheme.one_dimensional_scheme, ψ, args...)
-            return coeff .* ψₜ
+    # Fallback if the 1D scheme is second order
+    @eval @inline $md_interpolate(i, j, k, grid, scheme::MDS2, coeff, func, ψ, args...) = func(i, j, k, grid, scheme, ψ, args...)
+
+    for buffer in (2, 3)
+        @eval begin
+            @inline function $md_interpolate(i, j, k, grid, scheme::MDS{$buffer}, coeff, func, ψ, args...)
+                ψₜ = $mds_stencil(i, j, k, grid, scheme, func, scheme.one_dimensional_scheme, ψ, args...)
+                flux_diff = sum(coeff .* ψₜ)
+                
+                if abs(flux_diff) > 2*abs(ψₜ[$buffer])
+                    flux_diff = zero(grid)
+                end
+
+                return ψₜ[$buffer] + flux_diff
+            end
         end
     end
 end
