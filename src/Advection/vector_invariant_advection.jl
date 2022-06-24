@@ -17,7 +17,7 @@ VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvar
 const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
-const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
+const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant} 
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme

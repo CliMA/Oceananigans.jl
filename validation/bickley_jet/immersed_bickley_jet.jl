@@ -162,9 +162,11 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO(vector_invariant = VelocityStencil()), WENO()]
+using Oceananigans.Advection: WENO3D
 
-for Nx in [256]
+advection_schemes = [WENO3D(), WENOFifthOrder()]
+
+for Nx in [128]
     for advection in advection_schemes
         experiment_name = run_immersed_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)

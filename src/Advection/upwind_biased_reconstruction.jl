@@ -7,7 +7,7 @@
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N} 
+struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "coefficient for Upwind reconstruction on stretched x-faces" 
     coeff_xᶠᵃᵃ::XT
     "coefficient for Upwind reconstruction on stretched x-centers"

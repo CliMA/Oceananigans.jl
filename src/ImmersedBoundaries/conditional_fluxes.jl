@@ -174,7 +174,7 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     end
 end
 
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil, LOADV, HOADV
+using Oceananigans.Advection: LOADV, HOADV
 
 for bias in (:symmetric, :left_biased, :right_biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -231,6 +231,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
     end
 end
 
+using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
+
 for bias in (:left_biased, :right_biased)
     for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
         interp     = Symbol(bias, :_interpolate_, dir)
@@ -241,8 +243,35 @@ for bias in (:left_biased, :right_biased)
         @eval begin
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-               $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
-               $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
+                   $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
+                   $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
         end
+    end
+end
+
+using Oceananigans.Advection: MDS
+
+@inline near_x_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg)
+@inline near_y_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg)
+@inline near_z_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg)
+
+@inline near_x_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i-3, j, k, ibg) | inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg) | inactive_cell(i+3, j, k, ibg)  
+@inline near_y_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j-3, k, ibg) | inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg) | inactive_cell(i, j+3, k, ibg)  
+@inline near_z_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg)  
+
+for (dir, ξ) in enumerate((:x, :y))
+    md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
+    alt_md_interpolate = Symbol(:_multi_dimensional_interpolate_, ξ)
+
+    near_boundary = Symbol(:near_, ξ, :_immersed_boundary_mds)
+
+    @eval begin
+        import Oceananigans.Advection: $alt_md_interpolate
+        using Oceananigans.Advection: $md_interpolate
+
+        @inline $alt_md_interpolate(i, j, k, ibg::ImmersedBoundaryGrid, coeff, scheme::MDS, func, args...) = 
+            ifelse($near_boundary(i, j, k, ibg, scheme),
+                    func(i, j, k, ibg, scheme.one_dimensional_scheme, args...),
+                    $md_interpolate(i, j, k, ibg, coeff, scheme, func, args...))
     end
 end

@@ -7,7 +7,7 @@
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N} 
+struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT} 
     "coefficient for Centered reconstruction on stretched x-faces" 
     coeff_xᶠᵃᵃ::XT
     "coefficient for Centered reconstruction on stretched x-centers"
@@ -46,8 +46,7 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
 
     N  = Int(order ÷ 2)
     if N > 1 
-        coefficients    = Tuple(nothing for i in 1:6)
-        # coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
+        coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
         boundary_scheme = Centered(FT; grid, order = order - 2)
     else
         coefficients    = Tuple(nothing for i in 1:6)

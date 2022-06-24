@@ -40,9 +40,9 @@ using Oceananigans.Operators
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 
-abstract type AbstractAdvectionScheme{Buffer} end
-abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
-abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
+abstract type AbstractAdvectionScheme{Buffer, FT} end
+abstract type AbstractCenteredAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
+abstract type AbstractUpwindBiasedAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
 
 @inline boundary_buffer(::AbstractAdvectionScheme{N}) where N = N
 @inline required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
@@ -58,11 +58,13 @@ include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
 include("vector_invariant_advection.jl")
+include("multi_dimensional_reconstruction.jl")
 
 include("topologically_conditional_interpolation.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
+include("multi_dimensional_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")
 
 end # module

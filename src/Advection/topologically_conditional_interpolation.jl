@@ -34,7 +34,7 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_bufferᶜ(i, N, adv) = i > boundary_buffer(adv) - 2 && i < N + 1 - boundary_buffer(adv)
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, Centered, UpwindBiased}
+const HOADV = Union{WENO, Centered, UpwindBiased} 
 const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
 const WVI   = WENOVectorInvariant
 
@@ -100,5 +100,28 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             end
         end
+    end
+end
+
+@inline outside_multi_dimensional_buffer(i, N) = i > boundary_buffer(adv) && i < N - boundary_buffer(adv)
+
+for (dir, ξ) in enumerate((:x, :y))
+    md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
+    alt_md_interpolate = Symbol(:_multi_dimensional_interpolate_, ξ)
+
+    if ξ == :x
+        @eval begin
+            @inline $alt_md_interpolate(i, j, k, grid::AUGX, coeff, scheme::MDS, func, args...) = 
+                        ifelse(outside_multi_dimensional_buffer(i, grid.Nx),
+                               $md_interpolate(i, j, k, grid, coeff, scheme, func, args...),
+                               func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
+         end
+    elseif ξ == :y
+        @eval begin
+            @inline $alt_md_interpolate(i, j, k, grid::AUGY, coeff, scheme::MDS, func, args...) = 
+                        ifelse(outside_multi_dimensional_buffer(j, grid.Ny),
+                               $md_interpolate(i, j, k, grid, coeff, scheme, func, args...),
+                               func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
+         end
     end
 end

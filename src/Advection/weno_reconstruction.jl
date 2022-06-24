@@ -12,7 +12,7 @@ abstract type SmoothnessStencil end
 struct VorticityStencil <:SmoothnessStencil end
 struct VelocityStencil <:SmoothnessStencil end
 
-struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N}
+struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     
     "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT

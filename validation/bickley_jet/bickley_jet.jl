@@ -110,11 +110,13 @@ advection_schemes = [WENO(vector_invariant=VelocityStencil()),
                      WENO(),
                      VectorInvariant()]
 =#
-advection_schemes = [WENO(vector_invariant = VelocityStencil())]
+using Oceananigans.Advection: MultiDimensionalScheme
 
-for Nx in [128]
+advection_schemes = [MultiDimensionalScheme(WENO()), WENO()]
+
+for Nx in [64]
     for advection in advection_schemes
-        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        experiment_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
         # visualize_bickley_jet(experiment_name)
     end
 end
