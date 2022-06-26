@@ -14,7 +14,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
@@ -32,7 +34,7 @@ export
 using CUDA
 using KernelAbstractions
 
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -69,6 +71,9 @@ add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = 
 struct DiscreteDiffusionFunction{F} <: Function
     func :: F
 end
+
+Base.summary(ddf::DiscreteDiffusionFunction) = string(prettysummary(ddf.func, false), " (discrete form)")
+prettysummary(ddf::DiscreteDiffusionFunction, args...) = string(prettysummary(ddf.func, false), " (discrete form)")
 
 #####
 ##### Tracer indices

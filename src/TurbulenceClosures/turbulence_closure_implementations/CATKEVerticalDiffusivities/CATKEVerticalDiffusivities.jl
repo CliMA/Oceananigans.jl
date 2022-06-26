@@ -77,7 +77,7 @@ validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=c
 
 catke_first(closure1, catke::FlavorOfCATKE) = false
 catke_first(catke::FlavorOfCATKE, closure2) = true
-catke_first(closure1, closure2) = true
+catke_first(closure1, closure2) = false
 
 # Two CATKEs?!
 catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have two CATKEs in one closure tuple.")
