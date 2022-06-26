@@ -130,7 +130,7 @@ whenever the model's clock equals the specified values in `times`. For example,
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
 
 !!! info "Sorting specified times"
-    The specified times in `times` need not be ordered as the `SpecifiedTimes` constructor
+    The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
 SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
