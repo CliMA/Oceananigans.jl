@@ -60,7 +60,7 @@ Arguments
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function MultigridSolver(grid,
-                        linear_operation!;
+                        linear_operation!, args...;
                         maximum_iterations = 100, #prod(size(template_field)),
                         tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
                         amg_algorithm = RugeStubenAMG(),
@@ -68,7 +68,7 @@ function MultigridSolver(grid,
 
     arch = architecture(grid)
 
-    A = create_matrix(grid, linear_operation!, arch, grid)
+    A = create_matrix(grid, linear_operation!, args...)
 
     return MultigridSolver(arch,
                            grid,
@@ -121,7 +121,7 @@ Given:
   * Local vectors: `z`, `r`, `p`, `q`
 """
 
-function solve!(x, solver::MultigridSolver, b, args...)
+function solve!(x, solver::MultigridSolver, b, args...; kwargs...)
     grid = b.grid
     Nx, Ny, Nz = size(grid)
     b_array = collect(reshape(interior(b), Nx * Ny * Nz))
@@ -129,7 +129,7 @@ function solve!(x, solver::MultigridSolver, b, args...)
 
     solt = init(solver.amg_algorithm, solver.linear_operator, b_array)
 
-    _solve!(x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance)
+    _solve!(x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
     
     interior(x) .= reshape(x_array, Nx, Ny, Nz)
     fill_halo_regions!(x)

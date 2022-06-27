@@ -15,7 +15,7 @@ using OffsetArrays
 
 import Oceananigans.Solvers: precondition!
 
-N = 64
+N = 8
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -71,7 +71,7 @@ fill_halo_regions!(φ_cg)
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
 
-mgs = MultigridSolver(grid, compute_∇²!)
+mgs = MultigridSolver(grid, compute_∇²!, arch, grid)
 φ_mg = CenterField(grid)
 
 solve!(φ_mg, mgs, r)
@@ -83,7 +83,7 @@ struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(grid, compute_∇²!, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(grid, compute_∇²!, arch, grid, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
 
 mgp = MultigridPreconditioner(mgs)
 
