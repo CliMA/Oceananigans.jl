@@ -4,15 +4,13 @@ using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, 
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, constructors, arch_sparse_matrix, matrix_from_coefficients, PreconditionedConjugateGradientSolver, MultigridSolver
 using Oceananigans.Architectures: architecture, arch_array
 using Statistics: mean
 using IterativeSolvers
 using Statistics: mean
-using AlgebraicMultigrid
+using AlgebraicMultigrid: RugeStubenAMG
 using GLMakie
-using AlgebraicMultigrid: _solve!
-using SparseArrays
 using OffsetArrays
 
 import Oceananigans.Solvers: precondition!
@@ -47,6 +45,7 @@ function compute_∇²!(∇²φ, φ, arch, grid)
     return nothing
 end
 
+
 # Solve ∇²φ = r with `FFTBasedPoissonSolver`
 φ_fft = CenterField(grid)
 fft_solver = FFTBasedPoissonSolver(grid)
@@ -69,56 +68,26 @@ fill_halo_regions!(φ_cg)
 
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
-function create_matrix(grid, linear_operator!, args...)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
-    # Currently assuming Nz = 1
-    A = spzeros(eltype(grid), Nx*Ny, Nx*Ny)
-
-    make_column(f) = reshape(interior(f), (Nx*Ny*Nz, 1))
-
-    eᵢⱼₖ = CenterField(grid)
-    ∇²eᵢⱼₖ = CenterField(grid)
-    for k in 1:Nz, j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ .= 0
-        ∇²eᵢⱼₖ .= 0
-        eᵢⱼₖ[i, j, k] = 1
-        fill_halo_regions!(eᵢⱼₖ)
-
-        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
-
-        A[:, Nx*(j-1)+i] = make_column(∇²eᵢⱼₖ)
-    end
-    return A
-end
-
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
-A = create_matrix(grid, compute_∇²!, arch, grid)
 
-r_array = array_type(arch)(reshape(interior(r), Nx * Ny * Nz))
-
-ml = ruge_stuben(A, maxiter=100)
-n = length(ml) == 1 ? size(ml.final_A, 1) : size(ml.levels[1].A, 1)
-V = promote_type(eltype(ml.workspace), eltype(r_array))
-φ_mg_array = zeros(V, size(r_array))
-@show @allocated _solve!(φ_mg_array, ml, r_array)
-# @info "Solving the Poisson equation with the Algebraic Multigrid solver (not in-place)..."
-# @time φ_mg_array = solve(A, r_array, RugeStubenAMG(), maxiter=100, verbose=true)
-
+mgs = MultigridSolver(grid, compute_∇²!)
 φ_mg = CenterField(grid)
-interior(φ_mg) .= reshape(φ_mg_array, Nx, Ny, Nz)
-fill_halo_regions!(φ_mg)
+
+solve!(φ_mg, mgs, r)
 
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
-struct MultigridPreconditioner{M, A}
-    matrix_operator :: M
-    maxiter :: Int
-    amg_algorithm :: A
+struct MultigridPreconditioner{S}
+    multigrid_solver :: S
 end
 
-mgp = MultigridPreconditioner(A, 5, RugeStubenAMG())
+mgs = MultigridSolver(grid, compute_∇²!, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
+
+mgp = MultigridPreconditioner(mgs)
+
+using AlgebraicMultigrid: solve, init, _solve!
 
 """
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
@@ -128,13 +97,20 @@ Return `z` (Field)
 function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     Nx, Ny, Nz = r.grid.Nx, r.grid.Ny, r.grid.Nz
     
-    r_array = array_type(arch)(reshape(interior(r), Nx * Ny * Nz))
+    r_array = collect(reshape(interior(r), Nx * Ny * Nz))
 
-    z_array = solve(mgp.matrix_operator, r_array, mgp.amg_algorithm, maxiter=mgp.maxiter)
+    # the non-allocating version of mg solve does not converge
+    # when included in the precondition!
+    #
+    # z_array = collect(reshape(interior(z), Nx * Ny * Nz)) 
+    # solver = mgp.multigrid_solver
+    # solt = init(solver.amg_algorithm, solver.linear_operator, r_array)
+    # _solve!(z_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance)
+
+    z_array = solve(mgp.multigrid_solver.linear_operator, r_array, mgp.multigrid_solver.amg_algorithm, maxiter=mgp.multigrid_solver.maximum_iterations)
 
     interior(z) .= reshape(z_array, Nx, Ny, Nz)
     fill_halo_regions!(z)
-
     return z
 end
 
@@ -142,6 +118,7 @@ end
 
 φ_cgmg = CenterField(grid)
 cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp)
+
 
 @info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver WITH algebraic multigrid as preconditioner..."
 @time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
