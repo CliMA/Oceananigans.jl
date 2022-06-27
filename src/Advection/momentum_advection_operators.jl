@@ -17,10 +17,6 @@ using Oceananigans.Fields: ZeroField
 @inline _advective_momentum_flux_Vw(args...) = advective_momentum_flux_Vw(args...)
 @inline _advective_momentum_flux_Ww(args...) = advective_momentum_flux_Ww(args...)
 
-@inline _advective_tracer_flux_x(args...) = _advective_tracer_flux_x(args...)
-@inline _advective_tracer_flux_y(args...) = _advective_tracer_flux_y(args...)
-@inline _advective_tracer_flux_z(args...) = _advective_tracer_flux_z(args...)
-
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
 # Compiler hints

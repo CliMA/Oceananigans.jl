@@ -65,7 +65,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
     VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
@@ -74,7 +76,7 @@ export
     # Models
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
-    ShallowWaterModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     PressureField,
     fields,
 

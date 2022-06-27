@@ -122,10 +122,6 @@ function NonhydrostaticModel(;    grid,
 
     arch = architecture(grid)
 
-    if arch == GPU() && !has_cuda()
-         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    end
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     # We don't support CAKTE for NonhydrostaticModel yet.

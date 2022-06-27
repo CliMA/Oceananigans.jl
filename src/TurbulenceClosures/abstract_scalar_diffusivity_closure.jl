@@ -86,7 +86,7 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶜᶜᶠ(i, j, k, grid, clo::ASD, K, id, clk) = κᶜᶜᶠ(i, j, k, grid, clk, diffusivity_location(clo), diffusivity(clo, K, id))
 
 # Vertical and horizontal diffusivity
-@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk)     = νᶜᶜᶜ(i, j, k, grid, clo, K, clk) 
+@inline νzᶜᶜᶜ(i, j, k, grid, clo::ASD, K, clk)       = νᶜᶜᶜ(i, j, k, grid, clo, K, clk) 
 @inline νzᶠᶠᶜ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶠᶜ(i, j, k, grid, clo, K, clock) 
 @inline νzᶠᶜᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶠᶜᶠ(i, j, k, grid, clo, K, clock) 
 @inline νzᶜᶠᶠ(i, j, k, grid, clo::ASD, K, clock)     = νᶜᶠᶠ(i, j, k, grid, clo, K, clock) 
