@@ -5,7 +5,7 @@
 const two_32 = Int32(2)
 
 const ƞ = Int32(2) # WENO exponent
-const ε = 1e-6
+const ε = 1e-20
 
 abstract type SmoothnessStencil end
 

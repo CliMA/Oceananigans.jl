@@ -164,11 +164,11 @@ end
 
 using Oceananigans.Advection: MultiDimensionalScheme
 
-advection_schemes = [MultiDimensionalScheme(WENO()), WENOFifthOrder()]
+advection_schemes = [MultiDimensionalScheme(WENO(), order = 6), WENOFifthOrder(vector_invariant = VelocityStencil())]
 
-for Nx in [128]
+for Nx in [32]
     for advection in advection_schemes
-        experiment_name = run_immersed_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        experiment_name = run_immersed_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end
 end

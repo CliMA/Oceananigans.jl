@@ -105,7 +105,7 @@ end
 function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ₅ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
     end
 
     return :($(elem...), )
@@ -123,10 +123,16 @@ end
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ₅, coeff, FT) = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
         @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
+
+@inline global_smoothness_indicator(::Val{2}, β) = 0
+@inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[end])
+@inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] - β[2] - β[3] + β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] - β[end])
+@inline global_smoothness_indicator(::Val{6}, β) = abs(β[1] - β[2] - β[5] + β[6])
 
 # Calculating Dynamic WENO Weights, either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
@@ -163,8 +169,8 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             β  = βᵤ .+ βᵥ
             
             if scheme isa ZWENO
-                τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
                 α  = js_alpha_loop(scheme, β, $coeff, FT)
             end
@@ -179,8 +185,8 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             β = beta_loop(scheme, uₛ, $biased_β)
             
             if scheme isa ZWENO
-                τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
                 α  = js_alpha_loop(scheme, β, $coeff, FT)
             end

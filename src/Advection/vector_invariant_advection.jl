@@ -16,7 +16,7 @@ VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvar
 
 const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
-const MDSWENOVectorInvariant{VI} = MultiDimensionalScheme{<:Any, <:Any, <:WENOVectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, VI}} where {N, FT, XT, YT, ZT, VI}
+const MDSWENOVectorInvariant{N, VI} = MultiDimensionalScheme{N, <:Any, <:WENOVectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, VI}} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil}
 const MDSVectorInvariant = MultiDimensionalScheme{<:Any, <:Any, <:VectorInvariant}
 
 const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant, MDSVectorInvariant, MDSWENOVectorInvariant} 
@@ -38,8 +38,8 @@ const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant, MDSV
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))     # Bernoulli head term
 
 # Nothing changes for 2nd order!
-@inline U_dot_∇u(i, j, k, grid, scheme::MDSVectorInvariant, U) = U_dot_∇u(i, j, k, grid, scheme.one_dimensional_scheme, U) 
-@inline U_dot_∇v(i, j, k, grid, scheme::MDSVectorInvariant, U) = U_dot_∇v(i, j, k, grid, scheme.one_dimensional_scheme, U) 
+@inline U_dot_∇u(i, j, k, grid, scheme::MDSVectorInvariant, U) = U_dot_∇u(i, j, k, grid, scheme.scheme_1d, U) 
+@inline U_dot_∇v(i, j, k, grid, scheme::MDSVectorInvariant, U) = U_dot_∇v(i, j, k, grid, scheme.scheme_1d, U) 
 
 ####
 #### Bernoulli head terms
@@ -78,14 +78,14 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
-@inline function vertical_vorticity_U(i, j, k, grid, scheme::MDSWENOVectorInvariant{VI}, u, v) where {VI}
+@inline function vertical_vorticity_U(i, j, k, grid, scheme::MDSWENOVectorInvariant{N, VI}, u, v) where {N, VI}
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
     ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
-@inline function vertical_vorticity_V(i, j, k, grid, scheme::MDSWENOVectorInvariant{VI}, u, v) where {VI}
+@inline function vertical_vorticity_V(i, j, k, grid, scheme::MDSWENOVectorInvariant{N, VI}, u, v) where {N, VI}
     û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)

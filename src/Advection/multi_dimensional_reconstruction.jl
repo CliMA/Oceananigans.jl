@@ -3,19 +3,19 @@
 ##### following the implementation in "High–Order WENO Finite Volume Methods on Cartesian Grids with Adaptive Mesh Refinement", P. Buchmueller
 ##### 
 
-struct MultiDimensionalScheme{N, FT, A1} <: AbstractAdvectionScheme{N, FT}
+struct MultiDimensionalScheme{N, FT, A1} <: AbstractMultiDimensionalAdvectionScheme{N, FT, A1}
 
     "1D reconstruction"
-    one_dimensional_scheme :: A1
+    scheme_1d :: A1
 
-    function MultiDimensionalScheme{N, FT}(one_dimensional_scheme::A1) where {N, FT, A1}
-            return new{N, FT, A1}(one_dimensional_scheme)
+    function MultiDimensionalScheme{N, FT}(scheme_1d::A1) where {N, FT, A1}
+            return new{N, FT, A1}(scheme_1d)
     end
 end
 
-function MultiDimensionalScheme(one_dimensional_scheme::AbstractAdvectionScheme{N, FT}; order = 4) where {N, FT}
+function MultiDimensionalScheme(scheme_1d::AbstractAdvectionScheme{N, FT}; order = 4) where {N, FT}
     NT = Int(order ÷ 2)
-    return MultiDimensionalScheme{NT, FT}(one_dimensional_scheme)
+    return MultiDimensionalScheme{NT, FT}(scheme_1d)
 end
 
 Base.summary(a::MultiDimensionalScheme{N}) where N = string("N-dimensional reconstruction scheme order ", N*2)
@@ -23,62 +23,58 @@ Base.summary(a::MultiDimensionalScheme{N}) where N = string("N-dimensional recon
 Base.show(io::IO, a::MultiDimensionalScheme{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " One dimensional scheme: ", "\n",
-              "    └── ", summary(a.one_dimensional_scheme))
+              "    └── ", summary(a.scheme_1d))
 
 Adapt.adapt_structure(to, scheme::MultiDimensionalScheme{N, FT}) where {N, FT} =
-            MultiDimensionalScheme{N, FT}(Adapt.adapt(to, scheme.one_dimensional_scheme))
+            MultiDimensionalScheme{N, FT}(Adapt.adapt(to, scheme.scheme_1d))
 
-# Coefficients for 
+# Coefficients for center to center reconstruction
 const coeff4_multi_Q = (-1/24,  2/24, -1/24)
 const coeff4_multi_F = ( 1/24, -2/24,  1/24)
 
-const coeff6_multi_Q = (-3/640,   29/480,  -107/960,  29/480,  -3/640)
+const coeff6_multi_Q = ( 3/640,  -29/480,   107/960, -29/480,   3/640)
 const coeff6_multi_F = (-17/5760, 77/1440, -97/960,   77/1440, -17/5760)
 
 const MDS{N, FT} = MultiDimensionalScheme{N, FT} where {N, FT}
 
 # Defining the reconstruction operators
-for side in (:symmetric, :left, :right), loc in (:ᶠ, :ᶜ)
-    interpolate_x = Symbol(:_, side, :_biased_interpolate_x, loc, :ᵃᵃ)
-    interpolate_y = Symbol(:_, side, :_biased_interpolate_yᵃ, loc, :ᵃ)
-    interpolate_z = Symbol(:_, side, :_biased_interpolate_zᵃᵃ, loc)
+for side in (:symmetric, :left_biased, :right_biased), loc in (:ᶠ, :ᶜ)
+    interpolate_x = Symbol(:_, side, :_interpolate_x, loc, :ᵃᵃ)
+    interpolate_y = Symbol(:_, side, :_interpolate_yᵃ, loc, :ᵃ)
+    interpolate_z = Symbol(:_, side, :_interpolate_zᵃᵃ, loc)
     for buffer in (2, 3)
         coeff = Symbol(:coeff, buffer*2, :_multi_Q)
         @eval begin 
             @inline $interpolate_x(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = 
-                _multi_dimensional_interpolate_y(i, j, k, grid, scheme, $coeff, $interpolate_x, ψ, args...)
+                _multi_dimensional_interpolate_y(i, j, k, grid, scheme, $coeff, $interpolate_x, scheme.scheme_1d, ψ, args...)
             @inline $interpolate_y(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = 
-                _multi_dimensional_interpolate_x(i, j, k, grid, scheme, $coeff, $interpolate_y, ψ, args...)
+                _multi_dimensional_interpolate_x(i, j, k, grid, scheme, $coeff, $interpolate_y, scheme.scheme_1d, ψ, args...)
             @inline $interpolate_z(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = 
-                    $interpolate_z(i, j, k, grid, scheme.one_dimensional_scheme, ψ, args...)
+                    $interpolate_z(i, j, k, grid, scheme.scheme_1d, ψ, args...)
         end
     end
 end
 
-for buffer in (2, 3)
-    @eval @inline mds_stencil_x(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :x, true)) 
-    @eval @inline mds_stencil_y(i, j, k, grid, scheme::MDS{$buffer}, ψ, args...) = $(reconstruction_stencil(buffer, :right, :y, true)) 
-end
+@inline mds_stencil_x(i, j, k, grid, scheme::MDS{2}, f, args...) = (f(i-1, j, k, grid, args...), f(i, j, k, grid, args...),   f(i+1, j, k, grid, args...))
+@inline mds_stencil_y(i, j, k, grid, scheme::MDS{2}, f, args...) = (f(i, j-1, k, grid, args...), f(i, j, k, grid, args...),   f(i, j+1, k, grid, args...))
+@inline mds_stencil_x(i, j, k, grid, scheme::MDS{3}, f, args...) = (f(i-2, j, k, grid, args...), f(i-1, j, k, grid, args...), f(i, j, k, grid, args...), f(i+1, j, k, grid, args...), f(i+2, j, k, grid, args...))
+@inline mds_stencil_y(i, j, k, grid, scheme::MDS{3}, f, args...) = (f(i, j-2, k, grid, args...), f(i, j-1, k, grid, args...), f(i, j, k, grid, args...), f(i, j+1, k, grid, args...), f(i, j+2, k, grid, args...))
 
-const MDS2 = MultiDimensionalScheme{<:Any, <:Any, <:AbstractAdvectionScheme{1}}
+const NotMultiDimensionalScheme = MultiDimensionalScheme{<:Any, <:Any, <:AbstractAdvectionScheme{1}}
 
 for (dir, ξ) in enumerate((:x, :y))
     md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
     mds_stencil    = Symbol(:mds_stencil_, ξ)
 
     # Fallback if the 1D scheme is second order
-    @eval @inline $md_interpolate(i, j, k, grid, scheme::MDS2, coeff, func, ψ, args...) = func(i, j, k, grid, scheme, ψ, args...)
+    @eval @inline $md_interpolate(i, j, k, grid, scheme::NotMultiDimensionalScheme, coeff, func, scheme_1d, args...) = func(i, j, k, grid, scheme.scheme_1d, args...)
 
     for buffer in (2, 3)
         @eval begin
-            @inline function $md_interpolate(i, j, k, grid, scheme::MDS{$buffer}, coeff, func, ψ, args...)
-                ψₜ = $mds_stencil(i, j, k, grid, scheme, func, scheme.one_dimensional_scheme, ψ, args...)
+            @inline function $md_interpolate(i, j, k, grid, scheme::MDS{$buffer}, coeff, func, scheme_1d, args...)
+                # compute ψ(i, j, k, grid, scheme_1d, args...) at -(buffer-1):(buffer-1)
+                ψₜ = $mds_stencil(i, j, k, grid, scheme, func, scheme_1d, args...)
                 flux_diff = sum(coeff .* ψₜ)
-                
-                if abs(flux_diff) > 2*abs(ψₜ[$buffer])
-                    flux_diff = zero(grid)
-                end
-
                 return ψₜ[$buffer] + flux_diff
             end
         end

@@ -114,17 +114,17 @@ for (dir, ξ) in enumerate((:x, :y))
 
     if ξ == :x
         @eval begin
-            @inline $alt_md_interp(i, j, k, grid::AUGX, coeff, scheme::MDS, func, args...) = 
+            @inline $alt_md_interp(i, j, k, grid::AUGX, coeff, scheme::MDS, func, scheme_1d, args...) = 
                         ifelse(outside_multi_dimensional_buffer(i, grid.Nx),
-                               $md_interp(i, j, k, grid, coeff, scheme, func, args...),
-                               func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
+                               $md_interp(i, j, k, grid, coeff, scheme, func, scheme_1d, args...),
+                               func(i, j, k, grid, scheme.scheme_1d, args...))
          end
     elseif ξ == :y
         @eval begin
-            @inline $alt_md_interp(i, j, k, grid::AUGY, coeff, scheme::MDS, func, args...) = 
+            @inline $alt_md_interp(i, j, k, grid::AUGY, coeff, scheme::MDS, func, scheme_1d, args...) = 
                         ifelse(outside_multi_dimensional_buffer(j, grid.Ny),
-                               $md_interp(i, j, k, grid, coeff, scheme, func, args...),
-                               func(i, j, k, grid, scheme.one_dimensional_scheme, args...))
+                               $md_interp(i, j, k, grid, coeff, scheme, func, scheme_1d, args...),
+                               func(i, j, k, grid, scheme.scheme_1d, args...))
          end
     end
 end

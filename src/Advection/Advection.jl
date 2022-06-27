@@ -43,6 +43,7 @@ import Oceananigans.Grids: required_halo_size
 abstract type AbstractAdvectionScheme{Buffer, FT} end
 abstract type AbstractCenteredAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
+abstract type AbstractMultiDimensionalAdvectionScheme{Buffer, FT, OneDScheme} <: AbstractAdvectionScheme{Buffer, FT} end
 
 @inline boundary_buffer(::AbstractAdvectionScheme{N}) where N = N
 @inline required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
