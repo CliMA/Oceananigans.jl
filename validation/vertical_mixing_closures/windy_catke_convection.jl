@@ -18,8 +18,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0
 grid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=1e-4)
 
-N² = 1e-6
-Qᵇ = +1e-7
+N² = 1e-5
+Qᵇ = +1.2e-7
 Qᵘ = -1e-4 #
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
@@ -71,9 +71,9 @@ fig = Figure(resolution=(1200, 800))
 slider = Slider(fig[2, 1:2], range=1:Nt, startvalue=1)
 n = slider.value
 
-buoyancy_label = @lift "Buoyancy at t = " * prettytime(b1.times[$n])
-velocities_label = @lift "Velocities at t = " * prettytime(b1.times[$n])
-TKE_label = @lift "Turbulent kinetic energy t = " * prettytime(b1.times[$n])
+buoyancy_label = @lift "Buoyancy at t = " * prettytime(b_ts.times[$n])
+velocities_label = @lift "Velocities at t = " * prettytime(b_ts.times[$n])
+TKE_label = @lift "Turbulent kinetic energy t = " * prettytime(b_ts.times[$n])
 ax_b = Axis(fig[1, 1], xlabel=buoyancy_label, ylabel="z")
 ax_u = Axis(fig[1, 2], xlabel=velocities_label, ylabel="z")
 ax_e = Axis(fig[1, 3], xlabel=TKE_label, ylabel="z")
@@ -93,6 +93,9 @@ lines!(ax_b, bn, z)
 lines!(ax_u, un, z, label="u")
 lines!(ax_u, vn, z, label="v", linestyle=:dash)
 lines!(ax_e, en, z)
+
+xlims!(ax_u, -0.03, 0.03)
+xlims!(ax_e, -0.0001, 0.0005)
 
 axislegend(ax_u, position=:rb)
 
