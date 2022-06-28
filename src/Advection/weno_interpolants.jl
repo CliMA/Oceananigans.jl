@@ -128,7 +128,7 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
-@inline global_smoothness_indicator(::Val{2}, β) = 0
+@inline global_smoothness_indicator(::Val{2}, β) = nothing # WENO{2} should never use Z-WENO formulation as a global smoothness is undefined
 @inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[end])
 @inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] - β[2] - β[3] + β[4])
 @inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] - β[end])
@@ -149,10 +149,10 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             β = beta_loop(scheme, ψ, $biased_β)
                 
             if scheme isa ZWENO
-                τ₅ = abs(β[end] - β[1])
-                α  = zweno_alpha_loop(scheme, β, τ₅, $coeff, FT)
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, β, $coeff, FT)
+                α = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
@@ -172,7 +172,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, β, $coeff, FT)
+                α = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
@@ -188,7 +188,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, β, $coeff, FT)
+                α = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end

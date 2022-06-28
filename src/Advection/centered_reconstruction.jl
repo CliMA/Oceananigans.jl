@@ -46,7 +46,8 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
 
     N  = Int(order ÷ 2)
     if N > 1 
-        coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
+        coefficients    = Tuple(nothing for i in 1:6)
+        # coefficients = compute_reconstruction_coefficients(grid, FT, :Centered; order)
         boundary_scheme = Centered(FT; grid, order = order - 2)
     else
         coefficients    = Tuple(nothing for i in 1:6)
