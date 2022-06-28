@@ -29,19 +29,20 @@ end
 """
     HeptadiagonalIterativeSolver(coeffs;
                                  grid,
-                                 iterative_solver = cg,
+                                 iterative_solver = cg!,
                                  maximum_iterations = prod(size(grid)),
                                  tolerance = 1e-13,
                                  reduced_dim = (false, false, false), 
                                  placeholder_timestep = -1.0, 
                                  preconditioner_method = :Default, 
-                                 preconditioner_settings = nothing)
+                                 preconditioner_settings = nothing,
+                                 template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                 verbose = false)
 
-`HeptadiagonalIterativeSolver` is a framework to solve the problem `A * x = b`
-(provided that `A` is a symmetric matrix).
+Return a `HeptadiagonalIterativeSolver` to solve the problem `A * x = b`, provided
+that `A` is a symmetric matrix.
 
-The solver relies on sparse version of the matrix `A` which are defined by the
-field matrix_constructors.
+The solver relies on a sparse version of the matrix `A` that is stored in `matrix_constructors`.
 
 In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
 
@@ -60,32 +61,30 @@ Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ η
 +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ = b
 ```
 
-`solver.matrix` is precomputed with a value of `Δt = -1.0`
+`solver.matrix` is precomputed with a placeholder timestep value of `placeholder_timestep = -1.0`.
 
-The sparse matrix `A` can be constructed with
-
+The sparse matrix `A` can be constructed with:
 - `SparseMatrixCSC(constructors...)` for CPU
 - `CuSparseMatrixCSC(constructors...)` for GPU
 
 The constructors are calculated based on the pentadiagonal coeffients passed as an input
-(`matrix_from_coefficients`).
+to [`matrix_from_coefficients`](@ref).
 
-The diagonal term `- Az / (g * Δt²)` is added later on during the time stepping
-to allow for variable time step. It is updated only when the previous time step 
-is different (`Δt_previous != Δt`).
+To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
+and it is updated only when the previous time step changes (`previous_Δt != Δt`).
 
 Preconditioning is done through the incomplete LU factorization. 
 
-It works for GPU, but it relies on serial backward and forward substitution which are very
+`HeptadiagonalIterativeSolver` works for GPU, but it relies on serial backward and forward substitution which are very
 heavy and destroy all the computational advantage, therefore it is switched off until a
 parallel backward/forward substitution is implemented. It is also updated based on the
-matrix when `Δt != Δt_previous`
+matrix when `previous_Δt != Δt`.
     
-The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
-The default solver is a Conjugate Gradient (cg)
+The `iterative_solver` used can is to be chosen from the IterativeSolvers.jl package. 
+The default solver is a Conjugate Gradient (`cg`):
 
 ```julia
-solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
+solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D); grid)
 ```
 """
 function HeptadiagonalIterativeSolver(coeffs;
@@ -104,8 +103,8 @@ function HeptadiagonalIterativeSolver(coeffs;
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
-    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of 1
-    # They will be recalculated before the first time step of the simulation
+    # Placeholder preconditioner and matrix are calculated using a "placeholder" timestep of -1.0
+    # They are then recalculated before the first time step of the simulation.
 
     placeholder_constructors = deepcopy(matrix_constructors)
     M = prod(problem_size)
@@ -137,6 +136,11 @@ end
 
 architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
 
+"""
+    matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
+
+Return the sparse matrix constructors based on the pentadiagonal coeffients (`coeffs`).
+"""
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
@@ -299,7 +303,6 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
 end
 
 function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
-
     arch = architecture(solver.matrix)
     
     # update matrix and preconditioner if time step changes
