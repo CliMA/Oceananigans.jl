@@ -73,12 +73,7 @@ to [`matrix_from_coefficients`](@ref).
 To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
 and it is updated only when the previous time step changes (`previous_Δt != Δt`).
 
-Preconditioning is done through the various methods implemented in `sparse_preconditioners.jl`. 
-
-`HeptadiagonalIterativeSolver` works for GPU, but it relies on serial backward and forward substitution which are very
-heavy and destroy all the computational advantage, therefore it is switched off until a
-parallel backward/forward substitution is implemented. It is also updated based on the
-matrix when `previous_Δt != Δt`.
+Preconditioning is done through the various methods implemented in `Solvers/sparse_preconditioners.jl`.
     
 The `iterative_solver` used can is to be chosen from the IterativeSolvers.jl package. 
 The default solver is a Conjugate Gradient (`cg`):
