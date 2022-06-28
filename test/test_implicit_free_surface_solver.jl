@@ -120,9 +120,9 @@ end
     for arch in archs
         A = typeof(arch)
 
-        rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
-                                           x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
-                                           topology = (Bounded, Periodic, Bounded))
+        rectilinear_grid = RectilinearGrid(arch, size = (128, 10, 5),
+                                           x = (0, 1000kilometers), y = (0, 500kilometers), z = (-400, 0),
+                                           topology = (Bounded, Bounded, Bounded))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
                                              longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
@@ -145,31 +145,31 @@ end
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, maxiter=128^3)
 
-        mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
-                                              abstol=1e-15, reltol=0, maxiter=128^3)
+         mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
+                                               abstol=1e-15, reltol=0, maxiter=128^3)
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
-
-        pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                momentum_advection = nothing,
-                                                free_surface = pcg_free_surface)
-
-        fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                momentum_advection = nothing,
-                                                free_surface = fft_free_surface)
 
         mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = mat_free_surface)
 
-        mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                               momentum_advection = nothing,
-                                               free_surface = mg_free_surface)
+        pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = pcg_free_surface)
+
+         mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = mg_free_surface)
+
+        fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = fft_free_surface)
 
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
-        @test mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
+        @test  mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
         
         events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
@@ -183,21 +183,25 @@ end
         mat_η = mat_model.free_surface.η
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-        mg_η = mg_model.free_surface.η
+        mg_η  =  mg_model.free_surface.η
 
         mat_η_cpu = Array(interior(mat_η))
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
-        mg_η_cpu = Array(interior(mg_η))
+        mg_η_cpu  = Array(interior(mg_η))
+
+        Δη_mat = mat_η_cpu .- fft_η_cpu
+        Δη_pcg = pcg_η_cpu .- fft_η_cpu
+        Δη_mg  = mg_η_cpu  .- fft_η_cpu
 
         @info "FFT/PCG/MAT/MG implicit free surface solver comparison:\n" *
-            "maximum(abs, η_mat - η_fft): $(maximum(abs, mat_η_cpu .- fft_η_cpu)), \n" *
-            "maximum(abs, η_pcg - η_fft): $(maximum(abs, pcg_η_cpu .- fft_η_cpu)), \n" *
-            "maximum(abs, η_mg - η_fft): $(maximum(abs, mg_η_cpu .- fft_η_cpu)), \n" *
-            "maximum(abs, η_mat): $(maximum(abs, mat_η_cpu)), \n" *
-            "maximum(abs, η_pcg): $(maximum(abs, pcg_η_cpu)), \n" *
-            "maximum(abs, η_mg): $(maximum(abs, mg_η_cpu)), \n" *
-            "maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))."
+              "    maximum(abs, η_mat - η_fft): $(maximum(abs, Δη_mat)), \n" *
+              "    maximum(abs, η_pcg - η_fft): $(maximum(abs, Δη_pcg)), \n" *
+              "    maximum(abs, η_mg - η_fft) : $(maximum(abs, Δη_mg)), \n" *
+              "    maximum(abs, η_mat): $(maximum(abs, mat_η_cpu)), \n" *
+              "    maximum(abs, η_pcg): $(maximum(abs, pcg_η_cpu)), \n" *
+              "    maximum(abs, η_mg) : $(maximum(abs, mg_η_cpu)), \n" *
+              "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))."
 
         @test all(mat_η_cpu .≈ fft_η_cpu)
         
@@ -211,19 +215,12 @@ end
             # on the CPU.
             @info "  Skipping comparison between pcg and fft implicit free surface solver"
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
+            @info "  Skipping comparison between mg and fft implicit free surface solver"
             @test_skip all(mg_η_cpu .≈ fft_η_cpu)
         end
 
-        pcg_η = pcg_model.free_surface.η
-         mg_η = mg_model.free_surface.η
-        fft_η = fft_model.free_surface.η
-
-        Δη_mat = Array(interior(mat_η) .- interior(fft_η))
-        Δη_pcg = Array(interior(pcg_η) .- interior(fft_η))
-        Δη_mg = Array(interior(mg_η) .- interior(fft_η))
-
         @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-        @test all(isapprox.(Δη_mg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
+        @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
     end
 end
