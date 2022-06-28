@@ -120,9 +120,9 @@ end
     for arch in archs
         A = typeof(arch)
 
-        rectilinear_grid = RectilinearGrid(arch, size = (128, 10, 5),
-                                           x = (0, 1000kilometers), y = (0, 500kilometers), z = (-400, 0),
-                                           topology = (Bounded, Bounded, Bounded))
+        rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
+                                           x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
+                                           topology = (Bounded, Periodic, Bounded))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
                                              longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
