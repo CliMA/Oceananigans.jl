@@ -128,10 +128,10 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
-@inline global_smoothness_indicator(::Val{2}, β) = nothing # WENO{2} should never use Z-WENO formulation as a global smoothness is undefined
-@inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[end])
+@inline global_smoothness_indicator(::Val{2}, β) = abs(β[1] - β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[3])
 @inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] - β[2] - β[3] + β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] - β[end])
+@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] - β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = abs(β[1] - β[2] - β[5] + β[6])
 
 # Calculating Dynamic WENO Weights, either with JS weno, Z weno or VectorInvariant WENO
