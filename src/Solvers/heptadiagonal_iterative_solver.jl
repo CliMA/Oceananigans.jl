@@ -68,7 +68,7 @@ The sparse matrix `A` can be constructed with:
 - `CuSparseMatrixCSC(constructors...)` for GPU
 
 The constructors are calculated based on the pentadiagonal coeffients passed as an input
-to [`matrix_from_coefficients`](@ref).
+to `matrix_from_coefficients` function.
 
 To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
 and it is updated only when the previous time step changes (`previous_Δt != Δt`).
