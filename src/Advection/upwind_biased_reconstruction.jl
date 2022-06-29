@@ -23,7 +23,7 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionS
     
     "reconstruction scheme used near boundaries"
     boundary_scheme :: CA
-    "reconstruction scheme used for symmetric interpolation, capped at Centered(order = 4) for stability purposes"
+    "reconstruction scheme used for symmetric interpolation"
     symmetric_scheme :: SI
 
     function UpwindBiased{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
@@ -50,7 +50,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
     if N > 1
         coefficients     = Tuple(nothing for i in 1:6)
         # coefficients     = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        symmetric_scheme  = Centered(FT; grid, order = min(order - 1, 4))
+        symmetric_scheme = Centered(FT; grid, order = order - 1)
         boundary_scheme  = UpwindBiased(FT; grid, order = order - 2)
     else
         coefficients     = Tuple(nothing for i in 1:6)
