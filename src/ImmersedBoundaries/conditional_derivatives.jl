@@ -45,7 +45,7 @@ import Oceananigans.Operators: Γᶠᶠᶜ, div_xyᶜᶜᶜ
     conditional_x_derivative_f(f, c, i, j, k, ibg, δxᶠᵃᵃ, Δy_qᶜᶠᶜ, v) - conditional_y_derivative_f(f, c, i, j, k, ibg, δyᵃᶠᵃ, Δx_qᶠᶜᶜ, u)
 
 @inline function div_xyᶜᶜᶜ(i, j, k, ibg::IBG, u, v)  
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (conditional_x_derivative_c(c, c, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) +
-                                       conditional_y_derivative_c(c, c, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶜ, v))
+    return 1 / Azᶜᶜᶜ(i, j, k, ibg) * (conditional_x_derivative_c(c, c, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) +
+                                      conditional_y_derivative_c(c, c, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶜ, v))
 end
 

@@ -5,8 +5,6 @@ using Oceananigans.Fields: ZeroField
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
 @inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
 
-const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
-
 @inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(eltype(grid))
 @inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
 

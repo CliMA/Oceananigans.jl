@@ -147,7 +147,7 @@ for arch in archs
             scheme = adv(order = advective_order(buffer, adv))
             
             @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(adv))]"
-            run_momentum_interpolation_test(u, v, scheme, ibg)
+            run_momentum_interpolation_test(u, v, ibg, scheme)
         end
     end
 end

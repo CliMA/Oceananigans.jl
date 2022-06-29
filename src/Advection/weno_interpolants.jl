@@ -39,9 +39,9 @@ end
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{0}) where FT = FT.((1, -2, 1))
 @inline coeff_β(scheme::WENO{2, FT}, ::Val{1}) where FT = FT.((1, -2, 1))
 
-@inline coeff_β(scheme::WENO{3, FT}, ::Val{0}) where FT = FT.((1.0, -3.1, 1.1, 2.5, -1.9, 0.4)) 
-@inline coeff_β(scheme::WENO{3, FT}, ::Val{1}) where FT = FT.((0.4, -1.3, 0.5, 1.3, -1.3, 0.4)) 
-@inline coeff_β(scheme::WENO{3, FT}, ::Val{2}) where FT = FT.((0.4, -1.9, 1.1, 2.5, -3.1, 1.0)) 
+@inline coeff_β(scheme::WENO{3, FT}, ::Val{0}) where FT = FT.((10, -31, 11, 25, -19,  4))
+@inline coeff_β(scheme::WENO{3, FT}, ::Val{1}) where FT = FT.((4,  -13, 5,  13, -13,  4))
+@inline coeff_β(scheme::WENO{3, FT}, ::Val{2}) where FT = FT.((4,  -19, 11, 25, -31, 10))
 
 @inline coeff_β(scheme::WENO{4, FT}, ::Val{0}) where FT = FT.((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547))
 @inline coeff_β(scheme::WENO{4, FT}, ::Val{1}) where FT = FT.((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267))
@@ -91,7 +91,7 @@ end
 
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline  left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
         @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
     end
 end
@@ -131,10 +131,11 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
+# Functions taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, β) = abs(β[1] - β[2])
 @inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] + 3β[2] - 3β[3] - β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] +  3β[2] -   3β[3] -    β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 # Calculating Dynamic WENO Weights, either with JS weno, Z weno or VectorInvariant WENO
@@ -169,7 +170,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             βᵤ = beta_loop(scheme, uₛ, $biased_β)
             βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
-            β  = βᵤ .+ βᵥ
+            β  = 0.5 .* (βᵤ .+ βᵥ)
             
             if scheme isa ZWENO
                 τ = global_smoothness_indicator(Val(N), β)
@@ -245,13 +246,17 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-for (vel, interp) in zip([:u, :v], [:ℑyᵃᶠᵃ, :ℑxᶠᵃᵃ]), side in [:left, :right], (dir, ξ) in zip([1, 2], (:x, :y))
-    tangential_stencil = Symbol(:tangential_, side, :_stencil_, vel)
-    biased_stencil = Symbol(side, :_stencil_, ξ)
-    @eval begin
-        @inline $tangential_stencil(i, j, k, scheme::WENO, ::Val{$dir}, $vel) = @inbounds $biased_stencil(i, j, k, scheme, $interp, $vel)
-    end
-end
+using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u)  = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v)  = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u)  = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 function metaprogrammed_stencil_sum(buffer)
