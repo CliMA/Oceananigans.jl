@@ -27,7 +27,7 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
 
     "advection scheme used near boundaries"
     boundary_scheme :: CA
-    "reconstruction scheme used for symmetric interpolation"
+    "reconstruction scheme used for symmetric interpolation, capped at Centered(order = 4) for stability purposes"
     symmetric_scheme :: SI
 
     function WENO{N, FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
@@ -63,7 +63,7 @@ Keyword arguments
                       defaults to `nothing`.
 
 - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation.
-           (defaults to `false`)
+           (defaults to `true`)
 
 Examples
 ========
@@ -126,7 +126,7 @@ function WENO(FT::DataType=Float64;
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
         boundary_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
-        symmetric_scheme  = Centered(FT; grid, order = order - 1)
+        symmetric_scheme  = Centered(FT; grid, order = min(order - 1, 4))
     end
 
     return WENO{N, FT, VI, zweno}(weno_coefficients..., bounds, boundary_scheme, symmetric_scheme)
