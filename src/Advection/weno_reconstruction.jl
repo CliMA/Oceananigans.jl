@@ -2,11 +2,6 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-const two_32 = Int32(2)
-
-const ƞ = Int32(2) # WENO exponent
-const ε = 1e-20
-
 abstract type SmoothnessStencil end
 
 struct VorticityStencil <:SmoothnessStencil end
