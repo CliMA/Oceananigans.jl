@@ -116,7 +116,7 @@ function WENO(FT::DataType=Float64;
     end
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
-    
+
     if order < 3
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
         return UpwindBiased(order = 1)

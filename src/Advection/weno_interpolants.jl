@@ -1,4 +1,5 @@
 ## Values taken from Balsara & Shu "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
+
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
@@ -90,8 +91,8 @@ end
 
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
-        @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, reverse(ψ), coeff_β(scheme, Val($(buffer-stencil-1))))
+        @inline left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil})  where {FT} = @inbounds smoothness_sum(scheme, reverse(ψ), coeff_β(scheme, Val($stencil)))
+        @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($(buffer-stencil-1))))
     end
 end
 
@@ -174,7 +175,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, β, $coeff, FT)
+                α = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
@@ -190,7 +191,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
             else
-                α  = js_alpha_loop(scheme, β, $coeff, FT)
+                α = js_alpha_loop(scheme, β, $coeff, FT)
             end
             return α ./ sum(α)
         end
