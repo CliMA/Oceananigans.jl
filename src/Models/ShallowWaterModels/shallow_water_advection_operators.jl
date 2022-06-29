@@ -67,7 +67,7 @@ Calculates the divergence of the mass flux into a cell,
 
     1/Az * [δxᶜᵃᵃ(Δy * uh) + δyᵃᶜᵃ(Δx * vh)]
 
-which will end up at the location `ccc`.
+which ends up at the location `ccc`.
 """
 @inline function div_Uh(i, j, k, grid, advection, solution, formulation)
     return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, solution[1]) + 
@@ -88,14 +88,16 @@ end
     @inbounds advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
-    div_Uc(i, j, k, grid, advection, U, c)
+    div_Uc(i, j, k, grid, advection, solution, c, formulation)
 
-Calculates the divergence of the flux of a tracer quantity c being advected by
-a velocity field U = (u, v), ∇·(Uc),
+Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
+a velocity field ``𝐔 = (u, v)``, ``∇·(𝐔c)``,
 
+    ```
     1/Az * [δxᶜᵃᵃ(Δy * uh * ℑxᶠᵃᵃ(c) / h) + δyᵃᶜᵃ(Δx * vh * ℑyᵃᶠᵃ(c) / h)]
+    ```
 
-which will end up at the location `ccc`.
+which ends up at the location `ccc`.
 """
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, formulation)
@@ -115,14 +117,16 @@ end
 @inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
 
 """
-    c_div_U(i, j, k, grid, advection, U)
+    c_div_U(i, j, k, grid, solution, c, formulation)
 
-Calculates the product of the tracer concentration c with 
-the horizontal divergence of the velocity field U = (u, v), c ∇·(U),
+Calculates the product of the tracer concentration ``c`` with 
+the horizontal divergence of the velocity field ``𝐔 = (u, v)``, ``c ∇·𝐔``,
 
+    ```
     1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h]
+    ```
 
-which will end up at the location `ccc`.
+which ends up at the location `ccc`.
 """
 @inline c_div_U(i, j, k, grid, solution, c, formulation) = 
     @inbounds c[i, j, k] * 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u, solution) + δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v, solution))
