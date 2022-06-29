@@ -60,19 +60,25 @@ Abstract supertype for Distributed architectures supported by Oceananigans.
 abstract type AbstractMultiArchitecture <: AbstractArchitecture end
 
 """
-    CPU <: AbstractArchitecture
+    CPU()
 
-Run Oceananigans on one CPU node. Uses multiple threads if the environment
-variable `JULIA_NUM_THREADS` is set.
+Returns a CPU architecture for building Oceananigans models on a single CPU node.
 """
 struct CPU <: AbstractArchitecture end
 
-"""
-    GPU <: AbstractArchitecture
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
+struct GPU{D} <: AbstractArchitecture
+    device :: D
+end
+
 """
-struct GPU <: AbstractArchitecture end
+    GPU(device)
+
+Returns a GPU architecture for building Oceananigans models on a GPU `device`.
+
+Currently, only Nvidia CUDA GPUs are supported.
+"""
+GPU() = GPU(CUDA.device())
 
 #####
 ##### These methods are extended in Distributed.jl
