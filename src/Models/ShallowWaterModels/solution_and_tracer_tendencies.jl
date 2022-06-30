@@ -104,7 +104,7 @@ end
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
              + c_div_U(i, j, k, grid, solution, c, formulation)         
-             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, nothing)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, solution, tracers, clock, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end

@@ -14,7 +14,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
@@ -33,7 +35,7 @@ using CUDA
 using KernelAbstractions
 using Adapt 
 
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 using Oceananigans
 using Oceananigans.Architectures

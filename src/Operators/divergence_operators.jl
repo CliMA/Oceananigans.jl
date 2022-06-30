@@ -5,11 +5,13 @@
 """
     divᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-Calculates the divergence ∇·𝐔 of a vector field 𝐔 = (u, v, w),
+Calculates the divergence ``∇·𝐔`` of a vector field ``𝐔 = (u, v, w)``,
 
-    1/V * [δxᶜᵃᵃ(Ax * u) + δxᵃᶜᵃ(Ay * v) + δzᵃᵃᶜ(Az * w)],
+    ```
+    1/V * [δxᶜᵃᵃ(Ax * u) + δxᵃᶜᵃ(Ay * v) + δzᵃᵃᶜ(Az * w)]
+    ```
 
-which will end up at the cell centers `ccc`.
+which ends up at the cell centers `ccc`.
 """
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
     return 1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
@@ -20,7 +22,7 @@ end
 """
     div_xyᶜᶜᵃ(i, j, k, grid, u, v)
 
-Returns the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
+Return the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
 
 ```
 1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δyᵃᶜᵃ * u) + δyᵃᶜᵃ(Δxᶜᵃᵃ * v)]
