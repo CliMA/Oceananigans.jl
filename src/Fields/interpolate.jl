@@ -105,7 +105,7 @@ end
 
 """
     interpolate(field, LX, LY, LZ, grid, x, y, z)
-i
+
 Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation. The location of
 the field is specified with `(LX, LY, LZ)` and the field is defined on `grid`.
 
