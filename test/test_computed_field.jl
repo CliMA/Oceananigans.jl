@@ -294,7 +294,7 @@ function computations_with_averaged_field_derivative(model)
     U = Field(Average(u, dims=(1, 2)))
     V = Field(Average(v, dims=(1, 2)))
 
-    # This tests a vertical derivative of an AveragedField
+    # This tests a vertical derivative of an Averaged Field
     shear_production_op = @at (Center, Center, Center) u * w * ∂z(U)
     shear = Field(shear_production_op)
     compute!(shear)
@@ -480,8 +480,8 @@ for arch in archs
                 @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
             end
 
-            @testset "Operations with AveragedField [$A, $G]" begin
-                @info "      Testing operations with AveragedField..."
+            @testset "Operations with Averaged Field [$A, $G]" begin
+                @info "      Testing operations with Averaged Field..."
 
                 T, S = model.tracers
                 TS = Field(Average(T * S, dims=(1, 2)))
@@ -508,8 +508,8 @@ for arch in archs
                 end
             end
 
-            @testset "Computations with AveragedFields [$A, $G]" begin
-                @info "      Testing computations with AveragedField [$A, $G]..."
+            @testset "Computations with Averaged Fields [$A, $G]" begin
+                @info "      Testing computations with Averaged Field [$A, $G]..."
 
                 @test computations_with_averaged_field_derivative(model)
 

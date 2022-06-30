@@ -160,11 +160,11 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
 
-B = AveragedField(model.tracers.b, dims=1)
-C = AveragedField(model.tracers.c, dims=1)
-U = AveragedField(model.velocities.u, dims=1)
-V = AveragedField(model.velocities.v, dims=1)
-W = AveragedField(model.velocities.w, dims=1)
+B = Field(Average(model.tracers.b, dims=1))
+C = Field(Average(model.tracers.c, dims=1))
+U = Field(Average(model.velocities.u, dims=1))
+V = Field(Average(model.velocities.v, dims=1))
+W = Field(Average(model.velocities.w, dims=1))
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
                                                      schedule = TimeInterval(save_fields_interval),
