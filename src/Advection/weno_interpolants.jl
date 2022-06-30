@@ -14,7 +14,7 @@ const ε = 1e-8
 for buffer in [2, 3, 4, 5, 6]
     for stencil in collect(0:1:buffer-1)
 
-        # ENO coefficients for uniform direction (::Type{Nothing}) and stretched directions (T) directions 
+        # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
             @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = Cl(scheme, Val($(buffer-stencil-1)))
 
@@ -22,7 +22,7 @@ for buffer in [2, 3, 4, 5, 6]
             @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
             @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
 
-            # stretched coefficients are precalculated
+            # stretched coefficients are retrieved from precalculated coefficients
             @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $stencil,     dir, i, loc)
             @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
         end
@@ -89,11 +89,22 @@ for buffer in [2, 3, 4, 5, 6]
     end
 end
 
+# Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline  left_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
-        @inline right_biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where {FT} = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
     end
+end
+
+# Shenanigans for WENO weights calculation
+function metaprogrammed_beta_sum(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        elem[stencil] = :(0.5*(β₁[$stencil] + β₂[$stencil]))
+    end
+
+    return :($(elem...), )
 end
 
 function metaprogrammed_beta_loop(buffer)
@@ -105,6 +116,7 @@ function metaprogrammed_beta_loop(buffer)
     return :($(elem...), )
 end
 
+# ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
 function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -114,6 +126,7 @@ function metaprogrammed_zweno_alpha_loop(buffer)
     return :($(elem...), )
 end
 
+# JSWENO α weights dᵣ */ (βᵣ + ε)²
 function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -125,13 +138,14 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
+        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
         @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
-# Functions taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
+# Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, β) = abs(β[1] - β[2])
 @inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[3])
 @inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] +  3β[2] -   3β[3] -    β[4])
@@ -170,24 +184,8 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             βᵤ = beta_loop(scheme, uₛ, $biased_β)
             βᵥ = beta_loop(scheme, vₛ, $biased_β)
 
-            β  = 0.5 .* (βᵤ .+ βᵥ)
-            
-            if scheme isa ZWENO
-                τ = global_smoothness_indicator(Val(N), β)
-                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
-            else
-                α = js_alpha_loop(scheme, β, $coeff, FT)
-            end
-            return α ./ sum(α)
-        end
+            β  = beta_sum(scheme, βᵤ, βᵥ)
 
-        @inline function $biased_weno_weights(ijk, scheme::WENO{N, FT}, ::Val{3}, ::Type{VelocityStencil}, u) where {N, FT}
-            i, j, k = ijk
-            
-            uₛ = $biased_stencil_z(i, j, k, scheme, u)
-        
-            β = beta_loop(scheme, uₛ, $biased_β)
-            
             if scheme isa ZWENO
                 τ = global_smoothness_indicator(Val(N), β)
                 α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
@@ -277,10 +275,10 @@ end
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
     for side in (:left, :right)
-        interpolate_func = Symbol(:stretched_, side, :_biased_interpolate_, interp)
-        stencil       = Symbol(side, :_stencil_, dir)
-        weno_weights = Symbol(side, :_biased_weno_weights)
-        biased_p = Symbol(side, :_biased_p)
+        interpolate_func = Symbol(:inner_, side, :_biased_interpolate_, interp)
+        stencil          = Symbol(side, :_stencil_, dir)
+        weno_weights     = Symbol(side, :_biased_weno_weights)
+        biased_p         = Symbol(side, :_biased_p)
         
         @eval begin
             @inline function $interpolate_func(i, j, k, grid, 
