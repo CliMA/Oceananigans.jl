@@ -30,7 +30,7 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     end
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
-                                        tracers = (:c, :d, :e),
+                                        tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
@@ -44,10 +44,9 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     # Tracer patch parameters
     cᵢ(x, y, z) = Gaussian(x, 0, L)
-    dᵢ(x, y, z) = Gaussian(0, y, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
+    set!(model, c=cᵢ, e=eᵢ)
 
     # Time-scale for tracer advection across the smallest grid cell
     advection_time_scale = Δ_min(grid) / 0.1
@@ -155,22 +154,19 @@ for arch in archs
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
         
-            cs, ds, es = solid_body_tracer_advection_test(grid)
+            cs, es = solid_body_tracer_advection_test(grid)
             
             cs = Array(interior(cs))
-            ds = Array(interior(ds))
             es = Array(interior(es))
 
             for regions in [2, 4], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, d, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
+                c, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
-                d = interior(reconstruct_global_field(d))
                 e = interior(reconstruct_global_field(e))
 
                 @test all(c .≈ cs)
-                @test all(d .≈ ds)
                 @test all(e .≈ es)
             end
         end
