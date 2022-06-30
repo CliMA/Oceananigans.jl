@@ -46,13 +46,12 @@ Return a grid with `GridFittedBottom` immersed boundary.
 Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
-    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
-    bottom_field = Field{Center, Center, Nothing}(helper_grid)
+    bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
     new_ib = GridFittedBottom(offset_bottom_array)
-    return ImmersedBoundaryGrid(helper_grid, new_ib)
+    return ImmersedBoundaryGrid(grid, new_ib)
 end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom{<:OffsetArray})
@@ -128,22 +127,20 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true)
     TX, TY, TZ = topology(grid)
-    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
 
     if precompute_mask
-        mask_field = compute_mask(helper_grid, ib)
+        mask_field = compute_mask(grid, ib)
         new_ib = GridFittedBoundary(mask_field)
-        return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, new_ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
     else
-        return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, ib)
+        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
     end
 end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
-    helper_grid = with_halo(halo_size(grid) .+ 1, grid)
-
-    return ImmersedBoundaryGrid{TX, TY, TZ}(helper_grid, ib)
+    
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
 on_architecture(arch, ib::GridFittedBoundary{<:AbstractArray}) = GridFittedBoundary(arch_array(arch, ib.mask))
