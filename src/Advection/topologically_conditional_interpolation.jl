@@ -16,9 +16,9 @@ const AUG = AbstractUnderlyingGrid
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
                                                                               # outside left | outside right buffer
-@inline    outside_symmetric_buffer(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 -  boundary_buffer(adv)
-@inline  outside_left_biased_buffer(i, N, adv) = i > boundary_buffer(adv)     && i < N + 1 - (boundary_buffer(adv) - 1)
-@inline outside_right_biased_buffer(i, N, adv) = i > boundary_buffer(adv) - 1 && i < N + 1 -  boundary_buffer(adv)
+@inline    outside_symmetric_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ     && i < N + 1 - Nᴮ
+@inline  outside_left_biased_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ     && i < N + 1 - (Nᴮ - 1)
+@inline outside_right_biased_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ - 1 && i < N + 1 - Nᴮ
 
 const ADV = AbstractAdvectionScheme
 const WVI = WENOVectorInvariant
