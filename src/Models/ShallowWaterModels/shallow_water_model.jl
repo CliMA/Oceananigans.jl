@@ -13,6 +13,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
+using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -227,23 +228,4 @@ function shallow_water_velocities(model::ShallowWaterModel)
 
         return (u, v)
     end
-end
-
-function inflate_grid_halo_size(grid, momentum_advection, tracer_advection, mass_advection, closure)
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = inflate_halo_size(1, 1, 0, topology(grid), momentum_advection, tracer_advection, mass_advection, closure)
-    if grid isa ImmersedBoundaryGrid 
-        required_halo[1:2] = required_halo[1:2] .+ 1
-    end
-    Hx, Hy, Hz = max.(user_halo, required_halo)
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "Note that an ImmersedBoundaryGrid requires an extra halo point. "
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
-
-    return grid
 end
