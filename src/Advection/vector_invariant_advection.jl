@@ -102,22 +102,6 @@ end
 @inline vertical_advection_U(i, j, k, grid, ::VectorInvariantSchemes, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
 @inline vertical_advection_V(i, j, k, grid, ::VectorInvariantSchemes, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
-#= 
-@inline function vertical_advection_U(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, w) where {N, FT, XT, YT, ZT, VI}
-    ŵ  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δx_qᶜᶜᶠ, w) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
-    ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶠᶜᶠ, VI, u)
-    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
-end
-
-@inline function vertical_advection_V(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, v, w) where {N, FT, XT, YT, ZT, VI}
-    ŵ  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑzᵃᵃᶜ, Δy_qᶜᶜᶠ, w) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
-    ζᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ∂zᶜᶠᶠ, VI, v)
-    return upwind_biased_product(ŵ, ζᴸ, ζᴿ) 
-end
-=#
-
 ######
 ###### Conservative formulation of momentum advection
 ######
@@ -138,16 +122,16 @@ const U1Y = UpwindBiased{1, <:Any, <:Any, <:Nothing}
 const U1Z = UpwindBiased{1, <:Any, <:Any, <:Nothing}
 
 # For vector Invariant downgrading near the boundaries 
-@inline stretched_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i-1, j, k, grid, args...) 
-@inline stretched_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1X, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i-1, j, k, grid, args...) 
-@inline stretched_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j-1, k, grid, args...)
-@inline stretched_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1Y, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j-1, k, grid, args...)
-@inline stretched_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k-1, grid, args...)
-@inline stretched_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1Z, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k-1, grid, args...)
+@inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i-1, j, k, grid, args...) 
+@inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1X, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i-1, j, k, grid, args...) 
+@inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j-1, k, grid, args...)
+@inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1Y, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j-1, k, grid, args...)
+@inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k-1, grid, args...)
+@inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1Z, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k-1, grid, args...)
 
-@inline stretched_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...) 
-@inline stretched_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1X, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...) 
-@inline stretched_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
-@inline stretched_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1Y, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
-@inline stretched_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
-@inline stretched_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1Z, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+@inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...) 
+@inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1X, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...) 
+@inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+@inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1Y, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+@inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+@inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1Z, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)

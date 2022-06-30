@@ -99,9 +99,9 @@ UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, 
 
 # uniform upwind biased reconstruction
 for side in (:left, :right)
-    stencil_x = Symbol(:stretched_, side, :_biased_interpolate_xᶠᵃᵃ)
-    stencil_y = Symbol(:stretched_, side, :_biased_interpolate_yᵃᶠᵃ)
-    stencil_z = Symbol(:stretched_, side, :_biased_interpolate_zᵃᵃᶠ)
+    stencil_x = Symbol(:inner_, side, :_biased_interpolate_xᶠᵃᵃ)
+    stencil_y = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
+    stencil_z = Symbol(:inner_, side, :_biased_interpolate_zᵃᵃᶠ)
 
     for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
@@ -120,7 +120,7 @@ end
 
 # stretched upwind biased reconstruction
 for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
-    stencil = Symbol(:stretched_, side, :_biased_interpolate_, dir)
+    stencil = Symbol(:inner_, side, :_biased_interpolate_, dir)
 
     for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
