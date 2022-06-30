@@ -172,7 +172,6 @@ outputs = merge(fields(model), (; Rb))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      field_slicer = nothing,
                                                       prefix = filename * "_fields",
                                                       overwrite_existing = true)
 

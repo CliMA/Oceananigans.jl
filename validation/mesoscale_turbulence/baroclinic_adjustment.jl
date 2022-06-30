@@ -137,19 +137,19 @@ end
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 
-slicers = (west = FieldSlicer(i=1),
-           east = FieldSlicer(i=grid.Nx),
-           south = FieldSlicer(j=1),
-           north = FieldSlicer(j=grid.Ny),
-           bottom = FieldSlicer(k=1),
-           top = FieldSlicer(k=grid.Nz))
+slicers = (west = (1, :, :),
+           east = (grid.Nx, :, :),
+           south = (:, 1, :),
+           north = (:, grid.Ny, :),
+           bottom = (:, :, 1),
+           top = (:, :, grid.Nz))
 
 for side in keys(slicers)
-    field_slicer = slicers[side]
+    indices = slicers[side]
 
     simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
                                                        schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
+                                                       indices,
                                                        filename = filename * "_$(side)_slice",
                                                        overwrite_existing = true)
 end
