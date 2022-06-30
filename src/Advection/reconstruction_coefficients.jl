@@ -24,7 +24,6 @@
 @inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-
 struct FirstDerivative end
 struct SecondDerivative end
 struct Primitive end
@@ -240,6 +239,7 @@ for val in [1, 2, 3]
     end
 end
 
+# Stretched reconstruction coefficients for `Centered` schemes
 function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
     cpu_coord = arch_array(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
@@ -247,6 +247,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order)
     return s
 end
 
+# Stretched reconstruction coefficients for `UpwindBiased` schemes
 function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
     cpu_coord = arch_array(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
@@ -258,6 +259,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order)
     return tuple(s...)
 end
 
+# Stretched reconstruction coefficients for `WENO` schemes
 function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
 
     cpu_coord = arch_array(CPU(), coord)
@@ -268,6 +270,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order)
     return tuple(s...)
 end
 
+# general reconstruction coefficients for order `order` and stencil `r` where r 
 function create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     stencil = NTuple{order, FT}[]
     @inbounds begin
