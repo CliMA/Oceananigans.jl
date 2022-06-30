@@ -28,11 +28,11 @@ architecture(solver::MultigridSolver) = solver.architecture
                     )
 
 Returns a MultigridSolver that solves the linear equation
-``A x = b`` using a multigrid method where `A * x` is
+``A x = b`` using a multigrid method, where `A * x` is
 determined by `linear_operation!`
 
 `linear_operation!` is a function with signature `linear_operation!(Ax, x, args...)` 
-that calculates `A*x` and stores the result in `Ax` for a "candidate solution `x`.
+that calculates `A * x` for given `x` and stores the result in `Ax`.
 
 
 The solver is used by calling
@@ -52,12 +52,12 @@ Arguments
                `norm(A * x - b) < tolerance`.
 """
 function MultigridSolver(grid,
-                        linear_operation!, 
-                        args...;
-                        maximum_iterations = 100, #prod(size(template_field)),
-                        tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
-                        amg_algorithm = RugeStubenAMG(),
-                        )
+                         linear_operation!, 
+                         args...;
+                         maximum_iterations = 100, #prod(size(template_field)),
+                         tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
+                         amg_algorithm = RugeStubenAMG(),
+                         )
 
     arch = architecture(grid)
 
@@ -86,28 +86,28 @@ function create_matrix(grid, linear_operator!, args...)
 
     make_column(f) = reshape(interior(f), (Nx*Ny, 1))
 
-    eᵢⱼₖ = Field{Center, Center, Nothing}(grid)
-    ∇²eᵢⱼₖ = Field{Center, Center, Nothing}(grid)
+    eᵢⱼ = Field{Center, Center, Nothing}(grid)
+    ∇²eᵢⱼ = Field{Center, Center, Nothing}(grid)
+    
     for j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ .= 0
-        ∇²eᵢⱼₖ .= 0
-        eᵢⱼₖ[i, j] = 1
-        fill_halo_regions!(eᵢⱼₖ)
-        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
+        eᵢⱼ .= 0
+        ∇²eᵢⱼ .= 0
+        eᵢⱼ[i, j] = 1
+        fill_halo_regions!(eᵢⱼ)
+        linear_operator!(∇²eᵢⱼ, eᵢⱼ, args...)
 
-        A[:, Nx*(j-1)+i] = make_column(∇²eᵢⱼₖ)
+        A[:, Nx*(j-1) + i] = make_column(∇²eᵢⱼ)
     end
     
     return A
 end
 
 """
-    solve!(x, solver::MultigridSolver, b, args...)
+    solve!(x, solver::MultigridSolver, b; kwargs...)
 
 Solve `A * x = b` using a multigrid method, where `A * x` is
 determined by `linear_operation!` given in the MultigridSolver constructor.
 """
-
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     grid = b.grid
     Nx, Ny, Nz = size(grid)
@@ -124,7 +124,7 @@ end
 
 function solve!(x::Field{Center, Center, Nothing}, solver::MultigridSolver, b::Field{Center, Center, Nothing}; kwargs...)
     grid = b.grid
-    Nx, Ny = size(grid)
+    Nx, Ny, _ = size(grid)
     b_array = collect(reshape(interior(b), Nx * Ny))
     x_array = collect(reshape(interior(x), Nx * Ny)) 
 

@@ -67,7 +67,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
-    solver = MultigridSolver(grid, implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, nothing;)
+    solver = MultigridSolver(grid, implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, placeholder_timestep)
                                                 #    settings...)
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side)
@@ -81,8 +81,6 @@ build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acce
 #####
 
 function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, rhs, g, Δt)
-    #event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
-    #wait(device(model.architecture), event)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # If Δt varies then construct matrix
@@ -93,7 +91,6 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
         solver.linear_operator = create_matrix(η.grid, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
         implicit_free_surface_solver.previous_Δt = Δt
     end
-    # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs)
 
     return nothing

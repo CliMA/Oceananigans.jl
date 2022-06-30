@@ -38,7 +38,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     Δt = 900
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                                            abstol=1e-15, reltol=0))
@@ -79,7 +79,7 @@ function run_mg_implicit_free_surface_solver_tests(arch, grid)
     Δt = 900
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(grid = grid,
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
                                                                            abstol=1e-15, reltol=0))
