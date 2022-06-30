@@ -42,6 +42,11 @@ include("PointExponentialDecay.jl")
 #
 include("OneDimensionalUtils.jl")
 
+# Utilities for analyzing and plotting the results
+# of 2D convergence tests.
+#
+include("TwoDimensionalUtils.jl")
+
 # Advection and diffusion of a 1D Gaussian:
 #
 # c = 1/√(4πκt) * exp( -(x - Ut)^2 / 4κt )
@@ -49,6 +54,15 @@ include("OneDimensionalUtils.jl")
 # Tests x-advection and y-advection.
 #
 include("OneDimensionalGaussianAdvectionDiffusion.jl")
+
+# Advection and diffusion of a 2D Gaussian:
+#
+# c = 1/√(4πκt) * exp( -(x - Ut)^2 / 4κt )
+#
+# Tests xy-advection, yz-advection and xz-advection.
+#
+include("TwoDimensionalGaussianAdvectionDiffusion.jl")
+
 
 # Advection and diffusion of a 1D cosine:
 #

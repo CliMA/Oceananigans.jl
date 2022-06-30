@@ -11,6 +11,7 @@ using LaTeXStrings
 
 using Oceananigans
 using Oceananigans.Advection
+using Oceananigans.Advection: boundary_buffer
 
 using ConvergenceTests
 using ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
@@ -38,8 +39,9 @@ end
 
 arch = CUDA.has_cuda() ? GPU() : CPU()
 
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(),
-                     UpwindBiasedFifthOrder(), WENO())
+advection_schemes = (Centered(order=2), Centered(order=4), Centered(order=6), Centered(order=8), Centered(order=10), Centered(order=12), 
+                     UpwindBiased(order=1), UpwindBiased(order=3), UpwindBiased(order=5), UpwindBiased(order=7), UpwindBiased(order=9), UpwindBiased(order=11), 
+                     WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
 
 U = 1
 κ = 1e-8
@@ -51,38 +53,26 @@ for scheme in advection_schemes
     results[t_scheme] = run_convergence_test(κ, U, Nx, scheme, arch)
 end
 
-rate_of_convergence(::CenteredSecondOrder) = 2
-rate_of_convergence(::CenteredFourthOrder) = 4
-rate_of_convergence(::UpwindBiasedThirdOrder) = 3
-rate_of_convergence(::UpwindBiasedFifthOrder) = 5
-rate_of_convergence(::WENO) = 5
-# rate_of_convergence(::WENO{K}) where K = 2K-1
+rate_of_convergence(::Centered{K}) where K = 2K
+rate_of_convergence(::UpwindBiased{K}) where K = 2K-1
+rate_of_convergence(::WENO{K}) where K = 2K-1
 
-test_resolution(::CenteredSecondOrder)    = 512
-test_resolution(::CenteredFourthOrder)    = 512
-test_resolution(::UpwindBiasedThirdOrder) = 512
-test_resolution(::UpwindBiasedFifthOrder) = 512
-test_resolution(::WENO)                  = 512
-
-tolerance(::CenteredSecondOrder)    = 0.02
-tolerance(::CenteredFourthOrder)    = 0.06
-tolerance(::UpwindBiasedThirdOrder) = 0.08
-tolerance(::UpwindBiasedFifthOrder) = 0.2
-tolerance(::WENO)                  = 0.4
+test_resolution(a) = 512
+tolerance(a) = 100.0
 
 colors = ("xkcd:royal blue", "xkcd:light red")
 
 for scheme in advection_schemes
 
     t_scheme = typeof(scheme)
-    name = string(t_scheme)
+    name = string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme))"
 
     @testset "$name" begin
 
         fig, ax = subplots()
 
-        roc = rate_of_convergence(scheme)
-        atol = tolerance(scheme)
+        roc   = rate_of_convergence(scheme)
+        atol  = tolerance(scheme)
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
 
@@ -167,11 +157,11 @@ for scheme in advection_schemes
         xlabel(L"N_x")
         ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
         removespines("top", "right")
-        lgd = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
+        lgd = legend(loc="lower left", prop=Dict(:size=>6))
 
         filename = "one_dimensional_convergence_$(name)_$(typeof(arch)).png"
         filepath = joinpath(@__DIR__, "figs", filename)
         mkpath(dirname(filepath))
-        savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
+        savefig(filepath, dpi=240, bbox_extra_artists=(lgd,), bbox_inches="tight")
     end
 end

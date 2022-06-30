@@ -153,6 +153,8 @@ const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} =
 formulation(scheme::WENO)                = "Flux form"
 formulation(scheme::WENOVectorInvariant) = "Vector Invariant form"
 
+required_halo_size(scheme::WENOVectorInvariant{N}) where N = N + 1
+
 Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, " in ", formulation(a))
 
 Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, RZ, VI, WF, PP} =
