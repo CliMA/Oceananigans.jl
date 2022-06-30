@@ -24,7 +24,7 @@ function run_bickley_jet(;
                          tracer_advection = WENO5(),
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
-    grid = bickley_grid(; arch, Nh)
+    grid = bickley_grid(; arch, Nh, halo = (7, 7, 7))
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection,
                                         free_surface, tracers = :c, buoyancy=nothing)
     set_bickley_jet!(model)
@@ -113,10 +113,11 @@ advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
                      VectorInvariant()]
 =#
 
-arch = CPU()
-for Nh in [128]
-    for momentum_advection in advection_schemes
-        name = run_bickley_jet(; arch, momentum_advection, Nh)
-        visualize_bickley_jet(name)
+advection_schemes = [WENO5(vector_invariant = VelocityStencil())]
+
+for Nx in [128]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        # visualize_bickley_jet(experiment_name)
     end
 end
