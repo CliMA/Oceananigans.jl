@@ -245,17 +245,17 @@ b, c = model.tracers.b, model.tracers.c
 
 ζ = Field(∂x(v) - ∂y(u))
 
-B = AveragedField(b, dims=1)
-U = AveragedField(u, dims=1)
-V = AveragedField(v, dims=1)
-W = AveragedField(w, dims=1)
+B = Field(Average(b, dims=1))
+U = Field(Average(u, dims=1))
+V = Field(Average(v, dims=1))
+W = Field(Average(w, dims=1))
 
 b′ = b - B
 v′ = v - V
 w′ = w - W
 
-v′b′ = AveragedField(v′ * b′, dims=1)
-w′b′ = AveragedField(w′ * b′, dims=1)
+v′b′ = Field(Average(v′ * b′, dims=1))
+w′b′ = Field(Average(w′ * b′, dims=1))
 
 outputs = (; b, ζ, u)
 
