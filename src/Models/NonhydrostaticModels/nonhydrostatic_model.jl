@@ -228,8 +228,8 @@ function inflate_grid_halo_size(grid, advection, closure)
               "The model grid will be different from the input grid. To avoid this warning, " *
               "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
 
-        new_grid = with_halo((Hx, Hy, Hz), grid)
+        grid = with_halo((Hx, Hy, Hz), grid)
     end
 
-    return new_grid
+    return grid
 end
