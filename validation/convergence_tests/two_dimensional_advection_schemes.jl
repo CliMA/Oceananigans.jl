@@ -53,9 +53,9 @@ for scheme in advection_schemes
     results[t_scheme] = run_convergence_test(κ, U, Nx, MultiDimensionalScheme(scheme), arch)
 end
 
-rate_of_convergence(::Centered{K}) where K = 2K
-rate_of_convergence(::UpwindBiased{K}) where K = 2K-1
-rate_of_convergence(::WENO{K}) where K = 2K-1
+rate_of_convergence(::Centered{K}) where K = 2
+rate_of_convergence(::UpwindBiased{K}) where K = 2
+rate_of_convergence(::WENO{K}) where K = 2
 
 test_resolution(a) = 512
 tolerance(a) = 100.0
