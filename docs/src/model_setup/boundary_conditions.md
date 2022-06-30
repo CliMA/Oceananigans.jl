@@ -464,8 +464,8 @@ ImmersedBoundaryCondition:
 ```
 
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
-of a boundary-adjcent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
-cells may also be specified by manually building `ImmersedBoundaryCondition`:
+of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
+cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
 ```jldoctest
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
@@ -488,3 +488,19 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
+A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref), e.g.,
+
+```jldoctest
+julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
+linear_drag (generic function with 1 method)
+
+julia> u_bottom_bc = FieldBoundaryConditions(immersed=linear_drag)
+Oceananigans.FieldBoundaryConditions, with boundary conditions
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+└── immersed: typeof(linear_drag)
+```
