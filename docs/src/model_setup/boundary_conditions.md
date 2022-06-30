@@ -494,13 +494,25 @@ A boundary condition that depends on the fields may be prescribed using the `imm
 julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
 linear_drag (generic function with 1 method)
 
-julia> u_bottom_bc = FieldBoundaryConditions(immersed=linear_drag)
+julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
+FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
+
+julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = drag_u)
+ImmersedBoundaryCondition:
+├── west: Nothing
+├── east: Nothing
+├── south: Nothing
+├── north: Nothing
+├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
+└── top: Nothing
+
+julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
 ├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-└── immersed: typeof(linear_drag)
+└── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
 ```
