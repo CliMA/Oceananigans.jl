@@ -88,7 +88,7 @@ for location in (:upper_, :lower_)
         @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
                 $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
-        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock,  Δt, κz) =
+        @inline $ordinary_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
                 $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
 
         @inline function $immersed_func(i, j, k, ibg::GFIBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
