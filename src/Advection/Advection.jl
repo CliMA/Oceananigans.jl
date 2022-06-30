@@ -65,7 +65,6 @@ include("topologically_conditional_interpolation.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
-include("multi_dimensional_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")
 
 end # module
