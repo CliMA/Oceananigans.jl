@@ -488,24 +488,42 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
-A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref), e.g.,
+A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref). Let's see here how we can add linear bottom drag on `u` in the case we have
+an immersed boundary. In essence, we'd need to boundary conditions: one that would apply at the grid's bottom,
+and when that would apply on the immersed boundary.
 
-```jldoctest
-julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
+First let's create the boundary condition for the grid's bottom:
+
+```jldoctest immersed_bc
+julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
 linear_drag (generic function with 1 method)
 
 julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
+```
 
-julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = drag_u)
+Then let's create the immersed boundary condition:
+
+```jldoctest immersed_bc
+julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
+immersed_linear_drag (generic function with 1 method)
+
+julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
+FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
+
+julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
 ├── south: Nothing
 ├── north: Nothing
-├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
+├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
 └── top: Nothing
+```
 
+And last, we can combine the two together:
+
+```jldoctest immersed_bc
 julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
