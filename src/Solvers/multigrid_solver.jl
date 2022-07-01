@@ -75,7 +75,7 @@ function MultigridSolver(linear_operation!::Function,
 
     arch = architecture(template_field)
 
-    arch = GPU() && error("Multigrid solver is only supported on CPUs.")
+    arch == GPU() && error("Multigrid solver is only supported on CPUs.")
 
     matrix = initialize_matrix(template_field, linear_operation!, args...)
 
