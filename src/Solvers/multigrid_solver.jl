@@ -22,11 +22,12 @@ end
 architecture(solver::MultigridSolver) = solver.architecture
     
 """
-    MultigridSolver(grid,
-                    linear_operation!, 
+    MultigridSolver(linear_operation!::Function,
                     args...;
-                    maximum_iterations = 100,
-                    tolerance = 1e-13,
+                    template_field::AbstractField,
+                    maxiter = prod(size(template_field)),
+                    reltol = sqrt(eps(eltype(template_field.grid))),
+                    abstol = 0reltol,
                     amg_algorithm = RugeStubenAMG(),
                     )
 
@@ -57,30 +58,31 @@ Arguments
 
 * `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
                     The iteration stops when `norm(A * x - b) < tolerance`.
+
+* `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
                          template_field::AbstractField,
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
-                         abstol = 0reltol,
+                         abstol = 0,
                          amg_algorithm = RugeStubenAMG(),
                          )
 
     arch = architecture(template_field)
-    grid = template_field.grid
 
     matrix = create_matrix(template_field, linear_operation!, args...)
 
     Nx, Ny, Nz = size(template_field)
 
-    FT = eltype(grid)
+    FT = eltype(template_field.grid)
 
     b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
     return MultigridSolver(arch,
-                           grid,
+                           template_field.grid,
                            matrix,
                            FT(abstol),
                            FT(reltol),
@@ -132,8 +134,7 @@ Solve `A * x = b` using a multigrid method, where `A * x` is
 determined by `linear_operation!` given in the MultigridSolver constructor.
 """
 function solve!(x, solver::MultigridSolver, b; kwargs...)
-    grid = b.grid
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = size(b)
 
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
@@ -146,19 +147,6 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
     fill_halo_regions!(x)
 end
 
-function solve!(x::Field{Center, Center, Nothing}, solver::MultigridSolver, b::Field{Center, Center, Nothing}; kwargs...)
-    grid = b.grid
-    Nx, Ny, _ = size(grid)
-
-    solver.b_array .= reshape(interior(b), Nx * Ny)
-
-    solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
-
-    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
-    
-    interior(x) .= reshape(solver.x_array, Nx, Ny)
-    fill_halo_regions!(x)
-end
 
 function Base.show(io::IO, solver::MultigridSolver)
     print(io, "Multigrid solver.\n")
