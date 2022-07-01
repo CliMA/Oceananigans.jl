@@ -99,7 +99,7 @@ end
 #####
 
 const XBoundaryFunction{LY, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{Nothing, LY, LZ, S}} where {LY, LZ, S}
-const YBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
+const YBoundaryFunction{LX, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
 const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, LY, Nothing, S}} where {LX, LY, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
