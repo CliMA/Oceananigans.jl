@@ -72,7 +72,7 @@ function MultigridSolver(linear_operation!::Function,
 
     arch = architecture(template_field)
 
-    matrix = create_matrix(template_field, linear_operation!, args...)
+    matrix = initialize_matrix(template_field, linear_operation!, args...)
 
     Nx, Ny, Nz = size(template_field)
 
@@ -104,7 +104,7 @@ function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 
-    create_matrix!(A, template_field, linear_operator!, args...)
+    fill_matrix_elements!(A, template_field, linear_operator!, args...)
     
     return A
 end

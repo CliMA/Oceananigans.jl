@@ -9,7 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_li
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
-import Oceananigans.Solvers: create_matrix!
+import Oceananigans.Solvers: fill_matrix_elements!
 
 """
     struct MGImplicitFreeSurfaceSolver{V, S, R}
@@ -67,7 +67,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
-    # initialize solver with Δt = nothing so that linear matrix is not computed; see `create_matrix` methods
+    # initialize solver with Δt = nothing so that linear matrix is not computed; see `initialize_matrix` methods
     solver = MultigridSolver(implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, nothing;
                              template_field = right_hand_side, settings...)
 
@@ -89,7 +89,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
         ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
 
         # can we get away with less re-creating_matrix below?
-        create_matrix!(solver.linear_operator, η, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        fill_matrix_elements!(solver.linear_operator, η, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
         implicit_free_surface_solver.previous_Δt = Δt
     end
     solve!(η, solver, rhs)
