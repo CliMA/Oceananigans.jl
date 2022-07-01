@@ -217,7 +217,7 @@ extract_boundary_conditions(field::Field) = field.boundary_conditions
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(Hx, Hy, Hz, grid, tendency_terms...)
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
 
     if any(user_halo .< required_halo) # Replace grid
         @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
