@@ -534,3 +534,8 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
 ```
+
+!!! warn"Positional argument requirements"
+    Note the difference between the arguments required for the function within the `bottom` boundary
+    condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
+    `x, y, t` in linear_drag() versus `x, y, z, t` in `immersed_linear_drag()`.
