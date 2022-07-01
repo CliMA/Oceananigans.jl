@@ -95,12 +95,12 @@ end
 
 
 # For free surface without Δt
-function create_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing)
+function initialize_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing)
     Nx, Ny, Nz = size(template_field)
     return spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 end
 
-function create_matrix(template_field, linear_operator!, args...)
+function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 
@@ -109,7 +109,7 @@ function create_matrix(template_field, linear_operator!, args...)
     return A
 end
 
-function create_matrix!(A, template_field, linear_operator!, args...)
+function fill_matrix_elements!(A, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
@@ -125,6 +125,8 @@ function create_matrix!(A, template_field, linear_operator!, args...)
 
         A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(∇²eᵢⱼₖ)
     end
+    
+    return nothing
 end
 
 """
