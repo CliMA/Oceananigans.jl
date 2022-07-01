@@ -71,7 +71,7 @@ fill_halo_regions!(φ_cg)
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
 
-mgs = MultigridSolver(grid, compute_∇²!, arch, grid)
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
 φ_mg = CenterField(grid)
 
 solve!(φ_mg, mgs, r)
@@ -83,7 +83,7 @@ struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(grid, compute_∇²!, arch, grid, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
 
 mgp = MultigridPreconditioner(mgs)
 

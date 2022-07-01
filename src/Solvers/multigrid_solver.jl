@@ -7,13 +7,15 @@ using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, 
 
 import Oceananigans.Architectures: architecture
 
-mutable struct MultigridSolver{A, G, L, T, M}
+mutable struct MultigridSolver{A, G, L, T, M, F}
                architecture :: A
                        grid :: G
             linear_operator :: L
                   tolerance :: T
          maximum_iterations :: Int
               amg_algorithm :: M
+                    x_array :: F
+                    b_array :: F
 end
 
 architecture(solver::MultigridSolver) = solver.architecture
@@ -51,24 +53,37 @@ Arguments
 * `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
                `norm(A * x - b) < tolerance`.
 """
-function MultigridSolver(grid,
-                         linear_operation!, 
+function MultigridSolver(linear_operation!,
                          args...;
+                         template_field::AbstractField,
                          maximum_iterations = 100, #prod(size(template_field)),
                          tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
                          amg_algorithm = RugeStubenAMG(),
                          )
 
-    arch = architecture(grid)
+    arch = architecture(template_field)
+    grid = template_field.grid
 
-    A = create_matrix(grid, linear_operation!, args...)
+    matrix = create_matrix(grid, linear_operation!, args...)
+
+
+    Nx, Ny, Nz = size(grid)
+
+    _, _, LZ = location(template_field)
+
+    (LZ == Nothing) && (Nz = 1)
+
+    b_array = arch_array(arch, zeros(Nx * Ny * Nz))
+    x_array = arch_array(arch, zeros(Nx * Ny * Nz))
 
     return MultigridSolver(arch,
                            grid,
-                           A,
+                           matrix,
                            tolerance,
                            maximum_iterations,
-                           amg_algorithm
+                           amg_algorithm,
+                           x_array,
+                           b_array
                            )
 end
 
@@ -76,14 +91,21 @@ end
 
 # For free surface without Δt
 function create_matrix(grid, linear_operator!, ::Any , ::Any, ::Any, ::Nothing)
-    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Nx, Ny, _ = size(grid)
     return spzeros(eltype(grid), Nx*Ny, Nx*Ny)
 end
 
 function create_matrix(grid, linear_operator!, args...)
-    Nx, Ny = grid.Nx, grid.Ny
+    Nx, Ny, _ = size(grid)
     A = spzeros(eltype(grid), Nx*Ny, Nx*Ny)
 
+    create_matrix!(A, grid, linear_operator!, args...)
+    
+    return A
+end
+
+function create_matrix!(A, grid, linear_operator!, args...)
+    Nx, Ny, _ = size(grid)
     make_column(f) = reshape(interior(f), (Nx*Ny, 1))
 
     eᵢⱼ = Field{Center, Center, Nothing}(grid)
@@ -96,10 +118,8 @@ function create_matrix(grid, linear_operator!, args...)
         fill_halo_regions!(eᵢⱼ)
         linear_operator!(∇²eᵢⱼ, eᵢⱼ, args...)
 
-        A[:, Nx*(j-1) + i] = make_column(∇²eᵢⱼ)
+        A[:, Nx*(j-1) + i] .= make_column(∇²eᵢⱼ)
     end
-    
-    return A
 end
 
 """
@@ -111,28 +131,30 @@ determined by `linear_operation!` given in the MultigridSolver constructor.
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     grid = b.grid
     Nx, Ny, Nz = size(grid)
-    b_array = collect(reshape(interior(b), Nx * Ny * Nz))
-    x_array = collect(reshape(interior(x), Nx * Ny * Nz)) 
 
-    solt = init(solver.amg_algorithm, solver.linear_operator, b_array)
+    solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
+    solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    _solve!(x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
+    solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
+
+    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
     
-    interior(x) .= reshape(x_array, Nx, Ny, Nz)
+    interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
     fill_halo_regions!(x)
 end
 
 function solve!(x::Field{Center, Center, Nothing}, solver::MultigridSolver, b::Field{Center, Center, Nothing}; kwargs...)
     grid = b.grid
     Nx, Ny, _ = size(grid)
-    b_array = collect(reshape(interior(b), Nx * Ny))
-    x_array = collect(reshape(interior(x), Nx * Ny)) 
 
-    solt = init(solver.amg_algorithm, solver.linear_operator, b_array)
+    solver.b_array .= reshape(interior(b), Nx * Ny)
+    solver.x_array .= reshape(interior(x), Nx * Ny)
 
-    _solve!(x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
+    solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
+
+    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
     
-    interior(x) .= reshape(x_array, Nx, Ny)
+    interior(x) .= reshape(solver.x_array, Nx, Ny)
     fill_halo_regions!(x)
 end
 

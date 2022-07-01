@@ -8,12 +8,12 @@ using Oceananigans.Architectures: device
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_linear_operation!
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
-import Oceananigans.Solvers: create_matrix
+import Oceananigans.Solvers: create_matrix!
 
 """
-    struct PCGImplicitFreeSurfaceSolver{V, S, R}
+    struct MGImplicitFreeSurfaceSolver{V, S, R}
 
-The preconditioned conjugate gradient iterative implicit free-surface solver.
+The multigrid implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
@@ -32,9 +32,9 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
     architecture(solver.multigrid_solver)
 
 """
-    PCGImplicitFreeSurfaceSolver(grid, settings)
+    MGImplicitFreeSurfaceSolver(grid, settings)
 
-Return a solver based on a preconditioned conjugate gradient method for
+Return a solver based on a multigrid method for
 the elliptic equation
     
 ```math
@@ -59,16 +59,21 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
+    @show settings
+
     # Set some defaults
-    # TODO edit these to be maximum_iterations and tolerance
-    # settings = Dict{Symbol, Any}(settings)
-    # settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
-    # settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+    settings = Dict{Symbol, Any}(settings)
+    # Set maximum iterations to Nx * Ny if not set
+    settings[:maximum_iterations] = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
+    # settings[:tolerance] = get(settings, :tolerance, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+
+    @show settings
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
-    solver = MultigridSolver(grid, implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, placeholder_timestep)
-                                                #    settings...)
+    # initialize solver with Δt = nothing so that linear matrix is not computed; see `create_matrix` methods
+    solver = MultigridSolver(implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, nothing;
+                             template_field = right_hand_side)# settings...)
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side)
 end
@@ -88,7 +93,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
         ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
 
         # can we get away with less re-creating_matrix below?
-        solver.linear_operator = create_matrix(η.grid, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        create_matrix!(solver.linear_operator, η.grid, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
         implicit_free_surface_solver.previous_Δt = Δt
     end
     solve!(η, solver, rhs)
