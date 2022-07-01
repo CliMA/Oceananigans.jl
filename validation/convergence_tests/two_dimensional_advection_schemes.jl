@@ -15,7 +15,7 @@ using Oceananigans.Advection: boundary_buffer, MultiDimensionalScheme
 
 using ConvergenceTests
 using ConvergenceTests.TwoDimensionalGaussianAdvectionDiffusion: run_test
-using ConvergenceTests.TwoDimensionalUtils: unpack_errors, defaultcolors, removespines
+using ConvergenceTests.TwoDimensionalGaussianAdvectionDiffusion: unpack_errors, defaultcolors, removespines
 
 """ Run advection test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions, advection_scheme, arch)
@@ -48,16 +48,16 @@ Nx = [16, 32, 64, 96, 128, 192, 256]
 results = Dict()
 for scheme in advection_schemes
     t_scheme = typeof(scheme)
-    results[t_scheme] = run_convergence_test(κ, U, Nx, MultiDimensionalScheme(scheme), arch)
+    results[t_scheme] = run_convergence_test(κ, U, Nx, MultiDimensionalScheme(scheme, order=6), arch)
 end
 
 rate_of_convergence_1D(::Centered{K}) where K = 2
 rate_of_convergence_1D(::UpwindBiased{K}) where K = 2
 rate_of_convergence_1D(::WENO{K}) where K = 2
 
-rate_of_convergence_2D(::Centered{K}) where K = 4
-rate_of_convergence_2D(::UpwindBiased{K}) where K = 4
-rate_of_convergence_2D(::WENO{K}) where K = 4
+rate_of_convergence_2D(::Centered{K}) where K = 2K
+rate_of_convergence_2D(::UpwindBiased{K}) where K = 2K-1
+rate_of_convergence_2D(::WENO{K}) where K = 2K-1
 
 test_resolution(a) = 256
 tolerance(a) = 100.0
@@ -66,15 +66,20 @@ colors = ("xkcd:royal blue", "xkcd:light red")
 
 for scheme in advection_schemes
 
-    t_scheme = typeof(scheme)
-    name = string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme))"
+    if scheme isa MultiDimensionalScheme
+        t_scheme = typeof(scheme.scheme_1d)
+        name = string("MultiDimensional ") * string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme.scheme_1d))" * " order $(2*boundary_buffer(scheme))"
+    else
+        t_scheme = typeof(scheme)
+        name = string(t_scheme.name.wrapper) * "$(boundary_buffer(scheme))"
+    end
 
     @testset "$name" begin
 
         fig, ax = subplots()
 
-        roc1D = rate_of_convergence(scheme)
-        roc2D = rate_of_convergence(scheme)
+        roc1D = rate_of_convergence_1D(scheme)
+        roc2D = rate_of_convergence_2D(scheme)
         atol  = tolerance(scheme)
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
