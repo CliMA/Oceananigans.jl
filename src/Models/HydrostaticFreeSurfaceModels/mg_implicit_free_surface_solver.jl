@@ -6,6 +6,7 @@ using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_linear_operation!
+
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Solvers: create_matrix!
