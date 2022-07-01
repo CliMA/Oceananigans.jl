@@ -5,7 +5,7 @@
 ##### functions _symmetric_interpolate_*, _left_biased_interpolate_*, and _right_biased_interpolate_*.
 #####
 
-const AbstractUpwindMultiDimensionalScheme = AbstractMultiDimensionalAdvectionScheme{<:Any, <:Any, <:AbstractUpwindAdvectionScheme} 
+const AbstractUpwindMultiDimensionalScheme = AbstractMultiDimensionalAdvectionScheme{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme} 
 const UpwindScheme = Union{AbstractUpwindBiasedAdvectionScheme, AbstractUpwindMultiDimensionalScheme}
 
 @inline upwind_biased_product(ũ, ψᴸ, ψᴿ) = ((ũ + abs(ũ)) * ψᴸ + (ũ - abs(ũ)) * ψᴿ) / 2
