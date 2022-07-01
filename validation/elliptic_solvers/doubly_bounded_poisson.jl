@@ -83,7 +83,7 @@ struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maximum_iterations = 5, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
 
 mgp = MultigridPreconditioner(mgs)
 
@@ -107,7 +107,7 @@ function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     # solt = init(solver.amg_algorithm, solver.linear_operator, r_array)
     # _solve!(z_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance)
 
-    z_array = solve(mgp.multigrid_solver.linear_operator, r_array, mgp.multigrid_solver.amg_algorithm, maxiter=mgp.multigrid_solver.maximum_iterations)
+    z_array = solve(mgp.multigrid_solver.linear_operator, r_array, mgp.multigrid_solver.amg_algorithm, maxiter=mgp.multigrid_solver.maxiter)
 
     interior(z) .= reshape(z_array, Nx, Ny, Nz)
     fill_halo_regions!(z)

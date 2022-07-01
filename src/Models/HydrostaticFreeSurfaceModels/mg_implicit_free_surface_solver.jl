@@ -59,21 +59,16 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
-    @show settings
-
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
-    # Set maximum iterations to Nx * Ny if not set
-    settings[:maximum_iterations] = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
-    # settings[:tolerance] = get(settings, :tolerance, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
-
-    @show settings
+    settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
+    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
     # initialize solver with Δt = nothing so that linear matrix is not computed; see `create_matrix` methods
     solver = MultigridSolver(implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, nothing;
-                             template_field = right_hand_side)# settings...)
+                             template_field = right_hand_side, settings...)
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side)
 end
@@ -93,7 +88,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
         ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
 
         # can we get away with less re-creating_matrix below?
-        create_matrix!(solver.linear_operator, η.grid, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        create_matrix!(solver.linear_operator, η, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
         implicit_free_surface_solver.previous_Δt = Δt
     end
     solve!(η, solver, rhs)

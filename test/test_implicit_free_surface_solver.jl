@@ -145,8 +145,8 @@ end
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, maxiter=128^3)
 
-         mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
-                                               abstol=1e-15, reltol=0, maxiter=128^3)
+        mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
+                                              abstol=1e-15, reltol=0, maxiter=128^3)
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
@@ -158,9 +158,9 @@ end
                                                 momentum_advection = nothing,
                                                 free_surface = pcg_free_surface)
 
-         mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                momentum_advection = nothing,
-                                                free_surface = mg_free_surface)
+        mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                               momentum_advection = nothing,
+                                               free_surface = mg_free_surface)
 
         fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,

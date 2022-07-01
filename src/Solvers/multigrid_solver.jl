@@ -11,8 +11,9 @@ mutable struct MultigridSolver{A, G, L, T, M, F}
                architecture :: A
                        grid :: G
             linear_operator :: L
-                  tolerance :: T
-         maximum_iterations :: Int
+                     abstol :: T
+                     reltol :: T
+                    maxiter :: Int
               amg_algorithm :: M
                     x_array :: F
                     b_array :: F
@@ -48,77 +49,79 @@ for `solver`, right-hand side `b`, solution `x`, and optional keyword arguments 
 Arguments
 =========
 
-* `maximum_iterations`: Maximum number of iterations the solver may perform before exiting.
+* `template_field`: Dummy field that is the same type and size as `x` and `b`, which
+                    is used to infer the `architecture`, `grid`, and to create work arrays
+                    that are used internally by the solver.
 
-* `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
-               `norm(A * x - b) < tolerance`.
+* `maxiter`: Maximum number of iterations the solver may perform before exiting.
+
+* `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
+                    The iteration stops when `norm(A * x - b) < tolerance`.
 """
-function MultigridSolver(linear_operation!,
+function MultigridSolver(linear_operation!::Function,
                          args...;
                          template_field::AbstractField,
-                         maximum_iterations = 100, #prod(size(template_field)),
-                         tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
+                         maxiter = prod(size(template_field)),
+                         reltol = sqrt(eps(eltype(template_field.grid))),
+                         abstol = 0reltol,
                          amg_algorithm = RugeStubenAMG(),
                          )
 
     arch = architecture(template_field)
     grid = template_field.grid
 
-    matrix = create_matrix(grid, linear_operation!, args...)
+    matrix = create_matrix(template_field, linear_operation!, args...)
 
+    Nx, Ny, Nz = size(template_field)
 
-    Nx, Ny, Nz = size(grid)
+    FT = eltype(grid)
 
-    _, _, LZ = location(template_field)
-
-    (LZ == Nothing) && (Nz = 1)
-
-    b_array = arch_array(arch, zeros(Nx * Ny * Nz))
-    x_array = arch_array(arch, zeros(Nx * Ny * Nz))
+    b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
+    x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
     return MultigridSolver(arch,
                            grid,
                            matrix,
-                           tolerance,
-                           maximum_iterations,
+                           FT(abstol),
+                           FT(reltol),
+                           maxiter,
                            amg_algorithm,
                            x_array,
                            b_array
                            )
 end
 
-# TODO make inplace create_matrix!
 
 # For free surface without Δt
-function create_matrix(grid, linear_operator!, ::Any , ::Any, ::Any, ::Nothing)
-    Nx, Ny, _ = size(grid)
-    return spzeros(eltype(grid), Nx*Ny, Nx*Ny)
+function create_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing)
+    Nx, Ny, Nz = size(template_field)
+    return spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 end
 
-function create_matrix(grid, linear_operator!, args...)
-    Nx, Ny, _ = size(grid)
-    A = spzeros(eltype(grid), Nx*Ny, Nx*Ny)
+function create_matrix(template_field, linear_operator!, args...)
+    Nx, Ny, Nz = size(template_field)
+    A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 
-    create_matrix!(A, grid, linear_operator!, args...)
+    create_matrix!(A, template_field, linear_operator!, args...)
     
     return A
 end
 
-function create_matrix!(A, grid, linear_operator!, args...)
-    Nx, Ny, _ = size(grid)
-    make_column(f) = reshape(interior(f), (Nx*Ny, 1))
+function create_matrix!(A, template_field, linear_operator!, args...)
+    Nx, Ny, Nz = size(template_field)
+    make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
-    eᵢⱼ = Field{Center, Center, Nothing}(grid)
-    ∇²eᵢⱼ = Field{Center, Center, Nothing}(grid)
+    eᵢⱼₖ = similar(template_field)
+    ∇²eᵢⱼₖ = similar(template_field)
     
-    for j in 1:Ny, i in 1:Nx
-        eᵢⱼ .= 0
-        ∇²eᵢⱼ .= 0
-        eᵢⱼ[i, j] = 1
-        fill_halo_regions!(eᵢⱼ)
-        linear_operator!(∇²eᵢⱼ, eᵢⱼ, args...)
+    for k = 1:Nz, j in 1:Ny, i in 1:Nx
+        eᵢⱼₖ .= 0
+        ∇²eᵢⱼₖ .= 0
+        eᵢⱼₖ[i, j, k] = 1
+        fill_halo_regions!(eᵢⱼₖ)
+        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
 
-        A[:, Nx*(j-1) + i] .= make_column(∇²eᵢⱼ)
+        A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(∇²eᵢⱼₖ)
     end
 end
 
@@ -137,7 +140,7 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
+    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
     
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
     fill_halo_regions!(x)
@@ -148,11 +151,10 @@ function solve!(x::Field{Center, Center, Nothing}, solver::MultigridSolver, b::F
     Nx, Ny, _ = size(grid)
 
     solver.b_array .= reshape(interior(b), Nx * Ny)
-    solver.x_array .= reshape(interior(x), Nx * Ny)
 
     solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance, kwargs...)
+    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
     
     interior(x) .= reshape(solver.x_array, Nx, Ny)
     fill_halo_regions!(x)
