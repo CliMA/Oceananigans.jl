@@ -3,7 +3,7 @@
 ##### Flat Topologies
 #####
 
-for SchemeType in [:AbstractCenteredAdvectionScheme, :AbstractUpwindBiasedAdvectionScheme]
+for SchemeType in [:CenteredScheme, :UpwindScheme]
     @eval begin
         @inline advective_momentum_flux_Uu(i, j, k, grid::AbstractGrid{FT, Flat}, scheme::$SchemeType, U, u) where FT = zero(grid)
         @inline advective_momentum_flux_Vu(i, j, k, grid::AbstractGrid{FT, Flat}, scheme::$SchemeType, V, u) where FT = zero(grid)

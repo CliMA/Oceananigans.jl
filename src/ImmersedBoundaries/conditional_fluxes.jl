@@ -188,45 +188,25 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
             near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
 
-            # Fallback for low order interpolation
             @eval begin
                 import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
 
+                # Fallback for low order interpolation
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
-            end
 
-            # Conditional high-order interpolation in Bounded directions
-            @eval begin
-                import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
-
+                # Conditional high-order interpolation in Bounded directions
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.boundary_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
-            end
-            if ξ == :z
-                @eval begin
-                    import Oceananigans.Advection: $alt_interp
-                    using Oceananigans.Advection: $interp
-    
-                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ∂z, VI, u) =
-                        ifelse($near_boundary(i, j, k, ibg, scheme),
-                            $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ∂z, VI, u),
-                            $interp(i, j, k, ibg, scheme, ∂z, VI, u))
-                end
-            else    
-                @eval begin
-                    import Oceananigans.Advection: $alt_interp
-                    using Oceananigans.Advection: $interp
-    
-                    @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
-                        ifelse($near_boundary(i, j, k, ibg, scheme),
-                                $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ζ, VI, u, v),
-                                $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
-                end    
-            end
+            
+                # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariant, ζ, VI, u, v) =
+                    ifelse($near_boundary(i, j, k, ibg, scheme),
+                            $alt_interp(i, j, k, ibg, scheme.boundary_scheme, ζ, VI, u, v),
+                            $interp(i, j, k, ibg, scheme, ζ, VI, u, v))
+            end    
         end
     end
 end
@@ -241,6 +221,7 @@ for bias in (:left_biased, :right_biased)
         near_horizontal_boundary = Symbol(:near_, d, :_horizontal_boundary_, bias)
 
         @eval begin
+            # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
             ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
                    $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
@@ -261,7 +242,7 @@ using Oceananigans.Advection: MDS
 @inline near_y_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j-3, k, ibg) | inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg) | inactive_cell(i, j+3, k, ibg)  
 @inline near_z_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg)  
 
-for (dir, ξ) in enumerate((:x, :y))
+for (dir, ξ) in enumerate((:x, :y, :z))
     md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
     alt_md_interpolate = Symbol(:_multi_dimensional_interpolate_, ξ)
 
@@ -271,9 +252,10 @@ for (dir, ξ) in enumerate((:x, :y))
         import Oceananigans.Advection: $alt_md_interpolate
         using Oceananigans.Advection: $md_interpolate
 
+        # Conditional interpolation for Higher order MultiDimensionalScheme
         @inline $alt_md_interpolate(i, j, k, ibg::ImmersedBoundaryGrid, scheme::MDS, coeff, func, scheme_1d, args...) = 
             ifelse($near_boundary(i, j, k, ibg, scheme),
-                    func(i, j, k, ibg, scheme.scheme_1d, args...),
+                    zero(grid),
                     $md_interpolate(i, j, k, ibg, scheme, coeff, func, scheme_1d, args...))
     end
 end

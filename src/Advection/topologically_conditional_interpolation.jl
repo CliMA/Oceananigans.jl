@@ -22,6 +22,9 @@ const AUGXY  = AUG{<:Any, <:Bounded, <:Bounded}
 const AUGXZ  = AUG{<:Any, <:Bounded, <:Any, <:Bounded}
 const AUGYZ  = AUG{<:Any, <:Any, <:Bounded, <:Bounded}
 const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
+const AUFX   = AUG{<:Any, <:Flat}
+const AUFY   = AUG{<:Any, <:Any, <:Flat}
+const AUFZ   = AUG{<:Any, <:Any, <:Any, <:Flat}
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
@@ -92,39 +95,47 @@ for bias in (:symmetric, :left_biased, :right_biased)
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ψ))
-
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::WVI, ∂z, VI, u) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
-                                $interp(i, j, k, grid, scheme, ∂z, VI, u),
-                                $alt_interp(i, j, k, grid, scheme.boundary_scheme, ∂z, VI, u))
                 end
             end
         end
     end
 end
 
-@inline outside_multi_dimensional_buffer(i, N) = i > boundary_buffer(adv) && i < N - boundary_buffer(adv)
+@inline outside_multi_dimensional_buffer(i, N, adv) = i > boundary_buffer(adv) && i < N - boundary_buffer(adv)
 
-for (dir, ξ) in enumerate((:x, :y))
+for (dir, ξ) in enumerate((:x, :y, :z))
     md_interp = Symbol(:multi_dimensional_interpolate_, ξ)
     alt_md_interp = Symbol(:_multi_dimensional_interpolate_, ξ)
 
     # Fallback for periodic directions
     @eval $alt_md_interp(i, j, k, grid::AUG, scheme::MDS, args...) = $md_interp(i, j, k, grid, scheme, args...)
-
+    
     if ξ == :x
         @eval begin
-            @inline $alt_md_interp(i, j, k, grid::AUGX, coeff, scheme::MDS, func, scheme_1d, args...) = 
-                        ifelse(outside_multi_dimensional_buffer(i, grid.Nx),
-                               $md_interp(i, j, k, grid, coeff, scheme, func, scheme_1d, args...),
-                               func(i, j, k, grid, scheme.scheme_1d, args...))
+            @inline $alt_md_interp(i, j, k, grid::AUGX, scheme::MDS, coeff, func, args...) = 
+                        ifelse(outside_multi_dimensional_buffer(i, grid.Nx, scheme),
+                               $md_interp(i, j, k, grid, scheme, coeff, func, args...),
+                               zero(grid))
+
+            @inline $alt_md_interp(i, j, k, grid::AUFX, scheme::MDS, coeff, func, args...) = zero(grid)
          end
     elseif ξ == :y
         @eval begin
-            @inline $alt_md_interp(i, j, k, grid::AUGY, coeff, scheme::MDS, func, scheme_1d, args...) = 
-                        ifelse(outside_multi_dimensional_buffer(j, grid.Ny),
-                               $md_interp(i, j, k, grid, coeff, scheme, func, scheme_1d, args...),
-                               func(i, j, k, grid, scheme.scheme_1d, args...))
+            @inline $alt_md_interp(i, j, k, grid::AUGY, scheme::MDS, coeff, func, args...) = 
+                        ifelse(outside_multi_dimensional_buffer(j, grid.Ny, scheme),
+                               $md_interp(i, j, k, grid, scheme, coeff, func, args...),
+                               zero(grid))
+
+            @inline $alt_md_interp(i, j, k, grid::AUFY, scheme::MDS, coeff, func, args...) = zero(grid)
          end
+    elseif ξ == :z
+        @eval begin
+            @inline $alt_md_interp(i, j, k, grid::AUGZ, scheme::MDS, coeff, func, args...) = 
+                        ifelse(outside_multi_dimensional_buffer(k, grid.Nz, scheme),
+                               $md_interp(i, j, k, grid, scheme, coeff, func, args...),
+                               zero(grid))
+
+            @inline $alt_md_interp(i, j, k, grid::AUFZ, scheme::MDS, coeff, func, args...) = zero(grid)
+        end
     end
 end

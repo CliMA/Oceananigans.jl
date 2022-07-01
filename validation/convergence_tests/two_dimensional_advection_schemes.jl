@@ -39,13 +39,11 @@ end
 
 arch = CUDA.has_cuda() ? GPU() : CPU()
 
-advection_schemes = (Centered(order=2), Centered(order=4), Centered(order=6), Centered(order=8), Centered(order=10), Centered(order=12), 
-                     UpwindBiased(order=1), UpwindBiased(order=3), UpwindBiased(order=5), UpwindBiased(order=7), UpwindBiased(order=9), UpwindBiased(order=11), 
-                     WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
+advection_schemes = (WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
 
 U = 1
 κ = 1e-8
-Nx = [8, 16, 32, 64, 96, 128, 192, 256, 384, 512]
+Nx = [16, 32, 64, 96, 128, 192, 256] 
 
 results = Dict()
 for scheme in advection_schemes
@@ -53,11 +51,15 @@ for scheme in advection_schemes
     results[t_scheme] = run_convergence_test(κ, U, Nx, MultiDimensionalScheme(scheme), arch)
 end
 
-rate_of_convergence(::Centered{K}) where K = 2
-rate_of_convergence(::UpwindBiased{K}) where K = 2
-rate_of_convergence(::WENO{K}) where K = 2
+rate_of_convergence_1D(::Centered{K}) where K = 2
+rate_of_convergence_1D(::UpwindBiased{K}) where K = 2
+rate_of_convergence_1D(::WENO{K}) where K = 2
 
-test_resolution(a) = 512
+rate_of_convergence_2D(::Centered{K}) where K = 4
+rate_of_convergence_2D(::UpwindBiased{K}) where K = 4
+rate_of_convergence_2D(::WENO{K}) where K = 4
+
+test_resolution(a) = 256
 tolerance(a) = 100.0
 
 colors = ("xkcd:royal blue", "xkcd:light red")
@@ -71,7 +73,8 @@ for scheme in advection_schemes
 
         fig, ax = subplots()
 
-        roc   = rate_of_convergence(scheme)
+        roc1D = rate_of_convergence(scheme)
+        roc2D = rate_of_convergence(scheme)
         atol  = tolerance(scheme)
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
@@ -92,19 +95,23 @@ for scheme in advection_schemes
         
         common_kwargs = (linestyle="None", color=colors[2], mfc="None", alpha=0.8)
 
-        loglog(Nx, cxy_L₁; marker="*", label="\$L_\\infty\$-norm, \$c(x)\$ $name", common_kwargs...)
-        loglog(Nx, cyz_L₁; marker="+", label="\$L_\\infty\$-norm, \$c(y)\$ $name", common_kwargs...)
-        loglog(Nx, cxz_L₁; marker="_", label="\$L_\\infty\$-norm, \$c(z)\$ $name", common_kwargs...)
+        loglog(Nx, cxy_L∞; marker="*", label="\$L_\\infty\$-norm, \$c(x)\$ $name", common_kwargs...)
+        loglog(Nx, cyz_L∞; marker="+", label="\$L_\\infty\$-norm, \$c(y)\$ $name", common_kwargs...)
+        loglog(Nx, cxz_L∞; marker="_", label="\$L_\\infty\$-norm, \$c(z)\$ $name", common_kwargs...)
 
-        loglog(Nx, uyz_L₁; marker="1", label="\$L_\\infty\$-norm, \$u(y)\$ $name", common_kwargs...)
+        loglog(Nx, uyz_L∞; marker="1", label="\$L_\\infty\$-norm, \$u(y)\$ $name", common_kwargs...)
         
-        loglog(Nx, vxz_L₁; marker="s", label="\$L_\\infty\$-norm, \$v(x)\$ $name", common_kwargs...)
+        loglog(Nx, vxz_L∞; marker="s", label="\$L_\\infty\$-norm, \$v(x)\$ $name", common_kwargs...)
         
-        loglog(Nx, wxy_L₁; marker="X", label="\$L_\\infty\$-norm, \$w(x)\$ $name", common_kwargs...)
+        loglog(Nx, wxy_L∞; marker="X", label="\$L_\\infty\$-norm, \$w(x)\$ $name", common_kwargs...)
 
-        label = raw"\sim N_x^{-" * "$roc" * raw"}" |> latexstring
+        label = raw"\sim N_x^{-" * "$roc1D" * raw"}" |> latexstring
 
-        loglog(Nx[itest-3:itest], uyz_L₁[itest] .* (Nx[itest] ./ Nx[itest-3:itest]) .^ roc, color=colors[1], alpha=0.8, label=label)
+        loglog(Nx[itest-3:itest], uyz_L₁[itest] .* (Nx[itest] ./ Nx[itest-3:itest]) .^ roc1D, color=colors[1], alpha=0.8, label=label)
+
+        label = raw"\sim N_x^{-" * "$roc2D" * raw"}" |> latexstring
+
+        loglog(Nx[itest-3:itest], uyz_L₁[itest] .* (Nx[itest] ./ Nx[itest-3:itest]) .^ roc2D, color=colors[1], alpha=0.8, label=label)
 
         xscale("log", base=2)
         yscale("log", base=10)
