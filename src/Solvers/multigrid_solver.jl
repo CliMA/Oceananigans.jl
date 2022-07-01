@@ -60,6 +60,9 @@ Arguments
                     The iteration stops when `norm(A * x - b) < tolerance`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings
+
+!!! compat "Multigrid solver on GPUs"
+    Currently Multigrid solver is only supported on CPUs.
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
@@ -71,6 +74,8 @@ function MultigridSolver(linear_operation!::Function,
                          )
 
     arch = architecture(template_field)
+
+    arch = GPU() && error("Multigrid solver is only supported on CPUs.")
 
     matrix = initialize_matrix(template_field, linear_operation!, args...)
 
