@@ -217,9 +217,8 @@ extract_boundary_conditions(field::Field) = field.boundary_conditions
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
+    required_halo = Hx, Hy, Hz = inflate_halo_size(Hx, Hy, Hz, grid, tendency_terms...)
 
-    Hx, Hy, Hz = max.(user_halo, required_halo)
     if any(user_halo .< required_halo) # Replace grid
         @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
               "Note that an ImmersedBoundaryGrid requires an extra halo point. "

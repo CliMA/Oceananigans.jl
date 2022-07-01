@@ -213,5 +213,5 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                                     closure)
 
   any(user_halo .< required_halo) &&
-    throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo + 1 for an immersed boundary grid. Note that an ImmersedBoundaryGrid requires an extra halo point."))
+    throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end
