@@ -6,10 +6,10 @@ using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_linear_operation!
+using Oceananigans.Solvers: fill_matrix_elements!
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
-import Oceananigans.Solvers: fill_matrix_elements!
 
 """
     struct MGImplicitFreeSurfaceSolver{V, S, R}
@@ -35,8 +35,7 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
 """
     MGImplicitFreeSurfaceSolver(grid, settings)
 
-Return a solver based on a multigrid method for
-the elliptic equation
+Return a solver based on a multigrid method for the elliptic equation
     
 ```math
 [∇ ⋅ H ∇ - 1 / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g Δt)
@@ -44,7 +43,7 @@ the elliptic equation
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
-step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-step `ηⁿ`.
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
                                     settings, 
@@ -84,7 +83,7 @@ build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acce
 function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
-    # If Δt varies then construct matrix
+    # if `Δt` changed then re-compute the matrix elements
     if Δt != implicit_free_surface_solver.previous_Δt
         ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
 

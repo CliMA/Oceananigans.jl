@@ -99,11 +99,9 @@ function MultigridSolver(linear_operation!::Function,
 end
 
 
-# For free surface without Δt
-function initialize_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing)
-    Nx, Ny, Nz = size(template_field)
-    return spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
-end
+# to initialize an MGImplicitFreeSurfaceSolver with `Δt = nothing`
+initialize_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing) = 
+    spzeros(eltype(template_field.grid), prod(size(template_field)), prod(size(template_field)))
 
 function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
