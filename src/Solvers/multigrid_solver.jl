@@ -149,7 +149,6 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
     _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
     
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
-    fill_halo_regions!(x)
 end
 
 

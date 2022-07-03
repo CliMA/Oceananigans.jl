@@ -68,13 +68,13 @@ fill_halo_regions!(φ_cg)
 
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
+φ_mg = CenterField(grid)
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
-
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
-φ_mg = CenterField(grid)
-
 solve!(φ_mg, mgs, r)
+
+fill_halo_regions!(φ_mg)
 
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner

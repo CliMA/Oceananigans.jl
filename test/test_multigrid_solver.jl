@@ -23,6 +23,7 @@ function run_poisson_equation_test(grid)
     ϕ_solution = CenterField(grid)
     solve!(ϕ_solution, solver, r)
     ϕ_solution .-= mean(ϕ_solution)
+    fill_halo_regions!(ϕ_solution)
  
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
