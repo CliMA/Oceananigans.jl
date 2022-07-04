@@ -1,9 +1,9 @@
-# Poisson solvers
+# Pressure solvers
 
 ## The elliptic problem for the pressure
 
 The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
-component of the momentum equation and invoking the vertical component to yield an elliptic 
+component of the momentum equations and invoking the vertical component to yield an elliptic 
 Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
