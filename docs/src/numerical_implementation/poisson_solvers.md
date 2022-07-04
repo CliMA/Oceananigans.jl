@@ -217,12 +217,13 @@ integrated continuity equation:
 ```math
     \begin{equation}
     \label{eq:vertically-integrated-continuity}
-    \partial_t \eta + \partial_x \left ( \int_{-H}^0 u \, \mathrm{d}z \right )  + \partial_y \left ( \int_{-H}^0 v \, \mathrm{d}z \right ) = M \, ,
+    \partial_t \eta + \partial_x \left ( \int_{-H}^0 u \, \mathrm{d}z \right ) + \partial_y \left ( \int_{-H}^0 v \, \mathrm{d}z \right ) = M \, ,
     \end{equation}
 ```
 
-where ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); 
-currently we assume that ``M = 0``.
+where ``H(x, y)`` is the depth of the water column (to linear order with respect to the free surface elevation)
+and ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); currently the
+model takes ``M = 0``.
 
 To form a linear system that can be solved implicitly we recast the continuity equation into a discrete
 integral form
@@ -245,7 +246,7 @@ and apply the discrete form to the [hydrostatic](../physics/hydrostatic_free_sur
 
 as follows.
 
-Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
+Assuming ``M = 0``, for the ``n+1``-th timestep velocity we want the following to hold
 
 ```math
     \begin{equation}
