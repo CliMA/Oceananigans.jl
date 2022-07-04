@@ -211,19 +211,21 @@ solver.
 
 ### Implicit free surface pressure operator
 
-The implicit free surface solver solves for the free-surface, ``\eta``, in the vertically
-integrated continuity equation
+The implicit free surface solver solves for the free-surface, ``\eta(x, y, t)``, in the vertically
+integrated continuity equation:
 
 ```math
     \begin{equation}
     \label{eq:vertically-integrated-continuity}
-    \partial_t \eta + \partial_x (H \hat{u}) + \partial_y (H \hat{v}) = M \, ,
+    \partial_t \eta + \partial_x \left ( \int_{-H}^0 u \, \mathrm{d}z \right )  + \partial_y \left ( \int_{-H}^0 v \, \mathrm{d}z \right ) = M \, ,
     \end{equation}
 ```
 
 where ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); 
-currently we assume that ``M=0``. To form a linear system that can be solved implicitly we recast
-the continuity equation into a discrete integral form
+currently we assume that ``M = 0``.
+
+To form a linear system that can be solved implicitly we recast the continuity equation into a discrete
+integral form
 
 ```math
     \begin{equation}
