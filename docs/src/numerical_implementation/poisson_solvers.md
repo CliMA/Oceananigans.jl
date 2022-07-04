@@ -232,7 +232,7 @@ the continuity equation into a discrete integral form
     \end{equation}
 ```
 
-and apply the discrete form to the [hydrostatic](../physics/hydrostatic_free_surface_model.md) form of the velocity fractional step equation (equation (5) of the [Time Stepping section](../numerical_implementation/time_stepping.md))
+and apply the discrete form to the [hydrostatic](../physics/hydrostatic_free_surface_model) form of the velocity fractional step equation (equation (5) of the [Time Stepping section](../numerical_implementation/time_stepping))
 
 ```math
     \begin{equation}
