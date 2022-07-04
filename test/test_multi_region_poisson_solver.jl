@@ -54,12 +54,12 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = arch_array(grid.architecture, ones(N...))
-    for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
+    for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
         Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
     end
-    
+
     return (Ax, Ay, Az, C, D)
 end
 
