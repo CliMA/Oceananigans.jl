@@ -66,6 +66,15 @@ include("TwoDimensionalGaussianAdvectionDiffusion.jl")
 #
 include("TwoDimensionalVortexAdvection.jl")
 
+# Advection of an Isoentropic 2D Vortex:
+#
+# 
+#
+# Tests xy-advection for conservative and vector invariant formulation
+#
+include("TwoDimensionalBurgersAdvection.jl")
+
+
 # Advection and diffusion of a 1D cosine:
 #
 # c = exp(-κt) * cos(x - Ut)

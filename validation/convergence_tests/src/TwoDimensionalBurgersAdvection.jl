@@ -1,4 +1,4 @@
-module TwoDimensionalVortexAdvection
+module TwoDimensionalBurgersAdvection
 
 using Printf
 using Statistics
@@ -15,44 +15,49 @@ using ConvergenceTests: compute_error
 # Advection of an isoentropic vortex
 # From "Entropy Splitting and Numerical Dissipation", JCP, Yee (2000)
 
-r2(x, y, xᵥ, yᵥ) = (x - xᵥ)^2 + (y - yᵥ)^2
-δu(x, y, t, U, β, xᵥ, yᵥ) = - β / 2π * exp(0.5 - 0.5*r2(x - U * t, y, xᵥ, yᵥ)) * (y - yᵥ)
-δv(x, y, t, U, β, xᵥ, yᵥ) = + β / 2π * exp(0.5 - 0.5*r2(x - U * t, y, xᵥ, yᵥ)) * (x - xᵥ)
-δh(x, y, t, U, β, xᵥ, yᵥ) = (1 - β^2 / 16π^2 * exp(1 - r2(x - U * t, y, xᵥ, yᵥ)))
+du(x, y, t, μ) = 3/4 - 1/(4 + 4*exp(-4*x+4*y-t)/μ/32)
+dv(x, y, t, μ) = 3/4 + 1/(4 + 4*exp(-4*x+4*y-t)/μ/32)
 
-function run_test(; Nx, Δt, stop_iteration, U = 0, order,
-                  architecture = CPU(), topo = (Periodic, Periodic, Flat))
-
-    β  = 1.0         
-    xᵥ = 5.0
-    yᵥ = 0.0         
-
+function run_test(; Nx, Δt, stop_iteration, order, U = 0, 
+                  architecture = CPU(), topo = (Bounded, Bounded, Flat))
     #####
     ##### Test advection of an isoentropic vortex with a VectorInvariantFormulation and a VorticityStencil
     #####
 
-    domain = (x=(0, 10), y=(-5, 5))
+    μ = 1e-5
+
+    domain = (x=(0, 1), y=(0, 1))
     grid = RectilinearGrid(architecture, topology=topo, size=(Nx, Nx), halo=(6, 6); domain...)
 
+    bcs_u_w =  OpenBoundaryCondition((y, z, t, μ) -> du(0, y, t, μ), parameters = μ)
+    bcs_u_e =  OpenBoundaryCondition((y, z, t, μ) -> du(1, y, t, μ), parameters = μ)
+    bcs_u_s = ValueBoundaryCondition((x, z, t, μ) -> du(x, 0, t, μ), parameters = μ)
+    bcs_u_n = ValueBoundaryCondition((x, z, t, μ) -> du(x, 1, t, μ), parameters = μ)
+    
+    bcs_v_w = ValueBoundaryCondition((y, z, t, μ) -> dv(0, y, t, μ), parameters = μ)
+    bcs_v_e = ValueBoundaryCondition((y, z, t, μ) -> dv(1, y, t, μ), parameters = μ)
+    bcs_v_s =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 0, t, μ), parameters = μ)
+    bcs_v_n =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 1, t, μ), parameters = μ)
+    
+    u_bcs = FieldBoundaryConditions(west=bcs_u_w, east=bcs_u_e, south=bcs_u_s, north=bcs_u_n)
+    v_bcs = FieldBoundaryConditions(west=bcs_v_w, east=bcs_v_e, south=bcs_v_s, north=bcs_v_n)
+
     model = ShallowWaterModel( grid = grid,
-         gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VorticityStencil(), order = order),
-                     mass_advection = WENO(order = order),
+         gravitational_acceleration = 0.0,
+                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
+                boundary_conditions = (u = u_bcs, v = v_bcs),
                            coriolis = nothing,
-                            closure = nothing,
                         formulation = VectorInvariantFormulation())
 
-    set!(model, u = (x, y, z) -> U + δu(x, y, 0, U, β, xᵥ, yᵥ),
-                v = (x, y, z) -> δv(x, y, 0, U, β, xᵥ, yᵥ),
-                h = (x, y, z) -> δh(x, y, 0, U, β, xᵥ, yᵥ))
+    set!(model, u = (x, y, z) -> du(x, y, 0, μ),
+                v = (x, y, z) -> dv(x, y, 0, μ),
+                h = (x, y, z) -> 1.0)
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=50)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
     @info "Running Isoentropic vortex advection with Ny = $Nx and Δt = $Δt order $order and a VectorInvariantFormulation VorticityStencil..."
     run!(simulation)
 
-    xh = xnodes(model.solution.h)
-    yh = ynodes(model.solution.h)
     xu = xnodes(model.solution.u)
     yu = ynodes(model.solution.u)
     xv = xnodes(model.solution.v)
@@ -60,67 +65,37 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
     u_analytical = zeros(Nx, Nx)
     v_analytical = zeros(Nx, Nx)
     h_analytical = zeros(Nx, Nx)
+
     for i in 1:Nx, j in 1:Nx
-        u_analytical[i, j] = U + δu.(xu[i], yu[j], model.clock.time, U, β, xᵥ, yᵥ)
-        v_analytical[i, j] = δv.(xv[i], yv[j], model.clock.time, U, β, xᵥ, yᵥ)
-        h_analytical[i, j] = δh.(xh[i], yh[j], model.clock.time, U, β, xᵥ, yᵥ)
+        u_analytical[i, j] += du(xu[i], yu[j], model.clock.time, μ)
+        v_analytical[i, j] += dv(xv[i], yv[j], model.clock.time, μ)
+        h_analytical[i, j] += 1.0
     end
 
     # Calculate errors
-    uvi_simulation = interior(model.solution.u)[:, :, 1] |> Array
+    uvi_simulation = interior(model.solution.u)[1:Nx, :, 1] |> Array
     uvi_errors = compute_error(uvi_simulation, u_analytical)
 
-    vvi_simulation = interior(model.solution.v)[:, :, 1] |> Array
+    vvi_simulation = interior(model.solution.v)[:, 1:Nx, 1] |> Array
     vvi_errors = compute_error(vvi_simulation, v_analytical)
 
     hvi_simulation = interior(model.solution.h)[:, :, 1] |> Array
     hvi_errors = compute_error(hvi_simulation, h_analytical)
 
     #####
-    ##### Test advection of an isoentropic vortex with a VectorInvariantFormulation
-    #####
-
-    model = ShallowWaterModel( grid = grid,
-         gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
-                     mass_advection = WENO(order = order),
-                           coriolis = nothing,
-                            closure = nothing,
-                        formulation = VectorInvariantFormulation())
-
-    set!(model, u = (x, y, z) -> U + δu(x, y, 0, U, β, xᵥ, yᵥ),
-                v = (x, y, z) -> δv(x, y, 0, U, β, xᵥ, yᵥ),
-                h = (x, y, z) -> δh(x, y, 0, U, β, xᵥ, yᵥ))
-
-    simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
-
-    @info "Running Isoentropic vortex advection with Ny = $Nx and Δt = $Δt order $order and a VectorInvariantFormulation VelocityStencil..."
-    run!(simulation)
-
-    # Calculate errors
-    uvv_simulation = interior(model.solution.u)[:, :, 1] |> Array
-    uvv_errors = compute_error(uvv_simulation, u_analytical)
-
-    vvv_simulation = interior(model.solution.v)[:, :, 1] |> Array
-    vvv_errors = compute_error(vvv_simulation, v_analytical)
-
-    hvv_simulation = interior(model.solution.h)[:, :, 1] |> Array
-    hvv_errors = compute_error(hvv_simulation, h_analytical)
-
-    #####
     ##### Test advection of an isoentropic vortex with a ConservativeFormulation
     #####
 
     model = ShallowWaterModel( grid = grid,
-         gravitational_acceleration = 1.0,
+         gravitational_acceleration = 0.0,
                  momentum_advection = WENO(order = order),
-                     mass_advection = WENO(order = order),
-                           coriolis = nothing,
-                            closure = nothing)
-    
-    set!(model, uh = (x, y, z) -> (U + δu(x, y, 0, U, β, xᵥ, yᵥ)) * δh(x, y, 0, U, β, xᵥ, yᵥ),
-                vh = (x, y, z) -> δv(x, y, 0, U, β, xᵥ, yᵥ) * δh(x, y, 0, U, β, xᵥ, yᵥ),
-                h  = (x, y, z) -> δh(x, y, 0, U, β, xᵥ, yᵥ))
+                boundary_conditions = (uh = u_bcs, vh = v_bcs),
+                           coriolis = nothing)
+
+    set!(model, uh = (x, y, z) -> du(x, y, 0, μ),
+                vh = (x, y, z) -> dv(x, y, 0, μ),
+                h = (x, y, z) -> 1.0)
+
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 
@@ -130,11 +105,10 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
     u, v = shallow_water_velocities(model)
 
     # Calculate errors
-    # Calculate errors
-    ucf_simulation = interior(u)[:, :, 1] |> Array
+    ucf_simulation = interior(u)[1:Nx, :, 1] |> Array
     ucf_errors = compute_error(ucf_simulation, u_analytical)
 
-    vcf_simulation = interior(v)[:, :, 1] |> Array
+    vcf_simulation = interior(v)[:, 1:Nx, 1] |> Array
     vcf_errors = compute_error(vcf_simulation, v_analytical)
 
     hcf_simulation = interior(model.solution.h)[:, :, 1] |> Array
@@ -157,20 +131,20 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
                            L₁ = hvi_errors.L₁,
                            L∞ = hvi_errors.L∞),
 
-            uvv = (simulation = uvv_simulation,
+            uvv = (simulation = uvi_simulation,
                    analytical = u_analytical,
-                           L₁ = uvv_errors.L₁,
-                           L∞ = uvv_errors.L∞),
+                           L₁ = uvi_errors.L₁,
+                           L∞ = uvi_errors.L∞),
 
             vvv = (simulation = vvi_simulation,
                    analytical = v_analytical,
                            L₁ = vvi_errors.L₁,
                            L∞ = vvi_errors.L∞),
 
-            hvv = (simulation = hvv_simulation,
+            hvv = (simulation = hvi_simulation,
                    analytical = h_analytical,
-                           L₁ = hvv_errors.L₁,
-                           L∞ = hvv_errors.L∞),
+                           L₁ = hvi_errors.L₁,
+                           L∞ = hvi_errors.L∞),
 
             ucf = (simulation = ucf_simulation,
                    analytical = u_analytical,

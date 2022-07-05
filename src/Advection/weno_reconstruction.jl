@@ -90,7 +90,7 @@ julia> chebychev_spaced_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
 julia> grid = RectilinearGrid(size = (Nx, Nz), topology=(Periodic, Flat, Bounded),
                               x = (0, Lx), z = chebychev_spaced_z_faces);
 
-julia> WENO(order=5; grid)
+julia> WENO(grid; order=5)
 WENO reconstruction order 5 in Flux form
  Smoothness formulation:
     └── Z-weno

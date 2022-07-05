@@ -14,14 +14,14 @@ using Oceananigans.Advection
 using Oceananigans.Advection: boundary_buffer, MultiDimensionalScheme
 
 using ConvergenceTests
-using ConvergenceTests.TwoDimensionalVortexAdvection: run_test
-using ConvergenceTests.TwoDimensionalVortexAdvection: unpack_errors, defaultcolors, removespines
+using ConvergenceTests.TwoDimensionalBurgersAdvection: run_test
+using ConvergenceTests.TwoDimensionalBurgersAdvection: unpack_errors, defaultcolors, removespines
 
 """ Run advection test for all Nx in resolutions. """
 function run_convergence_test(resolutions, order, arch)
 
     # Determine safe time-step
-           Lx = 10
+           Lx = 1
             h = Lx / maximum(resolutions)
            Δt = min(0.01 * h / U, 0.1)
 
@@ -38,7 +38,7 @@ end
 
 arch = CUDA.has_cuda() ? GPU() : CPU()
 
-advection_schemes = (WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
+advection_schemes = (WENO(order=3),) # WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
 
 U = 1
 Nx = [16, 32, 64, 96, 128, 192, 256] 
@@ -60,7 +60,7 @@ rate_of_convergence_2D(::WENO{K}) where K = 2K-1
 test_resolution(a) = 256
 tolerance(a) = 100.0
 
-colors = ("xkcd:royal blue", "xkcd:light red")
+colors = ("xkcd:royal blue", "xkcd:light red", "xkcd:green")
 
 for scheme in advection_schemes
 
@@ -77,35 +77,30 @@ for scheme in advection_schemes
         Ntest = test_resolution(scheme)
         itest = searchsortedfirst(Nx, Ntest)
         
-        (uvi_L₁, vvi_L₁, hvi_L₁, ucf_L₁, vcf_L₁, hcf_L₁, uvi_L∞, vvi_L∞, hvi_L∞, ucf_L∞, vcf_L∞, hcf_L∞) = unpack_errors(results[typeof(scheme)])
+        (uvi_L₁, vvi_L₁, hvi_L₁, uvv_L₁, vvv_L₁, hvv_L₁, ucf_L₁, vcf_L₁, hcf_L₁, 
+         uvi_L∞, vvi_L∞, hvi_L∞, uvv_L∞, vvv_L∞, hvv_L∞, ucf_L∞, vcf_L∞, hcf_L∞) = unpack_errors(results[typeof(scheme)])
 
         common_kwargs = (linestyle="None", color=colors[1], mfc="None", alpha=0.8)
 
-        loglog(Nx, ucf_L₁; marker="*", label="\$L_1\$-norm, \$ucf\$ $name", common_kwargs...)
-        loglog(Nx, vcf_L₁; marker="+", label="\$L_1\$-norm, \$vcf\$ $name", common_kwargs...)
-        loglog(Nx, hcf_L₁; marker="_", label="\$L_1\$-norm, \$hcf\$ $name", common_kwargs...)
+        loglog(Nx, uvi_L₁; marker="1", label="\$L_1\$-norm, \$uvi\$ $name", common_kwargs...)
+        loglog(Nx, vvi_L₁; marker="s", label="\$L_1\$-norm, \$vvi\$ $name", common_kwargs...)
+        loglog(Nx, hvi_L₁; marker="X", label="\$L_1\$-norm, \$hvi\$ $name", common_kwargs...)
 
-        loglog(Nx, ucf_L₁; marker="1", label="\$L_1\$-norm, \$ucf\$ $name", common_kwargs...)
-        loglog(Nx, vcf_L₁; marker="s", label="\$L_1\$-norm, \$vcf\$ $name", common_kwargs...)
-        loglog(Nx, hcf_L₁; marker="X", label="\$L_1\$-norm, \$hcf\$ $name", common_kwargs...)
-        
         common_kwargs = (linestyle="None", color=colors[2], mfc="None", alpha=0.8)
 
-        loglog(Nx, uvi_L∞; marker="*", label="\$L_\\infty\$-norm, \$uvi\$ $name", common_kwargs...)
-        loglog(Nx, vvi_L∞; marker="+", label="\$L_\\infty\$-norm, \$vvi\$ $name", common_kwargs...)
-        loglog(Nx, hvi_L∞; marker="_", label="\$L_\\infty\$-norm, \$hvi\$ $name", common_kwargs...)
+        loglog(Nx, uvv_L₁; marker="1", label="\$L_1\$-norm, \$uvv\$ $name", common_kwargs...)
+        loglog(Nx, vvv_L₁; marker="s", label="\$L_1\$-norm, \$vvv\$ $name", common_kwargs...)
+        loglog(Nx, hvv_L₁; marker="X", label="\$L_1\$-norm, \$hvv\$ $name", common_kwargs...)
+        
+        common_kwargs = (linestyle="None", color=colors[3], mfc="None", alpha=0.8)
 
-        loglog(Nx, uvi_L∞; marker="1", label="\$L_\\infty\$-norm, \$uvi\$ $name", common_kwargs...)
-        loglog(Nx, vvi_L∞; marker="s", label="\$L_\\infty\$-norm, \$vvi\$ $name", common_kwargs...)
-        loglog(Nx, hvi_L∞; marker="X", label="\$L_\\infty\$-norm, \$hvi\$ $name", common_kwargs...)
+        loglog(Nx, ucf_L₁; marker="1", label="\$L_\\infty\$-norm, \$ucf\$ $name", common_kwargs...)
+        loglog(Nx, vcf_L₁; marker="s", label="\$L_\\infty\$-norm, \$vcf\$ $name", common_kwargs...)
+        loglog(Nx, hcf_L₁; marker="X", label="\$L_\\infty\$-norm, \$hcf\$ $name", common_kwargs...)
 
         label = raw"\sim N_x^{-" * "$roc1D" * raw"}" |> latexstring
 
         loglog(Nx[itest-3:itest], uvi_L₁[itest] .* (Nx[itest] ./ Nx[itest-3:itest]) .^ roc1D, color=colors[1], alpha=0.8, label=label)
-
-        label = raw"\sim N_x^{-" * "$roc2D" * raw"}" |> latexstring
-
-        loglog(Nx[itest-3:itest], uvi_L₁[itest] .* (Nx[itest] ./ Nx[itest-3:itest]) .^ roc2D, color=colors[1], alpha=0.8, label=label)
 
         xscale("log", base=2)
         yscale("log", base=10)
