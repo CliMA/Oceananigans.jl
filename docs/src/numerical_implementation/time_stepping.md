@@ -1,4 +1,4 @@
-# Time-stepping and the fractional step method
+# [Time-stepping and the fractional step method](@id time_stepping)
 
 The time-integral of the momentum equation with the pressure decomposition from time step ``n`` at ``t = t_n`` 
 to time step ``n+1`` at ``t_{n+1}`` is

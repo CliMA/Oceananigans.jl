@@ -234,9 +234,8 @@ integral form
     A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{aca} \sum_k A_y v = A_z M \, ,
     \end{equation}
 ```
-
-and apply the discrete form to the [hydrostatic](../physics/hydrostatic_free_surface_model/) form of the velocity
-fractional step equation (equation (5) of the [Time Stepping section](../numerical_implementation/time_stepping/))
+and apply the discrete form to the [hydrostatic](@ref hydrostatic_free_surface_model) form of the velocity
+fractional step equation (equation (5) in the [Time-stepping section](@ref time_stepping))
 
 ```math
     \begin{equation}
