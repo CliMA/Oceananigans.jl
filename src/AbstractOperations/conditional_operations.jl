@@ -1,7 +1,7 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
-import Oceananigans.Fields: condition_operand, conditional_length, set!
+import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 
@@ -131,6 +131,8 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
+    
+compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,

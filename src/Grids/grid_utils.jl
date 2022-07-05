@@ -239,9 +239,9 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
-@inline cpu_face_constructor_x(grid) = all_x_nodes(Face, adapt(CPU(), grid))[1:grid.Nx+1]
-@inline cpu_face_constructor_y(grid) = all_y_nodes(Face, adapt(CPU(), grid))[1:grid.Ny+1]
-@inline cpu_face_constructor_z(grid) = all_z_nodes(Face, adapt(CPU(), grid))[1:grid.Nz+1]
+@inline cpu_face_constructor_x(grid) = Array(all_x_nodes(Face, grid)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
 
 all_x_nodes(::Type{Nothing}, grid) = 1:1
 all_y_nodes(::Type{Nothing}, grid) = 1:1

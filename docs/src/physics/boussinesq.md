@@ -1,6 +1,6 @@
 # The Boussinesq approximation
 
-Oceananigans.jl employ often the Boussinesq approximation[^1]. In the Boussinesq approximation
+Oceananigans.jl often employs the Boussinesq approximation[^1]. In the Boussinesq approximation
 the fluid density ``\rho`` is, in general, decomposed into three components:
 ```math
     \rho(\boldsymbol{x}, t) = \rho_0 + \rho_*(z) + \rho'(\boldsymbol{x}, t) \, ,
