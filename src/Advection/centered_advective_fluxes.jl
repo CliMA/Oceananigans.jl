@@ -4,8 +4,7 @@
 ##### See topologically_conditional_interpolation.jl for an explanation of the underscore-prepended functions _symmetric_interpolate_*.
 #####
 
-const AbstractCenteredMultiDimensionalScheme = AbstractMultiDimensionalAdvectionScheme{<:Any, <:Any, <:AbstractCenteredAdvectionScheme} 
-const CenteredScheme = Union{AbstractCenteredAdvectionScheme, AbstractCenteredMultiDimensionalScheme}
+const CenteredScheme = AbstractCenteredAdvectionScheme
 
 #####
 ##### Advective momentum flux operators

@@ -229,33 +229,3 @@ for bias in (:left_biased, :right_biased)
         end
     end
 end
-
-using Oceananigans.Advection: MDS
-
-# MDS{2} uses cells from i-1 to i+1
-@inline near_x_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg)
-@inline near_y_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg)
-@inline near_z_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{2}) = inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg)
-
-# MDS{2} uses cells from i-2 to i+2
-@inline near_x_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i-3, j, k, ibg) | inactive_cell(i-2, j, k, ibg) | inactive_cell(i-1, j, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i+1, j, k, ibg) | inactive_cell(i+2, j, k, ibg) | inactive_cell(i+3, j, k, ibg)  
-@inline near_y_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j-3, k, ibg) | inactive_cell(i, j-2, k, ibg) | inactive_cell(i, j-1, k, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j+1, k, ibg) | inactive_cell(i, j+2, k, ibg) | inactive_cell(i, j+3, k, ibg)  
-@inline near_z_immersed_boundary_mds(i, j, k, ibg, scheme::MDS{3}) = inactive_cell(i, j, k-3, ibg) | inactive_cell(i, j, k-2, ibg) | inactive_cell(i, j, k-1, ibg) | inactive_cell(i, j, k, ibg) | inactive_cell(i, j, k+1, ibg) | inactive_cell(i, j, k+2, ibg) | inactive_cell(i, j, k+3, ibg)  
-
-for (dir, ξ) in enumerate((:x, :y, :z))
-    md_interpolate = Symbol(:multi_dimensional_interpolate_, ξ)
-    alt_md_interpolate = Symbol(:_multi_dimensional_interpolate_, ξ)
-
-    near_boundary = Symbol(:near_, ξ, :_immersed_boundary_mds)
-
-    @eval begin
-        import Oceananigans.Advection: $alt_md_interpolate
-        using Oceananigans.Advection: $md_interpolate
-
-        # Conditional interpolation for Higher order MultiDimensionalScheme
-        @inline $alt_md_interpolate(i, j, k, ibg::ImmersedBoundaryGrid, scheme::MDS, coeff, func, scheme_1d, args...) = 
-            ifelse($near_boundary(i, j, k, ibg, scheme),
-                    zero(grid),
-                    $md_interpolate(i, j, k, ibg, scheme, coeff, func, scheme_1d, args...))
-    end
-end
