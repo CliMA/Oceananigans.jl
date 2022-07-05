@@ -60,7 +60,8 @@ using DataDeps
 path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
 
 datanames = ["tau_x-1440x600-latitude-75",
-             "tau_y-1440x600-latitude-75"]
+             "tau_y-1440x600-latitude-75",
+             "bathymetry-1440x600"]
 
 dh = DataDep("quarter_degree_near_global_lat_lon",
     "Forcing data for global latitude longitude simulation",
@@ -71,7 +72,7 @@ DataDeps.register(dh)
 
 datadep"quarter_degree_near_global_lat_lon"
 
-files = [:file_tau_x, :file_tau_y]
+files = [:file_tau_x, :file_tau_y, :file_bathymetry]
 for (data, file) in zip(datanames, files)
     datadep_path = @datadep_str "quarter_degree_near_global_lat_lon/" * data * ".jld2"
     @eval $file = jldopen($datadep_path)
@@ -86,12 +87,7 @@ end
 τˣ = arch_array(arch, τˣ)
 τʸ = arch_array(arch, τʸ)
 
-
-smoothed_bathymetry = jldopen("smooth-bathymetry.jld2")
-bat = smoothed_bathymetry["bathymetry"]
-
-bat[ bat .> 0 ] .= 1000.0
-bat .-= 10.0
+bathymetry = file_bathymetry["bathymetry"]
 
 boundary = Int.(bat .> 0)
 bat = -bat
