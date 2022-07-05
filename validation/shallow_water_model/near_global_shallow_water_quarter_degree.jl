@@ -176,7 +176,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
                           momentum_advection = WENO(vector_invariant = VorticityStencil()),
-                          mass_advection = WENO(bounds = (0, Inf)),
+                          mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
@@ -186,7 +186,7 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = bat
+h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
 set!(model, h=h_init)
 fill_halo_regions!(model.solution.h)
 
