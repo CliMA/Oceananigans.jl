@@ -43,7 +43,6 @@ import Oceananigans.Grids: required_halo_size
 abstract type AbstractAdvectionScheme{Buffer, FT} end
 abstract type AbstractCenteredAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
 abstract type AbstractUpwindBiasedAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
-abstract type AbstractMultiDimensionalAdvectionScheme{Buffer, FT, OneDScheme} <: AbstractAdvectionScheme{Buffer, FT} end
 
 @inline boundary_buffer(::AbstractAdvectionScheme{N}) where N = N
 @inline required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
@@ -58,7 +57,6 @@ include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
-include("multi_dimensional_reconstruction.jl")
 
 include("vector_invariant_advection.jl")
 include("topologically_conditional_interpolation.jl")
