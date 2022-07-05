@@ -22,9 +22,6 @@ const AUGXY  = AUG{<:Any, <:Bounded, <:Bounded}
 const AUGXZ  = AUG{<:Any, <:Bounded, <:Any, <:Bounded}
 const AUGYZ  = AUG{<:Any, <:Any, <:Bounded, <:Bounded}
 const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
-const AUFX   = AUG{<:Any, <:Flat}
-const AUFY   = AUG{<:Any, <:Any, <:Flat}
-const AUFZ   = AUG{<:Any, <:Any, <:Any, <:Flat}
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
