@@ -1,3 +1,22 @@
+"""
+
+    WENO reconstruction of order `M` entails reconstructions of order `N` on `N` different stencils where `N = (M + 1) / 2`
+
+reconstruction on different stencils are calculated as 
+
+`v̂ᵣ = ∑ⱼ(cᵣⱼ v̅ᵢ₋ᵣ₊ⱼ)` 
+
+where r is the stencil index (of which there are N) and j goes from 0 to N
+cᵣⱼ for different r stencils are given by `coeff_side_p(scheme, Val(r))`
+
+the different reconstructions are combined in a convex combination to provide the 
+"higher order essentially non oscillatory" reconstruction as
+
+`v⋆ = ∑ᵣ(wᵣ v̂ᵣ)`
+
+wᵣ weights are calculated dynamically with `side_biased_weno_weights(ψ, scheme)` 
+"""
+
 ## Values taken from Balsara & Shu "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
 
 const ƞ = Int32(2) # WENO exponent
@@ -97,7 +116,7 @@ for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     end
 end
 
-# Shenanigans for WENO weights calculation
+# Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5*(βᵤ[i] + βᵥ[i]) for i in 1:buffer]
 function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -107,6 +126,7 @@ function metaprogrammed_beta_sum(buffer)
     return :($(elem...), )
 end
 
+# left and right biased_β calculation for scheme and stencil = 0:buffer - 1
 function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -126,7 +146,7 @@ function metaprogrammed_zweno_alpha_loop(buffer)
     return :($(elem...), )
 end
 
-# JSWENO α weights dᵣ */ (βᵣ + ε)²
+# JSWENO α weights dᵣ / (βᵣ + ε)²
 function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -146,13 +166,13 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
-# Calculating Dynamic WENO Weights, either with JS weno, Z weno or VectorInvariant WENO
+# Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     biased_weno_weights = Symbol(side, :_biased_weno_weights)
     biased_β = Symbol(side, :_biased_β)
@@ -197,7 +217,28 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
     end
 end
 
-function calc_weno_stencil(buffer, shift, dir, func) 
+""" 
+    calc_weno_stencil(buffer, shift, dir, func::Bool = false)
+
+Stencils for WENO reconstruction calculations
+
+The first argument is the `buffer`, not the `order`! 
+- `order = 2 * buffer - 1` for WENO reconstruction
+   
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans.Advection: calc_weno_stencil
+
+julia> calc_weno_stencil(3, :left, :x)
+:(((ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k]), (ψ[i + -3, j, k], ψ[i + -2, j, k], ψ[i + -1, j, k])))
+
+julia> calc_weno_stencil(2, :right, :x)
+:(((ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -1, j, k], ψ[i + 0, j, k])))
+
+"""
+function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
     N = buffer * 2
     if shift != :none
         N -=1
@@ -231,6 +272,8 @@ function calc_weno_stencil(buffer, shift, dir, func)
     return :($(stencil_full...), )
 end
 
+# Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
+# where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
 for side in (:left, :right), dir in (:x, :y, :z)
     stencil = Symbol(side, :_stencil_, dir)
 
@@ -266,6 +309,7 @@ function metaprogrammed_stencil_sum(buffer)
     return Expr(:call, :+, elem...)
 end
 
+# Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline stencil_sum(scheme::WENO{$buffer}, ψ, w, func, cT, val, idx, loc) = @inbounds $(metaprogrammed_stencil_sum(buffer))
