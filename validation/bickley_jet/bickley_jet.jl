@@ -3,7 +3,7 @@ using Oceananigans.Units
 using Oceananigans.Advection: VelocityStencil, VorticityStencil, boundary_buffer
 
 using Printf
-# using GLMakie
+using GLMakie
 
 include("bickley_utils.jl")
 
@@ -72,51 +72,47 @@ end
 
 Visualize the Bickley jet data in `name * ".jld2"`.
 """
-# function visualize_bickley_jet(name)
-#     @info "Making a fun movie about an unstable Bickley jet..."
+function visualize_bickley_jet(name)
+    @info "Making a fun movie about an unstable Bickley jet..."
 
-#     filepath = name * ".jld2"
+    filepath = name * ".jld2"
 
-#     ζt = FieldTimeSeries(filepath, "ζ")
-#     ct = FieldTimeSeries(filepath, "c")
-#     t = ζt.times
-#     Nt = length(t)
+    ζt = FieldTimeSeries(filepath, "ζ")
+    ct = FieldTimeSeries(filepath, "c")
+    t = ζt.times
+    Nt = length(t)
 
-#     fig = Figure(resolution=(1400, 800))
-#     slider = Slider(fig[2, 1:2], range=1:Nt, startvalue=1)
-#     n = slider.value
+    fig = Figure(resolution=(1400, 800))
+    slider = Slider(fig[2, 1:2], range=1:Nt, startvalue=1)
+    n = slider.value
 
-#     ζtitle = @lift @sprintf("ζ at t = %.1f", t[$n])
-#     ctitle = @lift @sprintf("c at t = %.1f", t[$n])
+    ζtitle = @lift @sprintf("ζ at t = %.1f", t[$n])
+    ctitle = @lift @sprintf("c at t = %.1f", t[$n])
 
-#     ax_ζ = Axis(fig[1, 1], title=ζtitle, aspect=1)
-#     ax_c = Axis(fig[1, 2], title=ctitle, aspect=1)
+    ax_ζ = Axis(fig[1, 1], title=ζtitle, aspect=1)
+    ax_c = Axis(fig[1, 2], title=ctitle, aspect=1)
 
-#     ζ = @lift interior(ζt[$n], :, :, 1)
-#     c = @lift interior(ct[$n], :, :, 1)
+    ζ = @lift interior(ζt[$n], :, :, 1)
+    c = @lift interior(ct[$n], :, :, 1)
 
-#     heatmap!(ax_ζ, ζ, colorrange=(-1, 1), colormap=:redblue)
-#     heatmap!(ax_c, c, colorrange=(-1, 1), colormap=:thermal)
+    heatmap!(ax_ζ, ζ, colorrange=(-1, 1), colormap=:redblue)
+    heatmap!(ax_c, c, colorrange=(-1, 1), colormap=:thermal)
 
-#     record(fig, name * ".mp4", 1:Nt, framerate=24) do nn
-#         @info "Drawing frame $nn of $Nt..."
-#         n[] = nn
-#     end
-# end
+    record(fig, name * ".mp4", 1:Nt, framerate=24) do nn
+        @info "Drawing frame $nn of $Nt..."
+        n[] = nn
+    end
+end
 
-#=
 advection_schemes = [WENO(vector_invariant=VelocityStencil()),
                      WENO(vector_invariant=VorticityStencil()),
                      WENO(),
                      VectorInvariant()]
-=#
-using Oceananigans.Advection: MultiDimensionalScheme
 
-advection_schemes = [MultiDimensionalScheme(WENO()), WENO()]
 
-for Nx in [256]
+for Nx in [128]
     for advection in advection_schemes
         experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
-        # visualize_bickley_jet(experiment_name)
+        visualize_bickley_jet(experiment_name)
     end
 end
