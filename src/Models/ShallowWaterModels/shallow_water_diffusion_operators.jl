@@ -14,6 +14,7 @@ import Oceananigans.TurbulenceClosures:
                         DiffusivityFields,
                         calculate_diffusivities!,
                         calculate_nonlinear_viscosity!, 
+                        viscosity,
                         with_tracers,
                         νᶜᶜᶜ
 
@@ -30,6 +31,7 @@ end
 
 # We have no tracers in the shallow water diffusivity
 with_tracers(tracers, closure::ShallowWaterScalarDiffusivity) = closure
+viscosity(closure::ShallowWaterScalarDiffusivity, K) = closure.ν
 
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
@@ -71,5 +73,5 @@ DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (
 @inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
        (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, velocities) ) / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
 
-@inline trace_term_x(i, j, k, grid, clo, U) = - δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
-@inline trace_term_y(i, j, k, grid, clo, U) = - δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_x(i, j, k, grid, clo, U) = - δxᶠᵃᵃ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_y(i, j, k, grid, clo, U) = - δyᵃᶠᵃ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
