@@ -19,7 +19,7 @@ using Oceananigans.Fields: ZeroField
 """
     div_uc(i, j, k, grid, advection, U, c)
 
-Calculates the divergence of the flux of a tracer quantity ``c`` being advected by
+Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
 a velocity field, ``𝛁⋅(𝐯 c)``,
 
     1/V * [δxᶜᵃᵃ(Ax * u * ℑxᶠᵃᵃ(c)) + δyᵃᶜᵃ(Ay * v * ℑyᵃᶠᵃ(c)) + δzᵃᵃᶜ(Az * w * ℑzᵃᵃᶠ(c))]
