@@ -117,6 +117,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure, 
                                 bathymetry,
@@ -129,7 +130,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
+    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
@@ -138,6 +139,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure,
                                 bathymetry,
@@ -150,7 +152,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
+    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
