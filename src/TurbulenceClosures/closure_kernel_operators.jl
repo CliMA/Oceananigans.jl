@@ -51,17 +51,17 @@ end
 ##### Products of viscosity and stress, divergence, vorticity
 #####
 
-@inline ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, F, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, F) * σᶜᶜᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clock, F, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, F) * σᶠᶠᶜ(i, j, k, grid, args...)
-@inline ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, F, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, F) * σᶠᶜᶠ(i, j, k, grid, args...)
-@inline ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, F, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, F) * σᶜᶠᶠ(i, j, k, grid, args...)
+@inline ν_σᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * σᶜᶜᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, σᶠᶠᶜ, args...) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * σᶠᶠᶜ(i, j, k, grid, args...)
+@inline ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, σᶠᶜᶠ, args...) = νᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
+@inline ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, σᶜᶠᶠ, args...) = νᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
-@inline ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, F, u, v) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, F) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
-@inline ν_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, F, u, v) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, F) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+@inline ν_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+@inline ν_ζᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νᶠᶠᶜ(i, j, k, grid, closure, K, clock, fields) * ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
-@inline κ_σᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, F, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, F) * σᶠᶜᶜ(i, j, k, grid, args...)
-@inline κ_σᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, F, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, F) * σᶜᶠᶜ(i, j, k, grid, args...)
-@inline κ_σᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, F, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, F) * σᶜᶜᶠ(i, j, k, grid, args...)
+@inline κ_σᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶠᶜᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶠᶜ(i, j, k, grid, args...)
+@inline κ_σᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶜᶠ(i, j, k, grid, args...)
 
 #####
 ##### Viscosity "extractors"
