@@ -69,14 +69,16 @@ Examples
 ========
 ```jldoctest
 julia> WENO()
-WENO reconstruction order 5 in Flux form
- Boundary scheme:
+WENO reconstruction order 5 in Flux form 
+ Smoothness formulation: 
+    └── Z-weno  
+ Boundary scheme: 
     └── WENO reconstruction order 3 in Flux form
- Symmetric scheme:
+ Symmetric scheme: 
     └── Centered reconstruction order 4
  Directions:
-    ├── X regular
-    ├── Y regular
+    ├── X regular 
+    ├── Y regular 
     └── Z regular
 ```
 
@@ -85,22 +87,22 @@ julia> Nx, Nz = 16, 10;
 
 julia> Lx, Lz = 1e4, 1e3;
 
-julia> chebychev_spaced_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+julia> chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
 
-julia> grid = RectilinearGrid(size = (Nx, Nz), topology=(Periodic, Flat, Bounded),
+julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic, Flat, Bounded),
                               x = (0, Lx), z = chebychev_spaced_z_faces);
 
-julia> WENO(grid; order=5)
-WENO reconstruction order 5 in Flux form
- Smoothness formulation:
-    └── Z-weno
- Boundary scheme:
-    └── WENO reconstruction order 3 in Flux form
- Symmetric scheme:
-    └── Centered reconstruction order 4
+julia> WENO(grid; order=7)
+WENO reconstruction order 7 in Flux form 
+ Smoothness formulation: 
+    └── Z-weno  
+ Boundary scheme: 
+    └── WENO reconstruction order 5 in Flux form
+ Symmetric scheme: 
+    └── Centered reconstruction order 6
  Directions:
-    ├── X regular
-    ├── Y regular
+    ├── X regular 
+    ├── Y regular 
     └── Z stretched
 ```
 """
