@@ -200,8 +200,8 @@ end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "Centered schemes are not allowed on Curvilinear grids, the momentum advection scheme has been set to VectorInvariant()"
-
+    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+          "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end
 
