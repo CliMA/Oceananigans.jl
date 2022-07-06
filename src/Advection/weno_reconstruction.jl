@@ -68,6 +68,8 @@ Keyword arguments
 Examples
 ========
 ```jldoctest
+julia> using Oceananigans;
+
 julia> WENO()
 WENO reconstruction order 5 in Flux form 
  Smoothness formulation: 
@@ -83,6 +85,8 @@ WENO reconstruction order 5 in Flux form
 ```
 
 ```jldoctest
+julia> using Oceananigans;
+
 julia> Nx, Nz = 16, 10;
 
 julia> Lx, Lz = 1e4, 1e3;
