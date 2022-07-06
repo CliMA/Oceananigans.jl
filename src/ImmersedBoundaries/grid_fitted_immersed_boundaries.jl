@@ -96,8 +96,8 @@ end
     return z <= h
 end
 
-on_architecture(arch, ib::AbstractGridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
-Adapt.adapt_structure(to, ib::AbstractGridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
 
 #####
 ##### Implicit vertical diffusion
