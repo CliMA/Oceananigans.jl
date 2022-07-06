@@ -101,10 +101,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 as a function of gravitational acceleration, conservative temperature ``T`` and absolute salinity ``S``.
 The relationship between ``T``, ``S``, the geopotential height, and the density perturbation from
 a reference value is called the `equation_of_state`.
-Specifying `buoyancy = SeawaterBuoyancy()` (which uses a linear equation of state and
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity)
-`gravitational_acceleration = 9.80665 \, \text{m}\,\text{s}^{-2}` by default)
-requires the tracers `:T` and `:S`:
+
+Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (``\text{m}\,\text{s}^{-2}``) and requires the tracers `:T` and `:S`:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))

@@ -35,7 +35,7 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
 """
     ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
 
-The implicit free-surface equation is
+Return an implicit free-surface solver. The implicit free-surface equation is
 
 ```math
 \\left [ 𝛁_h ⋅ (H 𝛁_h) - \\frac{1}{g Δt^2} \\right ] η^{n+1} = \\frac{𝛁_h ⋅ 𝐐_⋆}{g Δt} - \\frac{η^{n}}{g Δt^2} ,
@@ -45,7 +45,8 @@ where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝐐_⋆`` is the barotropic volume flux
 associated with the predictor velocity field, and ``𝛁_h`` is the horizontal gradient operator.
 
-This equation can be solved in general using the [`PreconditionedConjugateGradientSolver`](@ref).
+This equation can be solved, in general, using the [`PreconditionedConjugateGradientSolver`](@ref) but 
+other solvers can be invoked in special cases.
 
 In the case that ``H`` is constant, we divide through to obtain
 
@@ -54,7 +55,15 @@ In the case that ``H`` is constant, we divide through to obtain
 ```
 
 Thus, for constant ``H`` and on grids with regular spacing in ``x`` and ``y`` directions, the free
-surface can be obtained using the `FFTImplicitFreeSurfaceSolver`.
+surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
+
+`solver_method` can be either of:
+* `:FastFourierTransform` (for [`FFTBasedPoissonSolver`](@ref))
+* `:HeptadiagonalIterativeSolver`  (for [`HeptadiagonalIterativeSolver`](@ref))
+* `:PreconditionedConjugateGradient` (for [`PreconditionedConjugateGradientSolver`](@ref))
+
+By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
+otherwise the `:HeptadiagonalIterativeSolver`.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
