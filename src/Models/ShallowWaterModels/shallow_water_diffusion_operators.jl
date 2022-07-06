@@ -1,17 +1,20 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: identity1
+using Oceananigans.Architectures: device, device_event
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures: 
                         AbstractScalarDiffusivity, 
-                        calculate_nonlinear_viscosity!, 
+                        convert_diffusivity,
                         viscosity_location, 
                         viscosity, 
                         ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
 import Oceananigans.TurbulenceClosures:
                         DiffusivityFields,
-                        calculate_diffusivities,
+                        calculate_diffusivities!,
+                        calculate_nonlinear_viscosity!, 
+                        with_tracers,
                         νᶜᶜᶜ
 
 struct ShallowWaterScalarDiffusivity{N, X} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
@@ -22,14 +25,17 @@ end
 function ShallowWaterScalarDiffusivity(FT::DataType=Float64; ν=0, ξ=0, discrete_form = false) 
     ν = convert_diffusivity(FT, ν; discrete_form)
     ξ = convert_diffusivity(FT, ξ; discrete_form)
-    return ScalarDiffusivity(ν, ξ)
+    return ShallowWaterScalarDiffusivity(ν, ξ)
 end
 
-# The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
-# h⁻¹ ∇ ⋅ (hνt) where t is the velocity tensor plus a the trace t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
+# We have no tracers in the shallow water diffusivity
+with_tracers(tracers, closure::ShallowWaterScalarDiffusivity) = closure
 
-@inline νᶜᶜᶜ(i, j, k, grid, clo::ShallowWaterScalarDiffusivity, clk, solution) = 
-        solution.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, clk, viscosity_location(clo), viscosity(clo, nothing))
+# The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
+# h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
+
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, solution, C) = 
+        solution.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(closure), closure.ν)
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
     arch = model.architecture
@@ -39,7 +45,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
     
     event = launch!(arch, grid, :xyz,
                     calculate_nonlinear_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, clock, solution, 
+                    diffusivity_fields.νₑ, grid, closure, clock, solution, nothing,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -47,11 +53,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScala
     return nothing
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)
-    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
-    bcs = merge(default_eddy_viscosity_bcs, bcs)
-    return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))
-end
+DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
 
 #####
 ##### Diffusion flux divergence operators
@@ -68,7 +70,6 @@ end
 
 @inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
        (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, velocities) ) / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
-
 
 @inline trace_term_x(i, j, k, grid, clo, U) = - δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
 @inline trace_term_y(i, j, k, grid, clo, U) = - δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
