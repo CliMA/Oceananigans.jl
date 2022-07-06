@@ -66,7 +66,6 @@ Returns a CPU architecture for building Oceananigans models on a single CPU node
 """
 struct CPU <: AbstractArchitecture end
 
-
 struct GPU{D} <: AbstractArchitecture
     device :: D
 end
@@ -78,7 +77,14 @@ Returns a GPU architecture for building Oceananigans models on a GPU `device`.
 
 Currently, only Nvidia CUDA GPUs are supported.
 """
-GPU() = GPU(CUDA.device())
+function GPU()
+    if CUDA.has_cuda_gpu() 
+        return GPU(CUDA.device()) 
+    else 
+        @warn "No cuda capable device found! Reconsider running with architecture = CPU()" 
+        return GPU(nothing)
+    end
+end
 
 #####
 ##### These methods are extended in Distributed.jl
