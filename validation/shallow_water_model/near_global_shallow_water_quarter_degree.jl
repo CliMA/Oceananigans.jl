@@ -87,9 +87,9 @@ end
 τˣ = arch_array(arch, τˣ)
 τʸ = arch_array(arch, τʸ)
 
-bathymetry = file_bathymetry["bathymetry"]
-
+bat = file_bathymetry["bathymetry"]
 boundary = Int.(bat .> 0)
+bat[ bat .> 0 ] .= 0 
 bat = -bat
 
 # A spherical domain
