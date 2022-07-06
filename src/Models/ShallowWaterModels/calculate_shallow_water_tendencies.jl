@@ -32,6 +32,7 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.grid,
                                                model.gravitational_acceleration,
                                                model.advection,
+                                               model.velocities,
                                                model.coriolis,
                                                model.closure,
                                                model.bathymetry,
@@ -60,6 +61,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     grid,
                                                     gravitational_acceleration,
                                                     advection,
+                                                    velocities,
                                                     coriolis,
                                                     closure, 
                                                     bathymetry,
@@ -79,7 +81,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    args_vel = (grid, gravitational_acceleration, advection.momentum, coriolis, closure, 
+    args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
     args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
                       solution, tracers, diffusivities, forcings, clock, formulation)

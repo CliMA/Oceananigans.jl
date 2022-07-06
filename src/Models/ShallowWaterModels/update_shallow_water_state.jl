@@ -20,6 +20,10 @@ function update_state!(model::ShallowWaterModel)
                        model.clock,
                        fields(model))
 
+    # Compute the velocities
+    compute!(model.velocities.u)
+    compute!(model.velocities.v)
+
     return nothing
 end
 

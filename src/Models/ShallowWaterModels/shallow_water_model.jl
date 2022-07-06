@@ -41,6 +41,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
     gravitational_acceleration :: T         # Gravitational acceleration, full, or reduced
                      advection :: V         # Advection scheme for velocities, mass and tracers
+                    velocities :: U         # Velocities in the shallow water model
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
                        forcing :: F         # Container for forcing functions defined by the user
                        closure :: E         # Diffusive 'turbulence closure' for all model fields
@@ -191,6 +192,7 @@ function ShallowWaterModel(;
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,
+                              shallow_water_velocities(solution, formulation),
                               coriolis,
                               forcing,
                               closure,
@@ -217,16 +219,16 @@ validate_momentum_advection(momentum_advection::VectorInvariantSchemes, ::Vector
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
 
-function shallow_water_velocities(model::ShallowWaterModel)
-    if formulation(model) isa VectorInvariantFormulation 
-        return (model.solution.u, model.solution.v) 
+function shallow_water_velocities(solution, formulation)
+    if formulation isa VectorInvariantFormulation 
+        return (u = solution.u, v = solution.v, w = nothing) 
     else
-        u = Field(@at (Face, Center, Center) model.solution.uh / model.solution.h)
-        v = Field(@at (Center, Face, Center) model.solution.vh / model.solution.h)
+        u = Field(@at (Face, Center, Center) solution.uh / solution.h)
+        v = Field(@at (Center, Face, Center) solution.vh / solution.h)
 
         compute!(u)
         compute!(v)
 
-        return (u, v)
+        return (; u, v, w = nothing)
     end
 end

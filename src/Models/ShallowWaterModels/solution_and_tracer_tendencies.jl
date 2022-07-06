@@ -24,6 +24,7 @@ Compute the tendency for the x-directional transport, uh
 @inline function uh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
                                       advection,
+                                      velocities,
                                       coriolis,
                                       closure,
                                       bathymetry,
@@ -40,7 +41,7 @@ Compute the tendency for the x-directional transport, uh
              - x_pressure_gradient(i, j, k, grid, g, solution.h, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock, nothing)
+             - shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, velocities, tracers, solution, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -50,6 +51,7 @@ Compute the tendency for the y-directional transport, vh.
 @inline function vh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
                                       advection,
+                                      velocities,
                                       coriolis,
                                       closure,
                                       bathymetry,
@@ -66,7 +68,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_pressure_gradient(i, j, k, grid, g, solution.h, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock)
+             - shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, velocities, tracers, solution, formulation)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
