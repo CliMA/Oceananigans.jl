@@ -9,25 +9,25 @@ struct VelocityStencil <:SmoothnessStencil end
 
 struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     
-    "coefficient for ENO reconstruction on x-faces" 
+    "Coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
-    "coefficient for ENO reconstruction on x-centers"
+    "Coefficient for ENO reconstruction on x-centers"
     coeff_xᶜᵃᵃ::XT
-    "coefficient for ENO reconstruction on y-faces"
+    "Coefficient for ENO reconstruction on y-faces"
     coeff_yᵃᶠᵃ::YT
-    "coefficient for ENO reconstruction on y-centers"
+    "Coefficient for ENO reconstruction on y-centers"
     coeff_yᵃᶜᵃ::YT
-    "coefficient for ENO reconstruction on z-faces"
+    "Coefficient for ENO reconstruction on z-faces"
     coeff_zᵃᵃᶠ::ZT
-    "coefficient for ENO reconstruction on z-centers"
+    "Coefficient for ENO reconstruction on z-centers"
     coeff_zᵃᵃᶜ::ZT
 
-    "bounds for maximum-principle-satisfying WENO scheme"
+    "Bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
 
-    "advection scheme used near boundaries"
+    "Advection scheme used near boundaries"
     boundary_scheme :: CA
-    "reconstruction scheme used for symmetric interpolation"
+    "Reconstruction scheme used for symmetric interpolation"
     symmetric_scheme :: SI
 
     function WENO{N, FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
