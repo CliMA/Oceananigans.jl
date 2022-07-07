@@ -37,7 +37,7 @@ Compute the tendency for the x-directional transport, uh
 
     g = gravitational_acceleration
 
-    model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
+    model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
 
     return ( - div_mom_u(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, g, solution.h, formulation)
@@ -66,7 +66,7 @@ Compute the tendency for the y-directional transport, vh.
 
      g = gravitational_acceleration
 
-     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
+     model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
 
     return ( - div_mom_v(i, j, k, grid, advection, solution, formulation)
              - y_pressure_gradient(i, j, k, grid, g, solution.h, formulation)
