@@ -135,7 +135,7 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
-@inline function νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
+@inline function calc_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
@@ -157,8 +157,7 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index},
-                       U) where {tracer_index}
+@inline function calc_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
@@ -186,8 +185,8 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     buoyancy = model.buoyancy
 
     workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
-    diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
+    viscosity_kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
     barrier = device_event(arch)
     viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers, dependencies=barrier)
@@ -205,15 +204,6 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     return nothing
 end
 
-@kernel function calculate_viscosity!(νₑ, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
-    i, j, k = @index(Global, NTuple)
-    @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
-end
-
-@kernel function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
-    i, j, k = @index(Global, NTuple)
-    @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
-end
 
 #####
 ##### Filter width at various locations
