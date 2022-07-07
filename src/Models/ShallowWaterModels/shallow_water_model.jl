@@ -86,9 +86,9 @@ Keyword arguments
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
     Default: `UpwindBiasedFifthOrder()`.
-  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO(order = 5)`.
+  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO()`.
   - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
-    `WENO(order = 5)`.
+    `WENO()`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
