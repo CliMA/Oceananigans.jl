@@ -5,12 +5,11 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils
 
-using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures
+using Oceananigans.Advection: VelocityStencil
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -30,7 +29,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
-arch = GPU()
+arch = CPU()
 reference_density = 1035
 
 #####
@@ -42,7 +41,7 @@ using DataDeps
 
 path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/lat_lon_bathymetry_and_fluxes/"
 
-dh = DataDep("near_global_lat_lon",
+dh = DataDep("near_global_lat_lon_3_degrees",
     "Forcing data for global latitude longitude simulation",
     [path * "bathymetry_lat_lon_128x60_FP32.bin",
      path * "sea_surface_temperature_25_128x60x12.jld2",
@@ -52,7 +51,7 @@ dh = DataDep("near_global_lat_lon",
 
 DataDeps.register(dh)
 
-datadep"near_global_lat_lon"
+datadep"near_global_lat_lon_3_degrees"
 
 #####
 ##### Load forcing files roughly from CORE2 paper
@@ -97,19 +96,16 @@ H = 3600.0
                                               size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (3, 3, 3),
+                                              halo = (5, 5, 5),
                                               z = (-H, 0),
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 1))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 1))
+τˣ = arch_array(arch, - τˣ)
+τʸ = arch_array(arch, - τʸ)
 
-τˣ = multi_region_object_from_array(- τˣ, mrg)
-τʸ = multi_region_object_from_array(- τʸ, mrg)
-
-target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
+target_sea_surface_temperature = T★ = arch_array(arch, T★)
 
 #####
 ##### Physics and model setup
@@ -131,8 +127,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
-Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
+Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
 
 @inline function surface_temperature_relaxation(i, j, grid, clock, fields, p)
     time = clock.time
@@ -176,24 +172,6 @@ v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, para
 
 # Linear bottom drag:
 μ = Δz_bottom / 10days
-# μ_forcing = 10days
-
-# @inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
-#     u = @inbounds fields.u[i, j, k]
-#     return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
-#                   - μ * u,
-#                  zero(eltype(grid)))
-# end
-
-# @inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
-#     v = @inbounds fields.v[i, j, k]
-#     return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
-#                   - μ * v,
-#                  zero(eltype(grid)))
-# end
-
-# Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
-# Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -205,11 +183,9 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
                                    preconditioner_settings = (ε = 0.01, nzrel = 10))
 
-free_surface = ExplicitFreeSurface()
-
 equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
-model = HydrostaticFreeSurfaceModel(grid = mrg,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
                                     momentum_advection = WENO(vector_invariant=VelocityStencil()),
                                     tracer_advection = WENO(),
@@ -232,7 +208,7 @@ T .= -1
 ##### Simulation setup
 #####
 
-Δt = 60 #20minutes
+Δt = 20minutes
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
 
@@ -243,10 +219,10 @@ function progress(sim)
 
     η = model.free_surface.η
     u = model.velocities.u
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|w|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    # maximum(abs, η), maximum(abs, u),
+                    maximum(abs, u), maximum(abs, w)
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
