@@ -34,6 +34,9 @@ end
 with_tracers(tracers, closure::ShallowWaterScalarDiffusivity) = closure
 viscosity(closure::ShallowWaterScalarDiffusivity, K) = closure.ν
 
+Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) = 
+    ShallowWaterScalarDiffusivity(Adapt.adapt(to, closure.ν), Adapt.adapt(to, closure.ξ))
+     
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 

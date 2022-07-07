@@ -46,7 +46,7 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
     simulation = Simulation(model; stop_iteration, Δt)
     
     ## Build velocities
-    u, v = shallow_water_velocities(model)
+    u, v, _ = model.velocities
     h = model.solution.h
 
     output_filename = "shallow_water_bickley_jet_regression_$(typeof(formulation)).jld2"
