@@ -7,7 +7,9 @@ using Oceananigans.TurbulenceClosures:
                         convert_diffusivity,
                         viscosity_location, 
                         viscosity, 
-                        ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
+                        ν_σᶜᶜᶜ,
+                        ∂ⱼ_τ₁ⱼ,
+                        ∂ⱼ_τ₂ⱼ
 
 import Oceananigans.TurbulenceClosures:
                         DiffusivityFields,
@@ -61,16 +63,16 @@ DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (
 #####
 
 @inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::ConservativeFormulation) = 
-        ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, velocities)
+        ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, velocities)
 
 @inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::ConservativeFormulation) = 
-        ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, velocities)
+        ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, velocities)
 
 @inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
-       (∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, velocities) ) / ℑxᶠᵃᵃ(i, j, k, grid, solution.h)
+       (∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, velocities) ) / ℑxᶠᵃᵃ(i, j, k, grid, solution.h)
 
 @inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
-       (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, velocities) ) / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
+       (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, velocities) ) / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
 
-@inline trace_term_x(i, j, k, grid, clo, U) = - δxᶠᵃᵃ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
-@inline trace_term_y(i, j, k, grid, clo, U) = - δyᵃᶠᵃ(i, j, k, grid, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_x(i, j, k, grid, clo, K, clk, U) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_y(i, j, k, grid, clo, K, clk, U) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)

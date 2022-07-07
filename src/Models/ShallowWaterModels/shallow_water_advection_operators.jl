@@ -111,7 +111,8 @@ end
 end
 
 # Support for no advection
-@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c, formulation) where FT = zero(FT)
+@inline div_Uc(i, j, k, grid::AbstractGrid, ::Nothing, solution, c, formulation) = zero(grid)
+@inline div_Uh(i, j, k, grid::AbstractGrid, ::Nothing, solution, formulation)    = zero(grid)
 
 @inline u(i, j, k, grid, solution) = @inbounds solution.uh[i, j, k] / ℑxᶠᵃᵃ(i, j, k, grid, solution.h)
 @inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
