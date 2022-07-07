@@ -6,6 +6,7 @@ export ShallowWaterModel, ShallowWaterScalarDiffusivity,
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields

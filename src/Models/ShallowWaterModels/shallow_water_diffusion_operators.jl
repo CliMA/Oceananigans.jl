@@ -17,6 +17,7 @@ import Oceananigans.TurbulenceClosures:
                         calculate_nonlinear_viscosity!, 
                         viscosity,
                         with_tracers,
+                        calc_νᶜᶜᶜ,
                         νᶜᶜᶜ
 
 struct ShallowWaterScalarDiffusivity{N, X} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
@@ -40,18 +41,20 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, solution, C) = 
-        solution.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(closure), closure.ν)
+@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) = 
+        solution.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(closure), closure.ν, clock, fields)
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
     arch = model.architecture
     grid = model.grid
     solution = model.solution
     clock = model.clock
+
+    model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
     
     event = launch!(arch, grid, :xyz,
                     calculate_nonlinear_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, clock, solution, nothing,
+                    diffusivity_fields.νₑ, grid, closure, clock, model_fields,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -65,20 +68,20 @@ DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (
 ##### Diffusion flux divergence operators
 #####
 
-@inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::ConservativeFormulation) = 
-        ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, velocities)
+@inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, fields, ::ConservativeFormulation) = 
+        ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, fields, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, fields)
 
-@inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::ConservativeFormulation) = 
-        ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, velocities)
+@inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, ::ConservativeFormulation) = 
+        ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, fields)
 
-@inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
-       (∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, velocities) ) / ℑxᶠᵃᵃ(i, j, k, grid, solution.h)
+@inline shallow_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, fields, ::VectorInvariantFormulation) = 
+       (∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, K, clock, fields, nothing) + trace_term_x(i, j, k, grid, closure, K, clock, fields) ) / ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
 
-@inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, velocities, tracers, solution, ::VectorInvariantFormulation) = 
-       (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, velocities, tracers, clock, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, velocities) ) / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
+@inline shallow_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, ::VectorInvariantFormulation) = 
+       (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, fields) ) / ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
 
-@inline trace_term_x(i, j, k, grid, clo, K, clk, U) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
-@inline trace_term_y(i, j, k, grid, clo, K, clk, U) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_x(i, j, k, grid, clo, K, clk, fields) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_y(i, j, k, grid, clo, K, clk, fields) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
 
 @inline trace_term_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline trace_term_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
