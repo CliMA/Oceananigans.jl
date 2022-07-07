@@ -61,13 +61,13 @@ datadep"near_global_lat_lon_3_degrees"
 filename = [:sea_surface_temperature_25_128x60x12, :tau_x_128x60x12, :tau_y_128x60x12]
 
 for name in filename
-    datadep_path = @datadep_str "near_global_lat_lon/" * string(name) * ".jld2"
+    datadep_path = @datadep_str "near_global_lat_lon_3_degrees/" * string(name) * ".jld2"
     file = Symbol(:file_, name)
     @eval $file = jldopen($datadep_path)
 end
 
 bathymetry_data = Array{Float32}(undef, Nx*Ny)
-bathymetry_path = @datadep_str "near_global_lat_lon/bathymetry_lat_lon_128x60_FP32.bin"
+bathymetry_path = @datadep_str "near_global_lat_lon_3_degrees/bathymetry_lat_lon_128x60_FP32.bin"
 read!(bathymetry_path, bathymetry_data)
 
 bathymetry_data = bswap.(bathymetry_data) |> Array{Float64}
@@ -222,7 +222,7 @@ function progress(sim)
     @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|w|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    maximum(abs, u), maximum(abs, w)
+                    maximum(abs, u), maximum(abs, w),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
