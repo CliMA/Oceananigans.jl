@@ -76,3 +76,6 @@ DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (
 
 @inline trace_term_x(i, j, k, grid, clo, K, clk, U) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
 @inline trace_term_y(i, j, k, grid, clo, K, clk, U) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, U.u, U.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+
+@inline trace_term_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline trace_term_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
