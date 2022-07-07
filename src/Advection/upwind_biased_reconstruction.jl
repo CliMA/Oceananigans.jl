@@ -8,22 +8,22 @@
 Upwind-biased fifth-order advection scheme.
 """
 struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
-    "coefficient for Upwind reconstruction on stretched x-faces" 
+    "Coefficient for Upwind reconstruction on stretched x-faces" 
     coeff_xᶠᵃᵃ::XT
-    "coefficient for Upwind reconstruction on stretched x-centers"
+    "Coefficient for Upwind reconstruction on stretched x-centers"
     coeff_xᶜᵃᵃ::XT
-    "coefficient for Upwind reconstruction on stretched y-faces"
+    "Coefficient for Upwind reconstruction on stretched y-faces"
     coeff_yᵃᶠᵃ::YT
-    "coefficient for Upwind reconstruction on stretched y-centers"
+    "Coefficient for Upwind reconstruction on stretched y-centers"
     coeff_yᵃᶜᵃ::YT
-    "coefficient for Upwind reconstruction on stretched z-faces"
+    "Coefficient for Upwind reconstruction on stretched z-faces"
     coeff_zᵃᵃᶠ::ZT
-    "coefficient for Upwind reconstruction on stretched z-centers"
+    "Coefficient for Upwind reconstruction on stretched z-centers"
     coeff_zᵃᵃᶜ::ZT
     
-    "reconstruction scheme used near boundaries"
+    "Reconstruction scheme used near boundaries"
     boundary_scheme :: CA
-    "reconstruction scheme used for symmetric interpolation"
+    "Reconstruction scheme used for symmetric interpolation"
     symmetric_scheme :: SI
 
     function UpwindBiased{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
