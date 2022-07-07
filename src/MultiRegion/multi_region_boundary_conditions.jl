@@ -58,6 +58,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
 
+# This results in too large parameter space required on the GPU for too many regions!! (we are passing the whole buffers and regions)
 function fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
     arch = architecture(mrg)

@@ -5,12 +5,16 @@ using CUDA: allowscalar
 
     allowscalar(true)
     y2 = searchsortedfirst(vec, val)
-    y1 = searchsortedlast(vec,  val)
+    y1 = searchsortedlast(vec, val)
     x2 = vec[y2]
     x1 = vec[y1]
     allowscalar(false)
 
-    return (y2 - y1) / (x2 - x1) * (val - x1) + y1
+    if y1 == y2
+        return y1
+    else
+        return (y2 - y1) / (x2 - x1) * (val - x1) + y1
+    end
 end
 
 ####
