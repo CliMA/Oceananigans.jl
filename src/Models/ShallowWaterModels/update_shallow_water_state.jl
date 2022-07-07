@@ -23,9 +23,15 @@ function update_state!(model::ShallowWaterModel)
                        fields(model))
 
     # Compute the velocities
-    compute!(model.velocities.u)
-    compute!(model.velocities.v)
+
+    compute_velocities!(model.velocities, formulation(model))
 
     return nothing
 end
 
+compute_velocities!(U, ::VectorInvariantFormulation) = nothing
+
+function compute_velocities!(U, ::ConservativeFormulation)
+    compute!(U.u)
+    compute!(U.v)
+end

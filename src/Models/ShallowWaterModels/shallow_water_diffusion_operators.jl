@@ -1,5 +1,4 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: identity1
 using Oceananigans.Architectures: device, device_event
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
