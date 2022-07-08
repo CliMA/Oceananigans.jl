@@ -42,7 +42,7 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 
 @inline calc_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) = 
-        fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, clock, viscosity_location(closure), closure.ν, clock, fields)
+        fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
     arch = model.architecture
