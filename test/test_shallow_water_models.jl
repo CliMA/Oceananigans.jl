@@ -63,7 +63,7 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
                                 formulation)
     
     field = model.velocities[fieldname]
-    field .= cos.(m * ξ)
+    interior(field) .= cos.(m * ξ)
     update_state!(model)
 
     # Step forward with small time-step relative to diff. time-scale
