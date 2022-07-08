@@ -108,11 +108,8 @@ end
 
     @inbounds c = tracers[tracer_index]
 
-    model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
-
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
              + c_div_U(i, j, k, grid, solution, c, formulation)         
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end
