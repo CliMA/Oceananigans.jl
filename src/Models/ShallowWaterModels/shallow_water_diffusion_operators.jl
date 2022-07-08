@@ -45,9 +45,9 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
         fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
-    arch = model.architecture
-    grid = model.grid
-    solution = model.solution
+    
+    arch  = model.architecture
+    grid  = model.grid
     clock = model.clock
 
     model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
