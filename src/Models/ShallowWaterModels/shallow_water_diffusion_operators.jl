@@ -80,8 +80,8 @@ DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity)  = (
 @inline sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, ::VectorInvariantFormulation) = 
        (∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, K, clock, fields, nothing) + trace_term_y(i, j, k, grid, closure, K, clock, fields) ) / ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
 
-@inline trace_term_x(i, j, k, grid, clo, K, clk, fields) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
-@inline trace_term_y(i, j, k, grid, clo, K, clk, fields) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_x(i, j, k, grid, clo, K, clk, fields) = - δxᶠᵃᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, fields, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
+@inline trace_term_y(i, j, k, grid, clo, K, clk, fields) = - δyᵃᶠᵃ(i, j, k, grid, ν_σᶜᶜᶜ, clo, K, clk, fields, div_xyᶜᶜᶜ, fields.u, fields.v) * clo.ξ / Azᶠᶜᶜ(i, j, k, grid)
 
 @inline trace_term_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline trace_term_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
