@@ -233,4 +233,4 @@ function shallow_water_velocities(solution, formulation)
 end
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
-shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, tracers)
+shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
