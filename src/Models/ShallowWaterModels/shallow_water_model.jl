@@ -218,6 +218,7 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, No
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
 
+# The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 function shallow_water_velocities(solution, formulation)
     if formulation isa VectorInvariantFormulation 
         return (u = solution.u, v = solution.v, w = nothing) 
