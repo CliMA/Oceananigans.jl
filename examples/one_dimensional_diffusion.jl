@@ -37,7 +37,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# The default topology is `(Periodic, Periodic, Bounded)`. In this example we're
+# The default topology is `(Periodic, Periodic, Bounded)`. In this example, we're
 # trying to solve a one-dimensional problem, so we assign `Flat` to the
 # `x` and `y` topologies. We excise halos and avoid interpolation or differencing
 # in `Flat` directions, saving computation and memory.
