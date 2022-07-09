@@ -47,7 +47,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 using Oceananigans.BuoyancyModels: g_Earth
 
  amplitude = 0.8 # m
-wavelength = 60 # m
+wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
  frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
