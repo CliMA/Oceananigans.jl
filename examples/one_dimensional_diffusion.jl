@@ -105,7 +105,7 @@ using Printf
 label = @sprintf("t = %.3f", model.clock.time)
 lines!(interior(model.tracers.T, 1, 1, :), z; label)
 axislegend()
-display(fig)
+fig # hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
