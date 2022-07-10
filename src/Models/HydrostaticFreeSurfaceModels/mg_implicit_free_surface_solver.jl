@@ -28,9 +28,9 @@ mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
     previous_Δt :: F
     "The right hand side of the free surface evolution equation"
     right_hand_side :: R
-    "The matrix constructors of the linear operator without the Az / (g * Δt^2) term"
+    "The matrix constructors of the linear operator without the `Az / (g Δt²)` term"
     matrix_constructors :: C
-    "The Az / g term"
+    "The `Az / g` term"
     diagonal :: D
 end
 
@@ -85,7 +85,11 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 end
 
 
-# Construct a Nx*Ny array with elements Az/g
+"""
+    compute_diag(arch, grid, g)
+
+Construct an `Nx * Ny` array on architecture `arch` with elements `Az / g`, where `g` is the gravitational accelaration.
+"""
 function compute_diag(arch, grid, g)
     diag = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, 1))
 
