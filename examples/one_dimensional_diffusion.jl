@@ -139,7 +139,7 @@ lines!(T, z)
 
 label = @lift "t = " * string(round(times[$n], digits=3))
 Label(fig[1, 1], label, tellwidth=false)
-display(fig)
+fig # hide
 
 # Finally, we record a movie.
 
