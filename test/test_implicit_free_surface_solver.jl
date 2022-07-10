@@ -109,9 +109,6 @@ end
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, maxiter=128^3)
 
-        mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
-                                              abstol=1e-15, reltol=0, maxiter=128^3)
-
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
         mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
@@ -131,22 +128,28 @@ end
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
 
         if arch isa CPU
+            mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
+                                                  abstol=1e-15, reltol=0, maxiter=128^3)
+
             mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                    momentum_advection = nothing,
                                                    free_surface = mg_free_surface)
 
             @test  mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
         end
-        
+
         events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
-        Δt = 900
+        Δt₁ = 900
+        Δt₂ = 920.0
 
         models = arch isa CPU ? (mat_model, pcg_model, fft_model, mg_model) : (mat_model, pcg_model, fft_model)
         
         for m in models
             set_simple_divergent_velocity!(m)
-            implicit_free_surface_step!(m.free_surface, m, Δt, 1.5, events)
+            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
+            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
+            implicit_free_surface_step!(m.free_surface, m, Δt₂, 1.5, events)
         end
 
         mat_η = mat_model.free_surface.η
@@ -159,7 +162,7 @@ end
 
         Δη_mat = mat_η_cpu .- fft_η_cpu
         Δη_pcg = pcg_η_cpu .- fft_η_cpu
-        
+
         if arch isa CPU
             mg_η  =  mg_model.free_surface.η
             mg_η_cpu  = Array(interior(mg_η))
@@ -180,10 +183,14 @@ end
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(mat_η_cpu .≈ fft_η_cpu)
-        
+
+        @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
+        @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
+
         if arch isa CPU
             @test all(pcg_η_cpu .≈ fft_η_cpu)
             @test all(mg_η_cpu .≈ fft_η_cpu)
+            @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         else
             # It seems that the PCG algorithm is not always stable on sverdrup's GPU, often leading to failure.
             # This behavior is not observed on tartarus, where this test _would_ pass.
@@ -191,12 +198,10 @@ end
             # on the CPU.
             @info "  Skipping comparison between pcg and fft implicit free surface solver"
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
+            
             @info "  Skipping comparison between mg and fft implicit free surface solver"
             @test_skip all(mg_η_cpu .≈ fft_η_cpu)
+            @test_skip all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         end
-
-        @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-        @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-        @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
     end
 end
