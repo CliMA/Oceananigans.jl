@@ -78,7 +78,8 @@ z = znodes(model.tracers.T)
 T = interior(model.tracers.T, 1, 1, :)
 
 lines(T, z; label, axis)
-     
+fig # hide
+
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
 # physical points (excluding halos) at `(1, 1, :)`.
 #
