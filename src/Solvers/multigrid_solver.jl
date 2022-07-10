@@ -10,7 +10,7 @@ import Oceananigans.Architectures: architecture
 mutable struct MultigridSolver{A, G, L, T, M, F}
                architecture :: A
                        grid :: G
-            linear_operator :: L
+                    matrix :: L
                      abstol :: T
                      reltol :: T
                     maxiter :: Int
@@ -99,17 +99,13 @@ function MultigridSolver(linear_operation!::Function,
 end
 
 
-# to initialize an MGImplicitFreeSurfaceSolver with `Δt = nothing`
-initialize_matrix(template_field, ::Function, ::Any , ::Any, ::Any, ::Nothing) = 
-    spzeros(eltype(template_field.grid), prod(size(template_field)), prod(size(template_field)))
-
 function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
 
     fill_matrix_elements!(A, template_field, linear_operator!, args...)
     
-    return A
+    return arch_sparse_matrix(architecture(template_field), A)
 end
 
 function fill_matrix_elements!(A, template_field, linear_operator!, args...)
@@ -128,7 +124,7 @@ function fill_matrix_elements!(A, template_field, linear_operator!, args...)
 
         A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(∇²eᵢⱼₖ)
     end
-    
+
     return nothing
 end
 
@@ -144,7 +140,7 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    solt = init(solver.amg_algorithm, solver.linear_operator, solver.b_array)
+    solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
     _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
     

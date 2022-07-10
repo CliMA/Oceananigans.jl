@@ -4,10 +4,10 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
-using Oceananigans.Architectures: device, unsafe_free!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
+using Oceananigans.Architectures: device
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: implicit_free_surface_linear_operation!
 using Oceananigans.Solvers: fill_matrix_elements!
-using Oceananigans.Solvers: constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!
+using Oceananigans.Solvers: constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
@@ -19,7 +19,7 @@ The multigrid implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
-mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
+mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R}
     "The multigrid solver"
     multigrid_solver :: S
     "The vertically-integrated lateral areas"
@@ -28,10 +28,6 @@ mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
     previous_Δt :: F
     "The right hand side of the free surface evolution equation"
     right_hand_side :: R
-    "The matrix constructors of the linear operator without the Az / (g * Δt^2) term"
-    matrix_constructors :: C
-    "The Az / g term"
-    diagonal :: D
 end
 
 architecture(solver::MGImplicitFreeSurfaceSolver) =
@@ -54,7 +50,6 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                                     settings, 
                                     gravitational_acceleration=nothing, 
                                     placeholder_timestep = -1.0)
-    arch = architecture(grid)
 
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
@@ -73,58 +68,13 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
     # initialize solver with Δt = nothing so that linear matrix is not computed; see `initialize_matrix` methods
-    solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
+    solver = MultigridSolver(implicit_free_surface_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, gravitational_acceleration, placeholder_timestep;
                              template_field = right_hand_side, settings...)
 
     # For updating the diagonal
     ensure_diagonal_elements_are_present!(solver.matrix)
-    matrix_constructors = constructors(arch, solver.matrix)
-    diagonal = compute_diag(arch, grid, gravitational_acceleration)
 
-    return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
-end
-
-
-# Construct a Nx*Ny array with elements Az/g
-function compute_diag(arch, grid, g)
-    diag = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, 1))
-
-    event_c = launch!(arch, grid, :xy, _compute_diag!, diag, grid, g,
-                      dependencies = device_event(arch))
-    wait(event_c)
-    return diag
-end
-
-@kernel function _compute_diag!(diag, grid, g)
-    i, j = @index(Global, NTuple)
-    @inbounds diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
-end
-
-"""
-Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
-and `L` is the linear operator that arises
-in an implicit time step for the free surface displacement `η` 
-without the final term that is dependent on Δt
-
-(See the docs section on implicit time stepping.)
-"""
-function Az_∇h²ᶜᶜᶜ_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
-    grid = L_ηⁿ⁺¹.grid
-    arch = architecture(L_ηⁿ⁺¹)
-    fill_halo_regions!(ηⁿ⁺¹)
-
-    event = launch!(arch, grid, :xy, _Az_∇h²ᶜᶜᶜ_linear_operation!,
-                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
-
-    return nothing
-end
-
-@kernel function _Az_∇h²ᶜᶜᶜ_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
-    i, j = @index(Global, NTuple)
-    @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᶜ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹)
+    return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side)
 end
 
 build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acceleration) =
@@ -139,13 +89,18 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
 
     # if `Δt` changed then re-compute the matrix elements
     if Δt != implicit_free_surface_solver.previous_Δt
+        @show Matrix(solver.matrix)
         arch = architecture(solver.matrix)
-        constructors = deepcopy(implicit_free_surface_solver.matrix_constructors)
+        matrix_constructors = constructors(arch, solver.matrix)
         M = prod(size(η))
-        update_diag!(constructors, arch, M, M, implicit_free_surface_solver.diagonal, Δt, 0)
-        solver.matrix = arch_sparse_matrix(arch, constructors) 
+        update_diagonal!(matrix_constructors, arch, M, M, Δt, implicit_free_surface_solver.previous_Δt, g, η.grid)
+        solver.matrix = arch_sparse_matrix(arch, matrix_constructors) 
+        @show Matrix(solver.matrix)
 
-        unsafe_free!(constructors)
+        # can we get away with less re-creating_matrix below?
+        ∫ᶻA = implicit_free_surface_solver.vertically_integrated_lateral_areas
+        fill_matrix_elements!(solver.matrix, η, implicit_free_surface_linear_operation!, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
+        @show Matrix(solver.matrix)
 
         implicit_free_surface_solver.previous_Δt = Δt
     end
@@ -154,6 +109,35 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
     return nothing
 end
 
+
+# We need to update the diagonal element each time the time step changes!
+function update_diagonal!(constr, arch, M, N, Δt, previous_Δt, g, grid)   
+    colptr, rowval, nzval = unpack_constructors(arch, constr)
+    loop! = _update_diagonal!(device(arch), min(256, M), M)
+    event = loop!(nzval, colptr, rowval, Δt, previous_Δt, g, grid; dependencies=device_event(arch))
+    wait(device(arch), event)
+
+    constr = constructors(arch, M, N, (colptr, rowval, nzval))
+end
+
+@kernel function _update_diagonal!(nzval, colptr, rowval, Δt, previous_Δt, g, grid)
+    col = @index(Global, Linear)
+    map = 1
+    for idx in colptr[col]:colptr[col+1] - 1
+       if rowval[idx] == col
+           map = idx 
+            break
+        end
+    end
+    Nx, Ny = (grid.Nx, grid.Ny)
+    diag_without_Δt = -Azᶜᶜᶜ(mod(col, Nx), mod(col, Nx*Ny), 1, grid) / g 
+    @show col, diag_without_Δt
+    @show nzval[map]
+    nzval[map] += diag_without_Δt / Δt^2 - diag_without_Δt / previous_Δt^2
+    @show Δt^2,  previous_Δt^2
+    @show diag_without_Δt / Δt^2 - diag_without_Δt / previous_Δt^2
+    @show nzval[map]
+end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::MGImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)

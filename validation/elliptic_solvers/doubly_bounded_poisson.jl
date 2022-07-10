@@ -1,17 +1,16 @@
 using Oceananigans
 using Oceananigans.Architectures: child_architecture, device
-using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
+using Oceananigans.Operators: ∇²ᶜᶜᶜ
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, HeptadiagonalIterativeSolver, PreconditionedConjugateGradientSolver, MultigridSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver
 using Oceananigans.Architectures: architecture, arch_array
-using Statistics: mean
 using IterativeSolvers
 using Statistics: mean
 using AlgebraicMultigrid: RugeStubenAMG
-using GLMakie
 using OffsetArrays
+using GLMakie
 
 import Oceananigans.Solvers: precondition!
 
@@ -69,10 +68,10 @@ fill_halo_regions!(φ_cg)
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
 φ_mg = CenterField(grid)
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
 
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
-solve!(φ_mg, mgs, r)
+@time mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
+@time solve!(φ_mg, mgs, r)
 
 fill_halo_regions!(φ_mg)
 
@@ -95,25 +94,11 @@ using AlgebraicMultigrid: solve, init, _solve!
 Return `z` (Field)
 """
 function precondition!(z, mgp::MultigridPreconditioner, r, args...)
-    Nx, Ny, Nz = r.grid.Nx, r.grid.Ny, r.grid.Nz
-    
-    r_array = collect(reshape(interior(r), Nx * Ny * Nz))
-
-    # the non-allocating version of mg solve does not converge
-    # when included in the precondition!
-    #
-    # z_array = collect(reshape(interior(z), Nx * Ny * Nz)) 
-    # solver = mgp.multigrid_solver
-    # solt = init(solver.amg_algorithm, solver.linear_operator, r_array)
-    # _solve!(z_array, solt.ml, solt.b, maxiter=solver.maximum_iterations, abstol = solver.tolerance)
-
-    z_array = solve(mgp.multigrid_solver.linear_operator, r_array, mgp.multigrid_solver.amg_algorithm, maxiter=mgp.multigrid_solver.maxiter)
-
-    interior(z) .= reshape(z_array, Nx, Ny, Nz)
+    solve!(z, mgp.multigrid_solver, r)
     fill_halo_regions!(z)
+    println("preconditioning")
     return z
 end
-
 
 
 φ_cgmg = CenterField(grid)
