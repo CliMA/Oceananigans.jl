@@ -53,7 +53,8 @@ h(k) = (k - 1) / Nz
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(size = (32, 32, Nz), 
+grid = RectilinearGrid(CPU();
+                       size = (32, 32, Nz), 
                           x = (0, 64),
                           y = (0, 64),
                           z = z_faces)
@@ -155,8 +156,8 @@ model = NonhydrostaticModel(; grid, buoyancy,
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
 #   `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
 #
-# * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
-#   `architecture = GPU()`.
+# * To change the architecture to `GPU`, replace `CPU()` with `GPU()` inside the
+#   `grid` constructor.
 
 # ## Initial conditions
 #
@@ -239,25 +240,6 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
 ## Coordinate arrays
 xw, yw, zw = nodes(time_series.w)
 xT, yT, zT = nodes(time_series.T)
-
-""" Return colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
-function divergent_levels(c, clim, nlevels=21)
-    cmax = maximum(abs, c)
-    levels = clim > cmax ? range(-clim, stop=clim, length=nlevels) : range(-cmax, stop=cmax, length=nlevels)
-
-    return (levels[1], levels[end]), levels
-end
-
-""" Return colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
-function sequential_levels(c, clims, nlevels=20)
-    levels = range(clims[1], stop=clims[2], length=nlevels)
-    cmin, cmax = minimum(c), maximum(c)
-    cmin < clims[1] && (levels = vcat([cmin], levels))
-    cmax > clims[2] && (levels = vcat(levels, [cmax]))
-
-    return clims, levels
-end
-nothing # hide
 
 # We start the animation at ``t = 10minutes`` since things are pretty boring till then:
 

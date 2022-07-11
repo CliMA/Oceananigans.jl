@@ -47,7 +47,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 using Oceananigans.BuoyancyModels: g_Earth
 
  amplitude = 0.8 # m
-wavelength = 60 # m
+wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
  frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
@@ -100,7 +100,7 @@ u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-9 # m² s⁻³, surface buoyancy flux
+Qᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
 b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
