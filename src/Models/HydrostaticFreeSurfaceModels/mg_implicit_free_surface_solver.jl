@@ -7,7 +7,8 @@ using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device, unsafe_free!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
 using Oceananigans.Solvers: fill_matrix_elements!
-using Oceananigans.Solvers: constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!
+using Oceananigans.Solvers: constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
+using SparseArrays: _insert!
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
@@ -64,7 +65,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
-    
+
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
@@ -75,13 +76,42 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     # initialize solver with Δt = nothing so that linear matrix is not computed; see `initialize_matrix` methods
     solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
                              template_field = right_hand_side, settings...)
-
     # For updating the diagonal
-    ensure_diagonal_elements_are_present!(solver.matrix)
     matrix_constructors = constructors(arch, solver.matrix)
+    M = grid.Nx * grid.Ny
+    fill_diag!(matrix_constructors, arch, M, M)
     diagonal = compute_diag(arch, grid, gravitational_acceleration)
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
+end
+
+"""  
+    fill_diag!(constr, arch, M, N)
+
+We want all elements in the diagonal to be initialized in the sparse matrix encoding in 
+perparation for calling `update_diag!`. `fill_diag!` ensures 0s are stored in the matrix 
+constructors (rather than not being included as is standard for sparce matrices).
+
+Cannot be eaily parallelised as all elements want to update colptr and rowval
+"""
+function fill_diag!(constr, arch, M, N)
+    colptr, rowval, nzval = unpack_constructors(arch, constr)
+
+    for i in 1:M
+        col_first = Int(colptr[i])
+        col_last = Int(colptr[i+1] - 1)
+        # Binary search for i in rowval between colfirst and collast
+        search = searchsortedfirst(rowval, i, col_first, col_last, Base.Order.Forward)
+        if search > col_last || rowval[search] != i # Column j does not contain entry A[i,j]
+            nz = colptr[M+1] # the final element of colptr
+            _insert!(rowval, search, i, nz)
+            _insert!(nzval, search, 0, nz)
+            for m in (i + 1):(M + 1)
+                @inbounds colptr[m] += 1
+            end
+        end
+    end
+    constr = constructors(arch, M, N, (colptr, rowval, nzval))
 end
 
 
