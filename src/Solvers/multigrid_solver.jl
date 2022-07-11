@@ -10,7 +10,7 @@ import Oceananigans.Architectures: architecture
 mutable struct MultigridSolver{A, G, L, T, M, F}
                architecture :: A
                        grid :: G
-                    matrix :: L
+                     matrix :: L
                      abstol :: T
                      reltol :: T
                     maxiter :: Int
@@ -131,8 +131,8 @@ end
 """
     solve!(x, solver::MultigridSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method, where `A * x` is
-determined by `linear_operation!` given in the MultigridSolver constructor.
+Solve `A * x = b` using a multigrid method, where `A * x` is determined
+by `solver.linear_operation`.
 """
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
@@ -148,9 +148,11 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 end
 
 
-function Base.show(io::IO, solver::MultigridSolver)
-    print(io, "Multigrid solver.\n")
-    print(io, " Problem size = "  , size(solver.grid), '\n')
-    print(io, " Grid = "  , solver.grid)
-    return nothing
-end
+function Base.show(io::IO, solver::MultigridSolver) = 
+print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
+              "├── grid: ", summary(solver.grid), '\n',
+              "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
+              "├── reltol: ", prettysummary(solver.reltol), '\n',
+              "├── abstol: ", prettysummary(solver.abstol), '\n',
+              "├── maxiter: ", solver.maxiter, '\n',
+              "└── amg_algorithm: ", typeof(solver.amg_algorithm))

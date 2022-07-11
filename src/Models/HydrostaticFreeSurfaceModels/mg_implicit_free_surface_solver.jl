@@ -6,8 +6,8 @@ using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device, unsafe_free!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
-using Oceananigans.Solvers: fill_matrix_elements!
-using Oceananigans.Solvers: constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
+using Oceananigans.Solvers: fill_matrix_elements!, constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
+using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
 
 import Oceananigans.Solvers: solve!, precondition!
@@ -78,8 +78,8 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                              template_field = right_hand_side, settings...)
     # For updating the diagonal
     matrix_constructors = constructors(arch, solver.matrix)
-    M = grid.Nx * grid.Ny
-    fill_diag!(matrix_constructors, arch, M, M)
+    Nx, Ny = grid.Nx, grid.Ny
+    fill_diag!(matrix_constructors, arch, Nx*Ny, Nx*Ny)
     diagonal = compute_diag(arch, grid, gravitational_acceleration)
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
@@ -89,10 +89,10 @@ end
     fill_diag!(constr, arch, M, N)
 
 We want all elements in the diagonal to be initialized in the sparse matrix encoding in 
-perparation for calling `update_diag!`. `fill_diag!` ensures 0s are stored in the matrix 
-constructors (rather than not being included as is standard for sparce matrices).
+preparation for calling `update_diag!`. `fill_diag!` ensures that 0s are stored in the matrix 
+constructors (rather than not being included as is standard for sparse matrices).
 
-Cannot be eaily parallelised as all elements want to update colptr and rowval
+Cannot be easily parallelized as all elements want to update `colptr` and `rowval`.
 """
 function fill_diag!(constr, arch, M, N)
     colptr, rowval, nzval = unpack_constructors(arch, constr)
