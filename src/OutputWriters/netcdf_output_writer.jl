@@ -78,6 +78,12 @@ const default_dimension_attributes = Dict(
     "yF"          => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
     "zC"          => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
     "zF"          => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "ΔxC"         => Dict("longname" => "Spacings around cell centers in the x-direction.", "units" => "m"),
+    "ΔxF"         => Dict("longname" => "Spacings around cell faces in the x-direction.",   "units" => "m"),
+    "ΔyC"         => Dict("longname" => "Spacings around cell centers in the y-direction.", "units" => "m"),
+    "ΔyF"         => Dict("longname" => "Spacings around cell faces in the y-direction.",   "units" => "m"),
+    "ΔzC"         => Dict("longname" => "Spacings around cell centers in the z-direction.", "units" => "m"),
+    "ΔzF"         => Dict("longname" => "Spacings around cell faces in the z-direction.",   "units" => "m"),
     "time"        => Dict("longname" => "Time", "units" => "s"),
     "particle_id" => Dict("longname" => "Particle ID")
 )
@@ -351,6 +357,9 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
                    compression=compression, attrib=default_dimension_attributes[dim_name])
+
+            #defVar(dataset, Δdim_name, array_type(Δdim_array), (dim_name,),
+            #       compression=compression, attrib=default_dimension_attributes[Δdim_name])
         end
 
         # DateTime and TimeDate are both <: AbstractTime
