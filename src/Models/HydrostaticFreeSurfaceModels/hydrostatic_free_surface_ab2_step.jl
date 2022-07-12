@@ -84,7 +84,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock,
+                       model.clock, 
                        Δt,
                        dependencies = explicit_velocity_step_events[i])
     end

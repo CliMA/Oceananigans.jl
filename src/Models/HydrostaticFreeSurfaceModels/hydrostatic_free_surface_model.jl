@@ -113,7 +113,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     arch = architecture(grid)
 
-    @apply_regionally validate_momentum_advection(momentum_advection, grid)
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -200,8 +200,13 @@ function validate_vertical_velocity_boundary_conditions(w)
 end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
+function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
+    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+          "The momentum advection scheme has been set to VectorInvariant()"
+    return VectorInvariant()
+end
 
-validate_momentum_advection(momentum_advection, grid) = nothing
+validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
 validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 

@@ -54,10 +54,12 @@ Keyword arguments
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,
-                                     discrete_form = false)
+                                     discrete_form = false,
+                                     loc = (nothing, nothing, nothing),
+                                     parameters = nothing)
 
-    ν = convert_diffusivity(FT, ν; discrete_form)
-    κ = convert_diffusivity(FT, κ; discrete_form)
+    ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
+    κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
 end
 
