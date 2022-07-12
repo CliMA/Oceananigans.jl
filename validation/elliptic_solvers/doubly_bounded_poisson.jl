@@ -14,6 +14,11 @@ using GLMakie
 
 import Oceananigans.Solvers: precondition!
 
+"""
+Demonstrates how one can solve a Poisson problem using the FFT Solver, the Conjugate Gradient Solver, 
+the Multigrid Solver and the Conjugate Gradient Solver preconditioned with the Multigrid Solver.
+"""
+
 N = 8
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
@@ -86,7 +91,6 @@ mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 
 
 mgp = MultigridPreconditioner(mgs)
 
-using AlgebraicMultigrid: solve, init, _solve!
 
 """
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
@@ -96,7 +100,6 @@ Return `z` (Field)
 function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     solve!(z, mgp.multigrid_solver, r)
     fill_halo_regions!(z)
-    println("preconditioning")
     return z
 end
 

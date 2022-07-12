@@ -57,7 +57,7 @@ Arguments
 * `maxiter`: Maximum number of iterations the solver may perform before exiting.
 
 * `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
-                    The iteration stops when `norm(A * x - b) < tolerance`.
+                    The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings
 
