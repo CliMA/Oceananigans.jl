@@ -1,7 +1,7 @@
 using Glob
 import Oceananigans.Fields: set!
 
-using Oceananigans: fields
+using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
@@ -208,7 +208,7 @@ function set!(model, filepath::AbstractString)
         model.grid == checkpointed_grid ||
              error("The grid associated with $filepath and model.grid are not the same!")
 
-        model_fields = fields(model)
+        model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
             try

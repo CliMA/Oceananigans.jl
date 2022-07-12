@@ -1,5 +1,5 @@
 include("dependencies_for_runtests.jl")
-
+using Oceananigans: prognostic_fields
 using Glob
 
 #####
@@ -8,8 +8,8 @@ using Glob
 
 function test_model_equality(test_model, true_model)
     CUDA.@allowscalar begin
-        test_model_fields = fields(test_model)
-        true_model_fields = fields(true_model)
+        test_model_fields = prognostic_fields(test_model)
+        true_model_fields = prognostic_fields(true_model)
         field_names = keys(test_model_fields)
 
         for name in field_names

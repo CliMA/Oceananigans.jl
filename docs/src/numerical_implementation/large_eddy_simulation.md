@@ -12,7 +12,7 @@ mean field ``\overline{\boldsymbol{v}}`` is obtained via convolution with a filt
 ```math
 \overline{\boldsymbol{v}(\boldsymbol{x}, t)} = G \star \boldsymbol{v} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
-  \boldsymbol{v}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, \mathrm{d} \tau \, ,
+  \boldsymbol{v}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, \mathrm{d}\boldsymbol{x}^\prime \, \mathrm{d} \tau \, ,
 ```
 as described by [Leonard75](@cite) who introduced the general filtering formalism.
 

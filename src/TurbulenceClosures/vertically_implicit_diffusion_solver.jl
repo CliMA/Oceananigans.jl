@@ -20,10 +20,10 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 @inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
     zero(grid)
 
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # u
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # v
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock) = zero(grid) # w
-@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock) = zero(grid) # tracers
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # w
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock, args...) = zero(grid) # tracers
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
@@ -38,8 +38,6 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 #####
 
 @inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
-
-instantiate(X) = X()
 
 # Tracers and horizontal velocities at cell centers in z
 
@@ -137,8 +135,8 @@ end
 #####
 
 # Special viscosity extractors with tracer_index === nothing
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
 
 is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
