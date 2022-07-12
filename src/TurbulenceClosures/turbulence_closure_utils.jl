@@ -1,6 +1,8 @@
 using Oceananigans.Operators
 
-tracer_diffusivities(tracers, κ::Union{Number, Function, DiscreteDiffusionFunction}) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
+const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, AbstractArray}
+
+tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
 tracer_diffusivities(tracers, ::Nothing) = nothing
 
 function tracer_diffusivities(tracers, κ::NamedTuple)
