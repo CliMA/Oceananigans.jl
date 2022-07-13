@@ -31,9 +31,9 @@ end
     @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx+1], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny+1], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz+1], restitution)
 end
 
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
@@ -44,10 +44,48 @@ end
     @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
     @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
+    x, y, z = return_face_metrics(grid)
+
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], x[grid.Nx], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], y[grid.Ny], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], z[grid.Nz], restitution)
+
+    # Enforce Immersed boundary conditions for particles.
+    @inbounds enforce_immersed_boundary_condition!(particles, p, grid, restitution)
+end
+
+@inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
+@inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
+@inline return_face_metrics(g::ImmersedBoundaryGrid)  = return_face_metrics(g.underlying_grid)
+
+@inline positive_x_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i-1, j, k, grid)
+@inline positive_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j-1, k, grid)
+@inline positive_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+
+@inline negative_x_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i+1, j, k, grid)
+@inline negative_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j+1, k, grid)
+@inline negative_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k+1, grid)
+
+@inline function enforce_immersed_boundary_condition_x(particles, p, grid, restitution)
+    xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
+    i, j, k = fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid)
+
+    xᶠ⁻ = xnode(Face(), i, grid)
+    yᶠ⁻ = ynode(Face(), j, grid)
+    zᶠ⁻ = znode(Face(), k, grid)
+
+    xᶠ⁺ = xnode(Face(), i + 1, grid)
+    yᶠ⁺ = ynode(Face(), j + 1, grid)
+    zᶠ⁺ = znode(Face(), k + 1, grid)
+
+    positive_x_immersed_boundary(i, j, k, grid) && xₚ < xᶠ⁻ && xₚ = xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
+    positive_y_immersed_boundary(i, j, k, grid) && yₚ < yᶠ⁻ && yₚ = yᶠ⁻ + (yᶠ⁻ - yₚ) * restitution
+    positive_z_immersed_boundary(i, j, k, grid) && zₚ < zᶠ⁻ && zₚ = zᶠ⁻ + (zᶠ⁻ - zₚ) * restitution
+
+    negative_x_immersed_boundary(i, j, k, grid) && xₚ > xᶠ⁺ && xₚ = xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
+    negative_y_immersed_boundary(i, j, k, grid) && yₚ > yᶠ⁺ && yₚ = yᶠ⁺ - (yₚ - yᶠ⁺) * restitution
+    negative_z_immersed_boundary(i, j, k, grid) && zₚ > zᶠ⁺ && zₚ = zᶠ⁺ - (zₚ - zᶠ⁺) * restitution
 end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
