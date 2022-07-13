@@ -26,7 +26,7 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model, model.particles, filepath=nc_filepath, schedule=IterationInterval(1), mode="c")
+        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1), mode="c")
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir = ".", prefix = "particles_checkpoint")
