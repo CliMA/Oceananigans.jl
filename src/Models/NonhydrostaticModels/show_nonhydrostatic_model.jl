@@ -25,7 +25,7 @@ function Base.show(io::IO, model::NonhydrostaticModel)
         particles = model.particles.properties
         properties = propertynames(particles)
         print(io, "├── coriolis: ", summary(model.coriolis), '\n')
-        print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
+        print(io, "└── particles: ", summary(model.particles))
     end
 end
 

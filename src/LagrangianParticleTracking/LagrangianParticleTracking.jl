@@ -2,6 +2,7 @@ module LagrangianParticleTracking
 
 export LagrangianParticles, update_particle_properties!
 
+using Printf
 using Adapt
 using KernelAbstractions
 using StructArrays
@@ -9,6 +10,7 @@ using StructArrays
 using Oceananigans.Grids
 using Oceananigans.Architectures: device
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
+using Oceananigans.Utils: prettysummary
 
 import Base: size, length, show
 
@@ -19,6 +21,11 @@ struct Particle{T} <: AbstractParticle
     y :: T
     z :: T
 end
+
+Base.show(io::IO, p::Particle) = print(io, "Particle at (",
+                                       @sprintf("%-8s", prettysummary(p.x, true) * ", "),
+                                       @sprintf("%-8s", prettysummary(p.y, true) * ", "),
+                                       @sprintf("%-8s", prettysummary(p.z, true) * ")"))
 
 struct LagrangianParticles{P, R, T, D, Π}
         properties :: P
@@ -79,13 +86,22 @@ end
 size(lagrangian_particles::LagrangianParticles) = size(lagrangian_particles.properties)
 length(lagrangian_particles::LagrangianParticles) = length(lagrangian_particles.properties)
 
+Base.summary(particles::LagrangianParticles) =
+    string(length(particles), " LagrangianParticles with eltype ", nameof(eltype(particles.properties)),
+           " and properties ", propertynames(particles.properties))
+
 function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
     particles = lagrangian_particles.properties
+    Tparticle = nameof(eltype(particles))
     properties = propertynames(particles)
     fields = lagrangian_particles.tracked_fields
-    print(io, "$(length(particles)) Lagrangian particles with\n",
-        "├── $(length(properties)) properties: $properties\n",
-        "└── $(length(fields)) tracked fields: $(propertynames(fields))")
+    Nparticles = length(particles)
+
+    print(io, Nparticles, " LagrangianParticles with eltype ", Tparticle, ":", '\n',
+        "├── ", length(properties), " properties: ", properties, '\n',
+        "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, '\n',
+        "├── ", length(fields), " tracked fields: ", propertynames(fields), '\n',
+        "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
 include("update_particle_properties.jl")
