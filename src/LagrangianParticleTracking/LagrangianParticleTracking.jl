@@ -8,7 +8,7 @@ using KernelAbstractions
 using StructArrays
 
 using Oceananigans.Grids
-using Oceananigans.Grids: return_metrics
+using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices

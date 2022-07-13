@@ -39,6 +39,8 @@ end
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
+    adapted_velocities = calc_correct_velocities(velocities, grid.underlying_grid)
+
     # Advect particles using forward Euler.
     @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
     @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
@@ -55,6 +57,9 @@ end
     @inbounds particles.x[p], particles.y[p], particles.z[p] = enforce_immersed_boundary_condition(particles, p, grid, restitution)
 end
 
+@inline calc_correct_velocities(vel, g::RectilinearGrid)       = vel
+@inline calc_correct_velocities(vel, g::LatitudeLongitudeGrid) = (; u = vel.u / g.radius, v = vel.v / g.radius, w = vel.w)
+
 @inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
 @inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
 @inline return_face_metrics(g::ImmersedBoundaryGrid)  = return_face_metrics(g.underlying_grid)
@@ -67,34 +72,40 @@ end
 @inline negative_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j+1, k, grid)
 @inline negative_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k+1, grid)
 
+@inline function positive_correction(xₚ, xᶠ, restitution, func, i, j, k, grid)
+    if func(i, j, k, grid)
+        if xₚ < xᶠ⁻
+            return xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
+        end
+    end
+end
+
+@inline function negative_correction(xₚ, xᶠ, restitution, func, i, j, k, grid)
+    if func(i, j, k, grid)
+        if xₚ < xᶠ⁻
+            return xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
+        end
+    end
+end
+
 @inline function enforce_immersed_boundary_condition(particles, p, grid, restitution)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
     i, j, k = Int.(floor(fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid)))
 
-    if positive_x_immersed_boundary(i, j, k, grid)
-        xᶠ⁻ = xnode(Face(), i, grid)
-        xₚ < xᶠ⁻ && xₚ = xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
-    end
-    if positive_y_immersed_boundary(i, j, k, grid) 
-        yᶠ⁻ = ynode(Face(), j, grid)
-        yₚ < yᶠ⁻ && yₚ = yᶠ⁻ + (yᶠ⁻ - yₚ) * restitution
-    end
-    if positive_z_immersed_boundary(i, j, k, grid) 
-        zᶠ⁻ = znode(Face(), k, grid)
-        zₚ < zᶠ⁻ && zₚ = zᶠ⁻ + (zᶠ⁻ - zₚ) * restitution
-    end
-    if negative_x_immersed_boundary(i, j, k, grid) 
-        xᶠ⁺ = xnode(Face(), i + 1, grid)
-        xₚ > xᶠ⁺ && xₚ = xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
-    end
-    if negative_y_immersed_boundary(i, j, k, grid) 
-        yᶠ⁺ = ynode(Face(), j + 1, grid)
-        yₚ > yᶠ⁺ && yₚ = yᶠ⁺ - (yₚ - yᶠ⁺) * restitution
-    end
-    if negative_z_immersed_boundary(i, j, k, grid) 
-        zᶠ⁺ = znode(Face(), k + 1, grid)
-        zₚ > zᶠ⁺ && zₚ = zᶠ⁺ - (zₚ - zᶠ⁺) * restitution
-    end
+    xᶠ⁻ = xnode(Face(), i, grid)
+    yᶠ⁻ = ynode(Face(), j, grid)
+    zᶠ⁻ = znode(Face(), k, grid)
+    xᶠ⁺ = xnode(Face(), i + 1, grid)
+    yᶠ⁺ = ynode(Face(), j + 1, grid)
+    zᶠ⁺ = znode(Face(), k + 1, grid)
+
+    xₚ = positive_correction(xₚ, xᶠ⁻, restitution, positive_x_immersed_boundary, i, j, k, grid)
+    yₚ = positive_correction(yₚ, yᶠ⁻, restitution, positive_y_immersed_boundary, i, j, k, grid)
+    zₚ = positive_correction(zₚ, zᶠ⁻, restitution, positive_z_immersed_boundary, i, j, k, grid)
+    
+    xₚ = negative_correction(xₚ, xᶠ⁻, restitution, negative_x_immersed_boundary, i, j, k, grid)
+    yₚ = negative_correction(yₚ, yᶠ⁻, restitution, negative_y_immersed_boundary, i, j, k, grid)
+    yₚ = negative_correction(zₚ, zᶠ⁻, restitution, negative_z_immersed_boundary, i, j, k, grid)
 
     return xₚ, yₚ, zₚ
 end
