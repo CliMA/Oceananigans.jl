@@ -55,6 +55,7 @@ include("dependencies_for_runtests.jl")
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_multigrid_solver.jl")
         end
     end
 
