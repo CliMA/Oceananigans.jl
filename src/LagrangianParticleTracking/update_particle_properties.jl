@@ -22,16 +22,12 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-@inline positive_x_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i-1, j, k, grid)
-@inline positive_y_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j-1, k, grid)
-@inline positive_z_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j, k-1, grid)
+# Fallback if we skip ine cell
+@inline adjust_coord(x, args...) where N = x
 
-@inline negative_x_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i+1, j, k, grid)
-@inline negative_y_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j+1, k, grid)
-@inline negative_z_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j, k+1, grid)
-
-@inline positive_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ < xᶠ ? xᶠ + (xᶠ - xₚ) * restitution : xₚ
-@inline negative_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ > xᶠ ? xᶠ - (xₚ - xᶠ) * restitution : xₚ
+@inline adjust_coord(x, nodefunc, i, ::Val{0} , grid, rest) = x
+@inline adjust_coord(x, nodefunc, i, ::Val{-1}, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * restitution 
+@inline adjust_coord(x, nodefunc, i, ::Val{1} , grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * restitution
 
 """
     enforce_immersed_boundary_condition(particles, p, grid, restitution)
@@ -39,27 +35,26 @@ end
 If a particle with position `x, y, z` is at the edge of an immersed boundary, correct the 
 position as to avoid 
 """
-@inline function enforce_immersed_boundary_condition(particles, p, grid, restitution)
+@inline function pop_immersed_particles(particles, p, grid, restitution, old_pos)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
     i, j, k   = fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid.underlying_grid)
     i = Base.unsafe_trunc(Int, i)
     j = Base.unsafe_trunc(Int, j)
     k = Base.unsafe_trunc(Int, k)
-    
-    xᶠ⁻ = xnode(Face(), i, grid)
-    yᶠ⁻ = ynode(Face(), j, grid)
-    zᶠ⁻ = znode(Face(), k, grid)
-    xᶠ⁺ = xnode(Face(), i + 1, grid)
-    yᶠ⁺ = ynode(Face(), j + 1, grid)
-    zᶠ⁺ = znode(Face(), k + 1, grid)
-
-    xₚ = positive_correction(xₚ, xᶠ⁻, restitution, positive_x_immersed_boundary, i, j, k, grid)
-    yₚ = positive_correction(yₚ, yᶠ⁻, restitution, positive_y_immersed_boundary, i, j, k, grid)
-    zₚ = positive_correction(zₚ, zᶠ⁻, restitution, positive_z_immersed_boundary, i, j, k, grid)
-    
-    xₚ = negative_correction(xₚ, xᶠ⁺, restitution, negative_x_immersed_boundary, i, j, k, grid)
-    yₚ = negative_correction(yₚ, yᶠ⁺, restitution, negative_y_immersed_boundary, i, j, k, grid)
-    yₚ = negative_correction(zₚ, zᶠ⁺, restitution, negative_z_immersed_boundary, i, j, k, grid)
+   
+    if immersed_cell(i, j, k, grid)
+        iₒ, jₒ, kₒ   = fractional_indices(old_pos..., (Center(), Center(), Center()), grid.underlying_grid)
+        iₒ = Base.unsafe_trunc(Int, iₒ)
+        jₒ = Base.unsafe_trunc(Int, jₒ)
+        kₒ = Base.unsafe_trunc(Int, kₒ)
+       
+        if !immersed_cell(iₒ, jₒ, kₒ, grid)
+            iᵈ, jᵈ, kᵈ = (i, j, k) .- (iₒ, jₒ, kₒ)
+            xₚ = adjust_coord(xₚ, xnode, iₒ, Val(iᵈ), grid)
+            yₚ = adjust_coord(yₚ, ynode, jₒ, Val(jᵈ), grid)
+            zₚ = adjust_coord(zₚ, znode, kₒ, Val(kᵈ), grid)
+        end
+    end
 
     return xₚ, yₚ, zₚ
 end
@@ -93,8 +88,15 @@ end
 
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
     p = @index(Global)
+
+    old_pos = (particle.x[p], particle.y[p], particle.y[p])
+
     update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
-    @inbounds particles.x[p], particles.y[p], particles.z[p] = enforce_immersed_boundary_condition(particles, p, grid, restitution)
+    x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
+    
+    particles.x[p] = x
+    particles.y[p] = y
+    particles.z[p] = z
 end
 
 # Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid
