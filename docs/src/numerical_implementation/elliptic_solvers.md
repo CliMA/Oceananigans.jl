@@ -1,9 +1,9 @@
-# Poisson solvers
+# Elliptic solvers
 
 ## The elliptic problem for the pressure
 
 The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
-component of the momentum equation and invoking the vertical component to yield an elliptic 
+component of the momentum equations and invoking the vertical component to yield an elliptic 
 Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
@@ -15,9 +15,11 @@ along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsy
 (Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}`` 
 denotes the source term for the Poisson equation.
 
-For hydrostatic problems the Poisson equation above only needs to be solved for the vertically 
-integrated flow and the pressure field is a two dimensional term ``p_{S}``. In this case a fully 
-three-dimensional solve is not needed.
+!!! note "Hydrostatic approximation"
+    For problems in which the hydrostatic approximation is invoked, the Poisson equation for
+    pressure above only needs to be solved for the vertically integrated flow and the pressure
+    field is a two dimensional term ``p_S(x, y, t)``.
+
 
 ## Direct method
 

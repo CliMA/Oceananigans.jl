@@ -14,7 +14,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
@@ -31,8 +33,9 @@ export
 
 using CUDA
 using KernelAbstractions
+using Adapt 
 
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -65,11 +68,6 @@ closure_summary(closure) = summary(closure)
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
-# To allow indexing a diffusivity with (i, j, k, grid, Lx, Ly, Lz)
-struct DiscreteDiffusionFunction{F} <: Function
-    func :: F
-end
-
 #####
 ##### Tracer indices
 #####
@@ -86,6 +84,7 @@ end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
+include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
