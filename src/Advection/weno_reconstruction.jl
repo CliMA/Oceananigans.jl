@@ -44,7 +44,7 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
 end
 
 """
-    WENO(FT::DataType=Float64; 
+    WENO([FT=Float64;] 
          order = 5,
          grid = nothing, 
          zweno = true, 
