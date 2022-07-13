@@ -8,9 +8,10 @@ using KernelAbstractions
 using StructArrays
 
 using Oceananigans.Grids
-using Oceananigans.Architectures: device
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, launch!
 
 import Base: size, length, show
 

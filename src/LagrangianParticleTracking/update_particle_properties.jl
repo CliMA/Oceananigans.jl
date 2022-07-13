@@ -1,5 +1,3 @@
-using Oceananigans.Grids: architecture
-
 """
     enforce_boundary_conditions(x, xₗ, xᵣ, ::Bounded)
 
@@ -25,6 +23,20 @@ along a `Periodic` dimension, put them on the other side.
 end
 
 @kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+    p = @index(Global)
+
+    # Advect particles using forward Euler.
+    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+
+    # Enforce boundary conditions for particles.
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
+end
+
+@kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundayGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
     # Advect particles using forward Euler.
@@ -77,15 +89,11 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
 
 
-    # advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
+    advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
 
-    advect_particles_event = launch!(arch, model.grid, worksize, _advect_particles!, 
-                                     lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                     datatuple(model.velocities); dependencies=Event(device(arch)))
-
-    # advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-    #                                                   datatuple(model.velocities),
-    #                                                   dependencies=Event(device(arch)))
+    advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
+                                                      datatuple(model.velocities),
+                                                      dependencies=Event(device(arch)))
 
     wait(device(arch), advect_particles_event)
 
