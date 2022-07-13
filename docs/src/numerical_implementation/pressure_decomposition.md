@@ -49,7 +49,7 @@ the gravity force to give:
 
 ```math
     \begin{align}
-    \boldsymbol{\nabla} p + g \frac{\rho}{\rho_0} \hat {\boldsymbol{z}} \mapsto \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} \, .
+    \boldsymbol{\nabla} p + g \frac{\rho}{\rho_0} \hat {\boldsymbol{z}} = \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} \, .
     \end{align}
 ```
 
