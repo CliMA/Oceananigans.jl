@@ -52,7 +52,7 @@ end
     @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], z[grid.Nz], restitution)
 
     # Enforce Immersed boundary conditions for particles.
-    @inbounds enforce_immersed_boundary_condition!(particles, p, grid, restitution)
+    @inbounds particles.x[p], particles.y[p], particles.z[p] = enforce_immersed_boundary_condition(particles, p, grid, restitution)
 end
 
 @inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
@@ -67,25 +67,36 @@ end
 @inline negative_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j+1, k, grid)
 @inline negative_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k+1, grid)
 
-@inline function enforce_immersed_boundary_condition_x(particles, p, grid, restitution)
+@inline function enforce_immersed_boundary_condition(particles, p, grid, restitution)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
-    i, j, k = fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid)
+    i, j, k = Int.(floor(fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid)))
 
-    xᶠ⁻ = xnode(Face(), i, grid)
-    yᶠ⁻ = ynode(Face(), j, grid)
-    zᶠ⁻ = znode(Face(), k, grid)
+    if positive_x_immersed_boundary(i, j, k, grid)
+        xᶠ⁻ = xnode(Face(), i, grid)
+        xₚ < xᶠ⁻ && xₚ = xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
+    end
+    if positive_y_immersed_boundary(i, j, k, grid) 
+        yᶠ⁻ = ynode(Face(), j, grid)
+        yₚ < yᶠ⁻ && yₚ = yᶠ⁻ + (yᶠ⁻ - yₚ) * restitution
+    end
+    if positive_z_immersed_boundary(i, j, k, grid) 
+        zᶠ⁻ = znode(Face(), k, grid)
+        zₚ < zᶠ⁻ && zₚ = zᶠ⁻ + (zᶠ⁻ - zₚ) * restitution
+    end
+    if negative_x_immersed_boundary(i, j, k, grid) 
+        xᶠ⁺ = xnode(Face(), i + 1, grid)
+        xₚ > xᶠ⁺ && xₚ = xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
+    end
+    if negative_y_immersed_boundary(i, j, k, grid) 
+        yᶠ⁺ = ynode(Face(), j + 1, grid)
+        yₚ > yᶠ⁺ && yₚ = yᶠ⁺ - (yₚ - yᶠ⁺) * restitution
+    end
+    if negative_z_immersed_boundary(i, j, k, grid) 
+        zᶠ⁺ = znode(Face(), k + 1, grid)
+        zₚ > zᶠ⁺ && zₚ = zᶠ⁺ - (zₚ - zᶠ⁺) * restitution
+    end
 
-    xᶠ⁺ = xnode(Face(), i + 1, grid)
-    yᶠ⁺ = ynode(Face(), j + 1, grid)
-    zᶠ⁺ = znode(Face(), k + 1, grid)
-
-    positive_x_immersed_boundary(i, j, k, grid) && xₚ < xᶠ⁻ && xₚ = xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
-    positive_y_immersed_boundary(i, j, k, grid) && yₚ < yᶠ⁻ && yₚ = yᶠ⁻ + (yᶠ⁻ - yₚ) * restitution
-    positive_z_immersed_boundary(i, j, k, grid) && zₚ < zᶠ⁻ && zₚ = zᶠ⁻ + (zᶠ⁻ - zₚ) * restitution
-
-    negative_x_immersed_boundary(i, j, k, grid) && xₚ > xᶠ⁺ && xₚ = xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
-    negative_y_immersed_boundary(i, j, k, grid) && yₚ > yᶠ⁺ && yₚ = yᶠ⁺ - (yₚ - yᶠ⁺) * restitution
-    negative_z_immersed_boundary(i, j, k, grid) && zₚ > zᶠ⁺ && zₚ = zᶠ⁺ - (zₚ - zᶠ⁺) * restitution
+    return xₚ, yₚ, zₚ
 end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
