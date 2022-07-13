@@ -52,7 +52,7 @@ struct SmallSlopeIsopycnalTensor{FT} <: AbstractIsopycnalTensor
     minimum_bz :: FT
 end
 
-SmallSlopeIsopycnalTensor(; minimum_bz = 0) = SmallSlopeIsopycnalTensor(minimum_bz)
+SmallSlopeIsopycnalTensor(; minimum_bz = 0.0) = SmallSlopeIsopycnalTensor(minimum_bz)
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
