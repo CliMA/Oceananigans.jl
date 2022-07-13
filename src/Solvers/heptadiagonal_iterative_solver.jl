@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: arch_array, unsafe_free!
+using Oceananigans.Architectures: architecture, arch_array, unsafe_free!, device_event
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
@@ -44,22 +44,21 @@ that `A` is a symmetric matrix.
 
 The solver relies on a sparse version of the matrix `A` that is stored in `matrix_constructors`.
 
-In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
-
-To have the equation solved on Center, Center, Center, the coefficients should be specified
-as follows:
-
-- `Ax` -> Face, Center, Center
-- `Ay` -> Center, Face, Center
-- `Az` -> Center, Center, Face
-- `C`  -> Center, Center, Center
-- `D`  -> Center, Center, Center
+In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem is
 
 ```julia
-Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηⱼ₋₁ 
-- 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
-+   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ = b
+    Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηₖ₋₁ 
+    - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
+    +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ  = b
 ```
+
+To have the equation solved at location `{Center, Center, Center}`, the coefficients must be
+specified at:
+- `Ax` -> `{Face,   Center, Center}`
+- `Ay` -> `{Center, Face,   Center}`
+- `Az` -> `{Center, Center, Face}`
+- `C`  -> `{Center, Center, Center}`
+- `D`  -> `{Center, Center, Center}`
 
 `solver.matrix` is precomputed with a placeholder timestep value of `placeholder_timestep = -1.0`.
 
@@ -67,7 +66,7 @@ The sparse matrix `A` can be constructed with:
 - `SparseMatrixCSC(constructors...)` for CPU
 - `CuSparseMatrixCSC(constructors...)` for GPU
 
-The constructors are calculated based on the pentadiagonal coeffients passed as an input
+The matrix constructors are calculated based on the pentadiagonal coeffients passed as an input
 to `matrix_from_coefficients` function.
 
 To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
@@ -114,19 +113,19 @@ function HeptadiagonalIterativeSolver(coeffs;
     state_vars = CGStateVariables(zero(template), deepcopy(template), deepcopy(template))
 
     return HeptadiagonalIterativeSolver(grid,
-                                 problem_size, 
-                                 matrix_constructors,
-                                 diagonal,
-                                 placeholder_matrix,
-                                 preconditioner,
-                                 preconditioner_method,
-                                 settings,
-                                 iterative_solver, 
-                                 state_vars,
-                                 tolerance,
-                                 placeholder_timestep,
-                                 maximum_iterations,
-                                 verbose)
+                                        problem_size, 
+                                        matrix_constructors,
+                                        diagonal,
+                                        placeholder_matrix,
+                                        preconditioner,
+                                        preconditioner_method,
+                                        settings,
+                                        iterative_solver, 
+                                        state_vars,
+                                        tolerance,
+                                        placeholder_timestep,
+                                        maximum_iterations,
+                                        verbose)
 end
 
 architecture(solver::HeptadiagonalIterativeSolver) = architecture(solver.grid)
@@ -161,7 +160,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     #  - coeff_z are the coefficients in the z-direction (coefficents of ηᵢⱼₖ₋₁ and ηᵢⱼₖ₊₁)
     #  - periodic boundaries are stored in coeff_bound_
     
-    # position of diagonals for coefficients pos[1] and their boundary pos[2]
+    # Position of diagonals for coefficients pos[1] and their boundary pos[2]
     posx = (1, Nx-1)
     posy = (1, Ny-1) .* Nx
     posz = (1, Nz-1) .* Nx .* Ny
@@ -174,30 +173,26 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     coeff_bound_y = zeros(eltype(grid), M - posy[2])
     coeff_bound_z = zeros(eltype(grid), M - posz[2])
 
-    # initializing elements which vary during the simulation (as a function of Δt)
+    # Initialize elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
-    event = loop!(diag, D, N; dependencies=Event(Architectures.device(arch)))
+    event = loop!(diag, D, N; dependencies = device_event(arch))
     wait(event)
 
-    # filling elements which stay constant in time
-    fill_core_matrix!(coeff_d , coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
-    if dims[1]  
-        fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
-    end
-    if dims[2]
-        fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
-    end
-    if dims[3]
-        fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
-    end
+    # Fill matrix elements that stay constant in time
+    fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
 
-    sparse_matrix = spdiagm(0=>coeff_d,
-                      posx[1]=>coeff_x,      -posx[1]=>coeff_x,
-                      posx[2]=>coeff_bound_x,-posx[2]=>coeff_bound_x,
-                      posy[1]=>coeff_y,      -posy[1]=>coeff_y,
-                      posy[2]=>coeff_bound_y,-posy[2]=>coeff_bound_y,
-                      posz[1]=>coeff_z,      -posz[1]=>coeff_z,
-                      posz[2]=>coeff_bound_z,-posz[2]=>coeff_bound_z)
+    # Ensure that Periodic boundary conditions are satisifed
+    dims[1] && fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
+    dims[2] && fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
+    dims[3] && fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
+
+    sparse_matrix = spdiagm(0 => coeff_d,
+                      posx[1] => coeff_x,       -posx[1] => coeff_x,
+                      posx[2] => coeff_bound_x, -posx[2] => coeff_bound_x,
+                      posy[1] => coeff_y,       -posy[1] => coeff_y,
+                      posy[2] => coeff_bound_y, -posy[2] => coeff_bound_y,
+                      posz[1] => coeff_z,       -posz[1] => coeff_z,
+                      posz[2] => coeff_bound_z, -posz[2] => coeff_bound_z)
 
     ensure_diagonal_elements_are_present!(sparse_matrix)
 
@@ -208,8 +203,9 @@ end
 
 @kernel function _initialize_variable_diagonal!(diag, D, N)  
     i, j, k = @index(Global, NTuple)
+    # Calculate sparse index?
     t  = i + N[1] * (j - 1 + N[2] * (k - 1))
-    diag[t] = D[i, j, k]
+    @inbounds diag[t] = D[i, j, k]
 end
 
 function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)

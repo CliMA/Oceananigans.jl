@@ -29,7 +29,7 @@ using CUDAKernels: STREAM_GC_LOCK
 
             if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
                 for stream in DEVICE_STREAMS[handle]
-                    if CUDA.query(stream)
+                    if CUDA.isdone(stream)
                         push!(DEVICE_FREE_STREAMS[handle], stream)
                     end
                 end
