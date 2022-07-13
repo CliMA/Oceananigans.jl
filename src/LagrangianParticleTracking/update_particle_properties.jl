@@ -22,48 +22,6 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-@kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
-    p = @index(Global)
-
-    # Advect particles using forward Euler.
-    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-
-    # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx+1], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny+1], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz+1], restitution)
-end
-
-@kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
-    p = @index(Global)
-
-    adapted_velocities = calc_correct_velocities(velocities, grid.underlying_grid)
-
-    # Advect particles using forward Euler.
-    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-
-    x, y, z = return_face_metrics(grid)
-
-    # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], x[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], y[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], z[grid.Nz], restitution)
-
-    # Enforce Immersed boundary conditions for particles.
-    @inbounds particles.x[p], particles.y[p], particles.z[p] = enforce_immersed_boundary_condition(particles, p, grid, restitution)
-end
-
-@inline calc_correct_velocities(vel, g::RectilinearGrid)       = vel
-@inline calc_correct_velocities(vel, g::LatitudeLongitudeGrid) = (; u = vel.u / g.radius, v = vel.v / g.radius, w = vel.w)
-
-@inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
-@inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
-@inline return_face_metrics(g::ImmersedBoundaryGrid)  = return_face_metrics(g.underlying_grid)
-
 @inline positive_x_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i-1, j, k, grid)
 @inline positive_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j-1, k, grid)
 @inline positive_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
@@ -72,26 +30,22 @@ end
 @inline negative_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j+1, k, grid)
 @inline negative_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k+1, grid)
 
-@inline function positive_correction(xₚ, xᶠ, restitution, func, i, j, k, grid)
-    if func(i, j, k, grid)
-        if xₚ < xᶠ⁻
-            return xᶠ⁻ + (xᶠ⁻ - xₚ) * restitution
-        end
-    end
-end
+@inline positive_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ < xᶠ ? xᶠ + (xᶠ - xₚ) * restitution : xₚ
+@inline negative_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ > xᶠ ? xᶠ - (xₚ - xᶠ) * restitution : xₚ
 
-@inline function negative_correction(xₚ, xᶠ, restitution, func, i, j, k, grid)
-    if func(i, j, k, grid)
-        if xₚ < xᶠ⁻
-            return xᶠ⁺ - (xₚ - xᶠ⁺) * restitution
-        end
-    end
-end
+"""
+    enforce_immersed_boundary_condition(particles, p, grid, restitution)
 
+If a particle with position `x, y, z` is at the edge of an immersed boundary, correct the 
+position as to avoid 
+"""
 @inline function enforce_immersed_boundary_condition(particles, p, grid, restitution)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
-    i, j, k = Int.(floor(fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid)))
-
+    i, j, k   = fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid.underlying_grid)
+    i = Base.unsafe_trunc(Int, i)
+    j = Base.unsafe_trunc(Int, j)
+    k = Base.unsafe_trunc(Int, k)
+    
     xᶠ⁻ = xnode(Face(), i, grid)
     yᶠ⁻ = ynode(Face(), j, grid)
     zᶠ⁻ = znode(Face(), k, grid)
@@ -103,12 +57,50 @@ end
     yₚ = positive_correction(yₚ, yᶠ⁻, restitution, positive_y_immersed_boundary, i, j, k, grid)
     zₚ = positive_correction(zₚ, zᶠ⁻, restitution, positive_z_immersed_boundary, i, j, k, grid)
     
-    xₚ = negative_correction(xₚ, xᶠ⁻, restitution, negative_x_immersed_boundary, i, j, k, grid)
-    yₚ = negative_correction(yₚ, yᶠ⁻, restitution, negative_y_immersed_boundary, i, j, k, grid)
-    yₚ = negative_correction(zₚ, zᶠ⁻, restitution, negative_z_immersed_boundary, i, j, k, grid)
+    xₚ = negative_correction(xₚ, xᶠ⁺, restitution, negative_x_immersed_boundary, i, j, k, grid)
+    yₚ = negative_correction(yₚ, yᶠ⁺, restitution, negative_y_immersed_boundary, i, j, k, grid)
+    yₚ = negative_correction(zₚ, zᶠ⁺, restitution, negative_z_immersed_boundary, i, j, k, grid)
 
     return xₚ, yₚ, zₚ
 end
+
+@inline function update_particle_position!(particles, p, restitution, grid::AbstractGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+
+    # Advect particles using forward Euler.
+    @inbounds u = interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
+    @inbounds v = interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
+    @inbounds w = interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) 
+
+    @inbounds particles.x[p] += calc_correct_velocity(u, grid) * Δt
+    @inbounds particles.y[p] += calc_correct_velocity(v, grid) * Δt
+    @inbounds particles.z[p] += calc_correct_velocity(w, grid) * Δt
+
+    x, y, z = return_face_metrics(grid)
+
+    # Enforce boundary conditions for particles.
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], x[grid.Nx], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], y[grid.Ny], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], z[grid.Nz], restitution)
+end
+
+@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
+    p = @index(Global)
+    update_particle_position!(particles, p, restitution, grid, Δt, velocities) 
+end
+
+@kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
+    p = @index(Global)
+    update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
+    @inbounds particles.x[p], particles.y[p], particles.z[p] = enforce_immersed_boundary_condition(particles, p, grid, restitution)
+end
+
+# Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid
+@inline calc_correct_velocity(U, g::RectilinearGrid)       = U
+@inline calc_correct_velocity(U, g::LatitudeLongitudeGrid) = U / g.radius
+
+@inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
+@inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
+@inline return_face_metrics(g::ImmersedBoundaryGrid)  = return_face_metrics(g.underlying_grid)
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
     p = @index(Global)
