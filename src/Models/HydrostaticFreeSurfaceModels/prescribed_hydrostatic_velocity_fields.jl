@@ -7,6 +7,7 @@ using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
+import Oceananigans.Utils: datatuple
 
 using Adapt
 
@@ -68,6 +69,8 @@ end
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
+
+@inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
 ab2_step_free_surface!(::Nothing, args...) = NoneEvent()
