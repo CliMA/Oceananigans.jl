@@ -22,7 +22,7 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-# Fallback if we skip ine cell
+# Fallback if we skip one cell
 @inline adjust_coord(x, args...) where N = x
 
 @inline adjust_coord(x, nodefunc, i, ::Val{0} , grid, rest) = x
@@ -30,10 +30,10 @@ end
 @inline adjust_coord(x, nodefunc, i, ::Val{1} , grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * restitution
 
 """
-    enforce_immersed_boundary_condition(particles, p, grid, restitution)
+    pop_immersed_boundary_condition(particles, p, grid, restitution)
 
-If a particle with position `x, y, z` is at the edge of an immersed boundary, correct the 
-position as to avoid 
+If a particle with position `x, y, z` is inside and immersed boundary, correct the 
+position based on the previous position (we bounce back a certain restitution from the old cell)
 """
 @inline function pop_immersed_particles(particles, p, grid, restitution, old_pos)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
