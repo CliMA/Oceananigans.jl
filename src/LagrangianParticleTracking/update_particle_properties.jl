@@ -26,8 +26,8 @@ end
 @inline adjust_coord(x, args...) where N = x
 
 @inline adjust_coord(x, nodefunc, i, ::Val{0} , grid, rest) = x
-@inline adjust_coord(x, nodefunc, i, ::Val{-1}, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * restitution 
-@inline adjust_coord(x, nodefunc, i, ::Val{1} , grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * restitution
+@inline adjust_coord(x, nodefunc, i, ::Val{-1}, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * rest
+@inline adjust_coord(x, nodefunc, i, ::Val{1} , grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * rest
 
 """
     pop_immersed_boundary_condition(particles, p, grid, restitution)
@@ -89,14 +89,14 @@ end
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
     p = @index(Global)
 
-    old_pos = (particle.x[p], particle.y[p], particle.y[p])
+    # old_pos = (particles.x[p], particles.y[p], particles.y[p])
 
     update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
-    x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
+    # x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
     
-    particles.x[p] = x
-    particles.y[p] = y
-    particles.z[p] = z
+    # particles.x[p] = x
+    # particles.y[p] = y
+    # particles.z[p] = z
 end
 
 # Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid
