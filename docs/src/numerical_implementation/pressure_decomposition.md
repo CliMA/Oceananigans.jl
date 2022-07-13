@@ -12,7 +12,7 @@ The anomalous hydrostatic component of the kinematic pressure is defined by
 ```math
     \begin{align}
     \label{eq:hydrostaticpressure}
-    \partial_z p_{\rm{hyd}} \equiv -b \, ,
+    \partial_z p_{\rm{hyd}} \equiv b \, ,
     \end{align}
 ```
 such that the sum of the kinematic pressure and buoyancy perturbation becomes
