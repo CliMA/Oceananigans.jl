@@ -34,6 +34,8 @@ hydrostatic pressure contains additional components:
 ```
 Under this pressure decomposition the pressure gradient that appears in the momentum equations becomes
 ```math
-   \boldsymbol{\nabla} p \mapsto \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}}\, .
+\begin{align}
+\boldsymbol{\nabla} p \mapsto \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}}\, .
+\end{align}
 ```
 Mathematically, the non-hydrostatic pressure ``p_{\rm{non}}`` enforces the incompressibility constraint.
