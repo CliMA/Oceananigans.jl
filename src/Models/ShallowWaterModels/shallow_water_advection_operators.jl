@@ -65,7 +65,9 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 
 Calculates the divergence of the mass flux into a cell,
 
-    1/Az * [δxᶜᵃᵃ(Δy * uh) + δyᵃᶜᵃ(Δx * vh)]
+```
+1/Az * [δxᶜᵃᵃ(Δy * uh) + δyᵃᶜᵃ(Δx * vh)]
+```
 
 which ends up at the location `ccc`.
 """
@@ -93,9 +95,9 @@ end
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
 a velocity field ``𝐔 = (u, v)``, ``∇·(𝐔c)``,
 
-    ```
-    1/Az * [δxᶜᵃᵃ(Δy * uh * ℑxᶠᵃᵃ(c) / h) + δyᵃᶜᵃ(Δx * vh * ℑyᵃᶠᵃ(c) / h)]
-    ```
+```
+1/Az * [δxᶜᵃᵃ(Δy * uh * ℑxᶠᵃᵃ(c) / h) + δyᵃᶜᵃ(Δx * vh * ℑyᵃᶠᵃ(c) / h)]
+```
 
 which ends up at the location `ccc`.
 """
@@ -122,9 +124,9 @@ end
 Calculates the product of the tracer concentration ``c`` with 
 the horizontal divergence of the velocity field ``𝐔 = (u, v)``, ``c ∇·𝐔``,
 
-    ```
-    1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h]
-    ```
+```
+1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h]
+```
 
 which ends up at the location `ccc`.
 """
