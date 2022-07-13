@@ -89,14 +89,14 @@ end
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
     p = @index(Global)
 
-    # old_pos = (particles.x[p], particles.y[p], particles.y[p])
+    old_pos = (particles.x[p], particles.y[p], particles.y[p])
 
     update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
-    # x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
+    x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
     
-    # particles.x[p] = x
-    # particles.y[p] = y
-    # particles.z[p] = z
+    particles.x[p] = x
+    particles.y[p] = y
+    particles.z[p] = z
 end
 
 # Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid

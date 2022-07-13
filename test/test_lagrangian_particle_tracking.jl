@@ -112,7 +112,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir = ".", prefix = "particles_checkpoint")
 
-    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper, velocities)    
+    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)    
     model = sim.model
     run!(sim)
 
