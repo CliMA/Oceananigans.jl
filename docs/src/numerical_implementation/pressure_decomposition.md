@@ -1,4 +1,4 @@
-# Pressure decomposition
+# [Pressure decomposition](@id pressure_decomposition)
 
 In the numerical implementation of the momentum equations, the kinematic pressure ``p`` 
 is split into "hydrostatic anomaly" and "non-hydrostatic" parts via
