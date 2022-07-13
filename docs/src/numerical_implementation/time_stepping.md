@@ -1,17 +1,20 @@
 # [Time-stepping and the fractional step method](@id time_stepping)
 
-The time-integral of the momentum equation with the pressure decomposition from time step ``n`` at ``t = t_n`` 
-to time step ``n+1`` at ``t_{n+1}`` is
+
+With the [pressure decomposition](@ref pressure_decomposition) as discussed, the momentum evolves via:
+```math
+    \begin{equation}
+    \label{eq:momentum-time-derivative}
+    \partial_t \boldsymbol{v} = \boldsymbol{G}_{\boldsymbol{v}} - \boldsymbol{\nabla} p_{\rm{non}} \, .
+    \end{equation}
+```
+
+The time-integral of the momentum equation from time step ``n`` at ``t = t_n``  to time step ``n+1`` at ``t_{n+1}`` is then:
 ```math
     \begin{equation}
     \label{eq:momentum-time-integral}
     \boldsymbol{v}^{n+1} - \boldsymbol{v}^n = 
-        \int_{t_n}^{t_{n+1}} \Big [ - \boldsymbol{\nabla} p_{\rm{non}} 
-                                    - \boldsymbol{\nabla}_{h} p_{\rm{hyd}} 
-                                    - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} 
-                                    - \boldsymbol{f} \times \boldsymbol{v} 
-                                    + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
-                                    + \boldsymbol{F}_{\boldsymbol{v}} \Big ] \, \mathrm{d} t \, ,
+        \int_{t_n}^{t_{n+1}} \Big [ - \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{G}_{\boldsymbol{v}} \Big ] \, \mathrm{d} t \, ,
     \end{equation}
 ```
 where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, such that 
@@ -32,7 +35,7 @@ To effect such a fractional step method, we define an intermediate velocity fiel
     \boldsymbol{v}^\star - \boldsymbol{v}^n = \int_{t_n}^{t_{n+1}} \boldsymbol{G}_{\boldsymbol{v}} \, \mathrm{d} t \, ,
     \end{equation}
 ```
-where, e.g., for the non-hydrostatic model, 
+where, e.g., for the non-hydrostatic model (without background velocities nor surface-wave effects):
 ```math
 \boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}} 
                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} 
@@ -74,11 +77,12 @@ Taking the divergence of fractional step equation and requiring that
 for the kinematic pressure ``p_{\rm{non}}`` at time-step ``n+1``:
 ```math
     \begin{equation}
+    \label{eq:pressure-poisson}
     \nabla^2 p_{\rm{non}}^{n+1} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^{\star}}{\Delta t} \, .
     \end{equation}
 ```
-With ``\boldsymbol{v}^\star`` and ``p_{\rm{non}}`` in hand, ``\boldsymbol{v}^{n+1}`` is then 
-computed via the fractional step equation.
+With ``\boldsymbol{v}^\star`` in hand we can invert \eqref{eq:pressure-poisson} to get ``p_{\rm{non}}`` and then
+``\boldsymbol{v}^{n+1}`` is computed via the fractional step equation \eqref{eq:fractional-step}.
 
 Tracers are stepped forward explicitly via
 ```math
