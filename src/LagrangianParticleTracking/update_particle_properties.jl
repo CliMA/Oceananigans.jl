@@ -22,13 +22,13 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-@inline positive_x_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i-1, j, k, grid)
-@inline positive_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j-1, k, grid)
-@inline positive_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+@inline positive_x_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i-1, j, k, grid)
+@inline positive_y_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j-1, k, grid)
+@inline positive_z_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j, k-1, grid)
 
-@inline negative_x_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i+1, j, k, grid)
-@inline negative_y_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j+1, k, grid)
-@inline negative_z_immersed_boundary(i, j, k, grid) = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k+1, grid)
+@inline negative_x_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i+1, j, k, grid)
+@inline negative_y_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j+1, k, grid)
+@inline negative_z_immersed_boundary(i, j, k, grid) = !immersed_cell(i, j, k, grid) & immersed_cell(i, j, k+1, grid)
 
 @inline positive_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ < xᶠ ? xᶠ + (xᶠ - xₚ) * restitution : xₚ
 @inline negative_correction(xₚ, xᶠ, restitution, func, i, j, k, grid) = func(i, j, k, grid) && xₚ > xᶠ ? xᶠ - (xₚ - xᶠ) * restitution : xₚ
@@ -71,9 +71,12 @@ end
     @inbounds v = interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
     @inbounds w = interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) 
 
-    @inbounds particles.x[p] += calc_correct_velocity(u, grid) * Δt
-    @inbounds particles.y[p] += calc_correct_velocity(v, grid) * Δt
-    @inbounds particles.z[p] += calc_correct_velocity(w, grid) * Δt
+    j = fractional_y_index(particles.y[p], Center(), grid)
+    j = Base.unsafe_trunc(Int, j)
+
+    @inbounds particles.x[p] += calc_correct_velocity_u(u, grid, j) * Δt
+    @inbounds particles.y[p] += calc_correct_velocity_v(v, grid) * Δt
+    @inbounds particles.z[p] += w * Δt
 
     x, y, z = return_face_metrics(grid)
 
@@ -95,8 +98,11 @@ end
 end
 
 # Linear velocity for RectilinearGrid, Angular velocity for LatitudeLongitudeGrid
-@inline calc_correct_velocity(U, g::RectilinearGrid)       = U
-@inline calc_correct_velocity(U, g::LatitudeLongitudeGrid) = U / g.radius
+@inline calc_correct_velocity_u(U, g::RectilinearGrid, j)       = U
+@inline calc_correct_velocity_u(U, g::LatitudeLongitudeGrid, j) = U / (g.radius * hack_cosd(g.φᵃᶜᵃ[j])) * 360 / (2π)
+
+@inline calc_correct_velocity_v(V, g::RectilinearGrid)       = V
+@inline calc_correct_velocity_v(V, g::LatitudeLongitudeGrid) = V / g.radius * 360 / (2π)
 
 @inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
 @inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
@@ -104,7 +110,6 @@ end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
     p = @index(Global)
-
     @inbounds particle_property[p] = interpolate(field, LX, LY, LZ, grid, particles.x[p], particles.y[p], particles.z[p])
 end
 
@@ -139,8 +144,6 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     # Advect particles
 
-
-
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
 
     advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
@@ -148,7 +151,6 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
                                                       dependencies=Event(device(arch)))
 
     wait(device(arch), advect_particles_event)
-
     return nothing
 end
 

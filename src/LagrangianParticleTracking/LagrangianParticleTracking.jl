@@ -8,10 +8,12 @@ using KernelAbstractions
 using StructArrays
 
 using Oceananigans.Grids
-using Oceananigans.Grids: xnode, ynode, znode, AbstractUnderlyingGrid, AbstractGrid
+using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.Grids: AbstractUnderlyingGrid, AbstractGrid, hack_cosd
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices
+using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices, fractional_y_index
 using Oceananigans.Utils: prettysummary, launch!
 
 import Base: size, length, show
