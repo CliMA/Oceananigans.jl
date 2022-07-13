@@ -58,9 +58,10 @@ Thus, for constant ``H`` and on grids with regular spacing in ``x`` and ``y`` di
 surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 
 `solver_method` can be either of:
-* `:FastFourierTransform` (for [`FFTBasedPoissonSolver`](@ref))
-* `:HeptadiagonalIterativeSolver`  (for [`HeptadiagonalIterativeSolver`](@ref))
-* `:PreconditionedConjugateGradient` (for [`PreconditionedConjugateGradientSolver`](@ref))
+* `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
+* `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
+* `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
+* `:Multigrid` for [`MGImplicitFreeSurfaceSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
