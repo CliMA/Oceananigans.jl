@@ -36,13 +36,13 @@ end
     @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
 end
 
-@kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundayGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+@kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
     # Advect particles using forward Euler.
-    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid.underlying_grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
     @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)

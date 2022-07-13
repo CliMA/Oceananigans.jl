@@ -198,10 +198,10 @@ include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
