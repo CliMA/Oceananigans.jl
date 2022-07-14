@@ -39,7 +39,7 @@ We refer to ``p / \rho_0`` as the "kinematic pressure" with dimensions of veloci
 abuse notation a bit and denote the kinematic pressure simply as ``p``.
 
 !!! info "Convention on dynamic versus kinematic pressure"
-    In Oceananigans, pressure ``p`` refers to "kinematic pressure" (with dimensions velocity square),
+    In Oceananigans, the pressure ``p`` refers to "kinematic pressure" (with dimensions velocity square),
     i.e., the dynamic pressure scaled with the reference fluid density ``\rho_0``.
 
 
