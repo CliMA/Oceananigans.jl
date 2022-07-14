@@ -1,7 +1,7 @@
 # [Pressure decomposition](@id pressure_decomposition)
 
-In the implementation of the momentum equations, the kinematic pressure ``p`` is split into 
-"hydrostatic" and "non-hydrostatic" parts via
+In the numerical implementation of the momentum equations, the kinematic pressure ``p``
+is split into "hydrostatic" and "non-hydrostatic" parts via
 ```math
     \begin{equation}
     \label{eq:pressure}
@@ -44,7 +44,8 @@ Doing so, the gradient of the kinematic pressure becomes:
 where ``\boldsymbol{\nabla}_h \equiv \boldsymbol{\hat x} \partial_x +  \boldsymbol{\hat y} \partial_y``
 is the horizontal gradient.
 
-Under this pressure decomposition, the pressure gradient that appears in the momentum equations combines with
+Under this pressure decomposition, the kinematic pressure gradient that appears in the momentum equations
+(after we've employed the the [Boussinesq approximation](@ref boussinesq_approximation)) combines with
 the gravity force to give:
 
 ```math

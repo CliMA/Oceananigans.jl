@@ -1,4 +1,4 @@
-# The Boussinesq approximation
+# [The Boussinesq approximation](@id boussinesq_approximation)
 
 Oceananigans.jl often employs the Boussinesq approximation[^1]. In the Boussinesq approximation
 the fluid density ``\rho`` is, in general, decomposed into three components:

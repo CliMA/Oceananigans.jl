@@ -1,14 +1,16 @@
 # [Time-stepping and the fractional step method](@id time_stepping)
 
-
 With the [pressure decomposition](@ref pressure_decomposition) as discussed, the momentum evolves via:
+
 ```math
     \begin{equation}
     \label{eq:momentum-time-derivative}
     \partial_t \boldsymbol{v} = \boldsymbol{G}_{\boldsymbol{v}} - \boldsymbol{\nabla} p_{\rm{non}} \, ,
     \end{equation}
 ```
-where, e.g., for the non-hydrostatic model (without background velocities nor surface-wave effects):
+
+where, e.g., for the non-hydrostatic model (ignoring background velocities and surface-wave effects)
+
 ```math
 \boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}} 
                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} 
@@ -16,6 +18,7 @@ where, e.g., for the non-hydrostatic model (without background velocities nor su
                        + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
                        + \boldsymbol{F}_{\boldsymbol{v}}
 ```
+
 collects all terms on the right side of the momentum equation \eqref{eq:momentum-time-derivative}, *except* the 
 contribution of non-hydrostatic pressure ``\boldsymbol{\nabla} p_{\rm{non}}``.
 
