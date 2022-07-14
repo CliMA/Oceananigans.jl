@@ -9,12 +9,17 @@ is split into "hydrostatic" and "non-hydrostatic" parts via
     \end{equation}
 ```
 
-The hydrostatic pressure component in \eqref{eq:pressure} is defined so that
+The hydrostatic pressure component in \eqref{eq:pressure} is defined so that the vertical
+component of its gradient balances gravity:
+
 ```math
     \begin{align}
-    \partial_z p_{\text{total hydrostatic}} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} + \frac{\rho'}{\rho_0} \right ) \, .
+    \partial_z p_{\text{total hydrostatic}} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} + \frac{\rho'}{\rho_0} \right ) \, ,
     \end{align}
 ```
+
+Above, we use the notation introduced in the [Boussinesq approximation](@ref boussinesq_approximation)
+section.
 
 We can further split the hydrostatic pressure component into
 ```math
