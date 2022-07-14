@@ -34,7 +34,7 @@ so that
 ```math
     \begin{align}
     \partial_z p_{*} & = - g \left ( 1 + \frac{\rho_*}{\rho_0} \right ) \, ,\\
-    \partial_z p_{\rm{hyd}} & = - g \frac{\rho'}{\rho_0} = b \, .
+    \partial_z p_{\rm{hyd}} & = \underbrace{- g \frac{\rho'}{\rho_0}}_{= b} \, .
     \end{align}
 ```
 
@@ -42,7 +42,7 @@ Doing so, the gradient of the kinematic pressure becomes:
 
 ```math
     \begin{align}
-    \boldsymbol{\nabla} p & = \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} + \partial_z p_{*} \boldsymbol{\hat z} + \partial_z p_{\rm{hyd}} \boldsymbol{\hat z}\, ,
+    \boldsymbol{\nabla} p & = \boldsymbol{\nabla} p_{\rm{non}} + \boldsymbol{\nabla}_h p_{\rm{hyd}} + ( \partial_z p_{*} + \partial_z p_{\rm{hyd}} ) \boldsymbol{\hat z}\, ,
     \end{align}
 ```
 
