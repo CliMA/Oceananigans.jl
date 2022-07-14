@@ -30,7 +30,7 @@ the mass conservation equation reduces to the continuity equation
 Similarly, in the the momentum equations we can divide through with ``\rho_0`` and use that ``\rho_* + \rho' \ll \rho_0`` to get:
 ```math
     \begin{equation}
-    \partial_t \boldsymbol{v} + \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{v} = \frac1{\rho_0} \boldsymbol{\nabla} p - g \frac{\rho}{\rho_0} \hat{\boldsymbol{z}} + \dotsb \, .
+    \partial_t \boldsymbol{v} + \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{v} + \dotsb = - \frac1{\rho_0} \boldsymbol{\nabla} p - g \frac{\rho}{\rho_0} \hat{\boldsymbol{z}} + \dotsb \, .
     \label{eq:momentum}
     \end{equation}
 ```
