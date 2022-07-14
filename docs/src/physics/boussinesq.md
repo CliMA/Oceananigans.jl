@@ -38,7 +38,7 @@ Similarly, in the the momentum equations we can divide through with ``\rho_0`` a
 We refer to ``p / \rho_0`` as the "kinematic pressure" with dimensions of velocity squared. Hereafter, we
 abuse notation a bit and denote the kinematic pressure simply as ``p``.
 
-!!! info Convention on pressure
+!!! info "Convention on dynamic versus kinematic pressure"
     In Oceananigans, pressure ``p`` refers to "kinematic pressure" (with dimensions velocity square),
     i.e., the dynamic pressure scaled with the reference fluid density ``\rho_0``.
 
