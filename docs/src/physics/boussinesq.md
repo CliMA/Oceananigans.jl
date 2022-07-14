@@ -27,6 +27,22 @@ the mass conservation equation reduces to the continuity equation
     \end{equation}
 ```
 
+Similarly, in the the momentum equations we can divide through with ``\rho_0`` and use that ``\rho_* + \rho' \ll \rho_0`` to get:
+```math
+    \begin{equation}
+    \partial_t \boldsymbol{v} + \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{v} = \frac1{\rho_0} \boldsymbol{\nabla} p - g \frac{\rho}{\rho_0} \hat{\boldsymbol{z}} + \dotsb \, .
+    \label{eq:momentum}
+    \end{equation}
+```
+
+We refer to ``p / \rho_0`` as the "kinematic pressure" with dimensions of velocity squared. Hereafter, we
+abuse notation a bit and denote the kinematic pressure simply as ``p``.
+
+!!! info Convention on pressure
+    In Oceananigans, pressure ``p`` refers to "kinematic pressure" (with dimensions velocity square),
+    i.e., the dynamic pressure scaled with the reference fluid density ``\rho_0``.
+
+
 [^1]: Named after Boussinesq (1903) although used earlier by Oberbeck (1879), the Boussinesq
       approximation neglects density differences in the momentum equation except when associated
       with the gravitational term. It is an accurate approximation for many flows, and especially
