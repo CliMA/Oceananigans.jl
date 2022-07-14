@@ -12,11 +12,12 @@ struct TestParticle{T}
     v :: T
     w :: T
     s :: T
+    t :: T
 end
 
 function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta3, velocities=nothing)
-    model = NonhydrostaticModel(; grid, timestepper, velocities, particles)
-    set!(model, u=1, v=1)
+    model = NonhydrostaticModel(; grid, timestepper, velocities, particles, tracers=(:t, ))
+    set!(model, u=1, v=1, t=1)
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
     jld2_filepath = "test_particles.jld2"
@@ -80,14 +81,16 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     vs = arch_array(arch, zeros(P))
     ws = arch_array(arch, zeros(P))
     ss = arch_array(arch, zeros(P))
+    t = arch_array(arch, zeros(P))
 
     # Test custom constructor
-    particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
+    particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss, t))
 
     velocities = VelocityFields(grid)
     u, v, w = velocities
     speed = Field(√(u*u + v*v + w*w))
-    tracked_fields = merge(velocities, (; s=speed))
+    t = Field{Center, Center, Center}(grid)
+    tracked_fields = merge(velocities, (; s=speed, t=t))
 
     # Test second constructor
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
@@ -118,7 +121,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
 
     @test length(model.particles) == P
     @test size(model.particles) == tuple(P)
-    @test propertynames(model.particles.properties) == (:x, :y, :z, :u, :v, :w, :s)
+    @test propertynames(model.particles.properties) == (:x, :y, :z, :u, :v, :w, :s, :t)
 
     x = convert(array_type(arch), model.particles.properties.x)
     y = convert(array_type(arch), model.particles.properties.y)
@@ -127,6 +130,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     v = convert(array_type(arch), model.particles.properties.v)
     w = convert(array_type(arch), model.particles.properties.w)
     s = convert(array_type(arch), model.particles.properties.s)
+    t = convert(array_type(arch), model.particles.properties.t)
 
     @test size(x) == tuple(P)
     @test size(y) == tuple(P)
@@ -135,6 +139,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     @test size(v) == tuple(P)
     @test size(w) == tuple(P)
     @test size(s) == tuple(P)
+    @test size(t) == tuple(P)
 
     @test all(x .≈ 0.01)
     @test all(y .≈ 0.01)
@@ -143,6 +148,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     @test all(v .≈ 1)
     @test all(w .≈ 0)
     @test all(s .≈ √2)
+    @test all(t .≈ 1)
 
     # Test NetCDF output is correct.
     ds = NCDataset(nc_filepath)

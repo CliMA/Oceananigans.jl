@@ -127,13 +127,20 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     for (field_name, tracked_field) in pairs(lagrangian_particles.tracked_fields)
         compute!(tracked_field)
+        
         particle_property = getproperty(lagrangian_particles.properties, field_name)
         LX, LY, LZ = location(tracked_field)
 
         update_field_property_kernel! = update_field_property!(device(arch), workgroup, worksize)
 
+        if field_name in keys(model.tracers)
+            tracked_field = getproperty(model.tracers, field_name)
+        else
+            tracked_field = datatuple(tracked_field)
+        end
+
         update_event = update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
-                                                     datatuple(tracked_field), LX(), LY(), LZ(),
+                                                     tracked_field, LX(), LY(), LZ(),
                                                      dependencies=Event(device(arch)))
         push!(events, update_event)
     end
