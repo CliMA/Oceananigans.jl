@@ -35,7 +35,7 @@ for buffer in [2, 3, 4, 5, 6]
 
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
-            @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = Cl(scheme, Val($(buffer-stencil-1)))
+            @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds Cl(scheme, Val($(buffer-stencil-1)))
 
             # uniform coefficients are independent on direction and location
             @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
@@ -92,12 +92,12 @@ function metaprogrammed_smoothness_sum(buffer)
     elem = Vector(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
-        stencil_sum   = Expr(:call, :+, (:(C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(@inbounds C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
+        elem[stencil] = :(@inbounds ψ[$stencil] * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :(@inbounds ψ[$buffer] * ψ[$buffer] * C[$c_idx])
     
     return Expr(:call, :+, elem...)
 end
@@ -120,40 +120,40 @@ end
 function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(0.5*(β₁[$stencil] + β₂[$stencil]))
+        elem[stencil] = :(@inbounds 0.5*(β₁[$stencil] + β₂[$stencil]))
     end
 
-    return :($(elem...), )
+    return :($(elem...),)
 end
 
 # left and right biased_β calculation for scheme and stencil = 0:buffer - 1
 function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(@inbounds func(ψ[$stencil], scheme, Val($(stencil-1))))
     end
 
-    return :($(elem...), )
+    return :($(elem...),)
 end
 
 # ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
 function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
     end
 
-    return :($(elem...), )
+    return :($(elem...),)
 end
 
 # JSWENO α weights dᵣ / (βᵣ + ε)²
 function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
+        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
     end
 
-    return :($(elem...), )
+    return :($(elem...),)
 end
 
 for buffer in [2, 3, 4, 5, 6]
@@ -197,7 +197,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
 
         @inline function $biased_weno_weights(ijk, scheme::WENO{N, FT}, dir, ::Type{VelocityStencil}, u, v) where {N, FT}
             i, j, k = ijk
-            
+        
             uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
             vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
         
@@ -255,21 +255,21 @@ function calc_weno_stencil(buffer, shift, dir, func::Bool = false)
             c = n - buffer - 1
             if func 
                 stencil_point[idx] =  dir == :x ? 
-                                    :(ψ(i + $c, j, k, args...)) :
+                                    :(@inbounds ψ(i + $c, j, k, args...)) :
                                     dir == :y ?
-                                    :(ψ(i, j + $c, k, args...)) :
-                                    :(ψ(i, j, k + $c, args...))
+                                    :(@inbounds ψ(i, j + $c, k, args...)) :
+                                    :(@inbounds ψ(i, j, k + $c, args...))
             else    
                 stencil_point[idx] =  dir == :x ? 
-                                    :(ψ[i + $c, j, k]) :
+                                    :(@inbounds ψ[i + $c, j, k]) :
                                     dir == :y ?
-                                    :(ψ[i, j + $c, k]) :
-                                    :(ψ[i, j, k + $c])
+                                    :(@inbounds ψ[i, j + $c, k]) :
+                                    :(@inbounds ψ[i, j, k + $c])
             end                
         end
         stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
     end
-    return :($(stencil_full...), )
+    return :($(stencil_full...),)
 end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
@@ -289,21 +289,21 @@ end
 # Parallel to the interpolation direction! (same as left/right stencil)
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u)  = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u)  = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v)  = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v)  = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
 
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u)  = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u)  = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v)  = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v)  = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(w[$stencil] * func(scheme, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
@@ -328,8 +328,8 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             @inline function $interpolate_func(i, j, k, grid, 
                                                scheme::WENO{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
-                ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                w = $weno_weights(ψₜ, scheme, Val($val), Nothing, args...)
+                @inbounds ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
+                @inbounds w = $weno_weights(ψₜ, scheme, Val($val), Nothing, args...)
                 return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
             end
 
@@ -337,8 +337,8 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                                                scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, VI::Type{VorticityStencil}, args...) where {N, FT, XT, YT, ZT}
 
-                ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                w = $weno_weights(ψₜ, scheme, Val($val), VI, args...)
+                @inbounds ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
+                @inbounds w = $weno_weights(ψₜ, scheme, Val($val), VI, args...)
                 return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
             end
 
@@ -346,8 +346,8 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                                                scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, VI::Type{VelocityStencil}, args...) where {N, FT, XT, YT, ZT}
 
-                ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
+                @inbounds ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
+                @inbounds w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
                 return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
             end
         end
