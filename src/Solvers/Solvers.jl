@@ -5,7 +5,8 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     PreconditionedConjugateGradientSolver,
-    HeptadiagonalIterativeSolver
+    HeptadiagonalIterativeSolver,
+    MultigridSolver
 
 using Statistics
 using FFTW
@@ -44,5 +45,6 @@ include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
 include("heptadiagonal_iterative_solver.jl")
+include("multigrid_solver.jl")
 
 end # module

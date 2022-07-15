@@ -44,7 +44,7 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
 end
 
 """
-    WENO(FT::DataType=Float64; 
+    WENO([FT=Float64;] 
          order = 5,
          grid = nothing, 
          zweno = true, 
@@ -56,7 +56,7 @@ Construct a weigthed essentially non-oscillatory advection scheme of order `orde
 Keyword arguments
 =================
 
-- `order`: The order of the WENO advection scheme.
+- `order`: The order of the WENO advection scheme. Default: 5
 - `grid`: (defaults to `nothing`)
 - `vector_invariant`: The stencil for which the vector-invariant form of the advection
                       scheme would use. Options `VelocityStencil()` or `VorticityStencil()`;

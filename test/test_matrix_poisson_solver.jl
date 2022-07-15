@@ -5,15 +5,6 @@ using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
-function calc_∇²!(∇²ϕ, ϕ, grid)
-    arch = architecture(grid)
-    fill_halo_regions!(ϕ)
-    event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
-    wait(event)
-    fill_halo_regions!(∇²ϕ)
-    return nothing
-end
-
 function identity_operator!(b, x)
     parent(b) .= parent(x)
     return nothing
@@ -51,11 +42,12 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = zeros(grid, N...)
-    for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
+    for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
         Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
     end
+
     return (Ax, Ay, Az, C, D)
 end
 
@@ -78,7 +70,7 @@ function run_poisson_equation_test(grid)
 
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
-    calc_∇²!(∇²ϕ, ϕ_truth, grid)
+    compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
     
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
@@ -98,7 +90,7 @@ function run_poisson_equation_test(grid)
     
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
-    calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)
+    compute_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
 
     parent(ϕ_solution) .-= mean(ϕ_solution)
 

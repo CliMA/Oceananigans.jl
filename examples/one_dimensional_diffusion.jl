@@ -37,7 +37,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# The default topology is `(Periodic, Periodic, Bounded)`. In this example we're
+# The default topology is `(Periodic, Periodic, Bounded)`. In this example, we're
 # trying to solve a one-dimensional problem, so we assign `Flat` to the
 # `x` and `y` topologies. We excise halos and avoid interpolation or differencing
 # in `Flat` directions, saving computation and memory.
@@ -78,7 +78,8 @@ z = znodes(model.tracers.T)
 T = interior(model.tracers.T, 1, 1, :)
 
 lines(T, z; label, axis)
-     
+current_figure() # hide
+
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
 # physical points (excluding halos) at `(1, 1, :)`.
 #
@@ -105,6 +106,7 @@ using Printf
 label = @sprintf("t = %.3f", model.clock.time)
 lines!(interior(model.tracers.T, 1, 1, :), z; label)
 axislegend()
+current_figure() # hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
@@ -138,6 +140,7 @@ lines!(T, z)
 
 label = @lift "t = " * string(round(times[$n], digits=3))
 Label(fig[1, 1], label, tellwidth=false)
+current_figure() # hide
 
 # Finally, we record a movie.
 
