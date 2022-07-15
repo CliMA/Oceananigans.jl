@@ -225,7 +225,8 @@ integrated continuity equation:
 
 where ``H(x, y)`` is the depth of the water column (to first order with respect to the free surface
 elevation) and ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and
-runoff); currently Oceananigans assumes ``M = 0``.
+runoff); currently Oceananigans.jl assumes ``M = 0``. Note that in deriving \eqref{eq:vertically-integrated-continuity},
+we used the bottom boundary condition ``w_{\rm bottom} = \boldsymbol{u}_{\rm bottom} \boldsymbol{\cdot} \boldsymbol{\nabla}_h H``.
 
 To form a linear system that can be solved implicitly we recast the vertically-integrated continuity
 equation \eqref{eq:vertically-integrated-continuity} into a discrete integral form. The best way to do
@@ -256,12 +257,11 @@ being a bit more explicit on the locations the difference operators act, \eqref{
 ```math
     \begin{equation}
     \label{eq:semi-discrete-integral-continuity}
-    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} (A_x u) + \delta_y^{aca} \sum_k (A_y v) = 0 \, ,
+    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} (A_x u) + \delta_y^{aca} \sum_k (A_y v) = 0 \, .
     \end{equation}
 ```
 
-We can now apply the discrete form to the [hydrostatic](@ref hydrostatic_free_surface_model) form of
-the velocity fractional step equation discussed in the [Time-stepping section](@ref time_stepping))
+We can now apply the velocity fractional step equation (discussed in the [Time-stepping section](@ref time_stepping)) for the [hydrostatic model](@ref hydrostatic_free_surface_model):
 
 ```math
     \begin{equation}
@@ -270,9 +270,7 @@ the velocity fractional step equation discussed in the [Time-stepping section](@
     \end{equation}
 ```
 
-as follows.
-
-For the ``n+1``-th time step velocity we want the following to hold
+We impose that the ``n+1``-th time step velocity is consistent with \eqref{eq:semi-discrete-integral-continuity}
 
 ```math
     \begin{equation}
@@ -280,15 +278,17 @@ For the ``n+1``-th time step velocity we want the following to hold
     \end{equation}
 ```
 
-Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-hand-side of
+Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the right-hand-side of
 \eqref{eq:hydrostatic-fractional-step} then gives us an implicit equation for ``\eta^{n+1}``:
 
 ```math
 \begin{align}
-   \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
-   & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, .
+    \label{eq:implicit-free-surface}
+    \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
+    & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, .
 \end{align}
 ```
 
-Formulated in this way, the linear operator is symmetric and so can be solved using a
-preconditioned conjugate gradient algorithm.
+The left-hand-side of \eqref{eq:implicit-free-surface} is nothing else than a linear operator acting on
+``\eta^{n+1}``. Formulated in this way, the linear operator is symmetric and therefore
+\eqref{eq:implicit-free-surface} can be solved using a preconditioned conjugate gradient algorithm.
