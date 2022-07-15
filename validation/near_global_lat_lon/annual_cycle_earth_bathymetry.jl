@@ -123,6 +123,10 @@ horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
                                        
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000.0,
+                                                                κ_symmetric = 900.0,
+                                                                slope_limiter = FluxTapering(1e-2))
+
 #####
 ##### Boundary conditions / constant-in-time surface forcing
 #####
@@ -192,7 +196,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = :T,
-                                    closure = (vertical_closure, convective_adjustment)) 
+                                    closure = (vertical_closure, convective_adjustment, gent_mcwilliams_diffusivity)) 
 
 #####
 ##### Initial condition:
@@ -244,6 +248,12 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T,
                                                               indices = (:, :, grid.Nz),
                                                               overwrite_existing = true)
 
+simulation.output_writers[:atlantic] = JLD2OutputWriter(model, (; u, v, T, η),
+                                                        schedule = TimeInterval(save_interval),
+                                                        filename = output_prefix * "_atlantic",
+                                                        indices = (:, 64, :),
+                                                        overwrite_existing = true)
+
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
@@ -257,8 +267,6 @@ run!(simulation)
 @info """
 
     Simulation took $(prettytime(simulation.run_wall_time))
-    Background diffusivity: $background_diffusivity
-    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """
