@@ -283,9 +283,8 @@ Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the right-han
 
 ```math
 \begin{align}
-    \label{eq:implicit-free-surface}
     \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
-    & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, .
+    & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, . \label{eq:implicit-free-surface}
 \end{align}
 ```
 
