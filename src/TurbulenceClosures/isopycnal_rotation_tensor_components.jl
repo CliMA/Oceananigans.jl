@@ -63,7 +63,8 @@ end
 
 SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlopeIsopycnalTensor(minimum_bz)
 
-@inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
+@inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid, buoyancy, tracers,
+                                                  slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
     by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
@@ -77,7 +78,8 @@ SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlope
     return ifelse(bz == 0, zero(grid), ϵ * slope_x)
 end
 
-@inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
+@inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
+                                                  slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
@@ -91,7 +93,8 @@ end
     return ifelse(bz == 0, zero(grid), ϵ * slope_x)
 end
 
-@inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
+@inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid, buoyancy, tracers,
+                                                  slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
     bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
@@ -106,7 +109,8 @@ end
     return ifelse(bz == 0, zero(grid), ϵ * slope_y)
 end
 
-@inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
+@inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
+                                                  slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
@@ -121,7 +125,8 @@ end
     return ifelse(bz == 0, zero(grid), ϵ * slope_y)
 end
 
-@inline function isopycnal_rotation_tensor_zz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
+@inline function isopycnal_rotation_tensor_zz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
+                                                  slope_model::SmallSlopeIsopycnalTensor, slope_limiter)
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
@@ -135,4 +140,3 @@ end
 
     return ifelse(bz == 0, zero(grid), ϵ * slope²)
 end
-
