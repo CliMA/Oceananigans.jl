@@ -61,8 +61,11 @@ SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlope
     bz = max(bz, slope_model.minimum_bz)
     
     slope_x = - bx / bz
+    slope_y = - by / bz
+    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
+    ϵ = min(one(grid), slope_limiter.max_slope^2 / slope²)
     
-    return ifelse(bz == 0, zero(FT), slope_x)
+    return ifelse(bz == 0, zero(FT), ϵ * slope_x)
 end
 
 @inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor, slope_limiter) where FT

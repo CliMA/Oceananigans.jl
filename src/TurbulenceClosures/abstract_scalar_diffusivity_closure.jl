@@ -74,6 +74,7 @@ Base.summary(::ThreeDimensionalFormulation) = "ThreeDimensionalFormulation"
 const ASD = AbstractScalarDiffusivity
 const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
 const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
+const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
 @inline νᶜᶜᶜ(i, j, k, grid, clo::ASD, K, args...)     = νᶜᶜᶜ(i, j, k, grid, viscosity_location(clo), viscosity(clo, K), args...) 
@@ -164,11 +165,6 @@ for dir in (:x, :y, :z)
     end
 end
     
-const AID = AbstractScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation}
-const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
-const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
-const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
-
 @inline viscous_flux_ux(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, Σ₁₁, fields.u, fields.v, fields.w)
 @inline viscous_flux_vx(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, Σ₂₁, fields.u, fields.v, fields.w)
 @inline viscous_flux_wx(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, Σ₃₁, fields.u, fields.v, fields.w)
