@@ -235,7 +235,7 @@ volume flux, ``M = 0``)
 
 ```math
     \begin{align}
-    \label{eq:continuity_discrete}
+    \label{eq:continuity-discrete}
     \delta_x (A_x u) + \delta_y (A_y v) + \delta_z (A_z w) = 0 \, ,
     \end{align}
 ```
@@ -244,15 +244,16 @@ and summing it vertically to get:
 
 ```math
     \begin{align}
-    \label{eq:vertically-integrated-continuity_discrete}
+    \label{eq:vertically-integrated-continuity-discrete}
     \delta_x \sum_k (A_x u) + \delta_y \sum_k (A_y v) + A_z \underbrace{w(k=N_z)}_{w_{\rm top}} = 0 \, .
     \end{align}
 ```
 
-In equations \eqref{eq:continuity_discrete} and \eqref{eq:vertically-integrated-continuity_discrete} and
+In equations \eqref{eq:continuity-discrete} and \eqref{eq:vertically-integrated-continuity-discrete} and
 here after, we have abused notation and used, e.g., ``u`` and ``v`` to denote the volume averages
-over grid cells of quantities ``u`` and ``v`` respectively. Using ``w_{\rm top} = \partial_t \eta`` and
-being a bit more explicit on the locations the difference operators act, \eqref{eq:vertically-integrated-continuity_discrete} becomes:
+over grid cells of the quantities ``u`` and ``v`` respectively. Using ``w_{\rm top} = \partial_t \eta`` and
+being a bit more explicit on the locations the difference operators act on,
+\eqref{eq:vertically-integrated-continuity-discrete} becomes:
 
 ```math
     \begin{equation}
@@ -266,7 +267,7 @@ We can now apply the velocity fractional step equation (discussed in the [Time-s
 ```math
     \begin{equation}
     \label{eq:hydrostatic-fractional-step}
-    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g \Delta t \, \boldsymbol{\nabla} \eta^{n+1} \, .
+    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g \Delta t \, \boldsymbol{\nabla} \eta^{n+1} \, .
     \end{equation}
 ```
 
