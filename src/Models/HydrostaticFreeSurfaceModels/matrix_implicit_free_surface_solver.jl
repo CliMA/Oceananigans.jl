@@ -26,7 +26,7 @@ end
 """
     MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
-Return a solverfor solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
+Return a solver for the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
         
 ```math
