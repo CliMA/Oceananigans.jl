@@ -1,19 +1,39 @@
 using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid
 using CUDA: allowscalar 
 
+function binary_search(list, query; rev=false, lt=<, by=identity)
+    if issorted(list) || issorted(list; rev=true)
+        low = !rev ? 0 : length(list) - 1
+        high = !rev ? length(list) - 1 : 0
+        middle(l, h) = round(Int, (l + h)//2)
+        query = by(query)
+
+        while !rev ? low + 1 < high : high + 1 < low
+            mid = middle(low, high)
+            by(list[mid+1]) === query && return mid:mid
+            if lt(by(list[mid+1]), query)
+                low = mid
+            else
+                high = mid
+            end
+        end
+        return !rev ? (low:high).+1 : (high:low).+1
+
+    else
+        throw(error("List not sorted, unable to search value"))
+    end
+end
+
 @inline function fractional_index(vec, val)
 
-    allowscalar(true)
-    y2 = searchsortedfirst(vec, val)
-    y1 = searchsortedlast(vec, val)
-    x2 = vec[y2]
-    x1 = vec[y1]
-    allowscalar(false)
+    y₁, y₂ = binary_search(vec, val)
+    x₂ = vec[y₂]
+    x₁ = vec[y₁]
 
-    if y1 == y2
-        return y1
+    if y₁ == y₂
+        return y₁
     else
-        return (y2 - y1) / (x2 - x1) * (val - x1) + y1
+        return (y₂ - y₁) / (x₂ - x₁) * (val - x₁) + y₁
     end
 end
 
