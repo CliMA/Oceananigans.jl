@@ -223,41 +223,65 @@ integrated continuity equation:
     \end{equation}
 ```
 
-where ``H(x, y)`` is the depth of the water column (to linear order with respect to the free surface elevation)
-and ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); currently the
-model takes ``M = 0``.
+where ``H(x, y)`` is the depth of the water column (to first order with respect to the free surface
+elevation) and ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and
+runoff); currently Oceananigans assumes ``M = 0``.
 
-To form a linear system that can be solved implicitly we recast the continuity equation into a discrete
-integral form
+To form a linear system that can be solved implicitly we recast the vertically-integrated continuity
+equation \eqref{eq:vertically-integrated-continuity} into a discrete integral form. The best way to do
+so is by starting from the discrete version of the continuity equation (in this case without any surface
+volume flux, ``M = 0``)
+
+```math
+    \begin{align}
+    \label{eq:continuity_discrete}
+    \delta_x (A_x u) + \delta_y (A_y v) + \delta_z (A_z w) = 0 \, ,
+    \end{align}
+```
+
+and summing it vertically to get:
+
+```math
+    \begin{align}
+    \label{eq:vertically-integrated-continuity_discrete}
+    \delta_x \sum_k (A_x u) + \delta_y \sum_k (A_y v) + A_z \underbrace{w(k=N_z)}_{w_{\rm top}} = 0 \, .
+    \end{align}
+```
+
+In equations \eqref{eq:continuity_discrete} and \eqref{eq:vertically-integrated-continuity_discrete} and
+here after, we have abused notation and used, e.g., ``u`` and ``v`` to denote the volume averages
+over grid cells of quantities ``u`` and ``v`` respectively. Using ``w_{\rm top} = \partial_t \eta`` and
+being a bit more explicit on the locations the difference operators act, \eqref{eq:vertically-integrated-continuity_discrete} becomes:
 
 ```math
     \begin{equation}
     \label{eq:semi-discrete-integral-continuity}
-    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{aca} \sum_k A_y v = A_z M \, ,
+    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} (A_x u) + \delta_y^{aca} \sum_k (A_y v) = 0 \, ,
     \end{equation}
 ```
-and apply the discrete form to the [hydrostatic](@ref hydrostatic_free_surface_model) form of the velocity
-fractional step equation (equation (5) in the [Time-stepping section](@ref time_stepping))
+
+We can now apply the discrete form to the [hydrostatic](@ref hydrostatic_free_surface_model) form of
+the velocity fractional step equation discussed in the [Time-stepping section](@ref time_stepping))
 
 ```math
     \begin{equation}
     \label{eq:hydrostatic-fractional-step}
-    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g \Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
+    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g \Delta t \, \boldsymbol{\nabla} \eta^{n+1} \, .
     \end{equation}
 ```
 
 as follows.
 
-Assuming ``M = 0``, for the ``n+1``-th timestep velocity we want the following to hold
+For the ``n+1``-th time step velocity we want the following to hold
 
 ```math
     \begin{equation}
-    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = -\delta_x^{caa} \sum_k A_x u^{n+1} - \delta_y^{aca} \sum_k A_y v^{n+1} \, .
+    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = - \delta_x^{caa} \sum_k (A_x u^{n+1}) - \delta_y^{aca} \sum_k (A_y v^{n+1}) \, .
     \end{equation}
 ```
 
 Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-hand-side of
-\eqref{eq:hydrostatic-fractional-step} then gives an implicit equation for ``\eta^{n+1}``:
+\eqref{eq:hydrostatic-fractional-step} then gives us an implicit equation for ``\eta^{n+1}``:
 
 ```math
 \begin{align}
