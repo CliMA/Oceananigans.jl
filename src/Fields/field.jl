@@ -508,10 +508,12 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,  f, r::ReducedField, c) = Base.initarray!(interior(r), Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction, f, r::ReducedField, c) = Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,  f, r::ReducedField, c) = Base.initarray!(interior(r), &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = Base.initarray!(interior(r), |, true, interior(c))
+check_version(VERSION) = VERSION.minor > 7
+
+initialize_reduced_field!(::SumReduction,  f, r::ReducedField, c) = check_version(VERSION) ? Base.initarray!(interior(r), identity, Base.add_sum, true, interior(c))  : Base.initarray!(interior(r), Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction, f, r::ReducedField, c) = check_version(VERSION) ? Base.initarray!(interior(r), identity, Base.mul_prod, true, interior(c)) : Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,  f, r::ReducedField, c) = check_version(VERSION) ? Base.initarray!(interior(r), identity, &, true, interior(c))             : Base.initarray!(interior(r), &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = check_version(VERSION) ? Base.initarray!(interior(r), identity, |, true, interior(c))             : Base.initarray!(interior(r), |, true, interior(c))
 
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), interior(c))
