@@ -245,7 +245,7 @@ and summing it vertically to get:
 ```math
     \begin{align}
     \label{eq:vertically-integrated-continuity-discrete}
-    \delta_x \sum_k (A_x u) + \delta_y \sum_k (A_y v) + A_z \underbrace{w(k=N_z)}_{w_{\rm top}} = 0 \, .
+    \delta_x \sum_k (A_x u) + \delta_y \sum_k (A_y v) + A_z \underbrace{w(k = N_z + 1)}_{w_{\rm top}} = 0 \, .
     \end{align}
 ```
 
