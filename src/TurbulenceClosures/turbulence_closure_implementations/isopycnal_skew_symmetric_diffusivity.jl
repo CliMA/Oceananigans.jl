@@ -23,7 +23,7 @@ const issd_coefficient_loc = (Center(), Center(), Center())
                                       κ_skew = 0,
                                       κ_symmetric = 0,
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                      slope_limiter = nothing)
+                                      slope_limiter = FluxTapering(1e-2))
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
