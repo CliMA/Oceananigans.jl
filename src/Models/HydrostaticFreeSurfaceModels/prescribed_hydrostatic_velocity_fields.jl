@@ -4,10 +4,13 @@
 
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField
+using Oceananigans.TimeSteppers: tick!
+using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 import Oceananigans.Utils: datatuple
+import Oceananigans.TimeSteppers: time_step!
 
 using Adapt
 
@@ -93,3 +96,13 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
                              Adapt.adapt(to, velocities.v),
                              Adapt.adapt(to, velocities.w),
                              nothing)
+
+# If the model only tracks particles... do nothing but that!!!
+const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
+                 {TS, E, A, S, G, T, V, B, R, F, P<:LagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+
+function time_step!(model::OnlyParticleTrackingModel, Δt; euler=false) 
+    model.timestepper.previous_Δt = Δt
+    tick!(model.clock, Δt)
+    update_particle_properties!(model, Δt)
+end
