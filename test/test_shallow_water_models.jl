@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Models.ShallowWaterModels
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
@@ -47,6 +48,35 @@ function shallow_water_model_tracers_and_forcings_work(arch)
     @test model.clock.iteration == 1
 
     return nothing
+end
+
+function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ) 
+    κ, m = 1, 2 # diffusivity and cosine wavenumber
+    
+    closure = ShallowWaterScalarDiffusivity(ν = κ)
+    momentum_advection = nothing
+    tracer_advection = nothing
+    mass_advection = nothing
+    model = ShallowWaterModel(; grid, closure, 
+                                gravitational_acceleration=1.0, 
+                                momentum_advection, tracer_advection, mass_advection,
+                                formulation)
+    
+    field = model.velocities[fieldname]
+    interior(field) .= arch_array(architecture(grid), cos.(m * ξ))
+    update_state!(model)
+
+    # Step forward with small time-step relative to diff. time-scale
+    Δt = 1e-6 * grid.Lx^2 / κ
+    for n = 1:5
+        time_step!(model, Δt)
+    end
+
+    diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
+    analytical_solution = Field(location(field), grid)
+    analytical_solution .= diffusing_cosine.(ξ, model.clock.time, κ, m)
+
+    return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
 end
 
 @testset "Shallow Water Models" begin
@@ -181,6 +211,19 @@ end
         @testset "ShallowWaterModel with tracers and forcings [$arch]" begin
             @info "  Testing ShallowWaterModel with tracers and forcings [$arch]..."
             shallow_water_model_tracers_and_forcings_work(arch)
+        end
+
+        @testset "ShallowWaterModel viscous diffusion [$arch]" begin
+            grid_x = RectilinearGrid(arch, size = 10, x = (0, 1), topology = (Bounded, Flat, Flat))
+            grid_y = RectilinearGrid(arch, size = 10, y = (0, 1), topology = (Flat, Bounded, Flat))
+            coords = (xnodes(Face, grid_x, reshape=true), ynodes(Face, grid_y, reshape=true))
+            
+            for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
+                for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
+                    @info "  Testing ShallowWaterModel cosine viscous diffusion [$fieldname, $formulation]"
+                    test_shallow_water_diffusion_cosine(grid, formulation, fieldname, coord)
+                end
+            end
         end
     end
 

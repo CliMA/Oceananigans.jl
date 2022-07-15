@@ -251,7 +251,7 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T,
 simulation.output_writers[:atlantic] = JLD2OutputWriter(model, (; u, v, T, η),
                                                         schedule = TimeInterval(save_interval),
                                                         filename = output_prefix * "_atlantic",
-                                                        indices = (:, 64, :),
+                                                        indices = (60, :, :),
                                                         overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,

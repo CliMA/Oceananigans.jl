@@ -25,6 +25,7 @@ Compute the tendency for the x-directional transport, uh
 @inline function uh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
                                       advection,
+                                      velocities,
                                       coriolis,
                                       closure,
                                       bathymetry,
@@ -37,11 +38,13 @@ Compute the tendency for the x-directional transport, uh
 
     g = gravitational_acceleration
 
+    model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
+
     return ( - div_mom_u(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock, nothing)
+             - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
              + forcings[1](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -51,6 +54,7 @@ Compute the tendency for the y-directional transport, vh.
 @inline function vh_solution_tendency(i, j, k, grid,
                                       gravitational_acceleration,
                                       advection,
+                                      velocities,
                                       coriolis,
                                       closure,
                                       bathymetry,
@@ -63,11 +67,13 @@ Compute the tendency for the y-directional transport, vh.
 
      g = gravitational_acceleration
 
+     model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
+
     return ( - div_mom_v(i, j, k, grid, advection, solution, formulation)
-             - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - y_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
+             - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, solution, tracers, clock)
+             - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
              + forcings[2](i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -105,7 +111,6 @@ end
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation) 
              + c_div_U(i, j, k, grid, solution, c, formulation)         
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, solution, tracers, clock, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end
