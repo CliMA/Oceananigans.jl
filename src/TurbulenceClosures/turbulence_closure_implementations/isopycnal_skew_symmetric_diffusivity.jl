@@ -113,38 +113,6 @@ struct FluxTapering{FT}
     max_slope :: FT
 end
 
-"""
-    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) 
-
-Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
-that multiplies all components of the isopycnal slope tensor. All slopes involved in the
-tapering factor are computed at the cell centers.
-
-References
-==========
-R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
-"""
-@inline function taper_factor_ccc(i, j, k, grid, buoyancy, tracers, tapering::FluxTapering)
-    # TODO: handle boundaries!
-    bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-
-    slope_x = - bx / bz
-    slope_y = - by / bz
-    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
-
-    return min(one(grid), tapering.max_slope^2 / slope²)
-end
-
-"""
-    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT
-
-Returns 1 for the  isopycnal slope tapering factor, that is, no tapering is done.
-"""
-taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
-
 # Diffusive fluxes
 
 @inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
