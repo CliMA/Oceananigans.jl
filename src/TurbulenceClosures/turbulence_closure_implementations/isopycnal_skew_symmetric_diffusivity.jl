@@ -171,7 +171,7 @@ taper_factor_ccc(i, j, k, grid, buoyancy, tracers, ::Nothing) = one(grid)
 
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor, closure.slope_limiter)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
     
     return  - ( κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
                 κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
@@ -199,7 +199,7 @@ end
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor, closure.slope_limiter)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
 
     return -  (κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
                κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
@@ -223,10 +223,10 @@ end
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor, closure.slope_limiter)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor, closure.slope_limiter)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
 
-    κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
+    κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, fields)
 
     return - κ_symmetric_∂z_c - ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
                                  (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
