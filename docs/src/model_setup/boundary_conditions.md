@@ -464,8 +464,8 @@ ImmersedBoundaryCondition:
 ```
 
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
-of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
-cells may also be specified by manually building an `ImmersedBoundaryCondition`:
+of a boundary-adjcent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
+cells may also be specified by manually building `ImmersedBoundaryCondition`:
 
 ```jldoctest
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
@@ -488,54 +488,3 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
-A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref). Let's see here how we can add linear bottom drag on `u` in the case we have
-an immersed boundary. In essence, we'd need to boundary conditions: one that would apply at the grid's bottom,
-and when that would apply on the immersed boundary.
-
-First let's create the boundary condition for the grid's bottom:
-
-```jldoctest immersed_bc
-julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
-linear_drag (generic function with 1 method)
-
-julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
-FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
-```
-
-Then let's create the immersed boundary condition:
-
-```jldoctest immersed_bc
-julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
-immersed_linear_drag (generic function with 1 method)
-
-julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
-FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
-
-julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
-ImmersedBoundaryCondition:
-├── west: Nothing
-├── east: Nothing
-├── south: Nothing
-├── north: Nothing
-├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
-└── top: Nothing
-```
-
-And last, we can combine the two together:
-
-```jldoctest immersed_bc
-julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
-Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
-├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-└── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
-```
-
-!!! warn"Positional argument requirements"
-    Note the difference between the arguments required for the function within the `bottom` boundary
-    condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
-    `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
