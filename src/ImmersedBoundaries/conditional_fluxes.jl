@@ -106,7 +106,7 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
  :(inactive_node(c, c, c, i + 1, j, k, ibg))
 
 """
-function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ, xshift = 0, yshift = 0, zshift = 0) 
+@inline function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ, xshift = 0, yshift = 0, zshift = 0) 
    
     N = buffer * 2
     if shift != :none
@@ -147,9 +147,9 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
 
     for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side)...))
+            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
+            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
+            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side)...))
         end
     end
 end
@@ -162,14 +162,14 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
             @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
-                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
-                    $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
+                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
+                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
+                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
 
             @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...), 
-                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
-                    $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...), 
+                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...), 
+                            $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
         end
     end
 end
@@ -223,9 +223,9 @@ for bias in (:left_biased, :right_biased)
         @eval begin
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
-            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
-                   $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
-                   $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
+                ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
+                    $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
+                    $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))
         end
     end
 end

@@ -32,7 +32,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, args...)            = prod(xr[i+s
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::FirstDerivative)  = 2*xr[i+shift] - sum(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 
-function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive) 
+@inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive) 
     s = sum(xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
     p = prod(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 
@@ -54,7 +54,7 @@ Positional Arguments
 
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
-function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+@inline function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
     coeffs = zeros(order)
     for j in 0:order-1
         for m in j+1:order
@@ -138,7 +138,7 @@ julia> calc_reconstruction_stencil(3, :left, :x)
 :(coeff5_left[5] * ψ[i + -3, j, k] + coeff5_left[4] * ψ[i + -2, j, k] + coeff5_left[3] * ψ[i + -1, j, k] + coeff5_left[2] * ψ[i + 0, j, k] + coeff5_left[1] * ψ[i + 1, j, k])
 ```
 """
-function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
+@inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
     N = buffer * 2
     order = shift == :symm ? N : N - 1
     if shift != :symm
@@ -173,7 +173,7 @@ end
 ##### Shenanigans for stretched directions
 #####
 
-function reconstruction_stencil(buffer, shift, dir, func::Bool = false;) 
+@inline function reconstruction_stencil(buffer, shift, dir, func::Bool = false;) 
     N = buffer * 2
     order = shift == :symm ? N : N - 1
     if shift != :symm
@@ -204,7 +204,7 @@ function reconstruction_stencil(buffer, shift, dir, func::Bool = false;)
     return :($(reverse(stencil_full)...),)
 end
 
-function compute_reconstruction_coefficients(grid, FT, scheme; order)
+@inline function compute_reconstruction_coefficients(grid, FT, scheme; order)
 
     method = scheme == :Centered ? 1 : scheme == :Upwind ? 2 : 3
 
@@ -240,7 +240,7 @@ for val in [1, 2, 3]
 end
 
 # Stretched reconstruction coefficients for `Centered` schemes
-function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
+@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
     cpu_coord = arch_array(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
@@ -248,7 +248,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order)
 end
 
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
-function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
+@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
     cpu_coord = arch_array(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
     rright = ((order + 1) ÷ 2) - 1
@@ -260,7 +260,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order)
 end
 
 # Stretched reconstruction coefficients for `WENO` schemes
-function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
+@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
 
     cpu_coord = arch_array(CPU(), coord)
     s = []
@@ -271,7 +271,7 @@ function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order)
 end
 
 # general reconstruction coefficients for order `order` and stencil `r` where r 
-function create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
+@inline function create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     stencil = NTuple{order, FT}[]
     @inbounds begin
         for i = 0:N+1
