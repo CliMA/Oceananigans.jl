@@ -110,10 +110,9 @@ end
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
-    coeff = Symbol(:coeff_β_, buffer, :_, stencil)
     @eval begin
-        @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, $coeff)
-        @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, $coeff)
+        @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
     end
 end
 
