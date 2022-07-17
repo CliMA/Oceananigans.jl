@@ -4,6 +4,7 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
+include("dependencies_for_runtests.jl")
 
 function identity_operator!(b, x)
     parent(b) .= parent(x)

@@ -1,5 +1,6 @@
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
+include("dependencies_for_runtests.jl")
 
 struct TestDiagnostic <: AbstractDiagnostic end
 

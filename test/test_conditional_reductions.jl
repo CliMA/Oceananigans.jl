@@ -1,4 +1,4 @@
-# include("dependencies_for_runtests.jl")
+include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.ImmersedBoundaries: conditional_length
