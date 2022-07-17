@@ -1,5 +1,6 @@
 using Oceananigans.Coriolis: Ω_Earth
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+include("dependencies_for_runtests.jl")
 
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)

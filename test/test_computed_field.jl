@@ -468,7 +468,7 @@ for arch in archs
                 # Periodic xy
                 @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
                 @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
-                
+
                 # Bounded z
                 @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
                 @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])

@@ -5,6 +5,7 @@
 using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using AMDGPU
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
