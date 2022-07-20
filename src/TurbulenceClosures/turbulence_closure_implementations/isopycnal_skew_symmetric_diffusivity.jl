@@ -146,8 +146,8 @@ end
 
 @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx = ℑxzᶜᵃᶠ(i, j, k, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
 
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
 
