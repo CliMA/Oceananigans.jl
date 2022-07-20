@@ -67,6 +67,7 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
     solver  = implicit_free_surface_solver.matrix_iterative_solver
     storage = implicit_free_surface_solver.storage
     
+    arch = architecture(solver)
     # update matrix and preconditioner if time step changes
     if Δt != implicit_free_surface_solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
