@@ -96,13 +96,15 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model)
     return nothing
 end
 
-@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) where LZ
+@kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) 
     i, j, k, = @index(Global, NTuple)
 
     closure_ij = getclosure(i, j, closure)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure_ij.isopycnal_tensor, closure_ij.slope_limiter)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure_ij.isopycnal_tensor)
 
-    @inbounds ϵ_R₃₃[i, j, k] = R₃₃
+    ϵ = tapering_function(i, j, k, grid, closure, tracers, buoyancy)
+
+    @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
 end
 
 #####
@@ -111,6 +113,52 @@ end
 
 struct FluxTapering{FT}
     max_slope :: FT
+end
+
+@inline function tapering_function(i, j, k, grid, closure, tracers, buoyancy)
+
+    ϵᶠᶜᶜ = tapering_functionᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    ϵᶜᶠᶜ = tapering_functionᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    ϵᶜᶜᶠ = tapering_functionᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
+
+    return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
+end
+
+@inline function tapering_functionᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+    
+    bx = ∂xᶠᶜᶜ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+    by = ℑxyᶠᶜᵃ(i, j, k, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ℑxzᶠᵃᶜ(i, j, k, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
+
+    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+@inline function tapering_functionᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
+
+    bx = ℑxyᶜᶠᵃ(i, j, k, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    by = ∂yᶜᶠᶜ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ℑyzᵃᶠᶜ(i, j, k, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
+
+    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+@inline function tapering_functionᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
+
+    bx = ℑxzᶜᵃᶠ(i, j, k, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    by = ℑyzᵃᶜᶠ(i, j, k, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ∂zᶜᶜᶠ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+
+    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+@inline function calc_tapering(bx, by, bz, slope_model, slope_limiter)
+    bz = max(bz, slope_model.minimum_bz)
+    
+    slope_x = - bx / bz
+    slope_y = - by / bz
+    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
+
+    return min(one(grid), slope_limiter.max_slope^2 / slope²)
 end
 
 # Diffusive fluxes
@@ -139,11 +187,13 @@ end
 
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
     
-    return  - ( κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
-                κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
-               (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
+    ϵ = tapering_function(i, j, k, grid, closure, fields, buoyancy)
+
+    return  - ϵ * ( κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
+                    κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
+                   (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
 end
 
 # defined at cfc
@@ -167,11 +217,13 @@ end
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
 
-    return -  (κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-               κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
-              (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
+    ϵ = tapering_function(i, j, k, grid, closure, fields, buoyancy)
+
+    return - ϵ * (κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                  κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+                 (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 
 # defined at ccf
@@ -191,19 +243,24 @@ end
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor, closure.slope_limiter)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
 
     κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, fields)
 
-    return - κ_symmetric_∂z_c - ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
-                                 (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
+    ϵ = tapering_function(i, j, k, grid, closure, fields, buoyancy)
+    
+    return - ϵ * κ_symmetric_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
+                                         (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
 @inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor, closure.slope_limiter)
-    return κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    
+    ϵ = tapering_function(i, j, k, grid, closure, tracers, buoyancy)
+
+    return ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
 end
 
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
