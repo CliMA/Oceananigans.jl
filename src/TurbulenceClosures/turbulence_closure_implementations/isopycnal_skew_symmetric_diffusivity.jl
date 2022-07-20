@@ -152,11 +152,12 @@ end
 end
 
 @inline function calc_tapering(bx, by, bz, slope_model, slope_limiter)
+    
     bz = max(bz, slope_model.minimum_bz)
     
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2)
+    slope² = ifelse(bz < 0, zero(grid), slope_x^2 + slope_y^2)
 
     return min(one(grid), slope_limiter.max_slope^2 / slope²)
 end
