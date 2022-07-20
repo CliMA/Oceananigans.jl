@@ -131,7 +131,7 @@ end
 
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
 
-    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
@@ -141,7 +141,7 @@ end
 
     by = ∂y_b(i, j, k,   grid, buoyancy, tracers)
 
-    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
@@ -151,10 +151,10 @@ end
 
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
 
-    return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-@inline function calc_tapering(bx, by, bz, slope_model, slope_limiter)
+@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
     
     bz = max(bz, slope_model.minimum_bz)
     
