@@ -290,7 +290,7 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
-function solve!(x, solver::HeptadiagonalIterativeSolver, b)
+function solve!(x, solver::HeptadiagonalIterativeSolver, b, dt)
         
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,
