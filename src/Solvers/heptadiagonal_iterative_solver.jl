@@ -86,7 +86,6 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       maximum_iterations = prod(size(grid)),
                                       tolerance = 1e-13,
                                       reduced_dim = (false, false, false), 
-                                      placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
                                       preconditioner_settings = nothing,
                                       template = arch_array(architecture(grid), zeros(prod(size(grid)))),
@@ -291,8 +290,7 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
-function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
-    arch = architecture(solver.matrix)
+function solve!(x, solver::HeptadiagonalIterativeSolver, b)
         
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,

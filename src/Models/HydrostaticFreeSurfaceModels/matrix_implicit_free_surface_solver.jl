@@ -4,7 +4,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
-using Oceananigans.Solvers: HeptadiagonalIterativeSolver
+using Oceananigans.Solvers: HeptadiagonalIterativeSolver, build_preconditioner, update_diag!
 import Oceananigans.Solvers: solve!
 
 """
@@ -74,7 +74,7 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
         update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
         solver.matrix = arch_sparse_matrix(arch, constructors) 
 
-        unsafe_free!(constructors)
+        unsafe_free!.(constructors)
 
         solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
                                                             solver.matrix,
@@ -83,7 +83,7 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
         implicit_free_surface_solver.previous_Δt = Δt
     end
         
-    solve!(storage, solver, rhs, Δt)
+    solve!(storage, solver, rhs)
         
     set!(η, reshape(storage, solver.problem_size...))
 
