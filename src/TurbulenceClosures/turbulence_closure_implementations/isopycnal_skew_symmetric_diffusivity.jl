@@ -126,7 +126,7 @@ end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
     
-    bx = ∂xᶠᶜᶜ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+    by = ∂x_b(i, j, k, grid, buoyancy, tracers)
     by = ℑxyᶠᶜᵃ(i, j, k, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
 
@@ -136,7 +136,7 @@ end
 @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
     bx = ℑxyᶜᶠᵃ(i, j, k, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    by = ∂yᶜᶠᶜ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+    by = ∂y_b(i, j, k, grid, buoyancy, tracers)
     bz = ℑyzᵃᶠᶜ(i, j, k, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
 
     return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
@@ -146,7 +146,7 @@ end
 
     bx = ℑxzᶜᵃᶠ(i, j, k, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     by = ℑyzᵃᶜᶠ(i, j, k, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
-    bz = ∂zᶜᶜᶠ(i, j, k, grid,   buoyancy_perturbation, buoyancy.model, tracers)
+    bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
 
     return calc_tapering(bx, by, bz, closure.isopycnal_tensor, closure.slope_limiter)
 end
