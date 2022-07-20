@@ -130,7 +130,7 @@ function time_step_with_variable_discrete_diffusivity(arch)
     closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
     closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
 
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=(closure_ν, closure_κ))
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
     time_step!(model, 1, euler=true)
 
     return true
