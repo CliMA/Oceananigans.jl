@@ -98,7 +98,7 @@ for arch in archs
     @testset "Immersed tracer reconstruction" begin
         @info "Running immersed tracer reconstruction tests..."
 
-        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), topology=(Bounded, Bounded, Flat))
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (7, 7), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
     
         c = CenterField(ibg)
@@ -117,7 +117,7 @@ for arch in archs
     @testset "Immersed tracer conservation" begin
         @info "Running immersed tracer conservation tests..."
 
-        grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
+        grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (7, 7, 7), topology=(Bounded, Periodic, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
     
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
@@ -133,7 +133,7 @@ for arch in archs
     @testset "Immersed momentum reconstruction" begin
         @info "Running immersed momentum recontruction tests..."
 
-        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (7, 7), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
 
         u = XFaceField(ibg)
