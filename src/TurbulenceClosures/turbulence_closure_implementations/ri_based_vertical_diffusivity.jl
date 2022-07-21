@@ -26,23 +26,33 @@ struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
 """
-    RiBasedVerticalDiffusivity([td=VerticallyImplicitTimeDiscretization(), FT=Float64] kwargs...)
+    RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
+                               FT = Float64;]
+                               coefficient_z_location = Face(),
+                               Ri_dependent_tapering = ExponentialRiDependentTapering(),
+                               ν₀   =  0.92,
+                               Ri₀ν = -1.34,
+                               Riᵟν =  0.61,
+                               κ₀   =  0.18,
+                               Ri₀κ = -0.13,
+                               Riᵟκ =  0.6)
 
-Returns a closure that estimates the vertical viscosity and diffusivity
+Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
-a decreasing function of the Richardson number.
+a decreasing function of the Richardson number, ``Ri``.
 
 Keyword Arguments
-=========
+=================
 
-* ν₀ (Float64 parameter): Convective adjustment viscosity. Default: 0.01
-* Ri₀ν (Float64 parameter): Ri threshold for decreasing viscosity. Default: -0.5
-* Riᵟν (Float64 parameter): Width over which Ri decreases to 0. Default: 1.0
-* κ₀ (Float64 parameter): Convective adjustment diffusivity for tracers. Default: 0.1
-* Ri₀κ (Float64 parameter): Ri threshold for decreasing viscosity. Default: -0.5
-* Riᵟκ (Float64 parameter): Width over which Ri decreases to 0. Default: 1.0
-* coefficient_z_location (Face() or Center()): The vertical location of the diffusivity and viscosity.
-                                               Default: Face().
+* `ν₀` (`Float64` parameter): Convective adjustment viscosity. Default: 0.92
+* `Ri₀ν` (`Float64` parameter): ``Ri`` threshold for decreasing viscosity. Default: -1.34
+* `Riᵟν` (`Float64` parameter): Width over which ``Ri`` decreases to 0. Default: 0.61
+* `κ₀` (`Float64` parameter): Convective adjustment diffusivity for tracers. Default: 0.18
+* `Ri₀κ` (`Float64` parameter): ``Ri`` threshold for decreasing viscosity. Default: -0.13
+* `Riᵟκ` (`Float64` parameter): Width over which ``Ri`` decreases to 0. Default: 0.6
+* `coefficient_z_location` (`Face()` or `Center()`): The vertical location of the diffusivity and viscosity.
+                                                     Default: `Face()`.
+* `Ri_dependent_tapering`: The ``Ri``-dependent tapering. Default: `ExponentialRiDependentTapering()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
@@ -128,12 +138,12 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    ν₀   = closure_ij.ν₀    
-    Ri₀ν = closure_ij.Ri₀ν 
-    Riᵟν = closure_ij.Riᵟν 
-    κ₀   = closure_ij.κ₀    
-    Ri₀κ = closure_ij.Ri₀κ 
-    Riᵟκ = closure_ij.Riᵟκ 
+    ν₀   = closure_ij.ν₀
+    Ri₀ν = closure_ij.Ri₀ν
+    Riᵟν = closure_ij.Riᵟν
+    κ₀   = closure_ij.κ₀
+    Ri₀κ = closure_ij.Ri₀κ
+    Riᵟκ = closure_ij.Riᵟκ
     tapering = closure_ij.Ri_dependent_tapering
 
     Ri = ifelse(LZ === Type{Face}, Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy),
@@ -149,4 +159,3 @@ end
 
 Base.summary(closure::RiBasedVerticalDiffusivity{TD}) where TD = string("RiBasedVerticalDiffusivity{$TD}")
 Base.show(io::IO, closure::RiBasedVerticalDiffusivity) = print(io, summary(closure))
-
