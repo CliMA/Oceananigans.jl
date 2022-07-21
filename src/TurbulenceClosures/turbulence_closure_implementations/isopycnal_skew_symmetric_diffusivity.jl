@@ -115,6 +115,18 @@ struct FluxTapering{FT}
     max_slope :: FT
 end
 
+"""
+    taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
+
+Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
+that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
+faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
+
+References
+==========
+R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
+    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+"""
 @inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
 
     ϵᶠᶜᶜ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
