@@ -44,8 +44,8 @@ end
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax = maximum(ib.bottom_height)
-    hmin = minimum(ib.bottom_height)
+    hmax = maximum(parent(ib.bottom_height))
+    hmin = minimum(parent(ib.bottom_height))
     return @sprintf("GridFittedBottom(min(h)=%.2e, max(h)=%.2e)", hmin, hmax)
 end
 
