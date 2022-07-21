@@ -92,7 +92,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
