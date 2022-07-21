@@ -82,7 +82,7 @@ implicitly during time-stepping.
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -116,7 +116,7 @@ where `c = C[tracer_index]`.
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -165,6 +165,6 @@ end
              + shear_production(i, j, k, grid, closure, velocities, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
