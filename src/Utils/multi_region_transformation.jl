@@ -186,7 +186,7 @@ macro apply_regionally(expr)
                 func = exp.args[1]
                 args = exp.args[2:end]
                 new_expr.args[idx] = quote
-                    $ret = construct_regionally!($func, $(args...))
+                    $ret = construct_regionally($func, $(args...))
                 end
             end
         end
