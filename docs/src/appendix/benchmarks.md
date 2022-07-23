@@ -78,7 +78,7 @@ As shown in the graph below, speedups increase sharply starting at grid size `51
 
 ![shallow_water_speedup](https://user-images.githubusercontent.com/45054739/128793049-7bcbabaa-2d66-4209-a311-b02729fb93fa.png)
 
-The time graph below shows that execution times on GPU are negligebly small up until grid size `1024^2` where it starts to scale similarly to times on CPU.
+The time graph below shows that execution times on GPU are negligibly small up until grid size `1024^2` where it starts to scale similarly to times on CPU.
 
 ![shallow_water_times](https://user-images.githubusercontent.com/45054739/128793311-e4bbfd5a-aea8-4cdc-bee8-cb71128ff5fe.png)
 
@@ -143,7 +143,7 @@ Environment:
 └─────────────┴─────┴─────────┴─────────┴─────────┘
 ```
 
-Like the shallow water model, it can be seen at grid size `64^3` that the GPU is beginning to be saturated as speedups rapidly increase. At grid sizes `128^3` and `256^3` we see the speedup stablise to around 400 times.
+Like the shallow water model, it can be seen at grid size `64^3` that the GPU is beginning to be saturated as speedups rapidly increase. At grid sizes `128^3` and `256^3` we see the speedup stabilise to around 400 times.
 
 ![incompressible_speedup](https://user-images.githubusercontent.com/45054739/129825248-adb8dfe5-e9ea-4321-bd11-fb415d81e2cb.png)
 
@@ -665,7 +665,7 @@ Environment:
 
 
 ## Older Benchmarks
-The following benchmark results are generated from an older version of Oceananigans and with deprecated benchmarking scripts. These legacy benchmark results can still be resonably used as a reference for gauging performance changes across versions of Oceananigans.
+The following benchmark results are generated from an older version of Oceananigans and with deprecated benchmarking scripts. These legacy benchmark results can still be reasonably used as a reference for gauging performance changes across versions of Oceananigans.
 
 ### Static ocean
 
