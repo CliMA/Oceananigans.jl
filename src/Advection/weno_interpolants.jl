@@ -1,28 +1,26 @@
-"""
-
-    WENO reconstruction of order `M` entails reconstructions of order `N` on `N` different stencils where `N = (M + 1) / 2`
-
-reconstruction on different stencils are calculated as 
-
-`v̂ᵣ = ∑ⱼ(cᵣⱼ v̅ᵢ₋ᵣ₊ⱼ)` 
-
-where r is the stencil index (of which there are N) and j goes from 0 to N
-cᵣⱼ for different r stencils are given by `coeff_side_p(scheme, Val(r))`
-
-the different reconstructions are combined in a convex combination to provide the 
-"higher order essentially non oscillatory" reconstruction as
-
-`v⋆ = ∑ᵣ(wᵣ v̂ᵣ)`
-
-wᵣ weights are calculated dynamically with `side_biased_weno_weights(ψ, scheme)` 
-"""
-
-## Values taken from Balsara & Shu "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
+# WENO reconstruction of order `M` entails reconstructions of order `N`
+# on `N` different stencils, where `N = (M + 1) / 2`.
+#
+# Each reconstruction `r` at cell `i` is denoted
+# 
+# `v̂ᵢᵣ = ∑ⱼ(cᵣⱼ v̅ᵢ₋ᵣ₊ⱼ)` 
+# 
+# where j ranges from 0 to N and the coefficients cᵣⱼ for each stencil r
+# are given by `coeff_side_p(scheme, Val(r))`.
+# 
+# The different reconstructions are combined to provide a
+# "higher-order essentially non-oscillatory" reconstruction,
+# 
+# `v⋆ᵢ = ∑ᵣ(wᵣ v̂ᵣ)`
+# 
+# where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
+#
 
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
-# Optimal WENO coefficients
+# Optimal values taken from
+# Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
 @inline Cl(::WENO{2}, ::Val{0}) = 2/3
 @inline Cl(::WENO{2}, ::Val{1}) = 1/3
 
