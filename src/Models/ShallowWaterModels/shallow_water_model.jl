@@ -13,6 +13,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
+using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -61,8 +62,8 @@ struct VectorInvariantFormulation end
                         gravitational_acceleration,
                               clock = Clock{eltype(grid)}(0, 0, 1),
                  momentum_advection = UpwindBiasedFifthOrder(),
-                   tracer_advection = WENO5(),
-                     mass_advection = WENO5(),
+                   tracer_advection = WENO(),
+                     mass_advection = WENO(),
                            coriolis = nothing,
                 forcing::NamedTuple = NamedTuple(),
                             closure = nothing,
@@ -85,9 +86,9 @@ Keyword arguments
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
     Default: `UpwindBiasedFifthOrder()`.
-  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO5()`.
+  - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO()`.
   - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
-    `WENO5()`.
+    `WENO()`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
@@ -112,8 +113,8 @@ function ShallowWaterModel(;
                            gravitational_acceleration,
                                clock = Clock{eltype(grid)}(0, 0, 1),
                   momentum_advection = UpwindBiasedFifthOrder(),
-                    tracer_advection = WENO5(),
-                      mass_advection = WENO5(),
+                    tracer_advection = WENO(),
+                      mass_advection = WENO(),
                             coriolis = nothing,
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
@@ -137,9 +138,7 @@ function ShallowWaterModel(;
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), momentum_advection, tracer_advection, mass_advection, closure)
-    any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
-        (grid = with_halo((Hx, Hy, 0), grid))
+    grid = inflate_grid_halo_size(grid, momentum_advection, tracer_advection, mass_advection, closure)
 
     prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()

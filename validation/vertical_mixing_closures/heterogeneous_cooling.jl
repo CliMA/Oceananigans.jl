@@ -37,8 +37,8 @@ closure = (boundary_layer_closure, horizontal_closure)
 #closure = boundary_layer_closure
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     tracers = (:b, :e),
                                     boundary_conditions = (; b=b_bcs, u=u_bcs),
                                     buoyancy = BuoyancyTracer())

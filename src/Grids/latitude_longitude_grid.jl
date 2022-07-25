@@ -354,7 +354,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     new_grid = LatitudeLongitudeGrid(architecture(old_grid), eltype(old_grid);
                                      size = size, halo = new_halo,
-                                     longitude = x, latitude = y, z = z,
+                                     longitude = x, latitude = y, z = z, topology = topo,
                                      precompute_metrics = metrics_precomputed(old_grid))
 
     return new_grid

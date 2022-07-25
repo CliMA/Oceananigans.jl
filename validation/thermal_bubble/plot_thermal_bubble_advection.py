@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import cmocean
 import ffmpeg
 
-# schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO5")
-schemes = ("WENO5",)
+# schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO")
+schemes = ("WENO",)
 Ns = (32, 128)
 
 def plot_tracer_advection_2d_frame(scheme, N, n):
