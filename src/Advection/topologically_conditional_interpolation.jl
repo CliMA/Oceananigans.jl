@@ -50,7 +50,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
 
-            # Simple translation for Periodic directions and Boundary safe advection (fallback)
+            # Simple translation for Periodic directions and low-order advection schemes (fallback)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
