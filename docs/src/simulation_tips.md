@@ -1,6 +1,6 @@
 # Simulation tips
 
-Oceananigans attemps to optimize computations as much as possible "behind the scenes".
+Oceananigans attempts to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,
 especially for complex setups with user-defined forcing functions, boundary condition functions, and diagnostics.
 Furthermore, in case of more complex GPU runs, some details could

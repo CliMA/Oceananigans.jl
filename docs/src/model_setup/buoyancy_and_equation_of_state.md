@@ -35,7 +35,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so ommitting `buoyancy`
+`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so omitting `buoyancy`
 from the `NonhydrostaticModel` constructor yields an identical result:
 
 ```jldoctest buoyancy
