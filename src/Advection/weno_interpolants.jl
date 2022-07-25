@@ -23,11 +23,30 @@ const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
 # Optimal WENO coefficients
-@inline Cl(::WENO{2}, ::Val{0}) = 2/3;   @inline Cl(::WENO{2}, ::Val{1}) = 1/3
-@inline Cl(::WENO{3}, ::Val{0}) = 3/10;  @inline Cl(::WENO{3}, ::Val{1}) = 3/5;    @inline Cl(::WENO{3}, ::Val{2}) = 1/10
-@inline Cl(::WENO{4}, ::Val{0}) = 4/35;  @inline Cl(::WENO{4}, ::Val{1}) = 18/35;  @inline Cl(::WENO{4}, ::Val{2}) = 12/35;   @inline Cl(::WENO{4}, ::Val{3}) = 1/35;  
-@inline Cl(::WENO{5}, ::Val{0}) = 5/126; @inline Cl(::WENO{5}, ::Val{1}) = 20/63;  @inline Cl(::WENO{5}, ::Val{2}) = 10/21;   @inline Cl(::WENO{5}, ::Val{3}) = 10/63; @inline Cl(::WENO{5}, ::Val{4}) = 1/126; 
-@inline Cl(::WENO{6}, ::Val{0}) = 1/77;  @inline Cl(::WENO{6}, ::Val{1}) = 25/154; @inline Cl(::WENO{6}, ::Val{2}) = 100/231; @inline Cl(::WENO{6}, ::Val{3}) = 25/77; @inline Cl(::WENO{6}, ::Val{4}) = 5/77;  @inline Cl(::WENO{6}, ::Val{5}) = 1/462;
+@inline Cl(::WENO{2}, ::Val{0}) = 2/3
+@inline Cl(::WENO{2}, ::Val{1}) = 1/3
+
+@inline Cl(::WENO{3}, ::Val{0}) = 3/10
+@inline Cl(::WENO{3}, ::Val{1}) = 3/5
+@inline Cl(::WENO{3}, ::Val{2}) = 1/10
+
+@inline Cl(::WENO{4}, ::Val{0}) = 4/35
+@inline Cl(::WENO{4}, ::Val{1}) = 18/35
+@inline Cl(::WENO{4}, ::Val{2}) = 12/35
+@inline Cl(::WENO{4}, ::Val{3}) = 1/35
+
+@inline Cl(::WENO{5}, ::Val{0}) = 5/126
+@inline Cl(::WENO{5}, ::Val{1}) = 20/63
+@inline Cl(::WENO{5}, ::Val{2}) = 10/21
+@inline Cl(::WENO{5}, ::Val{3}) = 10/63
+@inline Cl(::WENO{5}, ::Val{4}) = 1/126
+
+@inline Cl(::WENO{6}, ::Val{0}) = 1/77
+@inline Cl(::WENO{6}, ::Val{1}) = 25/154
+@inline Cl(::WENO{6}, ::Val{2}) = 100/231
+@inline Cl(::WENO{6}, ::Val{3}) = 25/77
+@inline Cl(::WENO{6}, ::Val{4}) = 5/77
+@inline Cl(::WENO{6}, ::Val{5}) = 1/462
 
 # ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
