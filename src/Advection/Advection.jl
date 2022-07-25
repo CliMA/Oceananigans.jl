@@ -40,12 +40,12 @@ using Oceananigans.Operators
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size
 
-abstract type AbstractAdvectionScheme{Buffer, FT} end
-abstract type AbstractCenteredAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{Buffer, FT} <: AbstractAdvectionScheme{Buffer, FT} end
+abstract type AbstractAdvectionScheme{B, FT} end
+abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
 
-@inline boundary_buffer(::AbstractAdvectionScheme{N}) where N = N
-@inline required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer 
+@inline boundary_buffer(::AbstractAdvectionScheme{B}) where B = B
+@inline required_halo_size(scheme::AbstractAdvectionScheme{B}) where B = B
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
