@@ -31,9 +31,9 @@ end
     @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx+1], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny+1], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz+1], restitution)
 end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
