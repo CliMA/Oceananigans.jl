@@ -5,10 +5,10 @@ struct EnstrophyConservingScheme end
 
 struct VectorInvariant{S, CA}
     scheme :: S
-    boundary_scheme :: CA
+    buffer_scheme :: CA
 
-    function VectorInvariant{S}(scheme::S, boundary_scheme::CA) where {S, CA}
-        return new{S, CA}(scheme, boundary_scheme)
+    function VectorInvariant{S}(scheme::S, buffer_scheme::CA) where {S, CA}
+        return new{S, CA}(scheme, buffer_scheme)
     end
 end
 

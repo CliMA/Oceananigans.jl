@@ -26,20 +26,20 @@ struct WENO{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvect
     bounds :: PP
 
     "Advection scheme used near boundaries"
-    boundary_scheme :: CA
+    buffer_scheme :: CA
     "Reconstruction scheme used for symmetric interpolation"
-    symmetric_scheme :: SI
+    advecting_velocity_scheme :: SI
 
     function WENO{N, FT, VI, WF}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
                                  coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
                                  coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                                 bounds::PP, boundary_scheme::CA,
-                                 symmetric_scheme :: SI) where {N, FT, XT, YT, ZT, VI, WF, PP, CA, SI}
+                                 bounds::PP, buffer_scheme::CA,
+                                 advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, VI, WF, PP, CA, SI}
 
             return new{N, FT, XT, YT, ZT, VI, WF, PP, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
                                                               coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
                                                               coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                              bounds, boundary_scheme, symmetric_scheme)
+                                                              bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
@@ -131,11 +131,15 @@ function WENO(FT::DataType=Float64;
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        boundary_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
-        symmetric_scheme  = Centered(FT; grid, order = order - 1)
+        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
+        if vector_invariant isa Nothing
+            advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
+        else
+            advecting_velocity_scheme = nothing
+        end
     end
 
-    return WENO{N, FT, VI, zweno}(weno_coefficients..., bounds, boundary_scheme, symmetric_scheme)
+    return WENO{N, FT, VI, zweno}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
@@ -169,9 +173,9 @@ Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, 
               "    └── $(WF ? "Z-weno" : "JS-weno") $(VI<:SmoothnessStencil ? "using $VI" : "") \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
               " Boundary scheme: ", "\n",
-              "    └── ", summary(a.boundary_scheme) , "\n",
+              "    └── ", summary(a.buffer_scheme) , "\n",
               " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.symmetric_scheme) , "\n",
+              "    └── ", summary(a.advecting_velocity_scheme) , "\n",
               " Directions:", "\n",
               "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
               "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
@@ -182,8 +186,8 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, VI, WF, PP}) where {N,
                          Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
                          Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
                          Adapt.adapt(to, scheme.bounds),
-                         Adapt.adapt(to, scheme.boundary_scheme),
-                         Adapt.adapt(to, scheme.symmetric_scheme))
+                         Adapt.adapt(to, scheme.buffer_scheme),
+                         Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
 # Retrieve precomputed coefficients (+2 for julia's 1 based indices)
 @inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
