@@ -26,12 +26,12 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
-@inline    outside_symmetric_bufferᶠ(i, N, adv) = i >= boundary_buffer(adv) + 1 && i <= N + 1 - boundary_buffer(adv)
-@inline    outside_symmetric_bufferᶜ(i, N, adv) = i >= boundary_buffer(adv)     && i <= N + 1 - boundary_buffer(adv)
-@inline  outside_left_biased_bufferᶠ(i, N, adv) = i >= boundary_buffer(adv) + 1 && i <= N + 1 - (boundary_buffer(adv) - 1)
-@inline  outside_left_biased_bufferᶜ(i, N, adv) = i >= boundary_buffer(adv)     && i <= N + 1 - (boundary_buffer(adv) - 1)
-@inline outside_right_biased_bufferᶠ(i, N, adv) = i >= boundary_buffer(adv)     && i <= N + 1 - boundary_buffer(adv)
-@inline outside_right_biased_bufferᶜ(i, N, adv) = i >= boundary_buffer(adv) - 1 && i <= N + 1 - boundary_buffer(adv)
+@inline    outside_symmetric_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - boundary_buffer(adv))
+@inline    outside_symmetric_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
+@inline  outside_left_biased_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv) + 1) & (i <= N + 1 - (boundary_buffer(adv) - 1))
+@inline  outside_left_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - (boundary_buffer(adv) - 1))
+@inline outside_right_biased_bufferᶠ(i, N, adv) = (i >= boundary_buffer(adv))     & (i <= N + 1 - boundary_buffer(adv))
+@inline outside_right_biased_bufferᶜ(i, N, adv) = (i >= boundary_buffer(adv) - 1) & (i <= N + 1 - boundary_buffer(adv))
 
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, Centered, UpwindBiased} 
