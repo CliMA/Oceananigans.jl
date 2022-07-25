@@ -143,7 +143,7 @@ Environment:
 └─────────────┴─────┴─────────┴─────────┴─────────┘
 ```
 
-Like the shallow water model, it can be seen at grid size `64^3` that the GPU is beginning to be saturated as speedups rapidly increase. At grid sizes `128^3` and `256^3` we see the speedup stabilise to around 400 times.
+Like the shallow water model, it can be seen at grid size `64^3` that the GPU is beginning to be saturated as speedups rapidly increase. At grid sizes `128^3` and `256^3` we see the speedup stabilize to around 400 times.
 
 ![incompressible_speedup](https://user-images.githubusercontent.com/45054739/129825248-adb8dfe5-e9ea-4321-bd11-fb415d81e2cb.png)
 
