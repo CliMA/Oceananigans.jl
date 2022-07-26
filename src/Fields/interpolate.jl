@@ -2,6 +2,7 @@ using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilin
 using Oceananigans.Grids: XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 
+# GPU-compatile middle point
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
