@@ -121,7 +121,7 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
     workgroup = min(length(lagrangian_particles), 256)
     worksize = length(lagrangian_particles)
 
-    arch = architecture(model.grid)
+    arch = architecture(model)
 
     events = []
 
