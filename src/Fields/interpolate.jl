@@ -4,6 +4,17 @@ using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
+"""
+    low, high = index_binary_search(vec, val, length(vec))
+
+Binary search to finds the indices of vector `vec` 
+for which 
+
+    `vec[low] <= val && vec[high] >= val`
+
+(see https://computersciencehub.io/julia/code-for-binary-search-algorithm-julia)
+the input array `vec` has to be monotonically increasing
+"""
 @inline function index_binary_search(vec, val, array_size)
     if issorted(vec) 
         low = 0
