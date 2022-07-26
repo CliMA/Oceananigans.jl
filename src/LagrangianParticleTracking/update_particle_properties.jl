@@ -50,9 +50,9 @@ position based on the previous position (we bounce back a certain restitution fr
        
         if !immersed_cell(iₒ, jₒ, kₒ, grid)
             iᵈ, jᵈ, kᵈ = (i, j, k) .- (iₒ, jₒ, kₒ)
-            xₚ = adjust_coord(xₚ, xnode, iₒ, Val(iᵈ), grid)
-            yₚ = adjust_coord(yₚ, ynode, jₒ, Val(jᵈ), grid)
-            zₚ = adjust_coord(zₚ, znode, kₒ, Val(kᵈ), grid)
+            xₚ = adjust_coord(xₚ, xnode, iₒ, Val(iᵈ), grid, restitution)
+            yₚ = adjust_coord(yₚ, ynode, jₒ, Val(jᵈ), grid, restitution)
+            zₚ = adjust_coord(zₚ, znode, kₒ, Val(kᵈ), grid, restitution)
         end
     end
 
@@ -70,7 +70,7 @@ end
     j = Base.unsafe_trunc(Int, j)
 
     @inbounds particles.x[p] += calc_correct_velocity_u(u, grid, j) * Δt
-    @inbounds particles.y[p] += calc_correct_velocity_v(v, grid) * Δt
+    @inbounds particles.y[p] += calc_correct_velocity_v(v, grid)    * Δt
     @inbounds particles.z[p] += w * Δt
 
     x, y, z = return_face_metrics(grid)
