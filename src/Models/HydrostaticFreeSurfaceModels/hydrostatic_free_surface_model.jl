@@ -11,6 +11,7 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -53,7 +54,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
+                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -95,7 +96,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
+                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -211,11 +212,11 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, No
 
 function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
   user_halo = halo_size(grid)
-  required_halo = inflate_halo_size(user_halo..., topology(grid),
+  required_halo = inflate_halo_size(1, 1, 1, grid,
                                     momentum_advection,
                                     tracer_advection,
                                     closure)
 
   any(user_halo .< required_halo) &&
-      throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+    throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end

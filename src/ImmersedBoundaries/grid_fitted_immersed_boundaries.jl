@@ -23,6 +23,11 @@ abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 #####
+##### ImmersedBoundaryGrids require one additional halo to check `inactive_node` for
+##### Faces on the first halo
+#####
+
+#####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
 
@@ -44,8 +49,8 @@ end
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax = maximum(ib.bottom_height)
-    hmin = minimum(ib.bottom_height)
+    hmax = maximum(parent(ib.bottom_height))
+    hmin = minimum(parent(ib.bottom_height))
     return @sprintf("GridFittedBottom(min(h)=%.2e, max(h)=%.2e)", hmin, hmax)
 end
 
@@ -61,7 +66,6 @@ Return a grid with `GridFittedBottom` immersed boundary.
 Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
-    arch = grid.architecture
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
@@ -92,8 +96,8 @@ end
     return z <= h
 end
 
-on_architecture(arch, ib::AbstractGridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
-Adapt.adapt_structure(to, ib::AbstractGridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
 
 #####
 ##### Implicit vertical diffusion
@@ -146,7 +150,6 @@ end
 end
 
 function compute_mask(grid, ib)
-    arch = architecture(grid)
     mask_field = Field{Center, Center, Center}(grid, Bool)
     set!(mask_field, ib.mask)
     fill_halo_regions!(mask_field)
@@ -167,6 +170,7 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
+    
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 

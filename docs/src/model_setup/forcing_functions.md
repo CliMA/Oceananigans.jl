@@ -303,7 +303,7 @@ w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2 # m s⁻¹
 sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
 
 # output
-AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+AdvectiveForcing with the UpwindBiased scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-0.00352102)
@@ -328,10 +328,10 @@ slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
                                    top=no_penetration, bottom=no_penetration)
 
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
-sinking = AdvectiveForcing(WENO5(; grid), w=w_slip)
+sinking = AdvectiveForcing(WENO(; grid), w=w_slip)
 
 # output
-AdvectiveForcing with the WENO5 scheme:
+AdvectiveForcing with the WENO scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: 32×32×33 Field{Center, Center, Face} on RectilinearGrid on CPU

@@ -1,5 +1,5 @@
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Advection: WENO5
+using Oceananigans.Advection: WENO
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -8,7 +8,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme
 
 import Oceananigans.Simulations: new_time_step
 import Oceananigans.Diagnostics: accurate_cell_advection_timescale
-import Oceananigans.Advection: WENO5
+import Oceananigans.Advection: WENO
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
@@ -53,7 +53,7 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
-WENO5(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO5, mrg, args...; kwargs...)
+WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
