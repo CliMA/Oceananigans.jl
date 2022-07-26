@@ -104,7 +104,7 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
 """
 @inline function interpolate(field, x, y, z)
     LX, LY, LZ = location(field)
-    i, j, k = fractional_indices(x, y, z, (LX(), LY(), LZ()), grid)
+    i, j, k = fractional_indices(x, y, z, (LX(), LY(), LZ()), field.grid)
 
     # Convert fractional indices to unit cell coordinates 0 <= (ξ, η, ζ) <=1
     # and integer indices (with 0-based indexing).
