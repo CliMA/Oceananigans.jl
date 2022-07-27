@@ -3,8 +3,6 @@ using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 
-using KernelAbstractions: NoneEvent
-
 import Oceananigans.TimeSteppers: ab2_step!
 
 #####
@@ -40,10 +38,6 @@ function local_ab2_step!(model, Δt, χ)
         tuple(explicit_tracer_step_events...))
 
     return prognostic_field_events    
-
-    # wait(device(model.architecture), MultiEvent(tuple(explicit_velocity_step_events..., explicit_tracer_step_events...)))
-
-    # return nothing
 end
 
 #####
