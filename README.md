@@ -95,7 +95,7 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 ```julia
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO5())
+model = NonhydrostaticModel(; grid, advection=WENO())
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)

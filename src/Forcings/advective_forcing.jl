@@ -42,7 +42,7 @@ w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
 settling = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_Stokes)
 
 # output
-AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+AdvectiveForcing with the UpwindBiased scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-1.97096)

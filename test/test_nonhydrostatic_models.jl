@@ -52,7 +52,7 @@ include("dependencies_for_runtests.jl")
         end
 
         # Model ensures that halos are at least of size 3
-        for scheme in (WENO5(), UpwindBiasedFifthOrder())
+        for scheme in (WENO(), UpwindBiasedFifthOrder())
             model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 

@@ -9,9 +9,10 @@ export
 
 using Oceananigans: AbstractModel
 
-import Oceananigans.Architectures: device_event
+import Oceananigans.Architectures: device_event, architecture
 
 device_event(model::AbstractModel) = device_event(model.architecture)
+architecture(model::AbstractModel) = model.architecture
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 

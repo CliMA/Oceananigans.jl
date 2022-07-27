@@ -1,4 +1,4 @@
-using Oceananigans.Grids: scalar_summary
+using Oceananigans.Utils: prettysummary
 
 """
     FPlane{FT} <: AbstractRotation
@@ -44,7 +44,7 @@ end
 @inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = zero(eltype(grid))
 
 function Base.summary(fplane::FPlane{FT}) where FT 
-    fstr = scalar_summary(fplane.f)
+    fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end
 

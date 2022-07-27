@@ -66,6 +66,7 @@ SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlope
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
+    by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = max(bz, slope_model.minimum_bz)
     

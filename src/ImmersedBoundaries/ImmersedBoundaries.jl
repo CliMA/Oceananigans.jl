@@ -49,7 +49,7 @@ import Oceananigans.Grids:
         cpu_face_constructor_y,
         cpu_face_constructor_z
         
-import Oceananigans.Grids: architecture, on_architecture, with_halo
+import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
@@ -127,6 +127,11 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary))
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+
+# ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
+# (which requires checking `Center` nodes at N + H and N + H + 1)
+inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
+inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
@@ -207,7 +212,6 @@ As well as
 ##### Utilities
 #####
 
-const IBG = ImmersedBoundaryGrid
 const c = Center()
 const f = Face()
 

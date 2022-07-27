@@ -3,8 +3,8 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Uv,
     _advective_momentum_flux_Vu,
     _advective_momentum_flux_Vv,
-    advective_tracer_flux_x, 
-    advective_tracer_flux_y,
+    _advective_tracer_flux_x, 
+    _advective_tracer_flux_y,
     vertical_vorticity_U,
     vertical_vorticity_V,
     bernoulli_head_U,
@@ -84,10 +84,10 @@ end
 #####
 
 @inline transport_tracer_flux_x(i, j, k, grid, advection, uh, h, c) =
-    @inbounds advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / ℑxᶠᵃᵃ(i, j, k, grid, h)
+    @inbounds _advective_tracer_flux_x(i, j, k, grid, advection, uh, c) / ℑxᶠᵃᵃ(i, j, k, grid, h)
 
 @inline transport_tracer_flux_y(i, j, k, grid, advection, vh, h, c) =
-    @inbounds advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
+    @inbounds _advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
     div_Uc(i, j, k, grid, advection, solution, c, formulation)
@@ -108,8 +108,8 @@ which ends up at the location `ccc`.
 end
 
 @inline function div_Uc(i, j, k, grid, advection, solution, c, ::VectorInvariantFormulation)
-    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, solution[1], c) +
-                                     δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, solution[2], c)) 
+    return 1/Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, solution[1], c) +
+                                     δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, solution[2], c)) 
 end
 
 # Support for no advection
