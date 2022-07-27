@@ -39,7 +39,10 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
     architecture(solver.multigrid_solver)
 
 """
-    MGImplicitFreeSurfaceSolver(grid, settings)
+    MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
+                                settings, 
+                                gravitational_acceleration = nothing, 
+                                placeholder_timestep = -1.0)
 
 Return a solver based on a multigrid method for the elliptic equation
     
@@ -52,9 +55,9 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-step `ηⁿ`.
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                    settings, 
-                                    gravitational_acceleration=nothing, 
-                                    placeholder_timestep = -1.0)
+                                     settings, 
+                                     gravitational_acceleration = nothing, 
+                                     placeholder_timestep = -1.0)
     arch = architecture(grid)
 
     # Initialize vertically integrated lateral face areas

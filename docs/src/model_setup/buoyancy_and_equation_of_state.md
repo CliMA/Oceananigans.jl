@@ -35,7 +35,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so ommitting `buoyancy`
+`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so omitting `buoyancy`
 from the `NonhydrostaticModel` constructor yields an identical result:
 
 ```jldoctest buoyancy
@@ -61,7 +61,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -91,7 +92,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -126,7 +128,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -140,7 +143,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 

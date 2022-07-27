@@ -95,7 +95,7 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 ```julia
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO5())
+model = NonhydrostaticModel(; grid, advection=WENO())
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)
@@ -121,7 +121,7 @@ It's _deep_ and includes:
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
   
-    If you've got a question or something, anything! to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
+    If you've got a question or something, anything! to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.

@@ -1,5 +1,3 @@
-using Adapt
-using CUDA: CuArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Printf
@@ -45,7 +43,7 @@ PartialCellBottom(bottom_height; minimum_fractional_Δz=0.1) =
 Criterion is h >= z - ϵ Δz
 
 """
-@inline function immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     # Face node above current cell
     z = znode(c, c, f, i, j, k+1, underlying_grid)
     h = @inbounds ib.bottom_height[i, j]
@@ -53,6 +51,9 @@ Criterion is h >= z - ϵ Δz
 end
 
 const PCIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
+
+on_architecture(arch, ib::PartialCellBottom) = PartialCellBottom(arch_array(arch, ib.bottom_height), ib.minimum_fractional_Δz)
+Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height), ib.minimum_fractional_Δz)     
 
 bottom_cell(i, j, k, ibg::PCIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
                                     immersed_cell(i, j, k-1, ibg.underlying_grid, ibg.immersed_boundary)
