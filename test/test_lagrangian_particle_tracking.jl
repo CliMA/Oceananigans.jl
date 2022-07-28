@@ -73,16 +73,17 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     ##### Test Boundary restitution
     #####
 
-    top_face = CUDA.@allowscalar grid.zᵃᵃᶜ[grid.Nz - 1]
+    initial_z    = CUDA.@allowscalar grid.zᵃᵃᶜ[grid.Nz - 1]
+    top_boundary = CUDA.@allowscalar grid.zᵃᵃᶠ[grid.Nz + 1]
 
-    x, y, z = arch_array.(Ref(arch), ([0.0], [0.0], [top_face]))
+    x, y, z = arch_array.(Ref(arch), ([0.0], [0.0], [initial_z]))
 
     particles = LagrangianParticles(; x, y, z)
     u, v, w   = VelocityFields(grid)
 
     Δt = 0.01
-    interior(w, :, :, grid.Nz)   .= (1.1 - z[1]) / Δt
-    interior(w, :, :, grid.Nz-1) .= (1.2 - z[1]) / Δt
+    interior(w, :, :, grid.Nz)   .= (0.1 + top_boundary - initial_z) / Δt
+    interior(w, :, :, grid.Nz-1) .= (0.2 + top_boundary - initial_z) / Δt
 
     velocities = PrescribedVelocityFields(; u, v, w)
 
@@ -91,7 +92,7 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     time_step!(model, Δt)
     z = convert(array_type(arch), model.particles.properties.z)
 
-    @test all(z .≈ 0.85)
+    @test all(z .≈ (top_boundary - 0.15))
 
     #####
     ##### Test custom particle "SpeedTrackingParticle"
