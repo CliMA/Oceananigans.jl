@@ -91,7 +91,7 @@ end
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
     p = @index(Global)
 
-    old_pos = (particles.x[p], particles.y[p], particles.y[p])
+    old_pos = deepcopy((particles.x[p], particles.y[p], particles.z[p]))
 
     update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
     x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
