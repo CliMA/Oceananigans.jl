@@ -22,9 +22,6 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-# Fallback if we skip one cell
-@inline adjust_coord(x, args...) = x
-
 @inline bounce_backward(x, nodefunc, i, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * rest
 @inline  bounce_forward(x, nodefunc, i, grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * rest
 
