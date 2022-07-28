@@ -45,7 +45,7 @@ end
     @inbounds x₁ = vec[y₁]
 
     if y₁ == y₂
-        return FT(x₁)
+        return FT(y₁)
     else
         return FT((y₂ - y₁) / (x₂ - x₁) * (val - x₁) + y₁)
     end

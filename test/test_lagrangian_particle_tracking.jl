@@ -49,9 +49,11 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
                            x=(-1, 1), y=(-1, 1), z)
 
     P = 10
+    
     #####
     ##### Test default particle
     #####
+    
     xs = arch_array(arch, 0.6*ones(P))
     ys = arch_array(arch, 0.58*ones(P))
     zs = arch_array(arch, 0.8*ones(P))
@@ -66,6 +68,29 @@ function run_simple_particle_tracking_tests(arch, timestepper; vertically_stretc
     # Just test we run without errors
     @test length(model.particles) == P
     @test propertynames(model.particles.properties) == (:x, :y, :z)
+
+    #####
+    ##### Test Boundary restitution
+    #####
+
+    top_face = CUDA.@allowscalar grid.zᵃᵃᶠ[grid.Nz]
+
+    x, y, z = arch_array.(Ref(arch), ([0.0], [0.0], [top_face]))
+
+    particles = LagrangianParticles(; x, y, z)
+    u, v, w   = VelocityFields(grid)
+
+    Δt = 0.01
+    fill!(w, (1.1 - top_face) / Δt)    
+
+    velocities = PrescribedVelocityFields(; u, v, w)
+
+    model = HydrostaticFreeSurfaceModel(; grid, particles, velocities, buoyancy=nothing, tracers = ())
+
+    time_step!(model, Δt)
+    z = convert(array_type(arch), model.particles.properties.z)
+
+    @test all(z .≈ 0.9)
 
     #####
     ##### Test custom particle "SpeedTrackingParticle"
