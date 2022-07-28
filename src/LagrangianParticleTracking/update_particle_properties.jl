@@ -78,9 +78,9 @@ end
     x, y, z = return_face_metrics(grid)
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], maxnode(TX(), grid.xᶠᵃᵃ, grid.Nx), restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], maxnode(TY(), grid.yᵃᶠᵃ, grid.Ny), restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], maxnode(TZ(), grid.zᵃᵃᶠ, grid.Nz), restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], maxnode(TX(), x, grid.Nx), restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], maxnode(TY(), y, grid.Ny), restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], maxnode(TZ(), z, grid.Nz), restitution)
 end
 
 @kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
