@@ -35,7 +35,7 @@ end
 If a particle with position `x, y, z` is inside and immersed boundary, correct the 
 position based on the previous position (we bounce back a certain restitution from the old cell)
 """
-@inline function pop_immersed_particles(particles, p, grid, restitution, old_pos)
+@inline function pop_immersed_particles(particles, p, grid, restitution, old_indices)
     xₚ, yₚ, zₚ = (particles.x[p], particles.y[p], particles.z[p])
     i, j, k   = fractional_indices(xₚ, yₚ, zₚ, (Center(), Center(), Center()), grid.underlying_grid)
     i = Base.unsafe_trunc(Int, i)
