@@ -43,7 +43,7 @@ position based on the previous position (we bounce back a certain restitution fr
     k = Base.unsafe_trunc(Int, k)
    
     if immersed_cell(i, j, k, grid)
-        iₒ, jₒ, kₒ   = fractional_indices(old_pos..., (Center(), Center(), Center()), grid.underlying_grid)
+        iₒ, jₒ, kₒ = old_indices
         iₒ = Base.unsafe_trunc(Int, iₒ)
         jₒ = Base.unsafe_trunc(Int, jₒ)
         kₒ = Base.unsafe_trunc(Int, kₒ)
@@ -91,10 +91,10 @@ end
 @kernel function _advect_particles!(particles, restitution, grid::ImmersedBoundaryGrid, Δt, velocities)
     p = @index(Global)
 
-    old_pos = deepcopy((particles.x[p], particles.y[p], particles.z[p]))
+    old_indices = fractional_indices(particles.x[p], particles.y[p], particles.z[p], (Center(), Center(), Center()), grid.underlying_grid)
 
     update_particle_position!(particles, p, restitution, grid.underlying_grid, Δt, velocities) 
-    x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_pos)
+    x, y, z = pop_immersed_particles(particles, p, grid, restitution, old_indices)
     
     particles.x[p] = x
     particles.y[p] = y
