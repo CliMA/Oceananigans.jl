@@ -45,7 +45,7 @@ end
     @inbounds x₁ = vec[y₁]
 
     if y₁ == y₂
-        return FT(x₁)
+        return FT(y₁)
     else
         return FT((y₂ - y₁) / (x₂ - x₁) * (val - x₁) + y₁)
     end
@@ -56,9 +56,13 @@ end
 #### Use other methods if a more accurate interpolation is required
 ####
 
-@inline fractional_x_index(x::FT, loc, grid) where FT = fractional_index(length(typeof(loc), topology(grid)[1], grid.Nx), x, xnodes(typeof(loc), grid))
-@inline fractional_y_index(y::FT, loc, grid) where FT = fractional_index(length(typeof(loc), topology(grid)[2], grid.Ny), y, ynodes(typeof(loc), grid))
-@inline fractional_z_index(z::FT, loc, grid) where FT = fractional_index(length(typeof(loc), topology(grid)[3], grid.Nz), z, znodes(typeof(loc), grid))
+@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid))
+@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid))
+@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(Center, grid))
+
+@inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[1], grid.Nx), x, xnodes(Face, grid)) - 1
+@inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(Face, grid)) - 1
+@inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[3], grid.Nz), z, znodes(Face, grid)) - 1
 
 @inline fractional_x_index(x::FT, ::Face,   grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
 @inline fractional_x_index(x::FT, ::Center, grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)

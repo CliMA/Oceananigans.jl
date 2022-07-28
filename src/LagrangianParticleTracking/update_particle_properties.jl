@@ -22,12 +22,12 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-# Fallback if we skip one cell
-@inline adjust_coord(x, args...) where N = x
+@inline bounce_backward(x, nodefunc, i, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * rest
+@inline  bounce_forward(x, nodefunc, i, grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * rest
 
-@inline adjust_coord(x, nodefunc, i, ::Val{0} , grid, rest) = x
-@inline adjust_coord(x, nodefunc, i, ::Val{-1}, grid, rest) = nodefunc(Face(), i+1, grid) - (x - nodefunc(Face(), i+1, grid)) * rest
-@inline adjust_coord(x, nodefunc, i, ::Val{1} , grid, rest) = nodefunc(Face(), i, grid)   + (nodefunc(Face(), i, grid)   - x) * rest
+@inline adjust_coord(x, nodefunc, i, d, grid, rest) = 
+    ifelse(d ==  1, bounce_backward(x, nodefunc, i, grid, rest),
+    ifelse(d == -1,  bounce_forward(x, nodefunc, i, grid, rest), x))
 
 """
     pop_immersed_boundary_condition(particles, p, grid, restitution)
@@ -50,17 +50,19 @@ position based on the previous position (we bounce back a certain restitution fr
        
         if !immersed_cell(iₒ, jₒ, kₒ, grid)
             iᵈ, jᵈ, kᵈ = (i, j, k) .- (iₒ, jₒ, kₒ)
-            xₚ = adjust_coord(xₚ, xnode, iₒ, Val(iᵈ), grid, restitution)
-            yₚ = adjust_coord(yₚ, ynode, jₒ, Val(jᵈ), grid, restitution)
-            zₚ = adjust_coord(zₚ, znode, kₒ, Val(kᵈ), grid, restitution)
+            xₚ = adjust_coord(xₚ, xnode, iₒ, iᵈ, grid, restitution)
+            yₚ = adjust_coord(yₚ, ynode, jₒ, jᵈ, grid, restitution)
+            zₚ = adjust_coord(zₚ, znode, kₒ, kᵈ, grid, restitution)
         end
     end
 
     return xₚ, yₚ, zₚ
 end
 
-@inline function update_particle_position!(particles, p, restitution, grid::AbstractGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+@inline maxnode(::Bounded, nodes, N) = nodes[N+1]
+@inline maxnode(::Periodic, nodes, N) = nodes[N]
 
+@inline function update_particle_position!(particles, p, restitution, grid::AbstractGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     # Advect particles using forward Euler.
     @inbounds u = interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
     @inbounds v = interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) 
@@ -76,9 +78,9 @@ end
     x, y, z = return_face_metrics(grid)
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], x[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], y[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], z[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], x[1], maxnode(TX(), x, grid.Nx), restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], y[1], maxnode(TY(), y, grid.Ny), restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], z[1], maxnode(TZ(), z, grid.Nz), restitution)
 end
 
 @kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities) 
