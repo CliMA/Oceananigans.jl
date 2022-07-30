@@ -4,6 +4,7 @@ using Statistics: norm, dot
 using LinearAlgebra
 using AlgebraicMultigrid: _solve!, init, RugeStubenAMG
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
+using CUDA
 
 import Oceananigans.Architectures: architecture
 
@@ -75,7 +76,7 @@ function MultigridSolver(linear_operation!::Function,
 
     arch = architecture(template_field)
 
-    arch == GPU() && error("Multigrid solver is only supported on CPUs.")
+    # arch == GPU() && error("Multigrid solver is only supported on CPUs.")
 
     matrix = initialize_matrix(template_field, linear_operation!, args...)
 
@@ -132,7 +133,7 @@ end
     solve!(x, solver::MultigridSolver, b; kwargs...)
 
 Solve `A * x = b` using a multigrid method, where `A * x` is determined
-by `solver.linear_operation`.
+by `solver.matrix`.
 """
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
@@ -151,7 +152,7 @@ end
 Base.show(io::IO, solver::MultigridSolver) = 
 print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
               "├── grid: ", summary(solver.grid), '\n',
-              "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
+              "├── matrix: ", prettysummary(solver.matrix), '\n',
               "├── reltol: ", prettysummary(solver.reltol), '\n',
               "├── abstol: ", prettysummary(solver.abstol), '\n',
               "├── maxiter: ", solver.maxiter, '\n',
