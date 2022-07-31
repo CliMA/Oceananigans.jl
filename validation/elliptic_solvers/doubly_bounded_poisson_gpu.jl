@@ -4,7 +4,7 @@ using Oceananigans.Operators: ∇²ᶜᶜᶜ
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver, finalize_solver
 using Oceananigans.Architectures: architecture, arch_array
 using IterativeSolvers
 using Statistics: mean
@@ -34,14 +34,15 @@ function compute_∇²!(∇²φ, φ, arch, grid)
     return nothing
 end
 
-N = 5
-grid = RectilinearGrid(CPU(), size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
+N = 8
+grid = RectilinearGrid(GPU(), size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
 arch = architecture(grid)
-Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
 # Select RHS
 r = CenterField(grid)
+Nx, Ny, Nz = size(r)
+
 r₀(x, y, z) = (x^2 + y^2) < 1 ? 1 : 0 #exp(-x^2 - y^2)
 set!(r, r₀)
 r .-= mean(r)
@@ -69,61 +70,19 @@ cg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field
 fill_halo_regions!(φ_cg)
 
 
-# Solve ∇²φ = r with `AlgebraicMultigrid` solver on CPU
+# Solve ∇²φ = r with `AlgebraicMultigrid` solver
 φ_mg = CenterField(grid)
 
-@info "Solving the Poisson equation with the Algebraic Multigrid solver on CPU..."
+@info "Solving the Poisson equation with the Algebraic Multigrid solver..."
 @time mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
 @time solve!(φ_mg, mgs, r)
-
+@show Vector(mgs.amgx_solver_struct.device_b)
+@show Vector(mgs.amgx_solver_struct.device_x)
 fill_halo_regions!(φ_mg)
+φ_mg .-= mean(φ_mg)
 
+finalize_solver(mgs)
 
-# Solve ∇²φ = r with `AlgebraicMultigrid` solver on GPU
-φ_mg_gpu = CenterField(grid)
-
-@info "Solving the Poisson equation with the Algebraic Multigrid solver on GPU..."
-using AMGX
-AMGX.initialize()
-AMGX.initialize_plugins()
-
-# Create arrays on host
-Nx, Ny, Nz = size(r)
-FT = eltype(r.grid)
-b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
-x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
-
-# Configure solver and allocate arrays on device
-config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => mgs.maxiter, "store_res_history" => 1));
-resources = AMGX.Resources(config)
-solver = AMGX.Solver(resources, AMGX.dDDI, config)
-v = AMGX.AMGXVector(resources, AMGX.dDDI)
-x = AMGX.AMGXVector(resources, AMGX.dDDI)
-matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
-
-b_array .= reshape(interior(r), Nx * Ny * Nz)
-AMGX.upload!(v, b_array)
-
-x_array .= reshape(interior(φ_mg), Nx * Ny * Nz)
-AMGX.upload!(x, x_array)
-
-cuCSR = CuSparseMatrixCSR(transpose(mgs.matrix))
-@inline sub_one(x) = convert(Int32, x-1)
-AMGX.upload!(matrix, 
-            map(sub_one, cuCSR.rowPtr), # annoyingly arrays need to be 0 indexed rather than 1 indexed
-            map(sub_one, cuCSR.colVal),
-            cuCSR.nzVal
-            )
-
-AMGX.setup!(solver, matrix)
-AMGX.solve!(x, solver, v)
-
-interior(φ_mg) .= reshape(Vector(x), Nx, Ny, Nz)
-
-# Free memory
-close(matrix); close(x); close(v); close(solver); close(resources); close(config); AMGX.finalize_plugins(); AMGX.finalize()
-
-fill_halo_regions!(φ_mg_gpu)
 
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
@@ -157,9 +116,9 @@ cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_fie
 @time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
 
 fill_halo_regions!(φ_cgmg)
+finalize_solver(mgs)
 
 @show φ_fft
 @show φ_cg
 @show φ_mg
-@show φ_mg_gpu
 @show φ_cgmg
