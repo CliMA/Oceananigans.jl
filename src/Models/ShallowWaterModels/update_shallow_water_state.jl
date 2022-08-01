@@ -15,11 +15,23 @@ function update_state!(model::ShallowWaterModel)
 
     wait(device(model.architecture), MultiEvent(masking_events))
 
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
+
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.solution, model.tracers),
                        model.clock,
                        fields(model))
 
+    # Compute the velocities
+
+    compute_velocities!(model.velocities, formulation(model))
+
     return nothing
 end
 
+compute_velocities!(U, ::VectorInvariantFormulation) = nothing
+
+function compute_velocities!(U, ::ConservativeFormulation)
+    compute!(U.u)
+    compute!(U.v)
+end

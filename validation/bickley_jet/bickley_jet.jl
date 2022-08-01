@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
+using Oceananigans.Advection: VelocityStencil, VorticityStencil, boundary_buffer
 
 using Printf
 using GLMakie
@@ -20,11 +20,11 @@ function run_bickley_jet(;
                          arch = CPU(),
                          Nh = 64, 
                          free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0),
-                         momentum_advection = WENO5(),
-                         tracer_advection = WENO5(),
+                         momentum_advection = WENO(order = 5),
+                         tracer_advection = WENO(order = 5),
                          experiment_name = string(nameof(typeof(momentum_advection))))
 
-    grid = bickley_grid(; arch, Nh)
+    grid = bickley_grid(; arch, Nh, halo = (7, 7, 7))
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, tracer_advection,
                                         free_surface, tracers = :c, buoyancy=nothing)
     set_bickley_jet!(model)
@@ -47,7 +47,7 @@ function run_bickley_jet(;
     u, v, w = model.velocities
     outputs = merge(model.velocities, model.tracers, (ζ=∂x(v) - ∂y(u), η=model.free_surface.η))
 
-    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name
+    @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
@@ -104,19 +104,15 @@ function visualize_bickley_jet(name)
     end
 end
 
-advection_schemes = [CenteredSecondOrder(), WENO5()]
-
-#=
-advection_schemes = [WENO5(vector_invariant=VelocityStencil()),
-                     WENO5(vector_invariant=VorticityStencil()),
-                     WENO5(),
+advection_schemes = [WENO(vector_invariant=VelocityStencil()),
+                     WENO(vector_invariant=VorticityStencil()),
+                     WENO(),
                      VectorInvariant()]
-=#
 
-arch = CPU()
-for Nh in [128]
-    for momentum_advection in advection_schemes
-        name = run_bickley_jet(; arch, momentum_advection, Nh)
-        visualize_bickley_jet(name)
+
+for Nx in [128]
+    for advection in advection_schemes
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
+        visualize_bickley_jet(experiment_name)
     end
 end

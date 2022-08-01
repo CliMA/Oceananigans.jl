@@ -1,4 +1,4 @@
-# The Boussinesq approximation
+# [The Boussinesq approximation](@id boussinesq_approximation)
 
 Oceananigans.jl often employs the Boussinesq approximation[^1]. In the Boussinesq approximation
 the fluid density ``\rho`` is, in general, decomposed into three components:
@@ -26,6 +26,22 @@ the mass conservation equation reduces to the continuity equation
     \label{eq:continuity}
     \end{equation}
 ```
+
+Similarly, in the the momentum equations we can divide through with ``\rho_0`` and use that ``\rho_* + \rho' \ll \rho_0`` to get:
+```math
+    \begin{equation}
+    \partial_t \boldsymbol{v} + \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{v} + \dotsb = - \frac1{\rho_0} \boldsymbol{\nabla} p - g \frac{\rho}{\rho_0} \hat{\boldsymbol{z}} + \dotsb \, .
+    \label{eq:momentum}
+    \end{equation}
+```
+
+We refer to ``p / \rho_0`` as the "kinematic pressure" with dimensions of velocity squared. Hereafter, we
+abuse notation a bit and denote the kinematic pressure simply as ``p``.
+
+!!! info "Convention on dynamic versus kinematic pressure"
+    In Oceananigans, the pressure ``p`` refers to "kinematic pressure" (with dimensions velocity squared),
+    i.e., the dynamic pressure scaled with the reference fluid density ``\rho_0``.
+
 
 [^1]: Named after Boussinesq (1903) although used earlier by Oberbeck (1879), the Boussinesq
       approximation neglects density differences in the momentum equation except when associated

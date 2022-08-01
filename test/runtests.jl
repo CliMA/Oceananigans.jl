@@ -55,6 +55,7 @@ include("dependencies_for_runtests.jl")
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_multigrid_solver.jl")
         end
     end
 
@@ -81,6 +82,7 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
+            include("test_immersed_advection.jl")
         end
     end
 

@@ -16,6 +16,8 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
+device!(3)
+
 @inline function visualize(field, lev, dims) 
     (dims == 1) && (idx = (lev, :, :))
     (dims == 2) && (idx = (:, lev, :))
@@ -104,7 +106,7 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (3, 3, 3),
+                                              halo = (5, 5, 5),
                                               z = z_faces,
                                               precompute_metrics = true)
 
@@ -228,13 +230,13 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO5(vector_invariant = VelocityStencil()),
+                                    momentum_advection = WENO(vector_invariant = VelocityStencil()),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     buoyancy = buoyancy,
                                     tracers = (:T, :S),
-                                    closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
+                                    closure = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
-                                    tracer_advection = WENO5(underlying_grid))
+                                    tracer_advection = WENO(underlying_grid))
 
 #####
 ##### Initial condition:

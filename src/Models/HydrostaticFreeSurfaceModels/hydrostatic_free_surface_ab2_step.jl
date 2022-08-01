@@ -3,8 +3,6 @@ using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 
-using KernelAbstractions: NoneEvent
-
 import Oceananigans.TimeSteppers: ab2_step!
 
 #####
@@ -21,10 +19,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     # waiting all the ab2 steps (velocities, free_surface and tracers to complete)
     @apply_regionally wait(device(model.architecture), prognostic_field_events)
-
-
-    # @apply_regionally local_ab2_step!(model, Δt, χ)
-    # ab2_step_free_surface!(model.free_surface, model, Δt, χ, nothing)    
 
     return nothing
 end
@@ -44,10 +38,6 @@ function local_ab2_step!(model, Δt, χ)
         tuple(explicit_tracer_step_events...))
 
     return prognostic_field_events    
-
-    # wait(device(model.architecture), MultiEvent(tuple(explicit_velocity_step_events..., explicit_tracer_step_events...)))
-
-    # return nothing
 end
 
 #####
@@ -84,7 +74,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.closure,
                        model.diffusivity_fields,
                        nothing,
-                       model.clock,
+                       model.clock, 
                        Δt,
                        dependencies = explicit_velocity_step_events[i])
     end
