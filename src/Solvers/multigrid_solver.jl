@@ -1,9 +1,6 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: interior_parent_indices
-using Statistics: norm, dot
 using LinearAlgebra
 using AlgebraicMultigrid: _solve!, init, RugeStubenAMG
-using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using CUDA
 using AMGX
 
@@ -102,7 +99,7 @@ function MultigridSolver(linear_operation!::Function,
         AMGX.initialize()
         AMGX.initialize_plugins()
         # FIXME! Also pass tolerance
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1));
+        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol));
         resources = AMGX.Resources(config)
         amgx_solver = AMGX.Solver(resources, AMGX.dDDI, config)
         device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
