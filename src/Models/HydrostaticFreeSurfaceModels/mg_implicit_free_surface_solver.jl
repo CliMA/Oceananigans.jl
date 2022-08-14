@@ -6,11 +6,13 @@ using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device, unsafe_free!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
-using Oceananigans.Solvers: fill_matrix_elements!, constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
+using Oceananigans.Solvers: constructors, arch_sparse_matrix, update_diag!, unpack_constructors
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
+using CUDA.CUSPARSE: CuSparseMatrixCSR
+using AMGX
 
-import Oceananigans.Solvers: solve!, precondition!
+import Oceananigans.Solvers: solve!, precondition!, finalize_solver
 import Oceananigans.Architectures: architecture
 
 """
@@ -87,6 +89,8 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
 end
+
+@inline finalize_solver(solver::MGImplicitFreeSurfaceSolver) = finalize_solver(solver.multigrid_solver)
 
 """  
     fill_diag!(constr, arch, M, N)
@@ -183,6 +187,19 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
         solver.matrix = arch_sparse_matrix(arch, constructors) 
 
         unsafe_free!(constructors)
+
+        s = solver.amgx_solver_struct
+        if s != nothing
+            # FIXME only allocate this once
+            csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
+            @inline sub_one(x) = convert(Int32, x-1)
+            AMGX.upload!(s.device_matrix, 
+                map(sub_one, csr_matrix.rowPtr),
+                map(sub_one, csr_matrix.colVal),
+                csr_matrix.nzVal
+                )
+            AMGX.setup!(s.amgx_solver, s.device_matrix)
+        end
 
         implicit_free_surface_solver.previous_Δt = Δt
     end

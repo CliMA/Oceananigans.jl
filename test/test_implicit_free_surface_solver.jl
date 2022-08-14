@@ -12,7 +12,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     MatrixImplicitFreeSurfaceSolver, 
     MGImplicitFreeSurfaceSolver,
     implicit_free_surface_step!,
-    implicit_free_surface_linear_operation!
+    implicit_free_surface_linear_operation!,
+    finalize_solver
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -73,7 +74,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
         @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
     end
 
-    return nothing
+    return model.free_surface.implicit_step_solver
 end
 
 @testset "Implicit free surface solver tests" begin
@@ -94,11 +95,10 @@ end
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
-            if arch isa CPU # This should be removed when GPU capability is added
-                @info "Testing Multigrid implicit free surface solver [$A, $G]..."
-                free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)
-                run_implicit_free_surface_solver_tests(arch, grid, free_surface)   
-            end
+            @info "Testing Multigrid implicit free surface solver [$A, $G]..."
+            free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)
+            mg_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            finalize_solver(mg_solver)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
@@ -111,6 +111,9 @@ end
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
+        mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
+                                              abstol=1e-15, reltol=0, maxiter=128^3)
+
         mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = mat_free_surface)
@@ -122,30 +125,22 @@ end
         fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = fft_free_surface)
+                                            
+        mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                               momentum_advection = nothing,
+                                               free_surface = mg_free_surface)
 
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
-
-        if arch isa CPU
-            mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
-                                                  abstol=1e-15, reltol=0, maxiter=128^3)
-
-            mg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                   momentum_advection = nothing,
-                                                   free_surface = mg_free_surface)
-
-            @test  mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
-        end
+        @test  mg_model.free_surface.implicit_step_solver isa MGImplicitFreeSurfaceSolver
 
         events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
         Δt₁ = 900
         Δt₂ = 920.0
-
-        models = arch isa CPU ? (mat_model, pcg_model, fft_model, mg_model) : (mat_model, pcg_model, fft_model)
         
-        for m in models
+        for m in (mat_model, pcg_model, fft_model, mg_model)
             set_simple_divergent_velocity!(m)
             implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
             implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5, events)
@@ -155,31 +150,24 @@ end
         mat_η = mat_model.free_surface.η
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
-        
+        mg_η  =  mg_model.free_surface.η
+     
         mat_η_cpu = Array(interior(mat_η))
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
+        mg_η_cpu  = Array(interior(mg_η))
 
         Δη_mat = mat_η_cpu .- fft_η_cpu
         Δη_pcg = pcg_η_cpu .- fft_η_cpu
-
-        if arch isa CPU
-            mg_η  =  mg_model.free_surface.η
-            mg_η_cpu  = Array(interior(mg_η))
-            Δη_mg  = mg_η_cpu  .- fft_η_cpu
-        end
+        Δη_mg  = mg_η_cpu  .- fft_η_cpu
 
         @info "FFT/PCG/MAT/MG implicit free surface solver comparison:"
         @info "    maximum(abs, η_mat - η_fft): $(maximum(abs, Δη_mat))"
         @info "    maximum(abs, η_pcg - η_fft): $(maximum(abs, Δη_pcg))"
-        if arch isa CPU
-            @info "    maximum(abs, η_mg - η_fft) : $(maximum(abs, Δη_mg))"
-        end
+        @info "    maximum(abs, η_mg - η_fft) : $(maximum(abs, Δη_mg))"
         @info "    maximum(abs, η_mat): $(maximum(abs, mat_η_cpu))"
         @info "    maximum(abs, η_pcg): $(maximum(abs, pcg_η_cpu))"
-        if arch isa CPU
-            @info "    maximum(abs, η_mg) : $(maximum(abs, mg_η_cpu))"
-        end
+        @info "    maximum(abs, η_mg) : $(maximum(abs, mg_η_cpu))"
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(mat_η_cpu .≈ fft_η_cpu)
@@ -203,5 +191,6 @@ end
             @test_skip all(mg_η_cpu .≈ fft_η_cpu)
             @test_skip all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         end
+        finalize_solver(mg_model.free_surface.implicit_step_solver)
     end
 end
