@@ -4,28 +4,28 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
 using Printf
 
-grid = RectilinearGrid(CPU(),
-                       topology = (Periodic, Bounded, Bounded), 
-                       size = (64, 64, 24),
-                       x = (-500kilometers, 500kilometers),
-                       y = (-500kilometers, 500kilometers),
-                       z = (-1kilometers, 0),
-                       halo = (4, 4, 4))
+underlying_grid = RectilinearGrid(CPU(),
+                                  topology = (Periodic, Bounded, Bounded), 
+                                  size = (64, 64, 24),
+                                  x = (-500kilometers, 500kilometers),
+                                  y = (-500kilometers, 500kilometers),
+                                  z = (-1kilometers, 0),
+                                  halo = (4, 4, 4))
 
 name = @sprintf("baroclinic_adjustment_Nx%d_Nz%d", grid.Nx, grid.Nz)
 
 Lz = grid.Lz
 width = 50kilometers
 bump(x, y) = - Lz * (1 - 0.05 * exp(-(x^2 + y^2) / 2width^2))
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
 # fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
 # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
 
 # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
 # free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
-# free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-free_surface = ImplicitFreeSurface(solver_method=:Multigrid)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+# free_surface = ImplicitFreeSurface(solver_method=:Multigrid)
 
 # Physics
 Δx, Δz = grid.Lx / grid.Nx, grid.Lz / grid.Nz
