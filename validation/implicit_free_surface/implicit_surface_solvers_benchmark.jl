@@ -38,9 +38,6 @@ horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
                                               ν = νz, κ = κz)
 
-# this is to fix a bug in validate_fft_implicit_solver_grid
-validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) = validate_fft_implicit_solver_grid(ibg.underlying_grid)
-
 implicit_free_surface_solvers = (:FastFourierTransform,
                                  :PreconditionedConjugateGradient,
                                  :HeptadiagonalIterativeSolver,
