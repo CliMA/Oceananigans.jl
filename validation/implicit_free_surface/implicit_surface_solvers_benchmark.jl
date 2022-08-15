@@ -4,8 +4,6 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver
 using Printf
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.validate_fft_implicit_solver_grid
-
 """
 Benchmarks the bumpy baroclinic adjustment problem with various implicit free-surface solvers.
 """
