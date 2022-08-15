@@ -1,6 +1,5 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver
 using Printf
