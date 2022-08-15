@@ -9,7 +9,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
 using Oceananigans.Solvers: fill_matrix_elements!, constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
-using Oceananigans.BuoyancyModels: g_Earth
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
