@@ -9,6 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
 using Oceananigans.Solvers: fill_matrix_elements!, constructors, arch_sparse_matrix, ensure_diagonal_elements_are_present!, update_diag!, unpack_constructors
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
+using Oceananigans.BuoyancyModels: g_Earth
 
 import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
@@ -55,7 +56,7 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-step `ηⁿ`.
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                     settings, 
+                                     settings=nothing, 
                                      gravitational_acceleration = nothing, 
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
@@ -70,7 +71,11 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
     # Set some defaults
-    settings = Dict{Symbol, Any}(settings)
+    if settings !== nothing
+        settings = Dict{Symbol, Any}(settings)
+    else
+        settings = Dict{Symbol, Any}()
+    end
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
     settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
