@@ -1,7 +1,8 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver
 using Printf
 
 underlying_grid = RectilinearGrid(CPU(),
@@ -14,16 +15,24 @@ underlying_grid = RectilinearGrid(CPU(),
 
 const Lz = underlying_grid.Lz
 const width = 50kilometers
-bump(x, y) = - Lz * (1 - 0.05 * exp(-(x^2 + y^2) / 2width^2))
+bump(x, y) = - Lz * (1 - 0.2 * exp(-(x^2 + y^2) / 2width^2))
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+
+# this is to fix a bug in validate_fft_implicit_solver_grid
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.validate_fft_implicit_solver_grid
+validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) = validate_fft_implicit_solver_grid(ibg.underlying_grid)
 
 # fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
 # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
 
-free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+# free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
 # free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 # free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 # free_surface = ImplicitFreeSurface(solver_method=:Multigrid)
+
+settings = (:abstol => 1.0e-15, :reltol => 0, :maxiter => 2097152)
+mg_preconditioner = MGImplicitFreeSurfaceSolver(underlying_grid, settings, g_Earth)
+free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner)
 
 # Physics
 Δx, Δz = grid.Lx / grid.Nx, grid.Lz / grid.Nz
@@ -44,8 +53,8 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                     buoyancy = BuoyancyTracer(),
                                     closure = (diffusive_closure, horizontal_closure),
                                     tracers = :b,
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5())
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO())
 
 # Initial condition: a baroclinically unstable situation!
 ramp(y, δy) = min(max(0, y/δy + 1/2), 1)
