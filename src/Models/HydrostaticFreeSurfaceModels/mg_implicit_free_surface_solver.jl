@@ -41,7 +41,7 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
 
 """
     MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                settings, 
+                                settings = nothing, 
                                 gravitational_acceleration = nothing, 
                                 placeholder_timestep = -1.0)
 
@@ -56,7 +56,7 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-step `ηⁿ`.
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                     settings=nothing, 
+                                     settings = nothing,
                                      gravitational_acceleration = nothing, 
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
@@ -70,7 +70,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    # Set some defaults
+    # set some defaults
     if settings !== nothing
         settings = Dict{Symbol, Any}(settings)
     else
@@ -81,9 +81,12 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
-    # initialize solver with Δt = nothing so that linear matrix is not computed; see `initialize_matrix` methods
+    # initialize solver with Δt = nothing so that linear matrix is not computed;
+    # see `initialize_matrix` methods
     solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
-                             template_field = right_hand_side, settings...)
+                             template_field = right_hand_side,
+                             settings...)
+
     # For updating the diagonal
     matrix_constructors = constructors(arch, solver.matrix)
     Nx, Ny = grid.Nx, grid.Ny
