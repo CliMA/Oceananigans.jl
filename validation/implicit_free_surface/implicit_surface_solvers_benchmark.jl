@@ -12,19 +12,17 @@ underlying_grid = RectilinearGrid(CPU(),
                                   z = (-1kilometers, 0),
                                   halo = (4, 4, 4))
 
-name = @sprintf("baroclinic_adjustment_Nx%d_Nz%d", grid.Nx, grid.Nz)
-
-Lz = grid.Lz
-width = 50kilometers
+const Lz = underlying_grid.Lz
+const width = 50kilometers
 bump(x, y) = - Lz * (1 - 0.05 * exp(-(x^2 + y^2) / 2width^2))
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
 # fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
 # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
 
-# free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
 # free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+# free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 # free_surface = ImplicitFreeSurface(solver_method=:Multigrid)
 
 # Physics
@@ -46,8 +44,8 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                     buoyancy = BuoyancyTracer(),
                                     closure = (diffusive_closure, horizontal_closure),
                                     tracers = :b,
-                                    momentum_advection = WENO(),
-                                    tracer_advection = WENO())
+                                    momentum_advection = WENO5(),
+                                    tracer_advection = WENO5())
 
 # Initial condition: a baroclinically unstable situation!
 ramp(y, δy) = min(max(0, y/δy + 1/2), 1)
