@@ -15,7 +15,7 @@ import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
-    struct MGImplicitFreeSurfaceSolver{V, S, R}
+    mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
 
 The multigrid implicit free-surface solver.
 
