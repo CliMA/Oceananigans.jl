@@ -128,7 +128,8 @@ end
 """
     compute_diag(arch, grid, g)
 
-Construct an `Nx * Ny` array on architecture `arch` with elements `Az / g`, where `g` is the gravitational accelaration.
+Construct an `Nx * Ny` array on architecture `arch` with elements `Az / g`,
+where `g` is the gravitational accelaration.
 """
 function compute_diag(arch, grid, g)
     diag = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, 1))
