@@ -142,16 +142,19 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
+    _solve!(solver.x_array, solt.ml, solt.b,
+            maxiter = solver.maxiter,
+             abstol = solver.abstol,
+             reltol = solver.reltol,
+             kwargs...)
     
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-
 Base.show(io::IO, solver::MultigridSolver) = 
-print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
+    print(io, "MultigridSolver on ", string(solver.architecture), ": \n",
               "├── grid: ", summary(solver.grid), '\n',
-              "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
+              "├── matrix: ", prettysummary(solver.matrix), '\n',
               "├── reltol: ", prettysummary(solver.reltol), '\n',
               "├── abstol: ", prettysummary(solver.abstol), '\n',
               "├── maxiter: ", solver.maxiter, '\n',
