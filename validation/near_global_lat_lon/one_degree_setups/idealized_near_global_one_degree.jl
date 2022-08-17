@@ -136,7 +136,7 @@ function progress(sim)
     msg3 = @sprintf("├── extrema(T): (%.2f, %.2f) ᵒC", Tmin, Tmax)
     msg4 = @sprintf("└── max|η|: %.2e m", ηmax)
 
-    @info string(msg1, '\n', msg2, '\n', msg3, '\n', msg4)
+    @info string(msg1, "\n", msg2, "\n", msg3, "\n", msg4)
 
     wall_clock[] = time_ns()
 

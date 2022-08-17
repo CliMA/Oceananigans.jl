@@ -395,11 +395,11 @@ function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
 end
 
 function Base.show(io::IO, fts::FieldTimeSeries)
-    prefix = string(summary(fts), '\n',
-                   "├── grid: ", summary(fts.grid), '\n',
-                   "├── indices: ", fts.indices, '\n')
+    prefix = string(summary(fts), "\n",
+                   "├── grid: ", summary(fts.grid), "\n",
+                   "├── indices: ", fts.indices, "\n")
 
-    suffix = string("└── data: ", summary(fts.data), '\n',
+    suffix = string("└── data: ", summary(fts.data), "\n",
                     "    └── ", data_summary(fts))
 
     return print(io, prefix, suffix)
