@@ -18,10 +18,17 @@ struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 end
 
 """
-    HydrostaticSphericalCoriolis([FT=Float64;] rotation_rate=Ω_Earth, scheme=EnergyConservingScheme()))
+    HydrostaticSphericalCoriolis([FT=Float64;]
+                                 rotation_rate = Ω_Earth,
+                                 scheme = EnergyConservingScheme())
 
 Returns a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 By default, `rotation_rate` is assumed to be Earth's.
+
+Keyword arguments
+=================
+
+- `scheme`: Either `EnergyConservingScheme()` (default) or `EnstrophyConservingScheme()`.
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -65,6 +72,12 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 ##### Show
 #####
 
-Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis{FT}) where FT =
-    print(io, "HydrostaticSphericalCoriolis{$FT}: rotation_rate = ",
-          @sprintf("%.2e",  hydrostatic_spherical_coriolis.rotation_rate))
+function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis{S}) where S
+
+    rotation_rate = hydrostatic_spherical_coriolis.rotation_rate
+    rotation_rate_Earth = rotation_rate / Ω_Earth
+
+    return print(io, "HydrostaticSphericalCoriolis", '\n',
+                 "├─ rotation rate: " * @sprintf("%.2e", rotation_rate) * " s⁻¹ = " * @sprintf("%.2e", rotation_rate_Earth) * " Ω_Earth", '\n',
+                 "└─ scheme: $S")
+end
