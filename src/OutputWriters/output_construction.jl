@@ -18,7 +18,6 @@ end
 #####
 
 function mask_field!(output)
-    @info "Masking" output
     field_masking_event = mask_immersed_field!(output)
     wait(field_masking_event)
 end
