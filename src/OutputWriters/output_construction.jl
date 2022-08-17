@@ -24,6 +24,9 @@ end
 
 
 function _construct_output(output, grid::ImmersedBoundaryGrid, kwargs...)
+    if output isa AbstractOperation
+        output = Field(output)
+    end
     mask_field!(output)
     construct_output(output, grid, kwargs...)
 end
