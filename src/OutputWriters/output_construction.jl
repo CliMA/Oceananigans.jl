@@ -1,6 +1,7 @@
 using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Grids: default_indices
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, mask_immersed_field!
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
@@ -15,6 +16,18 @@ end
 #####
 ##### Function output fallback
 #####
+
+function mask_field!(output)
+    @info "Masking" output
+    field_masking_event = mask_immersed_field!(output)
+    wait(field_masking_event)
+end
+
+
+function _construct_output(output, grid::ImmersedBoundaryGrid, kwargs...)
+    mask_field!(output)
+    construct_output(output, grid, kwargs...)
+end
 
 function construct_output(output, grid, indices, with_halos)
     if !(indices isa typeof(default_indices(3)))
