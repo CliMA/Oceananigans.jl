@@ -8,7 +8,7 @@ using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 # curvilinear grids).
 
 """
-    HydrostaticSphericalCoriolis{FT} <: AbstractRotation
+    struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 
 A parameter object for constant rotation around a vertical axis.
 """
