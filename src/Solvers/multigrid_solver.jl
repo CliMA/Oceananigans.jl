@@ -6,17 +6,41 @@ using AMGX
 
 import Oceananigans.Architectures: architecture
 
-mutable struct MultigridSolver{A, G, L, T, M, F, S}
-               architecture :: A
-                       grid :: G
-                     matrix :: L
-                     abstol :: T
-                     reltol :: T
-                    maxiter :: Int
-              amg_algorithm :: M
-                    x_array :: F
-                    b_array :: F
-         amgx_solver_struct :: S
+# mutable struct MultigridSolver{A, G, L, T, M, F, S}
+#                architecture :: A
+#                        grid :: G
+#                      matrix :: L
+#                      abstol :: T
+#                      reltol :: T
+#                     maxiter :: Int
+#                     x_array :: F
+#                     b_array :: F
+# end
+
+abstract type MultigridSolver{A, G, L, T, F} end
+
+mutable struct MultigridCPUSolver{A, G, L, T, F, M} <: MultigridSolver{A, G, L, T, F}
+                  architecture :: A
+                          grid :: G
+                        matrix :: L
+                        abstol :: T
+                        reltol :: T
+                       maxiter :: Int
+                       x_array :: F
+                       b_array :: F
+                 amg_algorithm :: M
+end
+
+mutable struct MultigridGPUSolver{A, G, L, T, F, S} <: MultigridSolver{A, G, L, T, F}
+                  architecture :: A
+                          grid :: G
+                        matrix :: L
+                        abstol :: T
+                        reltol :: T
+                       maxiter :: Int
+                       x_array :: F
+                       b_array :: F
+            amgx_solver_struct :: S
 end
 
 mutable struct AMGXMultigridSolver{C, R, S, M, V}
@@ -86,7 +110,7 @@ function MultigridSolver(linear_operation!::Function,
 
     # arch == GPU() && error("Multigrid solver is only supported on CPUs.")
 
-    matrix = initialize_matrix(template_field, linear_operation!, args...)
+    matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
 
     Nx, Ny, Nz = size(template_field)
 
@@ -95,56 +119,59 @@ function MultigridSolver(linear_operation!::Function,
     b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
-    if arch == GPU()
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-        # FIXME! Also pass tolerance
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol));
-        resources = AMGX.Resources(config)
-        amgx_solver = AMGX.Solver(resources, AMGX.dDDI, config)
-        device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
-        device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
-        device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
-        csr_matrix = CuSparseMatrixCSR(transpose(matrix))
-        @inline sub_one(x) = convert(Int32, x-1)
-        AMGX.upload!(device_matrix, 
-            map(sub_one, csr_matrix.rowPtr), # annoyingly arrays need to be 0 indexed rather than 1 indexed
-            map(sub_one, csr_matrix.colVal),
-            csr_matrix.nzVal
-            )
-        AMGX.setup!(amgx_solver, device_matrix)
-        amgx_solver_struct = AMGXMultigridSolver(config, 
-                                                resources, 
-                                                amgx_solver, 
-                                                device_matrix, 
-                                                device_b, 
-                                                device_x
-                                                ) 
-    else 
-        amgx_solver_struct = nothing
+    if arch == CPU()
+        return MultigridCPUSolver(arch,
+        template_field.grid,
+        matrix,
+        FT(abstol),
+        FT(reltol),
+        maxiter,
+        x_array,
+        b_array,
+        amg_algorithm
+        )
     end
-
-    return MultigridSolver(arch,
-                           template_field.grid,
-                           matrix,
-                           FT(abstol),
-                           FT(reltol),
-                           maxiter,
-                           amg_algorithm,
-                           x_array,
-                           b_array,
-                           amgx_solver_struct
-                           )
+    
+    AMGX.initialize()
+    AMGX.initialize_plugins()
+    # FIXME! Also pass tolerance
+    config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol));
+    resources = AMGX.Resources(config)
+    amgx_solver = AMGX.Solver(resources, AMGX.dDDI, config)
+    device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
+    device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
+    device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
+    csr_matrix = CuSparseMatrixCSR(transpose(matrix))
+    @inline sub_one(x) = convert(Int32, x-1)
+    AMGX.upload!(device_matrix, 
+        map(sub_one, csr_matrix.rowPtr), # annoyingly arrays need to be 0 indexed rather than 1 indexed
+        map(sub_one, csr_matrix.colVal),
+        csr_matrix.nzVal
+        )
+    AMGX.setup!(amgx_solver, device_matrix)
+    amgx_solver_struct = AMGXMultigridSolver(config, 
+                                            resources, 
+                                            amgx_solver, 
+                                            device_matrix, 
+                                            device_b, 
+                                            device_x
+                                            ) 
+    return MultigridGPUSolver(arch,
+                            template_field.grid,
+                            matrix,
+                            FT(abstol),
+                            FT(reltol),
+                            maxiter,
+                            x_array,
+                            b_array,
+                            amgx_solver_struct
+                            )
 end
 
 
-function initialize_matrix(template_field, linear_operator!, args...)
-    constructors = fill_matrix_elements2!(template_field, linear_operator!, args...)
-    return arch_sparse_matrix(architecture(template_field), constructors)
-end
-
-function fill_matrix_elements!(A, template_field, linear_operator!, args...)
+function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
+    A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
     eᵢⱼₖ = similar(template_field)
@@ -159,21 +186,22 @@ function fill_matrix_elements!(A, template_field, linear_operator!, args...)
 
         A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(∇²eᵢⱼₖ)
     end
-
-    return nothing
+    
+    return A
 end
 
-function fill_matrix_elements2!(template_field, linear_operator!, args...)
+function initialize_matrix(::GPU, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
+    FT = eltype(template_field.grid)
+
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
     eᵢⱼₖ = similar(template_field)
     ∇²eᵢⱼₖ = similar(template_field)
 
-    arch = architecture(template_field)
-    colptr = array_type(arch){Int64}(undef, Nx*Ny*Nz+1)
-    rowval = array_type(arch){Int64}(undef, 0)
-    nzval  = array_type(arch){Float64}(undef, 0)
+    colptr = CuArray{Int64}(undef, Nx*Ny*Nz+1)  # Can we infer the type of int?
+    rowval = CuArray{Int64}(undef, 0)
+    nzval  = CuArray{FT}(undef, 0)
 
     CUDA.@allowscalar colptr[1] = 1
 
@@ -194,36 +222,48 @@ function fill_matrix_elements2!(template_field, linear_operator!, args...)
         end
         CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
     end
-    if arch == CPU()
-        return Nx*Ny*Nz, Nx*Ny*Nz, colptr, rowval, nzval
-    end
-    return colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz)
+
+    return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))
 end
 
 """
-    solve!(x, solver::MultigridSolver, b; kwargs...)
+    solve!(x, solver::MultigridCPUSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method, where `A * x` is determined
+Solve `A * x = b` using a multigrid method on CPU, where `A * x` is determined
 by `solver.matrix`.
 """
-function solve!(x, solver::MultigridSolver, b; kwargs...)
+function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
 
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    if architecture(solver) == CPU()
-        solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
+    solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-        _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
-    else 
-        s = solver.amgx_solver_struct
-        AMGX.upload!(s.device_b, solver.b_array)
-        AMGX.upload!(s.device_x, solver.x_array)
-        AMGX.setup!(s.amgx_solver, s.device_matrix)
-        AMGX.solve!(s.device_x, s.amgx_solver, s.device_b)
-        solver.x_array = CuArray(Vector(s.device_x)) #FIXME
-    end
+    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
+
+    interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
+end
+
+
+"""
+    solve!(x, solver::MultigridGPUSolver, b; kwargs...)
+
+Solve `A * x = b` using a multigrid method on GPU, where `A * x` is determined
+by `solver.matrix`.
+"""
+function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
+    Nx, Ny, Nz = size(b)
+
+    solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
+    solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
+
+    s = solver.amgx_solver_struct
+    AMGX.upload!(s.device_b, solver.b_array)
+    AMGX.upload!(s.device_x, solver.x_array)
+    AMGX.setup!(s.amgx_solver, s.device_matrix)
+    AMGX.solve!(s.device_x, s.amgx_solver, s.device_b)
+    solver.x_array = CuArray(Vector(s.device_x)) #FIXME AMGX.copy!(solver.x_array, s.device_x)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
