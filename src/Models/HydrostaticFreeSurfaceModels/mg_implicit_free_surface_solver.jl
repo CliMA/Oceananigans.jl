@@ -194,10 +194,10 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
             csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
             @inline sub_one(x) = convert(Int32, x-1)
             AMGX.upload!(s.device_matrix, 
-                map(sub_one, csr_matrix.rowPtr),
-                map(sub_one, csr_matrix.colVal),
-                csr_matrix.nzVal
-                )
+                         map(sub_one, csr_matrix.rowPtr),
+                         map(sub_one, csr_matrix.colVal),
+                         csr_matrix.nzVal
+                         )
             AMGX.setup!(s.amgx_solver, s.device_matrix)
         end
 

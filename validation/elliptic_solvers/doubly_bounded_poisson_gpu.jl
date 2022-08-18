@@ -4,7 +4,7 @@ using Oceananigans.Operators: ∇²ᶜᶜᶜ
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver, finalize_solver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver, finalize_solver!
 using Oceananigans.Architectures: architecture, arch_array
 using IterativeSolvers
 using Statistics: mean
@@ -81,7 +81,7 @@ fill_halo_regions!(φ_cg)
 fill_halo_regions!(φ_mg)
 φ_mg .-= mean(φ_mg)
 
-finalize_solver(mgs)
+finalize_solver!(mgs)
 
 
 
@@ -116,7 +116,7 @@ cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_fie
 @time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
 
 fill_halo_regions!(φ_cgmg)
-finalize_solver(mgs)
+finalize_solver!(mgs)
 
 @show φ_fft
 @show φ_cg

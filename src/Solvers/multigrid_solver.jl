@@ -6,17 +6,6 @@ using AMGX
 
 import Oceananigans.Architectures: architecture
 
-# mutable struct MultigridSolver{A, G, L, T, M, F, S}
-#                architecture :: A
-#                        grid :: G
-#                      matrix :: L
-#                      abstol :: T
-#                      reltol :: T
-#                     maxiter :: Int
-#                     x_array :: F
-#                     b_array :: F
-# end
-
 abstract type MultigridSolver{A, G, L, T, F} end
 
 mutable struct MultigridCPUSolver{A, G, L, T, F, M} <: MultigridSolver{A, G, L, T, F}
@@ -108,7 +97,6 @@ function MultigridSolver(linear_operation!::Function,
 
     arch = architecture(template_field)
 
-    # arch == GPU() && error("Multigrid solver is only supported on CPUs.")
 
     matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
 
@@ -190,6 +178,7 @@ function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     return A
 end
 
+
 function initialize_matrix(::GPU, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     FT = eltype(template_field.grid)
@@ -268,13 +257,13 @@ function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-function finalize_solver(solver::MultigridSolver)
+function finalize_solver!(solver::MultigridGPUSolver)
     s = solver.amgx_solver_struct
-    if s != nothing
-        close(s.device_matrix); close(s.device_x); close(s.device_b); close(s.amgx_solver); close(s.resources); close(s.config); 
-        AMGX.finalize_plugins(); AMGX.finalize()
-    end
+    close(s.device_matrix); close(s.device_x); close(s.device_b); close(s.amgx_solver); close(s.resources); close(s.config); 
+    AMGX.finalize_plugins(); AMGX.finalize()
 end
+
+finalize_solver!(::Any) = nothing
 
 
 Base.show(io::IO, solver::MultigridSolver) = 

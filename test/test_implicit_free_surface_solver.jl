@@ -13,7 +13,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     MGImplicitFreeSurfaceSolver,
     implicit_free_surface_step!,
     implicit_free_surface_linear_operation!,
-    finalize_solver
+    finalize_solver!
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -98,7 +98,7 @@ end
             @info "Testing Multigrid implicit free surface solver [$A, $G]..."
             free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)
             mg_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
-            finalize_solver(mg_solver)
+            finalize_solver!(mg_solver)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
@@ -171,14 +171,14 @@ end
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(mat_η_cpu .≈ fft_η_cpu)
+        @test all(mg_η_cpu  .≈ fft_η_cpu)
 
         @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
+        @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
 
         if arch isa CPU
             @test all(pcg_η_cpu .≈ fft_η_cpu)
-            @test all(mg_η_cpu .≈ fft_η_cpu)
-            @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         else
             # It seems that the PCG algorithm is not always stable on sverdrup's GPU, often leading to failure.
             # This behavior is not observed on tartarus, where this test _would_ pass.
@@ -186,11 +186,7 @@ end
             # on the CPU.
             @info "  Skipping comparison between pcg and fft implicit free surface solver"
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
-            
-            @info "  Skipping comparison between mg and fft implicit free surface solver"
-            @test_skip all(mg_η_cpu .≈ fft_η_cpu)
-            @test_skip all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         end
-        finalize_solver(mg_model.free_surface.implicit_step_solver)
+        finalize_solver!(mg_model.free_surface.implicit_step_solver)
     end
 end
