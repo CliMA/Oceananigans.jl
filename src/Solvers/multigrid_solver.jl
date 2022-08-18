@@ -84,7 +84,6 @@ function MultigridSolver(linear_operation!::Function,
 
     arch = architecture(template_field)
 
-    # arch == GPU() && error("Multigrid solver is only supported on CPUs.")
 
     matrix = initialize_matrix(template_field, linear_operation!, args...)
 
@@ -171,8 +170,8 @@ function fill_matrix_elements2!(template_field, linear_operator!, args...)
     ∇²eᵢⱼₖ = similar(template_field)
 
     arch = architecture(template_field)
-    colptr = array_type(arch){Int64}(undef, Nx*Ny*Nz+1)
-    rowval = array_type(arch){Int64}(undef, 0)
+    colptr = array_type(arch){Int}(undef, Nx*Ny*Nz+1)
+    rowval = array_type(arch){Int}(undef, 0)
     nzval  = array_type(arch){Float64}(undef, 0)
 
     CUDA.@allowscalar colptr[1] = 1
