@@ -37,8 +37,8 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V}
                       resources :: R
                          solver :: S
                   device_matrix :: M
-                       device_b :: V
                        device_x :: V
+                       device_b :: V
 end
 
 architecture(solver::MultigridSolver) = solver.architecture
@@ -49,8 +49,8 @@ architecture(solver::MultigridSolver) = solver.architecture
                     template_field::AbstractField,
                     maxiter = prod(size(template_field)),
                     reltol = sqrt(eps(eltype(template_field.grid))),
-                    abstol = 0reltol,
-                    amg_algorithm = RugeStubenAMG(),
+                    abstol = 0,
+                    amg_algorithm = RugeStubenAMG()
                     )
 
 Returns a MultigridSolver that solves the linear equation
@@ -81,10 +81,8 @@ Arguments
 * `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
                     The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
-* `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings
-
-!!! compat "Multigrid solver on GPUs"
-    Currently Multigrid solver is only supported on CPUs.
+* `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings.
+                   Note: This keyword is relevant only on the CPU.
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
@@ -92,7 +90,7 @@ function MultigridSolver(linear_operation!::Function,
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = RugeStubenAMG(),
+                         amg_algorithm = RugeStubenAMG()
                          )
 
     arch = architecture(template_field)
@@ -106,44 +104,47 @@ function MultigridSolver(linear_operation!::Function,
     b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
-    if arch == CPU()
-        return MultigridCPUSolver(arch,
-                                  template_field.grid,
-                                  matrix,
-                                  FT(abstol),
-                                  FT(reltol),
-                                  maxiter,
-                                  x_array,
-                                  b_array,
-                                  amg_algorithm
-                                  )
-    end
+    arch == CPU() && return MultigridCPUSolver(arch,
+                                               template_field.grid,
+                                               matrix,
+                                               FT(abstol),
+                                               FT(reltol),
+                                               maxiter,
+                                               x_array,
+                                               b_array,
+                                               amg_algorithm
+                                               )
     
-    AMGX.initialize()
-    AMGX.initialize_plugins()
-    # FIXME! Also pass tolerance
-    config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol));
-    resources = AMGX.Resources(config)
-    solver = AMGX.Solver(resources, AMGX.dDDI, config)
-    device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
-    device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
-    device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
-    csr_matrix = CuSparseMatrixCSR(transpose(matrix))
-    @inline sub_one(x) = convert(Int32, x-1)
-    AMGX.upload!(device_matrix, 
-        map(sub_one, csr_matrix.rowPtr), # annoyingly arrays need to be 0 indexed rather than 1 indexed
-        map(sub_one, csr_matrix.colVal),
-        csr_matrix.nzVal
-        )
-    AMGX.setup!(solver, device_matrix)
-    amgx_solver = AMGXMultigridSolver(config, 
-                                      resources, 
-                                      solver, 
-                                      device_matrix, 
-                                      device_b, 
-                                      device_x
-                                      )
- 
+    arch == GPU() && begin
+        AMGX.initialize()
+        AMGX.initialize_plugins()
+        # FIXME! Also pass tolerance
+        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol))
+        resources = AMGX.Resources(config)
+        solver = AMGX.Solver(resources, AMGX.dDDI, config)
+        device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
+        device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
+        device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
+        csr_matrix = CuSparseMatrixCSR(transpose(matrix))
+        
+        @inline subtract_one(x) = convert(Int32, x-1)
+        
+        AMGX.upload!(device_matrix, 
+                     map(subtract_one, csr_matrix.rowPtr), # annoyingly arrays need to be 0-indexed rather than 1-indexed
+                     map(subtract_one, csr_matrix.colVal),
+                     csr_matrix.nzVal
+                     )
+        
+        AMGX.setup!(solver, device_matrix)
+
+        amgx_solver = AMGXMultigridSolver(config,
+                                          resources,
+                                          solver,
+                                          device_matrix,
+                                          device_x,
+                                          device_b
+                                          )
+
     return MultigridGPUSolver(arch,
                               template_field.grid,
                               matrix,
@@ -154,6 +155,7 @@ function MultigridSolver(linear_operation!::Function,
                               b_array,
                               amgx_solver
                               )
+    end
 end
 
 function initialize_matrix(::CPU, template_field, linear_operator!, args...)
