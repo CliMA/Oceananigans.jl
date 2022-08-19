@@ -270,9 +270,8 @@ end
     end
 
     @testset "Setting fields" begin
+        
         @info "  Testing field setting..."
-
-        CUDA.allowscalar(true)
 
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
@@ -309,7 +308,7 @@ end
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
-                @test field.data[1, 1, 1] == A[1, 1, 1]
+                @test CUDA.@allowscalar field.data[1, 1, 1] == A[1, 1, 1]
             end
 
             Nx = 8
@@ -386,16 +385,16 @@ end
         Lz = 1.1
         ℓz = 0.5
         topology = (Flat, Flat, Bounded)
-        
+
         for arch in archs
             fine_regular_grid                = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z=(0, Lz), topology=(Periodic, Periodic, Bounded))
             fine_stretched_grid              = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z = [0, ℓz, Lz], topology=(Periodic, Periodic, Bounded))
-            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz), topology=topology)
-            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz), topology=topology)
-            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz], topology=topology)
-            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology)
-            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
-            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz), topology=topology)
+            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz); topology)
+            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz); topology)
+            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz]; topology)
+            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz]; topology)
+            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz]; topology)
+            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz); topology)
             
             fine_stretched_c              = CenterField(fine_stretched_grid)
             coarse_column_regular_c       = CenterField(coarse_column_regular_grid)
@@ -410,12 +409,12 @@ end
             # grids, and check whether we get the anticipated results
             c₁ = 1
             c₂ = 3
+
             CUDA.@allowscalar begin
                 fine_column_stretched_c[1, 1, 1] = c₁
                 fine_column_stretched_c[1, 1, 2] = c₂
             end
 
-            @show typeof(fine_stretched_c[:, :, 1])
             fine_stretched_c[:, :, 1] .= c₁
             fine_stretched_c[:, :, 2] .= c₂
 
