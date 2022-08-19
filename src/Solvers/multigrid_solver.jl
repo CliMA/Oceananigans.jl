@@ -145,16 +145,16 @@ function MultigridSolver(linear_operation!::Function,
                                           device_b
                                           )
 
-    return MultigridGPUSolver(arch,
-                              template_field.grid,
-                              matrix,
-                              FT(abstol),
-                              FT(reltol),
-                              maxiter,
-                              x_array,
-                              b_array,
-                              amgx_solver
-                              )
+        return MultigridGPUSolver(arch,
+                                  template_field.grid,
+                                  matrix,
+                                  FT(abstol),
+                                  FT(reltol),
+                                  maxiter,
+                                  x_array,
+                                  b_array,
+                                  amgx_solver
+                                  )
     end
 end
 
@@ -229,7 +229,11 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b, maxiter=solver.maxiter, abstol = solver.abstol, reltol=solver.reltol, kwargs...)
+    _solve!(solver.x_array, solt.ml, solt.b,
+            maxiter = solver.maxiter,
+            abstol = solver.abstol,
+            reltol = solver.reltol,
+            kwargs...)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
