@@ -489,13 +489,13 @@ function test_basic_lat_lon_general_grid(FT)
     (Hλ, Hφ, Hz) = halo = ( 1,  1,  1)
 
     lat = (-80,   80)
-    lon = (-180, 180) 
+    lon = (-180, 180)
     zᵣ  = (-100,   0)
 
     Λ₁  = (lat[1], lon[1], zᵣ[1])
     Λₙ  = (lat[2], lon[2], zᵣ[2])
 
-    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁ 
+    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁
     
     grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
@@ -516,9 +516,9 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
     
     @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz 
+    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
 
-    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ) 
+    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
     @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
     @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
     @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
@@ -532,7 +532,6 @@ function test_basic_lat_lon_general_grid(FT)
 end
 
 function test_lat_lon_precomputed_metrics(FT, arch)
-
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
 
@@ -540,7 +539,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     lonreg  = (-180, 180)
     lonregB = (-160, 160)
 
-    zreg   = (-1,     0)
+    zreg    = (-1,     0)
 
     latstr  = [-80, 0, 80]
     lonstr  = [-180, -30, 10, 40, 180]
@@ -551,15 +550,15 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,     zstr)
 
-    CUDA.allowscalar(true)
+    CUDA.allowscalar() do
 
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
         for lon in longitude
             for z in zcoord
                 println("$lat, $lon, $z")
-                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
-                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
+                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
     
                 @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
@@ -574,7 +573,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
         end
     end
 
-    CUDA.allowscalar(false)
+    end # CUDA.allowscalar()
 
 end
 
@@ -679,9 +678,7 @@ end
         grid = RectilinearGrid(CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::RectilinearGrid)")
@@ -722,9 +719,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -754,9 +749,7 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -770,9 +763,7 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
 
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -794,9 +785,7 @@ end
         grid = ConformalCubedSphereFaceGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")
