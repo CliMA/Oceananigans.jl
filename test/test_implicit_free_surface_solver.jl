@@ -171,22 +171,11 @@ end
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
         @test all(mat_η_cpu .≈ fft_η_cpu)
+        @test all(pcg_η_cpu .≈ fft_η_cpu)
         @test all(mg_η_cpu  .≈ fft_η_cpu)
 
         @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
         @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-
-        if arch isa CPU
-            @test all(pcg_η_cpu .≈ fft_η_cpu)
-        else
-            # It seems that the PCG algorithm is not always stable on sverdrup's GPU, often leading to failure.
-            # This behavior is not observed on tartarus, where this test _would_ pass.
-            # Suffice to say that the FFT solver appears to be accurate (as of this writing), and tests pass
-            # on the CPU.
-            @info "  Skipping comparison between pcg and fft implicit free surface solver"
-            @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
-        end
-        finalize_solver!(mg_model.free_surface.implicit_step_solver)
     end
 end
