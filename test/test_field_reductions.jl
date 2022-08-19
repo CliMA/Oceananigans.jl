@@ -97,24 +97,24 @@ trilinear(x, y, z) = x + y + z
                 @test Txyz.operand.dims === (1, 2, 3)
                 @test wxyz.operand.dims === (1, 2, 3)
 
-                @test Txyz[1, 1, 1] ≈ 3
+                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3
                 @test Array(interior(Txy))[1, 1, :] ≈ [2.5, 3.5]
                 @test Array(interior(Tx))[1, :, :] ≈ [[2, 3] [3, 4]]
-                @test wxyz[1, 1, 1] ≈ 3
+                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 3
                 @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
                 @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
                 
-                @compute Txyz = Field(Average(T, condition=T.>3))
-                @compute Txy = Field(Average(T, dims=(1, 2), condition=T.>3))
-                @compute Tx = Field(Average(T, dims=1, condition=T.>2))
-                @test Txyz[1,1,1] ≈ 3.75
+                @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
+                @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
+                @compute Tx = CUDA.@allowscalar Field(Average(T, dims=1, condition=T.>2))
+                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3.75
                 @test Array(interior(Txy))[1, 1, :] ≈ [3.5, 11.5/3]
                 @test Array(interior(Tx))[1, :, :] ≈ [[2.5, 3] [3, 4]]
 
-                @compute wxyz = Field(Average(w, condition=w.>3))
-                @compute wxy = Field(Average(w, dims=(1, 2), condition=w.>2))
-                @compute wx = Field(Average(w, dims=1, condition=w.>1))
-                @test wxyz[1,1,1] ≈ 4.25
+                @compute wxyz = CUDA.@allowscalar Field(Average(w, condition=w.>3))
+                @compute wxy = CUDA.@allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
+                @compute wx = CUDA.@allowscalar Field(Average(w, dims=1, condition=w.>1))
+                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 4.25
                 @test Array(interior(wxy))[1, 1, :] ≈ [3, 10/3, 4]
                 @test Array(interior(wx))[1, :, :] ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
             end
@@ -170,11 +170,11 @@ trilinear(x, y, z) = x + y + z
             @compute wx = Field(Average(w, dims=1))
 
             # Mean
-            @test Txyz[1, 1, 1] == mean(T)
+            @test CUDA.@allowscalar Txyz[1, 1, 1] == mean(T)
             @test interior(Txy) == interior(mean(T, dims=(1, 2)))
             @test interior(Tx) == interior(mean(T, dims=1))
 
-            @test wxyz[1, 1, 1] == mean(w)
+            @test CUDA.@allowscalar wxyz[1, 1, 1] == mean(w)
             @test interior(wxy) == interior(mean(w, dims=(1, 2)))
             @test interior(wx) == interior(mean(w, dims=1))
 
