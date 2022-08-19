@@ -1,4 +1,4 @@
-# Fractional step method
+# [Fractional step method](@id fractional_step_method)
 
 In some models (e.g., `NonhydrostaticModel` or `HydrostaticFreeSurfaceModel`) solving the momentum 
 coupled with the continuity equation can be cumbersome so instead we employ a fractional step 
