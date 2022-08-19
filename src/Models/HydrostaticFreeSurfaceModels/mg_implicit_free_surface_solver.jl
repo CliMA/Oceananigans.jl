@@ -176,12 +176,11 @@ build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acce
 ##### Solve...
 #####
 
-
 function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements
-    if Δt != implicit_free_surface_solver.previous_Δt
+    if Δt !== implicit_free_surface_solver.previous_Δt
         arch = architecture(solver.matrix)
         constructors = deepcopy(implicit_free_surface_solver.matrix_constructors)
         M = prod(size(η))
@@ -190,8 +189,8 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
 
         unsafe_free!(constructors)
 
-        s = solver.amgx_solver
-        if s !== nothing
+        arch == GPU() && begin
+            s = solver.amgx_solver
             # FIXME only allocate this once
             csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
             @inline sub_one(x) = convert(Int32, x-1)
