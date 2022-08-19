@@ -12,7 +12,7 @@ using SparseArrays: _insert!
 using CUDA.CUSPARSE: CuSparseMatrixCSR
 using AMGX
 
-import Oceananigans.Solvers: solve!, precondition!, finalize_solver
+import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
 import Oceananigans.Architectures: architecture
 
 """
@@ -36,6 +36,7 @@ mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
     "The `Az / g` term"
     diagonal :: D
 end
+
 
 architecture(solver::MGImplicitFreeSurfaceSolver) =
     architecture(solver.multigrid_solver)
@@ -90,7 +91,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
 end
 
-@inline finalize_solver(solver::MGImplicitFreeSurfaceSolver) = finalize_solver(solver.multigrid_solver)
+@inline finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
 
 """  
     fill_diag!(constr, arch, M, N)
@@ -175,6 +176,7 @@ build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acce
 ##### Solve...
 #####
 
+
 function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
@@ -188,8 +190,8 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
 
         unsafe_free!(constructors)
 
-        s = solver.amgx_solver_struct
-        if s != nothing
+        s = solver.amgx_solver
+        if s !== nothing
             # FIXME only allocate this once
             csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
             @inline sub_one(x) = convert(Int32, x-1)
@@ -198,7 +200,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
                          map(sub_one, csr_matrix.colVal),
                          csr_matrix.nzVal
                          )
-            AMGX.setup!(s.amgx_solver, s.device_matrix)
+            AMGX.setup!(s.solver, s.device_matrix)
         end
 
         implicit_free_surface_solver.previous_Δt = Δt
