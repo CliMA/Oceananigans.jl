@@ -29,7 +29,7 @@ using CUDAKernels: STREAM_GC_LOCK
 
             if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
                 for stream in DEVICE_STREAMS[handle]
-                    if CUDA.query(stream)
+                    if CUDA.isdone(stream)
                         push!(DEVICE_FREE_STREAMS[handle], stream)
                     end
                 end
@@ -123,7 +123,7 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
-## Only for contiguous data!! (i.e. the offset is always 1)
+## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArrat, offset::Int) is 1)
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
     n = length(src)
     context!(context(src)) do

@@ -1,16 +1,18 @@
 module Models
 
 export
-    NonhydrostaticModel, ShallowWaterModel,
+    NonhydrostaticModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField
 
 using Oceananigans: AbstractModel
 
-import Oceananigans.Architectures: device_event
+import Oceananigans.Architectures: device_event, architecture
 
 device_event(model::AbstractModel) = device_event(model.architecture)
+architecture(model::AbstractModel) = model.architecture
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
@@ -25,6 +27,6 @@ using .HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields
 
-using .ShallowWaterModels: ShallowWaterModel
+using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
 end # module

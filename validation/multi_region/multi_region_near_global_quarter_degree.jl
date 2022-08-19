@@ -245,7 +245,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(underlying_mrg))
+                                    tracer_advection = WENO(underlying_mrg))
 
 #####
 ##### Initial condition:
@@ -316,7 +316,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 run!(simulation, pickup = pickup_file)
 
 @info """
-
     Simulation took $(prettytime(simulation.run_wall_time))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))

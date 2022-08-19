@@ -24,7 +24,7 @@ end
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5)
+Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO)
 
 # Run and summarize benchmarks
 

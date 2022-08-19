@@ -239,9 +239,9 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
-@inline cpu_face_constructor_x(grid) = all_x_nodes(Face, adapt(CPU(), grid))[1:grid.Nx+1]
-@inline cpu_face_constructor_y(grid) = all_y_nodes(Face, adapt(CPU(), grid))[1:grid.Ny+1]
-@inline cpu_face_constructor_z(grid) = all_z_nodes(Face, adapt(CPU(), grid))[1:grid.Nz+1]
+@inline cpu_face_constructor_x(grid) = Array(all_x_nodes(Face, grid)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
 
 all_x_nodes(::Type{Nothing}, grid) = 1:1
 all_y_nodes(::Type{Nothing}, grid) = 1:1
@@ -403,7 +403,7 @@ Base.summary(::ZDirection) = "ZDirection"
 #####
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
 function domain_summary(topo, name, left, right)
@@ -414,10 +414,10 @@ function domain_summary(topo, name, left, right)
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   "RightConnected "
-    
-    prefix = string(topo_string, name, " ∈ [",
-                    scalar_summary(left), ", ",
-                    scalar_summary(right), interval)
+
+    return string(topo_string, name, " ∈ [",
+                  prettysummary(left), ", ",
+                  prettysummary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -426,7 +426,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     return string(prefix, padding, coordinate_summary(spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
+coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
-                                                       name, scalar_summary(minimum(parent(Δ))),
-                                                       name, scalar_summary(maximum(parent(Δ))))
+                                                       name, prettysummary(minimum(parent(Δ))),
+                                                       name, prettysummary(maximum(parent(Δ))))

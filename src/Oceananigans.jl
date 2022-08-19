@@ -28,7 +28,9 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder, 
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
@@ -65,7 +67,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
     VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
@@ -74,7 +78,7 @@ export
     # Models
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
-    ShallowWaterModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     PressureField,
     fields,
 
@@ -196,10 +200,10 @@ include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 

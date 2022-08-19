@@ -47,7 +47,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 using Oceananigans.BuoyancyModels: g_Earth
 
  amplitude = 0.8 # m
-wavelength = 60 # m
+wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
  frequency = sqrt(g_Earth * wavenumber) # s⁻¹
 
@@ -100,7 +100,7 @@ u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-9 # m³ s⁻², surface buoyancy flux
+Qᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
 b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
@@ -126,12 +126,11 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = NonhydrostaticModel(; grid,
-                            advection = WENO5(),
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            coriolis = coriolis,
                             closure = AnisotropicMinimumDissipation(),
                             stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
@@ -180,7 +179,7 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 using Printf
 
-function print_progress(simulation)
+function progress(simulation)
     u, v, w = simulation.model.velocities
 
     ## Print a progress message
@@ -196,7 +195,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 # ## Output
 #
@@ -269,9 +268,9 @@ nothing # hide
 
 n = Observable(1)
 
-wxy_title = @lift @sprintf("w(x, y, t) at z=-8 m and t = %s ", prettytime(times[$n]))
-wxz_title = @lift @sprintf("w(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
-uxz_title = @lift @sprintf("u(x, z, t) at y=0 m and t = %s", prettytime(times[$n]))
+wxy_title = @lift string("w(x, y, t) at z=-8 m and t = ", prettytime(times[$n]))
+wxz_title = @lift string("w(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
+uxz_title = @lift string("u(x, z, t) at y=0 m and t = ", prettytime(times[$n]))
 
 fig = Figure(resolution = (850, 850))
 
@@ -321,9 +320,9 @@ wuₙ = @lift time_series.wu[$n][1, 1, :]
 wvₙ = @lift time_series.wv[$n][1, 1, :]
 
 k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
-wxyₙ = @lift collect(time_series.w[$n][:, :, k])
-wxzₙ = @lift collect(time_series.w[$n][:, 1, :])
-uxzₙ = @lift collect(time_series.u[$n][:, 1, :])
+wxyₙ = @lift interior(time_series.w[$n], :, :, k)
+wxzₙ = @lift interior(time_series.w[$n], :, 1, :)
+uxzₙ = @lift interior(time_series.u[$n], :, 1, :)
 
 wlims = (-0.03, 0.03)
 ulims = (-0.05, 0.05)
@@ -361,8 +360,9 @@ Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
 frames = 1:length(times)
 
 record(fig, "langmuir_turbulence.mp4", frames, framerate=8) do i
-       @info "Plotting frame $i of $(frames[end])..."
-       n[] = i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
 nothing #hide
 

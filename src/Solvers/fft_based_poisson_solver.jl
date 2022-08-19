@@ -30,6 +30,23 @@ print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": 
           "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
           "    └── backward: ", transform_list_str(solver.transforms.backward))
 
+"""
+    FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
+
+Return an `FFTBasedPoissonSolver` that solves the "generalized" Poisson equation,
+
+```math
+(∇² + m) ϕ = b,
+```
+
+where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson operator
+on a staggered grid and for periodic or Neumann boundary conditions.
+
+In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
+elements (typically the same type as `solver.storage`).
+
+See [`solve!`](@ref) for more information about the FFT-based Poisson solver algorithm.
+"""
 function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
@@ -69,8 +86,8 @@ on a staggered grid and for periodic or Neumann boundary conditions.
 In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
 elements (typically the same type as `solver.storage`).
 
-!!! info "Alternative names for "generalized" Poisson equation
-    Equation ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
+!!! info "Alternative names for 'generalized' Poisson equation"
+    Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)

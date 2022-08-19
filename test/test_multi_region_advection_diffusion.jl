@@ -30,11 +30,11 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     end
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
-                                        tracers = (:c, :d, :e),
+                                        tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure  = nothing)
@@ -44,10 +44,9 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
     # Tracer patch parameters
     cᵢ(x, y, z) = Gaussian(x, 0, L)
-    dᵢ(x, y, z) = Gaussian(0, y, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
+    set!(model, c=cᵢ, e=eᵢ)
 
     # Time-scale for tracer advection across the smallest grid cell
     advection_time_scale = Δ_min(grid) / 0.1
@@ -78,7 +77,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         tracers = :c,
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         buoyancy = nothing,
                                         closure = nothing)
 
@@ -155,22 +154,19 @@ for arch in archs
     @testset "Testing multi region tracer advection" begin
         for grid in [grid_rect, grid_lat]
         
-            cs, ds, es = solid_body_tracer_advection_test(grid)
+            cs, es = solid_body_tracer_advection_test(grid)
             
             cs = Array(interior(cs))
-            ds = Array(interior(ds))
             es = Array(interior(es))
 
-            for regions in [2, 4], P in partitioning
+            for regions in [2], P in partitioning
                 @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
-                c, d, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
+                c, e = solid_body_tracer_advection_test(grid; P = P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
-                d = interior(reconstruct_global_field(d))
                 e = interior(reconstruct_global_field(e))
 
                 @test all(c .≈ cs)
-                @test all(d .≈ ds)
                 @test all(e .≈ es)
             end
         end
@@ -190,7 +186,7 @@ for arch in archs
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
         
-        for regions in [2, 4], P in partitioning
+        for regions in [2], P in partitioning
             @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
             u, v, w, c, η = solid_body_rotation_test(grid; P = P, regions=regions)
 
@@ -225,7 +221,7 @@ for arch in archs
                 fs = diffusion_cosine_test(grid; closure, field_name = fieldname)
                 fs = Array(interior(fs));
 
-                for regions in [2, 4], P in partitioning
+                for regions in [2], P in partitioning
                     @info "  Testing diffusion of $fieldname on $regions $(P)s with $(typeof(closure).name.wrapper) on the $arch"
 
                     f = diffusion_cosine_test(grid; closure, P = P, field_name = fieldname, regions = regions)

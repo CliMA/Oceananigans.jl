@@ -234,7 +234,7 @@ advection_schemes = (nothing,
                      UpwindBiasedThirdOrder(),
                      CenteredFourthOrder(),
                      UpwindBiasedFifthOrder(),
-                     WENO5())
+                     WENO())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

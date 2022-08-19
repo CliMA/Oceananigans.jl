@@ -37,12 +37,14 @@ function (nc::NaNChecker)(simulation)
     for (name, field) in pairs(nc.fields)
         if hasnan(field)
             simulation.running = false
+            clock = simulation.model.clock
+            t = time(simulation)
+            iter = iteration(simulation)
 
             if nc.erroring
-                clock = simulation.model.clock
-                error("time = $(clock.time), iteration = $(clock.iteration): NaN found in field $name. Aborting simulation.")
+                error("time = $t, iteration = $iter: NaN found in field $name. Aborting simulation.")
             else
-                @info "NaN found in field $name. Stopping simulation."
+                @info "time = $t, iteration = $iter: NaN found in field $name. Stopping simulation."
             end
         end
     end
