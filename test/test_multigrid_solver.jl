@@ -50,7 +50,7 @@ end
 @testset "MultigridSolverPoisson" begin
     for arch in archs
         A = typeof(arch)
-        @info "Testing MultigridSolver with the poisson equation [$A]..."
+        @info "Testing MultigridSolver with the Poisson equation [$A]..."
         grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_poisson_equation_test(grid)
     end
