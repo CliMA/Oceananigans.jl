@@ -101,10 +101,10 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
     fields = lagrangian_particles.tracked_fields
     Nparticles = length(particles)
 
-    print(io, Nparticles, " LagrangianParticles with eltype ", Tparticle, ":", '\n',
-        "├── ", length(properties), " properties: ", properties, '\n',
-        "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, '\n',
-        "├── ", length(fields), " tracked fields: ", propertynames(fields), '\n',
+    print(io, Nparticles, " LagrangianParticles with eltype ", Tparticle, ":", "\n",
+        "├── ", length(properties), " properties: ", properties, "\n",
+        "├── particle-wall restitution coefficient: ", lagrangian_particles.restitution, "\n",
+        "├── ", length(fields), " tracked fields: ", propertynames(fields), "\n",
         "└── dynamics: ", prettysummary(lagrangian_particles.dynamics, false))
 end
 
