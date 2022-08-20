@@ -31,7 +31,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
         free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),
-                         ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0), 
+                         ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0),
+                         ImplicitFreeSurface(solver_method=:Multigrid, gravitational_acceleration=1.0),
                          ImplicitFreeSurface(gravitational_acceleration=1.0)]
 
         sol = ()
@@ -39,14 +40,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
         for free_surface in free_surfaces
 
-            model = HydrostaticFreeSurfaceModel(grid = grid,
-                                                free_surface = free_surface,
+            model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                                 buoyancy = nothing,
                                                 tracers = nothing,
                                                 closure = nothing)
 
-            # Now create a divergent flow field and solve for 
-            # pressure correction
+            # Now create a divergent flow field and solve for pressure correction
             u, v, w     = model.velocities
             u[imm1, jmm1, 1:Nz ] .=  1
             u[imp1, jmm1, 1:Nz ] .= -1
