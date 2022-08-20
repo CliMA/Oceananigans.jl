@@ -180,7 +180,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements
-    if Δt !== implicit_free_surface_solver.previous_Δt
+    if Δt != implicit_free_surface_solver.previous_Δt
         arch = architecture(solver.matrix)
         constructors = deepcopy(implicit_free_surface_solver.matrix_constructors)
         M = prod(size(η))
