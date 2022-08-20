@@ -208,7 +208,6 @@ update_theme!(fontsize = 15)
 
 axis_kwargs = (xlabel = "Across-slope distance (x)",
                ylabel = "Slope-normal\ndistance (z)",
-               aspect = AxisAspect(Lx / Lz),
                limits = ((0, Lx), (0, Lz)))
 
 ax_ω = Axis(fig[2, 1]; title = "Along-slope vorticity", axis_kwargs...)
@@ -236,7 +235,7 @@ frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
+    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide
