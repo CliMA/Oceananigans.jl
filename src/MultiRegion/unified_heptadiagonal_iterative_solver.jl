@@ -189,7 +189,7 @@ end
 
 function Base.show(io::IO, solver::UnifiedDiagonalIterativeSolver)
     print(io, "Oceananigans-compatible preconditioned conjugate gradient solver.\n")
-    print(io, " Problem size = "  , solver.problem_size, '\n')
+    print(io, " Problem size = "  , solver.problem_size, "\n")
     print(io, " Grid = "  , solver.grid, "\n")
     print(io, " Devices = ", solver.devices, "\n")
     print(io, " Divided length = ", solver.n)

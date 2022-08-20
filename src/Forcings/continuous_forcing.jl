@@ -126,16 +126,16 @@ end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{LX, LY, LZ, P}) where {LX, LY, LZ, P} =
-    print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), '\n',
-        "├── func: $(prettysummary(forcing.func))", '\n',
-        "├── parameters: $(forcing.parameters)", '\n',
+    print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), "\n",
+        "├── func: $(prettysummary(forcing.func))", "\n",
+        "├── parameters: $(forcing.parameters)", "\n",
         "└── field dependencies: $(forcing.field_dependencies)")
 
 """Show the innards of an "non-regularized" `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{Nothing, Nothing, Nothing, P}) where P =
-    print(io, "ContinuousForcing{$P}", '\n',
-        "├── func: $(prettysummary(forcing.func))", '\n',
-        "├── parameters: $(forcing.parameters)", '\n',
+    print(io, "ContinuousForcing{$P}", "\n",
+        "├── func: $(prettysummary(forcing.func))", "\n",
+        "├── parameters: $(forcing.parameters)", "\n",
         "└── field dependencies: $(forcing.field_dependencies)")
 
 Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
