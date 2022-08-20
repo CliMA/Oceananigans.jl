@@ -19,12 +19,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
                                           halo = (3, 3, 3),
                                           topology = (Periodic, Periodic, Bounded))
 
-        imm1=Int( floor((Nx+1)/2)   )
-        imp1=Int( floor((Nx+1)/2)+1 )
-        jmm1=Int( floor((Ny+1)/2)   )
-        jmp1=Int( floor((Ny+1)/2)+1 )
+        imm1=Int(floor((Nx+1)/2)  )
+        imp1=Int(floor((Nx+1)/2)+1)
+        jmm1=Int(floor((Ny+1)/2)  )
+        jmp1=Int(floor((Ny+1)/2)+1)
 
-        bottom = [-1. for i=1:Nx, j=1:Ny ]
+        bottom = [-1. for j=1:Ny, i=1:Nx]
         bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
 
         B = arch_array(arch, bottom)
@@ -46,11 +46,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
                                                 closure = nothing)
 
             # Now create a divergent flow field and solve for pressure correction
-            u, v, w     = model.velocities
-            u[imm1, jmm1, 1:Nz ] .=  1
-            u[imp1, jmm1, 1:Nz ] .= -1
-            v[imm1, jmm1, 1:Nz ] .=  1
-            v[imm1, jmp1, 1:Nz ] .= -1
+            u, v, w = model.velocities
+            u[imm1, jmm1, 1:Nz] .=  1
+            u[imp1, jmm1, 1:Nz] .= -1
+            v[imm1, jmm1, 1:Nz] .=  1
+            v[imm1, jmp1, 1:Nz] .= -1
             
             events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
             implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5, events)
