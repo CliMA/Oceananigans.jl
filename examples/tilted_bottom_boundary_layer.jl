@@ -204,6 +204,7 @@ xv, yv, zv = nodes(V)
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(resolution = (800, 440))
+update_theme!(fontsize = 10)
 
 axis_kwargs = (xlabel = "Across-slope distance (x)",
                ylabel = "Slope-normal distance (z)",
