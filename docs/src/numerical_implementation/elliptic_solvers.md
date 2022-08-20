@@ -43,7 +43,7 @@ The method can be explained easily by taking the Fourier transform of both sides
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
 solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
-ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
+ensure that the projection step in the fractional time-step works (see [Time-stepping section](@ref time_stepping) and [Fractional step method appendix](@ref fractional_step_method)). To do this, the wavenumbers are replaced by
 eigenvalues ``\lambda^x``, ``\lambda^y``, and ``\lambda^z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for

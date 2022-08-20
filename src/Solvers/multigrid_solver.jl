@@ -152,10 +152,10 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 end
 
 Base.show(io::IO, solver::MultigridSolver) = 
-    print(io, "MultigridSolver on ", string(solver.architecture), ": \n",
-              "├── grid: ", summary(solver.grid), '\n',
-              "├── matrix: ", prettysummary(solver.matrix), '\n',
-              "├── reltol: ", prettysummary(solver.reltol), '\n',
-              "├── abstol: ", prettysummary(solver.abstol), '\n',
-              "├── maxiter: ", solver.maxiter, '\n',
+print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
+              "├── grid: ", summary(solver.grid), "\n",
+              "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",
+              "├── reltol: ", prettysummary(solver.reltol), "\n",
+              "├── abstol: ", prettysummary(solver.abstol), "\n",
+              "├── maxiter: ", solver.maxiter, "\n",
               "└── amg_algorithm: ", typeof(solver.amg_algorithm))

@@ -69,10 +69,10 @@ Base.summary(af::AdvectiveForcing) = string("AdvectiveForcing with the ", nameof
 
 function Base.show(io::IO, af::AdvectiveForcing)
     
-    print(io, summary(af), ":", '\n')
+    print(io, summary(af), ":", "\n")
 
-    print(io, "├── u: ", prettysummary(af.velocities.u), '\n',
-              "├── v: ", prettysummary(af.velocities.v), '\n',
+    print(io, "├── u: ", prettysummary(af.velocities.u), "\n",
+              "├── v: ", prettysummary(af.velocities.v), "\n",
               "└── w: ", prettysummary(af.velocities.w))
 end
 

@@ -209,3 +209,10 @@ Private = false
 Modules = [Oceananigans.Utils]
 Private = false
 ```
+
+## Units
+
+```@autodocs
+Modules = [Oceananigans.Units]
+Private = false
+```

@@ -329,11 +329,11 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
-        print(io, summary(grid), '\n')
+        print(io, summary(grid), "\n")
     end
 
-    return print(io, "├── ", x_summary, '\n',
-                     "├── ", y_summary, '\n',
+    return print(io, "├── ", x_summary, "\n",
+                     "├── ", y_summary, "\n",
                      "└── ", z_summary)
 end
 
