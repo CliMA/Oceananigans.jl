@@ -118,7 +118,7 @@ appendix_pages = [
     "Convergence tests" => "appendix/convergence_tests.md",
     "Performance benchmarks" => "appendix/benchmarks.md",
     "Library" => "appendix/library.md",
-    "Function index" => "appendix/function_index.md",
+    "Function index" => "appendix/function_index.md"
 ]
 
 pages = [
@@ -132,7 +132,7 @@ pages = [
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
     "References" => "references.md",
-    "Appendix" => appendix_pages,
+    "Appendix" => appendix_pages
 ]
 
 #####
@@ -155,7 +155,7 @@ makedocs(bib,
    doctest = true,
     strict = true,
      clean = true,
- checkdocs = :none # Should fix our docstring so we can use checkdocs=:exports with strict=true.
+ checkdocs = :exports
 )
 
 deploydocs(

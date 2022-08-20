@@ -5,11 +5,11 @@
 function closure_summary(closures::Tuple, padchar="│")
     Nclosures = length(closures)
     if Nclosures == 1
-        return string("Tuple with 1 closure:", '\n',
+        return string("Tuple with 1 closure:", "\n",
                       "$padchar   └── ", summary(closures[1]))
     else
-        return string("Tuple with $Nclosures closures:", '\n',
-         Tuple(string("$padchar   ├── ", summary(c), '\n') for c in closures[1:end-1])...,
+        return string("Tuple with $Nclosures closures:", "\n",
+         Tuple(string("$padchar   ├── ", summary(c), "\n") for c in closures[1:end-1])...,
                       "$padchar   └── ", summary(closures[end]))
     end
 end
