@@ -204,10 +204,10 @@ xv, yv, zv = nodes(V)
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(resolution = (800, 440))
-update_theme!(fontsize = 10)
+update_theme!(fontsize = 15)
 
 axis_kwargs = (xlabel = "Across-slope distance (x)",
-               ylabel = "Slope-normal distance (z)",
+               ylabel = "Slope-normal\ndistance (z)",
                aspect = AxisAspect(Lx / Lz),
                limits = ((0, Lx), (0, Lz)))
 
@@ -228,7 +228,7 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, textsize=20, tellwidth=false)
 
 # Finally, we record a movie.
 
