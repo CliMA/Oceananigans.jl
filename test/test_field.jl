@@ -93,8 +93,6 @@ function run_field_reduction_tests(FT, arch)
             @test all(isapprox(maximum(cos, ϕ, dims=dims), maximum(cos, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(cosh, ϕ, dims=dims), mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
-
-        CUDA.allowscalar(true)
     end
 
     return nothing
