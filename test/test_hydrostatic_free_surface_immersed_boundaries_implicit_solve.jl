@@ -1,14 +1,18 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: arch_array
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_implicit_free_surface_right_hand_side!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocities!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!, 
+                                                        compute_implicit_free_surface_right_hand_side!,
+                                                        implicit_free_surface_step!,
+                                                        pressure_correct_velocities!
 
 @testset "Immersed boundaries test divergent flow solve with hydrostatic free surface models" begin
-    @info "Testing immersed boundaries divergent flow solve"
-
     for arch in archs
+        A = typeof(arch)
+        @info "Testing immersed boundaries divergent flow solve [$A]"
+
         Nx = 11 
         Ny = 11 
         Nz = 1
