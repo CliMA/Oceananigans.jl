@@ -203,12 +203,12 @@ xv, yv, zv = nodes(V)
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-fig = Figure(resolution = (800, 440))
-update_theme!(fontsize = 15)
+fig = Figure(resolution = (800, 600))
 
 axis_kwargs = (xlabel = "Across-slope distance (x)",
                ylabel = "Slope-normal\ndistance (z)",
-               limits = ((0, Lx), (0, Lz)))
+               limits = ((0, Lx), (0, Lz)),
+               )
 
 ax_ω = Axis(fig[2, 1]; title = "Along-slope vorticity", axis_kwargs...)
 ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
