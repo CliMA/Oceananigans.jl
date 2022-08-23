@@ -1,5 +1,4 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -9,11 +8,6 @@ import Oceananigans.TimeSteppers: update_state!
 Fill halo regions for `model.solution` and `model.tracers`.
 """
 function update_state!(model::ShallowWaterModel)
-
-    # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
-
-    wait(device(model.architecture), MultiEvent(masking_events))
 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
