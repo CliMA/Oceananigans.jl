@@ -2,7 +2,6 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.Fields: compute!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.TimeSteppers: update_state!
 
