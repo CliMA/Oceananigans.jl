@@ -40,7 +40,7 @@ Keyword arguments
 
 - `mask`: the scalar mask
 
-`condition_operand` is a conveniece function used to construct a `ConditionalOperation`
+`condition_operand` is a convenience function used to construct a `ConditionalOperation`
 
 `condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
 
@@ -136,9 +136,9 @@ compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          "ConditionalOperation at $(location(operation))", '\n',
-          "├── operand: ", summary(operation.operand), '\n',
-          "├── grid: ", summary(operation.grid), '\n',
-          "├── func: ", summary(operation.func), '\n',
-          "├── condition: ", summary(operation.condition), '\n',
+          "ConditionalOperation at $(location(operation))", "\n",
+          "├── operand: ", summary(operation.operand), "\n",
+          "├── grid: ", summary(operation.grid), "\n",
+          "├── func: ", summary(operation.func), "\n",
+          "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)

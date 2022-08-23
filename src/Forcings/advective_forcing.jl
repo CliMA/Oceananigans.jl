@@ -42,7 +42,7 @@ w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
 settling = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_Stokes)
 
 # output
-AdvectiveForcing with the UpwindBiasedFifthOrder scheme:
+AdvectiveForcing with the UpwindBiased scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
 └── w: ConstantField(-1.97096)
@@ -69,10 +69,10 @@ Base.summary(af::AdvectiveForcing) = string("AdvectiveForcing with the ", nameof
 
 function Base.show(io::IO, af::AdvectiveForcing)
     
-    print(io, summary(af), ":", '\n')
+    print(io, summary(af), ":", "\n")
 
-    print(io, "├── u: ", prettysummary(af.velocities.u), '\n',
-              "├── v: ", prettysummary(af.velocities.v), '\n',
+    print(io, "├── u: ", prettysummary(af.velocities.u), "\n",
+              "├── v: ", prettysummary(af.velocities.v), "\n",
               "└── w: ", prettysummary(af.velocities.w))
 end
 

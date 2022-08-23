@@ -99,7 +99,7 @@ end
 L = 1
 ϕs = (ϕ_Gaussian, ϕ_Square)
 time_steppers = (:RungeKutta3,)
-advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), UpwindBiasedFifthOrder(), WENO5())
+advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(), UpwindBiasedFifthOrder(), WENO())
 Ns = [16, 64]
 CFLs = (0.5, 1.7)
 Us = [+1, -1]

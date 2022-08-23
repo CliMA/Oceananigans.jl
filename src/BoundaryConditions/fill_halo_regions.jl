@@ -9,6 +9,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 #####
 
 fill_halo_regions!(::Nothing, args...) = nothing
+fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...) = nothing
 
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)

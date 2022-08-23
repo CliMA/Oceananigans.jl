@@ -5,7 +5,7 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils

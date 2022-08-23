@@ -130,13 +130,13 @@ function Base.show(io::IO, field::MultiRegionField)
 
   prefix =
       string("$(summary(field))\n",
-             "├── grid: ", summary(field.grid), '\n',
-             "├── boundary conditions: ", summary(bcs), '\n')
+             "├── grid: ", summary(field.grid), "\n",
+             "├── boundary conditions: ", summary(bcs), "\n")
   middle = isnothing(field.operand) ? "" :
-      string("├── operand: ", summary(field.operand), '\n',
-             "├── status: ", summary(field.status), '\n')
+      string("├── operand: ", summary(field.operand), "\n",
+             "├── status: ", summary(field.status), "\n")
 
-  suffix = string("└── data: ", summary(field.data), '\n',
+  suffix = string("└── data: ", summary(field.data), "\n",
                   "    └── ", data_summary(field))
 
   print(io, prefix, middle, suffix)

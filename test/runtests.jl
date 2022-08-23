@@ -82,6 +82,7 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
+            include("test_immersed_advection.jl")
         end
     end
 

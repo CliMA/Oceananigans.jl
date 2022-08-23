@@ -31,7 +31,7 @@ are provided, then the tracer advection term becomes
 Notice that the term ``\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} C \right )`` 
 is neglected: only the terms describing the advection of resolved tracer by the background 
 velocity field and the advection of background tracer by the resolved velocity field are included.
-An analgous statement holds for the advection of background momentum by the resolved
+An analogous statement holds for the advection of background momentum by the resolved
 velocity field.
 Other possible terms associated with the Coriolis force, buoyancy, turbulence closures,
 and surface waves acting on background fields are neglected.

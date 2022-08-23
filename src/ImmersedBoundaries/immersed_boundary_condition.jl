@@ -29,12 +29,12 @@ Base.summary(ibc::IBC) =
            "top=", bc_str(ibc.top))
 
 Base.show(io::IO, ibc::IBC) =
-    print(io, "ImmersedBoundaryCondition:", '\n',
-              "├── west: ", summary(ibc.west), '\n',
-              "├── east: ", summary(ibc.east), '\n',
-              "├── south: ", summary(ibc.south), '\n',
-              "├── north: ", summary(ibc.north), '\n',
-              "├── bottom: ", summary(ibc.bottom), '\n',
+    print(io, "ImmersedBoundaryCondition:", "\n",
+              "├── west: ", summary(ibc.west), "\n",
+              "├── east: ", summary(ibc.east), "\n",
+              "├── south: ", summary(ibc.south), "\n",
+              "├── north: ", summary(ibc.north), "\n",
+              "├── bottom: ", summary(ibc.bottom), "\n",
               "└── top: ", summary(ibc.top))
 
 """

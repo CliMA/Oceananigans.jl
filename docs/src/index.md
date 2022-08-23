@@ -26,7 +26,7 @@ julia> Pkg.add("Oceananigans")
 
 !!! compat "Julia 1.6 or newer"
     The latest version of Oceananigans requires _at least_ Julia 1.6 to run.
-    Many scripts will also run on Julia 1.7 (but Oceananigans is only tested on Julia 1.6.6 right now).
+    Many scripts will also run on Julia 1.7 (but Oceananigans is only tested on Julia 1.6.7 right now).
 
 If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
@@ -44,7 +44,7 @@ It's _deep_ and includes:
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
   
-    If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
+    If you've got a question or something to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
@@ -79,6 +79,8 @@ cite our work and mention Oceananigans by name.
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1) _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 

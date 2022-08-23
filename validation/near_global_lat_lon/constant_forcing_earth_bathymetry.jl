@@ -113,7 +113,7 @@ equation_of_state = LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
-                                    tracer_advection = WENO5(),
+                                    tracer_advection = WENO(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=true),
