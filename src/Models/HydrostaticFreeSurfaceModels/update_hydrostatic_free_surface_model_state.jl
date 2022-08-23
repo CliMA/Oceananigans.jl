@@ -2,8 +2,8 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -37,7 +37,6 @@ end
 # Mask immersed fields
 function masking_actions!(model)
     η = displacement(model.free_surface)
-    donot_mask = merge(model.tracers, (; η))
     u = prognostic_fields(model).u
     v = prognostic_fields(model).v
 
