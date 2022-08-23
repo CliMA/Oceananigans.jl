@@ -33,18 +33,18 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     return nothing
 end
 
-
 # Mask immersed fields
 function masking_actions!(model)
     η = displacement(model.free_surface)
-    u = prognostic_fields(model).u
-    v = prognostic_fields(model).v
+    prog = prognostic_fields(model)
 
-    masking_events = Any[mask_immersed_field!(field) for field in (u, v)]
+    # selects u, v, if they're prognostic variables
+    prognostic_vels = Tuple( val for (key, val) in zip(keys(prog), prog) if Symbol(key) in (:u, :v) )
+
+    masking_events = Any[mask_immersed_field!(field) for field in prognostic_vels]
     push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 end
-
 
 function update_state_actions!(model) 
     compute_w_from_continuity!(model)
