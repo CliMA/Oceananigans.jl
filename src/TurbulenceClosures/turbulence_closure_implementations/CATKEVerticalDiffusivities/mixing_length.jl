@@ -65,12 +65,12 @@ annealing and noisy Ensemble Kalman Inversion methods.
 Base.@kwdef struct MixingLength{FT}
     Cᵇ    :: FT = Inf # Inf is the "inert" value for this parameter
     Cˢ    :: FT = Inf # Inf is the "inert" value for this parameter
-    Cᵇu   :: FT = 1.55
-    Cᵇc   :: FT = 0.01
-    Cᵇe   :: FT = 0.60
-    Cˢu   :: FT = 5.1
-    Cˢc   :: FT = 4.3
-    Cˢe   :: FT = 1.49
+    Cᵇu   :: FT = 1.26
+    Cᵇc   :: FT = 2.14
+    Cᵇe   :: FT = 1.08
+    Cˢu   :: FT = 0.82
+    Cˢc   :: FT = 0.61
+    Cˢe   :: FT = 1.47
     Cᵟu   :: FT = 0.5
     Cᵟc   :: FT = 0.5
     Cᵟe   :: FT = 0.5
@@ -80,14 +80,14 @@ Base.@kwdef struct MixingLength{FT}
     Cᴬˢu  :: FT = 0.0
     Cᴬˢc  :: FT = 0.0
     Cᴬˢe  :: FT = 0.0
-    Cᴷu⁻  :: FT = 0.14
-    Cᴷuʳ  :: FT = 0.1
-    Cᴷc⁻  :: FT = 0.35
-    Cᴷcʳ  :: FT = 0.05
-    Cᴷe⁻  :: FT = 0.49
-    Cᴷeʳ  :: FT = 17.0
-    CᴷRiʷ :: FT = 30.0
-    CᴷRiᶜ :: FT = 1.1
+    Cᴷu⁻  :: FT = 0.29
+    Cᴷuʳ  :: FT = 0.75
+    Cᴷc⁻  :: FT = 2.13
+    Cᴷcʳ  :: FT = -0.27
+    Cᴷe⁻  :: FT = 8.46
+    Cᴷeʳ  :: FT = 1.49
+    CᴷRiʷ :: FT = 3.14
+    CᴷRiᶜ :: FT = -1.98
 end
 
 #####
@@ -264,12 +264,12 @@ Base.show(io::IO, ML::MixingLength) =
     print(io, "MixingLength: \n" *
               "     Cᵇ   = $(ML.Cᵇ),    \n" *
               "     Cᵇu  = $(ML.Cᵇu),   \n" *
-              "     Cᵇc  = $(ML.Cᵇe),   \n" *
-              "     Cᵇe  = $(ML.Cᵇc),   \n" *
+              "     Cᵇc  = $(ML.Cᵇc),   \n" *
+              "     Cᵇe  = $(ML.Cᵇe),   \n" *
               "     Cˢ   = $(ML.Cˢ),    \n" *
               "     Cˢu  = $(ML.Cˢu),   \n" *
-              "     Cˢc  = $(ML.Cˢe),   \n" *
-              "     Cˢe  = $(ML.Cˢc),   \n" *
+              "     Cˢc  = $(ML.Cˢc),   \n" *
+              "     Cˢe  = $(ML.Cˢe),   \n" *
               "     Cᵟu  = $(ML.Cᵟu),   \n" *
               "     Cᵟc  = $(ML.Cᵟc),   \n" *
               "     Cᵟe  = $(ML.Cᵟe),   \n" *
