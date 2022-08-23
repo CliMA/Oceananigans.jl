@@ -3,6 +3,7 @@ using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -29,6 +30,20 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     
     return nothing
 end
+
+
+# Mask immersed fields
+function masking_actions!(model)
+    η = displacement(model.free_surface)
+    donot_mask = merge(model.tracers, (; η))
+    u = prognostic_fields(model).u
+    v = prognostic_fields(model).v
+
+    masking_events = Any[mask_immersed_field!(field) for field in (u, v)]
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
+    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
+end
+
 
 function update_state_actions!(model) 
     compute_w_from_continuity!(model)
