@@ -19,6 +19,8 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
+    @apply_regionally masking_actions!(model)
+
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
