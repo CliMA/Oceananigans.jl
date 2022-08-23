@@ -65,6 +65,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 
     # Tracer mixing length
     ℓ = ℑzᵃᵃᶜ(i, j, k, grid, tracer_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    #ℓ = ℑzᵃᵃᶜ(i, j, k, grid, TKE_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # Ri-dependent dissipation coefficient
     Cᴰ⁻ = closure.turbulent_kinetic_energy_equation.Cᴰ⁻
@@ -85,14 +86,10 @@ const VITD = VerticallyImplicitTimeDiscretization
     #   and thus    L = - Cᴰ √e / ℓ .
     #
 
-    # Second note: negative values of e are unphysical.
-    # Therefore we introduce a simple parameterization for destroying
-    # negative e (below "k" denotes an inverse length scale):
-    #k⁺ = Cᴰ / ℓ
-    #k⁻ = 10 / Δzᶜᶜᶠ(i, j, k, grid)
-    #k = ifelse(eᵢ > 0, k⁺, k⁻)
+    # Reduce ℓ to grid scale when e is negative.
+    ℓ_eff = ifelse(eᵢ > 0, ℓ, Δzᶜᶜᶠ(i, j, k, grid) / 10)
 
-    return - Cᴰ * sqrt(abs(eᵢ)) / ℓ
+    return - Cᴰ * sqrt(abs(eᵢ)) / ℓ_eff
 end
 
 # Fallbacks for explicit time discretization
