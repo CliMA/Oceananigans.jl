@@ -104,16 +104,21 @@ trilinear(x, y, z) = x + y + z
                 @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
                 @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
                 
-                @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
-                @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
-                @compute Tx = CUDA.@allowscalar Field(Average(T, dims=1, condition=T.>2))
+                @inline condition(i, j, k, grid, T) = T[i, j, k] > 3
+                @compute Txyz = Field(Average(T; condition)) 
+                @compute Txy = Field(Average(T, dims=(1, 2); condition))
+                @inline condition(i, j, k, grid, T) = T[i, j, k] > 3
+                @compute Tx = Field(Average(T, dims=1; condition))
                 @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3.75
                 @test Array(interior(Txy))[1, 1, :] ≈ [3.5, 11.5/3]
                 @test Array(interior(Tx))[1, :, :] ≈ [[2.5, 3] [3, 4]]
 
-                @compute wxyz = CUDA.@allowscalar Field(Average(w, condition=w.>3))
-                @compute wxy = CUDA.@allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
-                @compute wx = CUDA.@allowscalar Field(Average(w, dims=1, condition=w.>1))
+                @inline condition(i, j, k, grid, w) = w[i, j, k] > 3
+                @compute wxyz = Field(Average(w; condition))
+                @inline condition(i, j, k, grid, w) = w[i, j, k] > 2
+                @compute wxy = Field(Average(w, dims=(1, 2); condition))
+                @inline condition(i, j, k, grid, w) = w[i, j, k] > 1
+                @compute wx = Field(Average(w, dims=1; condition))
                 @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 4.25
                 @test Array(interior(wxy))[1, 1, :] ≈ [3, 10/3, 4]
                 @test Array(interior(wx))[1, :, :] ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
