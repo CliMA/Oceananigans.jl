@@ -28,23 +28,23 @@ using Oceananigans.TurbulenceClosures
                                                     buoyancy = BuoyancyTracer(),
                                                     closure = closure)
 
-                u = model.velocities.u
+                u, v, w = model.velocities
                 b = model.tracers.b
 
                 # Linear stratification
-                set!(model, u = 1, b = (x, y, z) -> 4 * z)
+                set!(model, u = 1, v = 1, b = (x, y, z) -> 4 * z)
             
                 # Inside the bump
-                @test b[4, 4, 2] == 0 
                 @test u[4, 4, 2] == 0
+                @test v[4, 4, 2] == 0
 
                 simulation = Simulation(model, Δt = 1e-3, stop_iteration=2)
 
                 run!(simulation)
 
                 # Inside the bump
-                @test b[4, 4, 2] == 0
                 @test u[4, 4, 2] == 0
+                @test v[4, 4, 2] == 0
             end
         end
 
