@@ -6,6 +6,7 @@ using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Adapt
 using KernelAbstractions: NoneEvent

@@ -216,7 +216,7 @@ end
     end
 
     @testset "Time-stepping with variable diffusivities" begin
-        @info "  Testing time-stepping with presribed variable diffusivities..."
+        @info "  Testing time-stepping with prescribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
