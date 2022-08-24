@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
+using Oceananigans.ImmersedBoundaries: mask_immersed_reduced_field_xy!, mask_immersed_velocities!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -36,14 +36,9 @@ end
 # Mask immersed fields
 function masking_actions!(model)
     η = displacement(model.free_surface)
-    prog = prognostic_fields(model)
-
-    # selects u, v, if they're prognostic variables
-    prognostic_vels = Tuple( val for (key, val) in zip(keys(prog), prog) if Symbol(key) in (:u, :v) )
-
-    masking_events = Any[mask_immersed_field!(field) for field in prognostic_vels]
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
-    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
+    masking_events = mask_immersed_velocities!(model.velocities, architecture(model), model.grid)...,
+                     mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3))
+    wait(device(model.architecture), MultiEvent(masking_events))
 end
 
 function update_state_actions!(model) 
