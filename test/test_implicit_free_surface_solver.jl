@@ -86,13 +86,13 @@ end
                                            z = (-400, 0),
                                            topology = (Bounded, Periodic, Bounded))
 
-        const Lz = rectilinear_grid.Lz
-        const width = 50kilometers
+        Lz = rectilinear_grid.Lz
+        width = 50kilometers
 
-        bump(x) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
+        bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
-                                           
+
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
                                              longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
 
