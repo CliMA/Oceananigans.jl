@@ -307,11 +307,11 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
-        print(io, summary(grid), '\n')
+        print(io, summary(grid), "\n")
     end
 
-    return print(io, "├── ", x_summary, '\n',
-                     "├── ", y_summary, '\n',
+    return print(io, "├── ", x_summary, "\n",
+                     "├── ", y_summary, "\n",
                      "└── ", z_summary)
 end
 
@@ -354,7 +354,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     new_grid = LatitudeLongitudeGrid(architecture(old_grid), eltype(old_grid);
                                      size = size, halo = new_halo,
-                                     longitude = x, latitude = y, z = z,
+                                     longitude = x, latitude = y, z = z, topology = topo,
                                      precompute_metrics = metrics_precomputed(old_grid))
 
     return new_grid

@@ -63,8 +63,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                     closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     free_surface = ImplicitFreeSurface())
 
 # We want to initialize our model with a baroclinically unstable front plus some small-amplitude

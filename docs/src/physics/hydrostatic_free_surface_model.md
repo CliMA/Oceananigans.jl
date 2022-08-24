@@ -1,4 +1,4 @@
-# Hydrostatic model with a free surface
+# [Hydrostatic model with a free surface](@id hydrostatic_free_surface_model)
 
 The [`HydrostaticFreeSurfaceModel`](@ref) solves the incompressible Navier-Stokes equations under
 the Boussinesq and hydrostatic approximations and with an arbitrary number of tracer conservation 

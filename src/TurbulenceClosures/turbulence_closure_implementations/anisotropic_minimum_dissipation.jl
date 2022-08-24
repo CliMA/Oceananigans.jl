@@ -24,8 +24,8 @@ const AMD = AnisotropicMinimumDissipation
 
 Base.show(io::IO, closure::AMD{TD}) where TD =
     print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
-              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
-              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
+              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, "\n",
+              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, "\n",
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
 
 """

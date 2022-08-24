@@ -4,8 +4,8 @@ using Printf
 using GLMakie
 
 grid = RectilinearGrid(size=128, z=(-10, 10), topology=(Flat, Flat, Bounded))
-sinking = AdvectiveForcing(WENO5(), w=-1)
-rising = AdvectiveForcing(WENO5(), w=+1)
+sinking = AdvectiveForcing(WENO(), w=-1)
+rising = AdvectiveForcing(WENO(), w=+1)
 
 b_to_a(x, y, z, t, a, b) = + a * b
 a_to_b(x, y, z, t, a, b) = - a * b 
