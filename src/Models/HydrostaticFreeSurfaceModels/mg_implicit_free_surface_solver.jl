@@ -14,7 +14,7 @@ import Oceananigans.Solvers: solve!, precondition!
 import Oceananigans.Architectures: architecture
 
 """
-    struct MGImplicitFreeSurfaceSolver{V, S, R}
+    mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
 
 The multigrid implicit free-surface solver.
 
@@ -40,7 +40,7 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
 
 """
     MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                settings, 
+                                settings = nothing, 
                                 gravitational_acceleration = nothing, 
                                 placeholder_timestep = -1.0)
 
@@ -55,7 +55,7 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-step `ηⁿ`.
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                     settings, 
+                                     settings = nothing,
                                      gravitational_acceleration = nothing, 
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
@@ -69,16 +69,23 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    # Set some defaults
-    settings = Dict{Symbol, Any}(settings)
+    # set some defaults
+    if settings !== nothing
+        settings = Dict{Symbol, Any}(settings)
+    else
+        settings = Dict{Symbol, Any}()
+    end
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
     settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
-    # initialize solver with Δt = nothing so that linear matrix is not computed; see `initialize_matrix` methods
+    # initialize solver with Δt = nothing so that linear matrix is not computed;
+    # see `initialize_matrix` methods
     solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
-                             template_field = right_hand_side, settings...)
+                             template_field = right_hand_side,
+                             settings...)
+
     # For updating the diagonal
     matrix_constructors = constructors(arch, solver.matrix)
     Nx, Ny = grid.Nx, grid.Ny
@@ -121,7 +128,8 @@ end
 """
     compute_diag(arch, grid, g)
 
-Construct an `Nx * Ny` array on architecture `arch` with elements `Az / g`, where `g` is the gravitational accelaration.
+Construct an `Nx * Ny` array on architecture `arch` with elements `Az / g`,
+where `g` is the gravitational accelaration.
 """
 function compute_diag(arch, grid, g)
     diag = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, 1))

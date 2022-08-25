@@ -22,15 +22,15 @@ end
 
 Base.show(io::IO, fs::ImplicitFreeSurface) =
     isnothing(fs.η) ?
-    print(io, "ImplicitFreeSurface with ", fs.solver_method, '\n',
-              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), '\n',
-              "├─ solver_method: ", fs.solver_method, '\n', # TODO: implement summary for solvers
+    print(io, "ImplicitFreeSurface with ", fs.solver_method, "\n",
+              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), "\n",
+              "├─ solver_method: ", fs.solver_method, "\n", # TODO: implement summary for solvers
               "└─ settings: ", isempty(fs.solver_settings) ? "Default" : fs.solver_settings) :
-    print(io, "ImplicitFreeSurface with ", fs.solver_method, '\n',
-              "├─ grid: ", summary(fs.η.grid), '\n',
-              "├─ η: ", summary(fs.η), '\n',
-              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), '\n',
-              "├─ implicit_step_solver: ", nameof(typeof(fs.implicit_step_solver)), '\n', # TODO: implement summary for solvers
+    print(io, "ImplicitFreeSurface with ", fs.solver_method, "\n",
+              "├─ grid: ", summary(fs.η.grid), "\n",
+              "├─ η: ", summary(fs.η), "\n",
+              "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), "\n",
+              "├─ implicit_step_solver: ", nameof(typeof(fs.implicit_step_solver)), "\n", # TODO: implement summary for solvers
               "└─ settings: ", fs.solver_settings)
 
 """

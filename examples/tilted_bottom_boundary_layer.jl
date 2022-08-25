@@ -203,15 +203,15 @@ xv, yv, zv = nodes(V)
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-fig = Figure(resolution = (800, 440))
+fig = Figure(resolution = (800, 600))
 
-axis_kwargs = (xlabel = "Along-slope distance",
-               ylabel = "Across-slope distance",
-               aspect = AxisAspect(Lx / Lz),
-               limits = ((0, Lx), (0, Lz)))
+axis_kwargs = (xlabel = "Across-slope distance (x)",
+               ylabel = "Slope-normal\ndistance (z)",
+               limits = ((0, Lx), (0, Lz)),
+               )
 
-ax_ω = Axis(fig[2, 1]; title = "y-vorticity", axis_kwargs...)
-ax_v = Axis(fig[3, 1]; title = "Along-slope velocity", axis_kwargs...)
+ax_ω = Axis(fig[2, 1]; title = "Along-slope vorticity", axis_kwargs...)
+ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
@@ -227,7 +227,7 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, textsize=20, tellwidth=false)
 
 # Finally, we record a movie.
 
@@ -235,7 +235,7 @@ frames = 1:length(times)
 
 record(fig, "tilted_bottom_boundary_layer.mp4", frames, framerate=12) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
+    if i%5 == 0 print(msg * " \r") end
     n[] = i
 end
 nothing #hide
