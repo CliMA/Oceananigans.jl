@@ -16,15 +16,6 @@ end
 ##### Function output fallback
 #####
 
-
-function construct_output(output, grid, kwargs...)
-    if output isa AbstractOperation
-        output = Field(output)
-    end
-
-    construct_output(output, grid, kwargs...)
-end
-
 function construct_output(output, grid, indices, with_halos)
     if !(indices isa typeof(default_indices(3)))
         output_type = output isa Function ? "Function" : ""
