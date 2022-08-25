@@ -22,7 +22,9 @@ The multigrid implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
-mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
+mutable struct MGImplicitFreeSurfaceSolver{A, S, V, F, R, C, D}
+    "Architecture"
+    architecture :: A
     "The multigrid solver"
     multigrid_solver :: S
     "The vertically-integrated lateral areas"
@@ -95,7 +97,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     fill_diag!(matrix_constructors, arch, Nx*Ny, Nx*Ny)
     diagonal = compute_diag(arch, grid, gravitational_acceleration)
 
-    return MGImplicitFreeSurfaceSolver(solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
+    return MGImplicitFreeSurfaceSolver(arch, solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
 end
 
 @inline finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
@@ -184,7 +186,7 @@ build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acce
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, rhs, g, Δt)
+function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CPU}, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements
@@ -197,18 +199,37 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver, r
 
         unsafe_free!(constructors)
 
-        arch == GPU() && begin
-            s = solver.amgx_solver
-            # FIXME only allocate this once
-            csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
-            @inline subtract_one(x) = convert(Int32, x-1)
-            AMGX.upload!(s.device_matrix, 
-                         map(subtract_one, csr_matrix.rowPtr),
-                         map(subtract_one, csr_matrix.colVal),
-                         csr_matrix.nzVal
-                         )
-            AMGX.setup!(s.solver, s.device_matrix)
-        end
+        implicit_free_surface_solver.previous_Δt = Δt
+    end
+    solve!(η, solver, rhs)
+
+    return nothing
+end
+
+
+function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
+    solver = implicit_free_surface_solver.multigrid_solver
+
+    # if `Δt` changed then re-compute the matrix elements
+    if Δt != implicit_free_surface_solver.previous_Δt
+        arch = architecture(solver.matrix)
+        constructors = deepcopy(implicit_free_surface_solver.matrix_constructors)
+        M = prod(size(η))
+        update_diag!(constructors, arch, M, M, implicit_free_surface_solver.diagonal, Δt, 0)
+        solver.matrix = arch_sparse_matrix(arch, constructors) 
+
+        unsafe_free!(constructors)
+
+        s = solver.amgx_solver
+        # FIXME only allocate this once
+        csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
+        @inline subtract_one(x) = convert(Int32, x-1)
+        AMGX.upload!(s.device_matrix, 
+                        map(subtract_one, csr_matrix.rowPtr),
+                        map(subtract_one, csr_matrix.colVal),
+                        csr_matrix.nzVal
+                        )
+        AMGX.setup!(s.solver, s.device_matrix)
 
         implicit_free_surface_solver.previous_Δt = Δt
     end
