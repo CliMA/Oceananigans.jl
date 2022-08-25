@@ -322,7 +322,7 @@ function NetCDFOutputWriter(model, outputs; filename, schedule,
     # with LagrangianParticles output (see the end of the file).
     # We shouldn't support this in the future; we should require users to 'name' LagrangianParticles output.
     outputs = dictify(outputs)
-    outputs = Dict(string(name) => _construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], model.grid, indices, with_halos) for name in keys(outputs))
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)

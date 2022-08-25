@@ -178,7 +178,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     filepath = joinpath(dir, filename)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
     
-    outputs = NamedTuple(Symbol(name) => _construct_output(outputs[name], model.grid, indices, with_halos)
+    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
