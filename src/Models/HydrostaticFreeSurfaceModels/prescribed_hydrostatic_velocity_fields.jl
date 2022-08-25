@@ -93,7 +93,7 @@ calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kw
 
 apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
 
-mask_immersed_velocities!(::PrescribedVelocityFields, , ::Any, ::ImmersedBoundaryGrid) = tuple(NoneEvent())
+mask_immersed_velocities!(::PrescribedVelocityFields, ::Any, ::ImmersedBoundaryGrid) = tuple(NoneEvent())
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
