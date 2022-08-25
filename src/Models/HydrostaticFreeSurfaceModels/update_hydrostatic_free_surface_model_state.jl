@@ -2,10 +2,11 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_reduced_field_xy!, mask_immersed_velocities!
+using Oceananigans.ImmersedBoundaries: mask_immersed_reduced_field_xy!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.ImmersedBoundaries: mask_immersed_velocities!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -34,6 +35,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 end
 
 # Mask immersed fields
+mask_immersed_velocities!(::PrescribedVelocityFields, args...) = tuple(NoneEvent())
+
 function masking_actions!(model)
     η = displacement(model.free_surface)
     masking_events = mask_immersed_velocities!(model.velocities, architecture(model), model.grid)...,

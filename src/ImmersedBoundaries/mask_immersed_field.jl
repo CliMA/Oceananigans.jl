@@ -2,7 +2,6 @@ using KernelAbstractions
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.Fields: location, ZReducedField, Field
-using Oceananigans.Models: PrescribedVelocityFields
 
 instantiate(X) = X()
 
@@ -55,4 +54,3 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
 end
 
 mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
-mask_immersed_velocities!(::PrescribedVelocityFields, args...) = tuple(NoneEvent())
