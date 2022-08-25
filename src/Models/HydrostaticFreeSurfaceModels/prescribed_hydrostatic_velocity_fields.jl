@@ -11,6 +11,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 import Oceananigans.Utils: datatuple
 import Oceananigans.TimeSteppers: time_step!
+import Oceananigans.ImmersedBoundaries: mask_immersed_velocities!
 
 using Adapt
 
@@ -91,6 +92,8 @@ hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = 
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
 
 apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
+
+mask_immersed_velocities!(::PrescribedVelocityFields, args...) = tuple(NoneEvent())
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
