@@ -2,6 +2,7 @@ using KernelAbstractions
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.Fields: location, ZReducedField, Field
+using Oceananigans.Models: PrescribedVelocityFields
 
 instantiate(X) = X()
 
