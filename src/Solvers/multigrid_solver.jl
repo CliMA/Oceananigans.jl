@@ -88,7 +88,7 @@ function MultigridSolver(linear_operation!::Function,
                          args...;
                          template_field::AbstractField,
                          maxiter = prod(size(template_field)),
-                         reltol = sqrt(eps(eltype(template_field.grid))),
+                         reltol = 0.1*sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
                          amg_algorithm = RugeStubenAMG()
                          )
@@ -116,10 +116,22 @@ function MultigridSolver(linear_operation!::Function,
                                                )
     
     arch == GPU() && begin
-        AMGX.initialize()
-        AMGX.initialize_plugins()
+        try
+            print("trying")
+            AMGX.initialize()
+            AMGX.initialize_plugins()
+        catch e
+            AMGX.finalize_plugins()
+            AMGX.finalize()        
+            AMGX.initialize()
+            AMGX.initialize_plugins()
+        end
         # FIXME! Also pass tolerance
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol))
+        if reltol == 0
+            config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => abstol))
+        else
+            config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol, "convergence" => "RELATIVE_INI_CORE"))
+        end
         resources = AMGX.Resources(config)
         solver = AMGX.Solver(resources, AMGX.dDDI, config)
         device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
