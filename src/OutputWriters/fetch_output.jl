@@ -13,14 +13,12 @@ end
 time(model) = model.clock.time
 time(::Nothing) = nothing
 
-function fetch_output(output, model)
-    return output(model)
-end
+fetch_output(output, model) = output(model)
 
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
-    field_masking_event = mask_immersed_field!(output)
-    wait(device(output), field_masking_event)
+    field_masking_event = mask_immersed_field!(field)
+    wait(device(field), field_masking_event)
 
     return parent(field)
 end
