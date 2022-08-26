@@ -2,7 +2,7 @@ using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Architectures: architecture, device
 
 # Needed to support `fetch_output` with `model::Nothing`.
