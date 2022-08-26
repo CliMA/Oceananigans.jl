@@ -14,7 +14,6 @@ time(model) = model.clock.time
 time(::Nothing) = nothing
 
 function fetch_output(output, model)
-    model.grid isa ImmersedBoundaryGrid && mask_field!(output)
     return output(model)
 end
 
