@@ -42,6 +42,12 @@ end
 convert_output(outputs::NamedTuple, writer) =
     NamedTuple(name => convert_output(outputs[name], writer) for name in keys(outputs))
 
+"""
+    fetch_and_convert_output(output, model, writer)
+
+Computes and converts output to be written to disk. This function is called
+every time when writing to disk.
+"""
 function fetch_and_convert_output(output, model, writer)
     fetched = fetch_output(output, model)
     return convert_output(fetched, writer)

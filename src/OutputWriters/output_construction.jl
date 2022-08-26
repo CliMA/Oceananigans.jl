@@ -16,6 +16,11 @@ end
 ##### Function output fallback
 #####
 
+"""
+    construct_output(output, grid, indices, with_halos)
+
+Constructs the output that is going to be written to disk. Only called in zero-th iteration.
+"""
 function construct_output(output, grid, indices, with_halos)
     if !(indices isa typeof(default_indices(3)))
         output_type = output isa Function ? "Function" : ""
