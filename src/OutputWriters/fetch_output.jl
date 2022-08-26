@@ -20,7 +20,8 @@ end
 
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
-    model.grid isa ImmersedBoundaryGrid && mask_field!(output)
+    field_masking_event = mask_immersed_field!(output)
+    wait(device(output), field_masking_event)
 
     return parent(field)
 end
