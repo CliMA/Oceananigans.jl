@@ -3,11 +3,7 @@ using CUDA
 using Oceananigans.Fields: AbstractField, compute_at!
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, mask_immersed_field!
-
-function mask_field!(output)
-    field_masking_event = mask_immersed_field!(output)
-    wait(field_masking_event)
-end
+using Oceananigans.Architectures: architecture, device
 
 # Needed to support `fetch_output` with `model::Nothing`.
 time(model) = model.clock.time
@@ -18,7 +14,7 @@ fetch_output(output, model) = output(model)
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
     field_masking_event = mask_immersed_field!(field)
-    wait(device(field), field_masking_event)
+    wait(device(architecture(field)), field_masking_event)
 
     return parent(field)
 end
