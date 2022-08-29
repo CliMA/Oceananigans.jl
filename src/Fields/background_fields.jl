@@ -75,6 +75,6 @@ function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clo
 end
 
 Base.show(io::IO, field::BackgroundField{F, P}) where {F, P} =
-    print(io, "BackgroundField{$F, $P}", '\n',
-          "├── func: $(prettysummary(field.func))", '\n',
+    print(io, "BackgroundField{$F, $P}", "\n",
+          "├── func: $(prettysummary(field.func))", "\n",
           "└── parameters: $(field.parameters)")

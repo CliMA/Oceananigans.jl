@@ -12,22 +12,22 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
     
-    print(io, summary(model), '\n',
-        "├── grid: ", summary(model.grid), '\n',
-        "├── timestepper: ", TS, '\n',
-        "├── tracers: ", tracernames, '\n',
-        "├── closure: ", closure_summary(model.closure), '\n',
-        "├── buoyancy: ", summary(model.buoyancy), '\n')
+    print(io, summary(model), "\n",
+        "├── grid: ", summary(model.grid), "\n",
+        "├── timestepper: ", TS, "\n",
+        "├── tracers: ", tracernames, "\n",
+        "├── closure: ", closure_summary(model.closure), "\n",
+        "├── buoyancy: ", summary(model.buoyancy), "\n")
 
     if model.free_surface !== nothing
-        print(io, "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
+        print(io, "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", "\n")
 
         if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
-            print(io, "│   └── solver: ", string(model.free_surface.solver_method), '\n')
+            print(io, "│   └── solver: ", string(model.free_surface.solver_method), "\n")
         end
 
         if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
-            print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", '\n')
+            print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", "\n")
         end
     end
 

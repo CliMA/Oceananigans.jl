@@ -136,9 +136,9 @@ compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          "ConditionalOperation at $(location(operation))", '\n',
-          "├── operand: ", summary(operation.operand), '\n',
-          "├── grid: ", summary(operation.grid), '\n',
-          "├── func: ", summary(operation.func), '\n',
-          "├── condition: ", summary(operation.condition), '\n',
+          "ConditionalOperation at $(location(operation))", "\n",
+          "├── operand: ", summary(operation.operand), "\n",
+          "├── grid: ", summary(operation.grid), "\n",
+          "├── func: ", summary(operation.func), "\n",
+          "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)
