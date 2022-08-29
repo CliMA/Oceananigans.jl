@@ -1,5 +1,3 @@
-include("data_dependencies.jl")
-
 using Oceananigans
 using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation, shallow_water_velocities
