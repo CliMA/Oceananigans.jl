@@ -170,6 +170,7 @@ end
 end 
 
 @inline prefetch!(array, bytes, dev::CuDevice) = Mem.prefetch(array.storage.buffer, bytes; device = dev)
+@inline prefetch!(array, bytes, dev::ROCDevice) = Mem.prefetch(array.storage.buffer, bytes; device = dev)
 @inline prefetch!(array, bytes, dev::CPU)      = nothing
 
 @inline prefetch_solver!(solver, ::CPU) = nothing

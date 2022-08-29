@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture, AbstractMultiArchitecture
-export CPU, CUDAGPU, ROCMGPU, MultiGPU
+export CPU, CUDAGPU, ROCMGPU, MultiGPU, GPU
 export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
