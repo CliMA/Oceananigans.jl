@@ -350,7 +350,7 @@ end
 
 function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
     print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), "\n",
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 
