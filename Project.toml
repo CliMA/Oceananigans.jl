@@ -1,11 +1,12 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.76.1"
+version = "0.77.2"
 
 [deps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+AlgebraicMultigrid = "2169fc97-5a83-5252-b627-83903c6c433c"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
@@ -27,6 +28,7 @@ MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+PencilArrays = "0e08944d-e94e-41b1-9406-dcf66b6a9d2e"
 PencilFFTs = "4a48f351-57a6-4416-9ec4-c37015456aae"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
