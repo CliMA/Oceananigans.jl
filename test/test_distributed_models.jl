@@ -16,7 +16,7 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-# 
+#
 # julia> include("test_distributed_models.jl")
 #
 # When running the tests this way, uncomment the following line
