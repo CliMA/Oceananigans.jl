@@ -1,3 +1,5 @@
+include("data_dependencies.jl")
+
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100

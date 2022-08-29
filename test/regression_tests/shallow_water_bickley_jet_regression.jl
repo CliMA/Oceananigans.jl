@@ -1,3 +1,4 @@
+include("data_dependencies.jl")
 
 using Oceananigans
 using Oceananigans.Advection: VelocityStencil

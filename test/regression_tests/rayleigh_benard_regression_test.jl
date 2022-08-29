@@ -1,3 +1,5 @@
+include("data_dependencies.jl")
+
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
 

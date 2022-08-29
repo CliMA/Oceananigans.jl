@@ -1,3 +1,5 @@
+include("data_dependencies.jl")
+
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
 
