@@ -174,17 +174,25 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, args...)
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶠ(i, j, k, grid, closure_ij, args...)
-        diffusivities.Lᵉ[i, j, k] = implicit_dissipation_coefficient(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+
+        # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
+        # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
+        κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
+        N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+        eⁱʲᵏ = @inbounds tracers.e[i, j, k]
+        B = ifelse((N² > 0) & (eⁱʲᵏ > 0), κᶻ * N² / eⁱʲᵏ, zero(grid))
+
+        diffusivities.Lᵉ[i, j, k] = B + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
     end
 end
 
