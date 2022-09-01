@@ -55,6 +55,8 @@ end
     return - κᶻ * N²
 end
 
+const VITD = VerticallyImplicitTimeDiscretization
+
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
     κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
@@ -64,8 +66,6 @@ end
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
     return ifelse((N² > 0) & (eⁱʲᵏ > 0), zero(grid), - κᶻ * N²)
 end
-
-const VITD = VerticallyImplicitTimeDiscretization
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
 
