@@ -174,10 +174,12 @@ end
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return ifelse(N² == 0, zero(grid), N² / (∂z_u² + ∂z_v²))
+    #return ifelse(N² == 0, zero(grid), N² / (∂z_u² + ∂z_v²))
+    return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
 end
 
-@inline step(x, c, w) = max(zero(x), min(one(x), x / w - c)) # (1 + tanh(x / w - c)) / 2
+"""Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
+@inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w)) # (1 + tanh(x / w - c)) / 2
 @inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
 
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
