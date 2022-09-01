@@ -10,10 +10,11 @@ using Statistics: mean
 using IterativeSolvers
 using OffsetArrays
 using AlgebraicMultigrid: RugeStubenAMG
+using LinearAlgebra
 
 import Oceananigans.Solvers: precondition!
 
-N = 64
+N = 150
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -44,76 +45,41 @@ function compute_∇²!(∇²φ, φ, arch, grid)
 end
 
 
-# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the in place AlgebraicMultigrid as preconditioner
-
-struct MultigridPreconditionerInplace{S}
-    multigrid_solver :: S
-end
-
-mgs_inplace = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
-
-mgp_inplace = MultigridPreconditionerInplace(mgs_inplace)
-
-"""
-    precondition!(z, mgp::MultigridPreconditionerInplace, r, args...)
-Return `z` (Field)
-"""
-function precondition!(z, mgp::MultigridPreconditionerInplace, r, args...)
-    solve!(z, mgp.multigrid_solver, r)
-    fill_halo_regions!(z)
-    println("preconditioning")
-    return z
-end
-
-
-φ_inplace = CenterField(grid)
-inplace_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp_inplace)
-
-
-@info "Solving the Poisson equation with provided initial guess..."
-@time solve!(φ_inplace, inplace_solver, r, arch, grid)
-
-fill_halo_regions!(φ_inplace)
-
-∇²φ_inplace = CenterField(grid)
-
-compute_∇²!(∇²φ_inplace, φ_inplace, arch, grid)
-@show maximum(interior(∇²φ_inplace) - interior(r))
-
-
-
-# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the zeroed AlgebraicMultigrid as preconditioner
+# Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
 struct MultigridPreconditionerZeroed{S}
     multigrid_solver :: S
 end
 
-mgs_zeroed = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
 
-mgp_zeroed = MultigridPreconditionerZeroed(mgs_zeroed)
+mgp = MultigridPreconditionerZeroed(mgs)
 
 """
     precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
 Return `z` (Field)
 """
 function precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
-    z .= 0
+    parent(z) .= 0
     solve!(z, mgp.multigrid_solver, r)
     fill_halo_regions!(z)
-    println("preconditioning")
+    println("norm(Az-r): ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
     return z
 end
 
+φ = CenterField(grid)
 
-φ_zeroed = CenterField(grid)
-zeroed_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp_zeroed)
+Nx, Ny, Nz = size(r)
+abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
 
-@info "Solving the Poisson equation with zeroed initial guess..."
-@time solve!(φ_zeroed, zeroed_solver, r, arch, grid)
+solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol, preconditioner = mgp)
 
-fill_halo_regions!(φ_zeroed)
+@info "Solving the Poisson equation..."
+@time solve!(φ, solver, r, arch, grid)
 
-∇²φ_zeroed = CenterField(grid)
+fill_halo_regions!(φ)
 
-compute_∇²!(∇²φ_zeroed, φ_zeroed, arch, grid)
-@show maximum(interior(∇²φ_zeroed) - interior(r))
+∇²φ = CenterField(grid)
+
+compute_∇²!(∇²φ, φ, arch, grid)
+@show maximum(interior(∇²φ) - interior(r))
