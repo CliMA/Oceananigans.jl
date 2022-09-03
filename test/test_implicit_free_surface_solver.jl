@@ -27,7 +27,18 @@ function set_simple_divergent_velocity!(model)
 
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u[imid, jmid, 1] = 1
+
+    k_index = 1
+ 
+    grid isa ImmersedBoundaryGrid && begin
+        while grid.immersed_boundary.bottom_height[imid, jmid] > grid.underlying_grid.zᵃᵃᶜ[k_index]
+            k_index += 1
+        end
+    end
+
+    k_index = k_index + 1 ≤ grid.Nz ? k_index + 1 : k_index
+    
+    CUDA.@allowscalar u[imid, jmid, k_index] = 0.1
 
     update_state!(model)
 
