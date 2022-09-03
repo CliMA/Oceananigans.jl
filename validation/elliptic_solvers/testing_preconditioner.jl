@@ -14,7 +14,7 @@ using LinearAlgebra
 
 import Oceananigans.Solvers: precondition!
 
-N = 150
+N = 256
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -47,61 +47,34 @@ end
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
-# struct MultigridPreconditionerZeroed{S}
-#     multigrid_solver :: S
-# end
+struct MultigridPreconditionerZeroed{S}
+    multigrid_solver :: S
+end
 
-# mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
-
-# mgp = MultigridPreconditionerZeroed(mgs)
-
-# """
-#     precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
-# Return `z` (Field)
-# """
-# function precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
-#     parent(z) .= 0
-#     solve!(z, mgp.multigrid_solver, r)
-#     fill_halo_regions!(z)
-#     println("norm(Az-r): ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
-#     return z
-# end
-
-# φ = CenterField(grid)
-
-# Nx, Ny, Nz = size(r)
-# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
-
-# solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol, preconditioner = mgp)
-
-# @info "Solving the Poisson equation..."
-# @time solve!(φ, solver, r, arch, grid)
-
-# fill_halo_regions!(φ)
-
-# ∇²φ = CenterField(grid)
-
-# compute_∇²!(∇²φ, φ, arch, grid)
-# @show maximum(interior(∇²φ) - interior(r))
-
-
-
-
-# Solve ∇²φ = r with `ConjugateGradientSolver` solver using the AlgebraicMultigrid as initial guess
 mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
+
+mgp = MultigridPreconditionerZeroed(mgs)
+
+"""
+    precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
+Return `z` (Field)
+"""
+function precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
+    parent(z) .= 0
+    solve!(z, mgp.multigrid_solver, r)
+    println("norm(Az-r): ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
+    return z
+end
 
 φ = CenterField(grid)
 
 Nx, Ny, Nz = size(r)
-abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+abstol = 10 * eps(eltype(grid))
 
-solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol)
+solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol, preconditioner = mgp)
 
-@info "Computing a good initial guess..."
-solve!(φ, mgs, r)
-fill_halo_regions!(φ)
-
-@info "Solving the Poisson equation with CG solver..."
+@info "Solving the Poisson equation..."
 @time solve!(φ, solver, r, arch, grid)
 
 fill_halo_regions!(φ)
@@ -110,3 +83,30 @@ fill_halo_regions!(φ)
 
 compute_∇²!(∇²φ, φ, arch, grid)
 @show maximum(interior(∇²φ) - interior(r))
+
+
+
+
+# Solve ∇²φ = r with `ConjugateGradientSolver` solver using the AlgebraicMultigrid as initial guess
+# mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
+
+# φ = CenterField(grid)
+
+# Nx, Ny, Nz = size(r)
+# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+
+# solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol)
+
+# @info "Computing a good initial guess..."
+# solve!(φ, mgs, r)
+# fill_halo_regions!(φ)
+
+# @info "Solving the Poisson equation with CG solver..."
+# @time solve!(φ, solver, r, arch, grid)
+
+# fill_halo_regions!(φ)
+
+# ∇²φ = CenterField(grid)
+
+# compute_∇²!(∇²φ, φ, arch, grid)
+# @show maximum(interior(∇²φ) - interior(r))
