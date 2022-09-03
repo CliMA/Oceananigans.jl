@@ -83,14 +83,26 @@ fill_halo_regions!(φ_mg)
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
+"""
+    struct MultigridPreconditioner{S}
+
+A multigrid preconditioner.
+"""
 struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
+"""
+    MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
 
-mgp = MultigridPreconditioner(mgs)
-
+Return a multigrid preconditioner with maximum iterations: `maxiter`.
+"""
+function MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
+    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter, amg_algorithm = RugeStubenAMG())
+    
+    S = typeof(mgs)
+    return MultigridPreconditioner{S}(mgs)
+end
 
 """
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
@@ -103,6 +115,8 @@ function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     return z
 end
 
+maxiter = 1;
+mgp = MultigridPreconditioner(compute_∇²!, arch, grid, r; maxiter)
 
 φ_cgmg = CenterField(grid)
 cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp)
@@ -129,12 +143,12 @@ fig = Figure(resolution=(1600, 1200))
 ax_r = Axis(fig[1, 3], aspect=1, title="RHS")
 
 ax_φ_fft = Axis(fig[2, 1], aspect=1, title="FFT-based solution")
-ax_φ_cg = Axis(fig[2, 3], aspect=1, title="PreconditionedCG solution")
+ax_φ_cg = Axis(fig[2, 3], aspect=1, title="CG solution")
 ax_φ_mg = Axis(fig[2, 5], aspect=1, title="Multigrid solution")
 ax_φ_cgmg = Axis(fig[2, 7], aspect=1, title="PreconditionedCG MG solution")
 
 ax_∇²φ_fft = Axis(fig[3, 1], aspect=1, title="FFT-based ∇²φ")
-ax_∇²φ_cg = Axis(fig[3, 3], aspect=1, title="PreconditionedCG ∇²φ")
+ax_∇²φ_cg = Axis(fig[3, 3], aspect=1, title="CG ∇²φ")
 ax_∇²φ_mg = Axis(fig[3, 5], aspect=1, title="Multigrid ∇²φ")
 ax_∇²φ_cgmg = Axis(fig[3, 7], aspect=1, title="PreconditionedCG MG ∇²φ")
 
