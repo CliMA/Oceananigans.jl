@@ -14,7 +14,7 @@ using LinearAlgebra
 
 import Oceananigans.Solvers: precondition!
 
-N = 256
+N = 40
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -47,32 +47,57 @@ end
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
-struct MultigridPreconditionerZeroed{S}
+"""
+    struct MultigridPreconditioner{S}
+
+A multigrid preconditioner.
+"""
+struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
+"""
+    MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
 
-mgp = MultigridPreconditionerZeroed(mgs)
+Return a multigrid preconditioner with maximum iterations: `maxiter`.
+"""
+function MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
+    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter, amg_algorithm = RugeStubenAMG())
+    
+    S = typeof(mgs)
+    return MultigridPreconditioner{S}(mgs)
+end
+
+maxiter = 1;
+mgp = MultigridPreconditioner(compute_∇²!, arch, grid, r; maxiter)
 
 """
-    precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
+    precondition!(z, mgp::MultigridPreconditioner, r, args...)
+
 Return `z` (Field)
 """
-function precondition!(z, mgp::MultigridPreconditionerZeroed, r, args...)
+function precondition!(z, mgp::MultigridPreconditioner, r, args...)
     parent(z) .= 0
     solve!(z, mgp.multigrid_solver, r)
+
+    Nx, Ny, Nz = size(r)
+
+    mgs = mgp.multigrid_solver
+    
     println("norm(Az-r): ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
+
     return z
 end
 
 φ = CenterField(grid)
 
 Nx, Ny, Nz = size(r)
-# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
-abstol = 10 * eps(eltype(grid))
 
-solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol, preconditioner = mgp)
+# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+@show abstol = 100 * eps(eltype(grid))
+@show reltol = sqrt(eps(eltype(grid)))
+
+solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=reltol, abstol=abstol, preconditioner = mgp)
 
 @info "Solving the Poisson equation..."
 @time solve!(φ, solver, r, arch, grid)
