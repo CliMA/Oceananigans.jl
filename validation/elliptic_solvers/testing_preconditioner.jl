@@ -57,12 +57,12 @@ struct MultigridPreconditioner{S}
 end
 
 """
-    MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
+    MultigridPreconditioner(linear_operation::Function, arch, grid, template_field; maxiter=1)
 
 Return a multigrid preconditioner with maximum iterations: `maxiter`.
 """
-function MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
-    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter, amg_algorithm = RugeStubenAMG())
+function MultigridPreconditioner(linear_operation::Function, arch, grid, template_field; maxiter=1)
+    mgs = MultigridSolver(linear_operation, arch, grid; template_field, maxiter, amg_algorithm = RugeStubenAMG())
     
     S = typeof(mgs)
     return MultigridPreconditioner{S}(mgs)
