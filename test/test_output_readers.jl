@@ -135,12 +135,12 @@ end
             @test location(b2) == (Center, Center, Center)
             @test location(ζ2) == (Face, Face, Center)
 
-            @test size(u2) == (Nx, Ny, 1,   Nt)
-            @test size(v2) == (Nx, Ny, 1,   Nt)
+            @test size(u2) == (Nx, Ny, 1, Nt)
+            @test size(v2) == (Nx, Ny, 1, Nt)
             @test size(w2) == (Nx, Ny, 1, Nt)
-            @test size(T2) == (Nx, Ny, 1,   Nt)
-            @test size(b2) == (Nx, Ny, 1,   Nt)
-            @test size(ζ2) == (Nx, Ny, 1,   Nt)
+            @test size(T2) == (Nx, Ny, 1, Nt)
+            @test size(b2) == (Nx, Ny, 1, Nt)
+            @test size(ζ2) == (Nx, Ny, 1, Nt)
 
             ArrayType = array_type(arch)
             for fts in (u3, v3, w3, T3, b3, ζ3)
@@ -240,6 +240,7 @@ end
         end
     end
 
-    rm(filepath3d)
     rm(filepath1d)
+    rm(filepath2d)
+    rm(filepath3d)
 end
