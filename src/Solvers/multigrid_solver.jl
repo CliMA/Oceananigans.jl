@@ -111,7 +111,7 @@ end
 function fill_matrix_elements!(A, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
-    
+
     eᵢⱼₖ = similar(template_field)
     ∇²eᵢⱼₖ = similar(template_field)
 
@@ -142,7 +142,7 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b,
+    _solve!(solver.x_array, solt.ml, solt.b;
             maxiter = solver.maxiter,
              abstol = solver.abstol,
              reltol = solver.reltol,
