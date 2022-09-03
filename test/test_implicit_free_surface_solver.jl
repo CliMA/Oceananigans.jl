@@ -94,6 +94,11 @@ end
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
+            @info "Testing MGPreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
+            mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
+            run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+
             if arch isa CPU # This should be removed when GPU capability is added
                 @info "Testing Multigrid implicit free surface solver [$A, $G]..."
                 free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)

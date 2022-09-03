@@ -234,6 +234,16 @@ end
 # The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
 =#
 
+"""
+Multigrid preconditioner
+"""
+@inline function precondition!(z, preconditioner::MGImplicitFreeSurfaceSolver, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    parent(z) .= 0
+    solve!(z, preconditioner, r, g, Δt)
+    return z
+end
+
+
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
 #####

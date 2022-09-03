@@ -56,7 +56,7 @@ step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-
 """
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
                                      settings = nothing,
-                                     gravitational_acceleration = nothing, 
+                                     gravitational_acceleration = g_Earth, 
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
 
