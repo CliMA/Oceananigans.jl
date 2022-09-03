@@ -14,7 +14,7 @@ using LinearAlgebra
 
 import Oceananigans.Solvers: precondition!
 
-N = 40
+N = 256
 
 grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -84,7 +84,7 @@ function precondition!(z, mgp::MultigridPreconditioner, r, args...)
 
     mgs = mgp.multigrid_solver
     
-    println("norm(Az-r): ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
+    println("|Az - r|: ", norm(mgs.matrix * reshape(interior(z), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)))
 
     return z
 end
@@ -94,12 +94,12 @@ end
 Nx, Ny, Nz = size(r)
 
 # abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
-@show abstol = 100 * eps(eltype(grid))
-@show reltol = sqrt(eps(eltype(grid)))
+@show abstol = sqrt(eps(eltype(grid)))
+@show reltol = 0sqrt(eps(eltype(grid)))
 
-solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=reltol, abstol=abstol, preconditioner = mgp)
+@info "Solving the Poisson with PGC + MG preconditioner..."
+solver = PreconditionedConjugateGradientSolver(compute_∇²!; template_field=r, reltol, abstol, preconditioner = mgp)
 
-@info "Solving the Poisson equation..."
 @time solve!(φ, solver, r, arch, grid)
 
 fill_halo_regions!(φ)
@@ -110,28 +110,35 @@ compute_∇²!(∇²φ, φ, arch, grid)
 @show maximum(interior(∇²φ) - interior(r))
 
 
-
-
+@info "Solving the Poisson with PGC starting from a good initial guess from a MG solver..."
 # Solve ∇²φ = r with `ConjugateGradientSolver` solver using the AlgebraicMultigrid as initial guess
-# mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 1, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
 
-# φ = CenterField(grid)
+φ = CenterField(grid)
 
-# Nx, Ny, Nz = size(r)
-# abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+Nx, Ny, Nz = size(r)
+@show abstol = norm(mgs.matrix * reshape(interior(φ), Nx * Ny * Nz) - reshape(interior(r), Nx * Ny * Nz)) * eps(eltype(grid))
+@show reltol = sqrt(eps(eltype(grid)))
 
-# solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), abstol=abstol)
+solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field = r, reltol = reltol, abstol = abstol)
 
 # @info "Computing a good initial guess..."
-# solve!(φ, mgs, r)
-# fill_halo_regions!(φ)
+solve!(φ, mgs, r)
+fill_halo_regions!(φ)
+
+∇²φ = CenterField(grid)
+
+compute_∇²!(∇²φ, φ, arch, grid)
+@info "the norm of the initial guess"
+@show maximum(interior(∇²φ) - interior(r))
 
 # @info "Solving the Poisson equation with CG solver..."
-# @time solve!(φ, solver, r, arch, grid)
+@time solve!(φ, solver, r, arch, grid)
 
-# fill_halo_regions!(φ)
+fill_halo_regions!(φ)
 
-# ∇²φ = CenterField(grid)
+∇²φ = CenterField(grid)
 
-# compute_∇²!(∇²φ, φ, arch, grid)
-# @show maximum(interior(∇²φ) - interior(r))
+compute_∇²!(∇²φ, φ, arch, grid)
+@info "the norm of the PGC solution with good initial guess"
+@show maximum(interior(∇²φ) - interior(r))
