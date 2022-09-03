@@ -131,8 +131,7 @@ end
 """
     solve!(x, solver::MultigridSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method, where `A * x` is determined
-by `solver.linear_operation`.
+Solve `A * x = b` using a multigrid method, where `A` is `solver.matrix`.
 """
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
