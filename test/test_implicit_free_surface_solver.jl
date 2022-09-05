@@ -28,7 +28,30 @@ function set_simple_divergent_velocity!(model)
 
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u[imid, jmid, 1] = 1
+
+    i, j, k = imid, jmid, 1
+
+    if grid isa RectilinearGrid
+        Δx, Δy = grid.Δxᶠᵃᵃ, grid.Δyᵃᶜᵃ
+    end
+
+    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa RectilinearGrid
+        Δx, Δy = grid.underlying_grid.Δxᶠᵃᵃ, grid.underlying_grid.Δyᵃᶜᵃ
+    end
+
+    if grid isa LatitudeLongitudeGrid
+        Δx, Δy = grid.Δxᶠᶜᵃ[i], grid.Δyᶜᶠᵃ
+    end
+    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa LatitudeLongitudeGrid
+        Δx, Δy = grid.underlying_grid.Δxᶠᶜᵃ[i], grid.underlying_grid.Δyᶜᶠᵃ
+    end
+
+    Δz = grid.Δzᵃᵃᶜ[k]
+
+    # Instead of prescribing the velocity, we prescribe the value of the volume
+    # integral of `u` in a cell, i.e., `u * Δx * Δy * Δz`. This way the norm(rhs)
+    # of the free-surface solver does not depend on the grid extend and resolution.
+    CUDA.@allowscalar u[i, j, k] = 1e4 / (Δx * Δy * Δz)
 
     update_state!(model)
 
@@ -94,8 +117,8 @@ end
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
-        lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
-                                             longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
+        lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
+                                             longitude = (-20, 30), latitude = (-10, 40), z = (-4000, 0))
 
         for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
             G = string(nameof(typeof(grid)))
