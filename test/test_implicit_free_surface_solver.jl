@@ -40,18 +40,19 @@ function set_simple_divergent_velocity!(model)
     end
 
     if grid isa LatitudeLongitudeGrid
-        Δx, Δy = grid.Δxᶠᶜᵃ[i], grid.Δyᶜᶠᵃ
+        Δx, Δy = CUDA.@allowscalar grid.Δxᶠᶜᵃ[i], grid.Δyᶜᶠᵃ
     end
     if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa LatitudeLongitudeGrid
-        Δx, Δy = grid.underlying_grid.Δxᶠᶜᵃ[i], grid.underlying_grid.Δyᶜᶠᵃ
+        Δx, Δy = CUDA.@allowscalar grid.underlying_grid.Δxᶠᶜᵃ[i], grid.underlying_grid.Δyᶜᶠᵃ
     end
 
-    Δz = grid.Δzᵃᵃᶜ[k]
+    Δz = CUDA.@allowscalar grid.Δzᵃᵃᶜ[k]
 
-    # Instead of prescribing the velocity, we prescribe the value of the volume
-    # integral of `u` in a cell, i.e., `u * Δx * Δy * Δz`. This way the norm(rhs)
-    # of the free-surface solver does not depend on the grid extend and resolution.
-    CUDA.@allowscalar u[i, j, k] = 1e4 / (Δx * Δy * Δz)
+    # Instead of prescribing the velocity, we prescribe the value of the zonal transport
+    # in a cell, i.e., `u * Δy * Δz`. This way the norm(rhs) of the free-surface solver
+    # does not depend on the grid extend and resolution.
+    transport = 1e5 # m³ s⁻¹
+    CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
 
     update_state!(model)
 
@@ -105,22 +106,25 @@ end
         A = typeof(arch)
 
         rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
-                                           x = (-500kilometers, 500kilometers),
-                                           y = (0, 1),
-                                           z = (-400, 0),
+                                           x = (-5000kilometers, 5000kilometers),
+                                           y = (0, 100kilometers),
+                                           z = (-500, 0),
                                            topology = (Bounded, Periodic, Bounded))
 
         Lz = rectilinear_grid.Lz
-        width = 50kilometers
+        width = rectilinear_grid.Lx / 20
 
         bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
-                                             longitude = (-20, 30), latitude = (-10, 40), z = (-4000, 0))
+                                             longitude = (-20, 30),
+                                             latitude = (-10, 40),
+                                             z = (-4000, 0))
 
         for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
+
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
