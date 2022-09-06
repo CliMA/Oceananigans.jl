@@ -25,20 +25,16 @@ function set_simple_divergent_velocity!(model)
     v .= 0
     η .= 0
 
-    imid = Int(floor(grid.Nx / 2)) + 1
-    jmid = Int(floor(grid.Ny / 2)) + 1
-
-    k_index = 1
+    # pick a point to set a non-zero u velocity
+    i = Int(floor(grid.Nx / 2)) + 1
+    j = Int(floor(grid.Ny / 2)) + 1
+    k = grid.Nz
  
-    grid isa ImmersedBoundaryGrid && begin
-        while grid.immersed_boundary.bottom_height[imid, jmid] > grid.underlying_grid.zᵃᵃᶜ[k_index]
-            k_index += 1
-        end
-    end
+    grid isa ImmersedBoundaryGrid &&
+        grid.immersed_boundary.bottom_height[i, j] ≥ grid.underlying_grid.zᵃᵃᶜ[k] &&
+            @error "The point to set u is on land!"
 
-    k_index = k_index + 1 ≤ grid.Nz ? k_index + 1 : k_index
-    
-    CUDA.@allowscalar u[imid, jmid, k_index] = 0.1
+    CUDA.@allowscalar u[i, j, k] = 0.1
 
     update_state!(model)
 
@@ -100,7 +96,7 @@ end
         Lz = rectilinear_grid.Lz
         width = 50kilometers
 
-        bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
+        bump(x, y) = - Lz * (1 - 1.2 * exp(-x^2 / 2width^2))
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
