@@ -50,7 +50,8 @@ for implicit_free_surface_solver in implicit_free_surface_solvers
         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
     elseif implicit_free_surface_solver == :PreconditionedConjugateGradient_withMGpreconditioner
         mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
-        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner)
+        maxiter = 2
+        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner, maxiter = maxiter)
     else
         free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver)
     end
