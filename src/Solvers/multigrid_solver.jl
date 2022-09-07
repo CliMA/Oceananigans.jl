@@ -215,7 +215,6 @@ function initialize_matrix(::GPU, template_field, linear_operator!, args...)
         linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
         count = 0
         for n = 1:Nz, m in 1:Ny, l in 1:Nx
-            # CUDA.@allowscalar value = ∇²eᵢⱼₖ[l, m, n]
             CUDA.@allowscalar if ∇²eᵢⱼₖ[l, m, n] != 0
                 append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
                 CUDA.@allowscalar append!(nzval, ∇²eᵢⱼₖ[l, m, n])
