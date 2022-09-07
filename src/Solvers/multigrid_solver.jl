@@ -60,7 +60,6 @@ determined by `linear_operation!`
 `linear_operation!` is a function with signature `linear_operation!(Ax, x, args...)` 
 that calculates `A * x` for given `x` and stores the result in `Ax`.
 
-
 The solver is used by calling
 
 ```
@@ -90,12 +89,15 @@ function MultigridSolver(linear_operation!::Function,
                          maxiter = prod(size(template_field)),
                          reltol = 0.1*sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = RugeStubenAMG()
+                         amg_algorithm = RugeStubenAMG(),
+                         matrix = nothing,
                          )
 
     arch = architecture(template_field)
-
-    matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
+    
+    if matrix === nothing
+        matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
+    end
 
     Nx, Ny, Nz = size(template_field)
 
@@ -117,7 +119,6 @@ function MultigridSolver(linear_operation!::Function,
     
     arch == GPU() && begin
         try
-            print("trying")
             AMGX.initialize()
             AMGX.initialize_plugins()
         catch e
@@ -250,7 +251,6 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-
 """
     solve!(x, solver::MultigridGPUSolver, b; kwargs...)
 
@@ -303,3 +303,4 @@ print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
               "└── maxiter: ", solver.maxiter)
+
