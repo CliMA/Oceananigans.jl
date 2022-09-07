@@ -140,15 +140,15 @@ end
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
 
         mat_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
-                                               tolerance=1e-15, maximum_iterations=128^3)
+                                               tolerance=1e-15, maximum_iterations=128^2)
 
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
-                                               abstol=1e-15, reltol=0, maxiter=128^3)
+                                               abstol=1e-15, reltol=0, maxiter=128^2)
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
         mg_free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
-                                              abstol=1e-15, reltol=0, maxiter=128^3)
+                                              abstol=1e-15, reltol=0, maxiter=128^2)
 
         mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
@@ -206,12 +206,8 @@ end
         @info "    maximum(abs, η_mg) : $(maximum(abs, mg_η_cpu))"
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
-        @test all(mat_η_cpu .≈ fft_η_cpu)
-        @test all(pcg_η_cpu .≈ fft_η_cpu)
-        @test all(mg_η_cpu  .≈ fft_η_cpu)
-
-        @test all(isapprox.(Δη_mat, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-        @test all(isapprox.(Δη_pcg, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
-        @test all(isapprox.(Δη_mg,  0, atol=sqrt(eps(eltype(rectilinear_grid)))))
+        @test all(isapprox.(Δη_mat, 0, atol=1e-15)
+        @test all(isapprox.(Δη_pcg, 0, atol=1e-15)
+        @test all(isapprox.(Δη_mg,  0, atol=1e-15)
     end
 end
