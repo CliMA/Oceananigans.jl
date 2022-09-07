@@ -208,8 +208,8 @@ function initialize_matrix(::GPU, template_field, linear_operator!, args...)
     CUDA.@allowscalar colptr[1] = 1
 
     for k = 1:Nz, j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ .= 0
-        ∇²eᵢⱼₖ .= 0
+        parent(eᵢⱼₖ) .= 0
+        parent(∇²eᵢⱼₖ) .= 0
         CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
         fill_halo_regions!(eᵢⱼₖ)
         linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
