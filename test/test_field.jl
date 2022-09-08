@@ -72,7 +72,7 @@ function run_field_reduction_tests(FT, arch)
         ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
         @info "    Testing field reductions with tolerance $ε..."
 
-        @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
+        @test CUDA.@allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
         CUDA.allowscalar(false)
