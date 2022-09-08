@@ -26,5 +26,6 @@ include("constant_cartesian_coriolis.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
 include("hydrostatic_spherical_coriolis.jl")
+include("hydrostatic_spherical_advection_like_coriolis.jl")
 
 end # module
