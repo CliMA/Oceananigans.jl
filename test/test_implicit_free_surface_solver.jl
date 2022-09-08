@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Architectures: device_event
-
+using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FreeSurface,
@@ -30,9 +30,7 @@ function set_simple_divergent_velocity!(model)
     j = Int(floor(grid.Ny / 2)) + 1
     k = grid.Nz
  
-    grid isa ImmersedBoundaryGrid &&
-        grid.immersed_boundary.bottom_height[i, j] ≥ grid.underlying_grid.zᵃᵃᶜ[k] &&
-            @error "The point to set u is on land!"
+    inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
 
     CUDA.@allowscalar u[i, j, k] = 0.1
 
