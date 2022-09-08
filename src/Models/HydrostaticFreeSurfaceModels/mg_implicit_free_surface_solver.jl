@@ -106,10 +106,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     return MGImplicitFreeSurfaceSolver(arch, solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
 end
 
-@inline finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
-
-
-finalize_solver!(::Any) = nothing
+finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
 
 """
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
