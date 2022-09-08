@@ -100,7 +100,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     # see `initialize_matrix` methods
     solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
                              template_field = right_hand_side,
-                             matrix = matrix,
+                             matrix,
                              settings...)
 
     return MGImplicitFreeSurfaceSolver(arch, solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
