@@ -192,8 +192,8 @@ function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     ∇²eᵢⱼₖ = similar(template_field)
     
     for k = 1:Nz, j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ .= 0
-        ∇²eᵢⱼₖ .= 0
+        parent(eᵢⱼₖ) .= 0
+        parent(∇²eᵢⱼₖ) .= 0
         eᵢⱼₖ[i, j, k] = 1
         fill_halo_regions!(eᵢⱼₖ)
         linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
