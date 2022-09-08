@@ -8,7 +8,6 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjuga
 using Oceananigans.Architectures: architecture, arch_array
 using IterativeSolvers
 using Statistics: mean
-using AlgebraicMultigrid: RugeStubenAMG
 using OffsetArrays
 using CUDA.CUSPARSE
 using CUDA
@@ -91,7 +90,7 @@ struct MultigridPreconditioner{S}
     multigrid_solver :: S
 end
 
-mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5, amg_algorithm = RugeStubenAMG())
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter = 5)
 
 mgp = MultigridPreconditioner(mgs)
 

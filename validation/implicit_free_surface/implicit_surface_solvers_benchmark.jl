@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Printf
 
 """
@@ -114,4 +114,6 @@ for implicit_free_surface_solver in implicit_free_surface_solvers
 
     @info "Benchmark with $implicit_free_surface_solver free surface implicit solver:"
     @time run!(simulation)
+
+    finalize_solver!(model.free_surface.implicit_step_solver)
 end

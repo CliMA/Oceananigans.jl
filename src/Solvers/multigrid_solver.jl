@@ -32,13 +32,14 @@ mutable struct MultigridGPUSolver{A, G, L, T, F, S} <: MultigridSolver{A, G, L, 
                    amgx_solver :: S
 end
 
-mutable struct AMGXMultigridSolver{C, R, S, M, V}
+mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
                          config :: C
                       resources :: R
                          solver :: S
                   device_matrix :: M
                        device_x :: V
                        device_b :: V
+                     csr_matrix :: A
 end
 
 architecture(solver::MultigridSolver) = solver.architecture
@@ -116,7 +117,7 @@ function MultigridSolver(linear_operation!::Function,
                                                b_array,
                                                amg_algorithm
                                                )
-    
+
     arch == GPU() && begin
         try
             AMGX.initialize()
@@ -127,10 +128,12 @@ function MultigridSolver(linear_operation!::Function,
             AMGX.initialize()
             AMGX.initialize_plugins()
         end
-        # FIXME! Also pass tolerance
+
         if reltol == 0
+            @info "Multigrid solver will use abstol = ($abstol)"
             config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => abstol))
         else
+            @info "Multigrid solver will use reltol = ($reltol)"
             config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol, "convergence" => "RELATIVE_INI_CORE"))
         end
         resources = AMGX.Resources(config)
@@ -140,6 +143,9 @@ function MultigridSolver(linear_operation!::Function,
         device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
         csr_matrix = CuSparseMatrixCSR(transpose(matrix))
         
+        # # FIXME do on GPU
+        # loop! = zero_index!(Architectures.device(arch), 16, length(csr_matrix.rowPtr))
+        # event = loop!(csr_matrix.rowPtr; dependencies=device_event(arch))
         @inline subtract_one(x) = convert(Int32, x-1)
         
         AMGX.upload!(device_matrix, 
@@ -155,7 +161,8 @@ function MultigridSolver(linear_operation!::Function,
                                           solver,
                                           device_matrix,
                                           device_x,
-                                          device_b
+                                          device_b,
+                                          csr_matrix
                                           )
 
         return MultigridGPUSolver(arch,
@@ -170,6 +177,11 @@ function MultigridSolver(linear_operation!::Function,
                                   )
     end
 end
+
+# @kernel function zero_index!(cuarray :: CuArray)
+#     i = @index(Global, Linear)
+#     cuarray[i] = convert(Int32, cuarray[i] - 1)
+# end
 
 function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
@@ -286,20 +298,10 @@ end
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 
-Base.show(io::IO, solver::MultigridCPUSolver) = 
+Base.show(io::IO, solver::MultigridSolver) = 
 print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
               "├── grid: ", summary(solver.grid), "\n",
               "├── matrix: ", prettysummary(solver.matrix), "\n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
-              "├── maxiter: ", solver.maxiter, "\n",
-              "└── amg_algorithm: ", typeof(solver.amg_algorithm))
-
-Base.show(io::IO, solver::MultigridGPUSolver) = 
-print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
-              "├── grid: ", summary(solver.grid), "\n",
-              "├── matrix: ", prettysummary(solver.matrix), "\n",
-              "├── reltol: ", prettysummary(solver.reltol), "\n",
-              "├── abstol: ", prettysummary(solver.abstol), "\n",
-              "└── maxiter: ", solver.maxiter)
-
+              "└── maxiter: ", solver.maxiter, "\n",)

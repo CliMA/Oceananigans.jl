@@ -108,6 +108,9 @@ end
 
 @inline finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
 
+
+finalize_solver!(::Any) = nothing
+
 """
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
@@ -176,13 +179,12 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GP
         unsafe_free!(constructors)
 
         s = solver.amgx_solver
-        # FIXME only allocate this once
-        csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
+        solver.amgx_solver.csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
         @inline subtract_one(x) = convert(Int32, x-1)
         AMGX.upload!(s.device_matrix, 
-                        map(subtract_one, csr_matrix.rowPtr),
-                        map(subtract_one, csr_matrix.colVal),
-                        csr_matrix.nzVal
+                        map(subtract_one, solver.amgx_solver.csr_matrix.rowPtr),
+                        map(subtract_one, solver.amgx_solver.csr_matrix.colVal),
+                        solver.amgx_solver.csr_matrix.nzVal
                         )
         AMGX.setup!(s.solver, s.device_matrix)
 
