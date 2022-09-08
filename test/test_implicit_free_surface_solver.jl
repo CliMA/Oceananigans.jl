@@ -96,7 +96,7 @@ end
         Lz = rectilinear_grid.Lz
         width = 50kilometers
 
-        bump(x, y) = - Lz * (1 - 1.2 * exp(-x^2 / 2width^2))
+        bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
