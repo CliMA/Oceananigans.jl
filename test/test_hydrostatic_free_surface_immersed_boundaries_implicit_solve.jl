@@ -61,6 +61,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)
+
+            finalize_solver!(model.free_surface.implicit_step_solver)
         end
 
         @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ interior(sol[3]))
