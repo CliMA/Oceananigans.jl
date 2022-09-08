@@ -206,8 +206,8 @@ end
         @info "    maximum(abs, η_mg) : $(maximum(abs, mg_η_cpu))"
         @info "    maximum(abs, η_fft): $(maximum(abs, fft_η_cpu))"
 
-        @test all(isapprox.(Δη_mat, 0, atol=1e-15)
-        @test all(isapprox.(Δη_pcg, 0, atol=1e-15)
-        @test all(isapprox.(Δη_mg,  0, atol=1e-15)
+        @test all(isapprox.(Δη_mat, 0, atol=1e-15))
+        @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
+        @test all(isapprox.(Δη_mg,  0, atol=1e-15))
     end
 end
