@@ -31,3 +31,6 @@ end
     fᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, coriolis.scheme, fᶠᶠᵃ, coriolis)
     return + upwind_biased_product(û, fᴸ, fᴿ) 
 end
+
+Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
+        HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), Adapt.adapt(to, coriolis.scheme))
