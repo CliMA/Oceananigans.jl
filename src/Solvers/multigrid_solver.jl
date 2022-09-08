@@ -291,7 +291,7 @@ function finalize_solver!(solver::MultigridGPUSolver)
     close(s.device_b)
     close(s.solver)
     close(s.resources)
-    close(s.config) 
+    close(s.config)
     AMGX.finalize_plugins()
     AMGX.finalize()
 end
