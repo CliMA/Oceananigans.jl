@@ -39,4 +39,4 @@ end
 end
 
 Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
-        HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), Adapt.adapt(to, coriolis.scheme))
+    HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), Adapt.adapt(to, coriolis.scheme))
