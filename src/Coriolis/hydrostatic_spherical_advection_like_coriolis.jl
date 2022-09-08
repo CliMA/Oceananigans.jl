@@ -3,7 +3,13 @@
 # or "conservation form" advection scheme (which does not currently exist for
 # curvilinear grids).
 
-using Oceananigans.Advection: AbstractAdvectionScheme, _left_biased_interpolate_yᵃᶜᵃ, _right_biased_interpolate_xᶜᵃᵃ
+using Oceananigans.Advection: 
+            AbstractAdvectionScheme, 
+            _left_biased_interpolate_xᶜᵃᵃ,
+            _left_biased_interpolate_yᵃᶜᵃ,
+            _right_biased_interpolate_xᶜᵃᵃ,
+            _right_biased_interpolate_yᵃᶜᵃ,
+            upwind_biased_product
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 
