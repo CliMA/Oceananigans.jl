@@ -214,7 +214,7 @@ function initialize_matrix(::GPU, template_field, linear_operator!, args...)
     eᵢⱼₖ = similar(template_field)
     ∇²eᵢⱼₖ = similar(template_field)
 
-    colptr = CuArray{Int}(undef, Nx*Ny*Nz+1)  # Can we infer the type of int?
+    colptr = CuArray{Int}(undef, Nx*Ny*Nz+1)
     rowval = CuArray{Int}(undef, 0)
     nzval  = CuArray{FT}(undef, 0)
 
