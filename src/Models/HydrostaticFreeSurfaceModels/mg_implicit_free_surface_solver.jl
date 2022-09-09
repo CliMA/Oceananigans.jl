@@ -61,7 +61,7 @@ step `Δt`, gravitational acceleration `g`, and free surface at the `n`-th time-
 function MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
                                      settings = nothing,
                                      gravitational_acceleration = g_Earth,
-                                     reduced_dim = (false, false, false),
+                                     reduced_dim = (false, false, true),
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
 
@@ -74,8 +74,10 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    fill_halo_regions!(vertically_integrated_lateral_areas)
+
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-    matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, right_hand_side, coeffs, reduced_dim)  
+    matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
     # Placeholder preconditioner and matrix are calculated using a "placeholder" timestep of -1.0
     # They are then recalculated before the first time step of the simulation.
@@ -85,7 +87,6 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
 
     matrix = arch_sparse_matrix(arch, placeholder_constructors)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
 
     # set some defaults
     if settings !== nothing
