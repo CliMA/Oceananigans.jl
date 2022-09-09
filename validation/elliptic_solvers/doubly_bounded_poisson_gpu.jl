@@ -75,8 +75,6 @@ fill_halo_regions!(φ_cg)
 @info "Solving the Poisson equation with the Algebraic Multigrid solver..."
 @time mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r)
 @time solve!(φ_mg, mgs, r)
-@show Vector(mgs.amgx_solver_struct.device_b)
-@show Vector(mgs.amgx_solver_struct.device_x)
 fill_halo_regions!(φ_mg)
 φ_mg .-= mean(φ_mg)
 
