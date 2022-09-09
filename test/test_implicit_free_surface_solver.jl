@@ -141,8 +141,8 @@ end
             mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
-            mg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
-            finalize_solver!(mg_solver)
+            mgcg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            finalize_solver!(mgcg_solver)
     end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
