@@ -82,7 +82,8 @@ Arguments
                     The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings.
-                   Note: This keyword is relevant only on the CPU.
+                   Options are `RugeStubenAMG()` (default) or `SmoothedAggregationAMG()`.
+                   Note: This keyword is relevant *only* on the CPU.
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
@@ -130,10 +131,10 @@ function MultigridSolver(linear_operation!::Function,
         end
 
         if reltol == 0
-            @info "Multigrid solver will use abstol = ($abstol)"
+            @info "Multigrid solver with absolute tolerance = $abstol"
             config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => abstol))
         else
-            @info "Multigrid solver will use reltol = ($reltol)"
+            @info "Multigrid solver with relative tolerance = $reltol"
             config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol, "convergence" => "RELATIVE_INI_CORE"))
         end
         resources = AMGX.Resources(config)
