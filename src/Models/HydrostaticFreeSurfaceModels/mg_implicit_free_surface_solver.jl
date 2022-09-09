@@ -108,6 +108,8 @@ end
 
 finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)
 
+finalize_solver!(::Any) = nothing
+
 """
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
