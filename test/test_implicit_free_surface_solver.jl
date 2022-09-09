@@ -166,6 +166,8 @@ end
                                                momentum_advection = nothing,
                                                free_surface = mg_free_surface)
 
+        finalize_solver!(mg_model.free_surface.implicit_step_solver)
+
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
