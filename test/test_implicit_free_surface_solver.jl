@@ -28,6 +28,7 @@ function set_simple_divergent_velocity!(model)
 
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
+<<<<<<< HEAD
 
     i, j, k = imid, jmid, 1
 
@@ -53,6 +54,9 @@ function set_simple_divergent_velocity!(model)
     # does not depend on the grid extend and resolution.
     transport = 1e5 # m³ s⁻¹
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
+=======
+    CUDA.@allowscalar u[imid, jmid, 1] = 0.1
+>>>>>>> main
 
     update_state!(model)
 
@@ -128,14 +132,22 @@ end
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
-            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, abstol=1e-15, reltol=0)
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
             @info "Testing Multigrid implicit free surface solver [$A, $G]..."
             free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)
             mg_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
             finalize_solver!(mg_solver)
-        end
+
+            @info "Testing PreconditionedConjugateGradient implicit free surface solver w/ MG Preconditioner [$A, $G]..."
+            mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
+            mg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            finalize_solver!(mg_solver)
+    end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
 

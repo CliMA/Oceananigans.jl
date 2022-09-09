@@ -191,7 +191,7 @@ function initialize_matrix(::CPU, template_field, linear_operator!, args...)
 
     eᵢⱼₖ = similar(template_field)
     ∇²eᵢⱼₖ = similar(template_field)
-    
+
     for k = 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ) .= 0
         parent(∇²eᵢⱼₖ) .= 0
@@ -243,8 +243,7 @@ end
 """
     solve!(x, solver::MultigridCPUSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method on CPU, where `A * x` is determined
-by `solver.matrix`.
+Solve `A * x = b` using a multigrid method, where `A` is `solver.matrix`.
 """
 function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
@@ -254,7 +253,7 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b,
+    _solve!(solver.x_array, solt.ml, solt.b;
             maxiter = solver.maxiter,
             abstol = solver.abstol,
             reltol = solver.reltol,
@@ -266,8 +265,7 @@ end
 """
     solve!(x, solver::MultigridGPUSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method on GPU, where `A * x` is determined
-by `solver.matrix`.
+Solve `A * x = b` using a multigrid method on GPU, where `A` is `solver.matrix`.
 """
 function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
