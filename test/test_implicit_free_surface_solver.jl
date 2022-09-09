@@ -174,8 +174,6 @@ end
                                                momentum_advection = nothing,
                                                free_surface = mg_free_surface)
 
-        finalize_solver!(mg_model.free_surface.implicit_step_solver)
-
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test mat_model.free_surface.implicit_step_solver isa MatrixImplicitFreeSurfaceSolver
@@ -219,5 +217,7 @@ end
         @test all(isapprox.(Δη_mat, 0, atol=1e-15))
         @test all(isapprox.(Δη_pcg, 0, atol=1e-15))
         @test all(isapprox.(Δη_mg,  0, atol=1e-15))
+
+        finalize_solver!(mg_model.free_surface.implicit_step_solver)
     end
 end
