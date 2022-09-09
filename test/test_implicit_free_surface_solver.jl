@@ -28,7 +28,6 @@ function set_simple_divergent_velocity!(model)
 
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
-<<<<<<< HEAD
 
     i, j, k = imid, jmid, 1
 
@@ -54,9 +53,6 @@ function set_simple_divergent_velocity!(model)
     # does not depend on the grid extend and resolution.
     transport = 1e5 # m³ s⁻¹
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
-=======
-    CUDA.@allowscalar u[imid, jmid, 1] = 0.1
->>>>>>> main
 
     update_state!(model)
 
