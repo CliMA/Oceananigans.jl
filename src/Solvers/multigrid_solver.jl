@@ -286,6 +286,8 @@ function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
 end
 
 function finalize_solver!(solver::MultigridGPUSolver)
+    @info "Finalizing the Multigrid solver on GPU"
+    
     s = solver.amgx_solver
     close(s.device_matrix)
     close(s.device_x)
