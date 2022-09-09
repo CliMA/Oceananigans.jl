@@ -73,6 +73,9 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     extrema_tolerance = 1e-9
     std_tolerance = 1e-9
 
+    @show norm(left_hand_side)
+    @show norm(right_hand_side)
+
     CUDA.@allowscalar begin
         @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
         @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
