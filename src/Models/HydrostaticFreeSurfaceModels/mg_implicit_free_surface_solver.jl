@@ -27,15 +27,13 @@ mutable struct MGImplicitFreeSurfaceSolver{A, S, V, F, R, C, D}
     architecture :: A
     "The multigrid solver"
     multigrid_solver :: S
-    "The vertically-integrated lateral areas"
-    vertically_integrated_lateral_areas :: V
     "The previous time step"
     previous_Δt :: F
     "The right hand side of the free surface evolution equation"
     right_hand_side :: R
-    "The matrix constructors of the linear operator without the `Az / (g Δt²)` term"
+    "The matrix constructors of the linear operator without the diagonal `Az / (g Δt²)` term"
     matrix_constructors :: C
-    "The `Az / g` term"
+    "The diagonal matrix term `Az / g`"
     diagonal :: D
 end
 
@@ -104,7 +102,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                              matrix,
                              settings...)
 
-    return MGImplicitFreeSurfaceSolver(arch, solver, vertically_integrated_lateral_areas, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
+    return MGImplicitFreeSurfaceSolver(arch, solver, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)
 end
 
 finalize_solver!(solver::MGImplicitFreeSurfaceSolver) = finalize_solver!(solver.multigrid_solver)

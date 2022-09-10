@@ -235,7 +235,7 @@ Multigrid preconditioner
 end
 
 finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
-    finalize_solver!(solver.preconditioned_conjugate_gradient_solver.preconditioner)
+    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner

@@ -4,11 +4,10 @@ using Oceananigans.Operators: ∇²ᶜᶜᶜ
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver, finalize_solver!
 using Oceananigans.Architectures: architecture, arch_array
 using IterativeSolvers
 using Statistics: mean
-using AlgebraicMultigrid: RugeStubenAMG
 using BenchmarkTools
 
 import Oceananigans.Solvers: precondition!
@@ -18,11 +17,12 @@ Demonstrates how one can solve a Poisson problem using the FFT Solver, the Conju
 the Multigrid Solver and the Conjugate Gradient Solver preconditioned with the Multigrid Solver.
 """
 
-N = 64
+arch = GPU()
 
-grid = RectilinearGrid(size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
+N = 4
 
-arch = architecture(grid)
+grid = RectilinearGrid(arch, size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
+
 Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
 # Select RHS
@@ -64,7 +64,7 @@ function bench_solve()
     return nothing
 end
 
-@show @btime bench_solve();
+@btime bench_solve();
 
 fill_halo_regions!(φ_fft)
 
@@ -82,7 +82,7 @@ function bench_solve()
     return nothing
 end
 
-@show @btime bench_solve();
+@btime bench_solve();
 
 fill_halo_regions!(φ_cg)
 
@@ -102,12 +102,12 @@ function bench_solve()
     return nothing
 end
 
-@show @btime bench_solve();
+@btime bench_solve();
 
 φ_mg .-= mean(φ_mg)
 
 fill_halo_regions!(φ_mg)
-
+finalize_solver!(mgs)
 
 # Solve ∇²φ = r with `PreconditionedConjugateGradientSolver` solver using the AlgebraicMultigrid as preconditioner
 
@@ -126,7 +126,7 @@ end
 Return a multigrid preconditioner with maximum iterations: `maxiter`.
 """
 function MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
-    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter, amg_algorithm = RugeStubenAMG())
+    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter)
     
     S = typeof(mgs)
     return MultigridPreconditioner{S}(mgs)
@@ -136,20 +136,21 @@ end
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
 Return `z` (Field)
 """
-function precondition!(z, mgp::MultigridPreconditioner, r, args...)
+function precondition!(z, mg_solver::MultigridSolver, r, args...)
     parent(z) .= 0
-    solve!(z, mgp.multigrid_solver, r)
+    solve!(z, mg_solver, r)
 
     return z
 end
 
 maxiter = 1;
 mgp = MultigridPreconditioner(compute_∇²!, arch, grid, r; maxiter)
+mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter)
 
 φ_cgmg = CenterField(grid)
 
 @info "Constructing an Preconditioned Congjugate Gradient solver with Algebraic Multigrid preconditioner..."
-cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgp)
+cgmg_solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=r, reltol=eps(eltype(grid)), preconditioner = mgs)
 
 @info "Solving the Poisson equation with a conjugate gradient preconditioned iterative solver w/ AMG as preconditioner..."
 @time solve!(φ_cgmg, cgmg_solver, r, arch, grid)
@@ -164,6 +165,7 @@ end
 @btime bench_solve();
 
 fill_halo_regions!(φ_cgmg)
+finalize_solver!(cgmg_solver)
 
 #=
 using  GLMakie

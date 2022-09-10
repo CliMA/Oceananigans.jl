@@ -3,12 +3,15 @@ using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Printf
+using Oceananigans.Architectures: architecture
 
 """
 Benchmarks the bumpy baroclinic adjustment problem with various implicit free-surface solvers.
 """
 
-underlying_grid = RectilinearGrid(CPU(),
+arch = GPU()
+
+underlying_grid = RectilinearGrid(arch,
                                   topology = (Periodic, Bounded, Bounded), 
                                   size = (64, 64, 24),
                                   x = (-500kilometers, 500kilometers),
