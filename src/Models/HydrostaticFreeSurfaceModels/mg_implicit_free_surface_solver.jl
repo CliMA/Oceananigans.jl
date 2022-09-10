@@ -16,13 +16,13 @@ import Oceananigans.Solvers: solve!, finalize_solver!
 import Oceananigans.Architectures: architecture
 
 """
-    mutable struct MGImplicitFreeSurfaceSolver{S, V, F, R, C, D}
+    mutable struct MGImplicitFreeSurfaceSolver{A, S, F, R, C, D}
 
 The multigrid implicit free-surface solver.
 
 $(TYPEDFIELDS)
 """
-mutable struct MGImplicitFreeSurfaceSolver{A, S, V, F, R, C, D}
+mutable struct MGImplicitFreeSurfaceSolver{A, S, F, R, C, D}
     "Architecture"
     architecture :: A
     "The multigrid solver"
@@ -41,9 +41,9 @@ architecture(solver::MGImplicitFreeSurfaceSolver) =
     architecture(solver.multigrid_solver)
 
 """
-    MGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
-                                settings = nothing, 
-                                gravitational_acceleration = nothing, 
+    MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
+                                settings = nothing,
+                                gravitational_acceleration = nothing,
                                 placeholder_timestep = -1.0)
 
 Return a solver based on a multigrid method for the elliptic equation
