@@ -11,9 +11,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     PCGImplicitFreeSurfaceSolver,
     MatrixImplicitFreeSurfaceSolver, 
     MGImplicitFreeSurfaceSolver,
+    compute_vertically_integrated_lateral_areas!,
     implicit_free_surface_step!,
     implicit_free_surface_linear_operation!,
     finalize_solver!
+
+using Oceananigans.Grids: with_halo
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -66,7 +69,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = nothing,
                                         free_surface)
-    
+
     events = ((device_event(arch), device_event(arch)), (device_event(arch), device_event(arch)))
 
     set_simple_divergent_velocity!(model)
@@ -83,8 +86,14 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     # Compute left hand side "solution"
     g = g_Earth
     η = model.free_surface.η
-    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
-    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
+
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+
+    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
+
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    fill_halo_regions!(vertically_integrated_lateral_areas)
 
     left_hand_side = Field{Center, Center, Nothing}(grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
