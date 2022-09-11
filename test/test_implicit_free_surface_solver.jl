@@ -27,7 +27,7 @@ function set_simple_divergent_velocity!(model)
 
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u[imid, jmid, 1] = 1
+    CUDA.@allowscalar u[imid, jmid, 1] = 0.1
 
     update_state!(model)
 
@@ -93,20 +93,28 @@ end
         
         bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
-        lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
-                                             longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
+        lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
+                                             longitude = (-10, 40), latitude = (25, 75), z = (-4000, 0))
 
         for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
-            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, abstol=1e-15, reltol=0)
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                               abstol=1e-15, reltol=0)
             run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
-            if arch isa CPU # This should be removed when GPU capability is added
+            if arch isa CPU # This should be removed when GPU capability is added to the MultigridSolver
                 @info "Testing Multigrid implicit free surface solver [$A, $G]..."
-                free_surface = ImplicitFreeSurface(solver_method=:Multigrid, abstol=1e-15, reltol=0)
-                run_implicit_free_surface_solver_tests(arch, grid, free_surface)   
+                free_surface = ImplicitFreeSurface(solver_method=:Multigrid,
+                                                   abstol=1e-15, reltol=0)
+                run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+
+                @info "Testing PreconditionedConjugateGradient implicit free surface solver w/ MG Preconditioner [$A, $G]..."
+                mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
+                free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
+                                                   abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
+                run_implicit_free_surface_solver_tests(arch, grid, free_surface)
             end
         end
 

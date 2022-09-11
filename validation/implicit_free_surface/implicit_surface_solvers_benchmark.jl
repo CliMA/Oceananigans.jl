@@ -40,6 +40,7 @@ implicit_free_surface_solvers = (:FastFourierTransform,
                                  :HeptadiagonalIterativeSolver,
                                  :Multigrid,
                                  :PreconditionedConjugateGradient_withFFTpreconditioner,
+                                 :PreconditionedConjugateGradient_withMGpreconditioner,
                                  )
 
 for implicit_free_surface_solver in implicit_free_surface_solvers
@@ -47,6 +48,10 @@ for implicit_free_surface_solver in implicit_free_surface_solvers
     if implicit_free_surface_solver == :PreconditionedConjugateGradient_withFFTpreconditioner
         fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
+    elseif implicit_free_surface_solver == :PreconditionedConjugateGradient_withMGpreconditioner
+        mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
+        maxiter = 2
+        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner, maxiter = maxiter)
     else
         free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver)
     end

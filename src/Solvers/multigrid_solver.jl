@@ -114,10 +114,10 @@ function fill_matrix_elements!(A, template_field, linear_operator!, args...)
 
     eᵢⱼₖ = similar(template_field)
     ∇²eᵢⱼₖ = similar(template_field)
-    
+
     for k = 1:Nz, j in 1:Ny, i in 1:Nx
-        eᵢⱼₖ .= 0
-        ∇²eᵢⱼₖ .= 0
+        parent(eᵢⱼₖ) .= 0
+        parent(∇²eᵢⱼₖ) .= 0
         eᵢⱼₖ[i, j, k] = 1
         fill_halo_regions!(eᵢⱼₖ)
         linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
@@ -131,8 +131,7 @@ end
 """
     solve!(x, solver::MultigridSolver, b; kwargs...)
 
-Solve `A * x = b` using a multigrid method, where `A * x` is determined
-by `solver.linear_operation`.
+Solve `A * x = b` using a multigrid method, where `A` is `solver.matrix`.
 """
 function solve!(x, solver::MultigridSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
@@ -142,7 +141,7 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
 
     solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
 
-    _solve!(solver.x_array, solt.ml, solt.b,
+    _solve!(solver.x_array, solt.ml, solt.b;
             maxiter = solver.maxiter,
              abstol = solver.abstol,
              reltol = solver.reltol,
@@ -154,7 +153,7 @@ end
 Base.show(io::IO, solver::MultigridSolver) = 
 print(io, "MultigridSolver on ", string(typeof(architecture(solver))), ": \n",
               "├── grid: ", summary(solver.grid), "\n",
-              "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",
+              "├── matrix: ", prettysummary(solver.matrix), "\n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
               "├── maxiter: ", solver.maxiter, "\n",
