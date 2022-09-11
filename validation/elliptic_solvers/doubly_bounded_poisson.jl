@@ -1,25 +1,37 @@
 using Oceananigans
-using Oceananigans.Architectures: child_architecture, device
+
+using Oceananigans.Architectures: child_architecture, device, arch_array
 using Oceananigans.Operators: ∇²ᶜᶜᶜ
-using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Utils: launch!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: FFTBasedPoissonSolver, solve!, PreconditionedConjugateGradientSolver, MultigridSolver, finalize_solver!
-using Oceananigans.Architectures: architecture, arch_array
-using IterativeSolvers
+using Oceananigans.Solvers: solve!,
+                            FFTBasedPoissonSolver,
+                            PreconditionedConjugateGradientSolver,
+                            MultigridSolver,
+                            finalize_solver!
+
+using BenchmarkTools,
+      CUDA,
+      IterativeSolvers
+
+using KernelAbstractions: @kernel, @index, Event
 using Statistics: mean
-using BenchmarkTools
 
 import Oceananigans.Solvers: precondition!
 
 """
-Demonstrates how one can solve a Poisson problem using the FFT Solver, the Conjugate Gradient Solver, 
-the Multigrid Solver and the Conjugate Gradient Solver preconditioned with the Multigrid Solver.
+Demonstrates how one can solve a Poisson problem using:
+  * the FFT Solver,
+  * the Conjugate Gradient Solver,
+  * the Multigrid Solver, and
+  * the Conjugate Gradient Solver preconditioned with the Multigrid Solver.
+
+Also benchmarks the various solvers.
 """
 
 arch = GPU()
 
-N = 4
+N = 64
 
 grid = RectilinearGrid(arch, size=(N, N), x=(-4, 4), y=(-4, 4), topology=(Bounded, Bounded, Flat))
 
@@ -30,7 +42,7 @@ r = CenterField(grid)
 r₀(x, y, z) = (x^2 + y^2) < 1 ? 1 : 0 # exp(-x^2 - y^2)
 set!(r, r₀)
 r .-= mean(r)
-fill_halo_regions!(r, grid.architecture)
+fill_halo_regions!(r)
 
 
 @kernel function ∇²!(∇²f, grid, f)
@@ -64,7 +76,11 @@ function bench_solve()
     return nothing
 end
 
-@btime bench_solve();
+if arch == CPU()
+    bench_fft = @benchmark bench_solve();
+elseif arch == GPU()
+    bench_fft = @benchmark CUDA.@sync bench_solve();
+end
 
 fill_halo_regions!(φ_fft)
 
@@ -82,7 +98,11 @@ function bench_solve()
     return nothing
 end
 
-@btime bench_solve();
+if arch == CPU()
+    bench_pcg = @benchmark bench_solve();
+elseif arch == GPU()
+    bench_pcg = @benchmark CUDA.@sync bench_solve();
+end
 
 fill_halo_regions!(φ_cg)
 
@@ -102,7 +122,11 @@ function bench_solve()
     return nothing
 end
 
-@btime bench_solve();
+if arch == CPU()
+    bench_mg = @benchmark bench_solve();
+elseif arch == GPU()
+    bench_mg = @benchmark CUDA.@sync bench_solve();
+end
 
 φ_mg .-= mean(φ_mg)
 
@@ -121,18 +145,6 @@ struct MultigridPreconditioner{S}
 end
 
 """
-    MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
-
-Return a multigrid preconditioner with maximum iterations: `maxiter`.
-"""
-function MultigridPreconditioner(linear_opearation::Function, arch, grid, template_field; maxiter=1)
-    mgs = MultigridSolver(linear_opearation, arch, grid; template_field, maxiter)
-    
-    S = typeof(mgs)
-    return MultigridPreconditioner{S}(mgs)
-end
-
-"""
     precondition!(z, mgp::MultigridPreconditioner, r, args...)
 Return `z` (Field)
 """
@@ -143,8 +155,8 @@ function precondition!(z, mg_solver::MultigridSolver, r, args...)
     return z
 end
 
+# construct a multigrid solver to use as a preconditioner
 maxiter = 1;
-mgp = MultigridPreconditioner(compute_∇²!, arch, grid, r; maxiter)
 mgs = MultigridSolver(compute_∇²!, arch, grid; template_field = r, maxiter)
 
 φ_cgmg = CenterField(grid)
@@ -162,7 +174,11 @@ function bench_solve()
     return nothing
 end
 
-@btime bench_solve();
+if arch == CPU()
+    bench_mgpcg = @benchmark bench_solve();
+elseif arch == GPU()
+    bench_mgpcg = @benchmark CUDA.@sync bench_solve();
+end
 
 fill_halo_regions!(φ_cgmg)
 finalize_solver!(cgmg_solver)
@@ -229,3 +245,49 @@ Colorbar(fig[4, 8], hm_err_cgmg)
 
 display(fig)
 =#
+
+using CairoMakie
+
+mean_time = mean.([bench_fft.times, bench_pcg.times, bench_mg.times, bench_mgpcg.times]) ./ 1e9 # convert ns -> s
+allocations = [bench_fft.allocs, bench_pcg.allocs, bench_mg.allocs, bench_mgpcg.allocs]
+memory = [bench_fft.memory, bench_pcg.memory, bench_mg.memory, bench_mgpcg.memory] ./ 1024 # convert b -> kb
+
+tbl = (x = [1, 2, 3, 4],
+       mean_time = mean_time,
+       allocations = allocations,
+       memory = memory
+       )
+
+colors = Makie.wong_colors()
+
+fig = Figure(resolution = (600, 800))
+ax1 = Axis(fig[1, 1];
+           xticks = (1:4, ["fft", "pcg", "mg", "mg-pcg"]),
+           ylabel = "μs",
+           limits = (nothing, (-0.1 * maximum(mean_time), 1.2 * maximum(mean_time))),
+           title = "mean time")
+
+ax2 = Axis(fig[2, 1];
+           xticks = (1:4, ["fft", "pcg", "mg", "mg-pcg"]),
+           limits = (nothing, (-0.1 * maximum(allocations), 1.2 * maximum(allocations))),
+           title = "memory allocations")
+
+ax3 = Axis(fig[3, 1];
+           xticks = (1:4, ["fft", "pcg", "mg", "mg-pcg"]),
+           ylabel = "kb",
+           limits = (nothing, (-0.1 * maximum(memory), 1.2 * maximum(memory))),
+           title = "memory used")
+
+barplot!(ax1, tbl.x, tbl.mean_time;
+         bar_labels = prettytime.(tbl.mean_time),
+         color = colors[tbl.x])
+
+barplot!(ax2, tbl.x, tbl.allocations;
+         bar_labels = string.(tbl.allocations),
+         color = colors[tbl.x])
+
+barplot!(ax3, tbl.x, tbl.memory;
+         bar_labels = string.(Int.(round.(tbl.memory))) .* " kb",
+         color = colors[tbl.x])
+
+save("solvers_benchmark_" * string(typeof(arch)) * ".png", fig)
