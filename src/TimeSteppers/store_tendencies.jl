@@ -15,7 +15,7 @@ function store_tendencies!(model)
 
     barrier = device_event(model.architecture)
 
-    model_fields = merge(model.velocities, model.tracers)
+    model_fields = prognostic_fields(model)
 
     events = []
 

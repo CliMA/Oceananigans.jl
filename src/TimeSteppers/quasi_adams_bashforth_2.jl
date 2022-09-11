@@ -119,7 +119,7 @@ function ab2_step!(model, Δt, χ)
     arch = model.architecture
     barrier = device_event(arch)
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
-    model_fields = merge(model.velocities, model.tracers)
+    model_fields = prognostic_fields(model)
     events = []
 
     for (i, field) in enumerate(model_fields)
