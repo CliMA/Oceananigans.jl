@@ -51,12 +51,13 @@ pressure anomaly.
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      hydrostatic_pressure,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯u(i, j, k, grid, advection, velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, background_fields.velocities, velocities.u)
@@ -108,12 +109,13 @@ pressure anomaly.
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      hydrostatic_pressure,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯v(i, j, k, grid, advection, velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, background_fields.velocities, velocities.v)
@@ -163,11 +165,12 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯w(i, j, k, grid, advection, velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, background_fields.velocities, velocities.w)
@@ -215,13 +218,14 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                  background_fields,
                                  velocities,
                                  tracers,
+                                 auxiliary_fields,
                                  diffusivities,
                                  forcing,
                                  clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)

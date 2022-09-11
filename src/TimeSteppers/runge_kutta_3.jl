@@ -163,7 +163,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
     workgroup, worksize = work_layout(model.grid, :xyz)
     barrier = Event(device(architecture(model)))
     substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
-    model_fields = prognostic_fields(model)
+    model_fields = merge(model.velocities, model.tracers)   
     events = []
 
     for (i, field) in enumerate(model_fields)

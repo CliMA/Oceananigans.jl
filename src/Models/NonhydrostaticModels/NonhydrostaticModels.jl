@@ -44,7 +44,7 @@ include("set_nonhydrostatic_model.jl")
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
+fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, model.auxiliary_fields)
 prognostic_fields(model::NonhydrostaticModel) = fields(model)
 
 include("solve_for_pressure.jl")
