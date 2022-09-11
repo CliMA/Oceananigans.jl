@@ -29,7 +29,7 @@ CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and the time scale
-for advection across a cell.
+for advection across a cell. The advective CFL is, e.g., ``U Δt / Δx``.
 
 Example
 =======
@@ -55,7 +55,8 @@ AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 Returns an object for computing the diffusive Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and the time scale for diffusion
-across a cell associated with `model.closure`.
+across a cell associated with `model.closure`.  The diffusive CFL, e.g., for viscosity
+is ``ν Δt / Δx²``.
 
 The maximum diffusive CFL number among viscosity and all tracer diffusivities is
 returned.
