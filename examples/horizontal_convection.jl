@@ -331,7 +331,8 @@ for i = 1:length(t)
     
     b = b_timeseries[i]
     sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1] / (Lx * H)) / χ_diff
+    χ = κ *  ∫ⱽ_mod²_∇b[1, 1, 1] / (Lx * H)
+    Nu[i] = χ / χ_diff
 end
 
 fig = Figure(resolution = (850, 450))
