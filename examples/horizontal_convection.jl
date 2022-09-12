@@ -280,7 +280,7 @@ nothing #hide
 # Nu = \frac{\langle \chi \rangle}{\langle \chi_{\rm diff} \rangle} \, ,
 # ```
 #
-# where angle brackets above denote both a volume and time average and  ``\chi_{\rm diff}`` is
+# where angle brackets above denote both a volume and time average and ``\chi_{\rm diff}`` is
 # the buoyancy dissipation that we get without any flow, i.e., the buoyancy dissipation associated
 # with the buoyancy distribution that satisfies
 #
@@ -288,12 +288,12 @@ nothing #hide
 # \kappa \nabla^2 b_{\rm diff} = 0 \, ,
 # ```
 #
-# with the same boundary conditions same as our setup. In this case we can readily find that
+# with the same boundary conditions same as our setup. In this case, we can readily find that
 #
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx)``.
+# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -301,7 +301,7 @@ nothing #hide
 # First we compute the diffusive buoyancy dissipation, ``\chi_{\rm diff}`` (which is just a
 # scalar):
 
-χ_diff = κ * b★^2 * π * tanh(2π * H / Lx)
+χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
 nothing # hide
 
 # We then create two `ReducedField`s to store the volume integrals of the kinetic energy density
@@ -331,7 +331,7 @@ for i = 1:length(t)
     
     b = b_timeseries[i]
     sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
+    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1] / (Lx * H)) / χ_diff
 end
 
 fig = Figure(resolution = (850, 450))
