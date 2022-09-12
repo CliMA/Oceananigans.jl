@@ -211,25 +211,25 @@ blim = 0.6
 ζlim = 9
 χlim = 0.025
 
-axis_kwargs = (xlabel = "x / H",
-               ylabel = "z / H",
+axis_kwargs = (xlabel = L"x / H",
+               ylabel = L"z / H",
                limits = ((-Lx/2, Lx/2), (-H, 0)),
-               aspect = Lx/H,
+               aspect = Lx / H,
                titlesize = 20)
 
 fig = Figure(resolution = (600, 1100))
 
 ax_s = Axis(fig[2, 1];
-            title = "speed √[(u²+w²)/(b⋆H)]", axis_kwargs...)
+            title = L"speed, $(u^2+w^2)^{1/2} / (b_* H)^{1/2}", axis_kwargs...)
 
 ax_b = Axis(fig[3, 1];
-            title = "buoyancy, b/b⋆", axis_kwargs...)
+            title = L"buoyancy, $b / b_*$", axis_kwargs...)
 
 ax_ζ = Axis(fig[4, 1];
-            title = "vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆)", axis_kwargs...)
+            title = L"vorticity, $(∂u/∂z - ∂w/∂x) (H/b_*)^{1/2}$", axis_kwargs...)
 
 ax_χ = Axis(fig[5, 1];
-            title = "buoyancy dissipation, κ|∇b|² √(H/b⋆⁵)", axis_kwargs...)
+            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 (H/b_*^5)^{1/2}$", axis_kwargs...)
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
@@ -293,7 +293,8 @@ nothing #hide
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
+# where $b_s(x)$ is the surface boundary condition. The diffusive solution implies 
+# ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -304,15 +305,6 @@ nothing #hide
 χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
 nothing # hide
 
-# We then create two `ReducedField`s to store the volume integrals of the kinetic energy density
-# and the buoyancy dissipation. We need the `grid` to do so; the `grid` can be recoverd from
-# any `FieldTimeSeries`, e.g.,
-
-grid = b_timeseries.grid
-
-∫ⱽ_s² = Field{Nothing, Nothing, Nothing}(grid)
-∫ⱽ_mod²_∇b = Field{Nothing, Nothing, Nothing}(grid)
-
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,
 
@@ -321,26 +313,26 @@ t = b_timeseries.times
 kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
 nothing # hide
 
-# Now we can loop over the fields in the `FieldTimeSeries`, compute `KineticEnergy` and `Nu`,
-# and plot.
+# Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
+# and plot. We make use of `Integral` to compute the volume integral of fields over our domain.
 
 for i = 1:length(t)
-    s = s_timeseries[i]
-    sum!(∫ⱽ_s², s^2 * volume)
-    kinetic_energy[i] = 0.5 * ∫ⱽ_s²[1, 1, 1]  / (Lx * H)
+    ke = Field(Integral(1/2 * s_timeseries[i]^2 / (Lx * H)))
+    compute!(ke)
+    kinetic_energy[i] = ke[1, 1, 1]
     
-    b = b_timeseries[i]
-    sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    χ = κ *  ∫ⱽ_mod²_∇b[1, 1, 1] / (Lx * H)
-    Nu[i] = χ / χ_diff
+    χ = Field(Integral(χ_timeseries[i] / (Lx * H)))
+    compute!(χ)
+
+    Nu[i] = χ[1, 1, 1] / χ_diff
 end
 
 fig = Figure(resolution = (850, 450))
  
-ax_KE = Axis(fig[1, 1], xlabel = "time", ylabel = "KE / (b⋆H)")
+ax_KE = Axis(fig[1, 1], xlabel = "time", ylabel = L"KE $ / (b_* H)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 
-ax_Nu = Axis(fig[2, 1], xlabel = "time", ylabel = "Nu")
+ax_Nu = Axis(fig[2, 1], xlabel = "time", ylabel = L"Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() # hide
