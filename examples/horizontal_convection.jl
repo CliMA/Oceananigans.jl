@@ -134,7 +134,7 @@ u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = sqrt(u^2 + w^2)
+s = @at (Center, Center, Center) sqrt(u^2 + w^2)
 
 ## y-component of vorticity
 ζ = ∂z(u) - ∂x(w)
@@ -185,8 +185,7 @@ b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 times = b_timeseries.times
 
 ## Coordinate arrays
-xs, ys, zs = nodes(s_timeseries[1])
-xb, yb, zb = nodes(b_timeseries[1])
+xc, yc, zc = nodes(b_timeseries[1])
 xζ, yζ, zζ = nodes(ζ_timeseries[1])
 nothing # hide
 
@@ -194,7 +193,7 @@ nothing # hide
 
 for i in 1:length(times)
   bᵢ = b_timeseries[i]
-  χ_timeseries[i] .= κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
+  χ_timeseries[i] .= @at (Center, Center, Center) κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
 end
 
 
@@ -225,25 +224,25 @@ axis_kwargs = (xlabel = L"x / H",
 fig = Figure(resolution = (600, 1100))
 
 ax_s = Axis(fig[2, 1];
-            title = L"speed, $(u^2+w^2)^{1/2} / (b_* H)^{1/2}", axis_kwargs...)
+            title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
 
 ax_b = Axis(fig[3, 1];
             title = L"buoyancy, $b / b_*$", axis_kwargs...)
 
 ax_ζ = Axis(fig[4, 1];
-            title = L"vorticity, $(∂u/∂z - ∂w/∂x) (H/b_*)^{1/2}$", axis_kwargs...)
+            title = L"vorticity, $(∂u/∂z - ∂w/∂x) \, (L_x / b_*)^{1/2}$", axis_kwargs...)
 
 ax_χ = Axis(fig[5, 1];
-            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 (H/b_*^5)^{1/2}$", axis_kwargs...)
+            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 \, (L_x / {b_*}^5)^{1/2}$", axis_kwargs...)
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
-hm_s = heatmap!(ax_s, xs, zs, sₙ;
+hm_s = heatmap!(ax_s, xc, zc, sₙ;
                 colorrange = (0, slim),
                 colormap = :speed)
 Colorbar(fig[2, 2], hm_s)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ;
+hm_b = heatmap!(ax_b, xc, zc, bₙ;
                 colorrange = (-blim, blim),
                 colormap = :thermal)
 Colorbar(fig[3, 2], hm_b)
@@ -253,7 +252,7 @@ hm_ζ = heatmap!(ax_ζ, xζ, zζ, ζₙ;
                 colormap = :balance)
 Colorbar(fig[4, 2], hm_ζ)
 
-hm_χ = heatmap!(ax_χ, xs, zs, χₙ;
+hm_χ = heatmap!(ax_χ, xc, zc, χₙ;
                 colorrange = (0, χlim),
                 colormap = :dense)
 Colorbar(fig[5, 2], hm_χ)
@@ -334,10 +333,11 @@ end
 
 fig = Figure(resolution = (850, 450))
  
-ax_KE = Axis(fig[1, 1], xlabel = "time", ylabel = L"KE $ / (b_* H)$")
+ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 
-ax_Nu = Axis(fig[2, 1], xlabel = "time", ylabel = L"Nu")
+ax_Nu = Axis(fig[2, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() # hide
+fig
