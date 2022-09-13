@@ -52,7 +52,7 @@ import Oceananigans.Grids:
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 import Oceananigans.Grids: inactive_cell
-import Oceananigans.Coriolis: φᶠᶠᵃ, φᶜᶠᵃ, φᶠᶜᵃ 
+import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -218,8 +218,6 @@ const f = Face()
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 @inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
-@inline φᶠᶜᵃ(i, j, k, ibg::IBG) = φᶠᶜᵃ(i, j, k, ibg.underlying_grid)
-@inline φᶜᶠᵃ(i, j, k, ibg::IBG) = φᶜᶠᵃ(i, j, k, ibg.underlying_grid)
 
 @inline xnode(LX, i, ibg::IBG) = xnode(LX, i, ibg.underlying_grid)
 @inline ynode(LY, j, ibg::IBG) = ynode(LY, j, ibg.underlying_grid)

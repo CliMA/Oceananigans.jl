@@ -2,7 +2,7 @@ using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, p
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
-struct EnstrophyWetPointConservingScheme end
+struct WetPointEnstrophyConservingScheme end
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
@@ -32,7 +32,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme() or EnstrophyWetPointConservingScheme()`.
+- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme() or WetPointEnstrophyConservingScheme()`.
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -49,16 +49,15 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 ##### Wet Point Enstrophy-conserving scheme
 #####
 
-const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyWetPointConservingScheme}
+const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPointEnstrophyConservingScheme}
 
 @inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
 
-@inline mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) =
+@inline mask_dry_points_interpolation(i, j, k, grid, f::Function, args...) =
     @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
 
 @inline mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) = 
     @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
-
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
