@@ -37,7 +37,6 @@ Nx, Nz = 128, 64 # horizontal, vertical resolution
 grid = RectilinearGrid(size = (Nx, Nz),
                           x = (-Lx/2, Lx/2),
                           z = (-H, 0),
-                       halo = (3, 3),
                    topology = (Bounded, Flat, Bounded))
 
 # ### Boundary conditions
@@ -119,9 +118,9 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(50))
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
 
-progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, CFL: %.2e\n",
+progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, advective CFL: %.2e, diffusive CFL: %.2e\n",
                         iteration(sim), time(sim), prettytime(sim.run_wall_time),
-                        sim.Δt, AdvectiveCFL(sim.Δt)(sim.model))
+                        sim.Δt, AdvectiveCFL(sim.Δt)(sim.model), DiffusiveCFL(sim.Δt)(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 
@@ -141,7 +140,12 @@ s = sqrt(u^2 + w^2)
 ζ = ∂z(u) - ∂x(w)
 nothing # hide
 
-# We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
+# We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
+# to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
+# to ``|\boldsymbol{\nabla} b|^2) we use the `with_halos = true`. This way, the halos for
+# the fields are saved and thus when we load them as fields the will come with the proper
+# boundary conditions.
+#
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
 saved_output_filename = "horizontal_convection.jld2"
@@ -149,6 +153,7 @@ saved_output_filename = "horizontal_convection.jld2"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
                                                       filename = saved_output_filename,
+                                                      with_halos = true,
                                                       overwrite_existing = true)
 nothing # hide
 
