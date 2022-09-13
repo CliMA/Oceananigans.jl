@@ -3,7 +3,6 @@ using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Printf
-using Oceananigans.Architectures: architecture
 
 """
 Benchmarks the bumpy baroclinic adjustment problem with various implicit free-surface solvers.

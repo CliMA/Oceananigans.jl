@@ -98,7 +98,6 @@ function MultigridSolver(linear_operation!::Function,
                          )
 
     arch = architecture(template_field)
-    
     if matrix === nothing
         matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
     end
@@ -150,7 +149,7 @@ function MultigridSolver(linear_operation!::Function,
         device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
         csr_matrix = CuSparseMatrixCSR(transpose(matrix))
         
-        @inline subtract_one(x) = convert(Int32, x-1)
+        @inline subtract_one(x) = x - oneunit(x)
         
         AMGX.upload!(device_matrix, 
                      map(subtract_one, csr_matrix.rowPtr), # annoyingly arrays need to be 0-indexed rather than 1-indexed

@@ -180,7 +180,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GP
 
         s = solver.amgx_solver
         solver.amgx_solver.csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
-        @inline subtract_one(x) = convert(Int32, x-1)
+        @inline subtract_one(x) = x - oneunit(x)
         AMGX.upload!(s.device_matrix, 
                      map(subtract_one, solver.amgx_solver.csr_matrix.rowPtr),
                      map(subtract_one, solver.amgx_solver.csr_matrix.colVal),
