@@ -1,11 +1,15 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, peripheral_node
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme, EnstrophyWetPointConserving
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+
+struct EnstrophyWetPointConservingScheme end
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
 # or "conservation form" advection scheme (which does not currently exist for
 # curvilinear grids).
+# The wet point enstrophy-conserving coriolis scheme eliminates the dry edges from 
+# the velocity interpolation
 
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
@@ -28,7 +32,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConservingScheme()` (default) or `EnstrophyConservingScheme()`.
+- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme() or EnstrophyWetPointConservingScheme()`.
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -38,19 +42,6 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
-
-@inline φᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
-@inline φᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
-
-@inline fᶜᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
-    2 * coriolis.rotation_rate * hack_sind(φᶜᶠᵃ(i, j, k, grid))
-    
-@inline φᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶜᵃ[j]
-@inline φᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
-
-@inline fᶠᶜᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
-    2 * coriolis.rotation_rate * hack_sind(φᶠᶜᵃ(i, j, k, grid))
-        
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
 
