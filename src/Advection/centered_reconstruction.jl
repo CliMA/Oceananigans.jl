@@ -94,6 +94,14 @@ for buffer in [1, 2, 3, 4, 5, 6]
     end
 end
 
+inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
+inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
+inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
+
+inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
+inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
+inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
+
 # stretched centered reconstruction
 for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
     stencil = Symbol(:inner_symmetric_interpolate_, dir)

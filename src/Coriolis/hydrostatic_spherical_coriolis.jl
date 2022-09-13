@@ -1,6 +1,6 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
+using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, peripheral_node
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
-using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
+using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme, EnstrophyWetPointConserving
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
@@ -33,13 +33,47 @@ Keyword arguments
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
-@inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
+@inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
 @inline φᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 
+@inline φᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
+@inline φᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
+
+@inline fᶜᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
+    2 * coriolis.rotation_rate * hack_sind(φᶜᶠᵃ(i, j, k, grid))
+    
+@inline φᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶜᵃ[j]
+@inline φᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
+
+@inline fᶠᶜᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
+    2 * coriolis.rotation_rate * hack_sind(φᶠᶜᵃ(i, j, k, grid))
+        
+
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
+
+#####
+##### Wet Point Enstrophy-conserving scheme
+#####
+
+const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyWetPointConservingScheme}
+
+@inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
+
+@inline mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) =
+    @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
+
+@inline mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) = 
+    @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
+
+
+@inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+
+@inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Enstrophy-conserving scheme
@@ -72,12 +106,13 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 ##### Show
 #####
 
-function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis{S}) where S
+function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis) 
 
     rotation_rate = hydrostatic_spherical_coriolis.rotation_rate
+    coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate_Earth = rotation_rate / Ω_Earth
 
     return print(io, "HydrostaticSphericalCoriolis", '\n',
                  "├─ rotation rate: " * @sprintf("%.2e", rotation_rate) * " s⁻¹ = " * @sprintf("%.2e", rotation_rate_Earth) * " Ω_Earth", '\n',
-                 "└─ scheme: $S")
+                 "└─ scheme: $(summary(coriolis_scheme))")
 end

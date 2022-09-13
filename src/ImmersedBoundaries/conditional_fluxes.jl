@@ -16,7 +16,7 @@ Return either
 This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
 """
 @inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) =
-    ifelse(immersed_peripheral_node(ℓx, ℓy, ℓz, i, j, k, ibg), qᴮ, qᴵ)
+    ifelse(immersed_peripheral_node(i, j, k, ibg, x, ℓy, ℓz), qᴮ, qᴵ)
 
 # Conveniences
 @inline conditional_flux_ccc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, c, c, qᴮ, qᴵ)
@@ -92,18 +92,18 @@ example
 
 julia> calc_inactive_cells(2, :none, :z, :ᶜ)
 4-element Vector{Any}:
- :(inactive_node(c, c, f, i, j, k + -1, ibg))
- :(inactive_node(c, c, f, i, j, k + 0, ibg))
- :(inactive_node(c, c, f, i, j, k + 1, ibg))
- :(inactive_node(c, c, f, i, j, k + 2, ibg))
+ :(inactive_node(i, j, k + -1, ibg, c, c, f))
+ :(inactive_node(i, j, k + 0,  ibg, c, c, f))
+ :(inactive_node(i, j, k + 1,  ibg, c, c, f))
+ :(inactive_node(i, j, k + 2,  ibg, c, c, f))
 
 julia> calc_inactive_cells(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(c, c, c, i + -3, j, k, ibg))
- :(inactive_node(c, c, c, i + -2, j, k, ibg))
- :(inactive_node(c, c, c, i + -1, j, k, ibg))
- :(inactive_node(c, c, c, i + 0, j, k, ibg))
- :(inactive_node(c, c, c, i + 1, j, k, ibg))
+ :(inactive_node(i + -3, j, k, ibg, c, c, c))
+ :(inactive_node(i + -2, j, k, ibg, c, c, c))
+ :(inactive_node(i + -1, j, k, ibg, c, c, c))
+ :(inactive_node(i + 0,  j, k, ibg, c, c, c))
+ :(inactive_node(i + 1,  j, k, ibg, c, c, c))
 
 """
 @inline function calc_inactive_stencil(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ, xshift = 0, yshift = 0, zshift = 0) 
@@ -125,10 +125,10 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $(c + xshift), j + $yshift, k + $zshift, ibg)) :
+                               :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $(c + yshift), k + $zshift, ibg)) :
-                               :(inactive_node($xflipside, $yflipside, $zflipside, i + $xshift, j + $yshift, k + $(c + zshift), ibg))                    
+                               :(inactive_node(+ $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(+ $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))                    
     end
 
     return inactive_cells
