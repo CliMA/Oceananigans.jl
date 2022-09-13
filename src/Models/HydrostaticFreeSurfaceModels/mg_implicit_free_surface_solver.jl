@@ -93,7 +93,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
         settings = Dict{Symbol, Any}()
     end
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
-    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+    settings[:reltol] = get(settings, :reltol, min(1e-7, sqrt(eps(eltype(grid)))))
 
     # initialize solver with Δt = nothing so that linear matrix is not computed;
     # see `initialize_matrix` methods
