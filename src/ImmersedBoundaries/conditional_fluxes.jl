@@ -16,7 +16,7 @@ Return either
 This can be used either to condition intrinsic flux functions, or immersed boundary flux functions.
 """
 @inline conditional_flux(i, j, k, ibg, ℓx, ℓy, ℓz, qᴮ, qᴵ) =
-    ifelse(immersed_peripheral_node(i, j, k, ibg, x, ℓy, ℓz), qᴮ, qᴵ)
+    ifelse(immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz), qᴮ, qᴵ)
 
 # Conveniences
 @inline conditional_flux_ccc(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, c, c, qᴮ, qᴵ)
