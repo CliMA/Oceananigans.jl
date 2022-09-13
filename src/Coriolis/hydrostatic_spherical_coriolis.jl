@@ -53,7 +53,7 @@ const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPo
 
 @inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
 
-@inline mask_dry_points_interpolation(i, j, k, grid, f::Function, args...) =
+@inline mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) =
     @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
 
 @inline mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) = 
