@@ -2,7 +2,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
-using AlgebraicMultigrid: _solve!, init, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
+using AlgebraicMultigrid: _solve!, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 
 import Oceananigans.Architectures: architecture
@@ -103,7 +103,7 @@ function MultigridSolver(linear_operation!::Function,
 end
 
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
-@inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A; kwargs...)
+@inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
 function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
