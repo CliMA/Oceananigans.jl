@@ -6,7 +6,7 @@ using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device, unsafe_free!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: Az_∇h²ᶜᶜᶜ
-using Oceananigans.Solvers: constructors, arch_sparse_matrix, update_diag!, unpack_constructors, matrix_from_coefficients
+using Oceananigans.Solvers: constructors, arch_sparse_matrix, update_diag!, unpack_constructors, matrix_from_coefficients, create_multilevel
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
 using CUDA.CUSPARSE: CuSparseMatrixCSR
@@ -155,6 +155,8 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CP
         solver.matrix = arch_sparse_matrix(arch, constructors) 
 
         unsafe_free!(constructors)
+
+        solver.ml = create_multilevel(solver.amg_algorithm, solver.matrix)
 
         implicit_free_surface_solver.previous_Δt = Δt
     end

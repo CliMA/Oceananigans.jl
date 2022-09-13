@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
 using LinearAlgebra
-using AlgebraicMultigrid: _solve!, init, RugeStubenAMG
+using AlgebraicMultigrid: _solve!, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
 using CUDA
 using AMGX
 
@@ -8,7 +8,7 @@ import Oceananigans.Architectures: architecture
 
 abstract type MultigridSolver{A, G, L, T, F} end
 
-mutable struct MultigridCPUSolver{A, G, L, T, F, M} <: MultigridSolver{A, G, L, T, F}
+mutable struct MultigridCPUSolver{A, G, L, T, F, R, M} <: MultigridSolver{A, G, L, T, F}
                   architecture :: A
                           grid :: G
                         matrix :: L
@@ -17,7 +17,8 @@ mutable struct MultigridCPUSolver{A, G, L, T, F, M} <: MultigridSolver{A, G, L, 
                        maxiter :: Int
                        x_array :: F
                        b_array :: F
-                 amg_algorithm :: M
+                 amg_algorithm :: R
+                            ml :: M
 end
 
 mutable struct MultigridGPUSolver{A, G, L, T, F, S} <: MultigridSolver{A, G, L, T, F}
@@ -40,6 +41,7 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
                        device_x :: V
                        device_b :: V
                      csr_matrix :: A
+
 end
 
 architecture(solver::MultigridSolver) = solver.architecture
@@ -108,16 +110,20 @@ function MultigridSolver(linear_operation!::Function,
     b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
-    arch == CPU() && return MultigridCPUSolver(arch,
-                                               template_field.grid,
-                                               matrix,
-                                               FT(abstol),
-                                               FT(reltol),
-                                               maxiter,
-                                               x_array,
-                                               b_array,
-                                               amg_algorithm
-                                               )
+    arch == CPU() && begin
+        ml = create_multilevel(amg_algorithm, matrix)
+        return MultigridCPUSolver(arch,
+                                  template_field.grid,
+                                  matrix,
+                                  FT(abstol),
+                                  FT(reltol),
+                                  maxiter,
+                                  x_array,
+                                  b_array,
+                                  amg_algorithm,
+                                  ml
+                                  )
+    end
 
     arch == GPU() && begin
         try
@@ -144,9 +150,6 @@ function MultigridSolver(linear_operation!::Function,
         device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
         csr_matrix = CuSparseMatrixCSR(transpose(matrix))
         
-        # # FIXME do on GPU
-        # loop! = zero_index!(Architectures.device(arch), 16, length(csr_matrix.rowPtr))
-        # event = loop!(csr_matrix.rowPtr; dependencies=device_event(arch))
         @inline subtract_one(x) = convert(Int32, x-1)
         
         AMGX.upload!(device_matrix, 
@@ -179,10 +182,9 @@ function MultigridSolver(linear_operation!::Function,
     end
 end
 
-# @kernel function zero_index!(cuarray :: CuArray)
-#     i = @index(Global, Linear)
-#     cuarray[i] = convert(Int32, cuarray[i] - 1)
-# end
+
+@inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
+@inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
 function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
@@ -251,9 +253,7 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
-
-    _solve!(solver.x_array, solt.ml, solt.b;
+    _solve!(solver.x_array, solver.ml, solver.b_array;
             maxiter = solver.maxiter,
             abstol = solver.abstol,
             reltol = solver.reltol,
