@@ -91,7 +91,7 @@ function MultigridSolver(linear_operation!::Function,
                          args...;
                          template_field::AbstractField,
                          maxiter = prod(size(template_field)),
-                         reltol = 0.1*sqrt(eps(eltype(template_field.grid))),
+                         reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
                          amg_algorithm = RugeStubenAMG(),
                          matrix = nothing,
