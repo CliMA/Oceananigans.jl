@@ -2,19 +2,20 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
-using AlgebraicMultigrid: _solve!, init, RugeStubenAMG
+using AlgebraicMultigrid: _solve!, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 
 import Oceananigans.Architectures: architecture
 
-mutable struct MultigridSolver{A, G, L, T, M, F}
+mutable struct MultigridSolver{A, G, L, T, R, M, F}
                architecture :: A
                        grid :: G
                      matrix :: L
                      abstol :: T
                      reltol :: T
                     maxiter :: Int
-              amg_algorithm :: M
+              amg_algorithm :: R
+                         ml :: M
                     x_array :: F
                     b_array :: F
 end
@@ -86,6 +87,8 @@ function MultigridSolver(linear_operation!::Function,
     b_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
+    ml = create_multilevel(amg_algorithm, matrix)
+
     return MultigridSolver(arch,
                            template_field.grid,
                            matrix,
@@ -93,11 +96,14 @@ function MultigridSolver(linear_operation!::Function,
                            FT(reltol),
                            maxiter,
                            amg_algorithm,
+                           ml,
                            x_array,
                            b_array
                            )
 end
 
+@inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
+@inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
 function initialize_matrix(template_field, linear_operator!, args...)
     Nx, Ny, Nz = size(template_field)
@@ -139,14 +145,12 @@ function solve!(x, solver::MultigridSolver, b; kwargs...)
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    solt = init(solver.amg_algorithm, solver.matrix, solver.b_array)
-
-    _solve!(solver.x_array, solt.ml, solt.b;
+    _solve!(solver.x_array, solver.ml, solver.b_array;
             maxiter = solver.maxiter,
              abstol = solver.abstol,
              reltol = solver.reltol,
              kwargs...)
-    
+
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
