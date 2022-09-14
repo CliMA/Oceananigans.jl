@@ -2,7 +2,19 @@
 
 julia_version = "1.8.1"
 manifest_format = "2.0"
-project_hash = "ad6325cdc5b91e941a3f222e047e8272bf86e095"
+project_hash = "8e6e8928c21dbe0d3d586881c633e7144aadc536"
+
+[[deps.AMGX]]
+deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
+git-tree-sha1 = "f31d1873273b84f6694f49d35c3a894a15e21e8a"
+uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
+version = "0.1.2"
+
+[[deps.AMGX_jll]]
+deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "c846a105d1bfabc86f6302d747cc48acbc7bb489"
+uuid = "656d14af-56e4-5275-8e68-4e861d7b5043"
+version = "2.1.0+0"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -72,6 +84,12 @@ deps = ["Adapt", "CUDA", "Cassette", "KernelAbstractions", "SpecialFunctions", "
 git-tree-sha1 = "f35bc730e2b0cc4400835d32cd90b7ebb1ad6e81"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.3.3"
+
+[[deps.CUDA_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "108e3ee33d8614b96c2ea43a621b0e8396d8a273"
+uuid = "e9e359dc-d701-5aa8-82ae-09bbf812ea83"
+version = "10.0.130+3"
 
 [[deps.Calculus]]
 deps = ["LinearAlgebra"]
@@ -284,6 +302,12 @@ deps = ["Preferences"]
 git-tree-sha1 = "abc9885a7ca2052a736a600f7fa66209f96506e1"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
 version = "1.4.1"
+
+[[deps.JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.3"
 
 [[deps.JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
@@ -581,9 +605,9 @@ version = "0.7.6"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore", "Statistics"]
-git-tree-sha1 = "dfec37b90740e3b9aa5dc2613892a3fc155c3b42"
+git-tree-sha1 = "efa8acd030667776248eabb054b1836ac81d92f0"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.5.6"
+version = "1.5.7"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "ec2bd695e905a3c755b33026954b119ea17f2d22"

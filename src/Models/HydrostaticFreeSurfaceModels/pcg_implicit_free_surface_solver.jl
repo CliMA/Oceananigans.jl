@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!
+import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
 import Oceananigans.Architectures: architecture
 
 """
@@ -234,6 +234,8 @@ Multigrid preconditioner
     return z
 end
 
+finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
+    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
