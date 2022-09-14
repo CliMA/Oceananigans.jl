@@ -267,7 +267,7 @@ function initialize_matrix(::GPU, template_field, linear_operator!, args...)
 end
 
 """
-    solve!(x, solver::MultigridCPUSolver, b; kwargs...)
+    solve!(x, solver::MultigridSolver, b; kwargs...)
 
 Solve `A * x = b` using a multigrid method, where `A` is `solver.matrix`.
 """
@@ -286,11 +286,6 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-"""
-    solve!(x, solver::MultigridGPUSolver, b; kwargs...)
-
-Solve `A * x = b` using a multigrid method on GPU, where `A` is `solver.matrix`.
-"""
 @ifhasamgx function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
 
