@@ -8,6 +8,7 @@ export
 using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans: @ifhasamgx
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 
