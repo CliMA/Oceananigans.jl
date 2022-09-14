@@ -294,6 +294,8 @@ function finalize_solver!(solver::MultigridGPUSolver)
     close(s.config)
     AMGX.finalize_plugins()
     AMGX.finalize()
+
+    return nothing
 end
 
 finalize_solver!(::MultigridCPUSolver) = nothing
