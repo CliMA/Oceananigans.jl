@@ -1,4 +1,5 @@
 include("dependencies_for_runtests.jl")
+include("data_dependencies.jl")
 
 using Statistics: mean
 using Oceananigans.CubedSpheres

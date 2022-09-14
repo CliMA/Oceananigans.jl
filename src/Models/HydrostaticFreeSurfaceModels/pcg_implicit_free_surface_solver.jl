@@ -3,10 +3,9 @@ using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures
 using Oceananigans.Grids: with_halo, isrectilinear
-using Oceananigans.Fields: Field, ZReducedField
 using Oceananigans.Architectures: device
 
-import Oceananigans.Solvers: solve!, precondition!
+import Oceananigans.Solvers: solve!, precondition!, finalize_solver!
 import Oceananigans.Architectures: architecture
 
 """
@@ -146,14 +145,6 @@ end
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᶜ(i, j, grid.Nz, grid, η)
 
 """
-Compute the horizontal divergence of vertically-uniform quantity using
-vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
-"""
-@inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ZReducedField) =
-    (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
-     δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
-
-"""
     _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
 Return the left side of the "implicit η equation"
@@ -233,6 +224,18 @@ end
 
 # The rhs below becomes pcg_rhs[i, j, 1] / (H * Az) - ∇H_∇η(i, j, 1, grid, η) / H
 =#
+
+"""
+Multigrid preconditioner
+"""
+@inline function precondition!(z, preconditioner::MGImplicitFreeSurfaceSolver, r, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    parent(z) .= 0
+    solve!(z, preconditioner, r, g, Δt)
+    return z
+end
+
+finalize_solver!(solver::PCGImplicitFreeSurfaceSolver) =
+    finalize_solver!(solver.preconditioned_conjugate_gradient_solver)
 
 #####
 ##### "Asymptotically diagonally-dominant" preconditioner
