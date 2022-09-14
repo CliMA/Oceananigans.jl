@@ -10,7 +10,7 @@ using Oceananigans.Solvers: constructors, arch_sparse_matrix, update_diag!, unpa
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
 using CUDA.CUSPARSE: CuSparseMatrixCSR
-using AMGX
+@ifhasamgx using AMGX
 
 import Oceananigans.Solvers: solve!, finalize_solver!
 import Oceananigans.Architectures: architecture
@@ -165,7 +165,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CP
     return nothing
 end
 
-function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
+@ifhasamgx function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements
