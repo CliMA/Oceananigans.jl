@@ -97,9 +97,8 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     # initialize solver with Δt = nothing so that linear matrix is not computed;
     # see `initialize_matrix` methods
-    solver = MultigridSolver(Az_∇h²ᶜᶜᶜ_linear_operation!, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ;
+    solver = MultigridSolver(matrix;
                              template_field = right_hand_side,
-                             matrix,
                              settings...)
 
     return MGImplicitFreeSurfaceSolver(arch, solver, placeholder_timestep, right_hand_side, matrix_constructors, diagonal)

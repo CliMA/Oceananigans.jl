@@ -94,16 +94,28 @@ function MultigridSolver(linear_operation!::Function,
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
                          amg_algorithm = RugeStubenAMG(),
-                         matrix = nothing,
                          )
 
     arch = architecture(template_field)
 
     (arch == GPU() && !hasamgx) && error("Multigrid on the GPU requires a linux operating system due to AMGX.jl")
 
-    if matrix === nothing
-        matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
-    end
+    matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
+
+    return  MultigridSolver(matrix; template_field, maxiter, reltol, abstol, amg_algorithm)
+end
+
+function MultigridSolver(matrix;
+                         template_field::AbstractField,
+                         maxiter = prod(size(template_field)),
+                         reltol = sqrt(eps(eltype(template_field.grid))),
+                         abstol = 0,
+                         amg_algorithm = RugeStubenAMG(),
+                         )
+
+    arch = architecture(template_field)
+
+    (arch == GPU() && !hasamgx) && error("Multigrid on the GPU requires a linux operating system due to AMGX.jl")
 
     Nx, Ny, Nz = size(template_field)
 
@@ -113,7 +125,7 @@ function MultigridSolver(linear_operation!::Function,
     x_array = arch_array(arch, zeros(FT, Nx * Ny * Nz))
 
     return MultigridSolver_on_architecture(arch; template_field, maxiter, reltol=FT(reltol), abstol=FT(abstol),
-                                                 amg_algorithm, matrix, x_array, b_array)
+                                           amg_algorithm, matrix, x_array, b_array)
 
 end
 
