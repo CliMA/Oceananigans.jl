@@ -141,9 +141,16 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
+"Boolean denoting whether AMGX.jl can be loaded on machine."
 const hasamgx = @static Sys.islinux() ? true : false
 
+"""
+    @ifhasamgx expr
+
+Evaluate `expr` only if `hasamgx == true`.
+"""
 macro ifhasamgx(expr)
+
     hasamgx ? :($(esc(expr))) : :(nothing) 
 end
 
