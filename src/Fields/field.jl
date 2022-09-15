@@ -630,8 +630,14 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    dims = :)
 
             T = filltype(Base.$(reduction!), c)
-            loc = reduced_location(location(c); dims)
-            r = Field(loc, c.grid, T; indices=indices(c))
+
+            c_loc, c_idx = location(c), indices(c)
+            loc          = reduced_location(c_loc; dims)
+            def_idx      = default_indices(loc, length(size(c)))
+            
+            idx = Tuple(loc[i] == c_loc[i] ? c_idx[i] : def_idx[i] for i in 1:length(c_loc))
+            
+            r = Field(loc, c.grid, T; indices=idx)
             conditioned_c = condition_operand(f, c, condition, mask)
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, r, conditioned_c, init=false)

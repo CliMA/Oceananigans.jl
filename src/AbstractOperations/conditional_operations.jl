@@ -101,8 +101,7 @@ end
 
 @inline truefunc(args...) = true
 
-@inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
-                            OneFieldGridded((LX, LY, LZ), c.grid, indices(c.operand))
+@inline condition_onefield(c::ConditionalOperation, mask) = OneFieldGridded(location(c), c.grid, indices(c.operand))
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
