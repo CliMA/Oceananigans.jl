@@ -39,11 +39,10 @@ function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=de
 end
 
 """
-    offset_data(underlying_data, grid::AbstractGrid, loc)
+    offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(loc, length(loc)))
 
-Returns an `OffsetArray` that maps to `underlying_data` in memory,
-with offset indices appropriate for the `data` of a field on
-a `grid` of `size(grid)` and located at `loc`.
+Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices appropriate
+for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.
 """
 offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(loc, length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
@@ -62,4 +61,3 @@ function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices
 end
 
 new_data(grid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)
-
