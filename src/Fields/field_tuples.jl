@@ -61,11 +61,6 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
 
     ordinary_fields = filter(f -> f isa Field && (f ∉ reduced_fields) && (f ∉ windowed_fields), fields_with_bcs)
 
-    @show fields_with_bcs
-    @show reduced_fields
-    @show windowed_fields
-    @show ordinary_fields
-
     # Fill halo regions for reduced and windowed fields
     for field in (reduced_fields..., windowed_fields...)
         fill_halo_regions!(field, args...; kwargs...)
