@@ -699,6 +699,11 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
+    offsets     = field.data.offsets
+    new_offsets = tuple((i ∈ reduced_dims ? 0 : offsets[i] for i in 1:3)...)
+    
+    data = OffsetArray(parent(field), new_offsets) 
+
     # To correctly fill the halo regions of fields with non-default indices, we'd have to
     # offset indices in the fill halo regions kernels.
     # For now we punt and don't support filling halo regions on windowed fields.
@@ -709,7 +714,7 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
     if field.indices isa typeof(default_indices(location(field), 3))
-        fill_halo_regions!(field.data,
+        fill_halo_regions!(data,
                            field.boundary_conditions,
                            instantiated_location(field),
                            field.grid,
