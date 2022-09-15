@@ -555,8 +555,6 @@ function reduced_location(loc; dims)
     end
 end
 
-reduced_indices(indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-
 function reduced_dimension(loc)
     dims = ()
     for i in 1:3
