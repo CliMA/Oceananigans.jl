@@ -1,6 +1,6 @@
 using Oceananigans.Architectures
 using Oceananigans.Architectures: architecture, arch_array, unsafe_free!, device_event
-using Oceananigans.Grids: interior_parent_indices, topology
+using Oceananigans.Grids: topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra

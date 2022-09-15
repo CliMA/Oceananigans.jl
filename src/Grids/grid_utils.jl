@@ -175,8 +175,8 @@ regular_dimensions(grid) = ()
 # @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
 # @inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
 
-@inline interior_parent_indices(loc,             topo,            N, H)           = 1+H:N+H
-@inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(loc,             topo,            N, H)           = 1:N
+@inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1:N+1
 @inline interior_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
 @inline interior_parent_indices(::Type{Nothing}, ::Type{<:BoundedTopology}, N, H) = 1:1
 

@@ -6,7 +6,6 @@ using Statistics
 
 using Oceananigans.Architectures
 using Oceananigans.Utils
-using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
 import Oceananigans: location, instantiated_location

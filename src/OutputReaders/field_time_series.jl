@@ -273,7 +273,7 @@ function interior(fts::FieldTimeSeries)
     indices = fts.indices
     i_view = interior_view_indices.(indices, i_interior)
 
-    return view(parent(fts), i_view..., :)
+    return view(fts, i_view..., :)
 end
 
 interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
