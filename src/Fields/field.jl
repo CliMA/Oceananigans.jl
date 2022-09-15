@@ -365,8 +365,8 @@ function Base.axes(f::Field)
     if f.indices === (:, : ,:)
         return Base.OneTo.(size(f))
     else
-        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : 
-                     f.indices[i] isa Integer ? range(f.indices[i],f.indices[i]) : 
+        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) :
+                     f.indices[i] isa Integer ? range(f.indices[i], stop=1) :
                      f.indices[i] for i = 1:3)
     end
 end
