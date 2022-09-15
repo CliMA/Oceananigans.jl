@@ -37,7 +37,7 @@ struct OneFieldGridded{LX, LY, LZ, G, I, T} <: AbstractField{LX, LY, LZ, G, T, 3
     end
 end
 
-OneFieldGridded(loc, grid, indices, T=Int) = OneFieldGridded{T}(loc, grid, indices)
+OneFieldGridded(loc, grid, T=Int; indices = default_indices(loc, 3)) = OneFieldGridded{T}(loc, grid, indices)
 indices(o::OneFieldGridded)                = o.indices
 
 @inline Base.getindex(of::OneFieldGridded{LX, LY, LZ, G, I, T}, ind...) where {LX, LY, LZ, G, I, T} = one(T)
