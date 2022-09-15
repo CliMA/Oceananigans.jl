@@ -32,7 +32,6 @@ function set_simple_divergent_velocity!(model)
 
     # pick a surface cell at the middle of the domain
     i, j, k = Int(floor(grid.Nx / 2)) + 1, Int(floor(grid.Ny / 2)) + 1, grid.Nz
-    @show i, j, k
     inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
 
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
@@ -73,15 +72,15 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    left_hand_side = Field{Center, Center, Nothing}(grid)
+    left_hand_side = Field{Center, Center, Nothing}(grid, indices = (:, :, grid.Nz))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare

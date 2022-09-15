@@ -161,7 +161,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     # q = A*x
     q = solver.linear_operator_product
     solver.linear_operation!(q, x, args...)
-
+    
     # r = b - A*x
     parent(solver.residual) .= parent(b) .- parent(q)
 
@@ -169,7 +169,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
-    @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver, |A * x|: $(norm(q))"
 
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
