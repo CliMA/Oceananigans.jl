@@ -51,11 +51,10 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
 
-    size   = fill_halo_size(c, fill_halo!, indices, bc_left, grid)
-
+    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    event      = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    event  = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
     wait(device(arch), event)
 end
 
@@ -175,7 +174,7 @@ end
 fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
 
-fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) = 
+fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
@@ -185,35 +184,43 @@ fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, gr
 ##### Pass kernel size and offset for Windowed and Sliced Fields
 #####
 
-const YZFullIndex = Tuple{<:Any, <:Colon, <:Colon}
-const XZFullIndex = Tuple{<:Colon, <:Any, <:Colon}
-const XYFullIndex = Tuple{<:Colon, <:Colon, <:Any}
-
 const WEB = typeof(fill_west_and_east_halo!)
 const SNB = typeof(fill_south_and_north_halo!)
 const TBB = typeof(fill_bottom_and_top_halo!)
 
 # In case of a tuple we are _always_ dealing with full fields!
-fill_halo_size(::Tuple, ::WEB, idx) = :yz
-fill_halo_size(::Tuple, ::SNB, idx) = :xz
-fill_halo_size(::Tuple, ::TBB, idx) = :xy
+@inline fill_halo_size(::Tuple, ::WEB, args...) = :yz
+@inline fill_halo_size(::Tuple, ::SNB, args...) = :xz
+@inline fill_halo_size(::Tuple, ::TBB, args...) = :xy
 
 # If indices are colon, just fill the whole boundary!
-fill_halo_size(::OffsetArray, ::WEB, ::YZFullIndex) = :yz
-fill_halo_size(::OffsetArray, ::SNB, ::XZFullIndex) = :xz
-fill_halo_size(::OffsetArray, ::TBB, ::XYFullIndex) = :xy
+@inline fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...) = :yz
+@inline fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...) = :xz
+@inline fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...) = :xy
+
+# If the index is a Colon and the location is _NOT_ a `Nothing` (meaning not a reduced field), 
+# then we take the size of the grid, otherwise the size of the array 
+@inline whole_halo(idx, loc)           = false
+@inline whole_halo(idx,     ::Nothing) = false
+@inline whole_halo(::Colon, ::Nothing) = false
+@inline whole_halo(::Colon,       loc) = true
 
 # If they are not... we have to calculate the size!
-fill_halo_size(c::OffsetArray, ::WEB, idx, bc, grid) = (idx[2] == Colon() ? size(grid, 2) : size(c, 2), idx[3] == Colon() ? size(grid, 3) : size(c, 3))
-fill_halo_size(c::OffsetArray, ::SNB, idx, bc, grid) = (idx[1] == Colon() ? size(grid, 1) : size(c, 1), idx[3] == Colon() ? size(grid, 3) : size(c, 3))
-fill_halo_size(c::OffsetArray, ::TBB, idx, bc, grid) = (idx[1] == Colon() ? size(grid, 1) : size(c, 1), idx[2] == Colon() ? size(grid, 2) : size(c, 2))
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[2], loc[2]) ? size(grid, 2) : size(c, 2), whole_halo(idx[3], loc[3]) ? size(grid, 3) : size(c, 3))
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[1], loc[1]) ? size(grid, 1) : size(c, 1), whole_halo(idx[3], loc[3]) ? size(grid, 3) : size(c, 3))
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[1], loc[1]) ? size(grid, 1) : size(c, 1), whole_halo(idx[2], loc[2]) ? size(grid, 2) : size(c, 2))
 
 # Remember that Periodic BC have to fill also the halo points always!
-fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, grid) = size(c)[[2, 3]]
-fill_halo_size(c::OffsetArray, ::SNB, idx, ::PBC, grid) = size(c)[[1, 3]]
-fill_halo_size(c::OffsetArray, ::TBB, idx, ::PBC, grid) = size(c)[[1, 2]]
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = @inbounds size(c)[[2, 3]]
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, ::PBC, args...) = @inbounds size(c)[[1, 3]]
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, ::PBC, args...) = @inbounds size(c)[[1, 2]]
 
-fill_halo_offset(::Symbol, args...)    = (0, 0)
-fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+@inline fill_halo_size(c::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, ::PBC, args...) = @inbounds size(c)[[2, 3]]
+@inline fill_halo_size(c::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, ::PBC, args...) = @inbounds size(c)[[1, 3]]
+@inline fill_halo_size(c::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, args...) = @inbounds size(c)[[1, 2]]
+
+# The offsets are non-zero only if the indices are not Colon
+@inline fill_halo_offset(::Symbol, args...)    = (0, 0)
+@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)

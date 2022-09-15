@@ -667,8 +667,6 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
-    reduced_index = 
-
     # To correctly fill the halo regions of fields with non-default indices, we'd have to
     # offset indices in the fill halo regions kernels.
     # For now we punt and don't support filling halo regions on windowed fields.

@@ -132,7 +132,7 @@ end
 
 @kernel function _Az_∇h²ᶜᶜᶜ_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
     i, j = @index(Global, NTuple)
-    @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᶜ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹)
+    @inbounds L_ηⁿ⁺¹[i, j, grid.Nz] = Az_∇h²ᶜᶜᶜ(i, j, grid.Nz, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹)
 end
 
 build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acceleration) =
