@@ -108,34 +108,6 @@ fill_first(bc1::CBCT, bc2::CBCT) = true
 fill_first(bc1, bc2)             = true
 
 #####
-##### Pass kernel size and offset for Windowed and Sliced Fields
-#####
-
-const YZFullIndex = Tuple{<:Any, <:Colon, <:Colon}
-const XZFullIndex = Tuple{<:Colon, <:Any, <:Colon}
-const XYFullIndex = Tuple{<:Colon, <:Colon, <:Any}
-
-# In case of a tuple we are _always_ dealing with full fields!
-fill_halo_size(c::Tuple, f::typeof(fill_west_and_east_halo!),   indices) = :yz
-fill_halo_size(c::Tuple, f::typeof(fill_south_and_north_halo!), indices) = :xz
-fill_halo_size(c::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices) = :xy
-
-# If indices are colon, just fill the whole boundary!
-fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   ::YZFullIndex) = :yz
-fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), ::XZFullIndex) = :xz
-fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  ::XYFullIndex) = :xy
-
-# If they are not... we have to calculate the size!
-fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   indices) = size(c)[[2, 3]]
-fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), indices) = size(c)[[1, 3]]
-fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  indices) = size(c)[[1, 2]]
-
-fill_halo_offset(::Symbol, args...) = (0, 0)
-fill_halo_offset(::Tuple, f::typeof(fill_west_and_east_halo!),   indices)  = (indices[2] == Colon() ? 0 : first(indices[2]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
-fill_halo_offset(::Tuple, f::typeof(fill_south_and_north_halo!), indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
-fill_halo_offset(::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[2] == Colon() ? 0 : first(indices[2]) - 1)
-
-#####
 ##### General fill_halo! kernels
 #####
 
@@ -208,3 +180,31 @@ fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, 
 
 fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
     launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
+
+#####
+##### Pass kernel size and offset for Windowed and Sliced Fields
+#####
+
+const YZFullIndex = Tuple{<:Any, <:Colon, <:Colon}
+const XZFullIndex = Tuple{<:Colon, <:Any, <:Colon}
+const XYFullIndex = Tuple{<:Colon, <:Colon, <:Any}
+
+# In case of a tuple we are _always_ dealing with full fields!
+fill_halo_size(c::Tuple, f::typeof(fill_west_and_east_halo!),   indices) = :yz
+fill_halo_size(c::Tuple, f::typeof(fill_south_and_north_halo!), indices) = :xz
+fill_halo_size(c::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices) = :xy
+
+# If indices are colon, just fill the whole boundary!
+fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   ::YZFullIndex) = :yz
+fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), ::XZFullIndex) = :xz
+fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  ::XYFullIndex) = :xy
+
+# If they are not... we have to calculate the size!
+fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   indices) = size(c)[[2, 3]]
+fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), indices) = size(c)[[1, 3]]
+fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  indices) = size(c)[[1, 2]]
+
+fill_halo_offset(::Symbol, args...) = (0, 0)
+fill_halo_offset(::Tuple, f::typeof(fill_west_and_east_halo!),   indices)  = (indices[2] == Colon() ? 0 : first(indices[2]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
+fill_halo_offset(::Tuple, f::typeof(fill_south_and_north_halo!), indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
+fill_halo_offset(::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[2] == Colon() ? 0 : first(indices[2]) - 1)
