@@ -63,11 +63,11 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
 
-    right_hand_side = Field{Center, Center, Nothing}(grid)
+    right_hand_side = Field{Center, Center, Nothing}(grid, indices = (:, :, grid.Nz))
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 

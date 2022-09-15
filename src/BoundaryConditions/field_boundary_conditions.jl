@@ -59,8 +59,10 @@ end
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in fieldnames(FieldBoundaryConditions))...)
 
-window_boundary_conditions(::Colon, left, right) = left, right
+# Integer indices correspond to reduced fields for which we do not need bc
+window_boundary_conditions(::Colon, left, right)     = left, right
 window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+window_boundary_conditions(::Integer, left, right)   = nothing, nothing
 
 """
     FieldBoundaryConditions(; kwargs...)

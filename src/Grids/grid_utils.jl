@@ -170,23 +170,25 @@ regular_dimensions(grid) = ()
 @inline interior_parent_offset(loc, topo, H) = H
 @inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
 
-#@inline interior_parent_offset(::Type{Face},    topo, H) = H
+# @inline interior_parent_offset(::Type{Face},    topo, H) = H
 # @inline interior_parent_offset(loc,             ::Type{Flat}, H) = 0
 # @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
-#@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
+# @inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
 
-@inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
+@inline interior_parent_indices(loc,             topo,            N, H)           = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
-@inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
+@inline interior_parent_indices(::Type{Nothing}, topo,            N, H)           = 1:1
+@inline interior_parent_indices(::Type{Nothing}, ::Type{<:BoundedTopology}, N, H) = 1:1
 
 @inline interior_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
 @inline interior_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
 @inline interior_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
 
 # All indices including halos.
-@inline all_indices(loc,             topo,            N, H) = 1-H:N+H
+@inline all_indices(loc,             topo,                      N, H) = 1-H:N+H
 @inline all_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1-H:N+1+H
-@inline all_indices(::Type{Nothing}, topo,            N, H) = 1:1
+@inline all_indices(::Type{Nothing}, topo,                      N, H) = 1:N
+@inline all_indices(::Type{Nothing}, ::Type{<:BoundedTopology}, N, H) = 1:N+1
 
 @inline all_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
 @inline all_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N

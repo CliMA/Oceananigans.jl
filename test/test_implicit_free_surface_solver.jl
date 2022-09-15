@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Architectures: device_event
+using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
@@ -31,26 +32,11 @@ function set_simple_divergent_velocity!(model)
 
     # pick a surface cell at the middle of the domain
     i, j, k = Int(floor(grid.Nx / 2)) + 1, Int(floor(grid.Ny / 2)) + 1, grid.Nz
-
+    @show i, j, k
     inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
 
-    if grid isa RectilinearGrid
-        Δy = grid.Δyᵃᶜᵃ
-    end
-
-    if grid isa LatitudeLongitudeGrid
-        Δy = grid.Δyᶜᶠᵃ
-    end
-
-    if grid isa ImmersedBoundaryGrid
-        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa RectilinearGrid
-            Δy = grid.underlying_grid.Δyᵃᶜᵃ
-        elseif grid.underlying_grid isa LatitudeLongitudeGrid
-            Δy = grid.underlying_grid.Δyᶜᶠᵃ
-        end
-    end
-
-    Δz = CUDA.@allowscalar grid.Δzᵃᵃᶜ[k]
+    Δy = Δyᶜᶠᶜ(i, j, k, grid)
+    Δz = Δzᶜᶠᶜ(i, j, k, grid)
 
     # We prescribe the value of the zonal transport in a cell, i.e., `u * Δy * Δz`. This
     # way `norm(rhs)` of the free-surface solver does not depend on the grid extensd/resolution.

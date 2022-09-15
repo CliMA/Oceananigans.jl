@@ -27,3 +27,12 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
     return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(LX(), LY(), LZ(), i, j, k, ibg))
 end 
 
+# const XReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:XReducedField} where {LX, LY, LZ}
+# const YReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:YReducedField} where {LX, LY, LZ}
+# const ZReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:ZReducedField} where {LX, LY, LZ}
+
+# @inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ZReducedConditionalOperation, args...)
+#     LX, LY, LZ = location(co)
+#     k_idx = co.operand.indices[3]
+#     return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(LX(), LY(), LZ(), i, j, , ibg))
+# end

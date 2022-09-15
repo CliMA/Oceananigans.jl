@@ -77,24 +77,34 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-function validate_index(idx, loc, topo, N, H)
-    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
-    return throw(ArgumentError("$idx are not supported window indices for Field!"))
-end
+# REMEMBER! This has changed 
+# validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
-validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
+# REMEMBER! This has changed
+# validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
 
-function validate_index(idx::UnitRange, loc, topo, N, H)
+# REMEMBER! This has changed
+# function validate_index(idx, loc, topo, N, H)
+#     isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
+#     return throw(ArgumentError("$idx are not supported window indices for Field!"))
+# end
+
+function validate_index(idx::Int, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
+    (idx ∈ all_idx) || throw(ArgumentError("The indices $idx must be a slice of the domain"))
     return idx
 end
 
-validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
+validate_index(::Colon, loc, topo, N, H) = Colon()
+
+function validate_index(idx::UnitRange, loc, topo, N, H)
+    all_idx = all_indices(loc, topo, N, H)
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must be a slice of the domain"))
+    return idx
+end
 
 validate_indices(indices, loc, grid::AbstractGrid) =
-    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
+    validate_index.(indices, loc, topology(grid), size(grid), halo_size(grid))
 
 #####
 ##### Some basic constructors
@@ -151,7 +161,7 @@ end
 function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
-               indices = default_indices(3),
+               indices = default_indices(loc, 3),
                data = new_data(T, grid, loc, indices),
                boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
 
@@ -220,7 +230,7 @@ function offset_windowed_data(data, loc, grid, indices)
     halo = halo_size(grid)
     topo = topology(grid)
 
-    if indices isa typeof(default_indices(3))
+    if indices isa typeof(default_indices(loc, 3))
         windowed_parent = parent(data)
     else
         parent_indices = parent_index_range.(indices, loc, topo, halo)
@@ -305,7 +315,7 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 boundary_conditions(not_field) = nothing
 
 function boundary_conditions(f::Field)
-    if f.indices === default_indices(3) # default boundary conditions
+    if f.indices === default_indices(location(field), 3) # default boundary conditions
         return f.boundary_conditions
     else # filter boundary conditions in windowed directions
         return FieldBoundaryConditions(f.indices, f.boundary_conditions)
@@ -317,24 +327,26 @@ immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
 
 indices(obj, i=default_indices(3)) = i
-indices(f::Field, i=default_indices(3)) = f.indices
+indices(f::Field, i=default_indices(location(field), 3)) = f.indices
 indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
 indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 """Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = Colon()
-interior_view_indices(::Colon,       interior_indices) = interior_indices
+interior_view_indices(field_index,      interior_indices) = Colon()
+interior_view_indices(field_index::Int, interior_indices) = field_index:field_index
+interior_view_indices(::Colon,          interior_indices) = interior_indices
 
 function interior(a::OffsetArray,
                   loc::Tuple,
                   topo::Tuple,
                   size::NTuple{N, Int},
                   halo_size::NTuple{N, Int},
-                  ind::Tuple=default_indices(3)) where N
+                  ind::Tuple=default_indices(loc, 3)) where N
 
     i_interior = interior_parent_indices.(loc, topo, size, halo_size)
     i_view = interior_view_indices.(ind, i_interior)
-    return view(parent(a), i_view...)
+
+    return view(a, i_view...)
 end
 
 """
@@ -345,7 +357,7 @@ Returns a view of `f` that excludes halo points."
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
-    
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
@@ -353,7 +365,9 @@ function Base.axes(f::Field)
     if f.indices === (:, : ,:)
         return Base.OneTo.(size(f))
     else
-        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : f.indices[i] for i = 1:3)
+        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : 
+                     f.indices[i] isa Integer ? range(f.indices[i],f.indices[i]) : 
+                     f.indices[i] for i = 1:3)
     end
 end
 
@@ -367,6 +381,7 @@ Base.fill!(f::Field, val) = fill!(parent(f), val)
 Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
+length_indices(N, i::Int) = 1
 length_indices(N, i::Colon) = N
 length_indices(N, i::UnitRange) = length(i)
 
@@ -676,7 +691,7 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
-    if field.indices isa typeof(default_indices(3))
+    if field.indices isa typeof(default_indices(location(field), 3))
         fill_halo_regions!(field.data,
                            field.boundary_conditions,
                            instantiated_location(field),

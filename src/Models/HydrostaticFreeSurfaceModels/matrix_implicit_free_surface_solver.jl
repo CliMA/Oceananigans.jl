@@ -40,8 +40,8 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid, indices = (:, :, grid.Nz))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid, indices = (:, :, grid.Nz))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 

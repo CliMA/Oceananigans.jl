@@ -3,6 +3,7 @@ using Oceananigans.Grids: total_length, topology
 using OffsetArrays: OffsetArray
 
 default_indices(n) = Tuple(Colon() for i=1:n)
+default_indices(loc::Tuple, n) = Tuple(loc[i] == Nothing ? 1 : Colon() for i=1:n)
 
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
@@ -26,11 +27,11 @@ Return a range of indices for a field along a 'reduced' dimension.
 """
 offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
 
-offset_indices(L, T, N, H, ::Colon) = offset_indices(L, T, N, H)
-offset_indices(L, T, N, H, r::UnitRange) = r
-offset_indices(::Type{Nothing}, T, N, H, ::UnitRange) = 1:1
+offset_indices(L, T, N, H, ::Colon)                  = offset_indices(L, T, N, H)
+offset_indices(L, T, N, H, r::UnitRange)             = r
+offset_indices(::Type{Nothing}, T, N, H, r::Integer) = r:r
 
-function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=default_indices(length(loc)))
+function offset_data(underlying_data::AbstractArray, loc, topo, N, H, indices=default_indices(loc, length(loc)))
     ii = offset_indices.(loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     extra_ii = Tuple(axes(underlying_data, d) for d in length(ii)+1:ndims(underlying_data))
@@ -44,7 +45,7 @@ Returns an `OffsetArray` that maps to `underlying_data` in memory,
 with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
-offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=default_indices(loc, length(loc))) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -53,7 +54,7 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
 Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
+function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(loc, length(loc)))
     arch = architecture(grid)
     Tx, Ty, Tz = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
