@@ -1,4 +1,4 @@
-using Oceananigans.Fields: OneField, indices
+using Oceananigans.Fields: OneField, indices, reduced_indices
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
@@ -114,19 +114,9 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-
-const XReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:XReducedField} where {LX, LY, LZ}
-const YReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:YReducedField} where {LX, LY, LZ}
-const ZReducedConditionalOperation{LX, LY, LZ} = ConditionalOperation{LX, LY, LZ, <:ZReducedField} where {LX, LY, LZ}
-
-@inline reduced_conditional_index(i, j, k, co) = (i, j, k)
-@inline reduced_conditional_index(i, j, k, co::XReducedConditionalOperation) = (indices(co.operand)[1], j, k)
-@inline reduced_conditional_index(i, j, k, co::YReducedConditionalOperation) = (i, indices(co.operand)[2], k)
-@inline reduced_conditional_index(i, j, k, co::ZReducedConditionalOperation) = (i, j, indices(co.operand)[3])
-
 @inline Base.getindex(c::ConditionalOperation, i, j, k) =
-        ifelse(get_condition(c.condition, reduced_conditional_index(i, j, k, c)..., c.grid, c), 
-                  c.func(getindex(c.operand, reduced_conditional_index(i, j, k, c)...)),
+        ifelse(get_condition(c.condition, reduced_indices(i, j, k, c.operand)..., c.grid, c), 
+                  c.func(getindex(c.operand, reduced_indices(i, j, k, c.operand)...)),
                   c.mask)
 
 @inline concretize_condition!(c::ConditionalOperation) = set!(c.operand, c)

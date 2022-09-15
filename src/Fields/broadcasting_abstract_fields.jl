@@ -42,7 +42,8 @@ end
 ##### Kernels
 #####
 
-@inline offset_compute_index(::Colon, i) = i
+@inline offset_compute_index(index::Int, i)       = index
+@inline offset_compute_index(::Colon, i)          = i
 @inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
 
 @kernel function broadcast_kernel!(dest, bc, index_ranges)
@@ -71,6 +72,8 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
     arch = architecture(dest)
 
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
+    
+    @show size(dest)
 
     event = launch!(arch, grid, size(dest), broadcast_kernel!, dest, bc′, dest.indices,
                     dependencies = device_event(arch))

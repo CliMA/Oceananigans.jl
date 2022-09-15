@@ -476,24 +476,35 @@ reduced_dimensions(field::XZReducedField)  = (1, 3)
 reduced_dimensions(field::XYReducedField)  = (1, 2)
 reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
 
-@propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
-@propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
-@propagate_inbounds Base.getindex(r::ZReducedField, i, j, k) = getindex(r.data, i, j, 1)
+@inline reduced_indices(i, j, k, r) = (i, j, k)
+@inline reduced_indices(i, j, k, r::XReducedField) = @inbounds (indices(r)[1], j, k)
+@inline reduced_indices(i, j, k, r::YReducedField) = @inbounds (i, indices(r)[2], k)
+@inline reduced_indices(i, j, k, r::ZReducedField) = @inbounds (i, j, indices(r)[3])
 
-@propagate_inbounds Base.setindex!(r::XReducedField, v, i, j, k) = setindex!(r.data, v, 1, j, k)
-@propagate_inbounds Base.setindex!(r::YReducedField, v, i, j, k) = setindex!(r.data, v, i, 1, k)
-@propagate_inbounds Base.setindex!(r::ZReducedField, v, i, j, k) = setindex!(r.data, v, i, j, 1)
+@inline reduced_indices(i, j, k, r::YZReducedField) = @inbounds (i, indices(r)[2], indices(r)[3])
+@inline reduced_indices(i, j, k, r::XZReducedField) = @inbounds (indices(r)[1], j, indices(r)[3])
+@inline reduced_indices(i, j, k, r::XYReducedField) = @inbounds (indices(r)[1], indices(r)[2], k)
 
-@propagate_inbounds Base.getindex(r::YZReducedField, i, j, k) = getindex(r.data, i, 1, 1)
-@propagate_inbounds Base.getindex(r::XZReducedField, i, j, k) = getindex(r.data, 1, j, 1)
-@propagate_inbounds Base.getindex(r::XYReducedField, i, j, k) = getindex(r.data, 1, 1, k)
+@inline reduced_indices(i, j, k, r::XYZReducedField) = @inbounds indices(r)
 
-@propagate_inbounds Base.setindex!(r::YZReducedField, v, i, j, k) = setindex!(r.data, v, i, 1, 1)
-@propagate_inbounds Base.setindex!(r::XZReducedField, v, i, j, k) = setindex!(r.data, v, 1, j, 1)
-@propagate_inbounds Base.setindex!(r::XYReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, k)
+@propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.getindex(r::ZReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
 
-@propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
-@propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
+@propagate_inbounds Base.setindex!(r::XReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.setindex!(r::YReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.setindex!(r::ZReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+
+@propagate_inbounds Base.getindex(r::YZReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.getindex(r::XZReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.getindex(r::XYReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+
+@propagate_inbounds Base.setindex!(r::YZReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.setindex!(r::XZReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.setindex!(r::XYReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
+
+@propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, reduced_indices(i, j, k, r)...)
+@propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, reduced_indices(i, j, k, r)...)
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)

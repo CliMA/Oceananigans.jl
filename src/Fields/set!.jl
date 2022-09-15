@@ -20,8 +20,8 @@ set!(u::Field, v) = u .= v # fallback
 function set!(u::Field, f::Function)
     if architecture(u) isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
-        u_cpu = Field(location(u), cpu_grid)
-        f_field = field(location(u), f, cpu_grid)
+        u_cpu    = Field(location(u), cpu_grid, indices = indices(u))
+        f_field  = field(location(u), f, cpu_grid)
         set!(u_cpu, f_field)
         set!(u, u_cpu)
     elseif architecture(u) isa CPU
