@@ -130,7 +130,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     solver = free_surface.implicit_step_solver
     arch   = model.architecture
  
-    @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
+    @apply_regionally prognostic_field_events = wait_velocity_event(arch, prognostic_field_events)
     fill_halo_regions!(model.velocities)
 
     # Compute right hand side of implicit free surface equation
@@ -168,4 +168,3 @@ function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
 end
-
