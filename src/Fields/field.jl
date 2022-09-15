@@ -699,8 +699,10 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
+    # Trick to make sure that the Indexed reduced field will 
+    # fill the halo in the correct plane
     offsets     = field.data.offsets
-    new_offsets = tuple((i ∈ reduced_dims ? 0 : offsets[i] for i in 1:3)...)
+    new_offsets = Tuple(i ∈ reduced_dims ? 0 : offsets[i] for i in 1:3)
     
     data = OffsetArray(parent(field), new_offsets) 
 
