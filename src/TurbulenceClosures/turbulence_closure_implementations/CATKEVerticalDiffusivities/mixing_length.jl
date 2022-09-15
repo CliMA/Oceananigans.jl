@@ -157,6 +157,7 @@ end
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     d = depthᶜᶜᶠ(i, j, k, grid)
     convecting = ((N² < 0) | (d < ℓʰ)) & (Qᵇ > 0) & (e⁺ > 0)
+    #convecting = (N² < 0) & (Qᵇ > 0)
 
     return ifelse(convecting, ℓʰ, zero(grid))
 end

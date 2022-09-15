@@ -43,12 +43,22 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
 struct CATKEVerticalDiffusivity{TD, CL, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
+    Ku_adjustment :: Float64
+    Kc_adjustment :: Float64
+    Ke_adjustment :: Float64
 end
 
 function CATKEVerticalDiffusivity{TD}(mixing_length :: CL,
-                                      turbulent_kinetic_energy_equation :: TKE) where {TD, CL, TKE}
+                                      turbulent_kinetic_energy_equation :: TKE,
+                                      Ku_adjustment,
+                                      Kc_adjustment,
+                                      Ke_adjustment) where {TD, CL, TKE}
+                                      
 
-    return CATKEVerticalDiffusivity{TD, CL, TKE}(mixing_length, turbulent_kinetic_energy_equation)
+    return CATKEVerticalDiffusivity{TD, CL, TKE}(mixing_length, turbulent_kinetic_energy_equation,
+                                                 Float64(Ku_adjustment),
+                                                 Float64(Kc_adjustment),
+                                                 Float64(Ke_adjustment))
 end
 
 const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
@@ -104,6 +114,9 @@ CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(Vertica
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   mixing_length = MixingLength{FT}(),
                                   turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation{FT}(),
+                                  Ku_adjustment = 0.0,
+                                  Kc_adjustment = 0.0,
+                                  Ke_adjustment = 0.0,
                                   warning = true) where TD
 
     if warning
@@ -117,7 +130,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
-    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation)
+    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation, Ku_adjustment, Kc_adjustment, Ke_adjustment)
 end
 
 #####
@@ -202,23 +215,36 @@ end
 end
 
 @inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(clip(e[i, j, k]))
+@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
 @inline function Kuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
     ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓu * u★
+
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+    Ku_adj = ifelse(stable_cell, zero(grid), closure.Ku_adjustment)
+
+    return ℓu * u★ + Ku_adj
 end
 
 @inline function Kcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
     ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓc * u★
+
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+    Kc_adj = ifelse(stable_cell, zero(grid), closure.Kc_adjustment)
+
+    return ℓc * u★ + Kc_adj
 end
 
 @inline function Keᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
     u★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocity, tracers.e)
     ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-    return ℓe * u★
+
+    stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+    Ke_adj = ifelse(stable_cell, zero(grid), closure.Ke_adjustment)
+
+    return ℓe * u★ + Ke_adj
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.Kᵘ
