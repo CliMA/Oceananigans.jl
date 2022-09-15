@@ -73,6 +73,7 @@ end
 tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
     fill_halo_regions!(data.(fields),
                        boundary_conditions.(fields),
+                       (:, :, :),                           # We cannot group windowed fields together!
                        instantiated_location.(fields),
                        grid, args...; kwargs...)
 

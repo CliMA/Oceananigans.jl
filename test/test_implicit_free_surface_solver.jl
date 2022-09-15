@@ -3,7 +3,8 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Architectures: device_event
-
+using Oceananigans.Operators
+using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FreeSurface,
@@ -29,31 +30,15 @@ function set_simple_divergent_velocity!(model)
     v .= 0
     η .= 0
 
-    imid = Int(floor(grid.Nx / 2)) + 1
-    jmid = Int(floor(grid.Ny / 2)) + 1
+    # pick a surface cell at the middle of the domain
+    i, j, k = Int(floor(grid.Nx / 2)) + 1, Int(floor(grid.Ny / 2)) + 1, grid.Nz
+    inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
 
-    i, j, k = imid, jmid, 1
+    Δy = Δyᶜᶠᶜ(i, j, k, grid)
+    Δz = Δzᶜᶠᶜ(i, j, k, grid)
 
-    if grid isa RectilinearGrid
-        Δx, Δy = grid.Δxᶠᵃᵃ, grid.Δyᵃᶜᵃ
-    end
-
-    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa RectilinearGrid
-        Δx, Δy = grid.underlying_grid.Δxᶠᵃᵃ, grid.underlying_grid.Δyᵃᶜᵃ
-    end
-
-    if grid isa LatitudeLongitudeGrid
-        Δx, Δy = CUDA.@allowscalar grid.Δxᶠᶜᵃ[i], grid.Δyᶜᶠᵃ
-    end
-    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa LatitudeLongitudeGrid
-        Δx, Δy = CUDA.@allowscalar grid.underlying_grid.Δxᶠᶜᵃ[i], grid.underlying_grid.Δyᶜᶠᵃ
-    end
-
-    Δz = CUDA.@allowscalar grid.Δzᵃᵃᶜ[k]
-
-    # Instead of prescribing the velocity, we prescribe the value of the zonal transport
-    # in a cell, i.e., `u * Δy * Δz`. This way the norm(rhs) of the free-surface solver
-    # does not depend on the grid extend and resolution.
+    # We prescribe the value of the zonal transport in a cell, i.e., `u * Δy * Δz`. This
+    # way `norm(rhs)` of the free-surface solver does not depend on the grid extensd/resolution.
     transport = 1e5 # m³ s⁻¹
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
 
@@ -87,20 +72,23 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    left_hand_side = Field{Center, Center, Nothing}(grid)
+    left_hand_side = Field{Center, Center, Nothing}(grid, indices = (:, :, grid.Nz))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
     extrema_tolerance = 1e-9
     std_tolerance = 1e-9
+
+    @show norm(left_hand_side)
+    @show norm(right_hand_side)
 
     CUDA.@allowscalar begin
         @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance

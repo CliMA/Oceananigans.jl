@@ -32,7 +32,7 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
 
@@ -40,17 +40,22 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, 
    
     for task = 1:3
         barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
-    fill_halo! = halo_tuple[1][task]
-    bc_left    = halo_tuple[2][task]
-    bc_right   = halo_tuple[3][task]
-    event      = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+    fill_halo!  = halo_tuple[1][task]
+    bc_left     = halo_tuple[2][task]
+    bc_right    = halo_tuple[3][task]
+
+    size   = fill_halo_size(c, fill_halo!, indices)
+
+    offset = fill_halo_offset(size, fill_halo!, indices)
+
+    event      = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
     wait(device(arch), event)
 end
 
@@ -103,32 +108,66 @@ fill_first(bc1::CBCT, bc2::CBCT) = true
 fill_first(bc1, bc2)             = true
 
 #####
+##### Pass kernel size and offset for Windowed and Sliced Fields
+#####
+
+const YZFullIndex = Tuple{<:Any, <:Colon, <:Colon}
+const XZFullIndex = Tuple{<:Colon, <:Any, <:Colon}
+const XYFullIndex = Tuple{<:Colon, <:Colon, <:Any}
+
+# In case of a tuple we are _always_ dealing with full fields!
+fill_halo_size(c::Tuple, f::typeof(fill_west_and_east_halo!),   indices) = :yz
+fill_halo_size(c::Tuple, f::typeof(fill_south_and_north_halo!), indices) = :xz
+fill_halo_size(c::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices) = :xy
+
+# If indices are colon, just fill the whole boundary!
+fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   ::YZFullIndex) = :yz
+fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), ::XZFullIndex) = :xz
+fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  ::XYFullIndex) = :xy
+
+# If they are not... we have to calculate the size!
+fill_halo_size(c::OffsetArray, f::typeof(fill_west_and_east_halo!),   indices) = size(c)[[2, 3]]
+fill_halo_size(c::OffsetArray, f::typeof(fill_south_and_north_halo!), indices) = size(c)[[1, 3]]
+fill_halo_size(c::OffsetArray, f::typeof(fill_bottom_and_top_halo!),  indices) = size(c)[[1, 2]]
+
+fill_halo_offset(::Symbol, args...) = (0, 0)
+fill_halo_offset(::Tuple, f::typeof(fill_west_and_east_halo!),   indices)  = (indices[2] == Colon() ? 0 : first(indices[2]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
+fill_halo_offset(::Tuple, f::typeof(fill_south_and_north_halo!), indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[3] == Colon() ? 0 : first(indices[3]) - 1)
+fill_halo_offset(::Tuple, f::typeof(fill_bottom_and_top_halo!),  indices)  = (indices[1] == Colon() ? 0 : first(indices[1]) - 1, indices[2] == Colon() ? 0 : first(indices[2]) - 1)
+
+#####
 ##### General fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args...)
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, offset, loc, grid, args...)
     j, k = @index(Global, NTuple)
-    _fill_west_halo!(j, k, grid, c, west_bc, loc, args...)
-    _fill_east_halo!(j, k, grid, c, east_bc, loc, args...)
+    j′ = j + offset[1]
+    k′ = k + offset[2]
+    _fill_west_halo!(j′, k′, grid, c, west_bc, loc, args...)
+    _fill_east_halo!(j′, k′, grid, c, east_bc, loc, args...)
 end
 
-@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, offset, loc, grid, args...)
     i, k = @index(Global, NTuple)
-    _fill_south_halo!(i, k, grid, c, south_bc, loc, args...)
-    _fill_north_halo!(i, k, grid, c, north_bc, loc, args...)
+    i′ = i + offset[1]
+    k′ = k + offset[2]
+    _fill_south_halo!(i′, k′, grid, c, south_bc, loc, args...)
+    _fill_north_halo!(i′, k′, grid, c, north_bc, loc, args...)
 end
 
-@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, offset, loc, grid, args...)
     i, j = @index(Global, NTuple)
-    _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
-       _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
+    i′ = i + offset[1]
+    j′ = j + offset[2]
+    _fill_bottom_halo!(i′, j′, grid, c, bottom_bc, loc, args...)
+       _fill_top_halo!(i′, j′, grid, c, top_bc,    loc, args...)
 end
 
 #####
 ##### Tuple fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args...)
+@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args...)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
@@ -139,7 +178,7 @@ end
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, args...)
+@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, offset, loc, grid, args...)
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
@@ -150,7 +189,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args...)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
@@ -161,11 +200,11 @@ end
     end
 end
 
-fill_west_and_east_halo!(c, west_bc, east_bc, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :yz, _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, args...; dependencies=dep, kwargs...)
+fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
 
-fill_south_and_north_halo!(c, south_bc, north_bc, loc, arch, dep, grid, args...; kwargs...) = 
-    launch!(arch, grid, :xz, _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, args...; dependencies=dep, kwargs...)
+fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) = 
+    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
 
-fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, :xy, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, args...; dependencies=dep, kwargs...)
+fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)

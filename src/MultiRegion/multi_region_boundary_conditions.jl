@@ -40,6 +40,7 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
 
     return fill_halo_regions!(field.data,
                               field.boundary_conditions,
+                              (:, :, :),
                               instantiated_location(field),
                               field.grid,
                               field.boundary_buffers,
@@ -86,12 +87,12 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::CBC, right_bc, loc, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c,  left_bc, arch, event, grid, args...; kwargs...)
             return NoneEvent()
         end   
-        function $fill_both_halo!(c, left_bc, right_bc::CBC, loc, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, arch, event, grid, args...; kwargs...)
             return NoneEvent()
@@ -99,7 +100,7 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     end
 end
 
-function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -129,7 +130,7 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, loc, arch, dep, g
     return NoneEvent()
 end
 
-function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[2]
     N = size(grid)[2]

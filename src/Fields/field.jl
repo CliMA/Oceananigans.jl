@@ -152,8 +152,8 @@ function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
                indices = default_indices(3),
-               data = new_data(T, grid, loc, indices),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
+               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)))
 
     return Field(loc, grid, data, boundary_conditions, indices, nothing, nothing)
 end
@@ -667,6 +667,8 @@ end
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
+    reduced_index = 
+
     # To correctly fill the halo regions of fields with non-default indices, we'd have to
     # offset indices in the fill halo regions kernels.
     # For now we punt and don't support filling halo regions on windowed fields.
@@ -676,15 +678,14 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
-    if field.indices isa typeof(default_indices(3))
-        fill_halo_regions!(field.data,
-                           field.boundary_conditions,
-                           instantiated_location(field),
-                           field.grid,
-                           args...;
-                           reduced_dimensions = reduced_dims,
-                           kwargs...)
-    end
+    fill_halo_regions!(field.data,
+                       field.boundary_conditions,
+                       field.indices,
+                       instantiated_location(field),
+                       field.grid,
+                       args...;
+                       reduced_dimensions = reduced_dims,
+                       kwargs...)
 
     return nothing
 end

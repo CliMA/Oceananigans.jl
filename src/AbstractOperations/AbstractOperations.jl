@@ -24,7 +24,7 @@ using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: compute_at!
+import Oceananigans.Fields: compute_at!, indices
 
 #####
 ##### Basic functionality

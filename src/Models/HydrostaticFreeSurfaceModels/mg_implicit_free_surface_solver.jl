@@ -63,7 +63,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
 
-    right_hand_side = Field{Center, Center, Nothing}(grid)
+    right_hand_side = Field((Center, Center, Center), grid, indices = (:, :, grid.Nz))
 
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
@@ -79,7 +79,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     # Placeholder preconditioner and matrix are calculated using a "placeholder" timestep of -1.0
     # They are then recalculated before the first time step of the simulation.
-
+    
     placeholder_constructors = deepcopy(matrix_constructors)
     M = prod(problem_size)
     update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
