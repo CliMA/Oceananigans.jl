@@ -41,6 +41,8 @@ function Field(operand::AbstractOperation;
     loc = location(operand)
     indices = validate_indices(indices, loc, grid)
 
+    boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
+
     if isnothing(data)
         data = new_data(grid, loc, indices)
         recompute_safely = false
