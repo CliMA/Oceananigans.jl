@@ -1,4 +1,4 @@
-using Oceananigans.Fields: OneField, indices, reduced_indices
+using Oceananigans.Fields: OneFieldGridded, indices, reduced_indices
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
@@ -102,7 +102,7 @@ end
 @inline truefunc(args...) = true
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
-                              ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, c.grid, c.condition, mask)
+                            OneFieldGridded((LX, LY, LZ), c.grid, indices(c.operand))
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
