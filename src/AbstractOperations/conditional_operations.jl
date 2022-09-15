@@ -101,7 +101,9 @@ end
 
 @inline truefunc(args...) = true
 
-@inline condition_onefield(c::ConditionalOperation) = OneFieldGridded(location(c), c.grid; indices = indices(c.operand))
+@inline condition_onefield(c::ConditionalOperation) = ConditionalOperation(OneFieldGridded(location(c), c.grid; indices = indices(c.operand));
+                                                                           condition =  c.condition,
+                                                                           mask =  c.mask)
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c); dims = dims)
@@ -114,7 +116,7 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.mask))
 
 @inline Base.getindex(c::ConditionalOperation, i, j, k) =
-        ifelse(get_condition(c.condition, reduced_indices(i, j, k, c.operand)..., c.grid, c), 
+        ifelse(get_condition(c.condition, reduced_indices(i, j, k, c.operand)..., c.grid, c.operand), 
                   c.func(getindex(c.operand, reduced_indices(i, j, k, c.operand)...)),
                   c.mask)
 
