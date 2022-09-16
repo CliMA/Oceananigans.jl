@@ -53,8 +53,8 @@ end
 
 """Show the innards of a `DiscreteForcing` in the REPL."""
 Base.show(io::IO, forcing::DiscreteForcing{P}) where P =
-    print(io, "DiscreteForcing{$P}", '\n',
-        "├── func: $(prettysummary(forcing.func))", '\n',
+    print(io, "DiscreteForcing{$P}", "\n",
+        "├── func: $(prettysummary(forcing.func))", "\n",
         "└── parameters: $(forcing.parameters)")
 
 Adapt.adapt_structure(to, forcing::DiscreteForcing) =

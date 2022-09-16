@@ -233,13 +233,16 @@ function iterating(solver, tolerance)
     return true
 end
 
+finalize_solver!(solver::PreconditionedConjugateGradientSolver) = 
+    finalize_solver!(solver.preconditioner)
+
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
-    print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), '\n',
-              "├── template field: ", summary(solver.residual), '\n',
-              "├── grid: ", summary(solver.grid), '\n',
-              "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
-              "├── preconditioner: ", prettysummary(solver.preconditioner), '\n',
-              "├── reltol: ", prettysummary(solver.reltol), '\n',
-              "├── abstol: ", prettysummary(solver.abstol), '\n',
+    print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), "\n",
+              "├── template field: ", summary(solver.residual), "\n",
+              "├── grid: ", summary(solver.grid), "\n",
+              "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",
+              "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
+              "├── reltol: ", prettysummary(solver.reltol), "\n",
+              "├── abstol: ", prettysummary(solver.abstol), "\n",
               "└── maxiter: ", solver.maxiter)
 end

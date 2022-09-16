@@ -143,9 +143,9 @@ function Base.summary(grid::ImmersedBoundaryGrid)
 end
 
 function show(io::IO, ibg::ImmersedBoundaryGrid)
-    print(io, summary(ibg), ":", '\n',
-              "├── immersed_boundary: ", summary(ibg.immersed_boundary), '\n',
-              "├── underlying_grid: ", summary(ibg.underlying_grid), '\n')
+    print(io, summary(ibg), ":", "\n",
+              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
+              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
 
     return show(io, ibg.underlying_grid, false)
 end

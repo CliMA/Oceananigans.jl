@@ -8,6 +8,7 @@ export
 using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans: @ifhasamgx
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 
@@ -34,10 +35,11 @@ include("rigid_lid.jl")
 include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
+include("implicit_free_surface_utils.jl")
 include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
-include("pcg_implicit_free_surface_solver.jl")
 include("mg_implicit_free_surface_solver.jl")
+include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
