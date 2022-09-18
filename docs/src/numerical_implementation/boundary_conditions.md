@@ -81,7 +81,8 @@ volume yields
 ```math
     \begin{equation}
     \label{eq:dc/dt}
-    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{v} c + \boldsymbol{q}_c) \, \mathrm{d} S
+    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{v} c + \boldsymbol{q}_c) 
+                                                     \boldsymbol{\cdot} \hat{\boldsymbol{n}}  \, \mathrm{d} S
                              + \frac{1}{V_{i, j, k}} \int_{V_{i, j, k}} F_c \, \mathrm{d} V \, ,
     \end{equation}
 ```

@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractMultiArchitecture
 export CPU, GPU, MultiGPU
-export device, device_event, architecture, array_type, arch_array, unified_array
+export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
 using KernelAbstractions
@@ -29,7 +29,7 @@ using CUDAKernels: STREAM_GC_LOCK
 
             if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
                 for stream in DEVICE_STREAMS[handle]
-                    if CUDA.query(stream)
+                    if CUDA.isdone(stream)
                         push!(DEVICE_FREE_STREAMS[handle], stream)
                     end
                 end
@@ -123,6 +123,22 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
+## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArrat, offset::Int) is 1)
+@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
+    n = length(src)
+    context!(context(src)) do
+        GC.@preserve src dst begin
+            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async)
+        end
+    end
+    return dst
+end
+ 
+@inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
+
 device_event(arch) = Event(device(arch))
+
+@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
+@inline unsafe_free!(a)          = nothing
 
 end # module

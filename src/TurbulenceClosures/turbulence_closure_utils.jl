@@ -1,6 +1,8 @@
 using Oceananigans.Operators
 
-tracer_diffusivities(tracers, κ::Union{Number, Function}) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
+const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, AbstractArray}
+
+tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
 tracer_diffusivities(tracers, ::Nothing) = nothing
 
 function tracer_diffusivities(tracers, κ::NamedTuple)
@@ -14,20 +16,28 @@ end
 
 convert_diffusivity(FT, κ::Number; kw...) = convert(FT, κ)
 
-function convert_diffusivity(FT, κ; discrete_form=false)
-    discrete_form && return DiscreteDiffusionFunction(κ)
+function convert_diffusivity(FT, κ; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
+    discrete_form && return DiscreteDiffusionFunction(κ; loc, parameters)
     return κ
 end
     
-function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false)
+function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
     κ_names = propertynames(κ)
-    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form) for κi in κ))
+    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form, loc, parameters) for κi in κ))
 end
 
 @inline geo_mean_Δᶠ(i, j, k, grid::AbstractGrid) =
     cbrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid))
 
-@kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, U, C)
+@inline calc_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C) = zero(grid)
+@inline calc_κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U) = zero(grid)
+
+@kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
+    @inbounds νₑ[i, j, k] = calc_νᶜᶜᶜ(i, j, k, grid, closure, args...)
+end
+
+@kernel function calculate_nonlinear_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
+    i, j, k = @index(Global, NTuple)
+    @inbounds κₑ[i, j, k] = calc_κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
 end

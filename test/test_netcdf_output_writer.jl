@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using TimesDates: TimeDate
 using Dates: DateTime, Nanosecond, Millisecond
 using TimesDates: TimeDate
 using CUDA

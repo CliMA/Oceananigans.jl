@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots # to avoid capturing precompilation output by Literate
+using CairoMakie # to avoid capturing precompilation output by Literate
 using Glob
 
 using Oceananigans
@@ -18,12 +18,6 @@ using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
-
-# Gotta set this environment variable when using the GR run-time on a remote machine.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-
-ENV["GKSwstype"] = "100"
 
 #####
 ##### Generate examples
@@ -101,6 +95,7 @@ physics_pages = [
     "`ShallowWaterModel`" => [
         "Shallow water model" => "physics/shallow_water_model.md"
         ],
+    "Boundary conditions" => "physics/boundary_conditions.md",
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
@@ -113,7 +108,7 @@ numerical_pages = [
     "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
     "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
-    "Poisson solvers" => "numerical_implementation/poisson_solvers.md",
+    "Elliptic solvers" => "numerical_implementation/elliptic_solvers.md",
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
@@ -123,7 +118,7 @@ appendix_pages = [
     "Convergence tests" => "appendix/convergence_tests.md",
     "Performance benchmarks" => "appendix/benchmarks.md",
     "Library" => "appendix/library.md",
-    "Function index" => "appendix/function_index.md",
+    "Function index" => "appendix/function_index.md"
 ]
 
 pages = [
@@ -137,7 +132,7 @@ pages = [
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
     "References" => "references.md",
-    "Appendix" => appendix_pages,
+    "Appendix" => appendix_pages
 ]
 
 #####
@@ -160,8 +155,14 @@ makedocs(bib,
    doctest = true,
     strict = true,
      clean = true,
- checkdocs = :none # Should fix our docstring so we can use checkdocs=:exports with strict=true.
+ checkdocs = :exports
 )
+
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end
 
 deploydocs(
           repo = "github.com/CliMA/OceananigansDocumentation.git",
@@ -170,9 +171,3 @@ deploydocs(
   push_preview = true,
      devbranch = "main"
 )
-
-@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
-
-for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
-    rm(file)
-end

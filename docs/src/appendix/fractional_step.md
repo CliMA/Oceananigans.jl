@@ -1,4 +1,4 @@
-# Fractional step method
+# [Fractional step method](@id fractional_step_method)
 
 In some models (e.g., `NonhydrostaticModel` or `HydrostaticFreeSurfaceModel`) solving the momentum 
 coupled with the continuity equation can be cumbersome so instead we employ a fractional step 
@@ -18,7 +18,7 @@ surface waves, we thus discretize the momentum equation as
       + \boldsymbol{F}_{\boldsymbol{v}}^{n+\frac{1}{2}} \, ,
 ```
 where the superscript ``n + \frac{1}{2}`` indicates that these terms are evaluated at time step 
-``n + \frac{1}{2}``, which we compute explicitly (see [Time Stepping section](../numerical_implementation/time_stepping)).
+``n + \frac{1}{2}``, which we compute explicitly (see [Time-stepping section](@ref time_stepping)).
 
 The projection is then performed
 ```math

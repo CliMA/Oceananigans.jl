@@ -5,9 +5,10 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans: @ifhasamgx
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 
@@ -34,8 +35,10 @@ include("rigid_lid.jl")
 include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
+include("implicit_free_surface_utils.jl")
 include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
+include("mg_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
@@ -58,8 +61,8 @@ include("set_hydrostatic_free_surface_model.jl")
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = merge(prognostic_fields(model), model.auxiliary_fields)
-
+@inline fields(model::HydrostaticFreeSurfaceModel) = 
+        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
 
@@ -76,6 +79,17 @@ Returns a flattened `NamedTuple` of the prognostic fields associated with `Hydro
 @inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                                v = velocities.v),
                                                                                tracers)
+                                               
+@inline hydrostatic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
+                                                                       v = velocities.v,
+                                                                       w = velocities.w),
+                                                                       tracers,
+                                                                       (; η = free_surface.η))
+
+@inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
+                                                                    v = velocities.v,
+                                                                    w = velocities.w),
+                                                                    tracers)
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing

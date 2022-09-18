@@ -1,12 +1,12 @@
 # Surface gravity waves and the Craik-Leibovich approximation
 
-In Oceananiagns.jl, users model the effects of surface waves by specifying spatial and
-temporal gradients of the Stokes drift velocity field.
-At the moment, only uniform unidirectional Stokes drift fields are supported, in which case
+Users can model the effects of surface waves by specifying spatial and temporal gradients of the
+Stokes drift velocity field. At the moment, only uniform unidirectional Stokes drift fields are
+supported, in which case
 ```math
     \boldsymbol{u}^S = u^S(z, t) \hat{\boldsymbol{x}} + v^S(z, t) \hat{\boldsymbol{y}} \, .
 ```
-Surface waves are modeled in Oceananigans.jl by the Craik-Leibovich approximation,
+Surface waves are modeled in the [`NonhydrostaticModel`](@ref) by the Craik-Leibovich approximation,
 which governs interior motions under a surface gravity wave field that have been time- or
 phase-averaged over the rapid oscillations of the surface waves.
 The oscillatory vertical and horizontal motions associated with surface waves themselves,
@@ -14,7 +14,7 @@ therefore, are not present in the resolved velocity field ``\boldsymbol{v}``, an
 steady, averaged effect of surface waves that manifests over several or more wave oscillations 
 are modeled.
 
-In Oceananigans.jl with surface waves, the resolved velocity field ``\boldsymbol{v}`` is the 
+When surface waves are included, the resolved velocity field ``\boldsymbol{v}`` is the 
 Lagrangian-mean velocity field. The Lagrangian-mean velocity field at a particular location 
 ``(x, y, z)`` is average velocity of a fluid particle whose average position is ``(x, y, z)`` 
 at time ``t``. The average position of a fluid particle ``\boldsymbol{\xi}(t) = (\xi, \eta, \zeta)`` 

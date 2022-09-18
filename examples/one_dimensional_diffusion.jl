@@ -16,7 +16,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## Using `Oceananigans.jl`
@@ -37,7 +37,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# The default topology is `(Periodic, Periodic, Bounded)`. In this example we're
+# The default topology is `(Periodic, Periodic, Bounded)`. In this example, we're
 # trying to solve a one-dimensional problem, so we assign `Flat` to the
 # `x` and `y` topologies. We excise halos and avoid interpolation or differencing
 # in `Flat` directions, saving computation and memory.
@@ -49,7 +49,7 @@ closure = ScalarDiffusivity(κ=1)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = NonhydrostaticModel(grid=grid, closure=closure, buoyancy=nothing, tracers=:T)
+model = NonhydrostaticModel(; grid, closure, tracers=:T)
 
 # By default, `NonhydrostaticModel` has no-flux (insulating and stress-free) boundary conditions on
 # all fields.
@@ -67,13 +67,18 @@ set!(model, T=initial_temperature)
 # which was initialized as `0`'s when the model was created.
 # To see the new data in `model.tracers.T`, we plot it:
 
-using Plots
+using CairoMakie
+set_theme!(Theme(fontsize = 24, linewidth=3))
 
-linewidth = 2
+fig = Figure()
+axis = (xlabel = "Temperature (ᵒC)", ylabel = "z")
+label = "t = 0"
+
 z = znodes(model.tracers.T)
+T = interior(model.tracers.T, 1, 1, :)
 
-T_plot = plot(interior(model.tracers.T, 1, 1, :), z; linewidth,
-              label = "t = 0", xlabel = "Temperature (ᵒC)", ylabel = "z")
+lines(T, z; label, axis)
+current_figure() # hide
 
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
 # physical points (excluding halos) at `(1, 1, :)`.
@@ -99,34 +104,55 @@ run!(simulation)
 using Printf
 
 label = @sprintf("t = %.3f", model.clock.time)
-plot!(T_plot, interior(model.tracers.T)[1, 1, :], z; linewidth, label)
+lines!(interior(model.tracers.T, 1, 1, :), z; label)
+axislegend()
+current_figure() # hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
-
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers, filename = "one_dimensional_diffusion.jld2",
-                     schedule=IterationInterval(100), overwrite_existing = true)
+    JLD2OutputWriter(model, model.tracers,
+                     filename = "one_dimensional_diffusion.jld2",
+                     schedule=IterationInterval(100),
+                     overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 
 simulation.stop_iteration += 10000
-
 run!(simulation)
 
 # Finally, we animate the results by opening the JLD2 file, extract the
 # iterations we ended up saving at, and plot the evolution of the
 # temperature profile in a loop over the iterations.
 
-T = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+T_timeseries = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+times = T_timeseries.times
 
-anim = @animate for (i, t) in enumerate(T.times)
-    Ti = interior(T[i], 1, 1, :)
+fig = Figure()
+ax = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z")
+xlims!(ax, 0, 1)
 
-    plot(Ti, z; linewidth, title=@sprintf("t = %.3f", t),
-         label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
+n = Observable(1)
+
+T = @lift interior(T_timeseries[$n], 1, 1, :)
+lines!(T, z)
+
+label = @lift "t = " * string(round(times[$n], digits=3))
+Label(fig[1, 1], label, tellwidth=false)
+current_figure() # hide
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+@info "Making an animation..."
+
+record(fig, "one_dimensional_diffusion.mp4", frames, framerate=24) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
+nothing #hide
 
-mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide
+# ![](one_dimensional_diffusion.mp4)

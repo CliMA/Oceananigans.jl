@@ -16,9 +16,10 @@ struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivi
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
-          ScalarBiharmonicDiffusivity(FT::DataType;         kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
-  VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
-HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
+                    ScalarBiharmonicDiffusivity(FT::DataType;         kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
+            VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
+          HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
+HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
 
 required_halo_size(::ScalarBiharmonicDiffusivity) = 2
 
@@ -53,10 +54,12 @@ Keyword arguments
 """
 function ScalarBiharmonicDiffusivity(formulation=ThreeDimensionalFormulation(), FT=Float64;
                                      ν=0, κ=0,
-                                     discrete_form = false)
+                                     discrete_form = false,
+                                     loc = (nothing, nothing, nothing),
+                                     parameters = nothing)
 
-    ν = convert_diffusivity(FT, ν; discrete_form)
-    κ = convert_diffusivity(FT, κ; discrete_form)
+    ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
+    κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     return ScalarBiharmonicDiffusivity{typeof(formulation)}(ν, κ)
 end
 

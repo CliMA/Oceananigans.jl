@@ -7,10 +7,26 @@ using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 import Oceananigans.Solvers: solve!
 
+
 """
-    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
+    struct MatrixImplicitFreeSurfaceSolver{S, R, T}
+
+The matrix-based implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
+struct MatrixImplicitFreeSurfaceSolver{S, R, T}
+    "The matrix iterative solver"
+    matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
+    right_hand_side :: R
+    storage :: T
+end
+
+"""
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
-Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
+Return a solver for the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
         
 ```math
@@ -21,13 +37,6 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-struct MatrixImplicitFreeSurfaceSolver{S, R}
-    "The matrix iterative solver"
-    matrix_iterative_solver :: S
-    "The right hand side of the free surface evolution equation"
-    right_hand_side :: R
-end
-
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
@@ -39,17 +48,19 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
-    right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
-
+    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
+    
+    storage = deepcopy(right_hand_side)
+    
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
 
-    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side)
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
@@ -60,10 +71,12 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 #####
 
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
-    solver = implicit_free_surface_solver.matrix_iterative_solver
-    sol = solve!(η, solver, rhs, Δt)
+    solver  = implicit_free_surface_solver.matrix_iterative_solver
+    storage = implicit_free_surface_solver.storage
+    
+    solve!(storage, solver, rhs, Δt)
         
-    set!(η, reshape(sol, solver.problem_size...))
+    set!(η, reshape(storage, solver.problem_size...))
 
     return nothing
 end
@@ -98,7 +111,7 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     arch = grid.architecture
 
-    Nx, Ny = (grid.Nx, grid.Ny)
+    Nx, Ny = grid.Nx, grid.Ny
 
     C     = zeros(Nx, Ny, 1)
     diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))

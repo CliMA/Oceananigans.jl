@@ -1,9 +1,9 @@
-# Poisson solvers
+# Elliptic solvers
 
 ## The elliptic problem for the pressure
 
 The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
-component of the momentum equation and invoking the vertical component to yield an elliptic 
+component of the momentum equations and invoking the vertical component to yield an elliptic 
 Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
@@ -15,9 +15,11 @@ along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsy
 (Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}`` 
 denotes the source term for the Poisson equation.
 
-For hydrostatic problems the Poisson equation above only needs to be solved for the vertically 
-integrated flow and the pressure field is a two dimensional term ``p_{S}``. In this case a fully 
-three-dimensional solve is not needed.
+!!! note "Hydrostatic approximation"
+    For problems in which the hydrostatic approximation is invoked, the Poisson equation for
+    pressure above only needs to be solved for the vertically integrated flow and the pressure
+    field is a two dimensional term ``p_S(x, y, t)``.
+
 
 ## Direct method
 
@@ -41,7 +43,7 @@ The method can be explained easily by taking the Fourier transform of both sides
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
 solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
-ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
+ensure that the projection step in the fractional time-step works (see [Time-stepping section](@ref time_stepping) and [Fractional step method appendix](@ref fractional_step_method)). To do this, the wavenumbers are replaced by
 eigenvalues ``\lambda^x``, ``\lambda^y``, and ``\lambda^z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
@@ -211,55 +213,82 @@ solver.
 
 ### Implicit free surface pressure operator
 
-The implicit free surface solver solves for the free-surface, ``\eta``, in the vertically
-integrated continuity equation
+The implicit free surface solver solves for the free-surface, ``\eta(x, y, t)``, in the vertically
+integrated continuity equation:
 
 ```math
     \begin{equation}
     \label{eq:vertically-integrated-continuity}
-    \partial_t \eta + \partial_x (H \hat{u}) + \partial_y (H \hat{v}) = M \, ,
+    \partial_t \eta + \partial_x \left ( \int_{-H}^0 u \, \mathrm{d}z \right ) + \partial_y \left ( \int_{-H}^0 v \, \mathrm{d}z \right ) = M \, ,
     \end{equation}
 ```
 
-where ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); 
-currently we assume that ``M=0``. To form a linear system that can be solved implicitly we recast
-the continuity equation into a discrete integral form
+where ``H(x, y)`` is the depth of the water column (to first order with respect to the free surface
+elevation) and ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and
+runoff); currently Oceananigans.jl assumes ``M = 0``. Note that in deriving \eqref{eq:vertically-integrated-continuity},
+we used the bottom boundary condition ``w_{\rm bottom} = \boldsymbol{u}_{\rm bottom} \boldsymbol{\cdot} \boldsymbol{\nabla}_h H``.
+
+To form a linear system that can be solved implicitly we recast the vertically-integrated continuity
+equation \eqref{eq:vertically-integrated-continuity} into a discrete integral form. The best way to do
+so is by starting from the discrete version of the continuity equation (in this case without any surface
+volume flux, ``M = 0``)
+
+```math
+    \begin{align}
+    \label{eq:continuity-discrete}
+    \delta_x (A_x u) + \delta_y (A_y v) + \delta_z (A_z w) = 0 \, ,
+    \end{align}
+```
+
+and summing it vertically to get:
+
+```math
+    \begin{align}
+    \label{eq:vertically-integrated-continuity-discrete}
+    \delta_x \sum_k (A_x u) + \delta_y \sum_k (A_y v) + A_z \underbrace{w(k = N_z + 1)}_{w_{\rm top}} = 0 \, .
+    \end{align}
+```
+
+In equations \eqref{eq:continuity-discrete} and \eqref{eq:vertically-integrated-continuity-discrete} and
+here after, we have abused notation and used, e.g., ``u`` and ``v`` to denote the volume averages
+over grid cells of the quantities ``u`` and ``v`` respectively. Using ``w_{\rm top} = \partial_t \eta`` and
+being a bit more explicit on the locations the difference operators act on,
+\eqref{eq:vertically-integrated-continuity-discrete} becomes:
 
 ```math
     \begin{equation}
     \label{eq:semi-discrete-integral-continuity}
-    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{aca} \sum_k A_y v = A_z M \, ,
+    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} (A_x u) + \delta_y^{aca} \sum_k (A_y v) = 0 \, .
     \end{equation}
 ```
 
-and apply the discrete form to the hydrostatic form of the velocity fractional step equation
+We can now apply the velocity fractional step equation (discussed in the [Time-stepping section](@ref time_stepping)) for the [hydrostatic model](@ref hydrostatic_free_surface_model):
 
 ```math
     \begin{equation}
     \label{eq:hydrostatic-fractional-step}
-    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g \Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
+    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g \Delta t \, \boldsymbol{\nabla} \eta^{n+1} \, .
     \end{equation}
 ```
 
-as follows.
-
-Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
+We impose that the ``n+1``-th time step velocity is consistent with \eqref{eq:semi-discrete-integral-continuity}
 
 ```math
     \begin{equation}
-    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = -\delta_x^{caa} \sum_k A_x u^{n+1} - \delta_y^{aca} \sum_k A_y v^{n+1} \, .
+    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = - \delta_x^{caa} \sum_k (A_x u^{n+1}) - \delta_y^{aca} \sum_k (A_y v^{n+1}) \, .
     \end{equation}
 ```
 
-Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-hand-side of
-\eqref{eq:hydrostatic-fractional-step} then gives an implicit equation for ``\eta^{n+1}``:
+Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the right-hand-side of
+\eqref{eq:hydrostatic-fractional-step} then gives us an implicit equation for ``\eta^{n+1}``:
 
 ```math
 \begin{align}
-   \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
-   & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, .
+    \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
+    & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, . \label{eq:implicit-free-surface}
 \end{align}
 ```
 
-Formulated in this way, the linear operator is symmetric and so can be solved using a
-preconditioned conjugate gradient algorithm.
+The left-hand-side of \eqref{eq:implicit-free-surface} is nothing else than a linear operator acting on
+``\eta^{n+1}``. Formulated in this way, the linear operator is symmetric and therefore
+\eqref{eq:implicit-free-surface} can be solved using a preconditioned conjugate gradient algorithm.

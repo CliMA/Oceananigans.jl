@@ -1,7 +1,6 @@
 using Statistics
 using JLD2
 using Printf
-using Plots
 using Oceananigans
 using Oceananigans.Units
 
@@ -111,8 +110,8 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (1, 3))
-mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (1, 3))
+underlying_mrg = MultiRegionGrid(underlying_grid, partition = XPartition(2), devices = (0, 3))
+mrg            = MultiRegionGrid(grid,            partition = XPartition(2), devices = (0, 3))
 
 τˣ = multi_region_object_from_array(- τˣ, mrg)
 τʸ = multi_region_object_from_array(- τʸ, mrg)
@@ -246,7 +245,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(underlying_mrg))
+                                    tracer_advection = WENO(underlying_mrg))
 
 #####
 ##### Initial condition:
@@ -286,10 +285,9 @@ function progress(sim)
     u = sim.model.velocities.u
     η = sim.model.free_surface.η
 
-    @info @sprintf("Time: % 12s, iteration: %d, wall time: %s", 
-                    #"Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|η|): %.2e m, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, #maximum(abs, u), maximum(abs, η),
+                    sim.model.clock.iteration, maximum(abs, u), #maximum(abs, η),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -318,7 +316,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 run!(simulation, pickup = pickup_file)
 
 @info """
-
     Simulation took $(prettytime(simulation.run_wall_time))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))

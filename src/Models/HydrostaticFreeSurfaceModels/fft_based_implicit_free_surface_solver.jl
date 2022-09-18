@@ -21,7 +21,7 @@ validate_fft_implicit_solver_grid(grid) =
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
 validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
-    validate_fft_implicit_solver_grid(ibg.grid)
+    validate_fft_implicit_solver_grid(ibg.underlying_grid)
 
 """
     FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acceleration=nothing)

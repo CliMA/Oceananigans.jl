@@ -54,4 +54,3 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
 end
 
 mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
-
