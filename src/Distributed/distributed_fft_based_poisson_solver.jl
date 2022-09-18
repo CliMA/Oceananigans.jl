@@ -42,21 +42,11 @@ Return a solver for the Poisson equation,
 ```
 
 for `MultiArch`itectures and `RectilinearGrid`s. If `global_grid` is regularly spaced
-in all directions, the discrete 2nd-order Poisson equation is solved for `x` with an eigenfunction
-expansion that utilitizes fast Fourier transforms in (x, y, z).
+in all directions, the discrete 2nd-order Poisson equation is solved for `x` with an
+eigenfunction expansion that utilitizes fast Fourier transforms in ``(x, y, z)``.
 
-<<<<<<< HEAD
-If `global_grid` is vertically-stretched and horizontally-regular, the Poisson equation
-is solved with Fourier transforms in (x, y) and a tridiagonal solve in z.
-
-Other stretching configurations for `RectilinearGrid` are not supported.
-
-Supported domain decompositions
-===============================
-=======
 !!! note "Supported configurations"
-    We support two "modes":
->>>>>>> ncc/docstrings
+    We support two modes for `Nz = size(global_grid, 3)` and `Rx, Ry, Rz = architecture(local_grid).ranks`:
 
     1. Vertical pencil decompositions: two-dimensional decompositions in ``(x, y)``
     for three dimensional problems that satisfy either `Nz > Rx` or `Nz > Ry`.
@@ -84,53 +74,36 @@ there are either
 
 We sketch these below in a schematic where the first dimension is _defined_ as the local
 dimension. In our implementation of the PencilFFTs algorithm,
-we require _either_ `Nz >= Rx`, _or_ `Nz >= Ry`, where `Nz` is the number of vertical cells,
+we require _either_ `Nz ≥ Rx`, _or_ `Nz ≥ Ry`, where `Nz` is the number of vertical cells,
 `Rx` is the number of ranks in x, and `Ry` is the number of ranks in `y`.
-Below, we outline the algorithm for the case `Nz >= Rx`.
+Below, we outline the algorithm for the case `Nz ≥ Rx`.
 If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
 
-<<<<<<< HEAD
-1. `first(transposition_storage)` is initialized with layout (z, x, y).
-2. If on a fully regular `RectlinearGrid`, transform along z. If on a vertically-stretched
+1. `first(transposition_storage)` is initialized with layout ``(z, x, y)``.
+2. If on a fully regular `RectlinearGrid`, transform along ``z``. If on a vertically-stretched
    `RectilinearGrid`, we perform no transform.
-3  Transpose + communicate to transposition_storage[2] in layout (x, z, y),
-   which is distributed into `(Rx, Ry)` processes in (z, y).
+3  Transpose + communicate to transposition_storage[2] in layout ``(x, z, y)``,
+   which is distributed into `(Rx, Ry)` processes in ``(z, y)``.
 4. Transform along x.
-5. Transpose + communicate to last(transposition_storage) in layout (y, x, z),
-   which is distributed into `(Rx, Ry)` processes in (x, z).
+5. Transpose + communicate to last(transposition_storage) in layout ``(y, x, z)``,
+   which is distributed into `(Rx, Ry)` processes in ``(x, z)``.
 6. Transform in y.
 
-5. Next we solve the Poisson equation. If on fully-regular `RectilinearGrid`,
-    a. Solve the Poisson equation by updating `last(transposition_storage)`.
-       and dividing by the sum of the eigenvalues
-       and zero out the volume mean, zeroth mode, or (1, 1, 1) element of
-       the transformed array.
+7. Next we solve the Poisson equation. If on fully-regular `RectilinearGrid`,
+   a. Solve the Poisson equation by updating `last(transposition_storage)`.
+      and dividing by the sum of the eigenvalues and zero out the volume mean,
+      zeroth mode, or (1, 1, 1) element of the transformed array.
 
-    If using a vertically-stretched `RectilinearGrid`, then
+   If using a vertically-stretched `RectilinearGrid`, then
     
-      i. Transpose back to (x, z, y)
-     ii. Transpose back to (z, x, y)
+      i. Transpose back to ``(x, z, y)``.
+     ii. Transpose back to ``(z, x, y)``.
     iii. Solve the Poisson equation with a tridiagonal solve.
-     iv. Transpose back to (x, z, y)
-      v. Transpose back to (y, x, z)
+     iv. Transpose back to ``(x, z, y)``.
+      v. Transpose back to ``(y, x, z)``.
 
 At this point we are ready to perform a backwards transform to return to physical
-space and obtain the solution in  `first(transposition_storage)` with the layout (z, x, y).
-=======
-1. `first(storage)` is initialized with layout ``(z, x, y)``.
-2. Transform along ``z``.
-3. Transpose + communicate to storage[2] in layout ``(x, z, y)``,
-   which is distributed into `(Rx, Ry)` processes in ``(z, y)``.
-4. Transform along ``x``.
-5. Transpose + communicate to last(storage) in layout ``(y, x, z)``,
-   which is distributed into `(Rx, Ry)` processes in ``(x, z)``.
-6. Transform in ``y``.
-
-At this point the three in-place forward transforms are complete, and we
-solve the Poisson equation by updating `last(storage)`.
-Then the process is reversed to obtain `first(storage)` in physical
-space and with the layout ``(z, x, y)``.
->>>>>>> ncc/docstrings
+space and obtain the solution in  `first(transposition_storage)` with the layout ``(z, x, y)``.
 
 Restrictions
 ============
@@ -146,20 +119,12 @@ For one-dimensional decompositions (ie, rank configurations with only one non-si
 dimension) we require _either_ `Rx = 1` _or_ `Ry = 1`. One-dimensional domain
 decompositions are required for two-dimensional transforms.
 
-<<<<<<< HEAD
 For one-dimensional decomopsitions, the z-direction is placed last. If
 `topology(global_grid, 3) isa Flat`, or if the vertical direction is stretched
 and thus requires a vertical tridiagonal solver, we omit transpositions and
 FFTs in the z-direction entirely, yielding an algorithm with 2 transposes --- compared to 4
 for two-dimensional decompositions for fully-regular solves, and _8_ for
 two-dimensional decompositions and vertically-stretched solves.
-=======
-For one-dimensional decompositions, we place the decomposed direction _last_.
-If the number of ranks is `Rh = max(Rx, Ry)`, this algorithm requires that 
-_both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transforms
-is similar to the two-dimensional case. It remains somewhat of a mystery why this
-succeeds (i.e., why the last transform is correctly decomposed).
->>>>>>> ncc/docstrings
 """
 function DistributedFFTBasedPoissonSolver(local_grid)
 
