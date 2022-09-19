@@ -13,7 +13,7 @@ import Oceananigans.TimeSteppers: store_tendencies!
 """ Store source terms for `η`. """
 @kernel function _store_free_surface_tendency!(Gη⁻, grid, Gη⁰)
     i, j = @index(Global, NTuple)
-    @inbounds Gη⁻[i, j, 1] = Gη⁰[i, j, 1]
+    @inbounds Gη⁻[i, j, grid.Nz] = Gη⁰[i, j, grid.Nz]
 end
 
 store_free_surface_tendency!(free_surface, model, barrier) = NoneEvent()

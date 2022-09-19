@@ -233,6 +233,7 @@ halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.faces)) # 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
 topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+topology(grid::ConformalCubedSphereGrid, i) = topology(grid)[i] 
 architecture(grid::ConformalCubedSphereGrid) = grid.architecture
 
 function on_architecture(arch, grid::ConformalCubedSphereGrid) 
