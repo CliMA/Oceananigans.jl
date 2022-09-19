@@ -7,7 +7,7 @@ using Oceananigans.OutputWriters: output_indices
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
 import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
-import Base: fill!
+import Base: fill!, axes
 import Oceananigans.Simulations: hasnan
 
 # Field and FunctionField (both fields with "grids attached")

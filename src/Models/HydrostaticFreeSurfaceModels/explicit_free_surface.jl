@@ -62,7 +62,7 @@ function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognosti
     
     free_surface_event = launch!(model.architecture, model.grid, :xy,
                                 _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
-                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
+                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, model.grid.Nz,
                                 dependencies = device_event(model.architecture))
     
     return MultiEvent(tuple(prognostic_field_events[1]..., prognostic_field_events[2]..., free_surface_event))
@@ -75,10 +75,10 @@ end
 ##### Kernel
 #####
 
-@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻) where FT
+@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        η[i, j, grid.Nz] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
+        η[i, j, Nz] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
     end
 end

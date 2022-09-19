@@ -4,7 +4,7 @@ using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-struct ConditionalOperation{LX, LY, LZ, O, F, G, I, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
+struct ConditionalOperation{LX, LY, LZ, O, F, G, I, C, M, T} <: AbstractOperation{LX, LY, LZ, G, I, T} 
     operand :: O
     func :: F
     grid :: G

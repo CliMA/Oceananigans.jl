@@ -57,9 +57,11 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
     fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
     reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    
+    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
     windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
 
-    ordinary_fields = filter(f -> f isa Field && (f ∉ reduced_fields) && (f ∉ windowed_fields), fields_with_bcs)
+    ordinary_fields = filter(f -> f isa FullField, fields_with_bcs)
 
     # Fill halo regions for reduced and windowed fields
     for field in (reduced_fields..., windowed_fields...)

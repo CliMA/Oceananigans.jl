@@ -1,12 +1,13 @@
 const binary_operators = Set()
 
-struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
     op :: O
     a :: A
     b :: B
     ▶a :: IA
     ▶b :: IB
     grid :: G
+    indices :: I
 
     @doc """
         BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
@@ -14,9 +15,9 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
     on `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
     """
-    function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
+    function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G, indices::I) where {LX, LY, LZ, O, A, B, IA, IB, G, I}
         T = eltype(grid)
-        return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
+        return new{LX, LY, LZ, O, A, B, IA, IB, G, I, T}(op, a, b, ▶a, ▶b, grid, indices)
     end
 end
 
@@ -34,7 +35,9 @@ end
 function _binary_operation(Lc, op, a, b, La, Lb, grid)
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
+
+     indices = interpolate_indices(a, b)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid, indices)
 end
 
 const ConcreteLocationType = Union{Type{Face}, Type{Center}}
@@ -205,4 +208,5 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.b),
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
-                                Adapt.adapt(to, binary.grid))
+                                Adapt.adapt(to, binary.grid),
+                                Adapt.adapt(to, binary.indices))

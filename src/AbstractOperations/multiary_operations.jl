@@ -1,15 +1,16 @@
 const multiary_operators = Set()
 
-struct MultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
     op :: O
     args :: A
-    ▶ :: I
+    ▶ :: IN
     grid :: G
+    indices :: I
 
-    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::I, grid::G) where {LX, LY, LZ, O, A, I, G}
+    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G, indices::I) where {LX, LY, LZ, O, A, IN, G, I}
         T = eltype(grid)
         N = length(args)
-        return new{LX, LY, LZ, N, O, A, I, G, T}(op, args, ▶, grid)
+        return new{LX, LY, LZ, N, O, A, IN, G, I, T}(op, args, ▶, grid, indices)
     end
 end
 
@@ -22,7 +23,8 @@ end
 
 function _multiary_operation(L, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    indices = interpolate_indices(args)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid, indices)
 end
 
 # Recompute location of multiary operation
@@ -147,5 +149,6 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
     MultiaryOperation{LX, LY, LZ}(Adapt.adapt(to, multiary.op),
                                   Adapt.adapt(to, multiary.args),
                                   Adapt.adapt(to, multiary.▶),
-                                  Adapt.adapt(to, multiary.grid))
+                                  Adapt.adapt(to, multiary.grid),
+                                  Adapt.adapt(to, multiary.indices))
 

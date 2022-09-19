@@ -50,3 +50,27 @@ macro at(location, abstract_operation)
 
     return wrapped_operation
 end
+
+"""
+    utility to propagate field indices in abstract operations
+"""
+# Numbers and functions do not have indices
+indices(f::Function) = (:, :, :)
+indices(f::Number)   = (:, :, :)
+
+# easy index propagation 
+function interpolate_indices(args...)
+    idxs = Any[:, :, :]
+    for i in 1:3
+        for arg in args
+            idxs[i] = interpolate_index(indices(arg)[i], idxs[i])
+        end
+    end
+
+    return Tuple(idxs)
+end
+
+interpolate_index(::Colon, ::Colon) = Colon()
+interpolate_index(a, ::Colon) = a
+interpolate_index(::Colon, b) = b
+interpolate_index(a, b)       = (max(first(a), first(b)), min(last(a), last(b)))

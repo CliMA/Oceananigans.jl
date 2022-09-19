@@ -1,11 +1,12 @@
 using Oceananigans.Operators: interpolation_code
 
-struct Derivative{LX, LY, LZ, D, A, I, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+struct Derivative{LX, LY, LZ, D, A, IN, AD, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
                ∂ :: D
              arg :: A
                ▶ :: I
       abstract_∂ :: AD
             grid :: G
+         indices :: I
 
     @doc """
         Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
@@ -13,10 +14,10 @@ struct Derivative{LX, LY, LZ, D, A, I, AD, G, T} <: AbstractOperation{LX, LY, LZ
     Returns an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::I, abstract_∂::AD,
-                                 grid::G) where {LX, LY, LZ, D, A, I, AD, G}
+    function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
+                                 grid::G, indices::I) where {LX, LY, LZ, D, A, IN, AD, G, I}
         T = eltype(grid)
-        return new{LX, LY, LZ, D, A, I, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
+        return new{LX, LY, LZ, D, A, I, AD, G, I, T}(∂, arg, ▶, abstract_∂, grid, indices)
     end
 end
 
@@ -30,7 +31,8 @@ end
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
+    indices = interpolate_indices(L∂, L)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid, indices)
 end
 
 # Recompute location of derivative
@@ -120,5 +122,6 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            Adapt.adapt(to, deriv.arg),
                            Adapt.adapt(to, deriv.▶),
                            nothing,
-                           Adapt.adapt(to, deriv.grid))
+                           Adapt.adapt(to, deriv.grid),
+                           Adapt.adapt(to, deriv.indices))
 
