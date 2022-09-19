@@ -23,7 +23,7 @@ end
 
 function _multiary_operation(L, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    indices = interpolate_indices(args)
+    indices = interpolate_indices(args...)
     return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid, indices)
 end
 

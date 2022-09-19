@@ -73,4 +73,4 @@ end
 interpolate_index(::Colon, ::Colon) = Colon()
 interpolate_index(a, ::Colon) = a
 interpolate_index(::Colon, b) = b
-interpolate_index(a, b)       = (max(first(a), first(b)), min(last(a), last(b)))
+interpolate_index(a, b)       = max(first(a), first(b)):min(last(a), last(b))
