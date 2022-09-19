@@ -3,7 +3,7 @@ using Oceananigans.Operators: interpolation_code
 struct Derivative{LX, LY, LZ, D, A, IN, AD, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
                ∂ :: D
              arg :: A
-               ▶ :: I
+               ▶ :: IN
       abstract_∂ :: AD
             grid :: G
          indices :: I
@@ -17,7 +17,7 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, I, T} <: AbstractOperation{LX, LY
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
                                  grid::G, indices::I) where {LX, LY, LZ, D, A, IN, AD, G, I}
         T = eltype(grid)
-        return new{LX, LY, LZ, D, A, I, AD, G, I, T}(∂, arg, ▶, abstract_∂, grid, indices)
+        return new{LX, LY, LZ, D, A, IN, AD, G, I, T}(∂, arg, ▶, abstract_∂, grid, indices)
     end
 end
 
@@ -31,8 +31,7 @@ end
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(L∂, L)
-    indices = interpolate_indices(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid, indices)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid, indices(arg))
 end
 
 # Recompute location of derivative
