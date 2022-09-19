@@ -71,6 +71,8 @@ function interpolate_indices(args...)
 end
 
 # REMEMBER: issue an error when the indices are not compatible (e.g. parallel fields on different planes)
+# Non supported abstract operations which require an interpolation of sliced fields!
+# (maybe also issue an error in that case)
 interpolate_index(::Colon, ::Colon) = Colon()
 interpolate_index(a, ::Colon) = a
 interpolate_index(::Colon, b) = b

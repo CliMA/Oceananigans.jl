@@ -3,8 +3,9 @@ const unary_operators = Set()
 struct UnaryOperation{LX, LY, LZ, O, A, IN, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
     op :: O
     arg :: A
-    ▶ :: I
+    ▶ :: IN
     grid :: G
+    indices :: I
 
     @doc """
         UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
