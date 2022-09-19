@@ -108,9 +108,9 @@ end
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
-                                     adapt(to, c.indices),
                                      adapt(to, c.func), 
                                      adapt(to, c.grid),
+                                     adapt(to, c.indices),
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
