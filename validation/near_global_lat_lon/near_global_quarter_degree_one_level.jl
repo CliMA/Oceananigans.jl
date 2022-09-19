@@ -142,16 +142,6 @@ v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-@inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Face(), Center(), Center()) & !inactive_node(i, j, k, grid, Face(), Center(), Center()))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Center(), Face(), Center()) & !inactive_node(i, j, k, grid, Center(), Face(), Center()))
-
-# Keep a constant linear drag parameter independent on vertical level
-@inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
-@inline v_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_v(i, j, k, grid) * fields.v[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
-
-Fu = Forcing(u_immersed_bottom_drag, discrete_form = true, parameters = μ)
-Fv = Forcing(v_immersed_bottom_drag, discrete_form = true, parameters = μ)
-
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
 
@@ -159,7 +149,6 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
-# free_surface = ExplicitFreeSurface()
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 

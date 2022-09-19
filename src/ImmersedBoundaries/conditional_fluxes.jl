@@ -127,8 +127,8 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
         inactive_cells[idx] =  dir == :x ? 
                                :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node(+ $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(+ $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))                    
+                               :(inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))                    
     end
 
     return inactive_cells
