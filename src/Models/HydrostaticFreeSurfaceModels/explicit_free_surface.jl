@@ -79,6 +79,6 @@ end
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        η[i, j, Nz] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
+        η[i, j, Nz] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz] - (FT(0.5) + χ) * Gη⁻[i, j, Nz])
     end
 end
