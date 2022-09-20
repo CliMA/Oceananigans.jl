@@ -40,7 +40,7 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
 
     return fill_halo_regions!(field.data,
                               field.boundary_conditions,
-                              (:, :, :),
+                              field.indices,
                               instantiated_location(field),
                               field.grid,
                               field.boundary_buffers,
