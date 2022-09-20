@@ -2,10 +2,17 @@ using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, p
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
-struct WetPointEnstrophyConservingScheme end
 
-# Our three Coriolis schemes are energy-conservingm, enstrophy-conserving and wet-point enstrophy-conserving
-# with a "vector invariant" momentum advection scheme, but not with a "flux form"
+"""
+    struct WetCellEnstrophyConservingScheme
+
+A parameter object for a enstrophy-conserving Coriolis scheme that excludes dry edges (indices for which `peripheral_node == true`)
+for the interpolation of velocity
+"""
+struct WetCellEnstrophyConservingScheme end
+
+# Our three Coriolis schemes are energy-conserving, enstrophy-conserving and wet-point enstrophy-conserving
+# with a "vector invariant" momentum advection scheme, but not with 3a "flux form"
 # or "conservation form" advection scheme (which does not currently exist for
 # curvilinear grids).
 # The wet point enstrophy-conserving coriolis scheme eliminates the dry edges from 
@@ -32,7 +39,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme() or WetPointEnstrophyConservingScheme()`.
+- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `WetCellEnstrophyConservingScheme()`.
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
@@ -50,29 +57,29 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 #####
 
 # It might happen that a cell is wet but all the neighbouring staggered nodes are dry,
-# for example a 1-cell large channel
+# (an example is a 1-cell large channel)
 # In that case the Coriolis force is equal to zero
 
-const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPointEnstrophyConservingScheme}
+const CoriolisWetCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetCellEnstrophyConservingScheme}
 
 @inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
 
 @inline function mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
     neighbouring_wet_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
-    neighbouring_wet_nodes == 0 && return 0.0
-    return @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes
+    return ifelse(neighbouring_wet_nodes == 0, zero(grid),
+           @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes)
 end
 
 @inline function mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
     neighbouring_wet_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
-    neighbouring_wet_nodes == 0 && return 0.0
-    return @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes
+    return ifelse(neighbouring_wet_nodes == 0, zero(grid),
+           @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes)
 end
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
+@inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetCellEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
-@inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
+@inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisWetCellEnstrophyConserving, U) =
     @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
