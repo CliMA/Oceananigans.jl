@@ -49,6 +49,10 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 ##### Wet Point Enstrophy-conserving scheme
 #####
 
+# It might happen that a cell is wet but all the neighbouring staggered nodes are dry,
+# for example a 1-cell large channel
+# In that case we loose the Coriolis force
+
 const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPointEnstrophyConservingScheme}
 
 @inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
