@@ -34,7 +34,7 @@ Keyword arguments
 
 - `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme() or WetPointEnstrophyConservingScheme()`.
 """
-HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
+HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=WetPointEnstrophyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
