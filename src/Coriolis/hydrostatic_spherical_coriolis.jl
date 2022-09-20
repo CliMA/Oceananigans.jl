@@ -11,13 +11,6 @@ from the velocity interpolation
 """
 struct WetCellEnstrophyConservingScheme end
 
-# Our three Coriolis schemes are energy-conserving, enstrophy-conserving and wet-point enstrophy-conserving
-# with a "vector invariant" momentum advection scheme, but not with 3a "flux form"
-# or "conservation form" advection scheme (which does not currently exist for
-# curvilinear grids).
-# The wet point enstrophy-conserving coriolis scheme eliminates the dry edges from 
-# the velocity interpolation
-
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 

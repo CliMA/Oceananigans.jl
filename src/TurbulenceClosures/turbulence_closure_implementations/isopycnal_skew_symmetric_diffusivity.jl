@@ -173,7 +173,7 @@ end
     slope_x = - bx / bz
     slope_y = - by / bz
    
-    # in case of an 
+    # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
     slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
 
     return min(one(grid), slope_limiter.max_slope^2 / slope²)
