@@ -6,7 +6,7 @@ using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 """
     struct WetCellEnstrophyConservingScheme
 
-A parameter object for a enstrophy-conserving Coriolis scheme that excludes dry edges (indices for which `peripheral_node == true`)
+A parameter object for an enstrophy-conserving Coriolis scheme that excludes dry edges (indices for which `peripheral_node == true`)
 from the velocity interpolation
 """
 struct WetCellEnstrophyConservingScheme end
