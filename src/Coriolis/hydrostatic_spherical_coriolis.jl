@@ -4,7 +4,7 @@ using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 struct WetPointEnstrophyConservingScheme end
 
-# Our two Coriolis schemes are energy-conserving or enstrophy-conserving
+# Our three Coriolis schemes are energy-conservingm, enstrophy-conserving and wet-point enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
 # or "conservation form" advection scheme (which does not currently exist for
 # curvilinear grids).
@@ -51,7 +51,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 
 # It might happen that a cell is wet but all the neighbouring staggered nodes are dry,
 # for example a 1-cell large channel
-# In that case we loose the Coriolis force
+# In that case the Coriolis force is equal to zero
 
 const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPointEnstrophyConservingScheme}
 
