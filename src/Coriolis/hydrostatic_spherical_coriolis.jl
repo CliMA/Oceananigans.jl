@@ -53,11 +53,17 @@ const CoriolisWetPointEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetPo
 
 @inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
 
-@inline mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) =
-    @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
+@inline function mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
+    neighbouring_wet_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
+    neighbouring_wet_nodes == 0 && return 0.0
+    return @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes
+end
 
-@inline mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) = 
-    @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
+@inline function mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
+    neighbouring_wet_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
+    neighbouring_wet_nodes == 0 && return 0.0
+    return @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes
+end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetPointEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
