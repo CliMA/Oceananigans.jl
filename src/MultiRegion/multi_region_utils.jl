@@ -14,8 +14,8 @@ function validate_devices(partition, ::CUDAGPU, devices)
 end
 
 function validate_devices(partition, ::ROCMGPU, devices)
-    @assert length(unique(devices)) <= length(AMDGPU.get_agents(:gpu))
-    @assert maximum(devices) <= length(AMDGPU.get_agents(:gpu))
+    @assert length(unique(devices)) <= length(AMDGPU.devices())
+    @assert maximum(devices) <= length(AMDGPU.devices())
     @assert length(devices) <= length(partition)
     return devices
 end
@@ -27,7 +27,7 @@ function validate_devices(partition, ::CUDAGPU, devices::Number)
 end
 
 function validate_devices(partition, ::ROCMGPU, devices::Number)
-    @assert devices <= length(AMDGPU.get_agents(:gpu))
+    @assert devices <= length(AMDGPU.devices())
     @assert devices <= length(partition)
     return devices
 end
