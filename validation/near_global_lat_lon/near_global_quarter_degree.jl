@@ -10,13 +10,11 @@ using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, inactive_node, peripheral_node
-using CUDA: @allowscalar, device!
+using Oceananigans.ImmersedBoundaries: inactive_node, peripheral_node
+using CUDA: @allowscalar
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
-
-device!(3)
 
 @inline function visualize(field, lev, dims) 
     (dims == 1) && (idx = (lev, :, :))
@@ -128,7 +126,8 @@ target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.TurbulenceClosures
 
-@inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / 5days
+@inline νhb(i, j, k, grid, lx, ly, lz, clock, fields) =
+                (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))^2 / 5days
 
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
 convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
