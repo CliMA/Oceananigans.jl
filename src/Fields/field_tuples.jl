@@ -60,8 +60,7 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     
     # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
     windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-
-    ordinary_fields = filter(f -> f isa FullField, fields_with_bcs)
+    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
 
     # Fill halo regions for reduced and windowed fields
     for field in (reduced_fields..., windowed_fields...)
