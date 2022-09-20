@@ -122,7 +122,7 @@ using Logging
 using Statistics
 using LinearAlgebra
 using CUDA
-using AMDGPU: ROCArray, has_rocm_gpu, get_agents
+using AMDGPU: ROCArray, has_rocm_gpu, devices
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -273,7 +273,7 @@ function __init__()
     end
     if has_rocm_gpu()
         @debug "ROCM-enabled GPU(s) detected:"
-        for (id, agent) in enumerate(get_agents(:gpu))
+        for (id, agent) in enumerate(devices())
             @debug "$id: $(agent.name)"
         end
 
