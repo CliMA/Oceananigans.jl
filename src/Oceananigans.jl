@@ -114,7 +114,10 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    
+    # AMGX
+    @ifhasamgx
 
 using Printf
 using Logging
@@ -137,6 +140,19 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
+
+"Boolean denoting whether AMGX.jl can be loaded on machine."
+const hasamgx = @static Sys.islinux() ? true : false
+
+"""
+    @ifhasamgx expr
+
+Evaluate `expr` only if `hasamgx == true`.
+"""
+macro ifhasamgx(expr)
+
+    hasamgx ? :($(esc(expr))) : :(nothing) 
+end
 
 #####
 ##### Abstract types

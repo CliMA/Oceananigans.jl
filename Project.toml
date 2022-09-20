@@ -4,6 +4,7 @@ authors = ["Climate Modeling Alliance and contributors"]
 version = "0.77.3"
 
 [deps]
+AMGX = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 AlgebraicMultigrid = "2169fc97-5a83-5252-b627-83903c6c433c"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -38,6 +39,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
+AMGX = "0.1"
 Adapt = "^3"
 AlgebraicMultigrid = "0.5"
 CUDA = "3.8, 3.9"

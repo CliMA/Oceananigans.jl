@@ -1,5 +1,17 @@
 # This file is machine-generated - editing it directly is not advised
 
+[[AMGX]]
+deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
+git-tree-sha1 = "f31d1873273b84f6694f49d35c3a894a15e21e8a"
+uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
+version = "0.1.2"
+
+[[AMGX_jll]]
+deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "c846a105d1bfabc86f6302d747cc48acbc7bb489"
+uuid = "656d14af-56e4-5275-8e68-4e861d7b5043"
+version = "2.1.0+0"
+
 [[AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
 git-tree-sha1 = "69f7020bd72f069c219b5e8c236c1fa90d2cb409"
@@ -67,6 +79,12 @@ deps = ["Adapt", "CUDA", "Cassette", "KernelAbstractions", "SpecialFunctions", "
 git-tree-sha1 = "f35bc730e2b0cc4400835d32cd90b7ebb1ad6e81"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.3.3"
+
+[[CUDA_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "108e3ee33d8614b96c2ea43a621b0e8396d8a273"
+uuid = "e9e359dc-d701-5aa8-82ae-09bbf812ea83"
+version = "10.0.130+3"
 
 [[Calculus]]
 deps = ["LinearAlgebra"]
@@ -274,6 +292,12 @@ deps = ["Preferences"]
 git-tree-sha1 = "abc9885a7ca2052a736a600f7fa66209f96506e1"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
 version = "1.4.1"
+
+[[JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.3"
 
 [[JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
