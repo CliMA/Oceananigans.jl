@@ -3,6 +3,7 @@ using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Printf
+using CUDA
 
 """
 Benchmarks the bumpy baroclinic adjustment problem with various implicit free-surface solvers.
@@ -10,7 +11,7 @@ Benchmarks the bumpy baroclinic adjustment problem with various implicit free-su
 
 arch = GPU()
 
-for N in 10:10:250
+for N in 20:10:250
     println("")
     @info "N=$N"
     
@@ -55,9 +56,9 @@ for N in 10:10:250
             fft_preconditioner = FFTImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=fft_preconditioner)
         elseif implicit_free_surface_solver == :PreconditionedConjugateGradient_withMGpreconditioner
-            mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
             maxiter = 2
-            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner, maxiter = maxiter)
+            mg_preconditioner = MGImplicitFreeSurfaceSolver(grid, Dict(:maxiter => maxiter))
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=mg_preconditioner)
         else
             free_surface = ImplicitFreeSurface(solver_method=implicit_free_surface_solver)
         end
@@ -65,7 +66,7 @@ for N in 10:10:250
         model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                             coriolis = BetaPlane(latitude = -45),
                                             buoyancy = BuoyancyTracer(),
-                                            closure = (diffusive_closure, horizontal_closure),
+                                            closure = (horizontal_closure, ),
                                             tracers = :b,
                                             momentum_advection = WENO(),
                                             tracer_advection = WENO())
@@ -124,7 +125,7 @@ for N in 10:10:250
         simulation.stop_iteration = 1200
 
         @info "Benchmark with $implicit_free_surface_solver free surface implicit solver:"
-        @time run!(simulation)
+        CUDA.@time run!(simulation)
 
         finalize_solver!(model.free_surface.implicit_step_solver)
     end
