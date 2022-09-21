@@ -24,6 +24,6 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
 @inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
     LX, LY, LZ = location(co)
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(LX(), LY(), LZ(), i, j, k, ibg))
+    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(i, j, k, ibg, LX(), LY(), LZ()))
 end 
 
