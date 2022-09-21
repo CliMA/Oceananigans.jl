@@ -1,7 +1,6 @@
 using Statistics
 using JLD2
 using Printf
-using Plots
 using Oceananigans
 using Oceananigans.Units
 
@@ -22,7 +21,7 @@ using Oceananigans: prognostic_fields
     (dims == 3) && (idx = (:, :, lev))
 
     r = deepcopy(Array(interior(field)))[idx...]
-    r[ r.==0 ] .= NaN
+    r[r.==0] .= NaN
     return r
 end
 
@@ -163,7 +162,7 @@ u_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = true, parameters = τʸ)
 
 # Linear bottom drag:
-μ = 0.001 # ms⁻¹
+μ = 0.001 # m s⁻¹
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
@@ -212,11 +211,11 @@ end
 
 T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
                                                 discrete_form = true,
-                                                parameters = (λ = Δz_top/7days, T★ = target_sea_surface_temperature))
+                                                parameters = (λ = Δz_top / 7days, T★ = target_sea_surface_temperature))
 
 S_surface_relaxation_bc = FluxBoundaryCondition(surface_salinity_relaxation,
                                                 discrete_form = true,
-                                                parameters = (λ = Δz_top/7days, S★ = target_sea_surface_salinity))
+                                                parameters = (λ = Δz_top / 7days, S★ = target_sea_surface_salinity))
 
 u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc, immersed = u_immersed_bc)
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc, immersed = v_immersed_bc)
@@ -227,15 +226,15 @@ free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    free_surface = free_surface,
-                                    momentum_advection = WENO(vector_invariant = VelocityStencil()),
-                                    coriolis = HydrostaticSphericalCoriolis(),
-                                    buoyancy = buoyancy,
-                                    tracers = (:T, :S),
-                                    closure = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
-                                    boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
-                                    tracer_advection = WENO(underlying_grid))
+model = HydrostaticFreeSurfaceModel(; grid,
+                                      free_surface,
+                                      momentum_advection = WENO(vector_invariant = VelocityStencil()),
+                                      coriolis = HydrostaticSphericalCoriolis(),
+                                      buoyancy,
+                                      tracers = (:T, :S),
+                                      closure = (vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
+                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
+                                      tracer_advection = WENO(underlying_grid))
 
 #####
 ##### Initial condition:
@@ -260,7 +259,7 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 6minutes  # for initialization, then we can go up to 6 minutes?
+Δt = 6minutes  # probably we can go to 10min or 15min?
 
 simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
@@ -315,5 +314,3 @@ run!(simulation, pickup = pickup_file)
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """
-
-
