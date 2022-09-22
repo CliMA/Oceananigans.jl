@@ -129,7 +129,7 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-# using NCDatasets
+using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -142,7 +142,7 @@ import Base:
     push!
 
 "Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx = false #@static Sys.islinux() ? true : false
+const hasamgx = @static Sys.islinux() ? true : false
 
 """
     @ifhasamgx expr
