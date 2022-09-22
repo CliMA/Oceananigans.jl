@@ -62,12 +62,6 @@ git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.4.2"
 
-[[CFTime]]
-deps = ["Dates", "Printf"]
-git-tree-sha1 = "ed2e76c1c3c43fd9d0cb9248674620b29d71f2d1"
-uuid = "179af706-886a-5703-950a-314cd64e0468"
-version = "0.1.2"
-
 [[CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "TimerOutputs"]
 git-tree-sha1 = "49549e2c28ffb9cc77b3689dc10e46e6271e9452"
@@ -140,12 +134,6 @@ git-tree-sha1 = "fb5f5316dd3fd4c5e7c30a24d50643b73e37cd40"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.10.0"
 
-[[DataStructures]]
-deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "d1fff3a548102f48987a52a2e0d114fa97d730f0"
-uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.18.13"
-
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
 uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
@@ -160,6 +148,12 @@ deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialF
 git-tree-sha1 = "992a23afdb109d0d2f8802a30cf5ae4b1fe7ea68"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
 version = "1.11.1"
+
+[[DiskArrays]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "230d999fc78652ea070312373ed1bfe2489e4fe5"
+uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
+version = "0.3.6"
 
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -209,6 +203,12 @@ git-tree-sha1 = "94f5101b96d2d968ace56f7f2db19d0a5f592e28"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.15.0"
 
+[[Formatting]]
+deps = ["Printf"]
+git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
+uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
+version = "0.4.2"
+
 [[GPUArrays]]
 deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
 git-tree-sha1 = "45d7deaf05cbb44116ba785d147c518ab46352d7"
@@ -234,9 +234,9 @@ version = "1.3.0"
 
 [[HDF5_jll]]
 deps = ["Artifacts", "JLLWrappers", "LibCURL_jll", "Libdl", "OpenSSL_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "c003b31e2e818bc512b0ff99d7dce03b0c1359f5"
+git-tree-sha1 = "4cc2bb72df6ff40b055295fdef6d92955f9dede8"
 uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
-version = "1.12.2+1"
+version = "1.12.2+2"
 
 [[IfElse]]
 git-tree-sha1 = "debdd00ffef04665ccbb3e150747a77560e8fad1"
@@ -353,7 +353,7 @@ uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
 version = "1.16.1+1"
 
 [[LinearAlgebra]]
-deps = ["Libdl"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[LogExpFunctions]]
@@ -415,17 +415,17 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 [[MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
-[[NCDatasets]]
-deps = ["CFTime", "DataStructures", "Dates", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "16463e1587495780aa05e05440f16959042bfcb1"
-uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.12.7"
-
 [[NaNMath]]
 deps = ["OpenLibm_jll"]
 git-tree-sha1 = "a7c3d1da1189a1c2fe843a3bfa04d18d20eb3211"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "1.0.1"
+
+[[NetCDF]]
+deps = ["DiskArrays", "Formatting", "NetCDF_jll"]
+git-tree-sha1 = "328178762645783b20495d408ab317b4c2d25b1a"
+uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
+version = "0.11.7"
 
 [[NetCDF_jll]]
 deps = ["Artifacts", "HDF5_jll", "JLLWrappers", "LibCURL_jll", "Libdl", "Pkg", "XML2_jll", "Zlib_jll"]
@@ -441,6 +441,10 @@ deps = ["Adapt"]
 git-tree-sha1 = "1ea784113a6aa054c5ebd95945fa5e52c2f378e7"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 version = "1.12.7"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -512,7 +516,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Random123]]
@@ -695,6 +699,10 @@ version = "2.9.14+0"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
