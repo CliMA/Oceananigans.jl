@@ -112,6 +112,6 @@ end
     i, j = @index(Global, NTuple)
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     δ_Q = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, grid.Nz] = (δ_Q - Az * η[i, j, grid.Nz] / Δt) / (g * Lz * Δt * Az)
+    @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, grid.Nz] / Δt) / (g * Lz * Δt * Az)
 end
 
