@@ -145,7 +145,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 """
     CenterField(grid; kw...)
 
-Returns `Field{Center, Center, Center}` on `arch`itecture and `grid`.
+Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
 CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
@@ -153,7 +153,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center
 """
     XFaceField(grid; kw...)
 
-Returns `Field{Face, Center, Center}` on `grid`.
+Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
 XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
@@ -161,7 +161,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, C
 """
     YFaceField(grid; kw...)
 
-Returns `Field{Center, Face, Center}` on `grid`.
+Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
 YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
@@ -169,7 +169,7 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center,
 """
     ZFaceField(grid; kw...)
 
-Returns `Field{Center, Center, Face}` on `grid`.
+Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
 ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Face), grid, T; kw...)
