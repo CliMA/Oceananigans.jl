@@ -1,5 +1,5 @@
 using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
@@ -29,7 +29,7 @@ end
 ##### Support for written Sliced computed fields (correct boundary conditions and data)
 #####
 
-function maybe_sliced_field(user_output::Field, indices)
+function maybe_sliced_field(user_output::ComputedField, indices)
     boundary_conditions = FieldBoundaryConditions(indices, user_output.boundary_conditions)
     output = Field(location(user_output), user_output.grid; 
                    boundary_conditions, 
@@ -41,6 +41,7 @@ end
 
 maybe_sliced_field(user_output::AbstractOperation, indices) = user_output
 maybe_sliced_field(user_output::Reduction, indices) = user_output
+maybe_sliced_field(user_output::Field, indices) = user_output
 
 #####
 ##### Support for Field, Reduction, and AbstractOperation outputs
