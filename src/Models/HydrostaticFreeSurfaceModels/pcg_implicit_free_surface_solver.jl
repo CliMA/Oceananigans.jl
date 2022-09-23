@@ -197,7 +197,7 @@ end
 
 @kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, η, grid, Az, Lz)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, grid.Nz] = pcg_rhs[i, j, grid.Nz] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz] / (Lz * Az)
 end
 
 # TODO: make it so adding this term:
