@@ -57,7 +57,7 @@ function set!(u::Field, v::Field)
             copyto!(u_parent, v_parent)
         catch # just copy interior points
             v_data = arch_array(architecture(u), v.data)
-            interior(u) .= interior(v_data, location(v), v.grid)
+            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
         end
     end
 
