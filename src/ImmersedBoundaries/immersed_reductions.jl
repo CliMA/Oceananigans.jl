@@ -23,7 +23,7 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 @inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, nothing, 0), dims)
 
 @inline function get_condition(condition::NotImmersed, i, j, k, ibg, co::ConditionalOperation, args...)
-    LX, LY, LZ = location(co)    
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(LX(), LY(), LZ(), i, j, k, ibg))
+    LX, LY, LZ = location(co)
+    return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(i, j, k, ibg, LX(), LY(), LZ()))
 end 
 
