@@ -3,6 +3,7 @@ using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
+using AlgebraicMultigrid: aspreconditioner
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
@@ -74,6 +75,7 @@ end
 build_preconditioner(::Val{nothing},            A, settings)  = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
+build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A;)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
@@ -174,3 +176,36 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
    return SparseInversePreconditioner(Minv)
 end
+
+function multigrid_preconditioner(A::AbstractMatrix;)
+    ml = create_multilevel(RugeStubenAMG(), A)
+    return aspreconditioner(ml)
+end
+
+@ifhasamgx function multigrid_preconditioner(A::CuSparseMatrixCSC;)
+    return MultigridGPUPreconditioner(AMGXMultigridSolver(A))
+end
+
+struct MultigridGPUPreconditioner{AMGXMultigridSolver}
+    amgx_solver :: AMGXMultigridSolver
+end
+
+import LinearAlgebra: \, *, ldiv!, mul!
+
+@ifhasamgx ldiv!(p::MultigridGPUPreconditioner, b) = copyto!(b, p \ b)
+
+@ifhasamgx function ldiv!(x, p::MultigridGPUPreconditioner, b)
+    x .= 0
+    AMGX.upload!(p.amgx_solver.device_b, b)
+    AMGX.upload!(p.amgx_solver.device_x, x)
+    AMGX.solve!(p.amgx_solver.device_x, p.amgx_solver.solver, p.amgx_solver.device_b)
+    AMGX.copy!(x, p.amgx_solver.device_x)
+end
+
+mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
+
+@ifhasamgx function \(p::MultigridGPUPreconditioner, b)
+    ldiv!(similar(b), p, b)
+end
+
+@ifhasamgx finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amgx_solver)

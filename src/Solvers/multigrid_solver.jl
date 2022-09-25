@@ -164,6 +164,22 @@ end
                                                     x_array,
                                                     b_array
                                                     )
+
+    amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
+
+    return MultigridGPUSolver(GPU(),
+                              template_field.grid,
+                              matrix,
+                              abstol,
+                              reltol,
+                              maxiter,
+                              x_array,
+                              b_array,
+                              amgx_solver
+                              )
+end
+
+@ifhasamgx function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
     try
         AMGX.initialize()
         AMGX.initialize_plugins()
@@ -198,25 +214,14 @@ end
     
     AMGX.setup!(solver, device_matrix)
 
-    amgx_solver = AMGXMultigridSolver(config,
-                                      resources,
-                                      solver,
-                                      device_matrix,
-                                      device_x,
-                                      device_b,
-                                      csr_matrix
-                                      )
-
-    return MultigridGPUSolver(GPU(),
-                              template_field.grid,
-                              matrix,
-                              abstol,
-                              reltol,
-                              maxiter,
-                              x_array,
-                              b_array,
-                              amgx_solver
-                              )
+    return AMGXMultigridSolver(config,
+                               resources,
+                               solver,
+                               device_matrix,
+                               device_x,
+                               device_b,
+                               csr_matrix
+                               )
 end
 
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
@@ -307,17 +312,14 @@ end
     s = solver.amgx_solver
     AMGX.upload!(s.device_b, solver.b_array)
     AMGX.upload!(s.device_x, solver.x_array)
-    AMGX.setup!(s.solver, s.device_matrix)
     AMGX.solve!(s.device_x, s.solver, s.device_b)
     AMGX.copy!(solver.x_array, s.device_x)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-@ifhasamgx function finalize_solver!(solver::MultigridGPUSolver)
-    @info "Finalizing the Multigrid solver on GPU"
-    
-    s = solver.amgx_solver
+@ifhasamgx function finalize_solver!(s::AMGXMultigridSolver)
+    @info "Finalizing the AMGX Multigrid solver on GPU"
     close(s.device_matrix)
     close(s.device_x)
     close(s.device_b)
@@ -329,6 +331,8 @@ end
 
     return nothing
 end
+
+@ifhasamgx finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 
