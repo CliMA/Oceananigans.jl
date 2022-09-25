@@ -29,9 +29,6 @@ end
 @inline geo_mean_Δᶠ(i, j, k, grid::AbstractGrid) =
     cbrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid))
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C) = zero(grid)
-@inline calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U) = zero(grid)
-
 @kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds νₑ[i, j, k] = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, args...)
