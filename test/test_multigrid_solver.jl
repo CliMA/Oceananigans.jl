@@ -2,6 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Solvers: solve!, finalize_solver!
 using Statistics
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
+
+initialize_AMGX()
 
 function run_poisson_equation_test(grid)
     arch = architecture(grid)
@@ -55,3 +58,5 @@ end
         run_poisson_equation_test(grid)
     end
 end
+
+finalize_AMGX()

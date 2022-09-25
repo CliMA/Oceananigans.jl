@@ -3,6 +3,7 @@ using Oceananigans.Units
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
 using Printf
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
 """
 Benchmarks the bumpy baroclinic adjustment problem with various implicit free-surface solvers.
@@ -44,6 +45,8 @@ implicit_free_surface_solvers = (:FastFourierTransform,
                                  :PreconditionedConjugateGradient_withFFTpreconditioner,
                                  :PreconditionedConjugateGradient_withMGpreconditioner,
                                  )
+
+initialize_AMGX()
 
 for implicit_free_surface_solver in implicit_free_surface_solvers
 
@@ -124,3 +127,5 @@ for implicit_free_surface_solver in implicit_free_surface_solvers
 
     finalize_solver!(model.free_surface.implicit_step_solver)
 end
+
+finalize_AMGX()

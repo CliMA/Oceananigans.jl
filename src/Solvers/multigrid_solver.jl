@@ -180,22 +180,14 @@ end
 end
 
 @ifhasamgx function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+    tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
     try
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
+    catch e 
+        @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX`?"
         AMGX.initialize()
         AMGX.initialize_plugins()
-    catch e
-        AMGX.finalize_plugins()
-        AMGX.finalize()        
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-    end
-
-    if reltol == 0
-        @info "Multigrid solver with absolute tolerance = $abstol"
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => abstol))
-    else
-        @info "Multigrid solver with relative tolerance = $reltol"
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol, "convergence" => "RELATIVE_INI_CORE"))
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
     end
     resources = AMGX.Resources(config)
     solver = AMGX.Solver(resources, AMGX.dDDI, config)
@@ -223,6 +215,28 @@ end
                                csr_matrix
                                )
 end
+
+@ifhasamgx function initialize_AMGX()
+    @info "initialize_AMGX"
+    try
+        AMGX.initialize(); AMGX.initialize_plugins()
+    catch e
+        @info "It appears AMGX was not finalized. Have you called `initialize_AMGX`?"
+        AMGX.finalize_plugins()
+        AMGX.finalize()
+        AMGX.initialize()
+        AMGX.initialize_plugins()
+    end
+end
+
+@ifhasamgx function finalize_AMGX()
+    @info "finalize_AMGX"
+    AMGX.finalize_plugins(); AMGX.finalize()
+end
+
+# TODO how do we default to nothing?
+# @inline initialize_AMGX() = nothing
+# @inline finalize_AMGX() = nothing
 
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
@@ -326,8 +340,6 @@ end
     close(s.solver)
     close(s.resources)
     close(s.config)
-    AMGX.finalize_plugins()
-    AMGX.finalize()
 
     return nothing
 end

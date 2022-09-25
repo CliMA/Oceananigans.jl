@@ -16,7 +16,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     implicit_free_surface_linear_operation!,
     finalize_solver!
 
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
+
 using Oceananigans.Grids: with_halo
+
+initialize_AMGX()
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -152,7 +156,7 @@ end
                                                abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
             mgcg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
             finalize_solver!(mgcg_solver)
-    end
+        end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
 
@@ -230,3 +234,5 @@ end
         finalize_solver!(mg_model.free_surface.implicit_step_solver)
     end
 end
+
+finalize_AMGX()
