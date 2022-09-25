@@ -89,7 +89,7 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     @eval begin
         function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, arch, dep, grid, args...; kwargs...)
-            $fill_left_halo!(c,  left_bc, arch, event, grid, args...; kwargs...)
+            $fill_left_halo!(c, left_bc, arch, event, grid, args...; kwargs...)
             return NoneEvent()
         end   
         function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 

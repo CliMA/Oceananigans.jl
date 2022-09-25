@@ -206,9 +206,9 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 @inline whole_halo(::Colon,       loc) = true
 
 # If they are not... we have to calculate the size!
-@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[2], loc[2]) ? size(grid, 2) : size(c, 2), whole_halo(idx[3], loc[3]) ? size(grid, 3) : size(c, 3))
-@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[1], loc[1]) ? size(grid, 1) : size(c, 1), whole_halo(idx[3], loc[3]) ? size(grid, 3) : size(c, 3))
-@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) = @inbounds (whole_halo(idx[1], loc[1]) ? size(grid, 1) : size(c, 1), whole_halo(idx[2], loc[2]) ? size(grid, 2) : size(c, 2))
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
 
 # Remember that Periodic BC have to fill also the halo points always!
 @inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = @inbounds size(c)[[2, 3]]
@@ -221,6 +221,6 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 
 # The offsets are non-zero only if the indices are not Colon
 @inline fill_halo_offset(::Symbol, args...)    = (0, 0)
-@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
-@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (ifelse(idx[2] == Colon(), 0, first(idx[2])-1), ifelse(idx[3] == Colon(), 0, first(idx[3])-1))
+@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (ifelse(idx[1] == Colon(), 0, first(idx[1])-1), ifelse(idx[3] == Colon(), 0, first(idx[3])-1))
+@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (ifelse(idx[1] == Colon(), 0, first(idx[1])-1), ifelse(idx[2] == Colon(), 0, first(idx[2])-1))
