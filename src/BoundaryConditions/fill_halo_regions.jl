@@ -221,6 +221,6 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 
 # The offsets are non-zero only if the indices are not Colon
 @inline fill_halo_offset(::Symbol, args...)    = (0, 0)
-@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (ifelse(idx[2] == Colon(), 0, first(idx[2])-1), ifelse(idx[3] == Colon(), 0, first(idx[3])-1))
-@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (ifelse(idx[1] == Colon(), 0, first(idx[1])-1), ifelse(idx[3] == Colon(), 0, first(idx[3])-1))
-@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (ifelse(idx[1] == Colon(), 0, first(idx[1])-1), ifelse(idx[2] == Colon(), 0, first(idx[2])-1))
+@inline fill_halo_offset(::Tuple, ::WEB, idx)  = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::SNB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
+@inline fill_halo_offset(::Tuple, ::TBB, idx)  = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
