@@ -135,7 +135,7 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
-@inline function calc_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
@@ -157,7 +157,7 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
