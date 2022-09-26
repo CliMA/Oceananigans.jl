@@ -13,19 +13,6 @@ function restrict_to_interior(index::UnitRange, loc, topo, N)
 end
 
 #####
-##### Function output fallback
-#####
-
-function construct_output(output, grid, indices, with_halos)
-    if !(indices isa typeof(default_indices(3)))
-        output_type = output isa Function ? "Function" : ""
-        @warn "Cannot slice $output_type $output with $indices: output will be unsliced."
-    end
-
-    return output
-end
-
-#####
 ##### Support for written Sliced computed fields (correct boundary conditions and data)
 #####
 
@@ -42,6 +29,19 @@ end
 maybe_sliced_field(user_output::AbstractOperation, indices) = user_output
 maybe_sliced_field(user_output::Reduction, indices) = user_output
 maybe_sliced_field(user_output::Field, indices) = user_output
+
+#####
+##### Function output fallback
+#####
+
+function construct_output(output, grid, indices, with_halos)
+    if !(indices isa typeof(default_indices(3)))
+        output_type = output isa Function ? "Function" : ""
+        @warn "Cannot slice $output_type $output with $indices: output will be unsliced."
+    end
+
+    return output
+end
 
 #####
 ##### Support for Field, Reduction, and AbstractOperation outputs
