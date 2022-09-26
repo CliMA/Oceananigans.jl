@@ -67,7 +67,7 @@ end
 
 # TODO: distributed halo filling does not support windowed fields at the moment
 # TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
-function fill_halo_regions!(c::OffsetArray, bcs, loc, grid::DistributedGrid, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
