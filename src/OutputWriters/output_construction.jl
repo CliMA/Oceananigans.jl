@@ -28,7 +28,7 @@ end
 
 maybe_sliced_field(user_output::AbstractOperation, indices) = user_output
 maybe_sliced_field(user_output::Reduction, indices) = user_output
-maybe_sliced_field(user_output::Field, indices) = user_output
+maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
 
 #####
 ##### Function output fallback
@@ -66,7 +66,7 @@ function construct_output(user_output::Union{AbstractField, Reduction}, grid, us
     return construct_output(user_output, indices)
 end
 
-construct_output(user_output, indices) = view(user_output, indices...)
+construct_output(user_output::Field, indices) = user_output
 construct_output(user_output::Reduction, indices) = Field(user_output; indices)
 construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
