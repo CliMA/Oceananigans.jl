@@ -38,7 +38,7 @@ function set_simple_divergent_velocity!(model)
     Δz = Δzᶜᶠᶜ(i, j, k, grid)
 
     # We prescribe the value of the zonal transport in a cell, i.e., `u * Δy * Δz`. This
-    # way `norm(rhs)` of the free-surface solver does not depend on the grid extensd/resolution.
+    # way `norm(rhs)` of the free-surface solver does not depend on the grid extent/resolution.
     transport = 1e5 # m³ s⁻¹
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
 
