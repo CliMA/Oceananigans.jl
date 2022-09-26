@@ -96,14 +96,24 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
     N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
-    Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
-    ς  = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
+    Δᶠ = Δᶠ_ccc(i, j, k, grid, closure)
+    ς  = stability(N², Σ², closure.Cb) # Use unity Prandtl number.
 
-    return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²)
+    return νₑ_deardorff(ς, closure.C, Δᶠ, Σ²)
 end
+
+
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, buoyancy, U, C, ::Val{tracer_index}) where {tracer_index}
+    νₑ = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
+
+    @inbounds Pr = closure.Pr[tracer_index]
+
+    return νₑ / Pr
+end
+
 
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
