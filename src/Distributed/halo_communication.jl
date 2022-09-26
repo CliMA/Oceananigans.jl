@@ -65,6 +65,7 @@ function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; 
     end
 end
 
+# REMEMBER! indices, kernel_size (:yz, :xz and :xy) and offset are not used in distributed halo filling because sliced fields are not supported yet
 # TODO: distributed halo filling does not support windowed fields at the moment
 # TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
