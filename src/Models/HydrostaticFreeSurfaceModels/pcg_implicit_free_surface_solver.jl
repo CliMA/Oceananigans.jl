@@ -62,7 +62,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
         get(settings, :preconditioner, nothing)
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
-    right_hand_side = Field((Center, Center, Center), grid, indices = (:, :, grid.Nz))
+    right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
                                                    template_field = right_hand_side,
