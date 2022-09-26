@@ -92,7 +92,7 @@ end
     Az   = Azᶜᶜᶜ(i, j, 1, grid)
     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t    = displaced_xy_index(i, j, grid, region, partition)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, grid.Nz+1] / Δt) / (g * Δt)
 end
 
 function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolver, rhs, g, Δt)
@@ -127,5 +127,5 @@ end
 @kernel function _redistribute_lhs!(η, sol, region, grid, partition)
     i, j = @index(Global, NTuple)
     t = displaced_xy_index(i, j, grid, region, partition)
-    @inbounds η[i, j, 1] = sol[t]
+    @inbounds η[i, j, grid.Nz+1] = sol[t]
 end

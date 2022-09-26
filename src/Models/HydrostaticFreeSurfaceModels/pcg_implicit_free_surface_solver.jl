@@ -116,7 +116,7 @@ end
     i, j = @index(Global, NTuple)
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     δ_Q = flux_div_xyᶜᶜᶜ(i, j, grid.Nz, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, grid.Nz] = (δ_Q - Az * η[i, j, grid.Nz] / Δt) / (g * Δt)
+    @inbounds rhs[i, j, grid.Nz+1] = (δ_Q - Az * η[i, j, grid.Nz+1] / Δt) / (g * Δt)
 end
 
 """
@@ -167,8 +167,9 @@ where  ̂ indicates a vertical integral, and
 """
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
+    k_surface = grid.Nz+1
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
-    @inbounds L_ηⁿ⁺¹[i, j, grid.Nz] = Az_∇h²ᶜᶜᶜ(i, j, grid.Nz, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, grid.Nz] / (g * Δt^2)
+    @inbounds L_ηⁿ⁺¹[i, j, k_surface] = Az_∇h²ᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_surface] / (g * Δt^2)
 end
 
 #####
@@ -197,7 +198,7 @@ end
 
 @kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, η, grid, Az, Lz)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
 end
 
 # TODO: make it so adding this term:
@@ -292,12 +293,12 @@ end
                                           Azᶜᶜᶜ(i, j, 1, grid) / (g * Δt^2)
 
 @inline heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ax, ay) =
-    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, grid.Nz] -
-                                                                Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, grid.Nz] - 
-                                                                Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, grid.Nz] - 
-                                                                Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, grid.Nz])
+    @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * (r[i, j, 1] - Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, grid.Nz+1] -
+                                                                Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, grid.Nz+1] - 
+                                                                Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, grid.Nz+1] - 
+                                                                Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, grid.Nz+1])
 
 @kernel function _diagonally_dominant_precondition!(P_r, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
-    @inbounds P_r[i, j, grid.Nz] = heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
+    @inbounds P_r[i, j, grid.Nz+1] = heuristic_inverse_times_residuals(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
 end

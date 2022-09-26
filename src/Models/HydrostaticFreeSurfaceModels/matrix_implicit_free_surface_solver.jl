@@ -104,7 +104,7 @@ end
     Az   = Azᶜᶜᶜ(i, j, 1, grid)
     δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, grid.Nz] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, grid.Nz+1] / Δt) / (g * Δt)
 end
 
 function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitational_acceleration)

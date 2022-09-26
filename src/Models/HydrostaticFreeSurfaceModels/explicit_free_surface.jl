@@ -41,10 +41,10 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.η)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.η)
 
 #####
 ##### Time stepping
@@ -79,6 +79,6 @@ end
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        η[i, j, Nz] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz] - (FT(0.5) + χ) * Gη⁻[i, j, Nz])
+        η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
     end
 end
