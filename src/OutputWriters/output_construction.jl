@@ -13,7 +13,7 @@ function restrict_to_interior(index::UnitRange, loc, topo, N)
 end
 
 #####
-##### Support for written Sliced computed fields (correct boundary conditions and data)
+##### Support for Sliced fields with non-trivial indices
 #####
 
 function maybe_sliced_field(user_output::ComputedField, indices)
@@ -26,8 +26,8 @@ function maybe_sliced_field(user_output::ComputedField, indices)
     return output
 end
 
-maybe_sliced_field(user_output::AbstractOperation, indices) = user_output
-maybe_sliced_field(user_output::Reduction, indices) = user_output
+maybe_sliced_field(user_output::AbstractOperation, indices) = Field(user_output; indices)
+maybe_sliced_field(user_output::Reduction, indices) = Field(user_output; indices)
 maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
 
 #####
@@ -61,14 +61,8 @@ end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
-    user_output = maybe_sliced_field(user_output, indices)
-
-    return construct_output(user_output, indices)
+    return maybe_sliced_field(user_output, indices)
 end
-
-construct_output(user_output::Field, indices) = user_output
-construct_output(user_output::Reduction, indices) = Field(user_output; indices)
-construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
 #####
 ##### Time-averaging
