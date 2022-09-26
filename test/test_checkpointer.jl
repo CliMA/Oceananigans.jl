@@ -67,7 +67,7 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
     closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-    true_model = HydrostaticFreeSurfaceModel(; grid, closure, buoyancy=nothing, tracers=())
+    true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
     ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
