@@ -63,7 +63,8 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 function reconstruct_global_field(mrf::MultiRegionField)
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
-    global_field = Field(location(mrf), global_grid)
+    indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
+    global_field = Field(location(mrf), global_grid; indices)
   
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
@@ -71,6 +72,38 @@ function reconstruct_global_field(mrf::MultiRegionField)
     
     fill_halo_regions!(global_field)
     return global_field
+end
+
+function reconstruct_global_indices(indices, p::XPartition, N)
+    idx1 = getregion(indices, 1)[1]
+    idxl = getregion(indices, length(p))[1]
+
+    if idx1 == Colon() && idxl == Colon()
+        idx_x = Colon()
+    else
+        idx_x = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
+    end
+
+    idx_y = getregion(indices, 1)[2]
+    idx_z = getregion(indices, 1)[3]
+
+    return (idx_x, idx_y, idx_z)
+end
+
+function reconstruct_global_indices(indices, p::YPartition, N)
+    idx1 = getregion(indices, 1)[2]
+    idxl = getregion(indices, length(p))[2]
+
+    if idx1 == Colon() && idxl == Colon()
+        idx_y = Colon()
+    else
+        idx_y = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[2] : last(idxl))
+    end
+
+    idx_x = getregion(indices, 1)[1]
+    idx_z = getregion(indices, 1)[3]
+
+    return (idx_x, idx_y, idx_z)
 end
 
 ## Functions applied regionally
