@@ -10,10 +10,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
                                                         finalize_solver!
 using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
-initialize_AMGX()
-
 @testset "Immersed boundaries test divergent flow solve with hydrostatic free surface models" begin
     for arch in archs
+        initialize_AMGX(arch)
         A = typeof(arch)
         @info "Testing immersed boundaries divergent flow solve [$A]"
 
@@ -70,7 +69,6 @@ initialize_AMGX()
         end
 
         @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ interior(sol[3]))
+        finalize_AMGX(arch)
     end
 end
-
-finalize_AMGX()

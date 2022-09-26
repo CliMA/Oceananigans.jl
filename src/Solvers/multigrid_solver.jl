@@ -216,28 +216,6 @@ end
                                )
 end
 
-@ifhasamgx function initialize_AMGX()
-    @info "initialize_AMGX"
-    try
-        AMGX.initialize(); AMGX.initialize_plugins()
-    catch e
-        @info "It appears AMGX was not finalized. Have you called `initialize_AMGX`?"
-        AMGX.finalize_plugins()
-        AMGX.finalize()
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-    end
-end
-
-@ifhasamgx function finalize_AMGX()
-    @info "finalize_AMGX"
-    AMGX.finalize_plugins(); AMGX.finalize()
-end
-
-# TODO how do we default to nothing?
-# @inline initialize_AMGX() = nothing
-# @inline finalize_AMGX() = nothing
-
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
@@ -330,6 +308,25 @@ end
     AMGX.copy!(solver.x_array, s.device_x)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
+end
+
+initialize_AMGX(::CPU) = nothing
+finalize_AMGX(::CPU) = nothing
+
+function initialize_AMGX(::GPU)
+    try
+        @ifhasamgx AMGX.initialize(); AMGX.initialize_plugins()
+    catch e
+        @info "It appears AMGX was not finalized. Have you called `finalize_AMGX`?"
+        AMGX.finalize_plugins()
+        AMGX.finalize()
+        AMGX.initialize()
+        AMGX.initialize_plugins()
+    end
+end
+
+function finalize_AMGX(::GPU)
+    @ifhasamgx AMGX.finalize_plugins(); AMGX.finalize()
 end
 
 @ifhasamgx function finalize_solver!(s::AMGXMultigridSolver)

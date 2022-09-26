@@ -202,7 +202,7 @@ import LinearAlgebra: \, *, ldiv!, mul!
     AMGX.copy!(x, p.amgx_solver.device_x)
 end
 
-mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
+@ifhasamgx mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
 
 @ifhasamgx function \(p::MultigridGPUPreconditioner, b)
     ldiv!(similar(b), p, b)

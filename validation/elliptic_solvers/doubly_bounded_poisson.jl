@@ -109,7 +109,7 @@ fill_halo_regions!(φ_cg)
 
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
-initialize_AMGX()
+initialize_AMGX(arch)
 
 φ_mg = CenterField(grid)
 
@@ -185,7 +185,7 @@ end
 
 fill_halo_regions!(φ_cgmg)
 finalize_solver!(cgmg_solver)
-finalize_AMGX()
+finalize_AMGX(arch)
 
 #=
 using  GLMakie

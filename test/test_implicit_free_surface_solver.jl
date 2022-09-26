@@ -20,7 +20,6 @@ using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
 using Oceananigans.Grids: with_halo
 
-initialize_AMGX()
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -116,6 +115,8 @@ end
 
 @testset "Implicit free surface solver tests" begin
     for arch in archs
+        initialize_AMGX(arch)
+
         A = typeof(arch)
 
         rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
@@ -232,7 +233,6 @@ end
         @test all(isapprox.(Δη_mg,  0, atol=1e-15))
 
         finalize_solver!(mg_model.free_surface.implicit_step_solver)
+        finalize_AMGX(arch)
     end
 end
-
-finalize_AMGX()
