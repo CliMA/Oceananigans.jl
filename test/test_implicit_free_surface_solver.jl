@@ -34,8 +34,8 @@ function set_simple_divergent_velocity!(model)
     i, j, k = Int(floor(grid.Nx / 2)) + 1, Int(floor(grid.Ny / 2)) + 1, grid.Nz
     inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
 
-    Δy = Δyᶜᶠᶜ(i, j, k, grid)
-    Δz = Δzᶜᶠᶜ(i, j, k, grid)
+    Δy = CUDA.@allowscalar Δyᶜᶠᶜ(i, j, k, grid)
+    Δz = CUDA.@allowscalar Δzᶜᶠᶜ(i, j, k, grid)
 
     # We prescribe the value of the zonal transport in a cell, i.e., `u * Δy * Δz`. This
     # way `norm(rhs)` of the free-surface solver does not depend on the grid extensd/resolution.
