@@ -1,5 +1,3 @@
-using Oceananigans.Fields: Field, ZReducedField
-
 """
 Compute the horizontal divergence of vertically-uniform quantity using
 vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
