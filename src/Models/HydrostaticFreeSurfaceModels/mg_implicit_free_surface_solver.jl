@@ -63,8 +63,8 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
                                      placeholder_timestep = -1.0)
     arch = architecture(grid)
 
-    right_hand_side = Field((Center, Center, Nothing), grid)
-    
+    right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
+
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
     ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
@@ -79,7 +79,7 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     # Placeholder preconditioner and matrix are calculated using a "placeholder" timestep of -1.0
     # They are then recalculated before the first time step of the simulation.
-    
+
     placeholder_constructors = deepcopy(matrix_constructors)
     M = prod(problem_size)
     update_diag!(placeholder_constructors, arch, M, M, diagonal, 1.0, 0)
@@ -132,7 +132,8 @@ end
 
 @kernel function _Az_∇h²ᶜᶜᶜ_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
     i, j = @index(Global, NTuple)
-    @inbounds L_ηⁿ⁺¹[i, j, grid.Nz+1] = Az_∇h²ᶜᶜᶜ(i, j, grid.Nz+1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹)
+    k_surface = grid.Nz + 1
+    @inbounds L_ηⁿ⁺¹[i, j, k_surface] = Az_∇h²ᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹)
 end
 
 build_implicit_step_solver(::Val{:Multigrid}, grid, settings, gravitational_acceleration) =
