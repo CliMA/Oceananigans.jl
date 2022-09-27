@@ -23,15 +23,15 @@ end
     # ∂τ(η) = - ∇⋅U
     @inbounds η[i, j, grid.Nz+1] -=  Δτ * div_xyᶜᶜᶜ(i, j, 1, grid, U, V)
     # time-averaging
-    @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
-    @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
-    @inbounds η̅[i, j, 1]         +=  free_surface_weight * η[i, j, grid.Nz+1]
+    @inbounds U̅[i, j, 1] += velocity_weight * U[i, j, 1]
+    @inbounds V̅[i, j, 1] += velocity_weight * V[i, j, 1]
+    @inbounds η̅[i, j, 1] += free_surface_weight * η[i, j, grid.Nz+1]
 end
 
 function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
     # unpack state quantities, parameters and forcing terms 
-    U, V, η̅, U̅, V̅     = state.U, state.V, state.η̅, state.U̅, state.V̅
-    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ  = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+    U, V, η̅, U̅, V̅    = state.U, state.V, state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
 
     vel_weight = settings.velocity_weights[substep_index]
     η_weight   = settings.free_surface_weights[substep_index]
