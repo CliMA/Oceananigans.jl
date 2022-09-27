@@ -110,13 +110,13 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
 end
 
 """ Compute the divergence of fluxes Qu and Qv. """
-@inline flux_div_xyᶜᶜᶜ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
+@inline flux_div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
     k_surface = grid.Nz + 1
     Az = Azᶜᶜᶠ(i, j, k_surface, grid)
-    δ_Q = flux_div_xyᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_surface, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, k_surface] = (δ_Q - Az * η[i, j, k_surface] / Δt) / (g * Δt)
 end
 
