@@ -72,15 +72,15 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     g = g_Earth
     η = model.free_surface.η
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid), indices = (:, :, grid.Nz))
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    left_hand_side = Field{Center, Center, Nothing}(grid, indices = (:, :, grid.Nz))
+    left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
@@ -121,7 +121,6 @@ end
                                              z = (-4000, 0))
 
         for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
-
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
