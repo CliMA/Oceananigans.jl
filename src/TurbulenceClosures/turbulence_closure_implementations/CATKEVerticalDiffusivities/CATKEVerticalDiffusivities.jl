@@ -55,7 +55,8 @@ function CATKEVerticalDiffusivity{TD}(mixing_length :: CL,
                                       Ke_adjustment) where {TD, CL, TKE}
                                       
 
-    return CATKEVerticalDiffusivity{TD, CL, TKE}(mixing_length, turbulent_kinetic_energy_equation,
+    return CATKEVerticalDiffusivity{TD, CL, TKE}(mixing_length,
+                                                 turbulent_kinetic_energy_equation,
                                                  Float64(Ku_adjustment),
                                                  Float64(Kc_adjustment),
                                                  Float64(Ke_adjustment))
@@ -130,7 +131,8 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
-    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation, Ku_adjustment, Kc_adjustment, Ke_adjustment)
+    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation,
+                                        Ku_adjustment, Kc_adjustment, Ke_adjustment)
 end
 
 #####
@@ -222,7 +224,8 @@ end
     ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
-    Ku_adj = ifelse(stable_cell, zero(grid), closure.Ku_adjustment)
+    ℓ_adj = ifelse(stable_cell, zero(grid), closure.Ku_adjustment)
+    Ku_adj = ℓ_adj * u★
 
     return ℓu * u★ + Ku_adj
 end
@@ -232,7 +235,8 @@ end
     ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
-    Kc_adj = ifelse(stable_cell, zero(grid), closure.Kc_adjustment)
+    ℓ_adj = ifelse(stable_cell, zero(grid), closure.Kc_adjustment)
+    Kc_adj = ℓ_adj * u★
 
     return ℓc * u★ + Kc_adj
 end
@@ -242,7 +246,8 @@ end
     ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
 
     stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
-    Ke_adj = ifelse(stable_cell, zero(grid), closure.Ke_adjustment)
+    ℓ_adj = ifelse(stable_cell, zero(grid), closure.Ke_adjustment)
+    Ke_adj = ℓ_adj * u★
 
     return ℓe * u★ + Ke_adj
 end
