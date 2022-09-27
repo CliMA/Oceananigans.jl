@@ -113,14 +113,20 @@ end
 
         bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
-        bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
+        underlying_grid = RectilinearGrid(arch, size = (128, 1, 5),
+                                          x = (-5000kilometers, 5000kilometers),
+                                          y = (0, 100kilometers),
+                                          z = [-500, -300, -220, -170, -60, 0],
+                                          topology = (Bounded, Periodic, Bounded))
+
+        bumpy_vertically_stretched_rectilinear_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
                                              longitude = (-20, 30),
                                              latitude = (-10, 40),
                                              z = (-4000, 0))
 
-        for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
+        for grid in (rectilinear_grid, bumpy_vertically_stretched_rectilinear_grid, lat_lon_grid)
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
