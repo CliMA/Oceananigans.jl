@@ -40,8 +40,8 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -134,8 +134,8 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, grid.Nz+1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, grid.Nz+1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end

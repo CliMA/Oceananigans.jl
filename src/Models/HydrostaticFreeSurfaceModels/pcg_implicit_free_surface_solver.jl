@@ -114,9 +114,9 @@ end
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
-    δ_Q = flux_div_xyᶜᶜᶜ(i, j, grid.Nz, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     k_surface = grid.Nz + 1
+    Az = Azᶜᶜᶠ(i, j, k_surface, grid)
+    δ_Q = flux_div_xyᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, k_surface] = (δ_Q - Az * η[i, j, k_surface] / Δt) / (g * Δt)
 end
 
@@ -282,10 +282,10 @@ function diagonally_dominant_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ay
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᶜ(i, j, grid.Nz, grid)
-@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᶜ(i, j, grid.Nz, grid)
-@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶜ(i+1, j, grid.Nz, grid)
-@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶜ(i, j+1, grid.Nz, grid)
+@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)
+@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)
+@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶠ(i+1, j, grid.Nz+1, grid)
+@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶠ(i, j+1, grid.Nz+1, grid)
 
 @inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) -
                                           Ax⁺(i, j, grid, ax) -
