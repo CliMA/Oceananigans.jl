@@ -62,7 +62,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
         get(settings, :preconditioner, nothing)
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
-    right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
 
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
                                                    template_field = right_hand_side,
@@ -116,7 +116,8 @@ end
     i, j = @index(Global, NTuple)
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     δ_Q = flux_div_xyᶜᶜᶜ(i, j, grid.Nz, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, grid.Nz+1] = (δ_Q - Az * η[i, j, grid.Nz+1] / Δt) / (g * Δt)
+    k_surface = grid.Nz + 1
+    @inbounds rhs[i, j, k_surface] = (δ_Q - Az * η[i, j, k_surface] / Δt) / (g * Δt)
 end
 
 """
@@ -167,7 +168,7 @@ where  ̂ indicates a vertical integral, and
 """
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
-    k_surface = grid.Nz+1
+    k_surface = grid.Nz + 1
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
     @inbounds L_ηⁿ⁺¹[i, j, k_surface] = Az_∇h²ᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_surface] / (g * Δt^2)
 end
