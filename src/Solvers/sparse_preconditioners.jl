@@ -177,14 +177,9 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    return SparseInversePreconditioner(Minv)
 end
 
-function multigrid_preconditioner(A::AbstractMatrix;)
-    ml = create_multilevel(RugeStubenAMG(), A)
-    return aspreconditioner(ml)
-end
+multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
 
-@ifhasamgx function multigrid_preconditioner(A::CuSparseMatrixCSC;)
-    return MultigridGPUPreconditioner(AMGXMultigridSolver(A))
-end
+@ifhasamgx multigrid_preconditioner(A::CuSparseMatrixCSC) = MultigridGPUPreconditioner(AMGXMultigridSolver(A))
 
 struct MultigridGPUPreconditioner{AMGXMultigridSolver}
     amgx_solver :: AMGXMultigridSolver
