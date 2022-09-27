@@ -34,8 +34,8 @@ end
 
 function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
     # unpack state quantities, parameters and forcing terms 
-    U, V, η̅, U̅, V̅     = state.U, state.V, state.η̅, state.U̅, state.V̅
-    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ  = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+    U, V, η̅, U̅, V̅    = state.U, state.V, state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
 
     vel_weight = settings.velocity_weights[substep_index]
     η_weight   = settings.free_surface_weights[substep_index]
