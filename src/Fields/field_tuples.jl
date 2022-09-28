@@ -56,16 +56,22 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
     ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
 
-    # Fill halo regions for reduced fields
-    for field in reduced_fields
+    # Fill halo regions for all fields
+    for field in fields_with_bcs
         fill_halo_regions!(field, args...; kwargs...)
     end
 
+    # Tuple halo filling is switched off until a solution to issue https://github.com/CliMA/Oceananigans.jl/issues/2530 is found
+    # Fill halo regions for reduced fields 
+    # for field in reduced_fields
+    #     fill_halo_regions!(field, args...; kwargs...)
+    # end
+
     # Fill the rest
-    if !isempty(ordinary_fields)
-        grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
-    end
+    # if !isempty(ordinary_fields)
+    #    grid = first(ordinary_fields).grid
+    #    tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
+    # end
 
     return nothing
 end
