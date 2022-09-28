@@ -139,3 +139,5 @@ end
         diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
     end
 end
+
+@ifhasamgx finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)

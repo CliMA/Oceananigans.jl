@@ -16,7 +16,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     implicit_free_surface_linear_operation!,
     finalize_solver!
 
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
+
 using Oceananigans.Grids: with_halo
+
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -75,13 +78,20 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, events)
 
-    acronym = free_surface.solver_method == :Multigrid ? "MG" : "PCG"
-    
+    acronym = free_surface.solver_method == :Multigrid ? "MG" :
+              free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" :
+              "PCG"
+
     η = model.free_surface.η
     @info "    " * acronym * " implicit free surface solver test, norm(η_" * lowercase(acronym) * "): $(norm(η)), maximum(abs, η_" * lowercase(acronym) * "): $(maximum(abs, η))"
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
+    if !(right_hand_side isa Field)
+        rhs = Field{Center, Center, Nothing}(grid)
+        set!(rhs, reshape(right_hand_side, model.free_surface.implicit_step_solver.matrix_iterative_solver.problem_size...))
+        right_hand_side = rhs
+    end
 
     # Compute left hand side "solution"
     g = g_Earth
@@ -112,6 +122,8 @@ end
 
 @testset "Implicit free surface solver tests" begin
     for arch in archs
+        initialize_AMGX(arch)
+
         A = typeof(arch)
 
         rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
@@ -150,9 +162,15 @@ end
             mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
-            mgcg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            mgcg_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
             finalize_solver!(mgcg_solver)
-    end
+
+            @info "Testing HeptadiagonalIterativeSolver implicit free surface solver w/ MG Preconditioner [$A, $G]..."
+            free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
+                                               tolerance=1e-15, preconditioner_method=:Multigrid)
+            mg_hept_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            finalize_solver!(mg_hept_solver)
+        end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
 
@@ -228,5 +246,6 @@ end
         @test all(isapprox.(Δη_mg,  0, atol=1e-15))
 
         finalize_solver!(mg_model.free_surface.implicit_step_solver)
+        finalize_AMGX(arch)
     end
 end

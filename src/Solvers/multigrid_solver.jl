@@ -164,22 +164,30 @@ end
                                                     x_array,
                                                     b_array
                                                     )
-    try
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-    catch e
-        AMGX.finalize_plugins()
-        AMGX.finalize()        
-        AMGX.initialize()
-        AMGX.initialize_plugins()
-    end
 
-    if reltol == 0
-        @info "Multigrid solver with absolute tolerance = $abstol"
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => abstol))
-    else
-        @info "Multigrid solver with relative tolerance = $reltol"
-        config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => reltol, "convergence" => "RELATIVE_INI_CORE"))
+    amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
+
+    return MultigridGPUSolver(GPU(),
+                              template_field.grid,
+                              matrix,
+                              abstol,
+                              reltol,
+                              maxiter,
+                              x_array,
+                              b_array,
+                              amgx_solver
+                              )
+end
+
+@ifhasamgx function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+    tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
+    try
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
+    catch e 
+        @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX()`?"
+        AMGX.initialize()
+        AMGX.initialize_plugins()
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
     end
     resources = AMGX.Resources(config)
     solver = AMGX.Solver(resources, AMGX.dDDI, config)
@@ -198,25 +206,14 @@ end
     
     AMGX.setup!(solver, device_matrix)
 
-    amgx_solver = AMGXMultigridSolver(config,
-                                      resources,
-                                      solver,
-                                      device_matrix,
-                                      device_x,
-                                      device_b,
-                                      csr_matrix
-                                      )
-
-    return MultigridGPUSolver(GPU(),
-                              template_field.grid,
-                              matrix,
-                              abstol,
-                              reltol,
-                              maxiter,
-                              x_array,
-                              b_array,
-                              amgx_solver
-                              )
+    return AMGXMultigridSolver(config,
+                               resources,
+                               solver,
+                               device_matrix,
+                               device_x,
+                               device_b,
+                               csr_matrix
+                               )
 end
 
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
@@ -307,28 +304,58 @@ end
     s = solver.amgx_solver
     AMGX.upload!(s.device_b, solver.b_array)
     AMGX.upload!(s.device_x, solver.x_array)
-    AMGX.setup!(s.solver, s.device_matrix)
     AMGX.solve!(s.device_x, s.solver, s.device_b)
     AMGX.copy!(solver.x_array, s.device_x)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-@ifhasamgx function finalize_solver!(solver::MultigridGPUSolver)
-    @info "Finalizing the Multigrid solver on GPU"
+"""
+    initialize_AMGX(architecture)
     
-    s = solver.amgx_solver
+Initialize the AMGX package required to use the multigrid solver on `architecture`. 
+This function needs to be called before creating a multigrid solver on GPU.
+"""
+function initialize_AMGX(::GPU)
+    try
+        @ifhasamgx AMGX.initialize(); AMGX.initialize_plugins()
+    catch e
+        @info "It appears AMGX was not finalized. Have you called `finalize_AMGX`?"
+        AMGX.finalize_plugins()
+        AMGX.finalize()
+        AMGX.initialize()
+        AMGX.initialize_plugins()
+    end
+end
+
+initialize_AMGX(::CPU) = nothing
+
+"""
+    finalize_AMGX(architecture)
+
+Finalize the AMGX package required to use the multigrid solver on `architecture`. 
+This should be called after `finalize_solver!`.
+"""
+function finalize_AMGX(::GPU)
+    @ifhasamgx AMGX.finalize_plugins(); AMGX.finalize()
+end
+
+finalize_AMGX(::CPU) = nothing
+
+
+@ifhasamgx function finalize_solver!(s::AMGXMultigridSolver)
+    @info "Finalizing the AMGX Multigrid solver on GPU"
     close(s.device_matrix)
     close(s.device_x)
     close(s.device_b)
     close(s.solver)
     close(s.resources)
     close(s.config)
-    AMGX.finalize_plugins()
-    AMGX.finalize()
 
     return nothing
 end
+
+@ifhasamgx finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 
