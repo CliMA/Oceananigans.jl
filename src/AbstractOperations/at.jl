@@ -62,11 +62,11 @@ indices(f::Number)   = (:, :, :)
 indices(f) = (:, :, :)
 
 # easy index propagation 
-function interpolate_indices(args, loc_op)
+function interpolate_indices(args...; loc_operation = (Center, Center, Center))
     idxs = Any[:, :, :]
     for i in 1:3
         for arg in args
-            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_op[i])
+            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_operation[i])
         end
     end
 
