@@ -310,9 +310,11 @@ end
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
 end
 
-initialize_AMGX(::CPU) = nothing
-finalize_AMGX(::CPU) = nothing
-
+"""
+    initialize_AMGX(arch)
+Initializes the AMGX package required to use the multigrid solver on GPU. 
+This function should be called before creating a multigrid solver on GPU.
+"""
 function initialize_AMGX(::GPU)
     try
         @ifhasamgx AMGX.initialize(); AMGX.initialize_plugins()
@@ -325,9 +327,19 @@ function initialize_AMGX(::GPU)
     end
 end
 
+initialize_AMGX(::CPU) = nothing
+
+"""
+    finalize_AMGX(arch)
+Finalizes the AMGX package required to use the multigrid solver on GPU. 
+This should be called after `finalize_solver!`.
+"""
 function finalize_AMGX(::GPU)
     @ifhasamgx AMGX.finalize_plugins(); AMGX.finalize()
 end
+
+finalize_AMGX(::CPU) = nothing
+
 
 @ifhasamgx function finalize_solver!(s::AMGXMultigridSolver)
     @info "Finalizing the AMGX Multigrid solver on GPU"
