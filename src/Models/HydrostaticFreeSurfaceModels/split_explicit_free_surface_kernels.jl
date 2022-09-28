@@ -25,7 +25,7 @@ end
     k_surface = grid.Nz+1
     
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, k_surface] -=  Δτ * div_xyᶜᶜᶠ(i, j, k_surface, grid, U, V)
+    @inbounds η[i, j, k_surface] -=  Δτ * div_xyᶜᶜᶠ(i, j, 1, grid, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
