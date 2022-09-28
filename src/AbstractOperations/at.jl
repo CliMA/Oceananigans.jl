@@ -77,32 +77,23 @@ interpolate_index(::Colon, b::UnitRange, args...)  = b
 # otherwise we lose the last index
 # REMEMBER! Not supported abstract operations which require an interpolation of sliced fields!
 function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
-    if loc == new_loc
-        return a
-    else
-        if a[1] == a[2]
-            throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
-        end
-        if new_loc == Face
-            return UnitRange(a[1]+1, a[2])
-        else
-            return UnitRange(a[1], a[2]-1)    
-        end
+    a = corrected_index(a[1], loc, new_loc)
+    if a[1] > a[2]
+        throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
     end
+    return a
 end
 
 # REMEMBER: issue an error when the indices are not compatible (e.g. parallel fields on different planes)
 function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)   
-    if loc == new_loc
-        return UnitRange(max(a[1], b[1]), min(a[2], b[2]))
-    else
-        if a[1] == a[2]
-            throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
-        end
-        if new_loc == Face
-            return UnitRange(max(a[1]+1, b[1]),min(a[2], b[2]))
-        else
-            return UnitRange(max(a[1], b[1]),min(a[2]-1, b[2]))
-        end
+    a = corrected_index(a[1], loc, new_loc)
+    if a[1] > a[2]
+        throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
     end
+    return UnitRange(max(a[1], b[1]), min(a[2], b[2]))
 end
+
+corrected_index(a, ::Face, ::Face)     = UnitRange(a[1], a[2])
+corrected_index(a, ::Center, ::Center) = UnitRange(a[1], a[2])
+corrected_index(a, ::Face, ::Center)   = UnitRange(a[1]+1, a[2])
+corrected_index(a, ::Center, ::Face)   = UnitRange(a[1], a[2]-1)
