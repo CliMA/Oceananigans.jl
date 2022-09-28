@@ -4,17 +4,16 @@ using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-struct ConditionalOperation{LX, LY, LZ, O, F, G, I, C, M, T} <: AbstractOperation{LX, LY, LZ, G, I, T} 
+struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
     func :: F
     grid :: G
-    indices :: I
     condition :: C
     mask :: M
 
-     function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, indices::I, condition::C, mask::M) where {LX, LY, LZ, O, F, G, I, C, M}
+     function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
          T = eltype(operand)
-         return new{LX, LY, LZ, O, F, G, I, C, M, T}(operand, func, grid, indices, condition, mask)
+         return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
      end
 end
 
@@ -75,7 +74,7 @@ function ConditionalOperation(operand::AbstractField;
                               mask = 0)
 
     LX, LY, LZ = location(operand)
-    return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, indices(operand), condition, mask)
+    return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
 function ConditionalOperation(c::ConditionalOperation;
@@ -84,7 +83,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               mask = c.mask)
 
     LX, LY, LZ = location(c)
-    return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, indices(c.operand), condition, mask)
+    return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
 @inline condition_operand(func::Function, op::AbstractField, condition, mask) = ConditionalOperation(op; func, condition, mask)
@@ -101,7 +100,7 @@ end
 @inline truefunc(args...) = true
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
-                              ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, c.grid, c.indices, c.condition, mask)
+                              ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, c.grid, c.condition, mask)
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
@@ -109,8 +108,7 @@ end
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
                                      adapt(to, c.func), 
-                                     adapt(to, c.grid),
-                                     adapt(to, c.indices),
+                                     adapt(to, c.grid)
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
@@ -134,15 +132,8 @@ end
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
     
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-indices(c::ConditionalOperation) = c.indices
 
-function Base.axes(c::ConditionalOperation)
-    if c.indices === (:, : ,:)
-        return Base.OneTo.(size(c))
-    else
-        return Tuple(c.indices[i] isa Colon ? Base.OneTo(size(c, i)) : c.indices[i] for i = 1:3)
-    end
-end
+indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,

@@ -1,14 +1,13 @@
-struct KernelFunctionOperation{LX, LY, LZ, P, G, I, T, K, D} <: AbstractOperation{LX, LY, LZ, G, I, T}
+struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     computed_dependencies :: D
     parameters :: P
     grid :: G
-    indices :: I
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
-                                                 parameters::P, grid::G, indices::I) where {LX, LY, LZ, K, G, I, D, P}
+                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, I, D, P}
         T = eltype(grid)
-        return new{LX, LY, LZ, P, G, I, T, K, D}(kernel_function, computed_dependencies, parameters, grid, indices)
+        return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
 
 end
@@ -60,9 +59,10 @@ function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
                                             computed_dependencies = (),
                                             parameters = nothing) where {LX, LY, LZ}
 
-    indices = interpolate_indices(computed_dependencies...)
-    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid, indices)
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
+
+indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies...)
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
 @inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)
@@ -75,6 +75,5 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.computed_dependencies),
                                         Adapt.adapt(to, κ.parameters),
-                                        Adapt.adapt(to, κ.grid),
-                                        Adapt.adapt(to, κ.indices))
+                                        Adapt.adapt(to, κ.grid))
 

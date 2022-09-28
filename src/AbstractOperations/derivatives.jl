@@ -1,12 +1,11 @@
 using Oceananigans.Operators: interpolation_code
 
-struct Derivative{LX, LY, LZ, D, A, IN, AD, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
+struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
                ∂ :: D
              arg :: A
                ▶ :: IN
       abstract_∂ :: AD
             grid :: G
-         indices :: I
 
     @doc """
         Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
@@ -15,9 +14,9 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, I, T} <: AbstractOperation{LX, LY
     and subsequent interpolation by `▶` on `grid`.
     """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
-                                 grid::G, indices::I) where {LX, LY, LZ, D, A, IN, AD, G, I}
+                                 grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, D, A, IN, AD, G, I, T}(∂, arg, ▶, abstract_∂, grid, indices)
+        return new{LX, LY, LZ, D, A, IN, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
 end
 
@@ -31,8 +30,10 @@ end
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid, indices(arg))
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
+
+indices(d::Derivative) = indices(d.arg)
 
 # Recompute location of derivative
 @inline at(loc, d::Derivative) = d.abstract_∂(loc, d.arg)
@@ -121,6 +122,5 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            Adapt.adapt(to, deriv.arg),
                            Adapt.adapt(to, deriv.▶),
                            nothing,
-                           Adapt.adapt(to, deriv.grid),
-                           Adapt.adapt(to, deriv.indices))
+                           Adapt.adapt(to, deriv.grid))
 

@@ -1,11 +1,10 @@
 const unary_operators = Set()
 
-struct UnaryOperation{LX, LY, LZ, O, A, IN, G, I, T} <: AbstractOperation{LX, LY, LZ, G, I, T}
+struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     arg :: A
     ▶ :: IN
     grid :: G
-    indices :: I
 
     @doc """
         UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
@@ -13,9 +12,9 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, I, T} <: AbstractOperation{LX, LY
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G, indices::I) where {LX, LY, LZ, O, A, IN, G, I}
+    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, O, A, IN, G, I, T}(op, arg, ▶, grid, indices)
+        return new{LX, LY, LZ, O, A, IN, G, I, T}(op, arg, ▶, grid)
     end
 end
 
@@ -25,11 +24,13 @@ end
 ##### UnaryOperation construction
 #####
 
+indices(υ::UnaryOperation) = indices(υ.operator)
+
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
 function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid, indices(operator))
+    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
 end
 
 # Recompute location of unary operation
@@ -127,6 +128,5 @@ Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
     UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
-                               Adapt.adapt(to, unary.grid),
-                               Adapt.adapt(to, unary.indices))
+                               Adapt.adapt(to, unary.grid))
 
