@@ -73,8 +73,6 @@ end
 interpolate_index(::Colon, ::Colon, args...)       = Colon()
 interpolate_index(::Colon, b::UnitRange, args...)  = b
 
-# If we interpolate from a `Center` to a `Face` we lose the first index,
-# otherwise we lose the last index
 # REMEMBER! Not supported abstract operations which require an interpolation of sliced fields!
 function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
     a = corrected_index(a[1], loc, new_loc)
@@ -93,6 +91,8 @@ function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)
     return UnitRange(max(a[1], b[1]), min(a[2], b[2]))
 end
 
+# Windowed Fields interpolate from a `Center` to a `Face` lose the first index,
+# viceverse, windowed fields interpolated from `Face`s to `Center`s lose the last index
 corrected_index(a, ::Face, ::Face)     = UnitRange(a[1], a[2])
 corrected_index(a, ::Center, ::Center) = UnitRange(a[1], a[2])
 corrected_index(a, ::Face, ::Center)   = UnitRange(a[1]+1, a[2])
