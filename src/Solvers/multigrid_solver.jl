@@ -330,8 +330,9 @@ end
 initialize_AMGX(::CPU) = nothing
 
 """
-    finalize_AMGX(arch)
-Finalizes the AMGX package required to use the multigrid solver on GPU. 
+    finalize_AMGX(architecture)
+
+Finalize the AMGX package required to use the multigrid solver on `architecture`. 
 This should be called after `finalize_solver!`.
 """
 function finalize_AMGX(::GPU)
