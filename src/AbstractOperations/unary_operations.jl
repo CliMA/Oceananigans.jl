@@ -14,7 +14,7 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, L
     """
     function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, O, A, IN, G, I, T}(op, arg, ▶, grid)
+        return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end
 

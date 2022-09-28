@@ -122,7 +122,7 @@ struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ,
             grid :: G
     function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G, I}
         T = eltype(grid)
-        return new{LX, LY, LZ, G, I, T, M}(metric, grid)
+        return new{LX, LY, LZ, G, T, M}(metric, grid)
     end
 end
 
