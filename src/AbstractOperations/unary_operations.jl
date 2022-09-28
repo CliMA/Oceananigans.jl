@@ -24,7 +24,7 @@ end
 ##### UnaryOperation construction
 #####
 
-indices(υ::UnaryOperation) = indices(υ.operator)
+indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
