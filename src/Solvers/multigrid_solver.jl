@@ -311,9 +311,10 @@ end
 end
 
 """
-    initialize_AMGX(arch)
-Initializes the AMGX package required to use the multigrid solver on GPU. 
-This function should be called before creating a multigrid solver on GPU.
+    initialize_AMGX(architecture)
+    
+Initialize the AMGX package required to use the multigrid solver on `architecture`. 
+This function needs to be called before creating a multigrid solver on GPU.
 """
 function initialize_AMGX(::GPU)
     try
