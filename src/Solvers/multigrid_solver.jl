@@ -184,7 +184,7 @@ end
     try
         global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
     catch e 
-        @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX`?"
+        @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX()`?"
         AMGX.initialize()
         AMGX.initialize_plugins()
         global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
