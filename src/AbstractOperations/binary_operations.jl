@@ -37,7 +37,7 @@ function _binary_operation(Lc, op, a, b, La, Lb, grid)
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
 
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid, indices)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
 end
 
 const ConcreteLocationType = Union{Type{Face}, Type{Center}}

@@ -63,6 +63,7 @@ function interpolate_indices(args, loc_op)
     idxs = Any[:, :, :]
     for i in 1:3
         for arg in args
+            @show idxs
             idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_op[i])
         end
     end
@@ -75,8 +76,9 @@ interpolate_index(::Colon, b::UnitRange, args...)  = b
 
 # REMEMBER! Not supported abstract operations which require an interpolation of sliced fields!
 function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
-    a = corrected_index(a[1], loc, new_loc)
-    if a[1] > a[2]
+    a = corrected_index(a, loc, new_loc)
+    @show a
+    if first(a) > last(a)
         throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
     end
     return a
@@ -84,16 +86,16 @@ end
 
 # REMEMBER: issue an error when the indices are not compatible (e.g. parallel fields on different planes)
 function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)   
-    a = corrected_index(a[1], loc, new_loc)
-    if a[1] > a[2]
+    a = corrected_index(a, loc, new_loc)
+    if first(a) > last(a)
         throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
     end
-    return UnitRange(max(a[1], b[1]), min(a[2], b[2]))
+    return UnitRange(max(first(a), first(b)), min(first(a), last(b)))
 end
 
 # Windowed Fields interpolate from a `Center` to a `Face` lose the first index,
 # viceverse, windowed fields interpolated from `Face`s to `Center`s lose the last index
-corrected_index(a, ::Face, ::Face)     = UnitRange(a[1], a[2])
-corrected_index(a, ::Center, ::Center) = UnitRange(a[1], a[2])
-corrected_index(a, ::Face, ::Center)   = UnitRange(a[1]+1, a[2])
-corrected_index(a, ::Center, ::Face)   = UnitRange(a[1], a[2]-1)
+corrected_index(a, ::Type{Face},   ::Type{Face})   = UnitRange(first(a),   last(a))
+corrected_index(a, ::Type{Center}, ::Type{Center}) = UnitRange(first(a),   last(a))
+corrected_index(a, ::Type{Face},   ::Type{Center}) = UnitRange(first(a)+1, last(a))
+corrected_index(a, ::Type{Center}, ::Type{Face})   = UnitRange(first(a),   last(a)-1)
