@@ -59,21 +59,50 @@ indices(f::Function) = (:, :, :)
 indices(f::Number)   = (:, :, :)
 
 # easy index propagation 
-function interpolate_indices(args...)
+function interpolate_indices(args, loc_op)
     idxs = Any[:, :, :]
     for i in 1:3
         for arg in args
-            idxs[i] = interpolate_index(indices(arg)[i], idxs[i])
+            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_op[i])
         end
     end
 
     return Tuple(idxs)
 end
 
+interpolate_index(::Colon, ::Colon, args...)       = Colon()
+interpolate_index(::Colon, b::UnitRange, args...)  = b
+
+# If we interpolate from a `Center` to a `Face` we lose the first index,
+# otherwise we lose the last index
+# REMEMBER! Not supported abstract operations which require an interpolation of sliced fields!
+function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
+    if loc == new_loc
+        return a
+    else
+        if a[1] == a[2]
+            throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
+        end
+        if new_loc == Face
+            return UnitRange(a[1]+1, a[2])
+        else
+            return UnitRange(a[1], a[2]-1)    
+        end
+    end
+end
+
 # REMEMBER: issue an error when the indices are not compatible (e.g. parallel fields on different planes)
-# Non supported abstract operations which require an interpolation of sliced fields!
-# (maybe also issue an error in that case)
-interpolate_index(::Colon, ::Colon) = Colon()
-interpolate_index(a, ::Colon) = a
-interpolate_index(::Colon, b) = b
-interpolate_index(a, b)       = max(first(a), first(b)):min(last(a), last(b))
+function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)   
+    if loc == new_loc
+        return UnitRange(max(a[1], b[1]), min(a[2], b[2]))
+    else
+        if a[1] == a[2]
+            throw(ArgumentError("Cannot interpolate from $loc to $new_loc a Sliced field!"))
+        end
+        if new_loc == Face
+            return UnitRange(max(a[1]+1, b[1]),min(a[2], b[2]))
+        else
+            return UnitRange(max(a[1], b[1]),min(a[2]-1, b[2]))
+        end
+    end
+end
