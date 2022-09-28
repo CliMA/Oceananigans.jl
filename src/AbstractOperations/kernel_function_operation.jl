@@ -62,7 +62,7 @@ function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
 
-indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies...)
+indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies, location(κ))
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
 @inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)

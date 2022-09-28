@@ -58,6 +58,9 @@ end
 indices(f::Function) = (:, :, :)
 indices(f::Number)   = (:, :, :)
 
+# Fallback (used for KernelFunctionOperation)
+indices(f) = (:, :, :)
+
 # easy index propagation 
 function interpolate_indices(args, loc_op)
     idxs = Any[:, :, :]

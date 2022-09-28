@@ -27,12 +27,10 @@ function get_face(op::KernelFunctionOperation, face_index)
     computed_dependencies = get_face(op.computed_dependencies, face_index)
     parameters = get_face(op.parameters, face_index)
     face_grid = get_face(op.grid, face_index)
-    face_indices = get_face(op.indices, face_index)
     return KernelFunctionOperation{LX, LY, LZ}(op.kernel_function,
                                                computed_dependencies,
                                                parameters,
-                                               face_grid,
-                                               face_indices)
+                                               face_grid)
 end
 
 function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
