@@ -85,6 +85,12 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
+    if right_hand_side isa CuArray
+        rhs = Field{Center, Center, Nothing}(grid)
+        set!(rhs, reshape(right_hand_side, model.free_surface.implicit_step_solver.matrix_iterative_solver.problem_size...))
+        right_hand_side = rhs
+        acronym = "HEPT"
+    end
 
     # Compute left hand side "solution"
     g = g_Earth
@@ -155,8 +161,14 @@ end
             mg_preconditioner = MGImplicitFreeSurfaceSolver(grid)
             free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                abstol=1e-15, reltol=0, preconditioner=mg_preconditioner)
-            mgcg_solver =run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            mgcg_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
             finalize_solver!(mgcg_solver)
+
+            @info "Testing HeptadiagonalIterativeSolver implicit free surface solver w/ MG Preconditioner [$A, $G]..."
+            free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
+                                               tolerance=1e-15, preconditioner_method=:Multigrid)
+            mg_hept_solver = run_implicit_free_surface_solver_tests(arch, grid, free_surface)
+            finalize_solver!(mg_hept_solver)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$A]..."
