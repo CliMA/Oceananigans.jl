@@ -11,6 +11,9 @@ using Oceananigans.Operators
 ∂t(U) = - gH∇η + f
 =#
 
+# the free surface η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
+# (U, V, , Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
+
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_surface = grid.Nz+1
@@ -29,7 +32,7 @@ end
     # time-averaging
     @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
-    @inbounds η̅[i, j, 1]         +=  free_surface_weight * η[i, j, k_surface]
+    @inbounds η̅[i, j, k_surface] +=  free_surface_weight * η[i, j, k_surface]
 end
 
 function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)

@@ -27,3 +27,27 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
     return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(i, j, k, ibg, LX(), LY(), LZ()))
 end 
 
+#####
+##### Reduction operations on Reduced Fields have to test if entirety of the immersed direction is immersed to exclude it
+#####
+
+# struct NotImmersedReduced{F, D} <: Function
+#     func :: F
+#     immersed_dimensions :: D
+# end
+
+# function NotImmersedReduced(func; location = ())
+
+# # ImmersedReducedFields
+# const IRF = ReducedField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
+
+# @inline condition_operand(func::Function,         op::IRF, cond,      mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(cond),     mask)
+# @inline condition_operand(func::Function,         op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(truefunc), mask)
+# @inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(truefunc), mask)
+
+# @inline function get_condition(condition::NotImmersedReduced, i, j, k, ibg, co::ConditionalOperation, args...)
+#     LX, LY, LZ = location(co)
+#     return get_condition(condition.func, i, j, k, ibg, args...) & !immersed_column(i, j, k, ibg, LX(), LY(), LZ(), condition))
+# end 
+
+# @inline function immersed_column(i, j, k, ibg, reduced_dims, )
