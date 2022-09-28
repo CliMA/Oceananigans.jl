@@ -78,8 +78,10 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     set_simple_divergent_velocity!(model)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, events)
 
-    acronym = free_surface.solver_method == :Multigrid ? "MG" : "PCG"
-    
+    acronym = free_surface.solver_method == :Multigrid ? "MG" :
+              free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" :
+              "PCG"
+
     η = model.free_surface.η
     @info "    " * acronym * " implicit free surface solver test, norm(η_" * lowercase(acronym) * "): $(norm(η)), maximum(abs, η_" * lowercase(acronym) * "): $(maximum(abs, η))"
 
@@ -89,7 +91,6 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
         rhs = Field{Center, Center, Nothing}(grid)
         set!(rhs, reshape(right_hand_side, model.free_surface.implicit_step_solver.matrix_iterative_solver.problem_size...))
         right_hand_side = rhs
-        acronym = "HEPT"
     end
 
     # Compute left hand side "solution"
