@@ -87,7 +87,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
-    if right_hand_side isa CuArray
+    if !(right_hand_side isa Field)
         rhs = Field{Center, Center, Nothing}(grid)
         set!(rhs, reshape(right_hand_side, model.free_surface.implicit_step_solver.matrix_iterative_solver.problem_size...))
         right_hand_side = rhs
