@@ -28,26 +28,44 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 end 
 
 #####
-##### Reduction operations on Reduced Fields have to test if entirety of the immersed direction is immersed to exclude it
+##### Reduction operations on Reduced Fields test the immersed condition on the entirety of the immersed direction
 #####
 
-# struct NotImmersedReduced{F, D} <: Function
-#     func :: F
-#     immersed_dimensions :: D
-# end
+struct NotImmersedColumn{IC, F} <:Function
+    immersed_column :: IC
+    func :: F
+end
 
-# function NotImmersedReduced(func; location = ())
+using Oceananigans.Fields: reduced_dimensions, OneField
+using Oceananigans.AbstractOperations: ConditionalOperation
 
-# # ImmersedReducedFields
-# const IRF = ReducedField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
+# ImmersedReducedFields
+const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
+const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
+const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
 
-# @inline condition_operand(func::Function,         op::IRF, cond,      mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(cond),     mask)
-# @inline condition_operand(func::Function,         op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(truefunc), mask)
-# @inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedReduced(truefunc), mask)
+const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
+const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
+const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
 
-# @inline function get_condition(condition::NotImmersedReduced, i, j, k, ibg, co::ConditionalOperation, args...)
-#     LX, LY, LZ = location(co)
-#     return get_condition(condition.func, i, j, k, ibg, args...) & !immersed_column(i, j, k, ibg, LX(), LY(), LZ(), condition))
-# end 
+const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
 
-# @inline function immersed_column(i, j, k, ibg, reduced_dims, )
+const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
+
+@inline condition_operand(func::Function,         op::IRF, cond,      mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), cond    ), mask)
+@inline condition_operand(func::Function,         op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
+@inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
+
+@inline function immersed_column(field::IRF)
+    reduced_dims = reduced_dimensions(field)
+    one_field    = ConditionalOperation{location(field)...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
+
+    return sum(one_field, dims = reduced_dims)
+end
+
+@inline function get_condition(condition::NotImmersedColumn, i, j, k, ibg, co::ConditionalOperation, args...)
+    LX, LY, LZ = location(co)
+    return get_condition(condition.func, i, j, k, ibg, args...) & !(is_immersed_column(i, j, k, condition.immersed_column))
+end 
+
+is_immersed_column(i, j, k, column) = column[i, j, k] == 0
