@@ -93,7 +93,7 @@ function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)
     # Abstract operations that require an interpolation of a sliced fields are not supported!
     first(a) > last(a) && throw(ArgumentError("Cannot interpolate a Sliced field from $loc to $(new_loc)!"))
     
-    indices = UnitRange(max(first(a), first(b)), min(first(a), last(b)))
+    indices = UnitRange(max(first(a), first(b)), min(last(a), last(b)))
     
     # Abstract operations between parallel non-intersecating windowed fields are not 
     first(indices) > last(indices) && throw(ArgumentError("indices $(a) and $(b) are not compatible!"))
