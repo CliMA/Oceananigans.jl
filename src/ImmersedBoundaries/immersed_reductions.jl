@@ -57,11 +57,16 @@ const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 @inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
 
 @inline function immersed_column(field::IRF)
-    reduced_dims = reduced_dimensions(field)
-    one_field    = ConditionalOperation{location(field)...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
+    reduced_dims  = reduced_dimensions(field)
+    full_location = fill_location.(location(field)) 
+    one_field    = ConditionalOperation{full_location...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
 
     return sum(one_field, dims = reduced_dims)
 end
+
+@inline fill_location(::Type{Face})    = Face
+@inline fill_location(::Type{Center})  = Center
+@inline fill_location(::Type{Nothing}) = Center
 
 @inline function get_condition(condition::NotImmersedColumn, i, j, k, ibg, co::ConditionalOperation, args...)
     LX, LY, LZ = location(co)
