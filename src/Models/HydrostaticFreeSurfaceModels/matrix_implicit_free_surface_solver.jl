@@ -101,11 +101,11 @@ end
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    k_surface = grid.Nz + 1
-    Az   = Azᶜᶜᶠ(i, j, k_surface, grid)
-    δ_Q  = flux_div_xyᶜᶜᶠ(i, j, k_surface, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    k_top = grid.Nz + 1
+    Az   = Azᶜᶜᶠ(i, j, k_top, grid)
+    δ_Q  = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, k_surface] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
 end
 
 function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitational_acceleration)

@@ -114,10 +114,10 @@ end
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    k_surface = grid.Nz + 1
-    Az = Azᶜᶜᶠ(i, j, k_surface, grid)
-    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_surface, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, k_surface] = (δ_Q - Az * η[i, j, k_surface] / Δt) / (g * Δt)
+    k_top = grid.Nz + 1
+    Az = Azᶜᶜᶠ(i, j, k_top, grid)
+    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    @inbounds rhs[i, j, k_top] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
 end
 
 """
@@ -168,9 +168,9 @@ where  ̂ indicates a vertical integral, and
 """
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
-    k_surface = grid.Nz + 1
+    k_top = grid.Nz + 1
     Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
-    @inbounds L_ηⁿ⁺¹[i, j, k_surface] = Az_∇h²ᶜᶜᶜ(i, j, k_surface, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_surface] / (g * Δt^2)
+    @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
 end
 
 #####
