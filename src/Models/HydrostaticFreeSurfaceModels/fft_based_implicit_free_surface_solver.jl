@@ -110,8 +110,9 @@ end
 
 @kernel function fft_implicit_free_surface_right_hand_side!(rhs, grid, g, Lz, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az = Azᶜᶜᶜ(i, j, 1, grid)
-    δ_Q = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
-    @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Lz * Δt * Az)
+    k_top = grid.Nz+1
+    Az = Azᶜᶜᶠ(i, j, k_top, grid)
+    δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Lz * Δt * Az)
 end
 
