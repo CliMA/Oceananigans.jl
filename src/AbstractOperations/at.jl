@@ -52,7 +52,7 @@ macro at(location, abstract_operation)
 end
 
 """
-    utility to propagate field indices in abstract operations
+    utility to propagate field indices in AbstractOperations
 """
 
 using Oceananigans.Fields: default_indices
@@ -66,14 +66,14 @@ indices(f) = default_indices(3)
 
 # easy index propagation 
 function interpolate_indices(args...; loc_operation = (Center, Center, Center))
-    idxs = Any[:, :, :]
+    indices = Any[:, :, :]
     for i in 1:3
         for arg in args
-            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_operation[i])
+            indices[i] = interpolate_index(indices(arg)[i], indices[i], location(arg)[i], loc_operation[i])
         end
     end
 
-    return Tuple(idxs)
+    return Tuple(indices)
 end
 
 interpolate_index(::Colon, ::Colon, args...)       = Colon()
@@ -83,7 +83,7 @@ function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)
     a = corrected_index(a, loc, new_loc)
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
-    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a Sliced field from $loc to $(new_loc)!"))
+    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
     return a
 end
 
@@ -91,16 +91,16 @@ function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)
     a = corrected_index(a, loc, new_loc)
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
-    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a Sliced field from $loc to $(new_loc)!"))
+    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
     
     indices = UnitRange(max(first(a), first(b)), min(last(a), last(b)))
     
-    # Abstract operations between parallel non-intersecating windowed fields are not 
-    first(indices) > last(indices) && throw(ArgumentError("indices $(a) and $(b) are not compatible!"))
+    # Abstract operations between parallel non-intersecating windowed fields are not supported
+    first(indices) > last(indices) && throw(ArgumentError("BinaryOperation operand indices $(a) and $(b) do not intersect!"))
     return indices
 end
 
-# Windowed Fields interpolated from `Center`s to `Face`s lose the first index.
+# Windowed fields interpolated from `Center`s to `Face`s lose the first index.
 # Viceverse, windowed fields interpolated from `Face`s to `Center`s lose the last index
 corrected_index(a, ::Type{Face},   ::Type{Face})   = UnitRange(first(a),   last(a))
 corrected_index(a, ::Type{Center}, ::Type{Center}) = UnitRange(first(a),   last(a))
