@@ -20,7 +20,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-function _multiary_operation(L, op, args, Largs, grid) where {LX, LY, LZ}
+function _multiary_operation(L, op, args, Largs, grid)
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
     return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
 end

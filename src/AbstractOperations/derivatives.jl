@@ -28,7 +28,7 @@ end
 
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
-function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
+function _derivative(L, ∂, arg, L∂, abstract_∂, grid) 
     ▶ = interpolation_operator(L∂, L)
     return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
