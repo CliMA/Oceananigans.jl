@@ -66,14 +66,14 @@ indices(f) = default_indices(3)
 
 # easy index propagation 
 function interpolate_indices(args...; loc_operation = (Center, Center, Center))
-    indices = Any[:, :, :]
+    idxs = Any[:, :, :]
     for i in 1:3
         for arg in args
-            indices[i] = interpolate_index(indices(arg)[i], indices[i], location(arg)[i], loc_operation[i])
+            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_operation[i])
         end
     end
 
-    return Tuple(indices)
+    return Tuple(idxs)
 end
 
 interpolate_index(::Colon, ::Colon, args...)       = Colon()
