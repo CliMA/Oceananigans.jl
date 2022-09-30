@@ -51,10 +51,6 @@ macro at(location, abstract_operation)
     return wrapped_operation
 end
 
-"""
-    utility to propagate field indices in AbstractOperations
-"""
-
 using Oceananigans.Fields: default_indices
 
 # Numbers and functions do not have index restrictions
@@ -64,7 +60,13 @@ indices(f::Number)   = default_indices(3)
 # Fallback (used by KernelFunctionOperation)
 indices(f) = default_indices(3)
 
-# easy index propagation 
+
+"""
+    interpolate_indices(operands..., loc_operation = abstract_operation_location)
+
+Utility to propagate operands' indices in `AbstractOperations`s with multiple operands 
+(`BinaryOperation`s and `MultiaryOperation`s)
+"""
 function interpolate_indices(args...; loc_operation = (Center, Center, Center))
     idxs = Any[:, :, :]
     for i in 1:3
