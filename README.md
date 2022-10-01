@@ -140,7 +140,7 @@ If you use Oceananigans.jl as part of your research, teaching, or other activiti
   number = {53},
   pages = {2018},
   author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs},
+  title = {{Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs}},
   journal = {Journal of Open Source Software}
 }
 ```

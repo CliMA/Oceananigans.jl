@@ -1,5 +1,5 @@
 using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
@@ -11,6 +11,24 @@ function restrict_to_interior(index::UnitRange, loc, topo, N)
     to = min(last(index), last(interior_indices(loc, topo, N)))
     return UnitRange(from, to)
 end
+
+#####
+##### Support for Sliced fields with non-trivial indices
+#####
+
+function maybe_sliced_field(user_output::ComputedField, indices)
+    boundary_conditions = FieldBoundaryConditions(indices, user_output.boundary_conditions)
+    output = Field(location(user_output), user_output.grid; 
+                   boundary_conditions, 
+                   indices, 
+                   operand = user_output.operand, 
+                   status = user_output.status)
+    return output
+end
+
+maybe_sliced_field(user_output::AbstractOperation, indices) = Field(user_output; indices)
+maybe_sliced_field(user_output::Reduction, indices) = Field(user_output; indices)
+maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
 
 #####
 ##### Function output fallback
@@ -43,12 +61,8 @@ end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
-    return construct_output(user_output, indices)
+    return maybe_sliced_field(user_output, indices)
 end
-
-construct_output(user_output::Field, indices) = view(user_output, indices...)
-construct_output(user_output::Reduction, indices) = Field(user_output; indices)
-construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
 #####
 ##### Time-averaging

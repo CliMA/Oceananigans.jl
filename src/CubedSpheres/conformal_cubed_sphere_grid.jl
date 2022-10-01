@@ -225,13 +225,15 @@ end
 ##### Grid utils
 #####
 
-Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
-Base.size(grid::ConformalCubedSphereGrid, i) = size(grid)[i]
-halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg.faces)) # hack
+Base.size(grid::ConformalCubedSphereGrid)      = (size(grid.faces[1])..., length(grid.faces))
+Base.size(loc, grid::ConformalCubedSphereGrid) = size(loc, grid.faces[1])
+Base.size(grid::ConformalCubedSphereGrid, i)   = size(grid)[i]
+halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.faces)) # hack
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
 topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+topology(grid::ConformalCubedSphereGrid, i) = topology(grid)[i] 
 architecture(grid::ConformalCubedSphereGrid) = grid.architecture
 
 function on_architecture(arch, grid::ConformalCubedSphereGrid) 
