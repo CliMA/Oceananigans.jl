@@ -10,7 +10,7 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
     @doc """
         Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
 
-    Returns an abstract representation of the derivative `∂` on `arg`,
+    Return an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
@@ -84,6 +84,7 @@ by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
     _derivative(L, ∂z(LX, LY, LZ), arg, (LX, LY, flip(LZ)), ∂z, arg.grid)
 
 # Defaults
+
 """
     ∂x(arg::AbstractField)
 
@@ -97,6 +98,7 @@ Return an abstract representation of a ``x``-derivative acting on field `a`.
 Return an abstract representation of a ``y``-derivative acting on field `a`.
 """
 ∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX, flip(LY), LZ), arg)
+
 """
     ∂z(arg::AbstractField)
 
@@ -123,4 +125,3 @@ Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            Adapt.adapt(to, deriv.▶),
                            nothing,
                            Adapt.adapt(to, deriv.grid))
-
