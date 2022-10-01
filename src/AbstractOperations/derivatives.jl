@@ -59,7 +59,7 @@ push!(operators, derivative_operators...)
 """
     ∂x(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of an ``x``-derivative acting on field `a` followed
+Return an abstract representation of an ``x``-derivative acting on field `arg` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -68,7 +68,7 @@ by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂y(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of a ``y``-derivative acting on field `a` followed
+Return an abstract representation of a ``y``-derivative acting on field `arg` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -77,7 +77,7 @@ by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂z(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of a ``z``-derivative acting on field `a` followed
+Return an abstract representation of a ``z``-derivative acting on field `arg` followed
 by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -88,21 +88,21 @@ by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂x(arg::AbstractField)
 
-Return an abstract representation of a ``x``-derivative acting on field `a`.
+Return an abstract representation of a ``x``-derivative acting on field `arg`.
 """
 ∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX), LY, LZ), arg)
 
 """
     ∂y(arg::AbstractField)
 
-Return an abstract representation of a ``y``-derivative acting on field `a`.
+Return an abstract representation of a ``y``-derivative acting on field `arg`.
 """
 ∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX, flip(LY), LZ), arg)
 
 """
     ∂z(arg::AbstractField)
 
-Return an abstract representation of a ``z``-derivative acting on field `a`.
+Return an abstract representation of a ``z``-derivative acting on field `arg`.
 """
 ∂z(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((LX, LY, flip(LZ)), arg)
 
