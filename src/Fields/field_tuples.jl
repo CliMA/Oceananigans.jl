@@ -51,7 +51,7 @@ Fill halo regions for all `fields`. The algorithm:
     4. In every direction, the halo regions in each of the remaining Field tuple
        are filled simultaneously.
 """
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; async = false, kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
 
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
@@ -62,15 +62,19 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
     ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
 
+    events = []
+
     # Fill halo regions for reduced and windowed fields
     for field in (reduced_fields..., windowed_fields...)
-        fill_halo_regions!(field, args...; kwargs...)
+        event = fill_halo_regions!(field, args...; async, kwargs...)
+        push!(events, event...)
     end
 
     # Fill the rest
     if !isempty(ordinary_fields)
         grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
+        event = tupled_fill_halo_regions!(ordinary_fields, grid, args...; async, kwargs...)
+        push!(events, event...)
     end
 
     return nothing

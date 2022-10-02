@@ -647,7 +647,7 @@ end
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, args...; kwargs...)
+function fill_halo_regions!(field::Field, args...; async = false, kwargs...)
     reduced_dims = reduced_dimensions(field)
 
     # To correctly fill the halo regions of fields with non-default indices, we'd have to
@@ -665,6 +665,7 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
                        instantiated_location(field),
                        field.grid,
                        args...;
+                       async, 
                        reduced_dimensions = reduced_dims,
                        kwargs...)
 
