@@ -29,8 +29,8 @@ function calculate_tendency_contributions!(model::ShallowWaterModel, region_to_c
 
     gravitational_acceleration = model.gravitational_acceleration
     
-    kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))[[1, 2]]
-    offsets     = tendency_kernel_offset(N, H, Val(region_to_compute))[[1, 2]]
+    kernel_size = tendency_kernel_size(grid, Val(region_to_compute))[[1, 2]]
+    offsets     = tendency_kernel_offset(grid, Val(region_to_compute))[[1, 2]]
 
     workgroup = heuristic_workgroup(kernel_size...)
 
@@ -38,8 +38,6 @@ function calculate_tendency_contributions!(model::ShallowWaterModel, region_to_c
     calculate_Gvh_kernel! = calculate_Gvh!(device(arch), workgroup, kernel_size)
     calculate_Gh_kernel!  =  calculate_Gh!(device(arch), workgroup, kernel_size)
     calculate_Gc_kernel!  =  calculate_Gc!(device(arch), workgroup, kernel_size)
-
-    barrier = Event(device(arch))
 
     args_vel = (offsets, grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)

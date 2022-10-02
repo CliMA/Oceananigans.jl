@@ -27,10 +27,8 @@ function calculate_tendency_contributions!(model::NonhydrostaticModel, region_to
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    N = size(grid)
-    H = halo_size(grid)
-    kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))
-    offsets     = tendency_kernel_offset(N, H, Val(region_to_compute))
+    kernel_size = tendency_kernel_size(grid, Val(region_to_compute))
+    offsets     = tendency_kernel_offset(grid, Val(region_to_compute))
 
     workgroup = heuristic_workgroup(kernel_size...)
 
