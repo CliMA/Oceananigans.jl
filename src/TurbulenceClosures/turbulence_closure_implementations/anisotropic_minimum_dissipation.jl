@@ -135,19 +135,19 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, velocities, C)
     FT = eltype(grid)
     ijk = (i, j, k, grid)
-    q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
+    q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
     Cb = closure.Cb
 
     if q == 0 # SGS viscosity is zero when strain is 0
         νˢᵍˢ = zero(FT)
     else
-        r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w)
+        r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w)
 
         # So-called buoyancy modification term:
-        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
+        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, velocities.w, C) / Δᶠzᶜᶜᶜ(ijk...)
 
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
 
@@ -157,7 +157,7 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, velocities) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
@@ -169,7 +169,7 @@ end
     if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w, c)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, c)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
         κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end

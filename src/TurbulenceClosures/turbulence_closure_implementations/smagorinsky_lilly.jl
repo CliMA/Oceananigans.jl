@@ -96,8 +96,8 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, U, C) where FT
-    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
+@inline function calc_nonlinear_νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::SmagorinskyLilly, buoyancy, velocities, C) where FT
+    Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
     N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, closure)
     ς  = stability(N², Σ², closure.Cb) # Use unity Prandtl number.
@@ -106,8 +106,8 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 end
 
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, buoyancy, U, C, ::Val{tracer_index}) where {tracer_index}
-    νₑ = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, buoyancy, velocities, C, ::Val{tracer_index}) where {tracer_index}
+    νₑ = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, velocities, C)
 
     @inbounds Pr = closure.Pr[tracer_index]
 
