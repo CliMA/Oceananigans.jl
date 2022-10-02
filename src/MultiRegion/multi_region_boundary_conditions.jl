@@ -66,15 +66,17 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
+    events = construct_regionally(empty_array, mrg)
     for task = 1:3
-        barrier = device_event(arch)
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, indices, loc, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+                          c, indices, loc, arch, events, mrg, Reference(c.regions), Reference(buffers.regions), 
                           args...; kwargs...)
     end
 
-    return nothing
+    return events
 end
+
+empty_array(grid) = []
 
 #####
 ##### fill_halo! for Communicating boundary condition 
@@ -90,12 +92,12 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
         function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return NoneEvent()
+            return event
         end   
         function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return NoneEvent()
+            return event
         end   
     end
 end
