@@ -1,5 +1,6 @@
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
 using Oceananigans.ImmersedBoundaries: PartialCellBottom, ImmersedBoundaryGrid
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 """
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating

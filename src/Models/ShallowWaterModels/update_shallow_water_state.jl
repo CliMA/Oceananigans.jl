@@ -1,7 +1,7 @@
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 """
     update_state!(model::ShallowWaterModel)

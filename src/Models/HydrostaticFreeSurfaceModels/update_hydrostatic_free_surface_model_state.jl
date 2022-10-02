@@ -6,6 +6,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduc
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 

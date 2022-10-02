@@ -10,7 +10,6 @@ export
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: device_event, architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 device_event(model::AbstractModel) = device_event(model.architecture)
 architecture(model::AbstractModel) = model.architecture
