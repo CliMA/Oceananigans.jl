@@ -109,7 +109,12 @@ function with_tracers(tracers, closure::ScalarDiffusivity{TD, F}) where {TD, F}
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
+@inline viscosity(closure::VerticalScalarDiffusivity, K) = [0, 0, closure.ν]
+@inline viscosity(closure::HorizontalScalarDiffusivity, K) = [closure.ν, closure.ν, 0]
+
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
+@inline diffusivity(closure::VerticalScalarDiffusivity, K, ::Val{id}) where id = [0, 0, closure.κ[id]]
+@inline diffusivity(closure::HorizontalScalarDiffusivity, K, ::Val{id}) where id = [closure.κ[id], closure.κ[id], 0]
 
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 

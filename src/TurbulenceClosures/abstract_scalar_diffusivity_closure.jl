@@ -58,8 +58,8 @@ function diffusivity end
 @inline diffusivity_location(::AbstractScalarDiffusivity) = (Center(), Center(), Center())
 
 # For tuples (note that kernel functions are "untupled", so these are for the user API)
-viscosity(closure::Tuple, K) = sum(Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure)))
-diffusivity(closure::Tuple, K, id) = sum(Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure)))
+viscosity(closure::Tuple, K) = (.+)(Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure))...)
+diffusivity(closure::Tuple, K, id) = (.+)(Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure))...)
 
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
