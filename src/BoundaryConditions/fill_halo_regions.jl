@@ -32,26 +32,31 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, loc, grid, args...; async = false, kwargs...)
 
     arch = architecture(grid)
 
     halo_tuple = permute_boundary_conditions(boundary_conditions)
    
+    events = []
+    barrier = device_event(arch)
     for task = 1:3
-        barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+        event = fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
+        barrier = event
+        push!(events, event)
     end
 
-    return nothing
+    if async
+        wait(device(arch), MultiEvent(Tuple(events)))
+    end
+    return events
 end
 
 function fill_halo_event!(task, halo_tuple, c, loc, arch, barrier, grid, args...; kwargs...)
     fill_halo! = halo_tuple[1][task]
     bc_left    = halo_tuple[2][task]
     bc_right   = halo_tuple[3][task]
-    event      = fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
-    wait(device(arch), event)
+    return fill_halo!(c, bc_left, bc_right, loc, arch, barrier, grid, args...; kwargs...)
 end
 
 function permute_boundary_conditions(boundary_conditions)

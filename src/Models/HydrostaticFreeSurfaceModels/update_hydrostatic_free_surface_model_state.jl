@@ -20,17 +20,17 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     @apply_regionally masking_actions!(model)
-
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
-
     @apply_regionally update_state_actions!(model)
 
-    fill_halo_regions!(model.velocities.w, model.clock, fields(model))
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-    fill_halo_regions!(model.pressure.pHY′)
+    fill_halo_fields = merge(prognostic_fields(model), 
+                            (w = model.velocities.w, 
+                            pHY′ = model.pressure.pHY′,
+                            κ = model.diffusivity_fields))
+
+    fill_halo_events = fill_halo_regions!(fill_halo_fields, model.clock, fields(model); async = true)
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
     
-    return nothing
+    return fill_halo_events
 end
 
 # Mask immersed fields

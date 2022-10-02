@@ -87,9 +87,11 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.timestepper.previous_Δt = Δt
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model)
+    if model.clock.iteration == 0
+        fill_halo_events = update_state!(model)
+    end
 
-    @apply_regionally calculate_tendencies!(model)
+    @apply_regionally calculate_tendencies!(model, fill_halo_events)
     
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
@@ -97,7 +99,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
-    update_state!(model)
+    fill_halo_events = update_state!(model)
     update_particle_properties!(model, Δt)
 
     return nothing
