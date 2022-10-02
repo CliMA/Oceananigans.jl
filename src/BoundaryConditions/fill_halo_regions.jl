@@ -54,7 +54,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, events, grid,
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
 
-    barrier = isempy(events) ? device_event(arch) : events[end]
+    barrier = isempty(events) ? device_event(arch) : events[end]
     # Calculate size and offset of the fill_halo kernel
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
