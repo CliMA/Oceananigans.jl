@@ -1,4 +1,4 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
+using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
 
 using Oceananigans.Utils: work_layout
 using Oceananigans: fields
@@ -6,28 +6,28 @@ using Oceananigans: fields
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 
 using Oceananigans.Architectures: device
-
 using Oceananigans.BoundaryConditions 
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_tendency_contributions!(model::ShallowWaterModel, regions_to_compute; dependencies)
 
-    tendencies = model.timestepper.Gⁿ
-    arch = model.architecture
-    grid = model.grid
-    gravitational_acceleration = model.gravitational_acceleration
-    advection = model.advection
-    velocities = model.velocities
-    coriolis = model.coriolis
-    closure = model.closure
-    bathymetry = model.bathymetry
-    solution = model.solution
-    tracers = model.tracers
+    tendencies    = model.timestepper.Gⁿ
+    arch          = model.architecture
+    grid          = model.grid
+    advection     = model.advection
+    velocities    = model.velocities
+    coriolis      = model.coriolis
+    closure       = model.closure
+    bathymetry    = model.bathymetry
+    solution      = model.solution
+    tracers       = model.tracers
     diffusivities = model.diffusivity_fields
-    forcings = model.forcing
-    clock = model.clock
-    formulation = model.formulation
+    forcings      = model.forcing
+    clock         = model.clock
+    formulation   = model.formulation
 
+    gravitational_acceleration = model.gravitational_acceleration
+    
     N = size(grid)
     H = halo_size(grid)
     kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))[[1, 2]]
@@ -174,6 +174,7 @@ function calculate_boundary_tendency_contributions!(model::ShallowWaterModel)
     tracers      = model.tracers
     clock        = model.clock
     model_fields = fields(model)
+
 
     barrier = Event(device(arch))
 

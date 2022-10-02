@@ -1,4 +1,4 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
+using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
 
 using Oceananigans: fields
 using Oceananigans.Utils: work_layout, heuristic_workgroup

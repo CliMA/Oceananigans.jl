@@ -1,10 +1,11 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-using Oceananigans.Architectures: device, device_event
 using Oceananigans: fields, prognostic_fields
+using Oceananigans.Architectures: device, device_event
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
+
 
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
@@ -106,10 +107,8 @@ function calculate_hydrostatic_tendency_contributions!(model, region_to_compute;
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
 
-    @show events
     Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies)
 
-    @show Gη_event
     push!(events, Gη_event)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
