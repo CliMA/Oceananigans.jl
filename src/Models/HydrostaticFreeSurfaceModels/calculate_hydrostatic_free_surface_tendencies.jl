@@ -1,7 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-using Oceananigans.Architectures: device_event
+using Oceananigans.Architectures: device, device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
@@ -13,6 +13,8 @@ Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
 function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, fill_halo_events)
+
+    arch = model.architecture
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
@@ -28,7 +30,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, fill_halo_eve
     push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :bottom; dependencies))
     push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :top;    dependencies))
 
-    wait(device(model.architecture), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
+    wait(device(arch), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -49,7 +51,7 @@ end
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
 
-function calculate_free_surface_tendency!(grid, model, dependencies, ::Val{region}) where region
+function calculate_free_surface_tendency!(grid, model, ::Val{region}; dependencies) where region
 
     arch = architecture(grid)
     N = size(grid)
@@ -68,7 +70,7 @@ function calculate_free_surface_tendency!(grid, model, dependencies, ::Val{regio
                        model.auxiliary_fields,
                        model.forcing,
                        model.clock;
-                       dependencies = dependencies)
+                       dependencies)
 
     return Gη_event
 end
@@ -162,7 +164,10 @@ function calculate_hydrostatic_tendency_contributions!(model, region_to_compute;
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
 
-    Gη_event = calculate_free_surface_tendency!(grid, model, region_to_compute, dependencies)
+    @show events
+    Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies)
+
+    @show Gη_event
     push!(events, Gη_event)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
@@ -237,6 +242,7 @@ end
 """ Calculate the right-hand-side of the free surface displacement (η) equation. """
 @kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
     i, j = @index(Global, NTuple)
+    i, j .+= offsets
     @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end
 

@@ -11,6 +11,7 @@ using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: TendencyFields
 using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
