@@ -86,7 +86,7 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz² + wyz²
 end
 
-@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, C) where FT =
+@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT =
     (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, velocities)
                                               + abs²_∇h_wz(i, j, k, grid, velocities.w))
 
