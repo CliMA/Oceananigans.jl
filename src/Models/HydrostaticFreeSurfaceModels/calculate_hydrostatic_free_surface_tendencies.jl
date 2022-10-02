@@ -16,15 +16,17 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, fill_halo_eve
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    interior_events = calculate_hydrostatic_tendency_contributions!(model, :interior, barrier = device_event(arch))
+    interior_events = calculate_hydrostatic_tendency_contributions!(model, :interior; dependencies = device_event(arch))
     
+    dependencies = fill_halo_events[end]
+
     boundary_events = []
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :west,   barrier = fill_halo_events[end]))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :east,   barrier = fill_halo_events[end]))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :south,  barrier = fill_halo_events[end]))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :north,  barrier = fill_halo_events[end]))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :bottom, barrier = fill_halo_events[end]))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :top,    barrier = fill_halo_events[end]))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :west;   dependencies))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :east;   dependencies))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :south;  dependencies))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :north;  dependencies))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :bottom; dependencies))
+    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :top;    dependencies))
 
     wait(device(model.architecture), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
 
@@ -62,7 +64,7 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
     return Gη_event
 end
     
-@inline kernelsize(N, H, ::Val{:Interior}) = N .- H
+@inline kernelsize(N, H, ::Val{:interior}) = N .- H
 @inline kernelsize(N, H, ::Val{:west})   = (H[1], N[2], N[3])
 @inline kernelsize(N, H, ::Val{:east})   = (H[1], N[2], N[3])
 @inline kernelsize(N, H, ::Val{:south})  = (N[1], H[2], N[3])
@@ -70,7 +72,7 @@ end
 @inline kernelsize(N, H, ::Val{:bottom}) = (N[1], N[2], H[3])
 @inline kernelsize(N, H, ::Val{:top})    = (N[1], N[2], H[3])
 
-@inline kerneloffsets(N, H, ::Val{:Interior}) = H
+@inline kerneloffsets(N, H, ::Val{:interior}) = H
 @inline kerneloffsets(N, H, ::Val{:west})   = (0, 0, 0)
 @inline kerneloffsets(N, H, ::Val{:east})   = (N[1] - H[1], 0, 0)
 @inline kerneloffsets(N, H, ::Val{:south})  = (0, 0, 0)
