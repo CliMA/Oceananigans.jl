@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
+import Oceananigans.TimeSteppers: calculate_tendency_contributions!, calculate_boundary_tendency_contributions!
 
 using Oceananigans: fields
 using Oceananigans.Utils: work_layout, heuristic_workgroup
@@ -131,22 +132,28 @@ end
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function calculate_Gu!(Gu, offsets, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gu[i′, j′, k′] = u_velocity_tendency(i′, j′, k′, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_Gv!(Gv,offsets, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gv[i′, j′, k′] = v_velocity_tendency(i′, j′, k′, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
 @kernel function calculate_Gw!(Gw, offsets, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gw[i′, j′, k′] = w_velocity_tendency(i′, j′, k′, args...)
 end
 
 #####
@@ -156,8 +163,10 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function calculate_Gc!(Gc, offsets, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gc[i′, j′, k′] = tracer_tendency(i′, j′, k′, args...)
 end
 
 #####

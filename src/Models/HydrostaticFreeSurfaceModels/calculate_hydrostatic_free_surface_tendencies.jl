@@ -5,7 +5,58 @@ using Oceananigans.Architectures: device, device_event
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
+import Oceananigans.TimeSteppers: calculate_tendency_contributions!, calculate_boundary_tendency_contributions!
 
+""" Store previous value of the source term and calculate current source term. """
+function calculate_tendency_contributions!(model::HydrostaticFreeSurfaceModel, region_to_compute; dependencies = device_event(model))
+
+    arch = model.architecture
+    grid = model.grid
+
+    kernel_size = tendency_kernel_size(grid, Val(region_to_compute))
+    offsets     = tendency_kernel_offset(grid, Val(region_to_compute))
+
+    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
+
+    Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies)
+
+    push!(events, Gη_event)
+
+    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
+
+    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+        @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
+        @inbounds c_advection = model.advection[tracer_name]
+        @inbounds c_forcing = model.forcing[tracer_name]
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+        c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
+
+        Gc_event = launch!(arch, grid, kernel_size,
+                           calculate_hydrostatic_free_surface_Gc!,
+                           c_tendency,
+                           c_kernel_function,
+                           offsets,
+                           grid,
+                           Val(tracer_index),
+                           c_advection,
+                           model.closure,
+                           c_immersed_bc,
+                           model.buoyancy,
+                           model.velocities,
+                           model.free_surface,
+                           model.tracers,
+                           top_tracer_bcs,
+                           model.diffusivity_fields,
+                           model.auxiliary_fields,
+                           c_forcing,
+                           model.clock;
+                           dependencies)
+
+        push!(events, Gc_event)
+    end
+
+    return Tuple(events)
+end
 
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
@@ -16,8 +67,8 @@ function calculate_free_surface_tendency!(grid, model, ::Val{region}; dependenci
     N = size(grid)
     H = halo_size(grid)
 
-    kernel_size    = tendency_kernel_size(N, H, Val(region))[[1, 2]]
-    kernel_offsets = tendency_kernel_offset(N, H, Val(region))[[1, 2]]
+    kernel_size    = tendency_kernel_size(grid, Val(region))[[1, 2]]
+    kernel_offsets = tendency_kernel_offset(grid, Val(region))[[1, 2]]
 
     Gη_event = launch!(arch, grid, kernel_size,
                        calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
@@ -94,59 +145,6 @@ end
 top_tracer_boundary_conditions(grid, tracers) =
     NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-""" Store previous value of the source term and calculate current source term. """
-function calculate_hydrostatic_tendency_contributions!(model, region_to_compute; dependencies = device_event(model))
-
-    arch = model.architecture
-    grid = model.grid
-
-    N = size(grid)
-    H = halo_size(grid)
-    kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))
-    offsets     = tendency_kernel_offset(N, H, Val(region_to_compute))
-
-    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
-
-    Gη_event = calculate_free_surface_tendency!(grid, model, Val(region_to_compute); dependencies)
-
-    push!(events, Gη_event)
-
-    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-        @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection = model.advection[tracer_name]
-        @inbounds c_forcing = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-        c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
-
-        Gc_event = launch!(arch, grid, kernel_size,
-                           calculate_hydrostatic_free_surface_Gc!,
-                           c_tendency,
-                           c_kernel_function,
-                           offsets,
-                           grid,
-                           Val(tracer_index),
-                           c_advection,
-                           model.closure,
-                           c_immersed_bc,
-                           model.buoyancy,
-                           model.velocities,
-                           model.free_surface,
-                           model.tracers,
-                           top_tracer_bcs,
-                           model.diffusivity_fields,
-                           model.auxiliary_fields,
-                           c_forcing,
-                           model.clock;
-                           dependencies)
-
-        push!(events, Gc_event)
-    end
-
-    return Tuple(events)
-end
-
 #####
 ##### Tendency calculators for u, v
 #####
@@ -154,15 +152,19 @@ end
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gu!(Gu, offsets, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gu[i′, j′, k′] = hydrostatic_free_surface_u_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gv!(Gv, offsets, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]    
+    @inbounds Gv[i′, j′, k′] = hydrostatic_free_surface_v_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
 #####
@@ -172,8 +174,10 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, offsets, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i, j, k .+= offsets
-    @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    k′ = k + offsets[3]
+    @inbounds Gc[i′, j′, k′] = tendency_kernel_function(i′, j′, k′, grid, args...)
 end
 
 #####
@@ -181,10 +185,11 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (η) equation. """
-@kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gη!(Gη, offsets, grid, args...)
     i, j = @index(Global, NTuple)
-    i, j .+= offsets
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+    i′ = i + offsets[1]
+    j′ = j + offsets[2]
+    @inbounds Gη[i′, j′, grid.Nz+1] = free_surface_tendency(i′, j′, grid, args...)
 end
 
 #####
@@ -204,16 +209,16 @@ end
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(model::HydrostaticFreeSurfaceModel)
 
-    Gⁿ   = model.timestepper.Gⁿ
-    grid = model.grid,
-    arch = model.architecture,
-    velocities = model.velocities,
-    free_surface = model.free_surface,
-    tracers = model.tracers,
-    clock = model.clock,
-    model_fields = fields(model),
-    closure = model.closure,
-    buoyancy = model.buoyancy
+    Gⁿ           = model.timestepper.Gⁿ
+    grid         = model.grid
+    arch         = model.architecture
+    velocities   = model.velocities
+    free_surface = model.free_surface
+    tracers      = model.tracers
+    clock        = model.clock
+    model_fields = fields(model)
+    closure      = model.closure
+    buoyancy     = model.buoyancy
 
     barrier = device_event(arch)
 
