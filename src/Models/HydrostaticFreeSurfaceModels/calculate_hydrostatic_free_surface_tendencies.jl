@@ -6,48 +6,6 @@ using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
-"""
-    calculate_tendencies!(model::NonhydrostaticModel)
-
-Calculate the interior and boundary contributions to tendency terms without the
-contribution from non-hydrostatic pressure.
-"""
-function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, fill_halo_events)
-
-    arch = model.architecture
-
-    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain
-    interior_events = calculate_hydrostatic_tendency_contributions!(model, :interior; dependencies = device_event(arch))
-    
-    dependencies = fill_halo_events[end]
-
-    boundary_events = []
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :west;   dependencies))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :east;   dependencies))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :south;  dependencies))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :north;  dependencies))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :bottom; dependencies))
-    push!(boundary_events, calculate_hydrostatic_tendency_contributions!(model, :top;    dependencies))
-
-    wait(device(arch), MultiEvent(tuple(fill_halo_events..., interior_events..., boundary_events...)))
-
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
-    # boundaries of the domain
-    calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                                           model.grid,
-                                                           model.architecture,
-                                                           model.velocities,
-                                                           model.free_surface,
-                                                           model.tracers,
-                                                           model.clock,
-                                                           fields(model),
-                                                           model.closure,
-                                                           model.buoyancy)
-
-    return nothing
-end
-
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
 calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
 
@@ -57,8 +15,8 @@ function calculate_free_surface_tendency!(grid, model, ::Val{region}; dependenci
     N = size(grid)
     H = halo_size(grid)
 
-    kernel_size    = kernelsize(N, H, Val(region))[[1, 2]]
-    kernel_offsets = kerneloffsets(N, H, Val(region))[[1, 2]]
+    kernel_size    = tendency_kernel_size(N, H, Val(region))[[1, 2]]
+    kernel_offsets = tendency_kernel_offset(N, H, Val(region))[[1, 2]]
 
     Gη_event = launch!(arch, grid, kernel_size,
                        calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
@@ -75,22 +33,6 @@ function calculate_free_surface_tendency!(grid, model, ::Val{region}; dependenci
     return Gη_event
 end
     
-@inline kernelsize(N, H, ::Val{:interior}) = N .- H
-@inline kernelsize(N, H, ::Val{:west})   = (H[1], N[2], N[3])
-@inline kernelsize(N, H, ::Val{:east})   = (H[1], N[2], N[3])
-@inline kernelsize(N, H, ::Val{:south})  = (N[1], H[2], N[3])
-@inline kernelsize(N, H, ::Val{:north})  = (N[1], H[2], N[3])
-@inline kernelsize(N, H, ::Val{:bottom}) = (N[1], N[2], H[3])
-@inline kernelsize(N, H, ::Val{:top})    = (N[1], N[2], H[3])
-
-@inline kerneloffsets(N, H, ::Val{:interior}) = H
-@inline kerneloffsets(N, H, ::Val{:west})   = (0, 0, 0)
-@inline kerneloffsets(N, H, ::Val{:east})   = (N[1] - H[1], 0, 0)
-@inline kerneloffsets(N, H, ::Val{:south})  = (0, 0, 0)
-@inline kerneloffsets(N, H, ::Val{:north})  = (0, N[2] - H[2], 0)
-@inline kerneloffsets(N, H, ::Val{:bottom}) = (0, 0, 0)
-@inline kerneloffsets(N, H, ::Val{:top})    = (0, 0, N[3] - H[3])
-
 """ Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_size, offsets; dependencies = device_event(model))
 
@@ -159,8 +101,8 @@ function calculate_hydrostatic_tendency_contributions!(model, region_to_compute;
 
     N = size(grid)
     H = halo_size(grid)
-    kernel_size = kernelsize(N, H, Val(region_to_compute))
-    offsets     = kerneloffsets(N, H, Val(region_to_compute))
+    kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))
+    offsets     = tendency_kernel_offset(N, H, Val(region_to_compute))
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
 
@@ -261,7 +203,18 @@ function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
+function calculate_boundary_tendency_contributions!(model::HydrostaticFreeSurfaceModel)
+
+    Gⁿ   = model.timestepper.Gⁿ
+    grid = model.grid,
+    arch = model.architecture,
+    velocities = model.velocities,
+    free_surface = model.free_surface,
+    tracers = model.tracers,
+    clock = model.clock,
+    model_fields = fields(model),
+    closure = model.closure,
+    buoyancy = model.buoyancy
 
     barrier = device_event(arch)
 
@@ -269,15 +222,15 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, clock, model_fields, closure, buoyancy)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, args...)
+    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, clock, model_fields, closure, buoyancy)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, clock, model_fields, closure, buoyancy)
     end
 
     events = filter(e -> typeof(e) <: Event, events)

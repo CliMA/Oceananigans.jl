@@ -1,42 +1,10 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans: fields
-using Oceananigans.Utils: work_layout
-
-"""
-    calculate_tendencies!(model::NonhydrostaticModel)
-
-Calculate the interior and boundary contributions to tendency terms without the
-contribution from non-hydrostatic pressure.
-"""
-function calculate_tendencies!(model::NonhydrostaticModel, fill_halo_events)
-
-    # Note:
-    #
-    # "tendencies" is a NamedTuple of OffsetArrays corresponding to the tendency data for use
-    # in GPU computations.
-    #
-    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to
-    # tendency data.
-
-    # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain
-    calculate_interior_tendency_contributions!(model)
-                                               
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
-    # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.clock,
-                                               fields(model))
-
-    return nothing
-end
+using Oceananigans.Utils: work_layout, heuristic_workgroup
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model)
+function calculate_tendency_contributions!(model::NonhydrostaticModel, region_to_compute; dependencies)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -58,17 +26,20 @@ function calculate_interior_tendency_contributions!(model)
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    N = size(grid)
+    H = halo_size(grid)
+    kernel_size = tendency_kernel_size(N, H, Val(region_to_compute))
+    offsets     = tendency_kernel_offset(N, H, Val(region_to_compute))
 
-    calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
-    calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)
-    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
-    calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
+    workgroup = heuristic_workgroup(kernel_size...)
 
-    barrier = Event(device(arch))
-
+    calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, kernel_size)
+    calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, kernel_size)
+    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, kernel_size)
+    calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, kernel_size)
 
     Gu_event = calculate_Gu_kernel!(tendencies.u,
+                                    offsets,
                                     grid,
                                     advection,
                                     coriolis,
@@ -83,10 +54,11 @@ function calculate_interior_tendency_contributions!(model)
                                     diffusivities,
                                     forcings,
                                     hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
+                                    clock;
+                                    dependencies)
 
     Gv_event = calculate_Gv_kernel!(tendencies.v,
+                                    offsets,    
                                     grid,
                                     advection,
                                     coriolis,
@@ -101,10 +73,11 @@ function calculate_interior_tendency_contributions!(model)
                                     diffusivities,
                                     forcings,
                                     hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
+                                    clock;
+                                    dependencies)
 
     Gw_event = calculate_Gw_kernel!(tendencies.w,
+                                    offsets,
                                     grid,
                                     advection,
                                     coriolis,
@@ -118,8 +91,8 @@ function calculate_interior_tendency_contributions!(model)
                                     auxiliary_fields,
                                     diffusivities,
                                     forcings,
-                                    clock,
-                                    dependencies=barrier)
+                                    clock;
+                                    dependencies)
 
     events = [Gu_event, Gv_event, Gw_event]
 
@@ -129,6 +102,7 @@ function calculate_interior_tendency_contributions!(model)
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
         Gc_event = calculate_Gc_kernel!(c_tendency,
+                                        offsets,
                                         grid,
                                         Val(tracer_index),
                                         advection,
@@ -141,15 +115,13 @@ function calculate_interior_tendency_contributions!(model)
                                         auxiliary_fields,
                                         diffusivities,
                                         forcing,
-                                        clock,
-                                        dependencies=barrier)
+                                        clock;
+                                        dependencies)
 
         push!(events, Gc_event)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
-
-    return nothing
+    return events
 end
 
 #####
@@ -157,20 +129,23 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu, args...)
+@kernel function calculate_Gu!(Gu, offsets, args...)
     i, j, k = @index(Global, NTuple)
+    i, j, k .+= offsets
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv, args...)
+@kernel function calculate_Gv!(Gv,offsets, args...)
     i, j, k = @index(Global, NTuple)
+    i, j, k .+= offsets
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw, args...)
+@kernel function calculate_Gw!(Gw, offsets, args...)
     i, j, k = @index(Global, NTuple)
+    i, j, k .+= offsets
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
 end
 
@@ -179,8 +154,9 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc, args...)
+@kernel function calculate_Gc!(Gc, offsets, args...)
     i, j, k = @index(Global, NTuple)
+    i, j, k .+= offsets
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
 end
 
@@ -189,15 +165,22 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
+function calculate_boundary_tendency_contributions!(model::NonhydrostaticModel)
+           
+    Gⁿ = model.timestepper.Gⁿ
+
+    arch  = model.architecture
+    clock = model.clock
+
+    model_fields = fields(model)
 
     barrier = device_event(arch)
 
-    fields = merge(velocities, tracers)
+    prognostic_fields = merge(model.velocities, model.tracers)
 
-    x_events = Tuple(apply_x_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    y_events = Tuple(apply_y_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    z_events = Tuple(apply_z_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
+    x_events = Tuple(apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields) for i in 1:length(prognostic_fields))
+    y_events = Tuple(apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields) for i in 1:length(prognostic_fields))
+    z_events = Tuple(apply_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields) for i in 1:length(prognostic_fields))
                          
     wait(device(arch), MultiEvent(tuple(x_events..., y_events..., z_events...)))
 

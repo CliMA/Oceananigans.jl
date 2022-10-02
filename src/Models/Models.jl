@@ -17,6 +17,7 @@ architecture(model::AbstractModel) = model.architecture
 
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
+include("calculate_tendencies.jl")
 include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
