@@ -8,8 +8,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 ##### General halo filling functions
 #####
 
-fill_halo_regions!(::Nothing, args...) = nothing
-fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...) = nothing
+fill_halo_regions!(::Nothing, args...) = NoneEvent()
+fill_halo_regions!(::NamedTuple{(), Tuple{}}, args...) = NoneEvent()
 
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
@@ -18,7 +18,7 @@ Fill halo regions for each field in the tuple `fields` according to their bounda
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = NoneEvent()
 
 for dir in (:west, :east, :south, :north, :bottom, :top)
     extract_bc = Symbol(:extract_, dir, :_bc)
@@ -49,7 +49,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     if !async
         wait(device(arch), MultiEvent(Tuple(events)))
     end
-    return events
+    return Tuple(events)
 end
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
@@ -91,9 +91,6 @@ function permute_boundary_conditions(boundary_conditions)
 
     return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
-
-@inline validate_event(::Nothing) = NoneEvent()
-@inline validate_event(event)     = event
 
 #####
 ##### Halo filling order

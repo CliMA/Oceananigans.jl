@@ -101,6 +101,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # First stage
     #
 
+    # fill halos at the beginning to have cocurrency between fill halos and tendency computation
+    fill_halo_events = fill_halo_regions!(model)
+
     calculate_tendencies!(model, fill_halo_events)
 
     correct_immersed_tendencies!(model, Δt, γ¹, 0)
@@ -112,13 +115,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
-    fill_halo_events = update_state!(model)
+    update_state!(model)
     update_particle_properties!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
+    fill_halo_events = fill_halo_regions!(model)
     calculate_tendencies!(model, fill_halo_events)
 
     correct_immersed_tendencies!(model, Δt, γ², ζ²)
@@ -130,13 +134,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
-    fill_halo_events = update_state!(model)
+    update_state!(model)
     update_particle_properties!(model, second_stage_Δt)
 
     #
     # Third stage
     #
 
+    fill_halo_events = fill_halo_regions!(model)
     calculate_tendencies!(model, fill_halo_events)
     
     correct_immersed_tendencies!(model, Δt, γ³, ζ³)
@@ -147,7 +152,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    fill_halo_events = update_state!(model)
+    update_state!(model)
     update_particle_properties!(model, third_stage_Δt)
 
     return nothing

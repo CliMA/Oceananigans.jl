@@ -202,7 +202,8 @@ function ShallowWaterModel(;
                               formulation)
 
     update_state!(model)
-
+    fill_halo_regions!(model)
+    
     return model
 end
 

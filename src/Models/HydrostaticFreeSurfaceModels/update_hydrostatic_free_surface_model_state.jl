@@ -19,31 +19,27 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
-    @apply_regionally masking_actions!(model)
-    @apply_regionally update_state_actions!(model)
-
-    fill_halo_fields = merge(prognostic_fields(model), 
-                            (w = model.velocities.w, 
-                            pHY′ = model.pressure.pHY′,
-                            κ = model.diffusivity_fields))
-
-    fill_halo_events = fill_halo_regions!(fill_halo_fields, model.clock, fields(model); async = true)
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
-    
-    return fill_halo_events
-end
-
-# Mask immersed fields
-function masking_actions!(model)
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
     push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
-end
 
-function update_state_actions!(model) 
     compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+
+    return nothing
+end
+
+function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
+
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
+
+    fill_halo_fields = merge(prognostic_fields(model), 
+                            (w = model.velocities.w,
+                            pHY′ = model.pressure.pHY′,
+                            κ = model.diffusivity_fields))
+
+    return fill_halo_regions!(fill_halo_fields, model.clock, fields(model); async)
 end

@@ -659,7 +659,7 @@ function fill_halo_regions!(field::Field, args...; async = false, kwargs...)
     #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
-    fill_halo_regions!(field.data,
+    return fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
                        instantiated_location(field),
@@ -668,6 +668,4 @@ function fill_halo_regions!(field::Field, args...; async = false, kwargs...)
                        async, 
                        reduced_dimensions = reduced_dims,
                        kwargs...)
-
-    return nothing
 end

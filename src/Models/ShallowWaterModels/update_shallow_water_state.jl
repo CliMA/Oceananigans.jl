@@ -19,12 +19,7 @@ function update_state!(model::ShallowWaterModel)
     # Compute the velocities
     compute_velocities!(model.velocities, formulation(model))
 
-    # Fill halos for velocities and tracers
-    fill_halo_events = fill_halo_regions!(merge(model.solution, model.tracers),
-                                          model.clock,
-                                          fields(model))
-
-    return fill_halo_events
+    return nothing
 end
 
 compute_velocities!(U, ::VectorInvariantFormulation) = nothing
@@ -33,3 +28,5 @@ function compute_velocities!(U, ::ConservativeFormulation)
     compute!(U.u)
     compute!(U.v)
 end
+
+fill_halo_regions!(model::ShallowWaterModel; async=false) = fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model); async)

@@ -187,6 +187,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
     update_state!(model)
+    fill_halo_regions!(model)
 
     return model
 end

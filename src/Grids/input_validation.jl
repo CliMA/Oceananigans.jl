@@ -196,7 +196,7 @@ validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice the grid"))
     return idx
 end
 

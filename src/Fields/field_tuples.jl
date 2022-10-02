@@ -66,18 +66,18 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
 
     # Fill halo regions for reduced and windowed fields
     for field in (reduced_fields..., windowed_fields...)
-        event = fill_halo_regions!(field, args...; async, kwargs...)
-        push!(events, event...)
+        reduced_event = fill_halo_regions!(field, args...; async, kwargs...)
+        push!(events, reduced_event...)
     end
 
     # Fill the rest
     if !isempty(ordinary_fields)
         grid = first(ordinary_fields).grid
-        event = tupled_fill_halo_regions!(ordinary_fields, grid, args...; async, kwargs...)
-        push!(events, event...)
+        tupled_event = tupled_fill_halo_regions!(ordinary_fields, grid, args...; async, kwargs...)
+        push!(events, tupled_event...)
     end
 
-    return nothing
+    return Tuple(events)
 end
 
 tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
