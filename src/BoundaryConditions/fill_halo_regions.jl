@@ -46,7 +46,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
         push!(events, event)
     end
 
-    if async
+    if !async
         wait(device(arch), MultiEvent(Tuple(events)))
     end
     return events

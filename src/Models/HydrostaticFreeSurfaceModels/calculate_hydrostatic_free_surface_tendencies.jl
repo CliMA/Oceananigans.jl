@@ -46,12 +46,21 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, fill_halo_eve
     return nothing
 end
 
-function calculate_free_surface_tendency!(grid, model, dependencies)
+calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:top})    = NoneEvent()
+calculate_free_surface_tendency!(grid, model, dependencies, ::Val{:bottom}) = NoneEvent()
+
+function calculate_free_surface_tendency!(grid, model, dependencies, ::Val{region}) where region
 
     arch = architecture(grid)
+    N = size(grid)
+    H = halo_size(grid)
 
-    Gη_event = launch!(arch, grid, :xy,
+    kernel_size    = kernelsize(N, H, Val(region))[[1, 2]]
+    kernel_offsets = kerneloffsets(N, H, Val(region))[[1, 2]]
+
+    Gη_event = launch!(arch, grid, kernel_size,
                        calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+                       kernel_offsets,
                        grid,
                        model.velocities,
                        model.free_surface,
@@ -115,9 +124,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities, kernel_si
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, offsets, v_kernel_args...;
                        dependencies = dependencies)
 
-    Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
-
-    events = [Gu_event, Gv_event, Gη_event]
+    events = [Gu_event, Gv_event]
 
     return events
 end
@@ -154,6 +161,9 @@ function calculate_hydrostatic_tendency_contributions!(model, region_to_compute;
     offsets     = kerneloffsets(N, H, Val(region_to_compute))
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_size, offsets; dependencies)
+
+    Gη_event = calculate_free_surface_tendency!(grid, model, region_to_compute, dependencies)
+    push!(events, Gη_event)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 

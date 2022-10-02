@@ -9,7 +9,7 @@ using Oceananigans.Utils: work_layout
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::NonhydrostaticModel)
+function calculate_tendencies!(model::NonhydrostaticModel, fill_halo_events)
 
     # Note:
     #
