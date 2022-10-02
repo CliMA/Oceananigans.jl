@@ -157,19 +157,19 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, velocities) where {tracer_index}
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
 
     @inbounds Cκ = closure.Cκ[tracer_index]
 
-    σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c)
+    σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, tracer)
 
     if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
     else
-        ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, c)
+        ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
         κˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
@@ -194,8 +194,8 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     events = [viscosity_event]
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
-        @inbounds c = tracers[tracer_index]
-        event = diffusivity_kernel!(κₑ, grid, closure, c, Val(tracer_index), velocities, dependencies=barrier)
+        @inbounds tracer = tracers[tracer_index]
+        event = diffusivity_kernel!(κₑ, grid, closure, tracer, Val(tracer_index), velocities, dependencies=barrier)
         push!(events, event)
     end
 

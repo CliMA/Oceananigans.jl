@@ -126,7 +126,7 @@ end
 # Diffusive fluxes for Leith diffusivities
 
 @inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  ::Val{tracer_index}, tracer, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -135,8 +135,8 @@ end
 
     νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
 
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, tracer)
+    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, tracer)
 
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
 
@@ -145,7 +145,7 @@ end
 end
 
 @inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  ::Val{tracer_index}, tracer, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -154,8 +154,8 @@ end
 
     νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, tracer)
+    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, tracer)
 
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
@@ -163,7 +163,7 @@ end
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  ::Val{tracer_index}, tracer, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -172,9 +172,9 @@ end
 
     νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, tracer)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, tracer)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, tracer)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
