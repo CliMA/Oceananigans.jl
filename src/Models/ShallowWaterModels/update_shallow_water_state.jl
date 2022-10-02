@@ -14,19 +14,17 @@ function update_state!(model::ShallowWaterModel)
     masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
 
     wait(device(model.architecture), MultiEvent(masking_events))
-
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-
-    # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.solution, model.tracers),
-                       model.clock,
-                       fields(model))
-
+    
     # Compute the velocities
-
     compute_velocities!(model.velocities, formulation(model))
 
-    return nothing
+    # Fill halos for velocities and tracers
+    fill_halo_events = fill_halo_regions!(merge(model.solution, model.tracers),
+                                          model.clock,
+                                          fields(model))
+
+    return fill_halo_events
 end
 
 compute_velocities!(U, ::VectorInvariantFormulation) = nothing

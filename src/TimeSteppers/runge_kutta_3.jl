@@ -82,7 +82,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model)
+    if model.clock.iteration == 0 
+        fill_halo_events = update_state!(model)
+    end
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -99,7 +101,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # First stage
     #
 
-    calculate_tendencies!(model)
+    calculate_tendencies!(model, fill_halo_events)
 
     correct_immersed_tendencies!(model, Δt, γ¹, 0)
 
@@ -110,14 +112,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model)
+    fill_halo_events = update_state!(model)
     update_particle_properties!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
-    calculate_tendencies!(model)
+    calculate_tendencies!(model, fill_halo_events)
 
     correct_immersed_tendencies!(model, Δt, γ², ζ²)
 
@@ -128,14 +130,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model)
+    fill_halo_events = update_state!(model)
     update_particle_properties!(model, second_stage_Δt)
 
     #
     # Third stage
     #
 
-    calculate_tendencies!(model)
+    calculate_tendencies!(model, fill_halo_events)
     
     correct_immersed_tendencies!(model, Δt, γ³, ζ³)
 
@@ -145,7 +147,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    update_state!(model)
+    fill_halo_events = update_state!(model)
     update_particle_properties!(model, third_stage_Δt)
 
     return nothing

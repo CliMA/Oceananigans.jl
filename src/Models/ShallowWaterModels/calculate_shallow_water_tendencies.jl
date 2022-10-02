@@ -15,7 +15,7 @@ using Oceananigans.BoundaryConditions
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::ShallowWaterModel)
+function calculate_tendencies!(model::ShallowWaterModel, fill_halo_events)
 
     # Note:
     #
