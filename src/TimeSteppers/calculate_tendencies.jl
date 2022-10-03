@@ -25,8 +25,8 @@ function calculate_tendencies!(model, fill_halo_events)
         dependencies    = fill_halo_events[end]
 
         boundary_events = []
-        for region in [:west, :east :south, :north, :bottom, :top]
-            push!(boundary_events, calculate_tendency_contributions!(model, region;   dependencies)...)
+        for region in (:west, :east, :south, :north, :bottom, :top)
+            push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies)...)
         end
     else
         boundary_events = [NoneEvent()]
