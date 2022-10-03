@@ -16,11 +16,11 @@ function calculate_tendencies!(model, fill_halo_events)
     N = size(model.grid)
     H = halo_size(model.grid)
 
-    interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
+    if validate_kernel_size(N, H) # Split communication and computation for large 3D simulations (for which N > 2H in every direction)
+        interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
     
-    wait(device(arch), MultiEvent(Tuple(fill_halo_events)))
-
-    if validate_kernel_size(N, H) # Split communication and computation only for 3D simulations
+        wait(device(arch), MultiEvent(Tuple(fill_halo_events)))
+    
         boundary_events = []
         dependencies    = fill_halo_events[end]
 
@@ -28,11 +28,16 @@ function calculate_tendencies!(model, fill_halo_events)
         for region in (:west, :east, :south, :north, :bottom, :top)
             push!(boundary_events, calculate_tendency_contributions!(model, region; dependencies)...)
         end
-    else
-        boundary_events = [NoneEvent()]
+
+        wait(device(arch), MultiEvent(tuple(interior_events..., boundary_events...)))
+    else # For 2D computations, of domains that have (N < 2H) in at least one direction, launching 1 kernel is enough
+        wait(device(arch), MultiEvent(Tuple(fill_halo_events)))
+
+        interior_events = calculate_tendency_contributions!(model, :interior; dependencies = device_event(arch))
+
+        wait(device(arch), MultiEvent(Tuple(interior_events)))
     end
 
-    wait(device(arch), MultiEvent(tuple(interior_events..., boundary_events...)))
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
