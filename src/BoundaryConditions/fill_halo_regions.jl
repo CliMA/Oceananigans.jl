@@ -41,6 +41,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     events = []
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, events, grid, args...; kwargs...)
+        wait(device(arch), events[end])
     end
 
     if !async
