@@ -104,7 +104,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     forcing = (b=Fb,)
                                     )
-#=
+
 # ## Initial conditions
 
 bᵢ(x, y, z) = parameters.Δb * (1 + z / grid.Lz)
@@ -169,7 +169,6 @@ simulation.output_writers[:barotropic_velocities] =
                      overwrite_existing = true)
 
 run!(simulation)
-=#
 
 # # A neat movie
 
