@@ -10,7 +10,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Plots
 using Printf
 
-architecture = CPU()
+architecture = GPU()
 
 const Lx = 4000kilometers # east-west extent [m]
 const Ly = 6000kilometers # north-south extent [m]
@@ -40,7 +40,7 @@ grid = RectilinearGrid(architecture;
 #       xlabel = "Vertical spacing (m)",
 #       legend = nothing)
 
-α  = 2e-4 # [K⁻¹] thermal expansion coefficient 
+α  = 2e-4 # [K⁻¹] thermal expansion coefficient
 g  = 9.81 # [m s⁻²] gravitational constant
 cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 ρ₀ = 1028 # [kg m⁻³] reference density
@@ -66,7 +66,7 @@ u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=par
 
 # ### Bottom drag
 
-@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1]
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
 
 u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=parameters)
@@ -87,26 +87,24 @@ end
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 # ## Turbulence closure
-closure = AnisotropicDiffusivity(νh=5000,
-                                 νz=1e-2,
-                                 κh=1000,
-                                 κz=1e-5,
-                                 time_discretization = VerticallyImplicitTimeDiscretization())
+horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν=5000, κ=1000)
+vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-5)
+closure = (vertical_diffusive_closure, horizontal_diffusive_closure)
 
 # ## Model building
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = WENO5(grid = grid),
-                                    tracer_advection = WENO5(grid = grid),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = BetaPlane(latitude=45),
-                                    closure = (closure,),
+                                    closure = closure,
                                     tracers = :b,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     forcing = (b=Fb,)
                                     )
-
+#=
 # ## Initial conditions
 
 bᵢ(x, y, z) = parameters.Δb * (1 + z / grid.Lz)
@@ -138,7 +136,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 
@@ -157,9 +155,9 @@ outputs = merge(model.velocities, model.tracers, (speed=speed, b²=buoyancy_vari
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(7days),
-                                                      prefix = "double_gyre",
-                                                      field_slicer = FieldSlicer(k=model.grid.Nz),
-                                                      force = true)
+                                                      filename = "double_gyre",
+                                                      indices = (:, :, model.grid.Nz),
+                                                      overwrite_existing = true)
 
 barotropic_u = Field(Average(model.velocities.u, dims=3))
 barotropic_v = Field(Average(model.velocities.v, dims=3))
@@ -167,10 +165,11 @@ barotropic_v = Field(Average(model.velocities.v, dims=3))
 simulation.output_writers[:barotropic_velocities] =
     JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v),
                      schedule = AveragedTimeInterval(30days, window=10days),
-                     prefix = "double_gyre_circulation",
-                     force = true)
+                     filename = "double_gyre_circulation",
+                     overwrite_existing = true)
 
 run!(simulation)
+=#
 
 # # A neat movie
 
@@ -220,7 +219,7 @@ end
 @info "Making an animation from the saved data..."
 
 anim = @animate for i in 1:length(times)
-    
+
     @info "Drawing frame $i from iteration $(length(times)) \n"
 
     t = times[i]
@@ -251,7 +250,7 @@ anim = @animate for i in 1:length(times)
                       clims = slims,
                       levels = slevels,
                       kwargs...)
-                             
+
     plot(u_plot, v_plot, s_plot, layout = Plots.grid(1, 3), size=(1200, 500),
          title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
 end
