@@ -11,7 +11,7 @@ with the `VectorInvariant` momentum advection scheme for curvilinear grids.
 In particular, `VerticalVorticityField` uses `ζ₃ᶠᶠᶜ`, which in turn computes the
 vertical vorticity by first integrating the velocity field around the borders
 of the vorticity cell to find the vertical circulation, and then dividing by the
-area of sthe vorticity cell to compute vertical vorticity.
+area of the vorticity cell to compute vertical vorticity.
 """
 VerticalVorticityField(model; kw...) = VerticalVorticityField(model.grid, model.velocities; kw...)
 
