@@ -103,7 +103,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     # fill halos at the beginning to have cocurrency between fill halos and tendency computation
     fill_halo_events = fill_halo_regions!(model)
-
     calculate_tendencies!(model, fill_halo_events)
 
     correct_immersed_tendencies!(model, Δt, γ¹, 0)

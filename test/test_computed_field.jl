@@ -596,7 +596,7 @@ for arch in archs
                 @info "      Testing conditional computation of Field and BuoyancyField " *
                       "[$A, $G]..."
 
-                set!(model, u=2, v=0, w=0, T=3, S=0)
+                set!(model, u=2.0, v=0, w=0, T=3, S=0)
                 u, v, w, T, S = fields(model)
 
                 uT = Field(u * T)

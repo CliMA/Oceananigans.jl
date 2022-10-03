@@ -123,6 +123,7 @@ function diffusion_cosine_test(grid;  P = XPartition, regions = 1, closure, fiel
     @apply_regionally set!(f, init)
     
     update_state!(model)
+    fill_halo_regions!(model)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ

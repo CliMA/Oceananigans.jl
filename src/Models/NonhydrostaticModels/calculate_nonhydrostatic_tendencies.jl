@@ -137,7 +137,7 @@ end
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv,offsets, args...)
+@kernel function calculate_Gv!(Gv, offsets, args...)
     i, j, k = @index(Global, NTuple)
     i′ = i + offsets[1]
     j′ = j + offsets[2]

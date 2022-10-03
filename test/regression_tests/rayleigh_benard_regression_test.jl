@@ -118,6 +118,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     # Step the model forward and perform the regression test
     update_state!(model)
+    fill_halo_regions!(model)
 
     model.timestepper.previous_Δt = Δt
 

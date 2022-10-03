@@ -122,6 +122,7 @@ function incompressible_in_time(grid, Nt, timestepper)
     CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     update_state!(model)
+    fill_halo_regions!(model)
     for n in 1:Nt
         time_step!(model, 0.05)
     end
@@ -177,6 +178,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     Tavg0 = CUDA.@allowscalar mean(interior(model.tracers.T))
 
     update_state!(model)
+    fill_halo_regions!(model)
     for n in 1:Nt
         time_step!(model, 600)
     end

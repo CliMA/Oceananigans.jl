@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.BoundaryConditions
 
 import Oceananigans.Fields: set!
 
@@ -47,6 +48,7 @@ function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
     end
 
     update_state!(model)
+    fill_halo_regions!(model)
 
     return nothing
 end

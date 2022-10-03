@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
+using Oceananigans.BoundaryConditions
 
 import Oceananigans.Fields: set!
 
@@ -47,12 +48,14 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     wait(device(model.architecture), MultiEvent(tuple(velocity_masking_events..., tracer_masking_events...)))
 
     update_state!(model)
+    fill_halo_regions!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         calculate_pressure_correction!(model, one(FT))
         pressure_correct_velocities!(model, one(FT))
         update_state!(model)
+        fill_halo_regions!(model)
     end
 
     return nothing

@@ -21,6 +21,7 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
     field = fields(model)[fieldname]
     interior(field) .= value
     update_state!(model)
+    fill_halo_regions!(model)
 
     [time_step!(model, 1) for n = 1:10]
 
@@ -31,6 +32,7 @@ end
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     init_mean = mean(interior(field))
     update_state!(model)
+    fill_halo_regions!(model)
     Δt = 1e-4 * Δ^order / κ # small to suppress non-conservative time-discretization error
 
     for n = 1:10
@@ -65,6 +67,7 @@ function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
     field = fields(model)[fieldname]
     field .= cos.(m * ξ)
     update_state!(model)
+    fill_halo_regions!(model)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ

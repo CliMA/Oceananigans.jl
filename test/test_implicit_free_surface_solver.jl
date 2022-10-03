@@ -46,6 +46,7 @@ function set_simple_divergent_velocity!(model)
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
 
     update_state!(model)
+    fill_halo_regions!(model)
 
     return nothing
 end

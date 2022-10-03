@@ -1,5 +1,6 @@
 import Oceananigans.Fields: set!
 
+using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: update_state!
 
 function set!(model::ShallowWaterModel; kwargs...)
@@ -15,6 +16,7 @@ function set!(model::ShallowWaterModel; kwargs...)
     end
 
     update_state!(model)
-    
+    fill_halo_regions!(model)
+
     return nothing
 end
