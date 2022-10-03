@@ -1,7 +1,7 @@
 using Oceananigans.TimeSteppers: calculate_tendencies!, tendency_kernel_size, tendency_kernel_offset
 import Oceananigans.TimeSteppers: calculate_tendency_contributions!, calculate_boundary_tendency_contributions!
 
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layout, heuristic_workgroup
 using Oceananigans: fields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
@@ -29,7 +29,7 @@ function calculate_tendency_contributions!(model::ShallowWaterModel, region_to_c
 
     gravitational_acceleration = model.gravitational_acceleration
     
-    kernel_size = tendency_kernel_size(grid, Val(region_to_compute))[[1, 2]]
+    kernel_size = tendency_kernel_size(grid, Val(region_to_compute))
     offsets     = tendency_kernel_offset(grid, Val(region_to_compute))[[1, 2]]
 
     workgroup = heuristic_workgroup(kernel_size...)
