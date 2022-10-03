@@ -49,10 +49,11 @@ end
     return ifelse(validate_kernel_size(N, H), N .- 2 .* H, N)
 end
 
-## The edges and corners are calculated in the x direction
+## The corners and vertical edges are calculated in the x direction
+## The horizontal edges in the y direction
 
 @inline tendency_kernel_size(grid, ::Val{:west})   = (halo_size(grid, 1), size(grid, 2), size(grid, 3))
-@inline tendency_kernel_size(grid, ::Val{:south})  = (size(grid, 1) - 2*halo_size(grid, 1), halo_size(grid, 2), size(grid, 3) - 2*halo_size(grid, 3))
+@inline tendency_kernel_size(grid, ::Val{:south})  = (size(grid, 1) - 2*halo_size(grid, 1), halo_size(grid, 2), size(grid, 3))
 @inline tendency_kernel_size(grid, ::Val{:bottom}) = (size(grid, 1) - 2*halo_size(grid, 1), size(grid, 2) - 2*halo_size(grid, 2), halo_size(grid, 3))
 
 @inline tendency_kernel_size(grid, ::Val{:east})   = tendency_kernel_size(grid, Val(:west))
@@ -67,7 +68,7 @@ end
 
 @inline tendency_kernel_offset(grid, ::Val{:west})   = (0, 0, 0)
 @inline tendency_kernel_offset(grid, ::Val{:east})   = (size(grid, 1) - halo_size(grid, 1), 0, 0)
-@inline tendency_kernel_offset(grid, ::Val{:south})  = (halo_size(grid, 1), 0, halo_size(grid, 3))
-@inline tendency_kernel_offset(grid, ::Val{:north})  = (halo_size(grid, 1), size(grid, 2) - halo_size(grid, 2), halo_size(grid, 3))
+@inline tendency_kernel_offset(grid, ::Val{:south})  = (halo_size(grid, 1), 0, 0)
+@inline tendency_kernel_offset(grid, ::Val{:north})  = (halo_size(grid, 1), size(grid, 2) - halo_size(grid, 2), 0)
 @inline tendency_kernel_offset(grid, ::Val{:bottom}) = (halo_size(grid, 1), halo_size(grid, 2), 0)
 @inline tendency_kernel_offset(grid, ::Val{:top})    = (halo_size(grid, 1), halo_size(grid, 2), size(grid, 3) - halo_size(grid, 3))
