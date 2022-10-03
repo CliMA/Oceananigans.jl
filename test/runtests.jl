@@ -55,6 +55,7 @@ include("dependencies_for_runtests.jl")
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_multigrid_solver.jl")
         end
     end
 
@@ -65,6 +66,12 @@ include("dependencies_for_runtests.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+        end
+    end
+
+    # Lagrangian particle tracking
+    if group == :lagrangian || group == :all
+        @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
     end
@@ -81,6 +88,7 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
+            include("test_immersed_advection.jl")
         end
     end
 
@@ -142,6 +150,10 @@ include("dependencies_for_runtests.jl")
 
     if group == :hydrostatic_regression || group == :all
         include("test_hydrostatic_regression.jl")
+    end
+
+    if group == :shallowwater_regression || group == :all
+        include("test_shallow_water_regression.jl")
     end
 
     if group == :scripts || group == :all

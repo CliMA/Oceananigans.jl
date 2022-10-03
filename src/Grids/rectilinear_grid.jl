@@ -256,6 +256,10 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
+    if architecture == GPU() && !has_cuda() 
+        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
+    end
+
     TX, TY, TZ, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     Nx, Ny, Nz = size
@@ -325,11 +329,11 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
-        print(io, summary(grid), '\n')
+        print(io, summary(grid), "\n")
     end
 
-    return print(io, "├── ", x_summary, '\n',
-                     "├── ", y_summary, '\n',
+    return print(io, "├── ", x_summary, "\n",
+                     "├── ", y_summary, "\n",
                      "└── ", z_summary)
 end
 
@@ -371,9 +375,9 @@ all_y_nodes(::Type{Center}, grid::RectilinearGrid) = grid.yᵃᶜᵃ
 all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
 all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
 
-@inline cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
-@inline cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
-@inline cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
+cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
+cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
+cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
 
 function with_halo(new_halo, old_grid::RectilinearGrid)
 

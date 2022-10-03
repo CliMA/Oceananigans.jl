@@ -49,7 +49,7 @@ import Oceananigans.Grids:
         cpu_face_constructor_y,
         cpu_face_constructor_z
         
-import Oceananigans.Grids: architecture, on_architecture, with_halo
+import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
@@ -128,6 +128,11 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
 
+# ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
+# (which requires checking `Center` nodes at N + H and N + H + 1)
+inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
+inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
+
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
@@ -138,9 +143,9 @@ function Base.summary(grid::ImmersedBoundaryGrid)
 end
 
 function show(io::IO, ibg::ImmersedBoundaryGrid)
-    print(io, summary(ibg), ":", '\n',
-              "├── immersed_boundary: ", summary(ibg.immersed_boundary), '\n',
-              "├── underlying_grid: ", summary(ibg.underlying_grid), '\n')
+    print(io, summary(ibg), ":", "\n",
+              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
+              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
 
     return show(io, ibg.underlying_grid, false)
 end
@@ -189,25 +194,24 @@ i-1          i
 
 We then have
 
-    * `inactive_node(f, c, c, i, 1, 1, grid) = false`
+    * `inactive_node(i, 1, 1, grid, f, c, c) = false`
 
 As well as
 
-    * `inactive_node(c, c, c, i,   1, 1, grid) = false`
-    * `inactive_node(c, c, c, i-1, 1, 1, grid) = true`
-    * `inactive_node(f, c, c, i-1, 1, 1, grid) = true`
+    * `inactive_node(i,   1, 1, grid, c, c, c) = false`
+    * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
+    * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
 """
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 
 # Isolate periphery of the immersed boundary
-@inline immersed_peripheral_node(LX, LY, LZ, i, j, k, ibg::IBG) =  peripheral_node(LX, LY, LZ, i, j, k, ibg) &
-                                                                  !peripheral_node(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
+                                                                  !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
 #####
 ##### Utilities
 #####
 
-const IBG = ImmersedBoundaryGrid
 const c = Center()
 const f = Face()
 
@@ -255,12 +259,13 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+            ifelse(inactive_node(i, j, k, ibg, loc...), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
     end
 end
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
+include("partial_cell_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_derivatives.jl")

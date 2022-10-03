@@ -65,7 +65,7 @@ end
 
 coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
-function validate_dimension_specification(T, ξ, dir, size_dir, FT)
+function validate_dimension_specification(T, ξ, dir, N, FT)
 
     isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
     length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
@@ -103,17 +103,30 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
     return x, y, z
 end
 
-function validate_dimension_specification(T, ξ::AbstractVector, dir, size_dir, FT)
-    ξ_FT = FT.(ξ)
-    length(ξ_FT) != (size_dir + 1) && throw(ArgumentError("`length($dir)` must be equal to size passed to `size` argument."))
-    return ξ_FT
+function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
+    ξ = FT.(ξ)
+
+    # Validate the length of ξ: error is ξ is too short, warn if ξ is too long.
+    Nξ = length(ξ)
+    N⁺¹ = N + 1
+    if Nξ < N⁺¹
+        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $N!"))
+    elseif Nξ > N⁺¹
+        msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
+              "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
+        @warn msg
+    end
+
+    return ξ
 end
-validate_dimension_specification(T, ξ::Function,       dir, size_dir, FT) = ξ
-validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, size_dir, FT) = FT.((ξ[1], ξ[1]))
-validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, size_dir, FT) = FT.((ξ(1), ξ(1)))
-validate_dimension_specification(::Type{Flat}, ξ::Tuple, dir, size_dir, FT)  = FT.(ξ)
-validate_dimension_specification(::Type{Flat}, ::Nothing, dir, size_dir, FT) = FT.((0, 0))
-validate_dimension_specification(::Type{Flat}, ξ::Number, dir, size_dir, FT) = FT.((ξ, ξ))
+
+validate_dimension_specification(T, ξ::Function, dir, N, FT) = ξ
+
+validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT) = (FT(ξ[1]), FT(ξ[1]))
+validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) = (FT(ξ(1)), FT(ξ(1)))
+validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = FT.(ξ)
+validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = (zero(FT), zero(FT))
+validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = (FT(ξ), FT(ξ))
 
 default_horizontal_extent(T, extent) = (0, extent[i])
 default_vertical_extent(T, extent) = (-extent[3], 0)
@@ -173,4 +186,21 @@ function validate_unit_vector(ê)
     return tuple(ê...)
 end
 
+function validate_index(idx, loc, topo, N, H)
+    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
+    return throw(ArgumentError("$idx are not supported window indices for Field!"))
+end
 
+validate_index(::Colon, loc, topo, N, H) = Colon()
+validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
+
+function validate_index(idx::UnitRange, loc, topo, N, H)
+    all_idx = all_indices(loc, topo, N, H)
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
+    return idx
+end
+
+validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
+
+validate_indices(indices, loc, grid::AbstractGrid) =
+    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))

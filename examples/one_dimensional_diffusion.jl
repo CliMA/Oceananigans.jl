@@ -37,7 +37,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# The default topology is `(Periodic, Periodic, Bounded)`. In this example we're
+# The default topology is `(Periodic, Periodic, Bounded)`. In this example, we're
 # trying to solve a one-dimensional problem, so we assign `Flat` to the
 # `x` and `y` topologies. We excise halos and avoid interpolation or differencing
 # in `Flat` directions, saving computation and memory.
@@ -49,7 +49,7 @@ closure = ScalarDiffusivity(κ=1)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = NonhydrostaticModel(grid=grid, closure=closure, buoyancy=nothing, tracers=:T)
+model = NonhydrostaticModel(; grid, closure, tracers=:T)
 
 # By default, `NonhydrostaticModel` has no-flux (insulating and stress-free) boundary conditions on
 # all fields.
@@ -68,17 +68,17 @@ set!(model, T=initial_temperature)
 # To see the new data in `model.tracers.T`, we plot it:
 
 using CairoMakie
-
-linewidth = 3
-z = znodes(model.tracers.T)
+set_theme!(Theme(fontsize = 24, linewidth=3))
 
 fig = Figure()
+axis = (xlabel = "Temperature (ᵒC)", ylabel = "z")
+label = "t = 0"
 
-lines(interior(model.tracers.T, 1, 1, :), z; linewidth, label = "t = 0",
-     axis = (xlabel = "Temperature (ᵒC)",
-             ylabel = "z",
-             xlabelsize = 20,
-             ylabelsize = 20))
+z = znodes(model.tracers.T)
+T = interior(model.tracers.T, 1, 1, :)
+
+lines(T, z; label, axis)
+current_figure() # hide
 
 # The function `interior` above extracts a `view` of `model.tracers.T` over the
 # physical points (excluding halos) at `(1, 1, :)`.
@@ -104,15 +104,12 @@ run!(simulation)
 using Printf
 
 label = @sprintf("t = %.3f", model.clock.time)
-
-lines!(interior(model.tracers.T, 1, 1, :), z; linewidth, label)
-
+lines!(interior(model.tracers.T, 1, 1, :), z; label)
 axislegend()
+current_figure() # hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
 # For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
-
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:temperature] =
     JLD2OutputWriter(model, model.tracers,
@@ -123,7 +120,6 @@ simulation.output_writers[:temperature] =
 # We run the simulation for 10,000 more iterations,
 
 simulation.stop_iteration += 10000
-
 run!(simulation)
 
 # Finally, we animate the results by opening the JLD2 file, extract the
@@ -133,31 +129,28 @@ run!(simulation)
 T_timeseries = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
 times = T_timeseries.times
 
+fig = Figure()
+ax = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z")
+xlims!(ax, 0, 1)
+
 n = Observable(1)
 
 T = @lift interior(T_timeseries[$n], 1, 1, :)
+lines!(T, z)
 
 label = @lift "t = " * string(round(times[$n], digits=3))
-
-fig = Figure()
-
-ax = Axis(fig[2, 1];
-          xlabel = "Temperature (ᵒC)",
-          ylabel = "z",
-          xlabelsize = 20,
-          ylabelsize = 20,
-          limits = ((0, 1), nothing))
-
-lines!(T, z; linewidth)
-
-fig[1, 1] = Label(fig, label, textsize=24, tellwidth=false)
+Label(fig[1, 1], label, tellwidth=false)
+current_figure() # hide
 
 # Finally, we record a movie.
 
 frames = 1:length(times)
 
-record(fig, "one_dimensional_diffusion.mp4", frames, framerate=8) do i
-    @info "Plotting frame $i of $(frames[end])..."
+@info "Making an animation..."
+
+record(fig, "one_dimensional_diffusion.mp4", frames, framerate=24) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
     n[] = i
 end
 nothing #hide

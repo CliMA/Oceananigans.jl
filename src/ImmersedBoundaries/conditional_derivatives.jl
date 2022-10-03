@@ -1,47 +1,56 @@
+import Oceananigans.Operators: 
+            ∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂xᶠᶠᶠ,
+            ∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ,
+            ∂yᶜᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶜ, ∂yᶠᶠᶠ,
+            ∂yᶜᶜᶜ, ∂yᶜᶜᶠ, ∂yᶠᶜᶜ, ∂yᶠᶜᶠ,
+            ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ,
+            ∂zᶜᶜᶜ, ∂zᶜᶠᶜ, ∂zᶠᶜᶜ, ∂zᶠᶠᶜ
+
 # Defining all the First order derivatives for the immersed boundaries
 
-@inline conditional_x_derivative_f(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(c, LY, LZ, i, j, k, ibg) | inactive_node(c, LY, LZ, i-1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_x_derivative_c(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(f, LY, LZ, i, j, k, ibg) | inactive_node(f, LY, LZ, i+1, j, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_y_derivative_f(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, c, LZ, i, j, k, ibg) | inactive_node(LX, c, LZ, i, j-1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_y_derivative_c(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, f, LZ, i, j, k, ibg) | inactive_node(LX, f, LZ, i, j+1, k, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_z_derivative_f(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, LY, c, i, j, k, ibg) | inactive_node(LX, LY, c, i, j, k-1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_z_derivative_c(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(LX, LY, f, i, j, k, ibg) | inactive_node(LX, LY, f, i, j, k+1, ibg), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_x_derivative_f(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, c, LY, LZ) | inactive_node(i-1, j, k, ibg, c, LY, LZ), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_x_derivative_c(LY, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, f, LY, LZ) | inactive_node(i+1, j, k, ibg, f, LY, LZ), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_y_derivative_f(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, c, LZ) | inactive_node(i, j-1, k, ibg, LX, c, LZ), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_y_derivative_c(LX, LZ, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, f, LZ) | inactive_node(i, j+1, k, ibg, LX, f, LZ), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_z_derivative_f(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, c) | inactive_node(i, j, k-1, ibg, LX, LY, c), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_z_derivative_c(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(inactive_node(i, j, k, ibg, LX, LY, f) | inactive_node(i, j, k+1, ibg, LX, LY, f), zero(FT), deriv(i, j, k, ibg.underlying_grid, args...))
 
-∂xᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, c, i, j, k, ibg, ∂xᶠᶜᶜ, args...)
-∂xᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ, args...)
-∂xᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(f, c, i, j, k, ibg, ∂xᶠᶠᶜ, args...)
-∂xᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(f, f, i, j, k, ibg, ∂xᶠᶠᶠ, args...)
+@inline translate_loc(a) = a == :ᶠ ? :f : :c
 
-∂xᶜᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(c, c, i, j, k, ibg, ∂xᶜᶜᶜ, args...)
-∂xᶜᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(c, f, i, j, k, ibg, ∂xᶜᶜᶠ, args...)
-∂xᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(f, c, i, j, k, ibg, ∂xᶜᶠᶜ, args...)
-∂xᶜᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(f, f, i, j, k, ibg, ∂xᶜᶠᶠ, args...)
+for (d, ξ) in enumerate((:x, :y, :z))
+    for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
-∂yᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(c, c, i, j, k, ibg, ∂yᶜᶠᶜ, args...)
-∂yᶜᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ, args...)
-∂yᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(f, c, i, j, k, ibg, ∂yᶠᶠᶜ, args...)
-∂yᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_f(f, f, i, j, k, ibg, ∂yᶠᶠᶠ, args...)
-
-∂yᶜᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_c(c, c, i, j, k, ibg, ∂yᶜᶜᶜ, args...)
-∂yᶜᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_c(c, f, i, j, k, ibg, ∂yᶜᶜᶠ, args...)
-∂yᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_c(f, c, i, j, k, ibg, ∂yᶠᶜᶜ, args...)
-∂yᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_c(f, f, i, j, k, ibg, ∂yᶠᶜᶠ, args...)
-
-∂zᶜᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(c, c, i, j, k, ibg, ∂zᶜᶜᶠ, args...)
-∂zᶜᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(c, f, i, j, k, ibg, ∂zᶜᶠᶠ, args...)
-∂zᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(f, c, i, j, k, ibg, ∂zᶠᶜᶠ, args...)
-∂zᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(f, f, i, j, k, ibg, ∂zᶠᶠᶠ, args...)
-
-∂zᶜᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(c, c, i, j, k, ibg, ∂zᶜᶜᶜ, args...)
-∂zᶜᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(c, f, i, j, k, ibg, ∂zᶜᶠᶜ, args...)
-∂zᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(f, c, i, j, k, ibg, ∂zᶠᶜᶜ, args...)
-∂zᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(f, f, i, j, k, ibg, ∂zᶠᶠᶜ, args...)
+        der             = Symbol(:∂, ξ, LX, LY, LZ)
+        location        = translate_loc.((LX, LY, LZ))
+        conditional_der = Symbol(:conditional_, ξ, :_derivative_, location[d])
+        loc = []
+        for l in 1:3 
+            if l != d
+                push!(loc, location[l])
+            end
+        end
+        
+        @eval begin
+            $der(i, j, k, ibg::IBG, args...)              = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, args...)
+            $der(i, j, k, ibg::IBG, f::Function, args...) = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, f::Function, args...)
+        end
+    end
+end
 
 using  Oceananigans.Operators
-import Oceananigans.Operators: Γᶠᶠᶜ
+import Oceananigans.Operators: Γᶠᶠᶜ, div_xyᶜᶜᶜ, div_xyᶜᶜᶠ
 
 # Circulation equal to zero on a solid nodes
 @inline Γᶠᶠᶜ(i, j, k, ibg::IBG, u, v) =  
     conditional_x_derivative_f(f, c, i, j, k, ibg, δxᶠᵃᵃ, Δy_qᶜᶠᶜ, v) - conditional_y_derivative_f(f, c, i, j, k, ibg, δyᵃᶠᵃ, Δx_qᶠᶜᶜ, u)
 
+@inline function div_xyᶜᶜᶜ(i, j, k, ibg::IBG, u, v)  
+    return 1 / Azᶜᶜᶜ(i, j, k, ibg) * (conditional_x_derivative_c(c, c, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) +
+                                      conditional_y_derivative_c(c, c, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶜ, v))
+end
+
+@inline function div_xyᶜᶜᶠ(i, j, k, ibg::IBG, u, v)  
+    return 1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_x_derivative_c(c, f, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶠ, u) +
+                                      conditional_y_derivative_c(c, f, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶠ, v))
+end
 

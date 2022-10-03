@@ -3,6 +3,10 @@
 ##### First derivative operators
 #####
 
+using Oceananigans.Grids: AbstractUnderlyingGrid
+
+const AUG = AbstractUnderlyingGrid
+
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     
     x_derivative = Symbol(:∂x, LX, LY, LZ)
@@ -18,13 +22,17 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     z_difference = Symbol(:δz, :ᵃ, :ᵃ, LZ)
 
     @eval begin
-        @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)
-        @inline $y_derivative(i, j, k, grid, c) = $y_difference(i, j, k, grid, c) / $y_spacing(i, j, k, grid)
-        @inline $z_derivative(i, j, k, grid, c) = $z_difference(i, j, k, grid, c) / $z_spacing(i, j, k, grid)
+        @inline $x_derivative(i, j, k, grid::AUG, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid::AUG, c) = $y_difference(i, j, k, grid, c) / $y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid::AUG, c) = $z_difference(i, j, k, grid, c) / $z_spacing(i, j, k, grid)
         
-        @inline $x_derivative(i, j, k, grid, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) / $x_spacing(i, j, k, grid)
-        @inline $y_derivative(i, j, k, grid, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) / $y_spacing(i, j, k, grid)
-        @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) / $z_spacing(i, j, k, grid)
+        @inline $x_derivative(i, j, k, grid::AUG, c::Number) = zero(grid)
+        @inline $y_derivative(i, j, k, grid::AUG, c::Number) = zero(grid)
+        @inline $z_derivative(i, j, k, grid::AUG, c::Number) = zero(grid)
+
+        @inline $x_derivative(i, j, k, grid::AUG, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) / $x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid::AUG, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) / $y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid::AUG, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) / $z_spacing(i, j, k, grid)
     end
 end
 

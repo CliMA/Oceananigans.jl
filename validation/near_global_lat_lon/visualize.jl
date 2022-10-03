@@ -4,81 +4,40 @@ using Oceananigans.Utils: prettytime, hours, day, days, years
 using Statistics
 using JLD2
 using Printf
-using GLMakie
+using CairoMakie
 
-function geographic2cartesian(λ, φ; r=1)
-    Nλ = length(λ)
-    Nφ = length(φ)
+output_prefix = "near_global_lat_lon_1440_600_1_fine_surface"
+filepath = output_prefix * ".jld2"
+file = jldopen(filepath)
 
-    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ) 
-    φ = repeat(reshape(φ, 1, Nφ), Nλ, 1)
+Nx = file["grid/underlying_grid/Nx"]
+Ny = file["grid/underlying_grid/Ny"]
+Lλ = file["grid/underlying_grid/Lx"]
+Lφ = file["grid/underlying_grid/Ly"]
+Lz = file["grid/underlying_grid/Lz"]
 
-    λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
-    φ_azimuthal = 90 .- φ   # Convert to φ ∈ [0°, 180°] (0° at north pole)
+grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                             longitude = (-180, 180),
+                             latitude = (-Lφ/2, Lφ/2),
+                             z = (-Lz, 0))
 
-    x = @. r * cosd(λ_azimuthal) * sind(φ_azimuthal)
-    y = @. r * sind(λ_azimuthal) * sind(φ_azimuthal)
-    z = @. r * cosd(φ_azimuthal)
+x, y, z = nodes((Center, Center, Center), grid)
 
-    return x, y, z
+bottom = Float32.(file["grid/immersed_boundary/bottom_height"][4:end-3,3:end-3,1])
+bottom[ bottom .>0 ] .=  NaN
+bottom[ bottom .<0 ] .= 0.0
+
+iter = Observable(0)
+iters = parse.(Int, keys(file["timeseries/t"]))
+ζ′ = @lift file["timeseries/ζ/" * string($iter)][:, :, 1]
+title = @lift(@sprintf("Surface Vorticity in Hydrostatic Model at time = %s", prettytime(file["timeseries/t/" * string($iter)])))
+fig = Figure(resolution = (2000, 1000))
+ax = Axis(fig[1,1], xlabel = "longitude", ylabel = "latitude", title=title)
+heatmap_plot = heatmap!(ax, ζ′, colormap=:balance, colorrange=(-1e-6, 1e-6), nan_color=:black)
+Colorbar(fig[1,2], heatmap_plot , width=25)
+display(fig)
+
+record(fig, output_prefix * ".mp4", iters[2:end], framerate=6) do i
+    @info "Plotting iteration $i of $(iters[end])..."
+    iter[] = i
 end
-
-function visualize_makie(output_prefix)
-
-    filepath = output_prefix * ".jld2"
-
-    file = jldopen(filepath)
-
-    Nx = file["grid/Nx"]
-    Ny = file["grid/Ny"]
-    Lλ = file["grid/Lx"]
-    Lφ = file["grid/Ly"]
-    Lz = file["grid/Lz"]
-
-    # A spherical domain
-    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                 longitude = (-180, 180),
-                                 latitude = (-Lφ/2, Lφ/2),
-                                 z = (-Lz, 0))
-
-    iterations = parse.(Int, keys(file["timeseries/t"]))
-
-    λ, ϕ, r = nodes((Face, Face, Center), grid)
-    x, y, z = geographic2cartesian(λ, ϕ, r=1.01)
-
-    iter = Node(0)
-    ζ′ = @lift file["timeseries/ζ/" * string($iter)][:, :, 1]
-    
-    fig = Figure(resolution = (2000, 2000))
-
-    clims = @lift begin
-        scale = 1.5e-1
-        min_clim = 2e-5
-        max_ζ = maximum(abs, file["timeseries/ζ/" * string($iter)][:, :, 1])
-        scale * max_ζ < min_clim && (-min_clim, min_clim)
-        scale .* (-max_ζ, max_ζ)
-    end
-
-    ax = fig[:, :] = LScene(fig) # make plot area wider
-    wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
-    surface!(ax, x, y, z, color=ζ′, colormap=:blues, colorrange=clims)
-    rotate_cam!(ax.scene, (π/4, π/6, 0))
-    zoom!(ax.scene, (0, 0, 0), 5, false)
-
-    plot_title = @lift @sprintf("Vertical vorticity in decaying, rotating, barotropic turbulence at time = %s",
-                                prettytime(file["timeseries/t/" * string($iter)]))
-    supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
-
-    display(fig)
-
-    record(fig, output_prefix * ".mp4", iterations, framerate=12) do i
-        @info "Plotting iteration $i of $(iterations[end])..."
-        iter[] = i
-    end
-
-    return nothing
-end
-
-output_prefix = "rotating_freely_decaying_barotropic_turbulence_fly_Nx1080_Ny480"
-
-visualize_makie(output_prefix)

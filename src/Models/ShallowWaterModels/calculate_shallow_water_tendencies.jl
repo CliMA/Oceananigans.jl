@@ -32,6 +32,7 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.grid,
                                                model.gravitational_acceleration,
                                                model.advection,
+                                               model.velocities,
                                                model.coriolis,
                                                model.closure,
                                                model.bathymetry,
@@ -39,7 +40,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.tracers,
                                                model.diffusivity_fields,
                                                model.forcing,
-                                               model.clock)
+                                               model.clock,
+                                               model.formulation)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -59,6 +61,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     grid,
                                                     gravitational_acceleration,
                                                     advection,
+                                                    velocities,
                                                     coriolis,
                                                     closure, 
                                                     bathymetry,
@@ -66,40 +69,36 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     tracers,
                                                     diffusivities,
                                                     forcings,
-                                                    clock)
+                                                    clock,
+                                                    formulation)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
     calculate_Guh_kernel! = calculate_Guh!(device(arch), workgroup, worksize)
     calculate_Gvh_kernel! = calculate_Gvh!(device(arch), workgroup, worksize)
-    calculate_Gh_kernel!  = calculate_Gh!(device(arch), workgroup, worksize)
-    calculate_Gc_kernel!  = calculate_Gc!(device(arch), workgroup, worksize)
+    calculate_Gh_kernel!  =  calculate_Gh!(device(arch), workgroup, worksize)
+    calculate_Gc_kernel!  =  calculate_Gc!(device(arch), workgroup, worksize)
 
     barrier = Event(device(arch))
 
-    Guh_event = calculate_Guh_kernel!(tendencies.uh,
-                                      grid, gravitational_acceleration, advection, coriolis, closure, 
-                                      bathymetry, solution, tracers, diffusivities, forcings, clock,
-                                      dependencies=barrier)
+    args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
+                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
+    args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
+                      solution, tracers, diffusivities, forcings, clock, formulation)
 
-    Gvh_event = calculate_Gvh_kernel!(tendencies.vh,
-                                      grid, gravitational_acceleration, advection, coriolis, closure, 
-                                      bathymetry, solution, tracers, diffusivities, forcings, clock,
-                                      dependencies=barrier)
-
-    Gh_event  = calculate_Gh_kernel!(tendencies.h,
-                                     grid, gravitational_acceleration, coriolis, closure, 
-                                     bathymetry, solution, tracers, diffusivities, forcings, clock,
-                                     dependencies=barrier)
+    Guh_event = calculate_Guh_kernel!(tendencies[1], args_vel...; dependencies = barrier)
+    Gvh_event = calculate_Gvh_kernel!(tendencies[2], args_vel...; dependencies = barrier)
+    Gh_event  =  calculate_Gh_kernel!(tendencies[3], args_h...;   dependencies = barrier)
 
     events = [Guh_event, Gvh_event, Gh_event]
 
-    for tracer_index in 1:length(tracers)
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_advection = advection[tracer_name]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, solution,
-                                        tracers, diffusivities, forcing, clock, dependencies=barrier)
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
+                                        tracers, diffusivities, forcing, clock, formulation, dependencies=barrier)
 
         push!(events, Gc_event)
     end
@@ -118,6 +117,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure, 
                                 bathymetry,
@@ -125,12 +125,13 @@ end
                                 tracers,
                                 diffusivities,
                                 forcings,
-                                clock)
+                                clock, 
+                                formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
-                                                    bathymetry, solution, tracers, diffusivities, forcings, clock)
+    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
+                                                    bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 """ Calculate the right-hand-side of the vh-transport equation. """
@@ -138,6 +139,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure,
                                 bathymetry,
@@ -145,31 +147,33 @@ end
                                 tracers,
                                 diffusivities,
                                 forcings,
-                                clock)
+                                clock, 
+                                formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
-                                                    bathymetry, solution, tracers, diffusivities, forcings, clock)
+    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
+                                                    bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 """ Calculate the right-hand-side of the height equation. """
 @kernel function calculate_Gh!(Gh,
                                grid,
                                gravitational_acceleration,
+                               advection,
                                coriolis,
                                closure,
-                               bathymetry,
                                solution,
                                tracers,
                                diffusivities,
                                forcings,
-                               clock)
+                               clock, 
+                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, coriolis, closure, bathymetry,
-                                                solution, tracers, diffusivities, forcings, clock)
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure,
+                                                solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
 #####
@@ -186,12 +190,13 @@ end
                                tracers,
                                diffusivities,
                                forcing,
-                               clock)
+                               clock,
+                               formulation)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure, solution, tracers,
-                                            diffusivities, forcing, clock)
+                                            diffusivities, forcing, clock, formulation)
 end
 
 #####
@@ -203,21 +208,14 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
 
     barrier = Event(device(arch))
 
+    prognostic_fields = merge(solution, tracers)
+
     events = []
 
-    # Solution fields
-    for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event)
-    end
-
-    # Tracer fields
-    for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-
+    # Solution fields and tracer fields
+    for i in 1:length(Gⁿ)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, clock, model_fields)
         push!(events, x_bcs_event, y_bcs_event)
     end
 

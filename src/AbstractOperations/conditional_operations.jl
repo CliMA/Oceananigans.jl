@@ -1,10 +1,9 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
-import Oceananigans.Fields: condition_operand, conditional_length, set!
+import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-
 struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
     func :: F
@@ -19,7 +18,7 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
 end
 
 """
-    ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+    ConditionalOperation{LX, LY, LZ}(operand, func, grid, indices, condition, mask)
 
 Returns an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
@@ -40,7 +39,7 @@ Keyword arguments
 
 - `mask`: the scalar mask
 
-`condition_operand` is a conveniece function used to construct a `ConditionalOperation`
+`condition_operand` is a convenience function used to construct a `ConditionalOperation`
 
 `condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
 
@@ -131,12 +130,16 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
+    
+compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+
+indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          "ConditionalOperation at $(location(operation))", '\n',
-          "├── operand: ", summary(operation.operand), '\n',
-          "├── grid: ", summary(operation.grid), '\n',
-          "├── func: ", summary(operation.func), '\n',
-          "├── condition: ", summary(operation.condition), '\n',
+          "ConditionalOperation at $(location(operation))", "\n",
+          "├── operand: ", summary(operation.operand), "\n",
+          "├── grid: ", summary(operation.grid), "\n",
+          "├── func: ", summary(operation.func), "\n",
+          "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)

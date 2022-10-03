@@ -11,6 +11,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
@@ -122,10 +123,6 @@ function NonhydrostaticModel(;    grid,
 
     arch = architecture(grid)
 
-    if arch == GPU() && !has_cuda()
-         throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    end
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     # We don't support CAKTE for NonhydrostaticModel yet.
@@ -141,15 +138,7 @@ function NonhydrostaticModel(;    grid,
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
+    grid = inflate_grid_halo_size(grid, advection, closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -193,7 +182,7 @@ function NonhydrostaticModel(;    grid,
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
@@ -225,3 +214,19 @@ function extract_boundary_conditions(field_tuple::NamedTuple)
 end
 
 extract_boundary_conditions(field::Field) = field.boundary_conditions
+
+function inflate_grid_halo_size(grid, tendency_terms...)
+    user_halo = grid.Hx, grid.Hy, grid.Hz
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
+
+    if any(user_halo .< required_halo) # Replace grid
+        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+              "Note that an ImmersedBoundaryGrid requires an extra halo point. "
+              "The model grid will be different from the input grid. To avoid this warning, " *
+              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+
+        grid = with_halo((Hx, Hy, Hz), grid)
+    end
+
+    return grid
+end

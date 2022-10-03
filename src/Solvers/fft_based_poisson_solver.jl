@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: device_event
+using Oceananigans.Fields: indices, offset_compute_index
 
 import Oceananigans.Architectures: architecture
 
@@ -30,6 +31,23 @@ print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": 
           "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
           "    └── backward: ", transform_list_str(solver.transforms.backward))
 
+"""
+    FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
+
+Return an `FFTBasedPoissonSolver` that solves the "generalized" Poisson equation,
+
+```math
+(∇² + m) ϕ = b,
+```
+
+where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson operator
+on a staggered grid and for periodic or Neumann boundary conditions.
+
+In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
+elements (typically the same type as `solver.storage`).
+
+See [`solve!`](@ref) for more information about the FFT-based Poisson solver algorithm.
+"""
 function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
@@ -69,8 +87,8 @@ on a staggered grid and for periodic or Neumann boundary conditions.
 In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
 elements (typically the same type as `solver.storage`).
 
-!!! info "Alternative names for "generalized" Poisson equation
-    Equation ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
+!!! info "Alternative names for 'generalized' Poisson equation"
+    Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
@@ -96,13 +114,18 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     # Apply backward transforms in order
     [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
 
-    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ), dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return ϕ
 end
 
-@kernel function copy_real_component!(ϕ, ϕc)
+@kernel function copy_real_component!(ϕ, ϕc, index_ranges)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
+
+    i′ = offset_compute_index(index_ranges[1], i)
+    j′ = offset_compute_index(index_ranges[2], j)
+    k′ = offset_compute_index(index_ranges[3], k)
+
+    @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
 end

@@ -68,8 +68,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."
@@ -137,19 +137,19 @@ end
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 
-slicers = (west = FieldSlicer(i=1),
-           east = FieldSlicer(i=grid.Nx),
-           south = FieldSlicer(j=1),
-           north = FieldSlicer(j=grid.Ny),
-           bottom = FieldSlicer(k=1),
-           top = FieldSlicer(k=grid.Nz))
+slicers = (west = (1, :, :),
+           east = (grid.Nx, :, :),
+           south = (:, 1, :),
+           north = (:, grid.Ny, :),
+           bottom = (:, :, 1),
+           top = (:, :, grid.Nz))
 
 for side in keys(slicers)
-    field_slicer = slicers[side]
+    indices = slicers[side]
 
     simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
                                                        schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
+                                                       indices,
                                                        filename = filename * "_$(side)_slice",
                                                        overwrite_existing = true)
 end
@@ -160,11 +160,11 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
 
-B = AveragedField(model.tracers.b, dims=1)
-C = AveragedField(model.tracers.c, dims=1)
-U = AveragedField(model.velocities.u, dims=1)
-V = AveragedField(model.velocities.v, dims=1)
-W = AveragedField(model.velocities.w, dims=1)
+B = Field(Average(model.tracers.b, dims=1))
+C = Field(Average(model.tracers.c, dims=1))
+U = Field(Average(model.velocities.u, dims=1))
+V = Field(Average(model.velocities.v, dims=1))
+W = Field(Average(model.velocities.w, dims=1))
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
                                                      schedule = TimeInterval(save_fields_interval),

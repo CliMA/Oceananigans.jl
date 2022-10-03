@@ -23,7 +23,7 @@ Callback(func, schedule=IterationInterval(1); parameters=nothing) =
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
 Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule),
-                                    " with parameters ", parameters)
+                                    " with parameters ", cb.parameters)
 
 Base.show(io::IO, cb::Callback) = print(io, summary(cb))
 

@@ -48,10 +48,9 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
 #####
 
 @inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field)
-    return @inbounds ifelse(peripheral_node(LX, LY, LZ, i, j, k, grid),
+    return @inbounds ifelse(peripheral_node(i, j, k, grid, LX, LY, LZ),
                             value,
                             field[i, j, k])
 end
 
 mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
-

@@ -61,10 +61,10 @@ end
             break
         end
     end
-    if nzval[map] == 0.0 
+    if nzval[map] == 0
         invdiag[col] = 0 
     else
-        invdiag[col] = 1.0 / nzval[map]
+        invdiag[col] = 1 / nzval[map]
     end
 end
 

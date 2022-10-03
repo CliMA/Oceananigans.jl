@@ -171,8 +171,8 @@ v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 # Linear bottom drag:
 μ = 0.001 # ms⁻¹
 
-@inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(Face(), Center(), Center(), i, j, k-1, grid) & !inactive_node(Face(), Center(), Center(), i, j, k, grid))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(Center(), Face(), Center(), i, j, k-1, grid) & !inactive_node(Center(), Face(), Center(), i, j, k, grid))                                
+@inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Face(), Center(), Center()) & !inactive_node(i, j, k, grid, Face(), Center(), Center()))
+@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Center(), Face(), Center()) & !inactive_node(i, j, k, grid, Center(), Face(), Center()))                                
 
 # Keep a constant linear drag parameter independent on vertical level
 @inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
@@ -245,7 +245,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
                                     closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment, biharmonic_viscosity),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
                                     forcing = (u=Fu, v=Fv),
-                                    tracer_advection = WENO5(underlying_mrg))
+                                    tracer_advection = WENO(underlying_mrg))
 
 #####
 ##### Initial condition:
@@ -316,7 +316,6 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
 run!(simulation, pickup = pickup_file)
 
 @info """
-
     Simulation took $(prettytime(simulation.run_wall_time))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
