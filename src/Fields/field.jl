@@ -117,7 +117,7 @@ A field at location `(Face, Face, Center)`.
 ```jldoctest fields
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(size=(2, 3, 4), extent=(1, 1, 1))
+julia> grid = RectilinearGrid(size=(2, 3, 4), extent=(1, 1, 1));
 
 julia> ω = Field{Face, Face, Center}(grid)
 2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
@@ -128,8 +128,9 @@ julia> ω = Field{Face, Face, Center}(grid)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-Using `indices` to create a two dimensional ``x``-``y`` field at location `(Face, Face, Center)`
-that lives at the grid's surface, `k = Nz`.
+Now, using `indices` we can create a two dimensional ``x``-``y`` field at location
+`(Face, Face, Center)` to compute, e.g., the vertical vorticity ``∂v/∂x - ∂u/∂y``
+at the fluid's surface ``z = 0``, which corresponds to `k = Nz`.
 
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
