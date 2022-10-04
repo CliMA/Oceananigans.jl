@@ -130,7 +130,7 @@ julia> ω = Field{Face, Face, Center}(grid)
 
 Now, using `indices` we can create a two dimensional ``x``-``y`` field at location
 `(Face, Face, Center)` to compute, e.g., the vertical vorticity ``∂v/∂x - ∂u/∂y``
-at the fluid's surface ``z = 0``, which corresponds to `k = Nz`.
+at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
 
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
