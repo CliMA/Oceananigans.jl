@@ -19,6 +19,10 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
     end
 end
 
+const XFlatGrid = AG{<:Any, Flat}
+const YFlatGrid = AG{<:Any, <:Any, Flat}
+const ZFlatGrid = AG{<:Any, <:Any, <:Any, Flat}
+
 @inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
 @inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
 @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
