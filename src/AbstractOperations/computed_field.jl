@@ -12,24 +12,27 @@ import Oceananigans.Fields: Field, compute!
 const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
 
 """
-    Field(operand::AbstractOperation; kwargs...)
+    Field(operand::AbstractOperation;
+          data = nothing,
+          indices = indices(operand),
+          boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
+          recompute_safely = true)
 
-Return `f::Field` where `f.data` is computed from `f.operand` by
-calling compute!(f).
+Return a field `f` where `f.data` is computed from `f.operand` by calling `compute!(f)`.
 
 Keyword arguments
 =================
 
-data (AbstractArray): An offset Array or CuArray for storing the result of a computation.
-                      Must have `total_size(location(operand), grid)`.
+`data` (`AbstractArray`): An offset Array or CuArray for storing the result of a computation.
+                          Must have `total_size(location(operand), grid)`.
 
-boundary_conditions (FieldBoundaryConditions): Boundary conditions for `f`. 
+`boundary_conditions` (`FieldBoundaryConditions`): Boundary conditions for `f`. 
 
-recompute_safely (Bool): whether or not to _always_ "recompute" `f` if `f` is
-                         nested within another computation via an `AbstractOperation`.
-                         If `data` is not provided then `recompute_safely=false` and
-                         recomputation is _avoided_. If `data` is provided, then
-                         `recompute_safely=true` by default.
+`recompute_safely` (`Bool`): whether or not to _always_ "recompute" `f` if `f` is
+                             nested within another computation via an `AbstractOperation`.
+                             If `data` is not provided then `recompute_safely=false` and
+                             recomputation is _avoided_. If `data` is provided, then
+                             `recompute_safely = true` by default.
 """
 function Field(operand::AbstractOperation;
                data = nothing,
