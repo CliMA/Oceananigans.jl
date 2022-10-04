@@ -2,7 +2,7 @@ using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
-restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
+restrict_to_interior(::Colon, loc, topo, N) = Colon()
 restrict_to_interior(::Colon, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::UnitRange, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
 
