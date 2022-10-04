@@ -46,7 +46,7 @@ function calculate_tendencies!(model, fill_halo_events)
     return nothing
 end
 
-@inline validate_kernel_size(N, H) = all(N .- 2 .* H .> 0)
+@inline validate_kernel_size(N, H) = false #all(N .- 2 .* H .> 0)
 
 @inline function tendency_kernel_size(grid, ::Val{:interior}) 
     N = size(grid)
