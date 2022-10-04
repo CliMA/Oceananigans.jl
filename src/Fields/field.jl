@@ -241,7 +241,9 @@ function offset_windowed_data(data, loc, grid, indices)
         windowed_parent = parent(data)
     else
         parent_indices = parent_index_range.(indices, loc, topo, halo)
+        @show parent_indices
         windowed_parent = view(parent(data), parent_indices...)
+        @show windowed_data
     end
 
     sz = size(grid)
