@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC, CBC
-using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
+using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
@@ -77,25 +77,6 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-function validate_index(idx, loc, topo, N, H)
-    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
-    return throw(ArgumentError("$idx are not supported window indices for Field!"))
-end
-
-validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
-
-function validate_index(idx::UnitRange, loc, topo, N, H)
-    all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
-    return idx
-end
-
-validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
-
-validate_indices(indices, loc, grid::AbstractGrid) =
-    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
-
 #####
 ##### Some basic constructors
 #####
@@ -104,7 +85,7 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    indices = validate_indices(indices, loc, grid)
+    @apply_regionally indices = validate_indices(indices, loc, grid)
     buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
@@ -152,10 +133,12 @@ function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
                indices = default_indices(3),
-               data = new_data(T, grid, loc, indices),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
+               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+               operand = nothing,
+               status = nothing)
 
-    return Field(loc, grid, data, boundary_conditions, indices, nothing, nothing)
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
     
 Field(z::ZeroField; kw...) = z
@@ -167,7 +150,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Center}(grid, T; kw...)
+CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
 
 """
     XFaceField(grid; kw...)
@@ -175,7 +158,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center,
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Center, Center}(grid, T; kw...)
+XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
 
 """
     YFaceField(grid; kw...)
@@ -183,7 +166,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Ce
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Face, Center}(grid, T; kw...)
+YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
 
 """
     ZFaceField(grid; kw...)
@@ -191,7 +174,7 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, 
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
+ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Face), grid, T; kw...)
 
 #####
 ##### Field utils
@@ -676,15 +659,14 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
-    if field.indices isa typeof(default_indices(3))
-        fill_halo_regions!(field.data,
-                           field.boundary_conditions,
-                           instantiated_location(field),
-                           field.grid,
-                           args...;
-                           reduced_dimensions = reduced_dims,
-                           kwargs...)
-    end
+    fill_halo_regions!(field.data,
+                       field.boundary_conditions,
+                       field.indices,
+                       instantiated_location(field),
+                       field.grid,
+                       args...;
+                       reduced_dimensions = reduced_dims,
+                       kwargs...)
 
     return nothing
 end

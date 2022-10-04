@@ -33,13 +33,15 @@ recompute_safely (Bool): whether or not to _always_ "recompute" `f` if `f` is
 """
 function Field(operand::AbstractOperation;
                data = nothing,
-               indices = default_indices(3),
+               indices = indices(operand),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
                recompute_safely = true)
 
     grid = operand.grid
     loc = location(operand)
     indices = validate_indices(indices, loc, grid)
+
+    boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)

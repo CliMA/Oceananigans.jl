@@ -5,7 +5,7 @@ struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{L
     grid :: G
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
-                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
+                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, I, D, P}
         T = eltype(grid)
         return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
@@ -61,6 +61,8 @@ function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
 
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
+
+indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies...; loc_operation = location(κ))
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
 @inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)
