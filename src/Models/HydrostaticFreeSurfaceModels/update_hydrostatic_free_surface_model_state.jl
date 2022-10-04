@@ -58,7 +58,7 @@ function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
     events = tuple(fill_halo_events..., boundary_w_event...)
 
     if !async
-        wait(device(arch), MultiEvents(events))
+        wait(device(arch), MultiEvent(events))
     end
     return events
 end
