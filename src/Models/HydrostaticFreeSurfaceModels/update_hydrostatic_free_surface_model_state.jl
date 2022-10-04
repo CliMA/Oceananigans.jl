@@ -26,6 +26,8 @@ end
 
 function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
 
+    arch = model.architecture
+
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
