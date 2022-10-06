@@ -15,6 +15,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location, fractional_indices, fractional_y_index
 using Oceananigans.Utils: prettysummary, launch!
+using Oceananigans: fields
 
 import Base: size, length, show
 
@@ -109,5 +110,5 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
 end
 
 include("update_particle_properties.jl")
-
+include("tracer_interaction_utilities.jl")
 end # module

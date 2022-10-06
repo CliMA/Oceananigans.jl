@@ -128,10 +128,16 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
     events = []
 
     for (field_name, tracked_field) in pairs(lagrangian_particles.tracked_fields)
-        compute!(tracked_field)
-        particle_property = getproperty(lagrangian_particles.properties, field_name)
+        if isnothing(tracked_field)
+            tracked_field = fields(model)[field_name]
+         else
+             compute!(tracked_field)
+        end
+        
         LX, LY, LZ = location(tracked_field)
 
+        particle_property = getproperty(lagrangian_particles.properties, field_name)
+    
         update_field_property_kernel! = update_field_property!(device(arch), workgroup, worksize)
 
         update_event = update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
