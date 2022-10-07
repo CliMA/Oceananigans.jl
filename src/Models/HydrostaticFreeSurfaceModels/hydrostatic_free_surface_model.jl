@@ -45,7 +45,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     diffusivity_fields :: K        # Container for turbulent diffusivities
            timestepper :: TS       # Object containing timestepper fields and parameters
       auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
-      state_callbacks :: SC     # Callbacks called between each substep
+       state_callbacks :: SC     # Callbacks called between each substep
 end
 
 """
