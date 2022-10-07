@@ -184,7 +184,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
     # State callbacks - function called on sim between each substep
-    state_callbacks = OrderedDict{Symbol, Callback}()
+    state_callbacks = OrderedDict{Symbol, Any}()
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, velocities, tracers,

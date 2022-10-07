@@ -19,7 +19,6 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
-using Oceananigans.Simulations: Callback
 
 import Oceananigans.Architectures: architecture
 
@@ -188,7 +187,7 @@ function NonhydrostaticModel(;    grid,
     forcing = model_forcing(model_fields; forcing...)
 
     # State callbacks - function called on sim between each substep
-    state_callbacks = OrderedDict{Symbol, Callback}()
+    state_callbacks = OrderedDict{Symbol, Any}()
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,

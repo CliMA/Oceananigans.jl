@@ -31,7 +31,7 @@ using Oceananigans
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
-function modify_tracer(sim, params)
+function modify_tracer(model, params)
     model.timestepper.Gⁿ[params.c] .+= params.δ
 end
 
@@ -45,6 +45,10 @@ run!(simulation)
 ```
 Here there is no forcing, but due to the callback the velocity is increased. 
 >This is a redundant example and here for illustration only, it could be implemented better with a simple forcing function.
+
+## Functions
+
+Callback functions can only take one or two parameters `sim` - a simulation, or `model` for state callbacks, and optionally may also accept a NamedTuple of parameters.
 
 ## Scheduling
 

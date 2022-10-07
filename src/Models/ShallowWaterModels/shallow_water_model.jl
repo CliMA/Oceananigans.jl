@@ -15,7 +15,6 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 import Oceananigans.Architectures: architecture
-using Oceananigans.Simulations: Callback
 
 const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
@@ -52,7 +51,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, U, R, F, E, B
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
                    formulation :: FR        # Either conservative or vector-invariant
-                   state_callbacks :: SC     # Callbacks called between each substep
+             state_callbacks :: SC     # Callbacks called between each substep
 end
 
 struct ConservativeFormulation end
@@ -188,7 +187,7 @@ function ShallowWaterModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     # State callbacks - function called on sim between each substep
-    state_callbacks = OrderedDict{Symbol, Callback}()
+    state_callbacks = OrderedDict{Symbol, Any}()
 
     model = ShallowWaterModel(grid,
                               arch,
