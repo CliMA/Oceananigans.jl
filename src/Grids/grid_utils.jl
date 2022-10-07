@@ -208,12 +208,12 @@ regular_dimensions(grid) = ()
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
-parent_index_range(::Colon,                       loc, topo, halo) = Colon()
-parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = interior_parent_offset(loc, topo, halo)
+parent_index_range(::Colon,                       loc, topo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo) = Colon()
+parent_index_range(index::UnitRange,              loc, topo) = UnitRange(1, last(index) - first(index) + 1)
 
-parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
-parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
+parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}) = index
+parent_index_range(index::UnitRange, ::Type{Nothing},         topo) = 1:1 # or Colon()
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
