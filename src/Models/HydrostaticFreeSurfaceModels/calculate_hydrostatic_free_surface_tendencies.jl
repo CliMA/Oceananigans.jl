@@ -31,6 +31,8 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                            model.closure,
                                                            model.buoyancy)
 
+    [callback(model) for callback in values(model.state_callbacks)]
+
     return nothing
 end
 

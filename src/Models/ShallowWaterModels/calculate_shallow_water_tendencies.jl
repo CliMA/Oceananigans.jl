@@ -51,6 +51,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.tracers,
                                                model.clock,
                                                fields(model))
+    
+    [callback(model) for callback in values(model.state_callbacks)]
 
     return nothing
 end

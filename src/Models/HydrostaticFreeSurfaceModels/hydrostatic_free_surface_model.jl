@@ -27,7 +27,7 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tra
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, U, C, Φ, K, AF, SC} <: AbstractModel{TS}
   
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
@@ -45,6 +45,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     diffusivity_fields :: K        # Container for turbulent diffusivities
            timestepper :: TS       # Object containing timestepper fields and parameters
       auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+      state_callbacks :: SC     # Callbacks called between each substep
 end
 
 """
@@ -182,9 +183,13 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
+    # State callbacks - function called on sim between each substep
+    state_callbacks = OrderedDict{Symbol, Callback}()
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, velocities, tracers,
-                                        pressure, diffusivity_fields, timestepper, auxiliary_fields)
+                                        pressure, diffusivity_fields, timestepper, auxiliary_fields,
+                                        state_callbacks)
 
     update_state!(model)
 

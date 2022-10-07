@@ -19,13 +19,14 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
+using Oceananigans.Simulations: Callback
 
 import Oceananigans.Architectures: architecture
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, I, AF, SC} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -46,6 +47,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
       pressure_solver :: S        # Pressure/Poisson solver
     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+     state_callbacks :: SC     # Callbacks called between each substep
 end
 
 """
@@ -118,7 +120,7 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple(),
+                      auxiliary_fields = NamedTuple()
     )
 
     arch = architecture(grid)
@@ -185,10 +187,13 @@ function NonhydrostaticModel(;    grid,
     model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
+    # State callbacks - function called on sim between each substep
+    state_callbacks = OrderedDict{Symbol, Callback}()
+
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
-                                auxiliary_fields)
+                                auxiliary_fields, state_callbacks)
 
     update_state!(model)
     

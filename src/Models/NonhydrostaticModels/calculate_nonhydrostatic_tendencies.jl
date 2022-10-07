@@ -31,6 +31,8 @@ function calculate_tendencies!(model::NonhydrostaticModel)
                                                model.tracers,
                                                model.clock,
                                                fields(model))
+    
+    [callback(model) for callback in values(model.state_callbacks)]
 
     return nothing
 end
