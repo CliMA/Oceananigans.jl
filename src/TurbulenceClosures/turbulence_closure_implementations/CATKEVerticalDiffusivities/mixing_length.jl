@@ -79,13 +79,13 @@ Base.@kwdef struct MixingLength{FT}
     Cᴬˢc  :: FT = 0.0
     Cᴬˢe  :: FT = 0.0
     Cᴷu⁻  :: FT = 0.29
-    Cᴷuʳ  :: FT = 0.75
+    Cᴷu⁺  :: FT = 0.75
     Cᴷc⁻  :: FT = 2.13
-    Cᴷcʳ  :: FT = -0.27
+    Cᴷc⁺  :: FT = -0.27
     Cᴷe⁻  :: FT = 8.46
-    Cᴷeʳ  :: FT = 1.49
+    Cᴷe⁺  :: FT = 1.49
     CᴷRiʷ :: FT = 3.14
-    CᴷRiᶜ :: FT = -1.98
+    CᴷRiᶜ :: FT = Inf
 end
 
 #####
@@ -200,13 +200,13 @@ end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w)) # (1 + tanh(x / w - c)) / 2
-@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
+@inline scale(Ri, σ⁻, σ⁺, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.mixing_length.Cᴷu⁻,
-                 closure.mixing_length.Cᴷuʳ,
+                 closure.mixing_length.Cᴷu⁺,
                  closure.mixing_length.CᴷRiᶜ,
                  closure.mixing_length.CᴷRiʷ)
 end
@@ -215,7 +215,7 @@ end
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.mixing_length.Cᴷc⁻,
-                 closure.mixing_length.Cᴷcʳ,
+                 closure.mixing_length.Cᴷc⁺,
                  closure.mixing_length.CᴷRiᶜ,
                  closure.mixing_length.CᴷRiʷ)
 end
@@ -224,7 +224,7 @@ end
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.mixing_length.Cᴷe⁻,
-                 closure.mixing_length.Cᴷeʳ,
+                 closure.mixing_length.Cᴷe⁺,
                  closure.mixing_length.CᴷRiᶜ,
                  closure.mixing_length.CᴷRiʷ)
 end
@@ -294,8 +294,8 @@ Base.show(io::IO, ML::MixingLength) =
               "     Cᴷu⁻ = $(ML.Cᴷu⁻)",  "\n",
               "     Cᴷc⁻ = $(ML.Cᴷc⁻)",  "\n",
               "     Cᴷe⁻ = $(ML.Cᴷe⁻)",  "\n",
-              "     Cᴷuʳ = $(ML.Cᴷuʳ)",  "\n",
-              "     Cᴷcʳ = $(ML.Cᴷcʳ)",  "\n",
-              "     Cᴷeʳ = $(ML.Cᴷeʳ)",  "\n",
+              "     Cᴷu⁺ = $(ML.Cᴷu⁺)",  "\n",
+              "     Cᴷc⁺ = $(ML.Cᴷc⁺)",  "\n",
+              "     Cᴷe⁺ = $(ML.Cᴷe⁺)",  "\n",
               "    CᴷRiʷ = $(ML.CᴷRiʷ)", "\n",
               "    CᴷRiᶜ = $(ML.CᴷRiᶜ)")

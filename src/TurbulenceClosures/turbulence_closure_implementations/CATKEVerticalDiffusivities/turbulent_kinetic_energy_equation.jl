@@ -21,9 +21,9 @@ surface buoyancy flux `Qᵇ`.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     Cᴰ⁻   :: FT = 1.70
-    Cᴰʳ   :: FT = 6.34
-    CᴰRiᶜ :: FT = 1.09
-    CᴰRiʷ :: FT = 1.57
+    Cᴰ⁺   :: FT = 6.34
+    CᴰRiᶜ :: FT = Inf
+    CᴰRiʷ :: FT = 0.0
     Cᵂu★  :: FT = 9.90
     CᵂwΔ  :: FT = 8.26
 end
@@ -79,11 +79,11 @@ end
 
     # Ri-dependent dissipation coefficient
     Cᴰ⁻ = closure.turbulent_kinetic_energy_equation.Cᴰ⁻
-    Cᴰʳ = closure.turbulent_kinetic_energy_equation.Cᴰʳ
+    Cᴰ⁺ = closure.turbulent_kinetic_energy_equation.Cᴰ⁺
     Riᶜ = closure.turbulent_kinetic_energy_equation.CᴰRiᶜ
     Riʷ = closure.turbulent_kinetic_energy_equation.CᴰRiʷ
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    Cᴰ = scale(Ri, Cᴰ⁻, Cᴰʳ, Riᶜ, Riʷ)
+    Cᴰ = scale(Ri, Cᴰ⁻, Cᴰ⁺, Riᶜ, Riʷ)
 
     eᵢ = @inbounds e[i, j, k]
 
@@ -301,6 +301,6 @@ end
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "TurbulentKineticEnergyEquation: \n" *
               "          Cᴰ⁻: $(tke.Cᴰ⁻), \n" *
-              "          Cᴰʳ: $(tke.Cᴰʳ), \n" *
+              "          Cᴰ⁺: $(tke.Cᴰ⁺), \n" *
               "         Cᵂu★: $(tke.Cᵂu★), \n" *
               "         CᵂwΔ: $(tke.CᵂwΔ)")
