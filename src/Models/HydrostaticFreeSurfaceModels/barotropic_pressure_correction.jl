@@ -48,7 +48,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, η)
+        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η)
+        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
     end
 end
