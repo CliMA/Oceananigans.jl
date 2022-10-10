@@ -69,13 +69,13 @@ end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
 
-@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, clock, tracer_bcs)
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD},
+                                                  velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
 
-    # Tracer mixing length
+    # Start with Tracer mixing length
     ℓ = ℑzᵃᵃᶜ(i, j, k, grid, tracer_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
-    #ℓ = ℑzᵃᵃᶜ(i, j, k, grid, TKE_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # Ri-dependent dissipation coefficient
     Cᴰ⁻ = closure.turbulent_kinetic_energy_equation.Cᴰ⁻
