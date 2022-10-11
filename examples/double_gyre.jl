@@ -10,7 +10,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Plots
 using Printf
 
-architecture = GPU()
+architecture = CPU()
 
 const Lx = 4000kilometers # east-west extent [m]
 const Ly = 6000kilometers # north-south extent [m]
@@ -57,34 +57,24 @@ parameters = (Ly = Ly,
 #
 # ### Wind stress
 
-@inline function u_stress(i, j, grid, clock, model_fields, p)
-    y = ynode(Center(), j, grid)
-    return - p.τ * cos(2π * y / p.Ly)
-end
-
-u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
+@inline u_stress(x, y, t, p) = - p.τ * cos(2π * y / p.Ly)
+u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
 
 # ### Bottom drag
+@inline u_drag(x, y, t, u, p) = - p.μ * p.Lz * u
+@inline v_drag(x, y, t, v, p) = - p.μ * p.Lz * v
 
-@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1]
-@inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
-
-u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=parameters)
-v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form=true, parameters=parameters)
+u_drag_bc = FluxBoundaryCondition(u_drag; field_dependencies=:u, parameters)
+v_drag_bc = FluxBoundaryCondition(v_drag; field_dependencies=:v, parameters)
 
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
-v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
+v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
 
 
 # ### Buoyancy relaxation
 
-@inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
-   y = ynode(Center(), j, grid)
-   b = @inbounds model_fields.b[i, j, k]
-   return - 1 / p.λ * (b - p.Δb * y / p.Ly)
-end
-
-Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
+@inline buoyancy_relaxation(x, y, z, t, b, p) = - 1 / p.λ * (b - p.Δb * y / p.Ly)
+Fb = Forcing(buoyancy_relaxation; parameters, field_dependencies=:b)
 
 # ## Turbulence closure
 horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν=5000, κ=1000)
@@ -93,13 +83,13 @@ closure = (vertical_diffusive_closure, horizontal_diffusive_closure)
 
 # ## Model building
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(; grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = BetaPlane(latitude=45),
-                                    closure = closure,
+                                    closure,
                                     tracers = :b,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     forcing = (b=Fb,)
