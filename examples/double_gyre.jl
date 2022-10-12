@@ -7,14 +7,12 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Plots
+using CairoMakie
 using Printf
-
-architecture = CPU()
 
 const Lx = 4000kilometers # east-west extent [m]
 const Ly = 6000kilometers # north-south extent [m]
-const Lz = 1.8kilometers # depth [m]
+const Lz = 1.8kilometers  # depth [m]
 
 Δt₀ = 10minutes
 stop_time = 10years
@@ -26,19 +24,24 @@ Nz = 50
 σ = 1.2 # stretching factor
 hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
-grid = RectilinearGrid(architecture;
-                           size = (Nx, Ny, Nz),
-                           halo = (3, 3, 3),
-                              x = (-Lx/2, Lx/2),
-                              y = (-Ly/2, Ly/2),
-                              z = hyperbolically_spaced_faces,
-                       topology = (Bounded, Bounded, Bounded))
+grid = RectilinearGrid(CPU();
+                       size = (Nx, Ny, Nz),
+                          x = (-Lx/2, Lx/2),
+                          y = (-Ly/2, Ly/2),
+                          z = hyperbolically_spaced_faces,
+                   topology = (Bounded, Bounded, Bounded))
 
-# plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-#       marker = :circle,
-#       ylabel = "Depth (m)",
-#       xlabel = "Vertical spacing (m)",
-#       legend = nothing)
+# We plot vertical spacing versus depth to inspect the prescribed grid stretching:
+
+fig = Figure(resolution=(1200, 800))
+ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
+lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
+scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+
+save("double_gyre_grid_spacing.svg", fig)
+nothing #hide
+
+# ![](double_gyre_grid_spacing.svg)
 
 α  = 2e-4 # [K⁻¹] thermal expansion coefficient
 g  = 9.81 # [m s⁻²] gravitational constant
@@ -78,8 +81,8 @@ Fb = Forcing(buoyancy_relaxation; parameters, field_dependencies=:b)
 
 # ## Turbulence closure
 horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν=5000, κ=1000)
-vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-5)
-closure = (vertical_diffusive_closure, horizontal_diffusive_closure)
+vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                       ν=1e-2, κ=1e-5)
 
 # ## Model building
 
@@ -89,7 +92,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = BetaPlane(latitude=45),
-                                    closure,
+                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
                                     tracers = :b,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     forcing = (b=Fb,)
