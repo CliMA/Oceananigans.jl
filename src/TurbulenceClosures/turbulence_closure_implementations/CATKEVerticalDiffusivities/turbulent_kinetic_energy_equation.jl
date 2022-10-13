@@ -87,6 +87,10 @@ end
 
     eᵢ = @inbounds e[i, j, k]
 
+    # Reduce ℓ to grid scale when e is negative.
+    # ℓ_eff = ifelse(eᵢ > 0, ℓ, Δzᶜᶜᶠ(i, j, k, grid) / 10)
+    ℓ_eff = ℓ 
+
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -94,10 +98,6 @@ end
     #                 = - Cᴰ e³² / ℓ
     #
     #   and thus    L = - Cᴰ √e / ℓ .
-    #
-
-    # Reduce ℓ to grid scale when e is negative.
-    ℓ_eff = ifelse(eᵢ > 0, ℓ, Δzᶜᶜᶠ(i, j, k, grid) / 10)
 
     return - Cᴰ * sqrt(abs(eᵢ)) / ℓ_eff
 end
