@@ -1,10 +1,9 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
-import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
+import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-
 struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
     func :: F
@@ -19,9 +18,12 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
 end
 
 """
-    ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+    ConditionalOperation(operand::AbstractField;
+                         func = identity,
+                         condition = nothing,
+                         mask = 0)
 
-Returns an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
+Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
 
 Positional arguments
@@ -32,7 +34,8 @@ Positional arguments
 Keyword arguments
 =================
 
-- `func`: A unary transformation applied element-wise to the field `operand` at locations where `condition == true`. Default is `identity`
+- `func`: A unary transformation applied element-wise to the field `operand` at locations where
+          `condition == true`. Default is `identity`.
 
 - `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
                or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
@@ -133,6 +136,8 @@ end
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
     
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+
+indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,

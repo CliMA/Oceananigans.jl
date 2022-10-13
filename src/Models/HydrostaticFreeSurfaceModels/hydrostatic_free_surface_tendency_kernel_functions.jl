@@ -12,14 +12,16 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_producti
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
-Return the tendency for the horizontal velocity in the x-direction, or the east-west 
-direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
+Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west 
+direction, ``u``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``u`` is called ``G_u`` and defined via
 
-    ``∂_t u = G_u - ∂_x p_n``
+```
+∂_t u = G_u - ∂_x p_n
+```
 
-where p_n is the part of the barotropic kinematic pressure that's treated
+where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
@@ -49,14 +51,16 @@ implicitly during time-stepping.
 end
 
 """
-Return the tendency for the horizontal velocity in the y-direction, or the east-west 
-direction, ``v``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
+Return the tendency for the horizontal velocity in the ``y``-direction, or the east-west 
+direction, ``v``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``v`` is called ``G_v`` and defined via
 
-    ``∂_t v = G_v - ∂_y p_n``
+```
+∂_t v = G_v - ∂_y p_n
+```
 
-where p_n is the part of the barotropic kinematic pressure that's treated
+where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
@@ -91,7 +95,9 @@ at grid point `i, j, k`.
 
 The tendency is called ``G_c`` and defined via
 
-    ``∂_t c = G_c``
+```
+∂_t c = G_c
+```
 
 where `c = C[tracer_index]`. 
 """
@@ -124,7 +130,9 @@ Return the tendency for an explicit free surface at horizontal grid point `i, j`
 
 The tendency is called ``G_η`` and defined via
 
-    ``∂_t η = G_η``
+```
+∂_t η = G_η
+```
 """
 @inline function free_surface_tendency(i, j, grid,
                                        velocities,
@@ -134,11 +142,11 @@ The tendency is called ``G_η`` and defined via
                                        forcings,
                                        clock)
 
-    k_surface = grid.Nz + 1
+    k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return @inbounds (   velocities.w[i, j, k_surface]
-                       + forcings.η(i, j, k_surface, grid, clock, model_fields))
+    return @inbounds (   velocities.w[i, j, k_top]
+                       + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
@@ -167,4 +175,3 @@ end
              - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
              + forcing(i, j, k, grid, clock, model_fields))
 end
-

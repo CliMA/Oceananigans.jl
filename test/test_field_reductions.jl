@@ -216,5 +216,21 @@ trilinear(x, y, z) = x + y + z
                 end
             end
         end
+        @testset "Immersed Fields reduction [$(typeof(arch))]" begin
+            @info "  Testing reductions of immersed Fields [$(typeof(arch))]"
+            underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
+            
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
+            c = Field((Center, Center, Nothing), grid)
+
+            set!(c, (x, y) -> y)
+            @test maximum(c) == CUDA.@allowscalar grid.yᵃᶜᵃ[1]
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
+            c = Field((Center, Center, Nothing), grid)
+
+            set!(c, (x, y) -> y)
+            @test maximum(c) == CUDA.@allowscalar grid.yᵃᶜᵃ[3]
+        end
     end
 end

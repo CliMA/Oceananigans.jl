@@ -49,6 +49,7 @@ function calculate_interior_tendency_contributions!(model)
     background_fields    = model.background_fields
     velocities           = model.velocities
     tracers              = model.tracers
+    auxiliary_fields     = model.auxiliary_fields
     hydrostatic_pressure = model.pressures.pHY′
     diffusivities        = model.diffusivity_fields
     forcings             = model.forcing
@@ -78,6 +79,7 @@ function calculate_interior_tendency_contributions!(model)
                                     background_fields,
                                     velocities,
                                     tracers,
+                                    auxiliary_fields,
                                     diffusivities,
                                     forcings,
                                     hydrostatic_pressure,
@@ -95,6 +97,7 @@ function calculate_interior_tendency_contributions!(model)
                                     background_fields,
                                     velocities,
                                     tracers,
+                                    auxiliary_fields,
                                     diffusivities,
                                     forcings,
                                     hydrostatic_pressure,
@@ -112,6 +115,7 @@ function calculate_interior_tendency_contributions!(model)
                                     background_fields,
                                     velocities,
                                     tracers,
+                                    auxiliary_fields,
                                     diffusivities,
                                     forcings,
                                     clock,
@@ -134,6 +138,7 @@ function calculate_interior_tendency_contributions!(model)
                                         background_fields,
                                         velocities,
                                         tracers,
+                                        auxiliary_fields,
                                         diffusivities,
                                         forcing,
                                         clock,
