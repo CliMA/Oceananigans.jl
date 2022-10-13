@@ -85,7 +85,7 @@ Base.@kwdef struct MixingLength{FT}
     Cᴷe⁺  :: FT = 1.49
     CᴷRiʷ :: FT = 3.14
     CᴷRiᶜ :: FT = Inf
-    Cʷ★   :: FT = 4.0
+    Cʷ★   :: FT = 1.0
     Cʷℓ   :: FT = 0.0
 end
 
@@ -124,13 +124,15 @@ end
     return ifelse(S == 0, FT(Inf), sqrt(e⁺) / S)
 end
 
-#=
+@inline one_alpha(α, x) = ifelse(x == 0, Inf, 1 / x^α)
+
 @inline function smoothmin(α, a, b, c)
-    numerator = a * exp(- α * a) + b * exp(- α * b) + c * exp(- α * c)
-    denominator = exp(- α * a) + exp(- α * b) + exp(- α * c)
-    return numerator / denominator
+    # numerator = a * exp(- α * a) + b * exp(- α * b) + c * exp(- α * c)
+    # denominator = exp(- α * a) + exp(- α * b) + exp(- α * c)
+    # return numerator / denominator
+    d = one_alpha(α, a) + one_alpha(α, b) + one_alpha(α, c)
+    return 1 / d^(1/α)
 end
-=#
 
 @inline function smoothmax(α, a, b, c)
     numerator = a * exp(α * a) + b * exp(α * b) + c * exp(α * c)
@@ -138,7 +140,7 @@ end
     return numerator / denominator
 end
 
-@inline smoothmin(α, x, y, z) = min(x, y, z)
+# @inline smoothmin(α, x, y, z) = min(x, y, z)
 # @inline smoothmax(α, x, y, z) = x + y + z
 
 @inline function stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, Cʷ★, e, velocities, tracers, buoyancy)
@@ -146,6 +148,7 @@ end
     ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     ℓˢ = Cˢ * shear_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, velocities, tracers, buoyancy)
     return smoothmin(Cʷ★, d, ℓᵇ, ℓˢ)
+    #return min(d, ℓᵇ, ℓˢ)
 end
 
 @inline function convective_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᴬ::Number, Cʰ::Number, Cʰˢ::Number,
@@ -176,8 +179,14 @@ end
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers) # buoyancy frequency
     convecting = N² < 0
     ℓʰ = Cᴬ * Δzᶜᶜᶠ(i, j, k, grid)
-
+    
     # Some other variants:
+
+    #=
+    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    h = sqrt(e⁺^3) / Qᵇ # scales with boundary layer depth
+    ℓʰ = Cᴬ * h
+    =#
     
     #=
     # Require positive buoyancy flux to define "convection"
