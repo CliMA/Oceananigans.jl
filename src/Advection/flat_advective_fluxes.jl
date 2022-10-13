@@ -21,26 +21,14 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
     end
 end
 
-@inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+Grids = [:XFlatGrid, :YFlatGrid, :ZFlatGrid, :XFlatGrid, :YFlatGrid, :ZFlatGrid]
 
-@inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-
-@inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-
-@inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-
-@inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-@inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-
-@inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
-@inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
+for side in (:left_biased, :right_biased, :symmetric)
+    for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
+        interp_function = Symbol(side, :_interpolate_, dir)
+        @eval begin
+            $interp_function(i, j, k, grid::$Grid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+            $interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, idx, loc, args...) = @inbounds ψ(i, j, k, grid, args...)
+        end
+    end
+end
