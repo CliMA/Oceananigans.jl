@@ -11,12 +11,12 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
     # The halo regions should still just contain zeros.
-    (all(field.data[1-Hx:0,          :,          :] .== 0) &&
-     all(field.data[Nx+1:Nx+Hx,      :,          :] .== 0) &&
-     all(field.data[:,          1-Hy:0,          :] .== 0) &&
-     all(field.data[:,      Ny+1:Ny+Hy,          :] .== 0) &&
-     all(field.data[:,               :,     1-Hz:0] .== 0) &&
-     all(field.data[:,               :, Nz+1:Nz+Hz] .== 0))
+    CUDA.@allowscalar (all(field.data[1-Hx:0,          :,          :] .== 0) &&
+                       all(field.data[Nx+1:Nx+Hx,      :,          :] .== 0) &&
+                       all(field.data[:,          1-Hy:0,          :] .== 0) &&
+                       all(field.data[:,      Ny+1:Ny+Hy,          :] .== 0) &&
+                       all(field.data[:,               :,     1-Hz:0] .== 0) &&
+                       all(field.data[:,               :, Nz+1:Nz+Hz] .== 0))
 end
 
 function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
@@ -34,10 +34,10 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     data = field.data
 
-    (all(data[1-Hx:0,   1:Ny,       1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
-     all(data[1:Nx,   1-Hy:0,       1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
-     all(data[1:Nx,     1:Ny,       0:0] .== data[1:Nx,        1:Ny,       1:1]) &&
-     all(data[1:Nx,     1:Ny, Nz+1:Nz+1] .== data[1:Nx,        1:Ny,     Nz:Nz]))
+    CUDA.@allowscalar (all(data[1-Hx:0,   1:Ny,       1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
+                       all(data[1:Nx,   1-Hy:0,       1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
+                       all(data[1:Nx,     1:Ny,       0:0] .== data[1:Nx,        1:Ny,       1:1]) &&
+                       all(data[1:Nx,     1:Ny, Nz+1:Nz+1] .== data[1:Nx,        1:Ny,     Nz:Nz]))
 end
 
 @testset "Halo regions" begin
