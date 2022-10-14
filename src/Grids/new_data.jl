@@ -57,7 +57,6 @@ function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices
     arch = architecture(grid)
     Tx, Ty, Tz = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
-    indices = validate_indices(indices, loc, grid)
     return offset_data(underlying_data, grid, loc, indices)
 end
 

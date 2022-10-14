@@ -83,13 +83,6 @@ function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, loc, indices; u
     return CubedSphereFaces(faces)
 end
 
-function FieldBoundaryConditions(indices::Tuple, boundary_conditions::CubedSphereFaces)
-
-    faces = Tuple(FieldBoundaryConditions(indices, bcs) for bcs in boundary_conditions.faces)
-
-    return CubedSphereFaces(faces)
-end
-
 #####
 ##### FieldBoundaryBuffers
 #####

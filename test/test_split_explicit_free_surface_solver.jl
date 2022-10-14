@@ -32,7 +32,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             free_surface_weight = 0.0
             Δτ = 1.0
 
-            η₀(x, y, z) = sin(x)
+            η₀(x, y) = sin(x)
             set!(η, η₀)
             U₀(x, y) = 0.0
             set!(U, U₀)
@@ -70,7 +70,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Δτ_end = T - Nt * Δτ
 
             # set!(η, f(x,y))
-            η₀(x, y, z) = sin(x)
+            η₀(x, y) = sin(x)
             set!(η, η₀)
             U₀(x, y) = 0.0
             set!(U, U₀)
@@ -119,7 +119,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             η_avg = 1.0
             U_avg = 2.0
             V_avg = 3.0
-            η₀(x, y, z) = η_avg
+            η₀(x, y) = η_avg
             set!(η, η₀)
             U₀(x, y) = U_avg
             set!(U, U₀)
@@ -182,7 +182,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             # set!(η, f(x,y)) k^2 = ω^2
             gu_c = 1.0
             gv_c = 2.0
-            η₀(x, y, z) = sin(kx * x) * sin(ky * y) + 1
+            η₀(x, y) = sin(kx * x) * sin(ky * y) + 1
             set!(η, η₀)
 
             η_mean_before = mean(Array(interior(η)))

@@ -86,7 +86,7 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
     Ω = model.coriolis.rotation_rate
 
     uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sin(λ)
-    ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sin(λ)
+    ηᵢ(λ, φ)    = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sin(λ)
 
     cᵢ(λ, φ, z) = Gaussian(λ, φ - 5, 10)
 

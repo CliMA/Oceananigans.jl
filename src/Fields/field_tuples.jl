@@ -19,8 +19,6 @@ flattened into a single tuple, with duplicate entries removed.
     return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
 end
 
-const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
-
 # Utility for extracting values from nested NamedTuples
 @inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
 @inline tuplify(a) = a
@@ -41,12 +39,11 @@ Fill halo regions for all `fields`. The algorithm:
     1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
        duplicate entries to avoid "repeated" halo filling.
     
-    2. Filters fields into three categories:
+    2. Filters fields into two categories:
         i. ReducedFields with non-trivial boundary conditions;
-        ii. Fields with non-trivial indices and boundary conditions;
-        iii. Fields spanning the whole grid with non-trivial boundary conditions.
+        ii. Fields with non-trivial boundary conditions.
     
-    3. Halo regions for every `ReducedField` and windowed fields are filled independently.
+    3. Halo regions for every `ReducedField` are filled independently.
     
     4. In every direction, the halo regions in each of the remaining Field tuple
        are filled simultaneously.
@@ -57,13 +54,10 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
     fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
     reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
-    
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
 
-    # Fill halo regions for reduced and windowed fields
-    for field in (reduced_fields..., windowed_fields...)
+    # Fill halo regions for reduced fields
+    for field in reduced_fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 
@@ -79,7 +73,6 @@ end
 tupled_fill_halo_regions!(fields, grid, args...; kwargs...) = 
     fill_halo_regions!(data.(fields),
                        boundary_conditions.(fields),
-                       default_indices(3),         # We cannot group windowed fields together, the indices must be (:, :, :)!
                        instantiated_location.(fields),
                        grid, args...; kwargs...)
 

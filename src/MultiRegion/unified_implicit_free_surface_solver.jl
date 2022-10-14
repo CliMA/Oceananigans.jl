@@ -7,7 +7,7 @@ using Oceananigans.Fields: Field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
              compute_vertically_integrated_lateral_areas!,
              compute_matrix_coefficients,
-             flux_div_xyᶜᶜᶠ  
+             flux_div_xyᶜᶜᶜ
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
              build_implicit_step_solver,
@@ -90,9 +90,9 @@ end
 @kernel function implicit_linearized_unified_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition)
     i, j = @index(Global, NTuple)
     Az   = Azᶜᶜᶜ(i, j, 1, grid)
-    δ_Q  = flux_div_xyᶜᶜᶠ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t    = displaced_xy_index(i, j, grid, region, partition)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, grid.Nz+1] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 
 function solve!(η, implicit_free_surface_solver::UnifiedImplicitFreeSurfaceSolver, rhs, g, Δt)
@@ -127,5 +127,5 @@ end
 @kernel function _redistribute_lhs!(η, sol, region, grid, partition)
     i, j = @index(Global, NTuple)
     t = displaced_xy_index(i, j, grid, region, partition)
-    @inbounds η[i, j, grid.Nz+1] = sol[t]
+    @inbounds η[i, j, 1] = sol[t]
 end

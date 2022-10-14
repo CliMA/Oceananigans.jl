@@ -195,7 +195,7 @@ end
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
 @kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
     i, j = @index(Global, NTuple)
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+    @inbounds Gη[i, j, 1] = free_surface_tendency(i, j, grid, args...)
 end
 
 #####

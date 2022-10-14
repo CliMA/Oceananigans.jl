@@ -1,5 +1,4 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.Fields: indices, offset_compute_index
 
 import Oceananigans.Architectures: architecture
 
@@ -114,18 +113,13 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     # Apply backward transforms in order
     [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
 
-    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ), dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return ϕ
 end
 
-@kernel function copy_real_component!(ϕ, ϕc, index_ranges)
+@kernel function copy_real_component!(ϕ, ϕc)
     i, j, k = @index(Global, NTuple)
-
-    i′ = offset_compute_index(index_ranges[1], i)
-    j′ = offset_compute_index(index_ranges[2], j)
-    k′ = offset_compute_index(index_ranges[3], k)
-
-    @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
+    @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
 end

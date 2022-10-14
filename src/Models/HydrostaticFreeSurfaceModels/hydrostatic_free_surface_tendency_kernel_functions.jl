@@ -142,11 +142,11 @@ The tendency is called ``G_η`` and defined via
                                        forcings,
                                        clock)
 
-    k_top = grid.Nz + 1
+    k_surface = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return @inbounds (   velocities.w[i, j, k_top]
-                       + forcings.η(i, j, k_top, grid, clock, model_fields))
+    return @inbounds (   velocities.w[i, j, k_surface]
+                       + forcings.η(i, j, k_surface, grid, clock, model_fields))
 end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,

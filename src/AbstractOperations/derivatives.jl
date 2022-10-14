@@ -1,9 +1,9 @@
 using Oceananigans.Operators: interpolation_code
 
-struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+struct Derivative{LX, LY, LZ, D, A, I, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
                ∂ :: D
              arg :: A
-               ▶ :: IN
+               ▶ :: I
       abstract_∂ :: AD
             grid :: G
 
@@ -13,10 +13,10 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
     Return an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
-                                 grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
+    function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::I, abstract_∂::AD,
+                                 grid::G) where {LX, LY, LZ, D, A, I, AD, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, D, A, IN, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
+        return new{LX, LY, LZ, D, A, I, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
 end
 
@@ -32,8 +32,6 @@ function _derivative(L, ∂, arg, L∂, abstract_∂, grid)
     ▶ = interpolation_operator(L∂, L)
     return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
-
-indices(d::Derivative) = indices(d.arg)
 
 # Recompute location of derivative
 @inline at(loc, d::Derivative) = d.abstract_∂(loc, d.arg)

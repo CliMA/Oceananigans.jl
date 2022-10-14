@@ -1,9 +1,10 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
-import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
+import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
+
 struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
     func :: F
@@ -18,10 +19,7 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
 end
 
 """
-    ConditionalOperation(operand::AbstractField;
-                         func = identity,
-                         condition = nothing,
-                         mask = 0)
+    ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 
 Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
@@ -136,8 +134,6 @@ end
 Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
     
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-
-indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,

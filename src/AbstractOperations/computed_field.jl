@@ -36,15 +36,13 @@ Keyword arguments
 """
 function Field(operand::AbstractOperation;
                data = nothing,
-               indices = indices(operand),
+               indices = default_indices(3),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
                recompute_safely = true)
 
     grid = operand.grid
     loc = location(operand)
     indices = validate_indices(indices, loc, grid)
-
-    boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
 
     if isnothing(data)
         data = new_data(grid, loc, indices)

@@ -3,8 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Architectures: device_event
-using Oceananigans.Operators
-using Oceananigans.Grids: inactive_cell
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FreeSurface,
@@ -33,15 +32,31 @@ function set_simple_divergent_velocity!(model)
     v .= 0
     η .= 0
 
-    # pick a surface cell at the middle of the domain
-    i, j, k = Int(floor(grid.Nx / 2)) + 1, Int(floor(grid.Ny / 2)) + 1, grid.Nz
-    inactive_cell(i, j, k, grid) && error("The nudged cell at ($i, $j, $k) is inactive.")
+    imid = Int(floor(grid.Nx / 2)) + 1
+    jmid = Int(floor(grid.Ny / 2)) + 1
 
-    Δy = CUDA.@allowscalar Δyᶜᶠᶜ(i, j, k, grid)
-    Δz = CUDA.@allowscalar Δzᶜᶠᶜ(i, j, k, grid)
+    i, j, k = imid, jmid, 1
 
-    # We prescribe the value of the zonal transport in a cell, i.e., `u * Δy * Δz`. This
-    # way `norm(rhs)` of the free-surface solver does not depend on the grid extent/resolution.
+    if grid isa RectilinearGrid
+        Δx, Δy = grid.Δxᶠᵃᵃ, grid.Δyᵃᶜᵃ
+    end
+
+    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa RectilinearGrid
+        Δx, Δy = grid.underlying_grid.Δxᶠᵃᵃ, grid.underlying_grid.Δyᵃᶜᵃ
+    end
+
+    if grid isa LatitudeLongitudeGrid
+        Δx, Δy = CUDA.@allowscalar grid.Δxᶠᶜᵃ[i], grid.Δyᶜᶠᵃ
+    end
+    if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa LatitudeLongitudeGrid
+        Δx, Δy = CUDA.@allowscalar grid.underlying_grid.Δxᶠᶜᵃ[i], grid.underlying_grid.Δyᶜᶠᵃ
+    end
+
+    Δz = CUDA.@allowscalar grid.Δzᵃᵃᶜ[k]
+
+    # Instead of prescribing the velocity, we prescribe the value of the zonal transport
+    # in a cell, i.e., `u * Δy * Δz`. This way the norm(rhs) of the free-surface solver
+    # does not depend on the grid extend and resolution.
     transport = 1e5 # m³ s⁻¹
     CUDA.@allowscalar u[i, j, k] = transport / (Δy * Δz)
 
@@ -90,15 +105,12 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
 
-    left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
+    left_hand_side = Field{Center, Center, Nothing}(grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
     extrema_tolerance = 1e-9
     std_tolerance = 1e-9
-
-    @show norm(left_hand_side)
-    @show norm(right_hand_side)
 
     CUDA.@allowscalar begin
         @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
@@ -125,20 +137,15 @@ end
 
         bump(x, y) = - Lz * (1 - 0.2 * exp(-x^2 / 2width^2))
         
-        underlying_grid = RectilinearGrid(arch, size = (128, 1, 5),
-                                          x = (-5000kilometers, 5000kilometers),
-                                          y = (0, 100kilometers),
-                                          z = [-500, -300, -220, -170, -60, 0],
-                                          topology = (Bounded, Periodic, Bounded))
-
-        bumpy_vertically_stretched_rectilinear_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+        bumpy_rectilinear_grid = ImmersedBoundaryGrid(rectilinear_grid, GridFittedBottom(bump))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
                                              longitude = (-20, 30),
                                              latitude = (-10, 40),
                                              z = (-4000, 0))
 
-        for grid in (rectilinear_grid, bumpy_vertically_stretched_rectilinear_grid, lat_lon_grid)
+        for grid in (rectilinear_grid, bumpy_rectilinear_grid, lat_lon_grid)
+
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."

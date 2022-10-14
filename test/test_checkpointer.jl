@@ -70,7 +70,7 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
     true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
-    ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
+    ηᵢ(x, y) = 1e-1 * exp(-x^2 - y^2)
     ϵᵢ(x, y, z) = 1e-6 * randn()
     set!(true_model, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
 

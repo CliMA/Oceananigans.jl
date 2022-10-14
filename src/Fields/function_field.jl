@@ -48,8 +48,6 @@ where `func` is callable with signature `func(x, y, z)`.
 """
 FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
-indices(::FunctionField) = (:, :, :)
-
 # Various possibilities for calling FunctionField.func:
 @inline call_func(clock, parameters, func, x, y, z)     = func(x, y, z, clock.time, parameters)
 @inline call_func(::Nothing, parameters, func, x, y, z) = func(x, y, z, parameters)

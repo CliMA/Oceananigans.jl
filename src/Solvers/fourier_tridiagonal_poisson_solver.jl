@@ -94,7 +94,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # so that the solution has zero-mean.
     ϕ .= ϕ .- mean(ϕ)
 
-    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x), dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return nothing

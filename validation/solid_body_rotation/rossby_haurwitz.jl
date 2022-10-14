@@ -87,7 +87,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     # arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
     uᵢ(λ, ϕ, z) = u₁(rescale²(ϕ), rescale¹(λ))
     vᵢ(λ, ϕ, z) = v₁(rescale²(ϕ), rescale¹(λ))
-    hᵢ(λ, ϕ, z) = h₁(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
+    hᵢ(λ, ϕ)    = h₁(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
 
     u, v, w = model.velocities
     η = model.free_surface.η

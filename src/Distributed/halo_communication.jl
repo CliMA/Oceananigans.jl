@@ -65,17 +65,13 @@ function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; 
     end
 end
 
-# REMEMBER! indices, kernel_size (:yz, :xz and :xy) and offset are not used in distributed halo filling because sliced fields are not supported yet
-# TODO: distributed halo filling does not support windowed fields at the moment
-# TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, loc, grid::DistributedGrid, args...; kwargs...)
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
-    offset = (0, 0)
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, :xz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, :xy, offset, loc, arch, barrier, grid, args...; kwargs...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, loc, arch, barrier, grid, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, loc, arch, barrier, grid, args...; kwargs...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, loc, arch, barrier, grid, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
@@ -100,8 +96,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, size, offset, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
+        function $fill_both_halos!(c, bc_side, bc_opposite_side, loc, arch, barrier, grid, args...; kwargs...)
+                event = $fill_both_halo!(c, bc_side, bc_opposite_side, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
             return [event]
         end
     end
@@ -123,7 +119,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, size, offset, loc, arch, 
+        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, loc, arch, 
                                    barrier, grid, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs

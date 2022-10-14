@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!, indices
+using Oceananigans.Fields: compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -304,43 +304,6 @@ for arch in archs
                     end
                 end
             end
-        end
-
-        @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
-            
-            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
-
-            test_indices   = [(2:3, :, :), (:, 2:3, :), (:, :, 2:3)]
-            face_indices   = [(2:2, :, :), (:, 2:2, :), (:, :, 2:2)]
-            center_indices = [(3:3, :, :), (:, 3:3, :), (:, :, 3:3)]
-
-            FaceFields = (XFaceField, YFaceField, ZFaceField)
-            
-            for (ti, fi, ci, FaceField) in zip(test_indices, face_indices, center_indices, FaceFields)
-                a = CenterField(grid)
-                b = CenterField(grid, indices = ti)
-                @test indices(a * b)  == ti
-                @test indices(sin(b)) == ti
-                            
-                c = CenterField(grid, indices=ti)
-                d = FaceField(grid, indices=ti)
-                @test indices(c * d) == fi
-                @test indices(d * c) == ci
-            end
-
-            a = CenterField(grid, indices = test_indices[1])
-            b = XFaceField(grid,  indices = test_indices[2])
-            c = YFaceField(grid,  indices = test_indices[3])
-
-            d = Field((Face, Face, Center), grid, indices = (:, 2:3, 1:2))
-
-            @test indices(a * b * c) == (2:3, 2:3, 2:3)
-            @test indices(b * a * c) == (3:3, 2:3, 2:3)
-            @test indices(c * a * b) == (2:3, 3:3, 2:3)
-            @test indices(a * b * c * d) == (2:3, 2:2, 2:2)
-            @test indices(b * c * d * a) == (3:3, 2:2, 2:2)
-            @test indices(c * d * a * b) == (2:3, 3:3, 2:2)
-            @test indices(d * a * b * c) == (3:3, 3:3, 2:2)
         end
     end
 end
