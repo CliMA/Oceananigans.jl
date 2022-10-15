@@ -98,6 +98,8 @@ function run!(sim; pickup=false)
         time_step!(sim)
     end
 
+    fill_halo_regions!(sim.model)
+
     return nothing
 end
 

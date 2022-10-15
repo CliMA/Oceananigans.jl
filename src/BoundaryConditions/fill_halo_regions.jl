@@ -41,7 +41,6 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     events = []
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, events, barrier, grid, args...; kwargs...)
-        wait(device(arch), events[end])
     end
 
     if !async
@@ -55,12 +54,15 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, events, depen
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
 
-    barrier = isempty(events) ? dependency : events[end]
+    barrier = ifelse(isempty(events), dependency, events[end])
     # Calculate size and offset of the fill_halo kernel
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    push!(events, fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...))
+    event = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+
+    push!(events, event)
 end
 
 function permute_boundary_conditions(boundary_conditions)

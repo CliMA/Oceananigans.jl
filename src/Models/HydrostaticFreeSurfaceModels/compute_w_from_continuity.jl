@@ -11,7 +11,8 @@ Compute the vertical velocity ``w`` by integrating the continuity equation from 
 w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 ```
 """
-compute_w_from_continuity!(model; kwargs...) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
+compute_w_from_continuity!(model::HydrostaticFreeSurfaceModel; kwargs...) = 
+            compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
 
 function compute_w_from_continuity!(velocities, arch, grid; region_to_compute = :interior, dependencies = device_event(arch))
 
