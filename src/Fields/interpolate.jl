@@ -120,6 +120,9 @@ end
     interpolate(field, x, y, z)
 
 Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
+
+!!! warning "`interpolate` on GPU"
+    `interpolate` uses scalar operations and, therefore, it's _very_ slow on GPU.
 """
 @inline function interpolate(field, x, y, z)
     LX, LY, LZ = location(field)
