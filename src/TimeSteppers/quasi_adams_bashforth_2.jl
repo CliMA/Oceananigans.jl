@@ -90,7 +90,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.clock.iteration == 0 && @apply_regionally update_state!(model)
 
     # fill halos at the beginning to have cocurrency between fill halos and tendency computation
-    fill_halo_events = fill_halo_regions!(model; async=true)
+    fill_halo_events = fill_halo_regions!(model; async=false)
 
     @apply_regionally calculate_tendencies!(model, fill_halo_events)
     

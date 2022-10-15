@@ -20,14 +20,6 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
-
-    return nothing
-end
-
-function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
-
-    arch = model.architecture
-
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
@@ -37,6 +29,13 @@ function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
 
+    return nothing
+end
+
+function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
+
+    arch = model.architecture
+
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     fill_halo_fields = merge(prognostic_fields(model), (pHY′ = model.pressure.pHY′, κ = model.diffusivity_fields))
@@ -44,8 +43,6 @@ function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
     fill_halo_events = fill_halo_regions!(fill_halo_fields, model.clock, fields(model); async)
 
     interior_w_event = compute_w_from_continuity!(model; region_to_compute = :interior)
-
-    wait(device(arch), interior_w_event)
 
     boundary_w_event = [compute_w_from_continuity!(model; region_to_compute = :west,  dependencies = fill_halo_events[end]), 
                         compute_w_from_continuity!(model; region_to_compute = :east,  dependencies = fill_halo_events[end]), 
@@ -55,10 +52,11 @@ function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
 
     fill_w_event = fill_halo_regions!(model.velocities.w, model.clock, fields(model); async, dependencies = boundary_w_event[end])
 
-    events = tuple(fill_halo_events..., boundary_w_event...)
+    events = [fill_halo_events..., boundary_w_event..., interior_w_event, fill_w_event]
+    events = filter(e -> typeof(e) <: Event, events)
 
     if !async
-        wait(device(arch), MultiEvent(events))
+        wait(device(arch), MultiEvent(Tuple(events)))
     end
     return events
 end
