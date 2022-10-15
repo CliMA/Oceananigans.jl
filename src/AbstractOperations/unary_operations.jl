@@ -129,4 +129,3 @@ Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
                                Adapt.adapt(to, unary.grid))
-
