@@ -6,11 +6,13 @@ using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    low, high = index_binary_search(vec, val, length(vec))
+    index_binary_search(vec, val, array_size)
 
-Returns indices `low, high` of `vec`tor for which 
+Return indices `low, high` of `vec`tor for which 
 
-    `vec[low] <= val && vec[high] >= val`
+```
+vec[low] <= val && vec[high] >= val
+```
 
 using a binary search. The input array `vec` has to be monotonically increasing.
 
@@ -80,7 +82,7 @@ const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
 @inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
 
 """
-    fractional_indices(x, y, z, loc, grid::RectilinearGrid)
+    fractional_indices(x, y, z, loc, grid)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid located at `loc`
 where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
@@ -90,6 +92,7 @@ grid points.
     i = fractional_x_index(x, loc[1], grid)
     j = fractional_y_index(y, loc[2], grid)
     k = fractional_z_index(z, loc[3], grid)
+    
     return (i, j, k)
 end
 
@@ -104,14 +107,14 @@ end
 @inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
 
 @inline _interpolate(field, ξ, η, ζ, i, j, k) =
-    @inbounds (  ϕ₁(ξ, η, ζ) * field[i,   j,   k  ]
-               + ϕ₂(ξ, η, ζ) * field[i,   j,   k+1]
-               + ϕ₃(ξ, η, ζ) * field[i,   j+1, k  ]
-               + ϕ₄(ξ, η, ζ) * field[i,   j+1, k+1]
-               + ϕ₅(ξ, η, ζ) * field[i+1, j,   k  ]
-               + ϕ₆(ξ, η, ζ) * field[i+1, j,   k+1]
-               + ϕ₇(ξ, η, ζ) * field[i+1, j+1, k  ]
-               + ϕ₈(ξ, η, ζ) * field[i+1, j+1, k+1])
+    CUDA.@allowscalar @inbounds (  ϕ₁(ξ, η, ζ) * field[i,   j,   k  ]
+                                 + ϕ₂(ξ, η, ζ) * field[i,   j,   k+1]
+                                 + ϕ₃(ξ, η, ζ) * field[i,   j+1, k  ]
+                                 + ϕ₄(ξ, η, ζ) * field[i,   j+1, k+1]
+                                 + ϕ₅(ξ, η, ζ) * field[i+1, j,   k  ]
+                                 + ϕ₆(ξ, η, ζ) * field[i+1, j,   k+1]
+                                 + ϕ₇(ξ, η, ζ) * field[i+1, j+1, k  ]
+                                 + ϕ₈(ξ, η, ζ) * field[i+1, j+1, k+1])
 
 """
     interpolate(field, x, y, z)
@@ -127,6 +130,8 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     ξ, i = modf(i)
     η, j = modf(j)
     ζ, k = modf(k)
+
+    architecture(field) == GPU() && @warn "interpolate(field, x, y, z) uses scalar operations and it's _very_ slow on GPU."
 
     # Convert indices to proper integers and shift to 1-based indexing.
     return _interpolate(field, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
