@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Fields: AbstractField, offset_compute_index, indices
 
 import Oceananigans.AbstractOperations: ConditionalOperation, get_condition, truefunc
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -27,3 +27,50 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
     return get_condition(condition.func, i, j, k, ibg, args...) & !(immersed_peripheral_node(i, j, k, ibg, LX(), LY(), LZ()))
 end 
 
+#####
+##### Reduction operations on Reduced Fields test the immersed condition on the entirety of the immersed direction
+#####
+
+struct NotImmersedColumn{IC, F} <:Function
+    immersed_column :: IC
+    func :: F
+end
+
+using Oceananigans.Fields: reduced_dimensions, OneField
+using Oceananigans.AbstractOperations: ConditionalOperation
+
+# ImmersedReducedFields
+const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
+const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
+const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
+
+const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
+const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
+const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
+
+const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
+
+const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
+
+@inline condition_operand(func::Function,         op::IRF, cond,      mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), cond    ), mask)
+@inline condition_operand(func::Function,         op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
+@inline condition_operand(func::typeof(identity), op::IRF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersedColumn(immersed_column(op), truefunc), mask)
+
+@inline function immersed_column(field::IRF)
+    reduced_dims  = reduced_dimensions(field)
+    full_location = fill_location.(location(field)) 
+    one_field    = ConditionalOperation{full_location...}(OneField(Int), identity, field.grid, NotImmersed(truefunc), 0.0)
+
+    return sum(one_field, dims = reduced_dims)
+end
+
+@inline fill_location(::Type{Face})    = Face
+@inline fill_location(::Type{Center})  = Center
+@inline fill_location(::Type{Nothing}) = Center
+
+@inline function get_condition(condition::NotImmersedColumn, i, j, k, ibg, co::ConditionalOperation, args...)
+    LX, LY, LZ = location(co)
+    return get_condition(condition.func, i, j, k, ibg, args...) & !(is_immersed_column(i, j, k, condition.immersed_column))
+end 
+
+is_immersed_column(i, j, k, column) = column[i, j, k] == 0

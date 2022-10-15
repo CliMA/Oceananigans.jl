@@ -38,7 +38,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
-    ηⁱ(x, y) = 2 * ηᵍ(x)
+    ηⁱ(x, y, z) = 2 * ηᵍ(x)
 
     set!(model, v = vᵍ)
     @apply_regionally set!(η, ηⁱ)
