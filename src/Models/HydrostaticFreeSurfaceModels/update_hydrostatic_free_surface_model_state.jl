@@ -52,11 +52,18 @@ function fill_halo_regions!(model::HydrostaticFreeSurfaceModel; async = false)
 
     fill_w_event = fill_halo_regions!(model.velocities.w, model.clock, fields(model); async, dependencies = boundary_w_event[end])
 
-    events = [fill_halo_events..., boundary_w_event..., interior_w_event, fill_w_event]
-    events = filter(e -> typeof(e) <: Event, events)
+    @apply_regionally events = splat_events(fill_halo_events, boundary_w_event, interior_w_event, fill_w_event)
 
     if !async
         wait(device(arch), MultiEvent(Tuple(events)))
     end
     return events
 end
+
+function splat_events(args...)
+    events = []
+    for args in args
+        events = [events..., args...]
+    end
+    return filter(e -> typeof(e) <: Event, events)
+end   
