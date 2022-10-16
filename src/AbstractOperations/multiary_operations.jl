@@ -1,15 +1,15 @@
 const multiary_operators = Set()
 
-struct MultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     args :: A
-    ▶ :: I
+    ▶ :: IN
     grid :: G
 
-    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::I, grid::G) where {LX, LY, LZ, O, A, I, G}
+    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
         T = eltype(grid)
         N = length(args)
-        return new{LX, LY, LZ, N, O, A, I, G, T}(op, args, ▶, grid)
+        return new{LX, LY, LZ, N, O, A, IN, G, T}(op, args, ▶, grid)
     end
 end
 
@@ -19,6 +19,8 @@ end
 #####
 ##### MultiaryOperation construction
 #####
+
+indices(Π::MultiaryOperation) = interpolate_indices(Π.args...; loc_operation = location(Π))
 
 function _multiary_operation(L, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)

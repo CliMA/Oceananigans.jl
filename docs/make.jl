@@ -158,6 +158,12 @@ makedocs(bib,
  checkdocs = :exports
 )
 
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end
+
 deploydocs(
           repo = "github.com/CliMA/OceananigansDocumentation.git",
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
@@ -165,9 +171,3 @@ deploydocs(
   push_preview = true,
      devbranch = "main"
 )
-
-@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
-
-for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
-    rm(file)
-end

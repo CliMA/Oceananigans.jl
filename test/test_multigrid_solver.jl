@@ -1,7 +1,8 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Solvers: solve!
+using Oceananigans.Solvers: solve!, finalize_solver!
 using Statistics
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
 function run_poisson_equation_test(grid)
     arch = architecture(grid)
@@ -22,6 +23,7 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
     solve!(ϕ_solution, solver, r)
+    finalize_solver!(solver)
     ϕ_solution .-= mean(ϕ_solution)
     fill_halo_regions!(ϕ_solution)
  
@@ -47,8 +49,12 @@ function run_poisson_equation_test(grid)
 end
 
 @testset "MultigridSolverPoisson" begin
-    @info "Testing MultigridSolver with the poisson equation..."
-    arch = CPU()
-    grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
-    run_poisson_equation_test(grid)
+    for arch in archs
+        initialize_AMGX(arch)
+        A = typeof(arch)
+        @info "Testing MultigridSolver with the Poisson equation [$A]..."
+        grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
+        run_poisson_equation_test(grid)
+        finalize_AMGX(arch)
+    end
 end

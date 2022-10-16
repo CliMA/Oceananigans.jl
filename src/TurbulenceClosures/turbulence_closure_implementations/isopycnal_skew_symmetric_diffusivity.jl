@@ -151,7 +151,7 @@ end
     bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, tracers)
     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, tracers)
 
-    by = ∂y_b(i, j, k,   grid, buoyancy, tracers)
+    by = ∂y_b(i, j, k, grid, buoyancy, tracers)
 
     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
@@ -172,7 +172,9 @@ end
     
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope² = ifelse(bz < 0, zero(grid), slope_x^2 + slope_y^2)
+   
+    # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
+    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
 
     return min(one(grid), slope_limiter.max_slope^2 / slope²)
 end

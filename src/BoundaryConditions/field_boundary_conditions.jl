@@ -88,7 +88,7 @@ and the topology in the boundary-normal direction is used:
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(default_bounded_bc = NoFluxBoundaryCondition();
+FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
                         west = DefaultBoundaryCondition(default_bounded_bc),
                         east = DefaultBoundaryCondition(default_bounded_bc),
                         south = DefaultBoundaryCondition(default_bounded_bc),

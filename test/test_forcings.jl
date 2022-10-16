@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+using Oceananigans.Fields: Field
 
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
@@ -59,11 +60,12 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_single_field_dependent_forcing(arch, fld)
 
-    forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, u) -> -u, field_dependencies=:u),))
+    forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, fld) -> -fld, field_dependencies=fld),))
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    A = Field{Center, Center, Center}(grid)
     model = NonhydrostaticModel(grid=grid, forcing=forcing,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields=(; A))
     time_step!(model, 1, euler=true)
 
     return true
@@ -72,16 +74,16 @@ end
 """ Take one time step with a Forcing forcing function with parameters. """
 function time_step_with_multiple_field_dependent_forcing(arch)
 
-    u_forcing = Forcing((x, y, z, t, v, w, T) -> sin(v) * exp(w) * T, field_dependencies=(:v, :w, :T))
+    u_forcing = Forcing((x, y, z, t, v, w, T, A) -> sin(v) * exp(w) * T *A, field_dependencies=(:v, :w, :T, :A))
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    A = Field{Center, Center, Center}(grid)
     model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields = (; A))
     time_step!(model, 1, euler=true)
 
     return true
 end
-
 
 
 """ Take one time step with a Forcing forcing function with parameters. """
@@ -154,7 +156,7 @@ end
             @testset "Field-dependent forcing functions [$A]" begin
                 @info "      Testing field-dependent forcing functions [$A]..."
 
-                for fld in (:u, :v, :w, :T)
+                for fld in (:u, :v, :w, :T, :A)
                     @test time_step_with_single_field_dependent_forcing(arch, fld)
                 end
 
