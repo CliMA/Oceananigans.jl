@@ -123,10 +123,12 @@ function run_field_interpolation_tests(FT, arch)
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
 
-    ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
-    ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
-    ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
-    ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+    CUDA.@allowscalar begin
+        ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
+        ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
+        ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
+        ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+    end
 
     @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
     @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
@@ -139,10 +141,12 @@ function run_field_interpolation_tests(FT, arch)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    ℑu = interpolate.(Ref(u), xs, ys, zs)
-    ℑv = interpolate.(Ref(v), xs, ys, zs)
-    ℑw = interpolate.(Ref(w), xs, ys, zs)
-    ℑc = interpolate.(Ref(c), xs, ys, zs)
+    CUDA.@allowscalar begin
+        ℑu = interpolate.(Ref(u), xs, ys, zs)
+        ℑv = interpolate.(Ref(v), xs, ys, zs)
+        ℑw = interpolate.(Ref(w), xs, ys, zs)
+        ℑc = interpolate.(Ref(c), xs, ys, zs)
+    end
 
     F = f.(xs, ys, zs)
 

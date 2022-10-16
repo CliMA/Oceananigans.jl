@@ -107,22 +107,19 @@ end
 @inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
 
 @inline _interpolate(field, ξ, η, ζ, i, j, k) =
-    CUDA.@allowscalar @inbounds (  ϕ₁(ξ, η, ζ) * field[i,   j,   k  ]
-                                 + ϕ₂(ξ, η, ζ) * field[i,   j,   k+1]
-                                 + ϕ₃(ξ, η, ζ) * field[i,   j+1, k  ]
-                                 + ϕ₄(ξ, η, ζ) * field[i,   j+1, k+1]
-                                 + ϕ₅(ξ, η, ζ) * field[i+1, j,   k  ]
-                                 + ϕ₆(ξ, η, ζ) * field[i+1, j,   k+1]
-                                 + ϕ₇(ξ, η, ζ) * field[i+1, j+1, k  ]
-                                 + ϕ₈(ξ, η, ζ) * field[i+1, j+1, k+1])
+    @inbounds (  ϕ₁(ξ, η, ζ) * field[i,   j,   k  ]
+               + ϕ₂(ξ, η, ζ) * field[i,   j,   k+1]
+               + ϕ₃(ξ, η, ζ) * field[i,   j+1, k  ]
+               + ϕ₄(ξ, η, ζ) * field[i,   j+1, k+1]
+               + ϕ₅(ξ, η, ζ) * field[i+1, j,   k  ]
+               + ϕ₆(ξ, η, ζ) * field[i+1, j,   k+1]
+               + ϕ₇(ξ, η, ζ) * field[i+1, j+1, k  ]
+               + ϕ₈(ξ, η, ζ) * field[i+1, j+1, k+1])
 
 """
     interpolate(field, x, y, z)
 
 Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
-
-!!! warning "`interpolate` on GPU"
-    `interpolate` uses scalar operations and, therefore, it's _very_ slow on GPU.
 """
 @inline function interpolate(field, x, y, z)
     LX, LY, LZ = location(field)
@@ -133,8 +130,6 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     ξ, i = modf(i)
     η, j = modf(j)
     ζ, k = modf(k)
-
-    architecture(field) == GPU() && @warn "interpolate(field, x, y, z) uses scalar operations and it's _very_ slow on GPU."
 
     # Convert indices to proper integers and shift to 1-based indexing.
     return _interpolate(field, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
