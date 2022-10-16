@@ -32,3 +32,11 @@ for side in (:left_biased, :right_biased, :symmetric)
         end
     end
 end
+
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
+
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, u) = @inbounds u[i, j, k]
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, v) = @inbounds v[i, j, k]
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, w) = @inbounds w[i, j, k]
