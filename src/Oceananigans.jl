@@ -5,7 +5,7 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 module Oceananigans
 
 if VERSION < v"1.8"
-    error("This version of Oceananigans.jl requires Julia v1.8 or newer.")
+    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
 end
 
 export
