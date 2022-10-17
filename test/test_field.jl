@@ -128,12 +128,12 @@ function run_field_interpolation_tests(FT, arch)
         ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
         ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
         ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
-    end
 
-    @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
-    @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-    @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
-    @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+    end
 
     # Check that interpolating between grid points works as expected.
 
@@ -146,14 +146,14 @@ function run_field_interpolation_tests(FT, arch)
         ℑv = interpolate.(Ref(v), xs, ys, zs)
         ℑw = interpolate.(Ref(w), xs, ys, zs)
         ℑc = interpolate.(Ref(c), xs, ys, zs)
+
+        F = f.(xs, ys, zs)
+
+        @test all(isapprox.(ℑu, F, atol=ε_max))
+        @test all(isapprox.(ℑv, F, atol=ε_max))
+        @test all(isapprox.(ℑw, F, atol=ε_max))
+        @test all(isapprox.(ℑc, F, atol=ε_max))
     end
-
-    F = f.(xs, ys, zs)
-
-    @test all(isapprox.(ℑu, F, atol=ε_max))
-    @test all(isapprox.(ℑv, F, atol=ε_max))
-    @test all(isapprox.(ℑw, F, atol=ε_max))
-    @test all(isapprox.(ℑc, F, atol=ε_max))
 
     return nothing
 end

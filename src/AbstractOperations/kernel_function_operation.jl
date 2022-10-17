@@ -5,7 +5,7 @@ struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{L
     grid :: G
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
-                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, I, D, P}
+                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
         T = eltype(grid)
         return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
@@ -17,7 +17,7 @@ end
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
                                         computed_dependencies=(), parameters=nothing)
 
-Constructs a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
+Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
 an optional iterable of `computed_dependencies` and arbitrary `parameters`.
 
 With `isnothing(parameters)` (the default), `kernel_function` is called with
@@ -76,4 +76,3 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
                                         Adapt.adapt(to, κ.computed_dependencies),
                                         Adapt.adapt(to, κ.parameters),
                                         Adapt.adapt(to, κ.grid))
-
