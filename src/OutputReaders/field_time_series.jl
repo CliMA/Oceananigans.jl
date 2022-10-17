@@ -125,6 +125,9 @@ function FieldTimeSeries(path, name, backend::InMemory;
         on_architecture(architecture, grid)
     catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
+            @info "Initial attempt to transfer grid to $architecture failed."
+            @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
+
             Nx = file["grid/Nx"]
             Ny = file["grid/Ny"]
             Nz = file["grid/Nz"]
