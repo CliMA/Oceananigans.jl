@@ -1,7 +1,6 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Fields: Field, ZeroField
 
-
 buoyancy(::Nothing, args...) = ZeroField()
 buoyancy(::BuoyancyTracer, grid, tracers) = tracers.b
 
