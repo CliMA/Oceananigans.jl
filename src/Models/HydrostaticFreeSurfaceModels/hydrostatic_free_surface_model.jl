@@ -23,6 +23,7 @@ using Oceananigans.Utils: tupleit
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
