@@ -109,7 +109,7 @@ function solve_for_pressure!(pressure, solver::MatrixPoissonSolver, Δt, U★)
 
     wait(device(arch), rhs_event)
 
-    solve!(storage, matrix_solver, rhs, -1)
+    solve!(storage, matrix_solver, rhs, 0.0)
         
     set!(pressure, reshape(storage, matrix_solver.problem_size...))
 
