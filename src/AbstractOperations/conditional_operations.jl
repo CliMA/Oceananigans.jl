@@ -92,7 +92,6 @@ end
 
 @inline condition_operand(func::Function, op::AbstractField, condition, mask) = ConditionalOperation(op; func, condition, mask)
 @inline condition_operand(func::Function, op::AbstractField, ::Nothing, mask) = ConditionalOperation(op; func, condition = truefunc, mask)
-@inline condition_operand(func::Function, op::AbstractField, condition::AbstractField, mask) = ConditionalOperation(op; func, condition, mask)
 
 @inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask) 
     condition = arch_array(architecture(operand.grid), condition)
