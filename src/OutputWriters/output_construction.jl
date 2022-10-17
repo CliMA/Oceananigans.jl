@@ -37,7 +37,7 @@ maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
 """
     construct_output(output, grid, indices, with_halos)
 
-Constructs the output that is going to be written to disk. Only called in zero-th iteration.
+Constructs the output that is going to be written to disk. Only called on the zero-th iteration.
 """
 function construct_output(output, grid, indices, with_halos)
     if !(indices isa typeof(default_indices(3)))
