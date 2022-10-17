@@ -1,5 +1,5 @@
 using Oceananigans.Operators
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, HeptadiagonalIterativeSolver, solve!
 using Oceananigans.Architectures: device_event
 using Oceananigans.Distributed: DistributedFFTBasedPoissonSolver
 
@@ -84,6 +84,34 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     # Pressure Poisson rhs, scaled by Δzᶜᶜᶜ, is stored in solver.source_term:
     solve!(pressure, solver)
+
+    return nothing
+end
+
+@kernel function calculate_pressure_source_term_heptadiagonal_solver!(rhs, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+    t = i + grid.Nx * (j - 1 + grid.Nz * (k - 1))
+    @inbounds rhs[t] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt * Vᶜᶜᶜ(i, j, k, grid)
+end
+
+function solve_for_pressure!(pressure, solver::MatrixPoissonSolver, Δt, U★)
+
+    matrix_solver = solver.solver
+    storage       = solver.storage
+
+    # Calculate right hand side:
+    rhs  = matrix_solver.state_vars.r
+    arch = architecture(matrix_solver)
+    grid = matrix_solver.grid
+
+    rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_heptadiagonal_solver!,
+                        rhs, grid, Δt, U★, dependencies = device_event(arch))
+
+    wait(device(arch), rhs_event)
+
+    solve!(storage, matrix_solver, rhs, -1)
+        
+    set!(pressure, reshape(storage, matrix_solver.problem_size...))
 
     return nothing
 end
