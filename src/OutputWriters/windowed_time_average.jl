@@ -90,7 +90,7 @@ end
 (sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= sch.previous_interval_stop_time + sch.interval - sch.window
 initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = clock.time - rem(clock.time, sch.interval)
 outside_window(sch::AveragedTimeInterval, clock) = clock.time <  sch.previous_interval_stop_time + sch.interval - sch.window   
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= sch.previous_interval_stop_time + sch.interval - sch.window
+end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= sch.previous_interval_stop_time + sch.interval
 
 TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
