@@ -1,4 +1,5 @@
 using Oceananigans.Utils: prettysummary
+using Oceananigans.OutputWriters: WindowedTimeAverage
 
 struct Callback{P, F, S}
     func :: F
@@ -26,4 +27,17 @@ Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func, false
                                     " with parameters ", cb.parameters)
 
 Base.show(io::IO, cb::Callback) = print(io, summary(cb))
+
+function Callback(wta::WindowedTimeAverage)
+    function func(sim)
+        model = simulation.model
+        advance_time_average!(wta, model)
+        return nothing
+    end
+    return Callback(func, wta.schedule, nothing)
+end
+
+Callback(wta::WindowedTimeAverage, schedule; kw...) =
+    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage. 
+                        Use Callback(windowed_time_average)"))
 
