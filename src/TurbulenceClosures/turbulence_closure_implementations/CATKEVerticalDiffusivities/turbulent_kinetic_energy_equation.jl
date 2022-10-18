@@ -20,12 +20,12 @@ turbulent velocity scale associated with the surface vertical grid spacing `Δz`
 surface buoyancy flux `Qᵇ`.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    Cᴰ⁻   :: FT = 1.70
-    Cᴰ⁺   :: FT = 6.34
+    Cᴰ⁻   :: FT = 1.0
+    Cᴰ⁺   :: FT = 1.0
     CᴰRiᶜ :: FT = Inf
     CᴰRiʷ :: FT = 0.0
-    Cᵂu★  :: FT = 9.90
-    CᵂwΔ  :: FT = 8.26
+    Cᵂu★  :: FT = 1.0
+    CᵂwΔ  :: FT = 1.0
 end
 
 #####

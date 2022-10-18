@@ -63,12 +63,12 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cᵇu   :: FT = 1.26
-    Cᵇc   :: FT = 2.14
-    Cᵇe   :: FT = 1.08
-    Cˢu   :: FT = 0.82
-    Cˢc   :: FT = 0.61
-    Cˢe   :: FT = 1.47
+    Cᵇu   :: FT = 1.0
+    Cᵇc   :: FT = 1.0
+    Cᵇe   :: FT = 1.0
+    Cˢu   :: FT = 1.0
+    Cˢc   :: FT = 1.0
+    Cˢe   :: FT = 1.0
     Cᵟu   :: FT = 0.5
     Cᵟc   :: FT = 0.5
     Cᵟe   :: FT = 0.5
@@ -77,15 +77,15 @@ Base.@kwdef struct MixingLength{FT}
     Cᴬe   :: FT = 0.0
     Cʰ    :: FT = 0.0
     Cʰˢ   :: FT = 0.0
-    Cᴷu⁻  :: FT = 0.29
-    Cᴷu⁺  :: FT = 0.75
-    Cᴷc⁻  :: FT = 2.13
-    Cᴷc⁺  :: FT = -0.27
-    Cᴷe⁻  :: FT = 8.46
-    Cᴷe⁺  :: FT = 1.49
-    CᴷRiʷ :: FT = 3.14
+    Cᴷu⁻  :: FT = 1.0
+    Cᴷu⁺  :: FT = 1.0
+    Cᴷc⁻  :: FT = 1.0
+    Cᴷc⁺  :: FT = 1.0
+    Cᴷe⁻  :: FT = 1.0
+    Cᴷe⁺  :: FT = 1.0
+    CᴷRiʷ :: FT = 1.0
     CᴷRiᶜ :: FT = Inf
-    Cʷ★   :: FT = 1.0
+    Cʷ★   :: FT = 4.0
     Cʷℓ   :: FT = 0.0
 end
 
@@ -124,6 +124,7 @@ end
     return ifelse(S == 0, FT(Inf), sqrt(e⁺) / S)
 end
 
+#=
 @inline one_alpha(α, x) = ifelse(x == 0, Inf, 1 / x^α)
 
 @inline function smoothmin(α, a, b, c)
@@ -139,48 +140,44 @@ end
     denominator = exp(α * a) + exp(α * b) + exp(α * c)
     return numerator / denominator
 end
+=#
 
-# @inline smoothmin(α, x, y, z) = min(x, y, z)
-# @inline smoothmax(α, x, y, z) = x + y + z
+@inline smoothmin(α, x, y, z) = min(x, y, z)
+@inline smoothmax(α, x, y, z) = max(x, y, z)
 
 @inline function stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, Cʷ★, e, velocities, tracers, buoyancy)
     d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
     ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     ℓˢ = Cˢ * shear_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, velocities, tracers, buoyancy)
     return smoothmin(Cʷ★, d, ℓᵇ, ℓˢ)
-    #return min(d, ℓᵇ, ℓˢ)
 end
 
 @inline function convective_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᴬ::Number, Cʰ::Number, Cʰˢ::Number,
                                              velocities, tracers, buoyancy, clock, tracer_bcs)
 
-    #=
-    # Shear
+    # A kind of convective adjustment...
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers) # buoyancy frequency
+    convecting = N² < 0
+    ℓʰ = Cᴬ * Δzᶜᶜᶠ(i, j, k, grid)
+
+    # "Sheared convection number"
+    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, tracers.e)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S = sqrt(∂z_u² + ∂z_v²)
+    α = ifelse(Qᵇ > 0, S * Qᵇ / e⁺, zero(S))
 
-        
-    # "Sheared convection number"
-    α = S * Qᵇ / e⁺
+    # "Shear aware" mising length
+    ℓʰ *= 1 - Cʰˢ * α
 
-    # Mixing length
-    ℓᴬ = sqrt(e⁺^3) / Qᵇ
-    ℓʰ = Cᴬ * ℓᴬ * (1 - Cᴬˢ * α)
-
+    #=
     # Are we convecting?
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     d = depthᶜᶜᶠ(i, j, k, grid)
     convecting = ((N² < 0) | (d < ℓʰ)) & (Qᵇ > 0) & (e⁺ > 0)
     #convecting = (N² < 0) & (Qᵇ > 0)
     =#
-
-    # A kind of convective adjustment...
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers) # buoyancy frequency
-    convecting = N² < 0
-    ℓʰ = Cᴬ * Δzᶜᶜᶠ(i, j, k, grid)
-    
-    # Some other variants:
 
     #=
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
