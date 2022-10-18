@@ -257,6 +257,13 @@ a view into `f`, offset to preserve index meaning.
 Example
 =======
 
+```@meta
+DocTestSetup = quote
+   using Random
+   Random.seed!(1234)
+end
+```
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -278,7 +285,7 @@ julia> v = view(c, :, 2:3, 1:2)
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
-    └── max=0.854147, min=0.0109059, mean=0.520099
+    └── max=0.972136, min=0.0149088, mean=0.59198
 
 julia> size(v)
 (2, 2, 2)

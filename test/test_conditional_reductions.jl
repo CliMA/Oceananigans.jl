@@ -1,9 +1,8 @@
-# include("dependencies_for_runtests.jl")
+include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.ImmersedBoundaries: conditional_length
 using Statistics: mean, mean!, norm
-using CUDA: @allowscalar
 
 @testset "Conditional Reductions" begin
     for arch in archs
@@ -21,9 +20,9 @@ using CUDA: @allowscalar
         fful .= 2
         fimm .= 2
 
-        @allowscalar fimm[1, :, :] .= 1e6
-        @allowscalar fimm[2, :, :] .= -1e4
-        @allowscalar fimm[3, :, :] .= -12.5
+        fimm[1, :, :] .= 1e6
+        fimm[2, :, :] .= -1e4
+        fimm[3, :, :] .= -12.5
 
         @test norm(fful) ≈ √2 * norm(fimm)
         @test mean(fful) ≈      mean(fimm)
@@ -32,6 +31,7 @@ using CUDA: @allowscalar
             @test reduc(fful) == reduc(fimm)
             @test all(Array(interior(reduc(fful, dims=1)) .== interior(reduc(fimm, dims=1))))
         end
+
         @test sum(fful) == sum(fimm) * 2
         @test all(Array(interior(sum(fful, dims=1)) .== interior(sum(fimm, dims=1)) .* 2))
 
@@ -44,9 +44,9 @@ using CUDA: @allowscalar
         
         fcon .= 2
 
-        @allowscalar fcon[1, :, :] .= 1e6
-        @allowscalar fcon[2, :, :] .= -1e4
-        @allowscalar fcon[3, :, :] .= -12.5
+        fcon[1, :, :] .= 1e6
+        fcon[2, :, :] .= -1e4
+        fcon[3, :, :] .= -12.5
 
         @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3) 
 
@@ -64,7 +64,7 @@ using CUDA: @allowscalar
     
         redimm = Field{Nothing, Center, Center}(ibg)
         for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
-            @test reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
+            @test CUDA.@allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
         end
     end
 end
