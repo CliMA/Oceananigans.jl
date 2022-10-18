@@ -1,6 +1,7 @@
 using Base: @propagate_inbounds
 
 using OffsetArrays
+using Statistics
 using JLD2
 
 using Oceananigans.Architectures
@@ -280,8 +281,28 @@ function interior(fts::FieldTimeSeries)
 end
 
 interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
-
 indices(fts::FieldTimeSeries) = fts.indices
+
+function Statistics.mean(fts::FieldTimeSeries; dims=:)
+    m = mean(fts[1]; dims)
+    Nt = length(fts.times)
+
+    if dims isa Colon
+        for n = 2:Nt
+            m += mean(fts[n])
+        end
+
+        return m / Nt
+    else
+        for n = 2:Nt
+            m .+= mean(fts[n]; dims)
+        end
+
+        m ./= Nt
+
+        return m
+    end
+end
 
 #####
 ##### OnDisk time serieses
