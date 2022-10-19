@@ -102,7 +102,7 @@ A schedule for averaging over windows that precede SpecifiedTimes.
 """
 mutable struct AveragedSpecifiedTimes <: AbstractSchedule
     specified_times :: SpecifiedTimes
-    averaging_window :: Float64
+    window :: Float64
     stride :: Int
     collecting :: Bool
 end
@@ -118,7 +118,7 @@ function (schedule::AveragedSpecifiedTimes)(model)
 
     next = schedule.specified_times.previous_actuation + 1
     next_time = schedule.specified_times[next]
-    window = schedule.averaging_window
+    window = schedule.window
 
     schedule.collecting || time >= next_time - window
 end
