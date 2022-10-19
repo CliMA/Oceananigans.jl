@@ -27,8 +27,8 @@ for side in (:left_biased, :right_biased, :symmetric)
     for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
         interp_function = Symbol(side, :_interpolate_, dir)
         @eval begin
-            $interp_function(i, j, k, grid::$Grid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-            $interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+            @inline $interp_function(i, j, k, grid::$Grid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+            @inline $interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
         end
     end
 end
