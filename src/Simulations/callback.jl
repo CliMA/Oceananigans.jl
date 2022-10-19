@@ -1,5 +1,5 @@
 using Oceananigans.Utils: prettysummary
-using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 
 struct Callback{P, F, S}
     func :: F
@@ -30,7 +30,7 @@ Base.show(io::IO, cb::Callback) = print(io, summary(cb))
 
 function Callback(wta::WindowedTimeAverage)
     function func(sim)
-        model = simulation.model
+        model = sim.model
         advance_time_average!(wta, model)
         return nothing
     end

@@ -6,7 +6,7 @@ using Oceananigans.TimeSteppers: Clock
 
 import Oceananigans: run_diagnostic!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
-import Oceananigans.Fields: location, indices
+import Oceananigans.Fields: location, indices, set!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -117,7 +117,9 @@ function (schedule::AveragedSpecifiedTimes)(model)
     time = model.clock.time
 
     next = schedule.specified_times.previous_actuation + 1
-    next_time = schedule.specified_times[next]
+    next > length(schedule.specified_times.times) && return false
+
+    next_time = schedule.specified_times.times[next]
     window = schedule.window
 
     schedule.collecting || time >= next_time - window
@@ -127,13 +129,15 @@ initialize_schedule!(sch::AveragedSpecifiedTimes, clock) = nothing
 
 function outside_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
-    next_time = schedule.specified_times[next]
+    next > length(schedule.specified_times.times) && return true
+    next_time = schedule.specified_times.times[next]
     return clock.time < next_time - schedule.window
 end
 
 function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
-    next_time = schedule.specified_times[next]
+    next > length(schedule.specified_times.times) && return true
+    next_time = schedule.specified_times.times[next]
     return clock.time >= next_time
 end
 
@@ -185,6 +189,8 @@ end
 # Time-averaging doesn't change spatial location
 location(wta::WindowedTimeAverage) = location(wta.operand)
 indices(wta::WindowedTimeAverage) = indices(wta.operand)
+set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
+Base.parent(wta::WindowedTimeAverage) = parent(wta.result)
 
 # This is called when output is requested.
 function (wta::WindowedTimeAverage)(model)
