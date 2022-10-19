@@ -31,8 +31,8 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
         
         @eval begin
-            $der(i, j, k, ibg::IBG, args...)              = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, args...)
-            $der(i, j, k, ibg::IBG, f::Function, args...) = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, f::Function, args...)
+            @inline $der(i, j, k, ibg::IBG, args...)              = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, args...)
+            @inline $der(i, j, k, ibg::IBG, f::Function, args...) = $conditional_der($(loc[1]), $(loc[2]), i, j, k, ibg, $der, f::Function, args...)
         end
     end
 end
@@ -53,4 +53,3 @@ end
     return 1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_x_derivative_c(c, f, i, j, k, ibg, δxᶜᵃᵃ, Δy_qᶠᶜᶠ, u) +
                                       conditional_y_derivative_c(c, f, i, j, k, ibg, δyᵃᶜᵃ, Δx_qᶜᶠᶠ, v))
 end
-
