@@ -17,7 +17,7 @@ end
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
                                         computed_dependencies=(), parameters=nothing)
 
-Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
+Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid`, with
 an optional iterable of `computed_dependencies` and arbitrary `parameters`.
 
 With `isnothing(parameters)` (the default), `kernel_function` is called with
@@ -26,7 +26,7 @@ With `isnothing(parameters)` (the default), `kernel_function` is called with
 kernel_function(i, j, k, grid, computed_dependencies...)
 ```
 
-Otherwise `kernel_function` is called with
+Otherwise, `kernel_function` is called with
 
 ```julia
 kernel_function(i, j, k, grid, computed_dependencies..., parameters)

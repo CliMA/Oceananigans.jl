@@ -56,7 +56,8 @@ Over dimensions of variable spacing, `field` is multiplied by the
 appropriate grid length, area or volume, and divided by the total
 spatial extent of the interval.
 """
-Average(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Average(), field; condition, mask, dims)
+Average(field::AbstractField; condition = nothing, mask = 0, dims=:) =
+    Reduction(Average(), field; condition, mask, dims)
 
 struct Integral end
 
@@ -71,7 +72,8 @@ end
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
 """
-Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(field, condition, mask); dims)
+Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) =
+    Reduction(Integral(), condition_operand(field, condition, mask); dims)
 
 #####
 ##### show

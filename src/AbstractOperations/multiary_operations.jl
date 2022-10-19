@@ -13,7 +13,7 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX,
     end
 end
 
-@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k)  where {LX, LY, LZ, N} =
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k) where {LX, LY, LZ, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
 #####
@@ -150,4 +150,3 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
                                   Adapt.adapt(to, multiary.args),
                                   Adapt.adapt(to, multiary.▶),
                                   Adapt.adapt(to, multiary.grid))
-
