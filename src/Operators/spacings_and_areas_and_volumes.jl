@@ -176,7 +176,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
     z_area_2D    = Symbol(:Az, LX, LY, :ᵃ)
 
-    @eval $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
+    @eval @inline $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
 
     for LZ in (:ᶜ, :ᶠ)
         x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
