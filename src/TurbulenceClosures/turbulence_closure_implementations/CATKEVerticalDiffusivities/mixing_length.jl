@@ -324,7 +324,7 @@ end
 end
 
 Base.show(io::IO, ML::MixingLength) =
-    print(io, "MixingLength:", "\n",
+    print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", "\n",
               "     Cᵇu  = $(ML.Cᵇu)",   "\n",
               "     Cᵇc  = $(ML.Cᵇc)",   "\n",
               "     Cᵇe  = $(ML.Cᵇe)",   "\n",

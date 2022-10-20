@@ -235,6 +235,10 @@ function Base.summary(closure::CATKEVD)
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 
-Base.show(io::IO, closure::FlavorOfCATKE) = print(io, summary(closure))
+function Base.show(io::IO, closure::FlavorOfCATKE)
+    print(io, summary(closure))
+    show(io, closure.mixing_length)
+    show(io, closure.turbulent_kinetic_energy_equation)
+end
 
 end # module
