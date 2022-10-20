@@ -237,7 +237,9 @@ end
 
 function Base.show(io::IO, closure::FlavorOfCATKE)
     print(io, summary(closure))
+    print(io, '\n')
     show(io, closure.mixing_length)
+    print(io, '\n')
     show(io, closure.turbulent_kinetic_energy_equation)
 end
 
