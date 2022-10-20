@@ -22,4 +22,3 @@ DiffusivityFields(grid, tracer_names, bcs, closure) = nothing
 
 DiffusivityFields(grid, tracer_names, bcs, closure_tuple::Tuple) =
     Tuple(DiffusivityFields(grid, tracer_names, bcs, closure) for closure in closure_tuple)
-

@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
 
-"Returns the time-scale for advection on a regular grid across a single grid cell."
+"Return the time-scale for advection on a regular grid across a single grid cell."
 function cell_advection_timescale(u, v, w, grid)
 
     umax = maximum(abs, u)

@@ -13,21 +13,21 @@
     j, k = @index(Global, NTuple)
     j′ = j + offset[1]
     k′ = k + offset[2]
-@inbounds u[i_boundary, j′, k′] = getbc(bc, j′, k′, grid, args...)
+    @inbounds u[i_boundary, j′, k′] = getbc(bc, j′, k′, grid, args...)
 end
 
 @kernel function set_south_or_north_v!(v, offset, j_boundary, bc, grid, args...)
     i, k = @index(Global, NTuple)
     i′ = i + offset[1]
     k′ = k + offset[2]
-@inbounds v[i′, j_boundary, k′] = getbc(bc, i′, k′, grid, args...)
+    @inbounds v[i′, j_boundary, k′] = getbc(bc, i′, k′, grid, args...)
 end
 
 @kernel function set_bottom_or_top_w!(w, offset, k_boundary, bc, grid, args...)
     i, j = @index(Global, NTuple)
     i′ = i + offset[1]
     j′ = j + offset[2]
-@inbounds w[i′, j′, k_boundary] = getbc(bc, i′, j′, grid, args...)
+    @inbounds w[i′, j′, k_boundary] = getbc(bc, i′, j′, grid, args...)
 end
 
 @inline   fill_west_halo!(u, bc::OBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, kernel_size, set_west_or_east_u!,   u, offset,           1, bc, grid, args...; dependencies=dep, kwargs...)

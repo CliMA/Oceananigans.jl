@@ -99,12 +99,16 @@ end
 Add the flux divergence associated with a west flux boundary condition on `c`.
 Note that because
 
-    `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
+```
+tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
+```
 
 a positive west flux is associated with an *increase* in `Gc` near the west boundary.
 If `west_bc.condition` is a function, the function must have the signature
 
-    `west_bc.condition(j, k, grid, boundary_condition_args...)`
+```
+west_bc.condition(j, k, grid, boundary_condition_args...)
+```
 
 The same logic holds for south and bottom boundary conditions in `y`, and `z`, respectively.
 """
@@ -132,12 +136,16 @@ end
 Add the part of flux divergence associated with a east boundary condition on `c`.
 Note that because
 
-    `tendency = ∂c/∂t = Gc = - ∇ ⋅ flux`
+```
+tendency = ∂c/∂t = Gc = - ∇ ⋅ flux
+```
 
 a positive east flux is associated with a *decrease* in `Gc` near the east boundary.
 If `east_bc.condition` is a function, the function must have the signature
 
-    `east_bc.condition(i, j, grid, boundary_condition_args...)`
+```
+east_bc.condition(i, j, grid, boundary_condition_args...)
+```
 
 The same logic holds for north and top boundary conditions in `y`, and `z`, respectively.
 """

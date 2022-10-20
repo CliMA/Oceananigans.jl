@@ -1,5 +1,5 @@
 """
-    struct DiscreteBoundaryFunction{P, F} <: Function
+    struct DiscreteBoundaryFunction{P, F}
 
 A wrapper for boundary condition functions with optional parameters.
 When `parameters=nothing`, the boundary condition `func` is called with the signature

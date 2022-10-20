@@ -85,15 +85,15 @@ end
 #####
 
 fill_west_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_west_halo!, c, offset,grid; dependencies=dep, kwargs...)
+            launch!(arch, grid, kernel_size, fill_flux_west_halo!, c, offset, grid; dependencies=dep, kwargs...)
 fill_east_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_east_halo!, c, offset,grid; dependencies=dep, kwargs...)
+            launch!(arch, grid, kernel_size, fill_flux_east_halo!, c, offset, grid; dependencies=dep, kwargs...)
 fill_south_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_south_halo!, c, offset,grid; dependencies=dep, kwargs...)
+            launch!(arch, grid, kernel_size, fill_flux_south_halo!, c, offset, grid; dependencies=dep, kwargs...)
 fill_north_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_north_halo!, c, offset,grid; dependencies=dep, kwargs...)
+            launch!(arch, grid, kernel_size, fill_flux_north_halo!, c, offset, grid; dependencies=dep, kwargs...)
 fill_bottom_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
-            launch!(arch, grid, kernel_size, fill_flux_bottom_halo!, c, offset,grid; dependencies=dep, kwargs...)
+            launch!(arch, grid, kernel_size, fill_flux_bottom_halo!, c, offset, grid; dependencies=dep, kwargs...)
 fill_top_halo!(c, bc::FBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) = 
             launch!(arch, grid, kernel_size, fill_flux_top_halo!, c, offset, grid; dependencies=dep, kwargs...)
 

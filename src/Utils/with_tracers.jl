@@ -1,5 +1,5 @@
 """
-    with_tracers(tracer_names, initial_tuple, tracer_default)
+    with_tracers(tracer_names, initial_tuple::NamedTuple, tracer_default; with_velocities=false)
 
 Create a tuple corresponding to the solution variables `u`, `v`, `w`,
 and `tracer_names`. `initial_tuple` is a `NamedTuple` that at least has

@@ -7,7 +7,7 @@ struct LeftBoundary end
 struct RightBoundary end
 
 """
-    struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
+    struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
 
 A wrapper for the user-defined boundary condition function `func` at location
 `X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,

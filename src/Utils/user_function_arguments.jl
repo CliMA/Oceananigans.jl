@@ -13,7 +13,7 @@
 @inline field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N =
     @inbounds ntuple(n -> ℑ[n](i, j, k, grid, model_fields[idx[n]]), Val(N))
 
-""" Returns field arguments in user-defined functions for forcing and boundary conditions."""
+""" Return field arguments in user-defined functions for forcing and boundary conditions."""
 @inline function user_function_arguments(i, j, k, grid, model_fields, ::Nothing, user_func)
 
     ℑ = user_func.field_dependencies_interp
@@ -21,7 +21,7 @@
     return field_arguments(i, j, k, grid, model_fields, ℑ, idx)
 end
 
-""" Returns field arguments plus parameters in user-defined functions for forcing and boundary conditions."""
+""" Return field arguments plus parameters in user-defined functions for forcing and boundary conditions."""
 @inline function user_function_arguments(i, j, k, grid, model_fields, parameters, user_func)
 
     ℑ = user_func.field_dependencies_interp
