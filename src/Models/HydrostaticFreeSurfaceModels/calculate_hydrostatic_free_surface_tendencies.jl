@@ -2,7 +2,7 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans.Architectures: device_event
-using Oceananigans: fields, prognostic_fields, TimestepCallback, TendencyCallback, UpdateStateCallback
+using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
@@ -31,7 +31,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
                                                            model.closure,
                                                            model.buoyancy)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallback)]
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
 end

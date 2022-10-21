@@ -33,7 +33,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     update_hydrostatic_pressure!(model)
     fill_halo_regions!(model.pressures.pHY′)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallback)]
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
 
     return nothing
 end

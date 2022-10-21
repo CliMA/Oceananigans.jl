@@ -30,7 +30,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallback)]
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     return nothing
 end

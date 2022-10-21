@@ -1,7 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans.Utils: work_layout
-using Oceananigans: fields, TimestepCallback, TendencyCallback, UpdateStateCallback
+using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 
 using Oceananigans.Architectures: device
@@ -52,7 +52,7 @@ function calculate_tendencies!(model::ShallowWaterModel, callbacks)
                                                model.clock,
                                                fields(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallback)]
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
 end

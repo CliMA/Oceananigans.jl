@@ -94,7 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
-    TimestepCallback, TendencyCallback, UpdateStateCallback,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -180,6 +180,10 @@ abstract type AbstractDiagnostic end
 Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
+
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
 
 #####
 ##### Place-holder functions
