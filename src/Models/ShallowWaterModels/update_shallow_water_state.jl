@@ -8,7 +8,7 @@ import Oceananigans.TimeSteppers: update_state!
 
 Fill halo regions for `model.solution` and `model.tracers`.
 """
-function update_state!(model::ShallowWaterModel)
+function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
     masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
@@ -25,6 +25,8 @@ function update_state!(model::ShallowWaterModel)
     # Compute the velocities
 
     compute_velocities!(model.velocities, formulation(model))
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallback)]
 
     return nothing
 end

@@ -113,7 +113,7 @@ function time_step!(sim::Simulation)
 
             start_time = time_ns()
             Δt = aligned_time_step(sim, sim.Δt)
-            time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if callback.substep])
+            time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimestepCallback)])
 
             elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
             @info "    ... initial time step complete ($elapsed_initial_step_time)."
@@ -123,12 +123,12 @@ function time_step!(sim::Simulation)
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if callback.substep])
+        time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimestepCallback)])
     end
 
     # Callbacks and callback-like things
     [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
-    [callback.schedule(sim.model) && callback(sim) for callback in values(sim.callbacks) if !callback.substep]
+    [callback.schedule(sim.model) && callback(sim) for callback in values(sim.callbacks) if isa(callback.callsite, TimestepCallback)]
     [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
 
     end_time_step = time_ns()
@@ -186,7 +186,7 @@ function initialize_simulation!(sim)
         end
 
         for callback in values(sim.callbacks) 
-            if !callback.substep
+            if isa(callback.callsite, TimestepCallback)
                 callback.schedule(model)
                 callback(sim)
             end

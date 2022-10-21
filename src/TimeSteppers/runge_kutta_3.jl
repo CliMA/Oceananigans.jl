@@ -99,7 +99,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    calculate_tendencies!(model, callbacks=callbacks)
+    calculate_tendencies!(model, callbacks)
 
     correct_immersed_tendencies!(model, Δt, γ¹, 0)
 
@@ -110,7 +110,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
-    update_state!(model)
+    update_state!(model, callbacks)
     update_particle_properties!(model, first_stage_Δt)
 
     #

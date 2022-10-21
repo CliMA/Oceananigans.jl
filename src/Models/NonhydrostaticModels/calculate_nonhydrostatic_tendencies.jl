@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
-using Oceananigans: fields
+using Oceananigans: fields, TimestepCallback, TendencyCallback, UpdateStateCallback
 using Oceananigans.Utils: work_layout
 
 """
@@ -9,7 +9,7 @@ using Oceananigans.Utils: work_layout
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::NonhydrostaticModel; callbacks=[])
+function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Note:
     #
@@ -32,7 +32,7 @@ function calculate_tendencies!(model::NonhydrostaticModel; callbacks=[])
                                                model.clock,
                                                fields(model))
 
-    [callback(model) for callback in callbacks]
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallback)]
 
     return nothing
 end

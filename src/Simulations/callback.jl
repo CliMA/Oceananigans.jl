@@ -1,14 +1,15 @@
 using Oceananigans.Utils: prettysummary
 
-struct Callback{P, F, S, SS}
+struct Callback{P, F, S, CS}
     func :: F
     schedule :: S
     parameters :: P
-    substep :: SS
+    callsite :: CS
 end
 
-struct TimeStep end
-struct SubStep end
+struct TimestepCallback end
+struct TendencyCallback end
+struct UpdateStateCallback end
 
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
@@ -22,8 +23,8 @@ with optional `parameters`. `schedule = IterationInterval(1)` by default.
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameteres)`.
 """
-Callback(func, schedule=IterationInterval(1); parameters=nothing, substep::Bool=false) =
-    Callback(func, schedule, parameters, substep)
+Callback(func, schedule=IterationInterval(1); parameters=nothing, callsite = TimestepCallback) =
+    Callback(func, schedule, parameters, callsite())
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
 Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule),
