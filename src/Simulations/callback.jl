@@ -22,7 +22,7 @@ with optional `parameters`. `schedule = IterationInterval(1)` by default.
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameteres)`.
 """
-Callback(func, schedule=IterationInterval(1); parameters=nothing, substep=false) =
+Callback(func, schedule=IterationInterval(1); parameters=nothing, substep::Bool=false) =
     Callback(func, schedule, parameters, substep)
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
