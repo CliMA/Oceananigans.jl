@@ -25,7 +25,7 @@ import Oceananigans.Architectures: architecture
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I, AF, SC} <: AbstractModel{TS}
+                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -46,7 +46,6 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
       pressure_solver :: S        # Pressure/Poisson solver
     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
-      state_callbacks :: SC     # Callbacks called between each substep
 end
 
 """
@@ -186,13 +185,10 @@ function NonhydrostaticModel(;    grid,
     model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
-    # State callbacks - function called on sim between each substep
-    state_callbacks = OrderedDict{Symbol, Any}()
-
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
-                                auxiliary_fields, state_callbacks)
+                                auxiliary_fields)
 
     update_state!(model)
     

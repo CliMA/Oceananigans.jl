@@ -9,7 +9,7 @@ using Oceananigans.Utils: work_layout
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::NonhydrostaticModel)
+function calculate_tendencies!(model::NonhydrostaticModel; callbacks=[])
 
     # Note:
     #
@@ -31,8 +31,8 @@ function calculate_tendencies!(model::NonhydrostaticModel)
                                                model.tracers,
                                                model.clock,
                                                fields(model))
-    
-    [callback(model) for callback in values(model.state_callbacks)]
+
+    [callback(model) for callback in callbacks]
 
     return nothing
 end

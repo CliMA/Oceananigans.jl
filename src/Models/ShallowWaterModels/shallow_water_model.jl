@@ -51,7 +51,6 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, U, R, F, E, B
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
                    formulation :: FR        # Either conservative or vector-invariant
-             state_callbacks :: SC     # Callbacks called between each substep
 end
 
 struct ConservativeFormulation end
@@ -185,9 +184,6 @@ function ShallowWaterModel(;
     model_fields = merge(solution, tracers)
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
-
-    # State callbacks - function called on sim between each substep
-    state_callbacks = OrderedDict{Symbol, Any}()
 
     model = ShallowWaterModel(grid,
                               arch,
