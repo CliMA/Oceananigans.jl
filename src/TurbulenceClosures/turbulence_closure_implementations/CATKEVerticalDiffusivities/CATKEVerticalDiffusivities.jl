@@ -168,10 +168,6 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
     wait(device(arch), event)
 
-    # clip TKE
-    # e = parent(tracers.e)
-    # e .= clip.(e)
-
     return nothing
 end
 
@@ -188,12 +184,11 @@ end
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
-        N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+        Qᵇ = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-        B = ifelse((N² > 0) & (eⁱʲᵏ > 0), κᶻ * N² / eⁱʲᵏ, zero(grid))
+        Qᵇ_e = ifelse((Qᵇ < 0) & (eⁱʲᵏ > 0), - Qᵇ / eⁱʲᵏ, zero(grid))
 
-        diffusivities.Lᵉ[i, j, k] = B + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        diffusivities.Lᵉ[i, j, k] = Qᵇ_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
     end
 end
 

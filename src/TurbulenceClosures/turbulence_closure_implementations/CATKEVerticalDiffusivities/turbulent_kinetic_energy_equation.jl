@@ -42,6 +42,17 @@ end
 # Unlike the above, this fallback for dissipation is generically correct (we only want to compute dissipation once)
 @inline dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs) = zero(eltype(grid))
 
+
+@inline function shear_productionᶜᶜᶠ(i, j, k, grid, velocities, diffusivities)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    return @inbounds diffusivities.Kᵘ[i, j, k] * (∂z_u² + ∂z_v²)
+end
+
+@inline shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities) =
+    ℑzᵃᵃᶜ(i, j, k, grid, shear_productionᶜᶜᶠ, velocities, diffusivities)
+
+#=
 @inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
@@ -54,17 +65,26 @@ end
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - κᶻ * N²
 end
+=#
+
+@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
+    κᶻ = @inbounds diffusivities.Kᶜ[i, j, k]
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    return - κᶻ * N²
+end
+
+@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
+    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
 
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    Qᵇ = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-    return ifelse((N² > 0) & (eⁱʲᵏ > 0), zero(grid), - κᶻ * N²)
+    return ifelse((Qᵇ < 0) & (eⁱʲᵏ > 0), zero(grid), Qᵇ)
 end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
