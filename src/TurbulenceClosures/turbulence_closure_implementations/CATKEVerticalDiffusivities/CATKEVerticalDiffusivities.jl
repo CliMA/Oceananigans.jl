@@ -184,11 +184,11 @@ end
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-        Qᵇ = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+        Qᵇ = buoyancy_flux(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, diffusivities)
         eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-        Qᵇ_e = ifelse((Qᵇ < 0) & (eⁱʲᵏ > 0), - Qᵇ / eⁱʲᵏ, zero(grid))
-
-        diffusivities.Lᵉ[i, j, k] = Qᵇ_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        Qᵇ_e = ifelse(sign(Qᵇ) * sign(eⁱʲᵏ) < 0, Qᵇ / eⁱʲᵏ, zero(grid))
+        
+        diffusivities.Lᵉ[i, j, k] = - Qᵇ_e + implicit_dissipation_coefficient(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
     end
 end
 
