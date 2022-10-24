@@ -17,7 +17,7 @@ end
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
                                         computed_dependencies=(), parameters=nothing)
 
-Constructs a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
+Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
 an optional iterable of `computed_dependencies` and arbitrary `parameters`.
 
 With `isnothing(parameters)` (the default), `kernel_function` is called with
@@ -62,6 +62,8 @@ function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
 
+indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies...; loc_operation = location(κ))
+
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
 @inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)
 
@@ -74,4 +76,3 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
                                         Adapt.adapt(to, κ.computed_dependencies),
                                         Adapt.adapt(to, κ.parameters),
                                         Adapt.adapt(to, κ.grid))
-

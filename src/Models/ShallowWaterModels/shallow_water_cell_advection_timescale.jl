@@ -3,7 +3,7 @@
 
 import Oceananigans.Utils: cell_advection_timescale
 
-function shallow_water_cell_advection_timescale(uh, vh, h, grid, formulation)
+function shallow_water_cell_advection_timescale(::ConservativeFormulation, uh, vh, h, grid::RectilinearGrid)
     
     Δxmin = minimum(grid.Δxᶜᵃᵃ)
     Δymin = minimum(grid.Δyᵃᶜᵃ)
@@ -15,7 +15,7 @@ function shallow_water_cell_advection_timescale(uh, vh, h, grid, formulation)
     return min(Δxmin / uhmax, Δymin / vhmax) * hmin
 end
 
-function shallow_water_cell_advection_timescale(u, v, h, grid, ::VectorInvariantFormulation)
+function shallow_water_cell_advection_timescale(::VectorInvariantFormulation, u, v, h, grid::RectilinearGrid)
     
     Δxmin = minimum(grid.Δxᶜᵃᵃ)
     Δymin = minimum(grid.Δyᵃᶜᵃ)
@@ -26,10 +26,9 @@ function shallow_water_cell_advection_timescale(u, v, h, grid, ::VectorInvariant
     return min(Δxmin / umax, Δymin / vmax)
 end
 
-cell_advection_timescale(model::ShallowWaterModel) =
-    shallow_water_cell_advection_timescale(
-        model.solution[1].data.parent, 
-        model.solution[2].data.parent,
-        model.solution.h.data.parent,
-        model.grid, model.formulation
-        )
+cell_advection_timescale(model::ShallowWaterModel) = shallow_water_cell_advection_timescale(model.formulation,
+                                                                                            model.solution[1],
+                                                                                            model.solution[2],
+                                                                                            model.solution.h,
+                                                                                            model.grid)
+

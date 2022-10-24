@@ -36,7 +36,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
     s = sum(xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
     p = prod(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 
-    return xr[i+shift]^3 / 3 - sum * xr[i+shift]^2 / 2 + prod * xr[i+shift]
+    return xr[i+shift]^3 / 3 - s * xr[i+shift]^2 / 2 + p * xr[i+shift]
 end
 
 """

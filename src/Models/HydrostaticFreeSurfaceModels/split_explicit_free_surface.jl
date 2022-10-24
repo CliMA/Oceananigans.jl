@@ -35,7 +35,7 @@ SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200)
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
-    η =  Field{Center, Center, Nothing}(grid)
+    η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
                                     SplitExplicitAuxiliary(grid),
@@ -46,16 +46,14 @@ end
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
                                         settings = SplitExplicitSettings(200))
 
-    η =  Field{Center, Center, Nothing}(grid)
+η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
-    sefs = SplitExplicitFreeSurface(η,
+    return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid),
                                     SplitExplicitAuxiliary(grid),
                                     gravitational_acceleration,
                                     settings
                                     )
-
-    return sefs
 end
 
 """
@@ -118,12 +116,12 @@ end
 
 function SplitExplicitAuxiliary(grid::AbstractGrid)
 
-    Gᵁ = Field{Face,Center,Nothing}(grid)
-    Gⱽ = Field{Center,Face,Nothing}(grid)
+    Gᵁ = Field{Face,   Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face,   Nothing}(grid)
 
-    Hᶠᶜ = Field{Face,Center,Nothing}(grid)
-    Hᶜᶠ = Field{Center,Face,Nothing}(grid)
-    Hᶜᶜ = Field{Center,Center,Nothing}(grid)
+    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
+    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
     dz = GridMetricOperation((Face, Center, Center), Δz, grid)
     sum!(Hᶠᶜ, dz)

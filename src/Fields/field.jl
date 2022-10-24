@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions: OBC, CBC
-using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices
+using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
@@ -77,25 +77,6 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
-function validate_index(idx, loc, topo, N, H)
-    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
-    return throw(ArgumentError("$idx are not supported window indices for Field!"))
-end
-
-validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
-
-function validate_index(idx::UnitRange, loc, topo, N, H)
-    all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
-    return idx
-end
-
-validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
-
-validate_indices(indices, loc, grid::AbstractGrid) =
-    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
-
 #####
 ##### Some basic constructors
 #####
@@ -104,7 +85,7 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    indices = validate_indices(indices, loc, grid)
+    @apply_regionally indices = validate_indices(indices, loc, grid)
     buffers = FieldBoundaryBuffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
@@ -121,23 +102,57 @@ location in `(x, y, z)` respectively.
 Keyword arguments
 =================
 
-- `data :: OffsetArray`: An offset array with the fields data. If nothing is providet the
+- `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
-- `boundary_conditions`: If nothing is provided, then field is created using the default
+  - `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).
+- `indices`: Used to prescribe where a reduced field lives on. For example, at which `k` index
+  does a two-dimensional ``x``-``y`` field lives on. Default: `(:, :, :)`.
 
 Example
 =======
 
-```jldoctest
+A field at location `(Face, Face, Center)`.
+
+```jldoctest fields
 julia> using Oceananigans
 
-julia> ω = Field{Face, Face, Center}(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-1×1×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+julia> grid = RectilinearGrid(size=(2, 3, 4), extent=(1, 1, 1));
+
+julia> ω = Field{Face, Face, Center}(grid)
+2×3×4 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 7×7×7 OffsetArray(::Array{Float64, 3}, -2:4, -2:4, -2:4) with eltype Float64 with indices -2:4×-2:4×-2:4
+└── data: 8×9×10 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, -2:7) with eltype Float64 with indices -2:5×-2:6×-2:7
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Now, using `indices` we can create a two dimensional ``x``-``y`` field at location
+`(Face, Face, Center)` to compute, e.g., the vertical vorticity ``∂v/∂x - ∂u/∂y``
+at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
+
+```jldoctest fields
+julia> u = XFaceField(grid); v = YFaceField(grid);
+
+julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
+2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+
+julia> compute!(ωₛ)
+2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 8×9×1 OffsetArray(::Array{Float64, 3}, -2:5, -2:6, 4:4) with eltype Float64 with indices -2:5×-2:6×4:4
     └── max=0.0, min=0.0, mean=0.0
 ```
 """
@@ -152,10 +167,12 @@ function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
                indices = default_indices(3),
-               data = new_data(T, grid, loc, indices),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
+               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+               operand = nothing,
+               status = nothing)
 
-    return Field(loc, grid, data, boundary_conditions, indices, nothing, nothing)
+    return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
     
 Field(z::ZeroField; kw...) = z
@@ -164,34 +181,34 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 """
     CenterField(grid; kw...)
 
-Returns `Field{Center, Center, Center}` on `arch`itecture and `grid`.
+Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Center}(grid, T; kw...)
+CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
 
 """
     XFaceField(grid; kw...)
 
-Returns `Field{Face, Center, Center}` on `grid`.
+Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Center, Center}(grid, T; kw...)
+XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
 
 """
     YFaceField(grid; kw...)
 
-Returns `Field{Center, Face, Center}` on `grid`.
+Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Face, Center}(grid, T; kw...)
+YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
 
 """
     ZFaceField(grid; kw...)
 
-Returns `Field{Center, Center, Face}` on `grid`.
+Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
+ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Face), grid, T; kw...)
 
 #####
 ##### Field utils
@@ -240,6 +257,13 @@ a view into `f`, offset to preserve index meaning.
 Example
 =======
 
+```@meta
+DocTestSetup = quote
+   using Random
+   Random.seed!(1234)
+end
+```
+
 ```jldoctest
 julia> using Oceananigans
 
@@ -261,7 +285,7 @@ julia> v = view(c, :, 2:3, 1:2)
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
-    └── max=0.854147, min=0.0109059, mean=0.520099
+    └── max=0.972136, min=0.0149088, mean=0.59198
 
 julia> size(v)
 (2, 2, 2)
@@ -676,15 +700,14 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
     #   filtered_bcs = FieldBoundaryConditions(field.indices, field.boundary_conditions)
     #  
     # which will be useful for implementing halo filling for windowed fields in the future.
-    if field.indices isa typeof(default_indices(3))
-        fill_halo_regions!(field.data,
-                           field.boundary_conditions,
-                           instantiated_location(field),
-                           field.grid,
-                           args...;
-                           reduced_dimensions = reduced_dims,
-                           kwargs...)
-    end
+    fill_halo_regions!(field.data,
+                       field.boundary_conditions,
+                       field.indices,
+                       instantiated_location(field),
+                       field.grid,
+                       args...;
+                       reduced_dimensions = reduced_dims,
+                       kwargs...)
 
     return nothing
 end
