@@ -1,9 +1,12 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Advection: VelocityStencil
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, R_Earth
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: FFTImplicitFreeSurfaceSolver, MGImplicitFreeSurfaceSolver, finalize_solver!
-using Printf
 using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
+
+using Printf
 using TimerOutputs
 
 """
@@ -12,39 +15,41 @@ Benchmarks the bumpy baroclinic adjustment problem with various implicit free-su
 
 const to = TimerOutput()
 
-arch = GPU()
+# choose if benchmark using rectilinear grid
+using_rectilinear_grid = true
+
+arch = CPU()
 initialize_AMGX(arch)
 
 for N in 10:10:250
     @info "N=$N"
     println("")
 
-    underlying_grid = RectilinearGrid(arch,
-                                    topology = (Periodic, Bounded, Bounded), 
-                                    size = (N, N, 24),
-                                    x = (-500kilometers, 500kilometers),
-                                    y = (-500kilometers, 500kilometers),
-                                    z = (-1kilometers, 0),
-                                    halo = (4, 4, 4))
+    if using_rectilinear_grid == true
+        underlying_grid = RectilinearGrid(arch,
+                                          topology = (Periodic, Bounded, Bounded), 
+                                          size = (N, N, 24),
+                                          x = (-500kilometers, 500kilometers),
+                                          y = (-500kilometers, 500kilometers),
+                                          z = (-1kilometers, 0),
+                                          halo = (4, 4, 4))
 
-    Lz_u = underlying_grid.Lz
-    width = 50kilometers
-    bump(x, y) = - Lz_u * (1 - 2 * exp(-(x^2 + y^2) / 2width^2))
+        Lz_u = underlying_grid.Lz
+        width = 50kilometers
+        bump(x, y) = - Lz_u * (1 - 2 * exp(-(x^2 + y^2) / 2width^2))
+    else
+        underlying_grid = LatitudeLongitudeGrid(arch,
+                                                topology = (Periodic, Bounded, Bounded), 
+                                                size = (N, N, 24),
+                                                longitude = (-10, 10),
+                                                latitude = (-55, -35),
+                                                z = (-1kilometers, 0),
+                                                halo = (5, 5, 5))
 
-    #=
-    # Curvilinear Grid
-    underlying_grid = LatitudeLongitudeGrid(arch,
-    topology = (Periodic, Bounded, Bounded), 
-    size = (N, N, 24),
-    longitude = (-10, 10),
-    latitude = (-55, -35),
-    z = (-1kilometers, 0),
-    halo = (5, 5, 5))
-
-    Lz_u = underlying_grid.Lz
-    width = 0.5 # degrees
-    bump(λ, φ) = - Lz_u * (1 - 2 * exp(-(λ^2 + φ^2) / 2width^2))
-    =#
+        Lz_u = underlying_grid.Lz
+        width = 0.5 # degrees
+        bump(λ, φ) = - Lz_u * (1 - 2 * exp(-(λ^2 + φ^2) / 2width^2))
+    end
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
@@ -60,7 +65,7 @@ for N in 10:10:250
     horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
     diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
-                                                ν = νz, κ = κz)
+                                                  ν = νz, κ = κz)
 
     implicit_free_surface_solvers = (#:FastFourierTransform,
                                      #:PreconditionedConjugateGradient,
@@ -70,6 +75,16 @@ for N in 10:10:250
                                      #:PreconditionedConjugateGradient_withFFTpreconditioner,
                                      #:PreconditionedConjugateGradient_withMGpreconditioner,
                                     )
+
+    if using_rectilinear_grid == true
+        coriolis = BetaPlane(latitude = -45)
+        momentum_advection = WENO()
+        tracer_advection = WENO()
+    else
+        coriolis = HydrostaticSphericalCoriolis()
+        momentum_advection = WENO(vector_invariant = VelocityStencil())
+        tracer_advection = WENO(vector_invariant = VelocityStencil())
+    end
 
     for implicit_free_surface_solver in implicit_free_surface_solvers
 
@@ -89,12 +104,12 @@ for N in 10:10:250
         end
 
         model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                                            coriolis = BetaPlane(latitude = -45),
+                                            coriolis,
                                             buoyancy = BuoyancyTracer(),
                                             closure = (horizontal_closure, ),
                                             tracers = :b,
-                                            momentum_advection = WENO(),
-                                            tracer_advection = WENO())
+                                            momentum_advection,
+                                            tracer_advection)
 
         # Initial condition: a baroclinically unstable situation!
         ramp(y, δy) = min(max(0, y/δy + 1/2), 1)
@@ -103,13 +118,23 @@ for N in 10:10:250
         N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
         M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-        δy = 50kilometers
+        if using_rectilinear_grid
+            δy = 50kilometers
+        else
+            δφ = 0.5 # degrees
+            δy = R_Earth * deg2rad(δφ)
+        end
+
         δb = δy * M²
         ϵb = 1e-2 * δb # noise amplitude
 
-        bᵢ(x, y, z) = N² * z + δb * ramp(y, δy) + ϵb * randn()
-
-        set!(model, b=bᵢ)
+        if using_rectilinear_grid
+            bᵢ_rectilinear(x, y, z) = N² * z + δb * ramp(y, δy) + ϵb * randn()
+            set!(model, b=bᵢ_rectilinear)
+        else
+            bᵢ_latlon(λ, φ, z) = N² * z + δb * ramp(φ, δφ) + ϵb * randn()
+            set!(model, b=bᵢ_latlon)
+        end
 
         Δt = 10minutes
         simulation = Simulation(model; Δt, stop_time=200days)
@@ -139,7 +164,8 @@ for N in 10:10:250
 
         simulation.stop_iteration = 1200
 
-        @info "Benchmark with $implicit_free_surface_solver free surface implicit solver:"
+        string(nameof(typeof(grid)))
+        @info "Benchmark with $implicit_free_surface_solver free surface implicit solver on $(nameof(typeof(underlying_grid))):"
         @timeit to "$implicit_free_surface_solver and N=$N" run!(simulation)
 
         finalize_solver!(model.free_surface.implicit_step_solver)
