@@ -49,10 +49,14 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=(), remove_immersed_boundaries = false)
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
+
+    if remove_immersed_boundaries
+        worksize  = remove_immersed_boundaries_from_worksize((Nx′, Ny′, Nz′), grid) 
+    end
 
     workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
 
@@ -64,6 +68,8 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 
     return workgroup, worksize
 end
+
+remove_immersed_boundaries_from_worksize(size, grid) = size
 
 """
     launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
@@ -81,12 +87,14 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
+                 remove_immersed_boundaries = false,
                  kwargs...)
 
-    workgroup, worksize = work_layout(grid, workspec,
-                                      include_right_boundaries = include_right_boundaries,
-                                      reduced_dimensions = reduced_dimensions,
-                                      location = location)
+    workgroup, worksize = work_layout(grid, workspec;
+                                      include_right_boundaries,
+                                      reduced_dimensions,
+                                      location, 
+                                      remove_immersed_boundaries)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
@@ -100,3 +108,5 @@ end
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
+
+@inline calc_tendency_index(i, j, k, grid) = (i, j, k)
