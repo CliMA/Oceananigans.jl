@@ -129,7 +129,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -142,7 +141,10 @@ import Base:
     push!
 
 "Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx = @static Sys.islinux() ? true : false
+# TODO: find a way to check whether the libraries for AMGX and NETCDF 
+# (libamgxsh and libnetcdf, respectively) are installed on the machine
+const hasamgx   = false #@static Sys.islinux() ? true : false
+const hasnetcdf = false
 
 """
     @ifhasamgx expr
@@ -150,9 +152,19 @@ const hasamgx = @static Sys.islinux() ? true : false
 Evaluate `expr` only if `hasamgx == true`.
 """
 macro ifhasamgx(expr)
-
     hasamgx ? :($(esc(expr))) : :(nothing) 
 end
+
+"""
+    @ifnetcdf expr
+
+Evaluate `expr` only if `hasnetcdf == true`.
+"""
+macro ifhasnetcdf(expr)
+    hasnetcdf ? :($(esc(expr))) : :(nothing) 
+end
+
+@ifhasnetcdf using NCDatasets
 
 #####
 ##### Abstract types
