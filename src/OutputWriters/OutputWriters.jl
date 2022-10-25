@@ -17,6 +17,8 @@ using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
+using Oceananigans: @ifhasnetcdf, hasnetcdf
+
 using OffsetArrays
 
 import Oceananigans: write_output!

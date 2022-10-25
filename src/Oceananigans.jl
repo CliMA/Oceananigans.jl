@@ -116,8 +116,8 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
     
-    # AMGX
-    @ifhasamgx
+    # Library check
+    @ifhasamgx, @ifhasnetcdf
 
 using Printf
 using Logging
