@@ -3,6 +3,7 @@
 #####
 
 using KernelAbstractions
+using KernelAbstractions: @index
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
@@ -49,13 +50,14 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=(), remove_immersed_boundaries = false)
+function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=(), only_active_cells = false)
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
 
-    if remove_immersed_boundaries
-        worksize  = remove_immersed_boundaries_from_worksize((Nx′, Ny′, Nz′), grid) 
+    if only_active_cells
+        workgroup, worksize = only_active_cells_in_worksize((Nx′, Ny′, Nz′), grid) 
+        return workgroup, worksize
     end
 
     workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
@@ -69,7 +71,7 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-remove_immersed_boundaries_from_worksize(size, grid) = size
+only_active_cells_in_worksize(size, grid) = heuristic_workgroup(worksize...), size
 
 """
     launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
@@ -87,14 +89,14 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
-                 remove_immersed_boundaries = false,
+                 only_active_cells = false,
                  kwargs...)
 
     workgroup, worksize = work_layout(grid, workspec;
                                       include_right_boundaries,
                                       reduced_dimensions,
                                       location, 
-                                      remove_immersed_boundaries)
+                                      only_active_cells)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
@@ -109,4 +111,4 @@ end
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
 
-@inline calc_tendency_index(i, j, k, grid) = (i, j, k)
+@inline calc_tendency_index(grid) = @index(Global, NTuple)

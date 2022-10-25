@@ -1,8 +1,14 @@
-import Oceananigans.Utils: remove_immersed_boundaries_from_worksize, calc_tendency_index
+using Oceananigans
+import Oceananigans.Utils: only_active_cells_in_worksize, calc_tendency_index
+using KernelAbstractions
+using KernelAbstractions: @index
 
-remove_immersed_boundary_from_worksize(size, grid::IBG) = (length(grid.wet_cells_map), 1, 1)
+only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 512), length(grid.wet_cells_map)
 
-@inline calc_tendency_index(i, j, k, grid::IBG) = grid.wet_cells_map[i].I
+@inline function calc_tendency_index(grid::IBG) 
+    i = @index(Global, Linear)
+    return grid.wet_cells_map[i].I
+end
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib) where {TX, TY, TZ} 
 
@@ -25,11 +31,6 @@ end
 using Oceananigans.Fields: conditional_length
 
 function create_cells_map(grid, ib)
-    grid_cpu = on_architecture(Oceananigans.Architectures.CPU(), grid)
-
-    Nx, Ny, Nz = N = size(grid_cpu)
-    
     wet_cells_field = compute_wet_cells(grid, ib)
-
     return findall(interior(wet_cells_field))
 end

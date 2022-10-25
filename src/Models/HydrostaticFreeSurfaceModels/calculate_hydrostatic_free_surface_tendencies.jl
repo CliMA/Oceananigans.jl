@@ -79,14 +79,16 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
+    
+    only_active_cells = true
 
     Gu_event = launch!(arch, grid, :xyz,
                        calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
-                       dependencies = dependencies, remove_immersed_boundaries = true)
+                       dependencies = dependencies, only_active_cells)
 
     Gv_event = launch!(arch, grid, :xyz,
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
-                       dependencies = dependencies, remove_immersed_boundaries = true)
+                       dependencies = dependencies, only_active_cells)
 
     Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
 
@@ -134,6 +136,8 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
+        only_active_cells = true
+
         Gc_event = launch!(arch, grid, :xyz,
                            calculate_hydrostatic_free_surface_Gc!,
                            c_tendency,
@@ -153,7 +157,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            c_forcing,
                            model.clock;
                            dependencies = barrier, 
-                           remove_immersed_boundaries = true)
+                           only_active_cells)
 
         push!(events, Gc_event)
     end
@@ -169,16 +173,14 @@ end
 
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid, args...)
-    i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = calc_tendency_index(i, j, k, grid)
-    @inbounds Gu[i′, j′, k′] = hydrostatic_free_surface_u_velocity_tendency(i′, j′, k′, grid, args...)
+    i, j, k = calc_tendency_index(grid)
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid, args...)
-    i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = calc_tendency_index(i, j, k, grid)
-    @inbounds Gv[i′, j′, k′] = hydrostatic_free_surface_v_velocity_tendency(i′, j′, k′, grid, args...)
+    i, j, k = calc_tendency_index(grid)
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
 #####
@@ -187,9 +189,8 @@ end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid, args...)
-    i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = calc_tendency_index(i, j, k, grid)
-    @inbounds Gc[i′, j′, k′] = tendency_kernel_function(i′, j′, k′, grid, args...)
+    i, j, k = calc_tendency_index(grid)
+    @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
 end
 
 #####

@@ -293,16 +293,16 @@ S = model.tracers.S
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              filename = output_prefix * "_surface",
-                                                              indices = (:, :, grid.Nz),
-                                                              overwrite_existing = true)
+# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+#                                                               schedule = TimeInterval(save_interval),
+#                                                               filename = output_prefix * "_surface",
+#                                                               indices = (:, :, grid.Nz),
+#                                                               overwrite_existing = true)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1year),
-                                                        prefix = output_prefix * "_checkpoint",
-                                                        overwrite_existing = true)
+# simulation.output_writers[:checkpointer] = Checkpointer(model,
+#                                                         schedule = TimeInterval(1year),
+#                                                         prefix = output_prefix * "_checkpoint",
+#                                                         overwrite_existing = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
