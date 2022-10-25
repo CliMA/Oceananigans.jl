@@ -111,4 +111,4 @@ end
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
 
-@inline calc_tendency_index(grid) = @index(Global, NTuple)
+@inline calc_tendency_index(idx, i, j, k, args...) = i, j, k

@@ -5,10 +5,7 @@ using KernelAbstractions: @index
 
 only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 512), length(grid.wet_cells_map)
 
-@inline function calc_tendency_index(grid::IBG) 
-    i = @index(Global, Linear)
-    return grid.wet_cells_map[i].I
-end
+@inline calc_tendency_index(idx, i, j, k, grid::IBG, ::Val{true}) = grid.wet_cells_map[idx].I
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib) where {TX, TY, TZ} 
 
