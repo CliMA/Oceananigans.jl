@@ -112,7 +112,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    @appy_regionally grid = maybe_add_wet_cell_map(grid)
+    @apply_regionally grid = maybe_add_wet_cell_map(grid)
 
     arch = architecture(grid)
 
