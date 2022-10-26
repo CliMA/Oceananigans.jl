@@ -112,6 +112,8 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
+    @appy_regionally grid = maybe_add_wet_cell_map(grid)
+
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
@@ -221,3 +223,7 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
   any(user_halo .< required_halo) &&
     throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end
+
+maybe_add_cell_map(grid) = grid
+maybe_add_cell_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {TX, TY, TZ} = 
+      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_wet_cell_map = true)

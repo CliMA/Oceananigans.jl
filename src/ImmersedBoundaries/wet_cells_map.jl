@@ -7,11 +7,15 @@ only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map),
 
 @inline calc_tendency_index(idx, i, j, k, grid::IBG) = grid.wet_cells_map[idx].I
 
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib) where {TX, TY, TZ} 
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_wet_cell_map = false) where {TX, TY, TZ} 
 
     # Create the cells map on the CPU, then switch it to the GPU
-    wet_cells_map    = create_cells_map(grid, ib)
-    wet_cells_map    = arch_array(architecture(grid), wet_cells_map)
+    if calculate_wet_cell_map 
+        wet_cells_map    = create_cells_map(grid, ib)
+        wet_cells_map    = arch_array(architecture(grid), wet_cells_map)
+    else
+        wet_cells_map = nothing
+    end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, wet_cells_map)
 end
