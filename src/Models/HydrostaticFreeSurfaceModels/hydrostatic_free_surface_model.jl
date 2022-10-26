@@ -225,5 +225,5 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
 end
 
 maybe_add_cell_map(grid) = grid
-maybe_add_cell_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {TX, TY, TZ} = 
+maybe_add_cell_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
       ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_wet_cell_map = true)
