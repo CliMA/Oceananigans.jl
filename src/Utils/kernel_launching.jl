@@ -71,7 +71,7 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     return workgroup, worksize
 end
 
-only_active_cells_in_worksize(size, grid) = heuristic_workgroup(worksize...), size
+only_active_cells_in_worksize(size, grid) = heuristic_workgroup(size...), size
 
 """
     launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
@@ -100,6 +100,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
+    @show kernel!, workgroup, worksize
     @debug "Launching kernel $kernel! with worksize $worksize"
 
     event = loop!(kernel_args...; dependencies=dependencies)
