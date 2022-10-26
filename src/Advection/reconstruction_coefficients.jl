@@ -221,10 +221,9 @@ end
 
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
-        new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
 
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_reconstruction_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir, Val($method); order = $order)
+            @eval $(Symbol(:coeff_ , rect_metric)) = calc_reconstruction_coefficients($FT, $grid.$metric, $arch, $grid.$dir, Val($method); order = $order)
         end
     end
 
