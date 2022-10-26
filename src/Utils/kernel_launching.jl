@@ -100,7 +100,6 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)
 
-    @show kernel!, workgroup, worksize
     @debug "Launching kernel $kernel! with worksize $worksize"
 
     event = loop!(kernel_args...; dependencies=dependencies)

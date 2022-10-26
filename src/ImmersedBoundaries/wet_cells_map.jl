@@ -3,7 +3,7 @@ import Oceananigans.Utils: only_active_cells_in_worksize, calc_tendency_index
 using KernelAbstractions
 using KernelAbstractions: @index
 
-only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 512), length(grid.wet_cells_map)
+only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 256), length(grid.wet_cells_map)
 
 @inline calc_tendency_index(idx, i, j, k, grid::IBG) = grid.wet_cells_map[idx].I
 
