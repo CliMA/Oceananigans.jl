@@ -41,11 +41,11 @@ a decreasing function of the Richardson number, ``Ri``.
 
 Keyword Arguments
 =================
-* ν₀ (Float64 parameter): Non-convective viscosity.
-* κ₀ (Float64 parameter): Non-convective diffusivity for tracers.
-* κᶜ (Float64 parameter): Convective adjustment diffusivity for tracers.
-* Ri₀ (Float64 parameter): Ri threshold for decreasing viscosity and diffusivity.
-* Riᵟ (Float64 parameter): Ri-width over which viscosity and diffusivity decreases to 0.
+* `ν₀` (Float64): Non-convective viscosity.
+* `κ₀` (Float64): Non-convective diffusivity for tracers.
+* `κᶜ` (Float64): Convective adjustment diffusivity for tracers.
+* `Ri₀` (Float64): ``Ri`` threshold for decreasing viscosity and diffusivity.
+* `Riᵟ` (Float64): ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
