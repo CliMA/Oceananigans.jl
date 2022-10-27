@@ -3,23 +3,23 @@
 #####
 
 """
-    struct Centered <: AbstractCenteredAdvectionScheme{2}
+    struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT} 
+struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     "coefficient for Centered reconstruction on stretched ``x``-faces" 
-    coeff_xᶠᵃᵃ::XT
+    coeff_xᶠᵃᵃ :: XT
     "coefficient for Centered reconstruction on stretched ``x``-centers"
-    coeff_xᶜᵃᵃ::XT
+    coeff_xᶜᵃᵃ :: XT
     "coefficient for Centered reconstruction on stretched ``y``-faces"
-    coeff_yᵃᶠᵃ::YT
+    coeff_yᵃᶠᵃ :: YT
     "coefficient for Centered reconstruction on stretched ``y``-centers"
-    coeff_yᵃᶜᵃ::YT
+    coeff_yᵃᶜᵃ :: YT
     "coefficient for Centered reconstruction on stretched ``z``-faces"
-    coeff_zᵃᵃᶠ::ZT
+    coeff_zᵃᵃᶠ :: ZT
     "coefficient for Centered reconstruction on stretched ``z``-centers"
-    coeff_zᵃᵃᶜ::ZT
+    coeff_zᵃᵃᶜ :: ZT
 
     "advection scheme used near boundaries"
     buffer_scheme :: CA
