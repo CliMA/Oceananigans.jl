@@ -10,12 +10,12 @@ Turbulent kinetic energy dissipation
 Surface flux model
 ==================
 
-```math
+```
 Qᵉ = - Cᴰ * (Cᵂu★ * u★³ + CᵂwΔ * w★³)
 ```
 
 where `Qᵉ` is the surface flux of TKE, `Cᴰ` is a free parameter called the "dissipation parameter",
-`u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
+`u★ = (Qᵘ² + Qᵛ²)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
 turbulent velocity scale associated with the surface vertical grid spacing `Δz` and the
 surface buoyancy flux `Qᵇ`.
 """
@@ -31,6 +31,7 @@ end
 #####
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
+
 
 @inline ϕ²(i, j, k, grid, ϕ) = ϕ(i, j, k, grid)^2
 
