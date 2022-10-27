@@ -20,7 +20,7 @@ coriolis = FPlane(f=1e-4)
 
 N² = 1e-5
 Qᵇ = +1.2e-7
-Qᵘ = -1e-4 #
+Qᵘ = -1e-4
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
