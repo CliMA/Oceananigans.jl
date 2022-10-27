@@ -87,7 +87,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.timestepper.previous_Δt = Δt
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
     @apply_regionally calculate_tendencies!(model, callbacks)
     
