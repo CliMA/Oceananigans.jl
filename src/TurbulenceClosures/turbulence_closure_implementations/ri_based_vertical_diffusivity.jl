@@ -73,8 +73,12 @@ const RBVD = RiBasedVerticalDiffusivity
 const RBVDArray = AbstractArray{<:RBVD}
 const FlavorOfRBVD = Union{RBVD, RBVDArray}
 
-@inline viscosity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
-@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
+#@inline viscosity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
+#@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
+
+@inline viscosity_location(::FlavorOfRBVD) = (Center(), Center(), Center())
+@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Center())
+
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
 
@@ -82,8 +86,10 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ = Field{Center, Center, Face}(grid)
-    ν = Field{Center, Center, Face}(grid)
+    κ = Field{Center, Center, Center}(grid)
+    ν = Field{Center, Center, Center}(grid)
+    #κ = Field{Center, Center, Face}(grid)
+    #ν = Field{Center, Center, Face}(grid)
     return (; κ, ν)
 end
 
@@ -125,6 +131,9 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
 end
 
+@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
+    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
+
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy)
 
@@ -140,9 +149,16 @@ end
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
 
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    convecting = N² < 0
+    # For a ccf-based scheme
+    # Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    # N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    # convecting = N² < 0
+
+    # For a ccc-based scheme
+    Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
+    N²⁺ = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    convecting = (N² < 0) | (N²⁺ < 0)
+
     κa = ifelse(convecting, κᶜ, zero(grid))
 
     @inbounds diffusivities.κ[i, j, k] = (κa + κ₀ * taper(tapering, Ri, Ri₀, Riᵟ)) * Δzᶜᶜᶠ(i, j, k, grid)^2
