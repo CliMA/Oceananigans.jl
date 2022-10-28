@@ -127,8 +127,9 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    S² = ∂z_u² + ∂z_v²
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
+    return ifelse(S² == 0, Inf, ifelse(N² <= 0, zero(grid), N² / S²))
 end
 
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
@@ -161,8 +162,8 @@ end
 
     κa = ifelse(convecting, κᶜ, zero(grid))
 
-    @inbounds diffusivities.κ[i, j, k] = (κa + κ₀ * taper(tapering, Ri, Ri₀, Riᵟ)) * Δzᶜᶜᶠ(i, j, k, grid)^2
-    @inbounds diffusivities.ν[i, j, k] =       ν₀ * taper(tapering, Ri, Ri₀, Riᵟ)  * Δzᶜᶜᶠ(i, j, k, grid)^2
+    @inbounds diffusivities.κ[i, j, k] = (κa + κ₀ * taper(tapering, Ri, Ri₀, Riᵟ)) # * Δzᶜᶜᶠ(i, j, k, grid)^2
+    @inbounds diffusivities.ν[i, j, k] =       ν₀ * taper(tapering, Ri, Ri₀, Riᵟ)  # * Δzᶜᶜᶠ(i, j, k, grid)^2
 end
 
 #####
