@@ -30,16 +30,16 @@ struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
 """
-    RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
-                               FT = Float64;]
-                               coefficient_z_location = Face(),
+    RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
+                               FT = Float64;
                                Ri_dependent_tapering = ExponentialRiDependentTapering(),
                                ν₀  = 0.30,
                                κ₀  = 0.42,
                                κᶜ  = 4.0,
                                Cᵉ  = 0.57,
                                Ri₀ = 0.27,
-                               Riᵟ = 0.20)
+                               Riᵟ = 0.20,
+                               warning = true)
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
@@ -62,7 +62,15 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     κᶜ  = 4.0,
                                     Cᵉ  = 0.57,
                                     Ri₀ = 0.27,
-                                    Riᵟ = 0.20)
+                                    Riᵟ = 0.20,
+                                    warning = true)
+    if warning
+        @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
+              "is unvalidated and whose default parameters are not calibrated for \n" * 
+              "realistic ocean conditions or for use in a three-dimensional \n" *
+              "simulation. Use with caution and report bugs and problems with physics \n" *
+              "to https://github.com/CliMA/Oceananigans.jl/issues."
+    end
 
     TD = typeof(time_discretization)
     R = typeof(Ri_dependent_tapering)
