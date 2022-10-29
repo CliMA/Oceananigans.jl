@@ -90,8 +90,7 @@ for S in (:MixingLength, :TurbulentKineticEnergyEquation)
 end
 
 """
-    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
-                             Cᴰ = 0.215,
+    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                              mixing_length = MixingLength{FT}(),
                              turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation{FT}(),
                              warning = true)
