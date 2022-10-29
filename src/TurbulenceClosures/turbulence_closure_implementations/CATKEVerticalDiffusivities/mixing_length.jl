@@ -84,7 +84,7 @@ Base.@kwdef struct MixingLength{FT}
     Cᴷe⁻  :: FT = 1.0
     Cᴷe⁺  :: FT = 1.0
     CᴷRiʷ :: FT = 1.0
-    CᴷRiᶜ :: FT = Inf
+    CᴷRiᶜ :: FT = 0.0
     Cʷ★   :: FT = 4.0
     Cʷℓ   :: FT = 0.0
 end
@@ -280,9 +280,12 @@ end
     Cʷ★ = closure.mixing_length.Cʷ★
     ℓ★ = σu * stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ, Cˢ, Cʷ★, tracers.e, velocities, tracers, buoyancy)
 
-    #return ℓᵟ + ℓ★ + ℓʰ
-    Cʷℓ = closure.mixing_length.Cʷℓ
-    return smoothmax(Cʷℓ, ℓᵟ, ℓ★, ℓʰ)
+    #return ℓᵟ
+    return ℓᵟ + ℓ★
+    #return ℓᵟ #+ ℓ★ + ℓʰ
+
+    #Cʷℓ = closure.mixing_length.Cʷℓ
+    #return smoothmax(Cʷℓ, ℓᵟ, ℓ★, ℓʰ)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)

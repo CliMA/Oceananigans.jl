@@ -22,7 +22,7 @@ surface buoyancy flux `Qᵇ`.
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     Cᴰ⁻   :: FT = 1.0
     Cᴰ⁺   :: FT = 1.0
-    CᴰRiᶜ :: FT = Inf
+    CᴰRiᶜ :: FT = 0.0
     CᴰRiʷ :: FT = 1.0
     Cᵂu★  :: FT = 1.0
     CᵂwΔ  :: FT = 1.0
