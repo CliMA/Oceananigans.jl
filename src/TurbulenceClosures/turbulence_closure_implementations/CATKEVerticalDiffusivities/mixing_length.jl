@@ -116,7 +116,7 @@ end
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S² = ∂z_u² + ∂z_v²
     e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
-    return ifelse(S == 0, FT(Inf), sqrt(e⁺ / S²))
+    return ifelse(S² == 0, FT(Inf), sqrt(e⁺ / S²))
 end
 
 #=
