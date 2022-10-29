@@ -63,12 +63,12 @@ The calibration was performed using a combination of Markov Chain Monte Carlo (M
 annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct MixingLength{FT}
-    Cᵇu   :: FT = 1.0
-    Cᵇc   :: FT = 1.0
-    Cᵇe   :: FT = 1.0
-    Cˢu   :: FT = 1.0
-    Cˢc   :: FT = 1.0
-    Cˢe   :: FT = 1.0
+    Cᵇu   :: FT = Inf
+    Cᵇc   :: FT = Inf
+    Cᵇe   :: FT = Inf
+    Cˢu   :: FT = Inf
+    Cˢc   :: FT = Inf
+    Cˢe   :: FT = Inf
     Cᵟu   :: FT = 0.5
     Cᵟc   :: FT = 0.5
     Cᵟe   :: FT = 0.5
@@ -100,28 +100,23 @@ end
 
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
-@inline function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = clip(N²)
-    return sqrt(N²⁺)  
-end
-
 @inline ψ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
 
 @inline function buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     FT = eltype(grid)
-    N⁺ = sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺ = clip(N²)
     e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
-    return ifelse(N⁺ == 0, FT(Inf), sqrt(e⁺) / N⁺)
+    return ifelse(N²⁺ == 0, FT(Inf), sqrt(e⁺ / N²⁺))
 end
 
 @inline function shear_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, velocities, tracers, buoyancy)
     FT = eltype(grid)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    S = sqrt(∂z_u² + ∂z_v²)
+    S² = ∂z_u² + ∂z_v²
     e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
-    return ifelse(S == 0, FT(Inf), sqrt(e⁺) / S)
+    return ifelse(S == 0, FT(Inf), sqrt(e⁺ / S²))
 end
 
 #=
@@ -218,18 +213,25 @@ end
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 # This is used to calculate the dissipation coefficient
+#=
 @inline function Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
 end
+=#
+
+@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
+    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
+    S² = ∂z_u² + ∂z_v²
+    Ri = N² / S²
+    return ifelse(N² <= 0, zero(grid), Ri)
 end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
