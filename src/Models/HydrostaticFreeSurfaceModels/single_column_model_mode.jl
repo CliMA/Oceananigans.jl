@@ -50,14 +50,13 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
+    # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
-    fill_halo_regions!(model.diffusivity_fields,
-                       model.clock,
-                       fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     return nothing
 end
