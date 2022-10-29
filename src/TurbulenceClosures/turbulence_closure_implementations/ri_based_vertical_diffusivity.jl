@@ -7,15 +7,21 @@ struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, Ve
     ν₀  :: FT
     κ₀  :: FT
     κᶜ  :: FT
+    Cᵉ  :: FT
     Ri₀ :: FT
     Riᵟ :: FT
     Ri_dependent_tapering :: R
 end
 
-function RiBasedVerticalDiffusivity{TD}(ν₀::FT, κ₀::FT, κᶜ::FT, Ri₀::FT, Riᵟ::FT,
+function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
+                                        κ₀::FT,
+                                        κᶜ::FT,
+                                        Cᵉ::FT,
+                                        Ri₀::FT,
+                                        Riᵟ::FT,
                                         Ri_dependent_tapering::R) where {TD, FT, R}
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Ri₀, Riᵟ, Ri_dependent_tapering)
+    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Cᵉ, Ri₀, Riᵟ, Ri_dependent_tapering)
 end
 
 # Ri-dependent tapering flavor
@@ -28,12 +34,12 @@ struct HyperbolicTangentRiDependentTapering end
                                FT = Float64;]
                                coefficient_z_location = Face(),
                                Ri_dependent_tapering = ExponentialRiDependentTapering(),
-                               ν₀   =  0.92,
-                               Ri₀ν = -1.34,
-                               Riᵟν =  0.61,
-                               κ₀   =  0.18,
-                               Ri₀κ = -0.13,
-                               Riᵟκ =  0.6)
+                               ν₀  = 0.30,
+                               κ₀  = 0.42,
+                               κᶜ  = 4.0,
+                               Cᵉ  = 0.57,
+                               Ri₀ = 0.27,
+                               Riᵟ = 0.20)
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
@@ -44,22 +50,24 @@ Keyword Arguments
 * `ν₀` (Float64): Non-convective viscosity.
 * `κ₀` (Float64): Non-convective diffusivity for tracers.
 * `κᶜ` (Float64): Convective adjustment diffusivity for tracers.
+* `Cᵉ` (Float64): Entrainment coefficient for tracers.
 * `Ri₀` (Float64): ``Ri`` threshold for decreasing viscosity and diffusivity.
 * `Riᵟ` (Float64): ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
                                     Ri_dependent_tapering = ExponentialRiDependentTapering(),
-                                    ν₀  = 2.7e-2,
-                                    κ₀  = 1.9e-2,
-                                    κᶜ  = 0.8,
-                                    Ri₀ = 0.4,
-                                    Riᵟ = 0.2)
+                                    ν₀  = 0.30,
+                                    κ₀  = 0.42,
+                                    κᶜ  = 4.0,
+                                    Cᵉ  = 0.57,
+                                    Ri₀ = 0.27,
+                                    Riᵟ = 0.20)
 
     TD = typeof(time_discretization)
     R = typeof(Ri_dependent_tapering)
 
-    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Ri₀), FT(Riᵟ), Ri_dependent_tapering)
+    return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Cᵉ), FT(Ri₀), FT(Riᵟ), Ri_dependent_tapering)
 end
 
 RiBasedVerticalDiffusivity(FT::DataType; kw...) =
@@ -73,11 +81,8 @@ const RBVD = RiBasedVerticalDiffusivity
 const RBVDArray = AbstractArray{<:RBVD}
 const FlavorOfRBVD = Union{RBVD, RBVDArray}
 
-#@inline viscosity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
-#@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
-
-@inline viscosity_location(::FlavorOfRBVD) = (Center(), Center(), Center())
-@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Center())
+@inline viscosity_location(::FlavorOfRBVD)   = (Center(), Center(), Face())
+@inline diffusivity_location(::FlavorOfRBVD) = (Center(), Center(), Face())
 
 @inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κ
@@ -86,23 +91,30 @@ with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κ = Field{Center, Center, Center}(grid)
-    ν = Field{Center, Center, Center}(grid)
-    #κ = Field{Center, Center, Face}(grid)
-    #ν = Field{Center, Center, Face}(grid)
+    κ = Field{Center, Center, Face}(grid)
+    ν = Field{Center, Center, Face}(grid)
     return (; κ, ν)
 end
 
 function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
-
     arch = model.architecture
     grid = model.grid
+    clock = model.clock
     tracers = model.tracers
     buoyancy = model.buoyancy
     velocities = model.velocities
+    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
     event = launch!(arch, grid, :xyz,
-                    compute_ri_based_diffusivities!, diffusivities, grid, closure, velocities, tracers, buoyancy,
+                    compute_ri_based_diffusivities!,
+                    diffusivities,
+                    grid,
+                    closure,
+                    velocities,
+                    tracers,
+                    buoyancy,
+                    top_tracer_bcs,
+                    clock,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -129,14 +141,17 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S² = ∂z_u² + ∂z_v²
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return ifelse(S² == 0, Inf, ifelse(N² <= 0, zero(grid), N² / S²))
+    Ri = N² / S²
+
+    # Clip N² and avoid NaN
+    return ifelse(N² <= 0, zero(grid), Ri)
 end
 
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
     ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
 @kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
-                                                 velocities, tracers, buoyancy)
+                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
 
     i, j, k, = @index(Global, NTuple)
 
@@ -146,24 +161,33 @@ end
     ν₀  = closure_ij.ν₀
     κ₀  = closure_ij.κ₀
     κᶜ  = closure_ij.κᶜ
+    Cᵉ  = closure_ij.Cᵉ
     Ri₀ = closure_ij.Ri₀
     Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
+    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
-    # For a ccf-based scheme
-    # Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    # N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    # convecting = N² < 0
+    # Convection and entrainment
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
+    convecting = N² < 0
+    entraining = (!convecting) & (N²_above < 0)
 
-    # For a ccc-based scheme
-    Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    N²⁺ = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
-    convecting = (N² < 0) | (N²⁺ < 0)
+    # Convective adjustment diffusivity
+    κᶜ = ifelse(convecting, κᶜ, zero(grid))
 
-    κa = ifelse(convecting, κᶜ, zero(grid))
+    # Entrainment diffusivity
+    κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
+    κᵉ = ifelse(entraining, Cᵉ, zero(grid))
 
-    @inbounds diffusivities.κ[i, j, k] = (κa + κ₀ * taper(tapering, Ri, Ri₀, Riᵟ)) # * Δzᶜᶜᶠ(i, j, k, grid)^2
-    @inbounds diffusivities.ν[i, j, k] =       ν₀ * taper(tapering, Ri, Ri₀, Riᵟ)  # * Δzᶜᶜᶠ(i, j, k, grid)^2
+    # Shear mixing diffusivity and viscosity
+    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    τ = taper(tapering, Ri, Ri₀, Riᵟ)
+    κ★ = κ₀ * τ 
+    ν★ = ν₀ * τ
+
+    @inbounds diffusivities.κ[i, j, k] = max(κᶜ, κᵉ, κ★)
+    @inbounds diffusivities.ν[i, j, k] = ν★
 end
 
 #####
