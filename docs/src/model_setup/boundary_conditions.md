@@ -487,11 +487,10 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
-A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref). Let's see here how we can add linear bottom drag on `u` in the case we have
-an immersed boundary. In essence, we'd need to boundary conditions: one that would apply at the grid's bottom,
-and when that would apply on the immersed boundary.
+A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref).
+We illustrate field-dependent boundary conditions with an example that imposes linear bottom drag on `u` on both immersed facets _and_ the bottom boundary of the underlying grid.
 
-First let's create the boundary condition for the grid's bottom:
+First we create the boundary condition for the grid's bottom:
 
 ```jldoctest immersed_bc
 julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
@@ -501,7 +500,7 @@ julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
 ```
 
-Then let's create the immersed boundary condition:
+Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag` and imposing drag only on "bottom" facets of the immersed boundary:
 
 ```jldoctest immersed_bc
 julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
@@ -520,7 +519,7 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
-And last, we can combine the two together:
+Finally, we combine the two:
 
 ```jldoctest immersed_bc
 julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
