@@ -7,7 +7,7 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
 """
-    calculate_tendencies!(model::NonhydrostaticModel)
+    calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
