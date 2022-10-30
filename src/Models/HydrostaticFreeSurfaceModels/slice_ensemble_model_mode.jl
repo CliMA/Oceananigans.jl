@@ -76,8 +76,7 @@ const CoriolisVector = AbstractVector{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
-function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, gravitational_acceleration::Number, settings)
-
+function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, settings=nothing, gravitational_acceleration=nothing)
     grid isa HRegRectilinearGrid || 
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
