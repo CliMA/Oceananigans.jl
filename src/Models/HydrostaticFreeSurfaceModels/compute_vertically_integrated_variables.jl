@@ -21,7 +21,7 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 end
 
 """
-Compute the vertical integrated volume flux from the bottom to ``z=0`` (i.e., linear free-surface).
+Compute the vertical integrated volume flux from the bottom to ``z = 0`` (i.e., linear free-surface).
 
 ```
 U★ = ∫ᶻ Ax * u★ dz

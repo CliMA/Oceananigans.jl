@@ -18,9 +18,12 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
 end
 
 """
-    ConditionalOperation{LX, LY, LZ}(operand, func, grid, indices, condition, mask)
+    ConditionalOperation(operand::AbstractField;
+                         func = identity,
+                         condition = nothing,
+                         mask = 0)
 
-Returns an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
+Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
 
 Positional arguments
@@ -31,7 +34,8 @@ Positional arguments
 Keyword arguments
 =================
 
-- `func`: A unary transformation applied element-wise to the field `operand` at locations where `condition == true`. Default is `identity`
+- `func`: A unary transformation applied element-wise to the field `operand` at locations where
+          `condition == true`. Default is `identity`.
 
 - `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
                or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
@@ -57,8 +61,8 @@ julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── func: typeof(cos)
-├── condition: typeof(f)
+├── func: cos (generic function with 26 methods)
+├── condition: f (generic function with 1 method)
 └── mask: 10
 
 julia> d[1, 1, 1]

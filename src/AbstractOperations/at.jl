@@ -57,15 +57,11 @@ using Oceananigans.Fields: default_indices
 indices(f::Function) = default_indices(3)
 indices(f::Number)   = default_indices(3)
 
-# Fallback (used by KernelFunctionOperation)
-indices(f) = default_indices(3)
-
-
 """
     interpolate_indices(operands..., loc_operation = abstract_operation_location)
 
 Utility to propagate operands' indices in `AbstractOperations`s with multiple operands 
-(`BinaryOperation`s and `MultiaryOperation`s)
+(`BinaryOperation`s and `MultiaryOperation`s).
 """
 function interpolate_indices(args...; loc_operation = (Center, Center, Center))
     idxs = Any[:, :, :]
