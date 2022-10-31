@@ -53,26 +53,28 @@ end
 
 @testset "Ensembles of column `HydrostaticFreeSurfaceModel`s with different Coriolis parameters" begin
 
-    Nz = 2 
-    Hz = 1 
-    grid = RectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
+    Nz = 4
+    Hz = 1
+    topology = (Flat, Flat, Bounded)
 
-    coriolises = [FPlane(f=1.0) FPlane(f=1.1) FPlane(f=2.1)
-                  FPlane(f=1.0) FPlane(f=1.1) FPlane(f=2.1)]
+    grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology, halo=Hz)
 
-    ensemle_size = size(coriolises)
+    coriolises = [FPlane(f=2) FPlane(f=1.2) FPlane(f=1.3)
+                  FPlane(f=0.3) FPlane(f=0.4) FPlane(f=0.5)]
+
+    ensemble_size = size(coriolises)
 
     Δt = 0.01
 
     @test size(coriolises) == (2, 3)
-    @test coriolises[2, 2].f == 1.1
+    @test coriolises[2, 2].f == 0.4
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i, j], model_kwargs...) for i=1:ensemle_size[1], j=1:ensemle_size[2]]
+    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i, j], model_kwargs...) for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
-    set_ic!(model) = set!(model, u=sqrt(2), v=sqrt(2))
+    set_ic!(model) = set!(model, u=1, v=1)
 
     for model in models
         set_ic!(model)
@@ -80,22 +82,24 @@ end
         run!(simulation)
     end 
 
-    ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=ensemle_size, Hz=1)
-    ensemble_grid = RectilinearGrid(size=ensemble_size, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
+    ensemble_grid = RectilinearGrid(; size=ColumnEnsembleSize(Nz=Nz, ensemble=ensemble_size, Hz=Hz),
+                                      z=(-1, 0), topology, halo=Hz)
     ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)
     run!(ensemble_simulation)
 
-    for i=1:ensemle_size[1], j=1:ensemle_size[2]
+    for i=1:ensemble_size[1], j=1:ensemble_size[2]
         @info "Testing Coriolis ensemble member ($i, $j) with $(coriolises[i, j])..."
         @test ensemble_model.coriolis[i, j] == coriolises[i, j]
 
-        @show parent(ensemble_model.velocities.u)[i, j, :]
-        @test parent(ensemble_model.velocities.u)[i, j, :] == parent(models[i, j].velocities.u)[1, 1, :]
+        @show parent(ensemble_model.velocities.u.data[i, j, :])
+        @show parent(models[i, j].velocities.u.data[1, 1, :])
+        @test all(ensemble_model.velocities.u.data[i, j, :] .≈ models[i, j].velocities.u.data[1, 1, :])
 
-        @show parent(ensemble_model.velocities.v)[i, j, :]
-        @test parent(ensemble_model.velocities.v)[i, j, :] == parent(models[i, j].velocities.v)[1, 1, :]
+        @show parent(ensemble_model.velocities.v.data[i, j, :])
+        @show parent(models[i, j].velocities.v.data[1, 1, :])
+        @test all(ensemble_model.velocities.v.data[i, j, :] .≈ models[i, j].velocities.v.data[1, 1, :])
     end
 
 end
@@ -104,11 +108,13 @@ end
 
     Ny, Nz = 4, 2
     Hy, Hz = 1, 1
-    grid = RectilinearGrid(size=(Ny, Nz), y = (-10, 10), z=(-1, 0), topology=(Flat, Bounded, Bounded), halo=(Hy, Hz))
+    topology = (Flat, Periodic, Bounded)
+
+    grid = RectilinearGrid(; size=(Ny, Nz), y = (-10, 10), z=(-1, 0), topology, halo=(Hy, Hz))
 
     coriolises = [FPlane(f=1.0), FPlane(f=1.1), FPlane(f=1.2)]
 
-    Nensemble = length(coriolises)
+    ensemble_size = size(coriolises)
 
     Δt = 0.01
 
@@ -118,7 +124,7 @@ end
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i], model_kwargs...) for i=1:Nensemble]
+    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i], model_kwargs...) for i=1:ensemble_size[1]]
 
     set_ic!(model) = set!(model, u=sqrt(2), v=sqrt(2))
 
@@ -128,22 +134,24 @@ end
         run!(simulation)
     end 
 
-    ensemble_size = SliceEnsembleSize(size=(Ny, Nz), ensemble=Nensemble)
-    ensemble_grid = RectilinearGrid(size=ensemble_size, y = (-10, 10), z=(-1, 0), topology=(Flat, Bounded, Bounded), halo=(Hy, Hz))
+    ensemble_grid = RectilinearGrid(; size=SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size[1]),
+                                      y = (-10, 10), z=(-1, 0), topology, halo=(Hy, Hz))
     ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)
     run!(ensemble_simulation)
 
-    for i = 1:Nensemble
+    for i = 1:ensemble_size[1]
         @info "Testing Coriolis ensemble member ($i,) with $(coriolises[i])..."
         @test ensemble_model.coriolis[i] == coriolises[i]
 
-        @show parent(ensemble_model.velocities.u)[i, 1, :]
-        @test parent(ensemble_model.velocities.u)[i, 1, :] == parent(models[i].velocities.u)[1, 1, :]
+        @show parent(ensemble_model.velocities.u)[i, :, :]
+        @show parent(models[i].velocities.u)[1, :, :]
+        @test parent(ensemble_model.velocities.u)[i, :, :] == parent(models[i].velocities.u)[1, :, :]
 
-        @show parent(ensemble_model.velocities.v)[i, 1, :]
-        @test parent(ensemble_model.velocities.v)[i, 1, :] == parent(models[i].velocities.v)[1, 1, :]
+        @show parent(ensemble_model.velocities.v)[i, :, :]
+        @show parent(models[i].velocities.v)[1, :, :]
+        @test parent(ensemble_model.velocities.v)[i, :, :] == parent(models[i].velocities.v)[1, :, :]
     end
 
 end
