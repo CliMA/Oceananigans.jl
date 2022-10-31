@@ -114,11 +114,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
     
-    # Library check
-    @ifhasamgx, @ifhasnetcdf
-
 using Printf
 using Logging
 using Statistics
@@ -144,6 +141,7 @@ import Base:
 # TODO: find a way to check whether the libraries for AMGX and NETCDF 
 # (libamgxsh and libnetcdf, respectively) are installed on the machine
 const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
 const hasnetcdf =
     try
         using NCDatasets
@@ -169,8 +167,6 @@ Evaluate `expr` only if `hasnetcdf == true`.
 macro ifhasnetcdf(expr)
     hasnetcdf ? :($(esc(expr))) : :(nothing) 
 end
-
-@ifhasnetcdf using NCDatasets
 
 #####
 ##### Abstract types
