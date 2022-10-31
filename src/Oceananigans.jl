@@ -143,7 +143,7 @@ import Base:
 "Boolean denoting whether AMGX.jl can be loaded on machine."
 # TODO: find a way to check whether the libraries for AMGX and NETCDF 
 # (libamgxsh and libnetcdf, respectively) are installed on the machine
-const hasamgx   = false #@static Sys.islinux() ? true : false
+const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 const hasnetcdf =
     try
         using NCDatasets
