@@ -1,7 +1,7 @@
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Advection: WENO
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
-using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
@@ -12,7 +12,8 @@ import Oceananigans.Advection: WENO
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
-const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
+const MultiRegionModel = Union{HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid},
+                               NonhydrostaticModel{<:Any, <:Any, <:AbstractArchitecture, <:MultiRegionGrid}}
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true) 
@@ -26,9 +27,11 @@ function getregionalproperties(T, inner=true)
 end
 
 Types = (:HydrostaticFreeSurfaceModel,
+         :NonhydrostaticModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
+         :RungeKutta3TimeStepper,
          :PrescribedVelocityFields)
 
 for T in Types

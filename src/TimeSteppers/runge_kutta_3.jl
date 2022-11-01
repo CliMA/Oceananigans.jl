@@ -99,17 +99,13 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # First stage
     #
 
-    calculate_tendencies!(model)
-
-    correct_immersed_tendencies!(model, Δt, γ¹, 0)
-
-    rk3_substep!(model, Δt, γ¹, nothing)
+    @apply_regionally local_rk3_step(model, Δt, γ¹, 0)
 
     calculate_pressure_correction!(model, first_stage_Δt)
-    pressure_correct_velocities!(model, first_stage_Δt)
+
+    @apply_regionally correct_velocities_and_store_tendecies!(model, first_stage_Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
-    store_tendencies!(model)
     update_state!(model)
     update_particle_properties!(model, first_stage_Δt)
 
@@ -117,17 +113,13 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # Second stage
     #
 
-    calculate_tendencies!(model)
-
-    correct_immersed_tendencies!(model, Δt, γ², ζ²)
-
-    rk3_substep!(model, Δt, γ², ζ²)
+    @apply_regionally local_rk3_step(model, Δt, γ², ζ²)
 
     calculate_pressure_correction!(model, second_stage_Δt)
-    pressure_correct_velocities!(model, second_stage_Δt)
+    
+    @apply_regionally correct_velocities_and_store_tendecies!(model, second_stage_Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
-    store_tendencies!(model)
     update_state!(model)
     update_particle_properties!(model, second_stage_Δt)
 
@@ -135,14 +127,11 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     # Third stage
     #
 
-    calculate_tendencies!(model)
-    
-    correct_immersed_tendencies!(model, Δt, γ³, ζ³)
-
-    rk3_substep!(model, Δt, γ³, ζ³)
+    @apply_regionally local_rk3_step(model, Δt, γ³, ζ³)
 
     calculate_pressure_correction!(model, third_stage_Δt)
-    pressure_correct_velocities!(model, third_stage_Δt)
+
+    @apply_regionally correct_velocities_and_store_tendecies!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model)
@@ -150,6 +139,14 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     return nothing
 end
+
+@inline function local_rk3_step(model, Δt, γ, ζ)
+    calculate_tendencies!(model)
+    correct_immersed_tendencies!(model, Δt, γ, ζ)
+    rk3_substep!(model, Δt, γ, ζ)
+end
+
+
 
 #####
 ##### Time stepping in each substep

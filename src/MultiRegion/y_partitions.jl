@@ -163,3 +163,12 @@ end
     t  = i + (j′ - 1) * grid.Nx
     return t
 end
+
+####
+#### Global index reconstruction
+####
+
+@inline function global_index(i, j, k, grid, region, p::YPartition)
+    j′ = j + grid.Ny * (region - 1) 
+    return i, j′, k
+end

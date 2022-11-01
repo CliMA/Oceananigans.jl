@@ -48,5 +48,6 @@ include("unified_heptadiagonal_iterative_solver.jl")
 include("unified_implicit_free_surface_solver.jl")
 include("multi_region_models.jl")
 include("multi_region_output_writers.jl")
+include("multi_region_fft_solver.jl")
 
 end #module
