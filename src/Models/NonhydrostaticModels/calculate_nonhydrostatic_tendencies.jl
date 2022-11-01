@@ -80,16 +80,16 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     
     only_active_cells = true
 
-    Gu_event = launch!(arch, grid, :xyz,
-                       calculate_Gu_kernel!, tendencies.u, u_kernel_args...;
+    Gu_event = launch!(arch, grid, :xyz, calculate_Gu!, 
+                       tendencies.u, u_kernel_args...;
                        dependencies, only_active_cells)
 
-    Gv_event = launch!(arch, grid, :xyz,
-                       calculate_Gv_kernel!, tendencies.v, v_kernel_args...;
+    Gv_event = launch!(arch, grid, :xyz, calculate_Gv!, 
+                       tendencies.v, v_kernel_args...;
                        dependencies, only_active_cells)
 
-    Gw_event = launch!(arch, grid, :xyz,
-                       calculate_Gw_kernel!, tendencies.w, w_kernel_args...;
+    Gw_event = launch!(arch, grid, :xyz, calculate_Gw!, 
+                       tendencies.w, w_kernel_args...;
                        dependencies, only_active_cells)
 
     events = [Gu_event, Gv_event, Gw_event]
@@ -103,7 +103,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
-        Gc_event = launch!(arch, grid, :xyz,
+        Gc_event = launch!(arch, grid, :xyz, calculate_Gc!,
                            c_tendency, grid, Val(tracer_index),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
