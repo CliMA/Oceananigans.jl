@@ -173,7 +173,7 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
 @inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: maybe_add_wet_cells_map
+import Oceananigans.Models.NonhydrostaticModels: maybe_add_wet_cells_map
 
 function maybe_add_wet_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(maybe_add_wet_cells_map, mrg)
