@@ -95,7 +95,6 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     events = [Gu_event, Gv_event, Gw_event]
 
     start_tracer_kernel_args = (advection, closure)
-    
     end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
                                 forcing, clock)
     
