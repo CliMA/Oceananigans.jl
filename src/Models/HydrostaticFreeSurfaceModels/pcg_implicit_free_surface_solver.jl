@@ -208,7 +208,7 @@ end
 #
 # speeds up the convergence.
 #=
-@inline ∇H_∇η(i, j, k, grid, η) = zero(eltype(grid)) # fallback
+@inline ∇H_∇η(i, j, k, grid, η) = zero(grid) # fallback
 @inline depth(i, j, k, grid) = grid.Lz
 
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
