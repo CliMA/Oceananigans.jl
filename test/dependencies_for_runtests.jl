@@ -67,8 +67,6 @@ closures = (
 ##### Run tests!
 #####
 
-CUDA.allowscalar(true)
-
 float_types = (Float32, Float64)
 
 include("utils_for_runtests.jl")

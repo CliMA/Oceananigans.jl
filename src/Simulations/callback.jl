@@ -17,7 +17,7 @@ Return `Callback` that executes `func` on `schedule`
 with optional `parameters`. `schedule = IterationInterval(1)` by default.
 
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
-Otherwise, `func` is called via `func(sim::Simulation, parameteres)`.
+Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 """
 Callback(func, schedule=IterationInterval(1); parameters=nothing) =
     Callback(func, schedule, parameters)
