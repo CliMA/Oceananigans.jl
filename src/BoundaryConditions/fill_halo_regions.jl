@@ -166,8 +166,7 @@ end
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
         @inbounds begin
-            #_fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
-            _fill_flux_bottom_halo!(i, j, 1, grid, c[n])
+            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
                _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
         end
     end
