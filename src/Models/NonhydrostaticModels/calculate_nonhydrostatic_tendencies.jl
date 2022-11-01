@@ -36,7 +36,7 @@ function calculate_tendencies!(model::NonhydrostaticModel)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model)
+function calculate_interior_tendency_contributions!(model; dependencies = device_event(model))
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -58,91 +58,58 @@ function calculate_interior_tendency_contributions!(model)
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    start_momentum_kernel_args = (grid,
+                                  advection,
+                                  coriolis,
+                                  stokes_drift,
+                                  closure)
 
-    calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
-    calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)
-    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
-    calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
+    end_momentum_kernel_args = (buoyancy,
+                                background_fields,
+                                velocities,
+                                tracers,
+                                auxiliary_fields,
+                                diffusivities,
+                                forcings,
+                                hydrostatic_pressure,
+                                clock)
 
-    barrier = Event(device(arch))
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
+    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args...)
+    
+    only_active_cells = true
 
+    Gu_event = launch!(arch, grid, :xyz,
+                       calculate_Gu_kernel!, tendencies.u, u_kernel_args...;
+                       dependencies, only_active_cells)
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    u_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
+    Gv_event = launch!(arch, grid, :xyz,
+                       calculate_Gv_kernel!, tendencies.v, v_kernel_args...;
+                       dependencies, only_active_cells)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    v_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
-
-    Gw_event = calculate_Gw_kernel!(tendencies.w,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    w_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    clock,
-                                    dependencies=barrier)
+    Gw_event = launch!(arch, grid, :xyz,
+                       calculate_Gw_kernel!, tendencies.w, w_kernel_args...;
+                       dependencies, only_active_cells)
 
     events = [Gu_event, Gv_event, Gw_event]
 
+    start_tracer_kernel_args = (advection, closure)
+    
+    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
+                                forcing, clock)
+    
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
-        Gc_event = calculate_Gc_kernel!(c_tendency,
-                                        grid,
-                                        Val(tracer_index),
-                                        advection,
-                                        closure,
-                                        c_immersed_bc,
-                                        buoyancy,
-                                        background_fields,
-                                        velocities,
-                                        tracers,
-                                        auxiliary_fields,
-                                        diffusivities,
-                                        forcing,
-                                        clock,
-                                        dependencies=barrier)
+        Gc_event = launch!(arch, grid, :xyz,
+                           c_tendency, grid, Val(tracer_index),
+                           start_tracer_kernel_args..., 
+                           c_immersed_bc,
+                           end_tracer_kernel_args...;
+                           dependencies, only_active_cells)
 
         push!(events, Gc_event)
     end
