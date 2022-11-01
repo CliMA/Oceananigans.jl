@@ -146,8 +146,6 @@ end
     rk3_substep!(model, Δt, γ, ζ)
 end
 
-
-
 #####
 ##### Time stepping in each substep
 #####
