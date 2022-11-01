@@ -140,6 +140,10 @@ function NonhydrostaticModel(;    grid,
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
 
+    # In case of an immersed boundary grid add a wet cell map to avoid calculating 
+    # the tendency in dry cells
+    grid = maybe_add_wet_cells_map(grid)
+
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
     # boundary conditions on u, v, w are regularized assuming they represent momentum at appropriate
@@ -230,3 +234,7 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
+
+maybe_add_wet_cells_map(grid) = grid
+maybe_add_wet_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
+      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_wet_cell_map = true)

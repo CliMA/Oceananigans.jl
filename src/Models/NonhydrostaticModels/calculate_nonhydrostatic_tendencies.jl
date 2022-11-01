@@ -1,7 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans: fields
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layout, calc_tendency_index
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -162,16 +162,34 @@ end
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
+@kernel function calculate_Gu!(Gu, grid::ImmersedBoundaryGrid, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
+end
+
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_Gv!(Gv, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
+@kernel function calculate_Gv!(Gv, grid::ImmersedBoundaryGrid, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
+end
+
 """ Calculate the right-hand-side of the w-velocity equation. """
 @kernel function calculate_Gw!(Gw, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
+end
+
+@kernel function calculate_Gw!(Gw, grid::ImmersedBoundaryGrid, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
 #####
@@ -182,6 +200,12 @@ end
 @kernel function calculate_Gc!(Gc, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+end
+
+@kernel function calculate_Gc!(Gc, grid::ImmersedBoundaryGrid, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
 #####
