@@ -57,21 +57,21 @@ end
 
 @testset "Ensembles of column `HydrostaticFreeSurfaceModel`s with different Coriolis parameters" begin
 
-    Nz = 2
+    Nz = 3
     Hz = 1
     topology = (Flat, Flat, Bounded)
 
     grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology, halo=Hz)
 
-    coriolises = [FPlane(f=2) FPlane(f=1.2) FPlane(f=1.3)
-                  FPlane(f=0.3) FPlane(f=0.4) FPlane(f=0.5)]
+    coriolises = [FPlane(f=0.2) FPlane(f=-0.4) FPlane(f=-1.1)
+                  FPlane(f=1.1) FPlane(f=1.2) FPlane(f=1.3)]
 
     ensemble_size = size(coriolises)
 
     Δt = 0.01
 
     @test size(coriolises) == (2, 3)
-    @test coriolises[2, 2].f == 0.4
+    @test coriolises[2, 2].f == 1.2
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
@@ -98,11 +98,11 @@ end
         @test ensemble_model.coriolis[i, j] == coriolises[i, j]
 
         @show parent(ensemble_model.velocities.u.data[i, j, :])
-        @show parent(models[i, j].velocities.u.data[1, 1, :])
+        # @show parent(models[i, j].velocities.u.data[1, 1, :])
         @test all(ensemble_model.velocities.u.data[i, j, :] .≈ models[i, j].velocities.u.data[1, 1, :])
 
         @show parent(ensemble_model.velocities.v.data[i, j, :])
-        @show parent(models[i, j].velocities.v.data[1, 1, :])
+        # @show parent(models[i, j].velocities.v.data[1, 1, :])
         @test all(ensemble_model.velocities.v.data[i, j, :] .≈ models[i, j].velocities.v.data[1, 1, :])
     end
 
@@ -122,7 +122,7 @@ end
 
     Δt = 0.01
 
-    @test size(coriolises) == (3,)
+    @test length(coriolises) == 3
     @test coriolises[2].f == 1.1
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
@@ -150,11 +150,11 @@ end
         @test ensemble_model.coriolis[i] == coriolises[i]
 
         @show parent(ensemble_model.velocities.u)[i, :, :]
-        @show parent(models[i].velocities.u)[1, :, :]
+        # @show parent(models[i].velocities.u)[1, :, :]
         @test parent(ensemble_model.velocities.u)[i, :, :] == parent(models[i].velocities.u)[1, :, :]
 
         @show parent(ensemble_model.velocities.v)[i, :, :]
-        @show parent(models[i].velocities.v)[1, :, :]
+        # @show parent(models[i].velocities.v)[1, :, :]
         @test parent(ensemble_model.velocities.v)[i, :, :] == parent(models[i].velocities.v)[1, :, :]
     end
 
