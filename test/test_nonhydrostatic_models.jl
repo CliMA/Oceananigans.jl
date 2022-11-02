@@ -32,7 +32,7 @@ include("dependencies_for_runtests.jl")
     @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
         @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
-        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
+        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(2, 2, 1))
         funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
@@ -44,28 +44,19 @@ include("dependencies_for_runtests.jl")
 
         # Model ensures that halos are at least of size 2
         for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
-            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
-            @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
-
-            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
-            @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+            @test_throws ArgumentError NonhydrostaticModel(advection=scheme, grid=minimal_grid)
+            @test_throws ArgumentError NonhydrostaticModel(advection=scheme, grid=funny_grid)
         end
 
         # Model ensures that halos are at least of size 3
         for scheme in (WENO(), UpwindBiasedFifthOrder())
-            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
-            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
-
-            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
-            @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
+            @test_throws ArgumentError NonhydrostaticModel(advection=scheme, grid=minimal_grid)
+            @test_throws ArgumentError NonhydrostaticModel(advection=scheme, grid=funny_grid)
         end
 
         # Model ensures that halos are at least of size 2 with ScalarBiharmonicDiffusivity
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=minimal_grid)
-        @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
-
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
-        @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+        @test_throws ArgumentError NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=minimal_grid)
+        @test_throws ArgumentError NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin

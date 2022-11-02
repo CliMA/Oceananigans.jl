@@ -193,3 +193,16 @@ function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
     vals = construct_regionally(Base.:(==), mrg1, mrg2)
     return all(vals.regions)
 end
+
+####
+#### Get property for `MultiRegionGrid` (gets the properties of region 1)
+####
+
+const MRG = MultiRegionGrid
+
+@inline Base.getproperty(mrg::MRG, property::Symbol)                 = get_multi_property(mrg, Val(property))
+@inline get_multi_property(mrg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(mrg, :region_grids), 1), property)
+@inline get_multi_property(mrg::MRG, ::Val{:architecture})           = getfield(mrg, :architecture)
+@inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
+@inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
+@inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)
