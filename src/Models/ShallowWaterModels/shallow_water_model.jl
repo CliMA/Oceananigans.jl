@@ -125,8 +125,8 @@ function ShallowWaterModel(;
                  timestepper::Symbol = :RungeKutta3,
                          formulation = ConservativeFormulation())
 
-    validate_model_halo(grid, momentum_advection, tracer_advection, mass_advection, closure)
-
+    grid = inflate_grid_halo_size(grid, momentum_advection, tracer_advection, mass_advection, closure)
+    
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
@@ -205,6 +205,22 @@ function ShallowWaterModel(;
 
     return model
 end
+
+function inflate_grid_halo_size(grid, tendency_terms...)	
+    user_halo = grid.Hx, grid.Hy, grid.Hz	
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)	
+
+    if any(user_halo .< required_halo) # Replace grid	
+        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *	
+              "Note that an ImmersedBoundaryGrid requires an extra halo point. "	
+              "The model grid will be different from the input grid. To avoid this warning, " *	
+              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."	
+
+        grid = with_halo((Hx, Hy, Hz), grid)	
+    end	
+
+    return grid	
+end	
 
 using Oceananigans.Advection: VectorInvariantSchemes
 
