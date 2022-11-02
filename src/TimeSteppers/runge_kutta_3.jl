@@ -142,7 +142,6 @@ end
 
 @inline function local_rk3_step(model, Δt, γ, ζ)
     calculate_tendencies!(model)
-    correct_immersed_tendencies!(model, Δt, γ, ζ)
     rk3_substep!(model, Δt, γ, ζ)
 end
 
