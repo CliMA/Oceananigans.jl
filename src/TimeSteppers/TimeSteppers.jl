@@ -54,7 +54,6 @@ reset!(timestepper) = nothing
 include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
-include("runge_kutta_3.jl")
-include("correct_immersed_tendencies.jl")
+include("runge_kutta_3.jl") 
 
 end # module
