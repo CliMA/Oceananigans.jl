@@ -44,7 +44,6 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
    diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
-    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
