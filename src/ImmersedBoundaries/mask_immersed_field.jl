@@ -1,6 +1,6 @@
 using KernelAbstractions
 using Statistics
-using Oceananigans.Architectures: architecture, device_event
+using Oceananigans.Architectures: architecture, device_event, device
 using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(X) = X()
