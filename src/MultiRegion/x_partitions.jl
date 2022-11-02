@@ -166,7 +166,7 @@ function inject_east_boundary(region, p::XPartition, global_bc)
 end
 
 ####
-#### Global index flattening
+#### Global index flattening for matrix solver
 ####
 
 @inline function displaced_xy_index(i, j, grid, region, p::XPartition)

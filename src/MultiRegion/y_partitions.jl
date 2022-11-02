@@ -155,7 +155,7 @@ function inject_north_boundary(region, p::YPartition, global_bc)
 end
 
 ####
-#### Global index flattening
+#### Global index flattening for matrix solver
 ####
 
 @inline function displaced_xy_index(i, j, grid, region, p::YPartition)
