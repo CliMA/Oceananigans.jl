@@ -309,10 +309,12 @@ function Base.view(f::Field, i, j, k)
     # OffsetArray around a view of parent with appropriate indices:
     windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
 
+    boundary_conditions = FieldBoundaryConditions(window_indices, f.boundary_conditions)
+
     return Field(loc,
                  grid,
                  windowed_data,
-                 f.boundary_conditions, # keep original boundary conditions
+                 boundary_conditions, # keep original boundary conditions
                  window_indices,
                  f.operand,
                  f.status)
