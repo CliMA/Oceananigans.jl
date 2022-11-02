@@ -152,7 +152,8 @@ end
 
     # A kind of convective adjustment...
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers) # buoyancy frequency
-    convecting = N² < 0
+    N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers) # buoyancy frequency
+    convecting = (N² < 0) | (N²_above < 0)
     ℓʰ = Cᴬ * Δzᶜᶜᶠ(i, j, k, grid)
 
     # "Sheared convection number"
@@ -165,63 +166,13 @@ end
 
     # "Shear aware" mising length
     ℓʰ *= 1 - Cʰˢ * α
-
-    #=
-    # Are we convecting?
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    d = depthᶜᶜᶠ(i, j, k, grid)
-    convecting = ((N² < 0) | (d < ℓʰ)) & (Qᵇ > 0) & (e⁺ > 0)
-    #convecting = (N² < 0) & (Qᵇ > 0)
-    =#
-
-    #=
-    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
-    h = sqrt(e⁺^3) / Qᵇ # scales with boundary layer depth
-    ℓʰ = Cᴬ * h
-    =#
     
-    #=
-    # Require positive buoyancy flux to define "convection"
-    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
-    convecting = (Qᵇ > 0) & (N² < 0)
-    =#
-
-    #=
-    # Define a "convection depth" rather than using N² < 0:
-    d = depthᶜᶜᶠ(i, j, k, grid)
-    h = Cʰ * sqrt(e⁺^3) / Qᵇ                   # estimated boundary layer depth
-    convecting = (Qᵇ > 0) & (d < h)
-    =#
- 
-    #=
-    # Scale the mixing length with the convection depth
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, tracers.e)    # strictly positive TKE
-    h = Cʰ * sqrt(e⁺^3) / Qᵇ                   # estimated boundary layer depth
-    ℓʰ = Cᴬ * h
-    =#
-    
-    #=
-    # Use a convective diffusivity rather than scaling with grid scale.
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, tracers.e)    # strictly positive TKE
-    e⁻¹² = ifelse(e⁺==0, zero(e⁺), sqrt(1/e⁺))
-    ℓʰ = Cᴬ * e⁻¹²
-    =#
-
     return ifelse(convecting, ℓʰ, zero(grid))
 end
 
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 # This is used to calculate the dissipation coefficient
-#=
-@inline function Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return ifelse(N² <= 0, zero(grid), N² / (∂z_u² + ∂z_v²))
-end
-=#
-
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
     ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
