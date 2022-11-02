@@ -19,7 +19,9 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state.
 """
-function update_state!(model::HydrostaticFreeSurfaceModel, grid)
+update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
+
+function update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
     @apply_regionally masking_actions!(model)
 
@@ -31,6 +33,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     return nothing
 end
@@ -49,4 +53,3 @@ function compute_w_diffusivities_pressure!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
 end
-

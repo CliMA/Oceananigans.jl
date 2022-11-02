@@ -2,7 +2,7 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans.Architectures: device_event
-using Oceananigans: fields, prognostic_fields
+using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
@@ -12,7 +12,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
+function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
@@ -30,6 +30,8 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                            fields(model),
                                                            model.closure,
                                                            model.buoyancy)
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
 end
