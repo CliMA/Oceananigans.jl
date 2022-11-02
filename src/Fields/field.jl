@@ -314,7 +314,7 @@ function Base.view(f::Field, i, j, k)
     return Field(loc,
                  grid,
                  windowed_data,
-                 boundary_conditions, # keep original boundary conditions
+                 boundary_conditions,
                  window_indices,
                  f.operand,
                  f.status)
