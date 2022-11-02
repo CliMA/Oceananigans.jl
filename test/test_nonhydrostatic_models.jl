@@ -32,7 +32,7 @@ include("dependencies_for_runtests.jl")
     @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
         @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
-        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(2, 2, 1))
+        minimal_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
         funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
