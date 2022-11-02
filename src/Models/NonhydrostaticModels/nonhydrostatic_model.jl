@@ -25,7 +25,7 @@ import Oceananigans.Architectures: architecture
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
