@@ -66,7 +66,6 @@ end
                           pressures = nothing,
                  diffusivity_fields = nothing,
                     pressure_solver = nothing,
-                  immersed_boundary = nothing,
                    auxiliary_fields = NamedTuple(),
     )
 
@@ -97,7 +96,6 @@ Keyword arguments
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
 """
 function NonhydrostaticModel(;    grid,
@@ -117,7 +115,6 @@ function NonhydrostaticModel(;    grid,
                              pressures = nothing,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
-                     immersed_boundary = nothing,
                       auxiliary_fields = NamedTuple(),
     )
 
@@ -184,7 +181,7 @@ function NonhydrostaticModel(;    grid,
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
+                                pressures, diffusivity_fields, timestepper, pressure_solver,
                                 auxiliary_fields)
 
     update_state!(model)
