@@ -4,7 +4,8 @@ using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.TimeSteppers: update_state!, update_state_auxiliary_actions!
+import Oceananigans.ImmersedBoundaries: mask_immersed_model!
 
 """
     update_state!(model::NonhydrostaticModel)
@@ -14,7 +15,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 function update_state!(model::NonhydrostaticModel)
     
     # Mask immersed tracers
-    @apply_regionally masking_actions!(model)
+    @apply_regionally mask_immersed_model!(model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers),  model.clock, fields(model))
@@ -25,7 +26,7 @@ function update_state!(model::NonhydrostaticModel)
     end
 
     # Calculate diffusivities
-    @apply_regionally update_state_actions!(model)
+    @apply_regionally update_state_auxiliary_actions!(model)
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressures.pHY′)
@@ -34,12 +35,12 @@ function update_state!(model::NonhydrostaticModel)
 end
 
 # Mask immersed fields
-function masking_actions!(model::NonhydrostaticModel)
-    tracer_masking_events = Tuple(mask_immersed_field!(c) for c in model.tracers)
-    wait(device(model.architecture), MultiEvent(tracer_masking_events))
+function mask_immersed_model!(model::NonhydrostaticModel)
+    masking_events = Tuple(mask_immersed_field!(field) for field in fields(model))
+    wait(device(model.architecture), MultiEvent(masking_events))
 end
 
-function update_state_actions!(model::NonhydrostaticModel) 
+function update_state_auxiliary_actions!(model::NonhydrostaticModel) 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model)
 end

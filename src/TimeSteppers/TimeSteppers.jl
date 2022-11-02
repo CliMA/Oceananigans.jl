@@ -42,8 +42,9 @@ end
 # Fallback
 TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
-function update_state! end
-function calculate_tendencies! end
+update_state!(args...) = nothing
+update_state_auxiliary_actions!(args...) = nothing
+calculate_tendencies!(args...) = nothing
 
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing

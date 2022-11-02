@@ -128,6 +128,7 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
+            include("test_multi_region_nonhydrostatic.jl")
             include("test_multi_region_implicit_solver.jl")
         end
     end

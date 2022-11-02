@@ -21,7 +21,6 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.TimeSteppers: ab2_step!
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
@@ -223,5 +222,3 @@ function extract_boundary_conditions(field_tuple::NamedTuple)
 end
 
 extract_boundary_conditions(field::Field) = field.boundary_conditions
-
-ab2_step!(model::NonhydrostaticModel, Δt, χ) = @apply_regionally ab2_step!(model, Δt, χ)

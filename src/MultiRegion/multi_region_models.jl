@@ -6,6 +6,7 @@ using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
 
+import Oceananigans.TimeSteppers: ab2_step!
 import Oceananigans.Simulations: new_time_step
 import Oceananigans.Diagnostics: accurate_cell_advection_timescale
 import Oceananigans.Advection: WENO
@@ -67,3 +68,5 @@ function new_time_step(old_Δt, wizard, model::MultiRegionModel)
     Δt = construct_regionally(new_time_step, old_Δt, wizard, model)
     return minimum(Δt.regions)
 end
+
+ab2_step!(model::NonhydrostaticModel{<:Any, <:Any, <:Any, <:MultiRegionGrid}, Δt, χ) = @apply_regionally ab2_step!(model, Δt, χ)

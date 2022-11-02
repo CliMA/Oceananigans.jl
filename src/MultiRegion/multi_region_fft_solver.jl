@@ -5,65 +5,44 @@ using Oceananigans.Operators
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models.NonhydrostaticModels: PressureSolver, solve_for_pressure!
-import Oceananigans.Solvers: FFTBasedPoissonSolver, solve!
+import Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 
+using Oceananigans.Grids 
 using Oceananigans.Solvers: poisson_eigenvalues, plan_transforms
 
-struct MultiRegionFFTBasedPoissonSolver{G, S}
+struct MultiRegionPoissonSolver{G, S}
     grid :: G
     solver :: S
 end
 
-PressureSolver(arch, grid::MultiRegionGrid) = MultiRegionFFTBasedPoissonSolver(grid, FFTBasedPoissonSolver(grid))
+PressureSolver(arch, grid::RegMultiRegionGrid)  = MultiRegionPoissonSolver(grid, FFTBasedPoissonSolver(grid))
+PressureSolver(arch, grid::HRegMultiRegionGrid) = MultiRegionPoissonSolver(grid, FourierTridiagonalPoissonSolver(grid))
 
 function FFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
-    topo = (TX, TY, TZ) =  topology(grid)
-
     global_grid = reconstruct_global_grid(grid)
 
-    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
-
-    arch = architecture(grid)
-
-    eigenvalues = (λx = arch_array(arch, λx),
-                   λy = arch_array(arch, λy),
-                   λz = arch_array(arch, λz))
-
+    arch    = architecture(global_grid)
     storage = unified_array(arch, zeros(complex(eltype(global_grid)), size(global_grid)...))
+    s       = FFTBasedPoissonSolver(global_grid, planner_flag)
 
-    # Permutation on the grid will go here!
-    transforms = plan_transforms(global_grid, storage, planner_flag)
-
-    # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in topo
-    buffer = buffer_needed ? similar(storage) : nothing
-
-    return FFTBasedPoissonSolver(global_grid, eigenvalues, storage, buffer, transforms)
+    return FFTBasedPoissonSolver(s.grid, s.eigenvalues, storage, s.buffer, s.transforms)
 end
 
-"""
-    solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+function FourierTridiagonalPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
+    global_grid = reconstruct_global_grid(grid)
 
-Solves the "generalized" Poisson equation,
+    arch        = architecture(global_grid)
+    storage     = unified_array(arch, zeros(complex(eltype(global_grid)), size(global_grid)...))
+    source_term = unified_array(arch, zeros(complex(eltype(global_grid)), size(global_grid)...))
+    s           = FourierTridiagonalPoissonSolver(global_grid, planner_flag)
 
-```math
-(∇² + m) ϕ = b,
-```
+    return FourierTridiagonalPoissonSolver(s.grid, s.batched_tridiagonal_solver, source_term, storage, s.buffer, s.transforms)
+end
 
-where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson operator
-on a staggered grid and for periodic or Neumann boundary conditions.
+const MRFFT = MultiRegionPoissonSolver{<:RegMultiRegionGrid}
+const MRFTS = MultiRegionPoissonSolver{<:HRegMultiRegionGrid}
 
-In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
-elements (typically the same type as `solver.storage`).
-
-!!! info "Alternative names for "generalized" Poisson equation
-    Equation ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
-    when ``m < 0``, or the Helmholtz equation when ``m > 0``.
-"""
-
-function solve_for_pressure!(pressure, multi_solver::MultiRegionFFTBasedPoissonSolver, Δt, U★)
+function solve_for_pressure!(pressure, multi_solver::MRFFT, Δt, U★)
 
     solver = multi_solver.solver
 
@@ -72,10 +51,31 @@ function solve_for_pressure!(pressure, multi_solver::MultiRegionFFTBasedPoissonS
     arch = architecture(solver)
     grid = multi_solver.grid
 
-    @apply_regionally unified_pressure_source_term_fft_based_solver!(rhs, Δt, U★, arch, grid, Iterate(1:length(grid)), grid.partition)
+    regions = Iterate(1:length(grid))
+
+    @apply_regionally unified_pressure_source_term_fft_based_solver!(rhs, Δt, U★, arch, grid, regions, grid.partition)
 
     # Solve pressure Poisson given for pressure, given rhs
     solve!(pressure, multi_solver, rhs)
+
+    return nothing
+end
+
+function solve_for_pressure!(pressure, multi_solver::MRFTS, Δt, U★)
+
+    solver = multi_solver.solver
+
+    # Calculate right hand side:
+    rhs  = solver.source_term
+    arch = architecture(solver)
+    grid = multi_solver.grid
+
+    regions = Iterate(1:length(grid))
+
+    @apply_regionally unified_pressure_source_term_fourier_tridiagonal_solver!(rhs, Δt, U★, arch, grid, regions, grid.partition)
+
+    # Solve pressure Poisson given for pressure, given rhs
+    solve!(pressure, multi_solver)
 
     return nothing
 end
@@ -87,13 +87,26 @@ function unified_pressure_source_term_fft_based_solver!(rhs, Δt, U★, arch, gr
     wait(device(arch), rhs_event)
 end
 
+function unified_pressure_source_term_fourier_tridiagonal_solver!(rhs, Δt, U★, arch, grid, region, partition)
+    rhs_event = launch!(arch, grid, :xyz, _unified_pressure_source_term_fourier_tridiagonal_solver!,
+                        rhs, grid, Δt, U★, region, partition; dependencies = device_event(arch))
+
+    wait(device(arch), rhs_event)
+end
+
 @kernel function _unified_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★, region, partition)
     i, j, k = @index(Global, NTuple)
     i′, j′, k′ = global_index(i, j, k, grid, region, partition)
     @inbounds rhs[i′, j′, k′] =  divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-function solve!(ϕ, multi_solver::MultiRegionFFTBasedPoissonSolver, b, m=0)
+@kernel function _unified_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★, region, partition)
+    i, j, k = @index(Global, NTuple)
+    i′, j′, k′ = global_index(i, j, k, grid, region, partition)
+    @inbounds rhs[i′, j′, k′] =  Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+function solve!(ϕ, multi_solver::MRFFT, b, m=0)
     
     solver = multi_solver.solver
     arch   = architecture(solver)
@@ -120,18 +133,55 @@ function solve!(ϕ, multi_solver::MultiRegionFFTBasedPoissonSolver, b, m=0)
     # Apply backward transforms in order
     [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
 
-    @apply_regionally redistribute_real_component(ϕ, ϕc, arch, grid, Iterate(1:length(grid)), grid.partition)
+    @apply_regionally redistribute_real_component!(ϕ, ϕc, arch, grid, Iterate(1:length(grid)), grid.partition)
 
     return ϕ
 end
 
-function redistribute_real_component(ϕ, ϕc, arch, grid, region, partition)
+function solve!(x, multi_solver::MRFTS)
+
+    solver = multi_solver.solver
+    arch   = architecture(solver)
+    grid   = multi_solver.grid
+
+    ϕ = solver.storage
+
+    switch_device!(getdevice(solver.batched_tridiagonal_solver.a))
+    
+    # Apply forward transforms in order
+    [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
+
+    # Solve tridiagonal system of linear equations in z at every column.
+    solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
+
+    # Apply backward transforms in order
+    [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
+
+    ϕ .= real.(ϕ)
+
+    # Set the volume mean of the solution to be zero.
+    # Solutions to Poisson's equation are only unique up to a constant (the global mean
+    # of the solution), so we need to pick a constant. We choose the constant to be zero
+    # so that the solution has zero-mean.
+    ϕ .= ϕ .- mean(ϕ)
+
+    @apply_regionally redistribute_real_component!(x, ϕ, arch, grid, Iterate(1:length(grid)), grid.partition)
+
+    return nothing
+end
+
+####
+#### Redistribute real component
+####
+
+function redistribute_real_component!(ϕ, ϕc, arch, grid, region, partition)
     copy_event = launch!(arch, grid, :xyz, _redistribute_real_component!, ϕ, ϕc, grid, region, partition, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 end
 
 @kernel function _redistribute_real_component!(ϕ, ϕc, grid, region, partition)
     i, j, k = @index(Global, NTuple)
+
     i′, j′, k′ = global_index(i, j, k, grid, region, partition)
     @inbounds ϕ[i, j, k] = real(ϕc[i′, j′, k′])
 end

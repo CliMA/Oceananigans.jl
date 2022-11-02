@@ -38,6 +38,12 @@ end
 end
 
 #####
+##### Masking models
+#####
+
+mask_immersed_model!(model) = nothing
+
+#####
 ##### mask_immersed_velocities for NonhydrostaticModel
 #####
 
@@ -53,4 +59,7 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
                             field[i, j, k])
 end
 
-mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
+function mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) 
+    events = Tuple(mask_immersed_field!(q) for q in U)
+    wait(device(arch), MultiEvent(events))
+end

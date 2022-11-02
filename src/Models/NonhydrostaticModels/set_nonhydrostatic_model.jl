@@ -42,7 +42,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     end
 
     # Apply a mask
-    @apply_regionally masking_actions!(model)
+    @apply_regionally mask_immersed_model!(model)
     update_state!(model)
 
     if enforce_incompressibility

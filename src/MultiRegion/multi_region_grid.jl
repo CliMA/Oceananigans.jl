@@ -27,8 +27,31 @@ end
 
 @inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
-const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
+const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:ImmersedBoundaryGrid}}} where {FT, TX, TY, TZ, P}
+const HRegMultiRegionGrid     = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:HRegRectilinearGrid}}} where {FT, TX, TY, TZ, P}
+const RegMultiRegionGrid      = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:RegRectilinearGrid}}} where {FT, TX, TY, TZ, P}
 
+"""
+    MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+
+Splits a `global_grid` into different regions handled by `devices`
+
+Positional Arguments
+====================
+
+- `global_grid`: the grid to be divided into regions
+
+Keyword Arguments
+=================
+
+- `partition`: the partitioning required. The implemented partitioning are `XPartition` 
+               (division along the x direction) and `YPartition` (division along the y direction)
+
+- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`, for 
+             `GPU` computation it is possible to specify the total number of `GPU`s or the specific
+             `GPU`s to allocate memory on. The number of devices does not have to match the number of
+             regions 
+"""
 function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
     if length(partition) == 1
@@ -90,6 +113,12 @@ end
 partition_immersed_boundary(b, args...) = 
     getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
+
+"""
+    reconstruct_global_grid(mrg)
+
+reconstructs the global grid associated with the `MultiRegionGrid` mrg
+"""
 function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
     extent  = reconstruct_extent(mrg, mrg.partition)
@@ -117,8 +146,11 @@ getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.
 getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
 getinterior(func::Function, grid) = func
 
-multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
+"""
+    multi_region_object_from_array(a::AbstractArray, grid)
 
+adapts an array `a` to be compatible with a `MultiRegion` grid or model
+"""
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
     arch = architecture(mrg)
@@ -126,6 +158,9 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
+
+# Fallback!
+multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
 
 #### 
 #### Utilitites for MultiRegionGrid
@@ -158,17 +193,3 @@ function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
     vals = construct_regionally(Base.:(==), mrg1, mrg2)
     return all(vals.regions)
 end
-   
-# These are not used in the code, should we remove them?
-
-grids(mrg::MultiRegionGrid) = mrg.region_grids
-
-getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.getproperty, grids(mrg), x)
-
-const MRG = MultiRegionGrid
-
-@inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
-@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(ibg, :region_grids), 1), property)
-@inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
-@inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
-@inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
