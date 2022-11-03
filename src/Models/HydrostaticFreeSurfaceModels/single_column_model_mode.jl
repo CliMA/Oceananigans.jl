@@ -40,7 +40,7 @@ calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks=[])
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -51,8 +51,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
 
     return nothing
 end
