@@ -129,7 +129,7 @@ function plan_transforms(grid::Regular, storage, planner_flag)
         # (Periodic, Periodic, Periodic), (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
 
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
-        forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
+        forward_bounded_plan  = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
 
         forward_transforms = (
             DiscreteTransform(forward_bounded_plan, Forward(), grid, bounded_dims),

@@ -69,9 +69,9 @@ for arch in archs
         for timestepper in [:QuasiAdamsBashforth2, :RungeKutta3], (grid, wᵢ) in zip([regular_grid, vertically_unstretched_grid], [wᵢᴿ, wᵢᵁ])
             uₑ, vₑ, wₑ = random_nonhydrostatic_simulation(uᵢ, vᵢ, wᵢ, grid; timestepper)
 
-            uₑ = interior(uₑ)
-            vₑ = interior(vₑ)
-            wₑ = interior(wₑ)
+            uₑ = Array(interior(uₑ))
+            vₑ = Array(interior(vₑ))
+            wₑ = Array(interior(wₑ))
 
             for regions in [2, 4], P in partitioning
                 @info "  Testing $regions $(P)s with $(timestepper) on $(typeof(grid).name.wrapper) on the $arch"
