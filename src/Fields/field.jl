@@ -283,7 +283,7 @@ julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
 └── data: 8×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -2:5, 2:3, 1:2) with eltype Float64 with indices -2:5×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
 
@@ -309,10 +309,12 @@ function Base.view(f::Field, i, j, k)
     # OffsetArray around a view of parent with appropriate indices:
     windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
 
+    boundary_conditions = FieldBoundaryConditions(window_indices, f.boundary_conditions)
+
     return Field(loc,
                  grid,
                  windowed_data,
-                 f.boundary_conditions, # keep original boundary conditions
+                 boundary_conditions,
                  window_indices,
                  f.operand,
                  f.status)
