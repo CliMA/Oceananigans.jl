@@ -4,8 +4,14 @@ using Oceananigans.AbstractOperations: UnaryOperation, BinaryOperation, Multiary
 const MultiRegionUnaryOperation{LX, LY, LZ, O, A, I, G, T} = UnaryOperation{LX, LY, LZ, O, A, I, <:MultiRegionGrid, T} where {LX, LY, LZ, O, A, I, T}
 const MultiRegionBinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} = BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, <:MultiRegionGrid, T} where {LX, LY, LZ, O, A, B, IA, IB, T}
 const MultiRegionMultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} = MultiaryOperation{LX, LY, LZ, N, O, A, I, <:MultiRegionGrid, T} where {LX, LY, LZ, N, O, A, I, T}
+const MultiRegionDerivative{LX, LY, LZ, D, A, IN, AD, G, T} = Derivative{LX, LY, LZ, D, A, IN, AD, <:MultiRegionGrid, T} where {LX, LY, LZ, D, A, IN, AD, T}
+const MultiRegionKernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} = KernelFunctionOperation{LX, LY, LZ, P, <:MultiRegionGrid, T, K, D} where {LX, LY, LZ, P, T, K, D}
 
-const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation, MultiRegionUnaryOperation, MultiRegionMultiaryOperation}
+const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation, 
+                                            MultiRegionUnaryOperation,
+                                         MultiRegionMultiaryOperation,
+                                                MultiRegionDerivative,
+                                   MultiRegionKernelFunctionOperation}
 
 # Utils
 Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
