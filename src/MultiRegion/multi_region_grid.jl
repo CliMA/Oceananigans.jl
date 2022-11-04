@@ -55,7 +55,7 @@ Keyword Arguments
              `GPU`s to allocate memory on. The number of devices does not have to match the number of
              regions 
 """
-function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing, validate = true)
 
     if length(partition) == 1
         return global_grid
@@ -65,8 +65,10 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
 
     arch = architecture(global_grid)
 
-    devices = validate_devices(partition, arch, devices)
-    devices = assign_devices(partition, devices)
+    if validate
+        devices = validate_devices(partition, arch, devices)
+        devices = assign_devices(partition, devices)
+    end
 
     global_grid  = on_architecture(CPU(), global_grid)
     local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)

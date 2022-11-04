@@ -53,10 +53,10 @@ function _local_transpose_x_to_y!(fieldy, fieldx, ygrid, xgrid, r, rank)
     send_size = [1:xNx, (rank-1)*yNy+1:(rank*yNy), 1:xNz]
     recv_size = [(r-1)*xNx+1:(r*xNx), 1:xNx, 1:xNz]
 
-    send_buff  = arch_array(architecture(ygrid), zeros(length.(send_size)...))
+    send_buff  = arch_array(architecture(xgrid), zeros(length.(send_size)...))
     send_buff .= interior(fieldx, send_size...)
     
-    switch_device!(fieldy.data)
+    switch_device!(getdevice(fieldy.data))
 
     recv_buff  = arch_array(architecture(ygrid), zeros(length.(recv_size)...))
 
@@ -82,9 +82,9 @@ function _local_transpose_y_to_x!(fieldx, fieldy, xgrid, ygrid, r, rank)
     send_buff  = arch_array(architecture(ygrid), zeros(length.(send_size)...))
     send_buff .= interior(fieldy, send_size...)
     
-    switch_device!(fieldx.data)
+    switch_device!(getdevice(fieldx.data))
 
-    recv_buff  = arch_array(architecture(ygrid), zeros(length.(recv_size)...))
+    recv_buff  = arch_array(architecture(xgrid), zeros(length.(recv_size)...))
 
     device_copy_to!(recv_buff, send_buff)
     
@@ -102,8 +102,8 @@ function transposed_grid(grid::MultiRegionGrid)
     devices = grid.devices
     
     if p isa XPartition
-        return MultiRegionGrid(global_grid; partition = YPartition(length(p)), devices)
+        return MultiRegionGrid(global_grid; partition = YPartition(length(p)), devices, validate = false)
     else
-        return MultiRegionGrid(global_grid; partition = XPartition(length(p)), devices)
+        return MultiRegionGrid(global_grid; partition = XPartition(length(p)), devices, validate = false)
     end
 end
