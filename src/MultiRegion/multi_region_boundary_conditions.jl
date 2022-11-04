@@ -90,12 +90,12 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
         function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return NoneEvent()
+            return event
         end   
         function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return NoneEvent()
+            return event
         end   
     end
 end
@@ -107,25 +107,18 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     w = neighbors[westbc.condition.from_rank]
     e = neighbors[eastbc.condition.from_rank]
 
-    westdst = buffers[westbc.condition.rank].west.recv
-    eastdst = buffers[eastbc.condition.rank].east.recv
-
-    wait(device(arch), dep)
+    westdst = view(parent(c), 1:H, :, :)
+    eastdst = view(parent(c), N+H+1:N+2H, :, :)
 
     switch_device!(getdevice(w))
-    westsrc = buffers[westbc.condition.from_rank].east.send
-    westsrc .= view(parent(w), N+1:N+H, :, :)
+    westsrc = view(parent(w), N+1:N+H, :, :)
     
     switch_device!(getdevice(e))
-    eastsrc = buffers[eastbc.condition.from_rank].west.send
-    eastsrc .= view(parent(e), H+1:2H, :, :)
+    eastsrc = view(parent(e), H+1:2H, :, :)
 
     switch_device!(getdevice(c))    
-    device_copy_to!(westdst, westsrc)
-    device_copy_to!(eastdst, eastsrc)
-
-    view(parent(c), 1:H, :, :)        .= westdst
-    view(parent(c), N+H+1:N+2H, :, :) .= eastdst
+    device_copy_to!(westdst, westsrc, async = true)
+    device_copy_to!(eastdst, eastsrc, async = true)
 
     return NoneEvent()
 end
@@ -137,25 +130,18 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     s = neighbors[southbc.condition.from_rank]
     n = neighbors[northbc.condition.from_rank]
 
-    southdst = buffers[southbc.condition.rank].south.recv
-    northdst = buffers[northbc.condition.rank].north.recv
-
-    wait(device(arch), dep)
-
+    southdst = view(parent(c), :, 1:H, :)
+    northdst = view(parent(c), :, N+H+1:N+2H, :)
+    
     switch_device!(getdevice(s))
-    southsrc = buffers[southbc.condition.from_rank].south.send
-    southsrc .= view(parent(s), :, N+1:N+H, :)
+    southsrc = view(parent(s), :, N+1:N+H, :)
     
     switch_device!(getdevice(n))
-    northsrc = buffers[northbc.condition.from_rank].north.send
-    northsrc .= view(parent(n), :, H+1:2H, :)
+    northsrc = view(parent(n), :, H+1:2H, :)
 
     switch_device!(getdevice(c))    
-    device_copy_to!(southdst, southsrc)
-    device_copy_to!(northdst, northsrc)
-
-    view(parent(c), :, 1:H, :, :)        .= southdst
-    view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
+    device_copy_to!(southdst, southsrc, async = true)
+    device_copy_to!(northdst, northsrc, async = true)
 
     return NoneEvent()
 end
@@ -169,20 +155,14 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     H = halo_size(grid)[1]
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
-    dst = buffers[bc.condition.rank].west.recv
 
-    wait(device(arch), dep)
+    dst = view(parent(c), 1:H, :, :)
 
     switch_device!(getdevice(w))
-    src = buffers[bc.condition.from_rank].east.send
-    src .= view(parent(w), N+1:N+H, :, :)
-    sync_device!(getdevice(w))
+    src = view(parent(w), N+1:N+H, :, :)
 
     switch_device!(getdevice(c))
-    device_copy_to!(dst, src)
-
-    p  = view(parent(c), 1:H, :, :)
-    p .= dst
+    device_copy_to!(dst, src, async = true)
 
     return nothing
 end
@@ -192,20 +172,14 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     H = halo_size(grid)[1]
     N = size(grid)[1]
     e = neighbors[bc.condition.from_rank]
-    dst = buffers[bc.condition.rank].east.recv
 
-    wait(device(arch), dep)
-
+    dst = view(parent(c), N+H+1:N+2H, :, :)
+    
     switch_device!(getdevice(e))
-    src = buffers[bc.condition.from_rank].west.send
-    src .= view(parent(e), H+1:2H, :, :)
-    sync_device!(getdevice(e))
-
+    src = view(parent(e), H+1:2H, :, :)
+    
     switch_device!(getdevice(c))    
-    device_copy_to!(dst, src)
-
-    p  = view(parent(c), N+H+1:N+2H, :, :)
-    p .= dst
+    device_copy_to!(dst, src, async = true)
 
     return nothing
 end
@@ -215,20 +189,14 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     H = halo_size(grid)[2]
     N = size(grid)[2]
     s = neighbors[bc.condition.from_rank]
-    dst = buffers[bc.condition.rank].south.recv
 
-    wait(device(arch), dep)
-
+    dst = view(parent(c), :, 1:H, :)
+    
     switch_device!(getdevice(s))
-    src = buffers[bc.condition.from_rank].north.send
-    src .= view(parent(s), :, N+1:N+H, :)
-    sync_device!(getdevice(s))
-
+    src = view(parent(s), :, N+1:N+H, :)
+    
     switch_device!(getdevice(c))
-    device_copy_to!(dst, src)
-
-    p  = view(parent(c), :, 1:H, :)
-    p .= dst
+    device_copy_to!(dst, src, async = true)
 
     return nothing
 end
@@ -238,20 +206,14 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     H = halo_size(grid)[2]
     N = size(grid)[2]
     n = neighbors[bc.condition.from_rank]
-    dst = buffers[bc.condition.rank].north.recv
 
-    wait(device(arch), dep)
+    dst = view(parent(c), :, N+H+1:N+2H, :)
 
     switch_device!(getdevice(n))
-    src = buffers[bc.condition.from_rank].south.send
-    src .= view(parent(n), :, H+1:2H, :)
-    sync_device!(getdevice(n))
-
+    src = view(parent(n), :, H+1:2H, :)
+    
     switch_device!(getdevice(c))    
-    device_copy_to!(dst, src)
-
-    p  = view(parent(c), :, N+H+1:N+2H, :)
-    p .= dst
+    device_copy_to!(dst, src, async = true)
 
     return nothing
 end
