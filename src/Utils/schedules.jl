@@ -195,7 +195,7 @@ function (schedule::ConsecutiveIterations)(model)
 end
 
 aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
-    aligned_time_step(schedule.parent, clock. Δt)
+    aligned_time_step(schedule.parent, clock, Δt)
 
 #####
 ##### Any and AndSchedule
