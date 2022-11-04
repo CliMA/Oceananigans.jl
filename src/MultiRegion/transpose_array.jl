@@ -53,16 +53,13 @@ function _local_transpose_x_to_y!(fieldy, fieldx, ygrid, xgrid, r, rank)
     send_size = [1:xNx, (rank-1)*yNy+1:(rank*yNy), 1:xNz]
     recv_size = [(r-1)*xNx+1:(r*xNx), 1:xNx, 1:xNz]
 
-    send_buff  = arch_array(architecture(xgrid), zeros(length.(send_size)...))
-    send_buff .= interior(fieldx, send_size...)
+    send_buff = interior(fieldx, send_size...)
     
     switch_device!(getdevice(fieldy.data))
 
-    recv_buff  = arch_array(architecture(ygrid), zeros(length.(recv_size)...))
+    recv_buff = interior(fieldy, recv_size...)
 
-    device_copy_to!(recv_buff, send_buff)
-    
-    interior(fieldy, recv_size...) .= recv_buff
+    device_copy_to!(recv_buff, send_buff, async = true)
 end
 
 function _transpose_y_to_x!(fieldx, full_fieldy, xgrid, ygrid, partition, rank)
@@ -79,16 +76,13 @@ function _local_transpose_y_to_x!(fieldx, fieldy, xgrid, ygrid, r, rank)
     send_size = [(rank-1)*xNx+1:(rank*xNx), 1:yNy, 1:xNz]
     recv_size = [1:xNx, (r-1)*yNy+1:(r*yNy), 1:xNz]
 
-    send_buff  = arch_array(architecture(ygrid), zeros(length.(send_size)...))
-    send_buff .= interior(fieldy, send_size...)
+    send_buff = interior(fieldy, send_size...)
     
     switch_device!(getdevice(fieldx.data))
 
-    recv_buff  = arch_array(architecture(xgrid), zeros(length.(recv_size)...))
+    recv_buff = interior(fieldx, recv_size...)
 
-    device_copy_to!(recv_buff, send_buff)
-    
-    interior(fieldx, recv_size...) .= recv_buff
+    device_copy_to!(recv_buff, send_buff, async = true)
 end
 
 ####

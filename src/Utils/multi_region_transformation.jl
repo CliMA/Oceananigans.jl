@@ -102,9 +102,13 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
         devs = devices(mra)
     end
    
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
-        func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    @sync begin
+        for (r, dev) in enumerate(devs)
+            @async begin
+                switch_device!(dev)
+                func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+            end
+        end
     end
 
     sync_all_devices!(devs)
