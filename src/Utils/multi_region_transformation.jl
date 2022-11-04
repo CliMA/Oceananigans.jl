@@ -75,6 +75,7 @@ end
 
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
+@inline isregional(::Iterate)           = true
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{<:Any, Tuple{Tuple{}}} = false

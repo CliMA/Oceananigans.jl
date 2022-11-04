@@ -31,6 +31,9 @@ const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegion
 const HRegMultiRegionGrid     = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:HRegRectilinearGrid}}}} where {FT, TX, TY, TZ, P}
 const RegMultiRegionGrid      = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:RegRectilinearGrid}}}} where {FT, TX, TY, TZ, P}
 
+const XPartitionedGrid  = MultiRegionGrid{FT, TX, TY, TZ, <:XPartition} where {FT, TX, TY, TZ}
+const YPartitionedGrid  = MultiRegionGrid{FT, TX, TY, TZ, <:YPartition} where {FT, TX, TY, TZ}
+
 """
     MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
