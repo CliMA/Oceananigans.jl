@@ -143,13 +143,7 @@ import Base:
 # (libamgxsh and libnetcdf, respectively) are installed on the machine
 const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
-const hasnetcdf =
-    try
-        using NCDatasets
-        true
-    catch
-        false
-    end
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
 """
     @ifhasamgx expr
