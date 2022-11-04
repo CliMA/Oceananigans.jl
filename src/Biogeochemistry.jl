@@ -4,21 +4,22 @@ module Biogeochemistry
 validate_biogeochemistry(tracers, ::Nothing) = nothing
 
 """Return the biogeochemical forcing function for `tracer_name`."""
-get_biogeochemical_forcing(::Nothing, tracer_name) = nothing
+@inline zerofunction(i, j, k, grid, args...) = zero(grid)
+get_biogeochemical_forcing(biogeochemistry, tracer_name) = zerofunction
  
 """
 Update tracer tendencies.
 
 Called at the end of calculate_tendencies!
 """
-update_tendencies!(::Nothing, model) = nothing
+update_tendencies!(bgc, model) = nothing
 
 """
 Update tracer tendencies.
 
 Called at the end of calculate_tendencies!
 """
-update_biogeochemical_state!(::Nothing, model) = nothing
+update_biogeochemical_state!(bgc, model) = nothing
 
 #=
 # Example: simple NP model
