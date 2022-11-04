@@ -1,5 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
+using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 
@@ -34,6 +35,8 @@ function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
+    update_tendencies!(model.biogeochemitry, model)
+
     return nothing
 end
 
@@ -46,6 +49,7 @@ function calculate_interior_tendency_contributions!(model)
     advection            = model.advection
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
+    biogeochemistry      = model.biogeochemistry
     stokes_drift         = model.stokes_drift
     closure              = model.closure
     background_fields    = model.background_fields
@@ -130,6 +134,9 @@ function calculate_interior_tendency_contributions!(model)
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
+        tracer_name = keys(tracers)[tracer_index]
+        biogeochemical_forcing = get_biogeochemical_forcing(biogeochemistry, tracer_name)
+
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
                                         Val(tracer_index),
@@ -142,6 +149,7 @@ function calculate_interior_tendency_contributions!(model)
                                         tracers,
                                         auxiliary_fields,
                                         diffusivities,
+                                        biogeochemical_forcing,
                                         forcing,
                                         clock,
                                         dependencies=barrier)

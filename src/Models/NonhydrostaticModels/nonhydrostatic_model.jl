@@ -7,6 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.Biogeochemistry: validate_biogeochemistry
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
@@ -25,7 +26,7 @@ import Oceananigans.Architectures: architecture
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -38,6 +39,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
               closure :: E        # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG       # Background velocity and tracer fields
             particles :: P        # Particle set for Lagrangian tracking
+      biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
               tracers :: C        # Container for tracer fields
             pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
@@ -109,21 +111,23 @@ function NonhydrostaticModel(;    grid,
                    forcing::NamedTuple = NamedTuple(),
                                closure = nothing,
        boundary_conditions::NamedTuple = NamedTuple(),
-                               tracers = (),
-                           timestepper = :QuasiAdamsBashforth2,
          background_fields::NamedTuple = NamedTuple(),
          particles::ParticlesOrNothing = nothing,
+                       biogeochemistry = nothing,
+                               tracers = (),
                             velocities = nothing,
                              pressures = nothing,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple()
+                      auxiliary_fields = NamedTuple(),
+                           timestepper = :QuasiAdamsBashforth2,
     )
 
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
 
     # We don't support CAKTE for NonhydrostaticModel yet.
     closure = validate_closure(closure)
@@ -132,6 +136,7 @@ function NonhydrostaticModel(;    grid,
         error("CATKEVerticalDiffusivity is not supported for " *
               "NonhydrostaticModel --- yet!")
 
+    validate_biogeochemistry(tracers, biogeochemistry)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
