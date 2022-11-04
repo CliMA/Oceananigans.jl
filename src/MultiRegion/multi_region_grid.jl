@@ -27,9 +27,9 @@ end
 
 @inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
-const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:ImmersedBoundaryGrid}}} where {FT, TX, TY, TZ, P}
-const HRegMultiRegionGrid     = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:HRegRectilinearGrid}}} where {FT, TX, TY, TZ, P}
-const RegMultiRegionGrid      = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:NTuple{<:Any, <:RegRectilinearGrid}}} where {FT, TX, TY, TZ, P}
+const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
+const HRegMultiRegionGrid     = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:HRegRectilinearGrid}}}} where {FT, TX, TY, TZ, P}
+const RegMultiRegionGrid      = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:RegRectilinearGrid}}}} where {FT, TX, TY, TZ, P}
 
 """
     MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
