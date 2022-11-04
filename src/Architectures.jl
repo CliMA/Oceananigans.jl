@@ -146,6 +146,9 @@ end
 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
+
+@inline device_copy_to!(dst::SubArray{<:Any, <:Any, <:Array}, src::SubArray{<:Any, <:Any, <:Array}; kw...) = Base.copyto!(dst, src) 
+
 device_event(arch) = Event(device(arch))
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)

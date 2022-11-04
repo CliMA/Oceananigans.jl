@@ -6,10 +6,13 @@ using Oceananigans.Units
 
 @inline passive_tracer_forcing(x, y, z, t, p) = p.μ⁺ * exp(-(z - p.z₀)^2 / (2 * p.λ^2)) - p.μ⁻
 
+# using CUDA
+# CUDA.device!(1)
+
 # Defaults:
-Nx, Ny, Nz = (384, 384, 256)
+Nx, Ny, Nz = (256, 256, 256)
 extent = (512meters, 512meters, 256meters)
-architecture = GPU()
+arch = GPU()
 f = 1e-4
 
 buoyancy_flux = 1e-8
@@ -34,17 +37,18 @@ grid = RectilinearGrid(arch,
                        x=(0, Lx), y=(0, Ly), z=(-Lz, 0),
                        halo=(3, 3, 3))
 
-# Buoyancy and boundary conditions
+mrg = MultiRegionGrid(grid, partition = XPartition(4), devices = (0, 1, 2, 3))
 
+# Buoyancy and boundary conditions
 @info "Enforcing boundary conditions..."
 
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4), constant_salinity=35.0)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(), constant_salinity=35.0)
 
 N²_surface_layer = 2e-6
 N²_thermocline   = 1e-5
 N²_deep          = 2e-6
 
-α = buoyancy.equation_of_state.α
+α = buoyancy.equation_of_state.thermal_expansion
 g = buoyancy.gravitational_acceleration
 
 Qᶿ = Qᵇ / (α * g)
@@ -90,17 +94,13 @@ c₂_forcing = Forcing(passive_tracer_forcing, parameters=(z₀=-96.0, λ=λ, μ
 # Wall-aware AMD model constant which is 'enhanced' near the upper boundary.
 # Necessary to obtain a smooth temperature distribution.
 
-@info "Building the wall model..."
-
-# # Instantiate Oceananigans.IncompressibleModel
-
-@info "Framing the model..."
+@info "Building the model..."
 
 tracers = (:T, :c₀, :c₁, :c₂) 
 
-model = NonhydrostaticModel(; grid, buoyancy, tracers,
-                            timestepper = :RungeKutta3,
-                            advection = WENO5(),
+model = NonhydrostaticModel(; grid = mrg, buoyancy, tracers,
+                            timestepper = :QuasiAdamsBashforth2,
+                            advection = WENO(),
                             coriolis = FPlane(f=f),
                             closure = AnisotropicMinimumDissipation(),
                             boundary_conditions = (T=θ_bcs, u=u_bcs),
@@ -158,7 +158,41 @@ set!(model, T = initial_temperature)
 @info "Conjuring the simulation..."
 
 simulation = Simulation(model; Δt=1.0, stop_iteration=1000)
-                    
+
+mutable struct SimulationProgressMessenger{T} <: Function
+    wall_time₀ :: T  # Wall time at simulation start
+    wall_time⁻ :: T  # Wall time at previous callback
+    iteration⁻ :: Int  # Iteration at previous callback
+end
+
+SimulationProgressMessenger(Δt) =
+    SimulationProgressMessenger(
+                      1e-9 * time_ns(),
+                      1e-9 * time_ns(),
+                      0)
+
+function (pm::SimulationProgressMessenger)(simulation)
+    model = simulation.model
+
+    i, t = model.clock.iteration, model.clock.time
+
+    progress = 100 * (t / simulation.stop_time)
+
+    current_wall_time = 1e-9 * time_ns() - pm.wall_time₀
+    time_since_last_callback = 1e-9 * time_ns() - pm.wall_time⁻
+    iterations_since_last_callback = i - pm.iteration⁻
+    wall_time_per_step = time_since_last_callback / iterations_since_last_callback
+
+    pm.wall_time⁻ = 1e-9 * time_ns()
+    pm.iteration⁻ = i
+
+    @info @sprintf("[%06.2f%%] iteration: % 6d, time: % 10s, Δt: % 10s, wall time: % 8s (% 8s / time step)",
+                    progress, i, prettytime(t), prettytime(simulation.Δt),
+                    prettytime(current_wall_time), prettytime(wall_time_per_step))
+    @info ""
+    return nothing
+end                    
+
 # Adaptive time-stepping
 wizard = TimeStepWizard(cfl=0.8, max_change=1.1, min_Δt=0.01, max_Δt=30.0)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
