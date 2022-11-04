@@ -21,6 +21,13 @@ hydrostatic pressure) to the current model state.
 """
 update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
 
+"""
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
+
+Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
+hydrostatic pressure) to the current model state.  If `callbacks` are provided (in an array),
+they are called in the end.
+"""
 function update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
     @apply_regionally masking_actions!(model)
