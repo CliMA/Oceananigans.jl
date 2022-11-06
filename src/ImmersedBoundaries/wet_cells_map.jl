@@ -23,8 +23,9 @@ end
 wet_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
 function compute_wet_cells(grid, ib)
-    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(wet_cell, grid; computed_dependencies = (ib, ))
-    wet_cells_field = Field{Center, Center, Center}(grid, Bool)
+    cpu_grid = on_architecture(CPU() grid)
+    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(wet_cell, cpu_grid; computed_dependencies = (ib, ))
+    wet_cells_field = Field{Center, Center, Center}(cpu_grid, Bool)
     set!(wet_cells_field, is_immersed_operation)
     return wet_cells_field
 end
