@@ -117,8 +117,8 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     eastsrc = view(parent(e), H+1:2H, :, :)
 
     switch_device!(getdevice(c))    
-    device_copy_to!(westdst, westsrc, async = true)
-    device_copy_to!(eastdst, eastsrc, async = true)
+    copyto!(westdst, westsrc)
+    copyto!(eastdst, eastsrc)
 
     return NoneEvent()
 end
@@ -140,8 +140,8 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     northsrc = view(parent(n), :, H+1:2H, :)
 
     switch_device!(getdevice(c))    
-    device_copy_to!(southdst, southsrc, async = true)
-    device_copy_to!(northdst, northsrc, async = true)
+    copyto!(southdst, southsrc)
+    copyto!(northdst, northsrc)
 
     return NoneEvent()
 end
@@ -162,7 +162,7 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     src = view(parent(w), N+1:N+H, :, :)
 
     switch_device!(getdevice(c))
-    device_copy_to!(dst, src, async = true)
+    copyto!(dst, src)
 
     return nothing
 end
@@ -179,7 +179,7 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     src = view(parent(e), H+1:2H, :, :)
     
     switch_device!(getdevice(c))    
-    device_copy_to!(dst, src, async = true)
+    copyto!(dst, src)
 
     return nothing
 end
@@ -196,7 +196,7 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     src = view(parent(s), :, N+1:N+H, :)
     
     switch_device!(getdevice(c))
-    device_copy_to!(dst, src, async = true)
+    copyto!(dst, src)
 
     return nothing
 end
@@ -213,7 +213,7 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     src = view(parent(n), :, H+1:2H, :)
     
     switch_device!(getdevice(c))    
-    device_copy_to!(dst, src, async = true)
+    copyto!(dst, src)
 
     return nothing
 end
