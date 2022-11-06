@@ -3,23 +3,23 @@
 #####
 
 """
-    struct Centered <: AbstractCenteredAdvectionScheme{2}
+    struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
 
 Centered reconstruction scheme.
 """
-struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT} 
-    "coefficient for Centered reconstruction on stretched x-faces" 
-    coeff_xᶠᵃᵃ::XT
-    "coefficient for Centered reconstruction on stretched x-centers"
-    coeff_xᶜᵃᵃ::XT
-    "coefficient for Centered reconstruction on stretched y-faces"
-    coeff_yᵃᶠᵃ::YT
-    "coefficient for Centered reconstruction on stretched y-centers"
-    coeff_yᵃᶜᵃ::YT
-    "coefficient for Centered reconstruction on stretched z-faces"
-    coeff_zᵃᵃᶠ::ZT
-    "coefficient for Centered reconstruction on stretched z-centers"
-    coeff_zᵃᵃᶜ::ZT
+struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
+    "coefficient for Centered reconstruction on stretched ``x``-faces" 
+    coeff_xᶠᵃᵃ :: XT
+    "coefficient for Centered reconstruction on stretched ``x``-centers"
+    coeff_xᶜᵃᵃ :: XT
+    "coefficient for Centered reconstruction on stretched ``y``-faces"
+    coeff_yᵃᶠᵃ :: YT
+    "coefficient for Centered reconstruction on stretched ``y``-centers"
+    coeff_yᵃᶜᵃ :: YT
+    "coefficient for Centered reconstruction on stretched ``z``-faces"
+    coeff_zᵃᵃᶠ :: ZT
+    "coefficient for Centered reconstruction on stretched ``z``-centers"
+    coeff_zᵃᵃᶜ :: ZT
 
     "advection scheme used near boundaries"
     buffer_scheme :: CA
@@ -113,4 +113,3 @@ end
 @inline retrieve_coeff(scheme::Centered, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[i] 
 @inline retrieve_coeff(scheme::Centered, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[i] 
 @inline retrieve_coeff(scheme::Centered, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[i] 
-
