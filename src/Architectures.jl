@@ -134,20 +134,7 @@ end
     return dst
 end
  
-@inline function device_copy_to!(dst::SubArray{<:Any, <:Any, <:CuArray}, src::SubArray{<:Any, <:Any, <:CuArray}; async::Bool = false) 
-    n = length(src)
-    context!(context(parent(src))) do
-        GC.@preserve src dst begin
-            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async)
-        end
-    end
-    return dst
-end
-
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
-
-
-@inline device_copy_to!(dst::SubArray{<:Any, <:Any, <:Array}, src::SubArray{<:Any, <:Any, <:Array}; kw...) = Base.copyto!(dst, src) 
 
 device_event(arch) = Event(device(arch))
 
