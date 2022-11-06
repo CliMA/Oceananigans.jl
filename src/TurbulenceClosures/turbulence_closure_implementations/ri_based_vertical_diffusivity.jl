@@ -47,6 +47,7 @@ a decreasing function of the Richardson number, ``Ri``.
 
 Keyword Arguments
 =================
+* `Ri_dependent_tapering`: The ``Ri``-dependent tapering. Default: `ExponentialRiDependentTapering()`.
 * `ν₀` (Float64): Non-convective viscosity.
 * `κ₀` (Float64): Non-convective diffusivity for tracers.
 * `κᶜ` (Float64): Convective adjustment diffusivity for tracers.
@@ -73,7 +74,6 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
     end
 
     TD = typeof(time_discretization)
-    R = typeof(Ri_dependent_tapering)
 
     return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Cᵉ), FT(Ri₀), FT(Riᵟ), Ri_dependent_tapering)
 end
