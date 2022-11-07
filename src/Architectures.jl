@@ -123,7 +123,7 @@ function unified_array(::GPU, arr::AbstractArray)
     return vec
 end
 
-## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArrat, offset::Int) is 1)
+## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArray, offset::Int) is 1)
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
     n = length(src)
     context!(context(src)) do
@@ -133,8 +133,30 @@ end
     end
     return dst
 end
- 
+
+@inline function device_copy_to!(dst::SubArray{T, N, <:CuArray}, src::SubArray{T, N, <:CuArray}; async::Bool = false) where {T, N}
+    dst_parent = parent(dst)
+    src_parent = parent(src)
+    
+    n = size(src, 1) 
+
+    D = size(dst_parent)
+    S = size(src_parent)
+
+    context!(context(src_parent)) do
+        GC.@preserve src_parent dst_parent begin
+            for (jd, js) in zip(dst.indices[2], src.indices[2]), (kd, ks) in zip(dst.indices[3], src.indices[3])
+                dst_ptr = first(dst.indices[1]) + D[1] * (jd - 1 + D[2] * (kd - 1))
+                src_ptr = first(src.indices[1]) + S[1] * (js - 1 + S[2] * (ks - 1))
+                unsafe_copyto!(pointer(dst_parent, dst_ptr), pointer(src_parent, src_ptr), n; async)
+            end
+        end
+    end
+    return dst
+end
+
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
+@inline device_copy_to!(dst::SubArray{T, N, <:Array}, src::SubArray{T, N, <:Array}; async::Bool = false) where {T, N} = Base.copyto!(dst, src)
 
 device_event(arch) = Event(device(arch))
 
