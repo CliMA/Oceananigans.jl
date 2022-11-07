@@ -1,13 +1,16 @@
-using Oceananigans
-using Oceananigans.Units: minutes, hour, hours, day
 using CairoMakie, Measures
 using Printf
+
+using Oceananigans
+using Oceananigans.Units: minutes, hour, hours, day
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
+
+import Oceananigans.Biogeochemistry: required_biogeochemical_tracers
 
 #####
 ##### Build a model for plankton/nutrient/detritus interactions
 #####
-using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
-import Oceananigans.Biogeochemistry: required_tracers
+
 
 struct NutrientsPlanktonDetritus{FT} <: AbstractBiogeochemistry
     nutrient_limitation_saturation :: FT
@@ -15,12 +18,14 @@ struct NutrientsPlanktonDetritus{FT} <: AbstractBiogeochemistry
     nitrification :: FT
 end
 
-required_tracers(::NutrientsPlanktonDetritus) = (:N, :P, :D)
+required_biogeochemical_tracers(::NutrientsPlanktonDetritus) = (:N, :P, :D)
 
 @inline function (bgc::NutrientsPlanktonDetritus)(i, j, k, grid, ::Val{:N}, clock, fields)
-    P = @inbounds fields.P[i, j, k]
-    N = @inbounds fields.N[i, j, k]
-    D = @inbounds fields.D[i, j, k]
+    @inbounds begin
+        P = fields.P[i, j, k]
+        N = fields.N[i, j, k]
+        D = fields.D[i, j, k]
+    end
 
     return bgc.nitrification*D - P*N/(N+bgc.nutrient_limitation_saturation) 
 end

@@ -7,6 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Biogeochemistry: validate_biogeochemistry!, NoBiogeochemistry, AbstractBiogeochemistry
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
@@ -26,8 +27,11 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tra
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
+const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const AbstractBGC = AbstractBiogeochemistry
+
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF} <: AbstractModel{TS}
   
           architecture :: A        # Computer `Architecture` on which `Model` is run
                   grid :: G        # Grid of physical points on which `Model` is solved
@@ -39,6 +43,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                forcing :: F        # Container for forcing functions defined by the user
                closure :: E        # Diffusive 'turbulence closure' for all model fields
              particles :: P        # Particle set for Lagrangian tracking
+       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
             velocities :: U        # Container for velocity fields `u`, `v`, and `w`
                tracers :: C        # Container for tracer fields
               pressure :: Φ        # Container for hydrostatic pressure
@@ -59,7 +64,8 @@ end
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
-    particles::Union{Nothing, LagrangianParticles} = nothing,
+                     particles::ParticlesOrNothing = nothing,
+                      biogeochemistry::AbstractBGC = NoBiogeochemistry(),
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
@@ -84,6 +90,7 @@ Keyword arguments
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
@@ -91,21 +98,22 @@ Keyword arguments
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(0, 0, 1),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                          coriolis = nothing,
-                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
-    particles::Union{Nothing, LagrangianParticles} = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                 momentum_advection = CenteredSecondOrder(),
+                   tracer_advection = CenteredSecondOrder(),
+                           buoyancy = SeawaterBuoyancy(eltype(grid)),
+                           coriolis = nothing,
+                       free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+                            tracers = (:T, :S),
+      particles::ParticlesOrNothing = nothing,
+       biogeochemistry::AbstractBGC = NoBiogeochemistry(),
+                         velocities = nothing,
+                           pressure = nothing,
+                 diffusivity_fields = nothing,
+                   auxiliary_fields = NamedTuple(),
     )
 
     # Check halos and throw an error if the grid's halo is too small
@@ -117,6 +125,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
+    validate_biogeochemistry!(tracers, biogeochemistry)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
@@ -183,7 +192,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
-                                        free_surface, forcing, closure, particles, velocities, tracers,
+                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
     update_state!(model)

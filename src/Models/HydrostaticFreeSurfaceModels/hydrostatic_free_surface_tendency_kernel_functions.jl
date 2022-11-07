@@ -103,10 +103,12 @@ where `c = C[tracer_index]`.
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                           val_tracer_index::Val{tracer_index},
+                                                          val_tracer_name,
                                                           advection,
                                                           closure,
                                                           c_immersed_bc,
                                                           buoyancy,
+                                                          biogeochemistry,
                                                           velocities,
                                                           free_surface,
                                                           tracers,
@@ -122,6 +124,7 @@ where `c = C[tracer_index]`.
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             + biogeochemistry(i, j, k, grid, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 

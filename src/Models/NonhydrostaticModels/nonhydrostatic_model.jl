@@ -7,7 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
-using Oceananigans.Biogeochemistry: validate_biogeochemistry!
+using Oceananigans.Biogeochemistry: validate_biogeochemistry!, NoBiogeochemistry, AbstractBiogeochemistry
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
@@ -24,6 +24,7 @@ using Oceananigans.Grids: topology
 import Oceananigans.Architectures: architecture
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const AbstractBGC = AbstractBiogeochemistry
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
@@ -51,25 +52,26 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;     grid,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = CenteredSecondOrder(),
-                           buoyancy = nothing,
-                           coriolis = nothing,
-                       stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                            tracers = (),
-                        timestepper = :QuasiAdamsBashforth2,
-      background_fields::NamedTuple = NamedTuple(),
-      particles::ParticlesOrNothing = nothing,
-                         velocities = nothing,
-                          pressures = nothing,
-                 diffusivity_fields = nothing,
-                    pressure_solver = nothing,
-                  immersed_boundary = nothing,
-                   auxiliary_fields = NamedTuple(),
+    NonhydrostaticModel(; grid,
+                                       clock = Clock{eltype(grid)}(0, 0, 1),
+                                   advection = CenteredSecondOrder(),
+                                    buoyancy = nothing,
+                                    coriolis = nothing,
+                                stokes_drift = nothing,
+                         forcing::NamedTuple = NamedTuple(),
+                                     closure = nothing,
+             boundary_conditions::NamedTuple = NamedTuple(),
+               background_fields::NamedTuple = NamedTuple(),
+               particles::ParticlesOrNothing = nothing,
+                biogeochemistry::AbstractBGC = NoBiogeochemistry(),
+                                     tracers = (),
+                                  velocities = nothing,
+                                   pressures = nothing,
+                          diffusivity_fields = nothing,
+                             pressure_solver = nothing,
+                           immersed_boundary = nothing,
+                            auxiliary_fields = NamedTuple(),
+                                 timestepper = :QuasiAdamsBashforth2,
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -94,6 +96,7 @@ Keyword arguments
                    `:RungeKutta3`.
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressures`: Hydrostatic and non-hydrostatic pressure fields. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
@@ -102,32 +105,31 @@ Keyword arguments
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
 """
-function NonhydrostaticModel(;    grid,
-                                 clock = Clock{eltype(grid)}(0, 0, 1),
-                             advection = CenteredSecondOrder(),
-                              buoyancy = nothing,
-                              coriolis = nothing,
-                          stokes_drift = nothing,
-                   forcing::NamedTuple = NamedTuple(),
-                               closure = nothing,
-       boundary_conditions::NamedTuple = NamedTuple(),
-         background_fields::NamedTuple = NamedTuple(),
-         particles::ParticlesOrNothing = nothing,
-                       biogeochemistry = nothing,
-                               tracers = (),
-                            velocities = nothing,
-                             pressures = nothing,
-                    diffusivity_fields = nothing,
-                       pressure_solver = nothing,
-                     immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple(),
-                           timestepper = :QuasiAdamsBashforth2,
+function NonhydrostaticModel(; grid,
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                          advection = CenteredSecondOrder(),
+                           buoyancy = nothing,
+                           coriolis = nothing,
+                       stokes_drift = nothing,
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+      background_fields::NamedTuple = NamedTuple(),
+      particles::ParticlesOrNothing = nothing,
+       biogeochemistry::AbstractBGC = NoBiogeochemistry(),
+                            tracers = (),
+                         velocities = nothing,
+                          pressures = nothing,
+                 diffusivity_fields = nothing,
+                    pressure_solver = nothing,
+                  immersed_boundary = nothing,
+                   auxiliary_fields = NamedTuple(),
+                        timestepper = :QuasiAdamsBashforth2,
     )
 
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
-
 
     # We don't support CAKTE for NonhydrostaticModel yet.
     closure = validate_closure(closure)
@@ -136,7 +138,7 @@ function NonhydrostaticModel(;    grid,
         error("CATKEVerticalDiffusivity is not supported for " *
               "NonhydrostaticModel --- yet!")
 
-    validate_biogeochemistry!(biogeochemistry, tracers)
+    validate_biogeochemistry!(tracers, biogeochemistry)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 

@@ -1,8 +1,8 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
-
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
+
+import Oceananigans.TimeSteppers: calculate_tendencies!
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -133,8 +133,7 @@ function calculate_interior_tendency_contributions!(model)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-
-        tracer_name = keys(tracers)[tracer_index]
+        @inbounds tracer_name = keys(tracers)[tracer_index]
 
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
