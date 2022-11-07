@@ -55,10 +55,10 @@ function assign_devices(p::AbstractPartition, dev::Tuple)
     return Tuple(devices)
 end
 
-maybe_enable_peer_access(devices) = nothing
+maybe_enable_peer_access!(devices) = nothing
 
 # # Enable peer access by copying fake CuArrays between all devices
-function maybe_enable_peer_access(devices::NTuple{<:Any, <:CUDA.CuDevice})
+function maybe_enable_peer_access!(devices::NTuple{<:Any, <:CUDA.CuDevice})
 
     fake_arrays = []
     for dev in devices
