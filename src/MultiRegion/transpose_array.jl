@@ -59,7 +59,7 @@ function _local_transpose_x_to_y!(fieldy, fieldx, ygrid, xgrid, r, rank)
 
     recv_buff = interior(fieldy, recv_size...)
 
-    device_copy_to!(recv_buff, send_buff, async = true)
+    copyto!(recv_buff, send_buff)
 end
 
 function _transpose_y_to_x!(fieldx, full_fieldy, xgrid, ygrid, partition, rank)
@@ -82,7 +82,7 @@ function _local_transpose_y_to_x!(fieldx, fieldy, xgrid, ygrid, r, rank)
 
     recv_buff = interior(fieldx, recv_size...)
 
-    device_copy_to!(recv_buff, send_buff, async = true)
+    copyto!(recv_buff, send_buff)
 end
 
 ####
