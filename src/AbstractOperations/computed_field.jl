@@ -57,9 +57,10 @@ function Field(operand::AbstractOperation;
 end
 
 """
-    compute!(comp::ComputedField)
+    compute!(comp::ComputedField, time=nothing)
 
-Compute `comp.operand` and store the result in `comp.data`.
+Compute `comp.operand` (at specified `time` if provided; default `time = nothing`)
+and store the result in `comp.data`.
 """
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
