@@ -211,6 +211,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 """
 @inline function tracer_tendency(i, j, k, grid,
                                  val_tracer_index::Val{tracer_index},
+                                 tracer_name,
                                  advection,
                                  closure,
                                  c_immersed_bc,
@@ -221,7 +222,6 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                  tracers,
                                  auxiliary_fields,
                                  diffusivities,
-                                 biogeochemical_forcing,
                                  forcing,
                                  clock) where tracer_index
 
@@ -234,7 +234,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + biogeochemical_forcing(i, j, k, grid, clock, biogeochemistry, model_fields)
+             + biogeochemistry(i, j, k, grid, Val(tracer_name), clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 

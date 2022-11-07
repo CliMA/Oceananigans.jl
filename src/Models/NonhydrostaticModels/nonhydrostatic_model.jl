@@ -7,7 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
-using Oceananigans.Biogeochemistry: validate_biogeochemistry
+using Oceananigans.Biogeochemistry: validate_biogeochemistry!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
@@ -136,7 +136,7 @@ function NonhydrostaticModel(;    grid,
         error("CATKEVerticalDiffusivity is not supported for " *
               "NonhydrostaticModel --- yet!")
 
-    validate_biogeochemistry(biogeochemistry, tracernames(tracers))
+    validate_biogeochemistry!(biogeochemistry, tracers)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 

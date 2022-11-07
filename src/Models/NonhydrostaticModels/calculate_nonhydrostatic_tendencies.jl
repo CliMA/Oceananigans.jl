@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
-using Oceananigans.Biogeochemistry: update_tendencies!, get_biogeochemical_forcing
+using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 
@@ -135,11 +135,11 @@ function calculate_interior_tendency_contributions!(model)
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
         tracer_name = keys(tracers)[tracer_index]
-        biogeochemical_forcing = get_biogeochemical_forcing(biogeochemistry, Val(tracer_name))
 
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
                                         Val(tracer_index),
+                                        tracer_name,
                                         advection,
                                         closure,
                                         c_immersed_bc,
@@ -150,7 +150,6 @@ function calculate_interior_tendency_contributions!(model)
                                         tracers,
                                         auxiliary_fields,
                                         diffusivities,
-                                        biogeochemical_forcing,
                                         forcing,
                                         clock,
                                         dependencies=barrier)
