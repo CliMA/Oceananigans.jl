@@ -141,7 +141,7 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     northdst = buffers[northbc.condition.rank].north.recv
 
     wait(device(arch), dep)
-    
+
     switch_device!(getdevice(s))
     southsrc = buffers[southbc.condition.from_rank].south.send
     southsrc .= view(parent(s), :, N+1:N+H, :)
@@ -170,12 +170,13 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
-    
+
     wait(device(arch), dep)
 
     switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
     src .= view(parent(w), N+1:N+H, :, :)
+    sync_device!(getdevice(w))
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -198,6 +199,7 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
     src .= view(parent(e), H+1:2H, :, :)
+    sync_device!(getdevice(e))
 
     switch_device!(getdevice(c))    
     device_copy_to!(dst, src)
@@ -220,6 +222,7 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     switch_device!(getdevice(s))
     src = buffers[bc.condition.from_rank].north.send
     src .= view(parent(s), :, N+1:N+H, :)
+    sync_device!(getdevice(s))
 
     switch_device!(getdevice(c))
     device_copy_to!(dst, src)
@@ -242,6 +245,7 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     switch_device!(getdevice(n))
     src = buffers[bc.condition.from_rank].south.send
     src .= view(parent(n), :, H+1:2H, :)
+    sync_device!(getdevice(n))
 
     switch_device!(getdevice(c))    
     device_copy_to!(dst, src)
@@ -257,13 +261,13 @@ end
 #####
 
 @inline getregion(fc::FieldBoundaryConditions, i) = 
-        FieldBoundaryConditions(_getregion(fc.west, i), 
-                                _getregion(fc.east, i), 
-                                _getregion(fc.south, i), 
-                                _getregion(fc.north, i), 
-                                _getregion(fc.bottom, i),
-                                _getregion(fc.top, i),
-                                fc.immersed)
+    FieldBoundaryConditions(_getregion(fc.west, i), 
+                            _getregion(fc.east, i), 
+                            _getregion(fc.south, i), 
+                            _getregion(fc.north, i), 
+                            _getregion(fc.bottom, i),
+                            _getregion(fc.top, i),
+                            fc.immersed)
 
 @inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
@@ -279,25 +283,25 @@ end
 
 
 @inline _getregion(fc::FieldBoundaryConditions, i) = 
-FieldBoundaryConditions(getregion(fc.west, i), 
-                        getregion(fc.east, i), 
-                        getregion(fc.south, i), 
-                        getregion(fc.north, i), 
-                        getregion(fc.bottom, i),
-                        getregion(fc.top, i),
-                        fc.immersed)
+    FieldBoundaryConditions(getregion(fc.west, i), 
+                            getregion(fc.east, i), 
+                            getregion(fc.south, i), 
+                            getregion(fc.north, i), 
+                            getregion(fc.bottom, i),
+                            getregion(fc.top, i),
+                            fc.immersed)
 
 @inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
 @inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
-ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
-                                   getregion(cf.parameters, i),
-                                   cf.field_dependencies,
-                                   cf.field_dependencies_indices,
-                                   cf.field_dependencies_interp)
+    ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
+                                       getregion(cf.parameters, i),
+                                       cf.field_dependencies,
+                                       cf.field_dependencies_indices,
+                                       cf.field_dependencies_interp)
 
 @inline _getregion(df::DiscreteBoundaryFunction, i) =
-DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
+    DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 

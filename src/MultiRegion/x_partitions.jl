@@ -61,7 +61,7 @@ partition_global_array(a::Function, args...)  = a
 partition_global_array(a::Field, p::EqualXPartition, args...) = partition_global_array(a.data, p, args...)
 
 function partition_global_array(a::AbstractArray, ::EqualXPartition, local_size, region, arch) 
-    idxs = default_indices(length(size(a)))
+    idxs = UnitRange.(Ref(1), size(a))
     return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
