@@ -8,10 +8,8 @@ struct RiBasedVerticalDiffusivity{TD, FT, R} <: AbstractScalarDiffusivity{TD, Ve
     κ₀  :: FT
     κᶜ  :: FT
     Cᵉ  :: FT
-    Ri₀_κ :: FT
-    Riᵟ_κ :: FT
-    Ri₀_ν :: FT
-    Riᵟ_ν :: FT
+    Ri₀ :: FT
+    Riᵟ :: FT
     Ri_dependent_tapering :: R
 end
 
@@ -19,15 +17,11 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         κ₀::FT,
                                         κᶜ::FT,
                                         Cᵉ::FT,
-                                        Ri₀_κ::FT,
-                                        Riᵟ_κ::FT,
-                                        Ri₀_ν::FT,
-                                        Riᵟ_ν::FT,
+                                        Ri₀::FT,
+                                        Riᵟ::FT,
                                         Ri_dependent_tapering::R) where {TD, FT, R}
 
-    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Cᵉ,
-                                                 Ri₀_κ, Riᵟ_κ,
-                                                 Ri₀_ν, Riᵟ_ν,
+    return RiBasedVerticalDiffusivity{TD, FT, R}(ν₀, κ₀, κᶜ, Cᵉ, Ri₀, Riᵟ,
                                                  Ri_dependent_tapering)
 end
 
@@ -70,10 +64,8 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     κ₀  = 0.42,
                                     κᶜ  = 4.0,
                                     Cᵉ  = 0.57,
-                                    Ri₀_κ = 0.27,
-                                    Riᵟ_κ = 0.20,
-                                    Ri₀_ν = 0.27,
-                                    Riᵟ_ν = 0.20,
+                                    Ri₀ = 0.27,
+                                    Riᵟ = 0.20,
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
@@ -86,8 +78,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
     TD = typeof(time_discretization)
 
     return RiBasedVerticalDiffusivity{TD}(FT(ν₀), FT(κ₀), FT(κᶜ), FT(Cᵉ),
-                                          FT(Ri₀_κ), FT(Riᵟ_κ),
-                                          FT(Ri₀_ν), FT(Riᵟ_ν),
+                                          FT(Ri₀), FT(Riᵟ),
                                           Ri_dependent_tapering)
 end
 
@@ -183,15 +174,8 @@ end
     κ₀  = closure_ij.κ₀
     κᶜ  = closure_ij.κᶜ
     Cᵉ  = closure_ij.Cᵉ
-
-    #Ri₀ = closure_ij.Ri₀
-    #Riᵟ = closure_ij.Riᵟ
-
-    Ri₀_κ = closure_ij.Ri₀_κ
-    Riᵟ_κ = closure_ij.Riᵟ_κ
-    Ri₀_ν = closure_ij.Ri₀_ν
-    Riᵟ_ν = closure_ij.Riᵟ_ν
-
+    Ri₀ = closure_ij.Ri₀
+    Riᵟ = closure_ij.Riᵟ
     tapering = closure_ij.Ri_dependent_tapering
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
 
@@ -211,15 +195,9 @@ end
     # Shear mixing diffusivity and viscosity
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
 
-    # τ = taper(tapering, Ri, Ri₀, Riᵟ)
-    # κ★ = κ₀ * τ
-    # ν★ = ν₀ * τ
-
-    τ_κ = taper(ExponentialRiDependentTapering(), Ri, Ri₀_κ, Riᵟ_κ)
-    κ★ = κ₀ * τ_κ
-
-    τ_ν = taper(PiecewiseLinearRiDependentTapering(), Ri, Ri₀_ν, Riᵟ_ν)
-    ν★ = ν₀ * τ_ν
+    τ = taper(tapering, Ri, Ri₀, Riᵟ)
+    κ★ = κ₀ * τ
+    ν★ = ν₀ * τ
 
     @inbounds diffusivities.κ[i, j, k] = κᶜ + κᵉ + κ★
     @inbounds diffusivities.ν[i, j, k] = ν★
