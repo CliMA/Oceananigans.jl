@@ -139,7 +139,7 @@ function calculate_interior_tendency_contributions!(model)
         Gc_event = calculate_Gc_kernel!(c_tendency,
                                         grid,
                                         Val(tracer_index),
-                                        tracer_name,
+                                        Val(tracer_name),
                                         advection,
                                         closure,
                                         c_immersed_bc,
