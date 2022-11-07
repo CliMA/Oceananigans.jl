@@ -89,6 +89,9 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
 
     region_grids = construct_regionally(construct_grid, args...)
 
+    ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
+    maybe_enable_peer_access!(devices)
+
     return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, region_grids, devices)
 end
 
