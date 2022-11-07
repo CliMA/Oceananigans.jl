@@ -69,9 +69,9 @@ Base.@kwdef struct MixingLength{FT}
     Cˢu   :: FT = Inf
     Cˢc   :: FT = Inf
     Cˢe   :: FT = Inf
-    Cᵟu   :: FT = 0.5
-    Cᵟc   :: FT = 0.5
-    Cᵟe   :: FT = 0.5
+    Cᵟu   :: FT = 0.0
+    Cᵟc   :: FT = 0.0
+    Cᵟe   :: FT = 0.0
     Cᴬu   :: FT = 0.0
     Cᴬc   :: FT = 0.0
     Cᴬe   :: FT = 0.0
@@ -276,6 +276,7 @@ end
 
     #return ℓᵟ + ℓ★ + ℓʰ
     Cʷℓ = closure.mixing_length.Cʷℓ
+
     return smoothmax(Cʷℓ, ℓᵟ, ℓ★, ℓʰ)
 end
 
