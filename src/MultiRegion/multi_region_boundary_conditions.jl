@@ -110,6 +110,8 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     westdst = buffers[westbc.condition.rank].west.recv
     eastdst = buffers[eastbc.condition.rank].east.recv
 
+    wait(device(arch), dep)
+
     switch_device!(getdevice(w))
     westsrc = buffers[westbc.condition.from_rank].east.send
     westsrc .= view(parent(w), N+1:N+H, :, :)
@@ -125,7 +127,7 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     view(parent(c), 1:H, :, :)        .= westdst
     view(parent(c), N+H+1:N+2H, :, :) .= eastdst
 
-    return dep
+    return NoneEvent()
 end
 
 function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
@@ -138,6 +140,8 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     southdst = buffers[southbc.condition.rank].south.recv
     northdst = buffers[northbc.condition.rank].north.recv
 
+    wait(device(arch), dep)
+    
     switch_device!(getdevice(s))
     southsrc = buffers[westbc.condition.from_rank].south.send
     southsrc .= view(parent(s), :, N+1:N+H, :)
@@ -153,7 +157,7 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     view(parent(c), :, 1:H, :, :)        .= southdst
     view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
 
-    return dep
+    return NoneEvent()
 end
 
 #####
