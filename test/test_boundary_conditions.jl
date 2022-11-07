@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction,
+                                       DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -57,35 +58,35 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa PBC
+        @test u_bcs.west isa PBC
         @test u_bcs.east isa PBC
-        @test u_bcs.south  isa PBC
+        @test u_bcs.south isa PBC
         @test u_bcs.north isa PBC
-        @test u_bcs.bottom  isa PBC
+        @test u_bcs.bottom isa PBC
         @test u_bcs.top isa PBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.west  isa PBC
+        @test v_bcs.west isa PBC
         @test v_bcs.east isa PBC
-        @test v_bcs.south  isa PBC
+        @test v_bcs.south isa PBC
         @test v_bcs.north isa PBC
-        @test v_bcs.bottom  isa PBC
+        @test v_bcs.bottom isa PBC
         @test v_bcs.top isa PBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.west  isa PBC
+        @test w_bcs.west isa PBC
         @test w_bcs.east isa PBC
-        @test w_bcs.south  isa PBC
+        @test w_bcs.south isa PBC
         @test w_bcs.north isa PBC
-        @test w_bcs.bottom  isa PBC
+        @test w_bcs.bottom isa PBC
         @test w_bcs.top isa PBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.west  isa PBC
+        @test T_bcs.west isa PBC
         @test T_bcs.east isa PBC
-        @test T_bcs.south  isa PBC
+        @test T_bcs.south isa PBC
         @test T_bcs.north isa PBC
-        @test T_bcs.bottom  isa PBC
+        @test T_bcs.bottom isa PBC
         @test T_bcs.top isa PBC
 
         # Doubly periodic. Engineers call this a "Channel geometry".
@@ -98,35 +99,35 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa PBC
+        @test u_bcs.west isa PBC
         @test u_bcs.east isa PBC
-        @test u_bcs.south  isa PBC
+        @test u_bcs.south isa PBC
         @test u_bcs.north isa PBC
-        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.bottom isa ZFBC
         @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.west  isa PBC
+        @test v_bcs.west isa PBC
         @test v_bcs.east isa PBC
-        @test v_bcs.south  isa PBC
+        @test v_bcs.south isa PBC
         @test v_bcs.north isa PBC
-        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.bottom isa ZFBC
         @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.west  isa PBC
+        @test w_bcs.west isa PBC
         @test w_bcs.east isa PBC
-        @test w_bcs.south  isa PBC
+        @test w_bcs.south isa PBC
         @test w_bcs.north isa PBC
-        @test w_bcs.bottom  isa OBC
+        @test w_bcs.bottom isa OBC
         @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.west  isa PBC
+        @test T_bcs.west isa PBC
         @test T_bcs.east isa PBC
-        @test T_bcs.south  isa PBC
+        @test T_bcs.south isa PBC
         @test T_bcs.north isa PBC
-        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.bottom isa ZFBC
         @test T_bcs.top isa ZFBC
 
         # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
@@ -139,35 +140,35 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa PBC
+        @test u_bcs.west isa PBC
         @test u_bcs.east isa PBC
-        @test u_bcs.south  isa ZFBC
+        @test u_bcs.south isa ZFBC
         @test u_bcs.north isa ZFBC
-        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.bottom isa ZFBC
         @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.west  isa PBC
+        @test v_bcs.west isa PBC
         @test v_bcs.east isa PBC
-        @test v_bcs.south  isa OBC
+        @test v_bcs.south isa OBC
         @test v_bcs.north isa OBC
-        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.bottom isa ZFBC
         @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.west  isa PBC
+        @test w_bcs.west isa PBC
         @test w_bcs.east isa PBC
-        @test w_bcs.south  isa ZFBC
+        @test w_bcs.south isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
+        @test w_bcs.bottom isa OBC
         @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.west  isa PBC
+        @test T_bcs.west isa PBC
         @test T_bcs.east isa PBC
-        @test T_bcs.south  isa ZFBC
+        @test T_bcs.south isa ZFBC
         @test T_bcs.north isa ZFBC
-        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.bottom isa ZFBC
         @test T_bcs.top isa ZFBC
 
         # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
@@ -180,39 +181,39 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa OBC
+        @test u_bcs.west isa OBC
         @test u_bcs.east isa OBC
-        @test u_bcs.south  isa ZFBC
+        @test u_bcs.south isa ZFBC
         @test u_bcs.north isa ZFBC
-        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.bottom isa ZFBC
         @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.west  isa ZFBC
+        @test v_bcs.west isa ZFBC
         @test v_bcs.east isa ZFBC
-        @test v_bcs.south  isa OBC
+        @test v_bcs.south isa OBC
         @test v_bcs.north isa OBC
-        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.bottom isa ZFBC
         @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.west  isa ZFBC
+        @test w_bcs.west isa ZFBC
         @test w_bcs.east isa ZFBC
-        @test w_bcs.south  isa ZFBC
+        @test w_bcs.south isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
+        @test w_bcs.bottom isa OBC
         @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.west  isa ZFBC
+        @test T_bcs.west isa ZFBC
         @test T_bcs.east isa ZFBC
-        @test T_bcs.south  isa ZFBC
+        @test T_bcs.south isa ZFBC
         @test T_bcs.north isa ZFBC
-        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.bottom isa ZFBC
         @test T_bcs.top isa ZFBC
 
         grid = bbb_grid
-        
+
         T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                    east = ValueBoundaryCondition(simple_bc),
                                                    west = ValueBoundaryCondition(simple_bc),
