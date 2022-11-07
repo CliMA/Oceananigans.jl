@@ -139,11 +139,11 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     northdst = buffers[northbc.condition.rank].north.recv
 
     switch_device!(getdevice(s))
-    southsrc = buffers[westbc.condition.from_rank].south.send
+    southsrc = buffers[southbc.condition.from_rank].south.send
     southsrc .= view(parent(s), :, N+1:N+H, :)
     
     switch_device!(getdevice(n))
-    northsrc = buffers[eastbc.condition.from_rank].north.send
+    northsrc = buffers[northbc.condition.from_rank].north.send
     northsrc .= view(parent(n), :, H+1:2H, :)
 
     switch_device!(getdevice(c))    
