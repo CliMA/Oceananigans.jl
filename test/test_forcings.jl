@@ -10,7 +10,7 @@ function time_step_with_forcing_functions(arch)
     @inline Fw(x, y, z, t) = 1.0
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(u=Fu, v=Fv, w=Fw))
+    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
@@ -25,12 +25,12 @@ function time_step_with_discrete_forcing(arch)
 
     Fu = Forcing(Fu_discrete_func, discrete_form=true)
 
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(u=Fu,))
+    grid = RectilinearGdrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, forcing=(u=Fu,))
     time_step!(model, 1, euler=true)
 
     return true
-end
+endd
 
 """ Take one time step with ParameterizedForcing forcing functions. """
 function time_step_with_parameterized_discrete_forcing(arch)
@@ -39,7 +39,7 @@ function time_step_with_parameterized_discrete_forcing(arch)
     Fw = Forcing(Fw_discrete_func, parameters=(τ=60,), discrete_form=true)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(v=Fv, w=Fw))
+    model = NonhydrostaticModel(; grid, forcing=(v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
@@ -51,7 +51,7 @@ function time_step_with_parameterized_continuous_forcing(arch)
     u_forcing = Forcing((x, y, z, t, ω) -> sin(ω * x), parameters=π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(; grid, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -64,8 +64,8 @@ function time_step_with_single_field_dependent_forcing(arch, fld)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
-    model = NonhydrostaticModel(grid=grid, forcing=forcing,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields=(; A))
+    model = NonhydrostaticModel(; grid, forcing, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
+                                auxiliary_fields=(; A))
     time_step!(model, 1, euler=true)
 
     return true
@@ -78,7 +78,7 @@ function time_step_with_multiple_field_dependent_forcing(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
-    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,),
+    model = NonhydrostaticModel(; grid, forcing=(u=u_forcing,),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), auxiliary_fields = (; A))
     time_step!(model, 1, euler=true)
 
@@ -92,7 +92,7 @@ function time_step_with_parameterized_field_dependent_forcing(arch)
     u_forcing = Forcing((x, y, z, t, u, p) -> sin(p.ω * x) * u, parameters=(ω=π,), field_dependencies=:u)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(; grid, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -109,7 +109,7 @@ function relaxed_time_stepping(arch)
                                       target = π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, forcing=(u=x_relax, v=y_relax, w=z_relax))
+    model = NonhydrostaticModel(; grid, forcing=(u=x_relax, v=y_relax, w=z_relax))
     time_step!(model, 1, euler=true)
 
     return true

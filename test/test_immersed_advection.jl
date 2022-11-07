@@ -1,17 +1,17 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
-using Oceananigans.Advection: 
+using Oceananigans.Advection:
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
         _symmetric_interpolate_yᵃᶜᵃ,
-        _left_biased_interpolate_xᶜᵃᵃ, 
-        _left_biased_interpolate_xᶠᵃᵃ, 
+        _left_biased_interpolate_xᶜᵃᵃ,
+        _left_biased_interpolate_xᶠᵃᵃ,
         _right_biased_interpolate_xᶜᵃᵃ,
         _right_biased_interpolate_xᶠᵃᵃ,
-        _left_biased_interpolate_yᵃᶜᵃ, 
-        _left_biased_interpolate_yᵃᶠᵃ, 
+        _left_biased_interpolate_yᵃᶜᵃ,
+        _left_biased_interpolate_yᵃᶠᵃ,
         _right_biased_interpolate_yᵃᶜᵃ,
         _right_biased_interpolate_yᵃᶠᵃ
 
@@ -25,7 +25,7 @@ function run_tracer_interpolation_test(c, ibg, scheme)
     for i in 6:19, j in 6:19
         if typeof(scheme) <: Centered
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c, 1) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c, 1) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c, 1) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, c, 1) ≈ 1.0
@@ -36,9 +36,9 @@ end
 
 function run_tracer_conservation_test(grid, scheme)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid, tracers = :c, 
+    model = HydrostaticFreeSurfaceModel(; grid, tracers = :c,
                                         free_surface = ExplicitFreeSurface(),
-                                        tracer_advection = scheme, 
+                                        tracer_advection = scheme,
                                         buoyancy = nothing,
                                         coriolis = nothing)
 
@@ -50,7 +50,7 @@ function run_tracer_conservation_test(grid, scheme)
 
     indices = model.grid isa ImmersedBoundaryGrid ? (5:7, 3:6, 1) : (2:5, 3:6, 1)
 
-    interior(η, indices...) .= - 0.05
+    interior(η, indices...) .= -0.05
     fill_halo_regions!(η)
 
     wave_speed = sqrt(model.free_surface.gravitational_acceleration)
@@ -59,8 +59,8 @@ function run_tracer_conservation_test(grid, scheme)
         time_step!(model, dt)
     end
 
-    @test maximum(c) ≈ 1.0 
-    @test minimum(c) ≈ 1.0 
+    @test maximum(c) ≈ 1.0
+    @test minimum(c) ≈ 1.0
     @test mean(c)    ≈ 1.0
 
     return nothing
@@ -78,7 +78,7 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v, 1) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u, 1) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v, 1) ≈ 1.0
-        else    
+        else
             @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u, 1) ≈ 1.0
             @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u, 1) ≈ 1.0
             @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u, 1) ≈ 1.0
@@ -100,7 +100,7 @@ for arch in archs
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
-    
+
         c = CenterField(ibg)
         set!(c, 1.0)
         wait(mask_immersed_field!(c))
@@ -108,7 +108,7 @@ for arch in archs
     
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-            
+
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)
         end
@@ -119,7 +119,7 @@ for arch in archs
 
         grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
-    
+
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
         
@@ -149,10 +149,9 @@ for arch in archs
 
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-            
+
             @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_momentum_interpolation_test(u, v, ibg, scheme)
         end
     end
 end
-
