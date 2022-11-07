@@ -90,12 +90,12 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
         function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return event
+            return NoneEvent()
         end   
         function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
-            return event
+            return NoneEvent()
         end   
     end
 end
@@ -170,6 +170,8 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     N = size(grid)[1]
     w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
+    
+    wait(device(arch), dep)
 
     switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
@@ -191,6 +193,8 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
 
+    wait(device(arch), dep)
+
     switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
     src .= view(parent(e), H+1:2H, :, :)
@@ -211,6 +215,8 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     s = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].south.recv
 
+    wait(device(arch), dep)
+
     switch_device!(getdevice(s))
     src = buffers[bc.condition.from_rank].north.send
     src .= view(parent(s), :, N+1:N+H, :)
@@ -230,6 +236,8 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     N = size(grid)[2]
     n = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].north.recv
+
+    wait(device(arch), dep)
 
     switch_device!(getdevice(n))
     src = buffers[bc.condition.from_rank].south.send
