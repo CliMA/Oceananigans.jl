@@ -12,12 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6' # Long-Term Support release
-          - '1.8' # Long-Term Support release
+          - '1.8'
         os:
           - windows-latest
         arch:
           - x64
+          - x86
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@latest
