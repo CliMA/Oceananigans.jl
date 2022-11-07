@@ -80,7 +80,9 @@ cite our work and mention Oceananigans by name.
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1) _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
+1. Simoes-Sousa, I. T., Tandon, A., Pereira, F., Lazaneo, C. Z., and Mahadevan, A. (2022). [Mixed layer eddies supply nutrients to enhance the spring phytoplankton bloom](https://doi.org/10.3389/fmars.2022.825027) _Frontiers in Marine Sciences_, **9**, 825027. DOI: [10.3389/fmars.2022.825027](https://doi.org/10.3389/fmars.2022.825027)
+
+1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1) _Journal of Physical Oceanography_, **52(10)**, 2273-2287. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
 
 1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
 

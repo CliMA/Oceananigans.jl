@@ -1,21 +1,15 @@
 using KernelAbstractions: NoneEvent
-using OffsetArrays: OffsetArray
 using CUDA: @allowscalar
 
-using Oceananigans.Operators: Δzᵃᵃᶜ
-using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
-using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Coriolis: AbstractRotation
-using Oceananigans.Architectures: device_event
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVDArray
 
-import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
@@ -46,7 +40,7 @@ calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -57,6 +51,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
 
     return nothing
 end
@@ -115,20 +111,19 @@ end
 ##### Arrays of Coriolises
 #####
 
-const CoriolisMatrix = AbstractMatrix{<:AbstractRotation}
+const CoriolisArray = AbstractArray{<:AbstractRotation}
 
-@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return x_f_cross_U(i, j, k, grid, coriolis, U)
 end
 
-@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return y_f_cross_U(i, j, k, grid, coriolis, U)
 end
 
-@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisArray, U)
     @inbounds coriolis = coriolis_array[i, j]
     return z_f_cross_U(i, j, k, grid, coriolis, U)
 end
-

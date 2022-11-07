@@ -13,24 +13,6 @@ function restrict_to_interior(index::UnitRange, loc, topo, N)
 end
 
 #####
-##### Support for Sliced fields with non-trivial indices
-#####
-
-function maybe_sliced_field(user_output::ComputedField, indices)
-    boundary_conditions = FieldBoundaryConditions(indices, user_output.boundary_conditions)
-    output = Field(location(user_output), user_output.grid; 
-                   boundary_conditions, 
-                   indices, 
-                   operand = user_output.operand, 
-                   status = user_output.status)
-    return output
-end
-
-maybe_sliced_field(user_output::AbstractOperation, indices) = Field(user_output; indices)
-maybe_sliced_field(user_output::Reduction, indices) = Field(user_output; indices)
-maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
-
-#####
 ##### Function output fallback
 #####
 
@@ -61,7 +43,7 @@ end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
-    return maybe_sliced_field(user_output, indices)
+    return Field(user_output; indices)
 end
 
 #####

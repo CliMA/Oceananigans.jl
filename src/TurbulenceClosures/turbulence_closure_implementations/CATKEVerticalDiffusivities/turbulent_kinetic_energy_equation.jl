@@ -190,7 +190,6 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
     inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy)
 
-
 @inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy) +

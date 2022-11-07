@@ -74,7 +74,7 @@ function UnifiedDiagonalIterativeSolver(coeffs;
                                           matrix_constructors,
                                           diagonal,
                                           placeholder_matrix,
-                                          zero(eltype(grid)),
+                                          zero(grid),
                                           solution,
                                           matrix_product, 
                                           search,

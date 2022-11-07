@@ -40,7 +40,6 @@ turbulent_kinetic_energy_equation =
                                    Cᴰ⁻ = 0.5)
 
 closure = CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
-#closure = RiBasedVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
                                     tracers = (:b, :e),

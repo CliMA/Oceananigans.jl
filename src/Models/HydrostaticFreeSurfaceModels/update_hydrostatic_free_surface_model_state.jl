@@ -11,15 +11,17 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
 # single column models.
-update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel)
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
-hydrostatic pressure) to the current model state.
+hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
+they are called in the end.
 """
-function update_state!(model::HydrostaticFreeSurfaceModel, grid)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally masking_actions!(model)
 
@@ -31,6 +33,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     return nothing
 end
@@ -48,5 +52,6 @@ function compute_w_diffusivities_pressure!(model)
     compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
-end
 
+    return nothing
+end

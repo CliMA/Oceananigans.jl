@@ -94,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -137,18 +138,14 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-"Boolean denoting whether AMGX.jl can be loaded on machine."
+
 # TODO: find a way to check whether the libraries for AMGX and NETCDF 
 # (libamgxsh and libnetcdf, respectively) are installed on the machine
+"Boolean denoting whether AMGX.jl can be loaded on machine."
 const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
-const hasnetcdf =
-    try
-        using NCDatasets
-        true
-    catch
-        false
-    end
+"Boolean denoting whether NCDatasets.jl can be loaded on machine."
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
 """
     @ifhasamgx expr
@@ -193,6 +190,10 @@ abstract type AbstractDiagnostic end
 Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
+
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
 
 #####
 ##### Place-holder functions
