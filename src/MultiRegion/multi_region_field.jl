@@ -29,6 +29,8 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 @inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
 @inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)
 
+@inline getdevice(f::AbstractField) = getdevice(f.data) 
+
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
                               _getregion(f.grid, r),

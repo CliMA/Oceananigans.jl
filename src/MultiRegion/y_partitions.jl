@@ -61,7 +61,7 @@ function divide_direction(x::AbstractArray, p::EqualYPartition)
 end
 
 function partition_global_array(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
-    idxs = UnitRange.(Ref(1), size(a))
+    idxs = default_indices(length(size(a)))
     return arch_array(arch, a[idxs[1], local_size[2]*(region-1)+1:local_size[2]*region, idxs[3:end]...])
 end
 

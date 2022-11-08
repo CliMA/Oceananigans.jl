@@ -1,6 +1,8 @@
+using FFTW
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: reconstruct_global_field, multi_region_object_from_array
 using Oceananigans.Grids: min_Δx, min_Δy
+using Oceananigans.Models.NonhydrostaticModels: PressureSolver
 using Oceananigans.Operators: hack_cosd
 
 function Δ_min(grid) 
@@ -19,7 +21,8 @@ function random_nonhydrostatic_simulation(uᵢ, vᵢ, wᵢ, grid; P = XPartition
     end
     mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
 
-    model = NonhydrostaticModel(; grid = mrg, advection = WENO(), timestepper)
+    pressure_solver = PressureSolver(architecture(mrg), mrg, FFTW.ESTIMATE)
+    model = NonhydrostaticModel(; grid = mrg, advection = WENO(), timestepper, pressure_solver)
 
     u₀ = multi_region_object_from_array(uᵢ, mrg)
     v₀ = multi_region_object_from_array(vᵢ, mrg)
@@ -28,11 +31,11 @@ function random_nonhydrostatic_simulation(uᵢ, vᵢ, wᵢ, grid; P = XPartition
     set!(model, u=u₀, v=v₀, w=w₀)
 
     # Time-scale for advection across the smallest grid cell
-    advection_time_scale = Δ_min(grid) / 0.5
+    advection_time_scale = Δ_min(grid) 
     
     Δt = 0.1advection_time_scale
     
-    for step in 1:10
+    for step in 1:5
         time_step!(model, Δt)
     end
 

@@ -43,7 +43,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Plan required transforms for x and y
     sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
-    transforms = plan_transforms(grid, sol_storage, planner_flag)
+    transforms  = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
     lower_diagonal = CUDA.@allowscalar [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz]

@@ -21,11 +21,11 @@ function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(arch, grid::RegRectilinearGrid,  planner_flag=FFTW.PATIENT) = FFTBasedPoissonSolver(grid, planner_flag)
+PressureSolver(arch, grid::HRegRectilinearGrid, planner_flag=FFTW.PATIENT) = FourierTridiagonalPoissonSolver(grid, planner_flag)
 
 # *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
+PressureSolver(arch, ibg::ImmersedBoundaryGrid, planner_flag=FFTW.PATIENT) = PressureSolver(arch, ibg.underlying_grid, planner_flag)
 
 #####
 ##### NonhydrostaticModel definition

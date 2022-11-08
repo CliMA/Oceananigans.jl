@@ -1,5 +1,4 @@
-## Utility to transpose fields from a X to a Y partition and viceversa
-
+""" Utility to transpose fields and arrays from a X to a Y partitioned grid """
 function transpose_x_to_y!(arry, arrx, ygrid::YPartitionedGrid, xgrid::XPartitionedGrid)
 
     px     = xgrid.partition
@@ -10,6 +9,7 @@ function transpose_x_to_y!(arry, arrx, ygrid::YPartitionedGrid, xgrid::XPartitio
     return nothing
 end
 
+""" Utility to transpose fields and arrays from a Y to a X partitioned grid """
 function transpose_y_to_x!(arrx, arry, xgrid::XPartitionedGrid, ygrid::YPartitionedGrid)
 
     py     = ygrid.partition
