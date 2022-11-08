@@ -39,7 +39,6 @@ Base.length(p::CubedSpherePartition) = p.div
 @inline div_per_face(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    * p.div_per_side_y[r]
 @inline div_per_face(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] * p.div_per_side_y
 
-
 @inline div_per_side_x(r, p::RegularCubedSpherePartition)  = p.div_per_side_x    
 @inline div_per_side_x(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    
 @inline div_per_side_x(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] 
