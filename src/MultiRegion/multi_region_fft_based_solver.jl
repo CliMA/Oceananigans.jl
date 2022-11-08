@@ -23,7 +23,7 @@ transposed_grid :: P
      operations :: T
 end
 
-# PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFFTBasedPoissonSolver(grid, planner_flag)
+PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFFTBasedPoissonSolver(grid, planner_flag)
 
 function MultiRegionFFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
     
@@ -32,21 +32,20 @@ function MultiRegionFFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FF
     
     regional_arch = construct_regionally(architecture, grid)
 
-    TX, TY, TZ = topo = topology(global_grid)
-
-    arch = architecture(global_grid)
     storage = (initial    = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(grid))), 
                transposed = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(tgrid))))
     
     eigenvalues = construct_regional_eigenvalues(global_grid, tgrid)
     operations  = plan_multi_region_transforms(global_grid, grid, tgrid, storage, planner_flag)
 
-    buffer_needed = arch isa GPU && Bounded in topo
-    buffer = buffer_needed ? (initial    = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(grid))), 
-                              transposed = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(tgrid)))) : 
-                             (initial    = nothing, 
-                              transposed = nothing)
+    # buffer = (initial    = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(grid))), 
+    #           transposed = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(tgrid)))) : 
+    #                          (initial    = nothing, 
+    #                           transposed = nothing)
 
+    buffer = (initial    = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(grid))), 
+              transposed = construct_regionally(arch_array, regional_arch, zeros(complex(eltype(global_grid)), size(tgrid))))                  
+                
     return MultiRegionFFTBasedPoissonSolver(grid, tgrid, eigenvalues, storage, buffer, operations)
 end
 
@@ -98,12 +97,6 @@ function calculate_source_term!(rhs, arch, grid, Δt, U★, ::MultiRegionFFTBase
     wait(device(arch), rhs_event)
 end
 
-# function calculate_source_term!(rhs, arch, grid, Δt, U★, ::MultiRegionFourierTridiagonalSolver)
-#     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
-#                         rhs, grid, Δt, U★, dependencies = device_event(arch))
-#     wait(device(arch), rhs_event)
-# end
-
 function copy_event!(ϕ, ϕc, arch, grid)
     copy_event = launch!(arch, grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ), dependencies=device_event(arch))
     wait(device(arch), copy_event)
@@ -116,20 +109,18 @@ function apply_parallel_transforms(transform1!, transform2!, storage, buffer)
     transform2!(storage, buffer)
 end
 
-@inline function divide_by_eigenvalues!(ϕc, b, λx, λy, λz, m, arch, grid) 
+@inline function divide_by_eigenvalues!(ϕc, b, λx, λy, λz, m, arch, grid, region) 
     divide_event = launch!(arch, grid, :xyz, _divide_by_eigenvalues!, ϕc, b, λx, λy, λz, m, dependencies=device_event(arch))
     wait(device(arch), divide_event)
+
+    if region == 1 && m === 0
+        CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    end
 end
 
 @kernel function _divide_by_eigenvalues!(ϕc, b, λx, λy, λz, m)
     i, j, k = @index(Global, NTuple)
     ϕc[i, j, k] = - b[i, j, k] / (λx[i, 1, 1] + λy[1, j, 1] + λz[1, 1, k] - m)
-end
-
-@inline function set_first_element_to_zero!(storage, region, m)
-    if region == 1 && m === 0
-        CUDA.@allowscalar storage[1, 1, 1] = 0
-    end
 end
 
 function solve!(ϕ, solver::MultiRegionFFTBasedPoissonSolver, m=0)
@@ -152,8 +143,7 @@ function solve!(ϕ, solver::MultiRegionFFTBasedPoissonSolver, m=0)
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
     @apply_regionally begin
-        divide_by_eigenvalues!(storage.transposed, storage.transposed, λx, λy, λz, m, arch, tgrid)
-        set_first_element_to_zero!(storage.transposed, Iterate(1:length(grid.partition)), m)
+        divide_by_eigenvalues!(storage.transposed, storage.transposed, λx, λy, λz, m, arch, tgrid, Iterate(1:length(grid.partition)))
     end
 
     # Apply backward transforms in order

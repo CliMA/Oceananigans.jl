@@ -15,8 +15,8 @@ struct MultiRegionPoissonSolver{G, S}
     solver :: S
 end
 
-PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT)  = MultiRegionPoissonSolver(grid, FFTBasedPoissonSolver(grid, planner_flag))
-PressureSolver(arch, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionPoissonSolver(grid, FourierTridiagonalPoissonSolver(grid, planner_flag))
+# PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT)  = MultiRegionPoissonSolver(grid, FFTBasedPoissonSolver(grid, planner_flag))
+# PressureSolver(arch, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionPoissonSolver(grid, FourierTridiagonalPoissonSolver(grid, planner_flag))
 
 function FFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
     global_grid = reconstruct_global_grid(grid)
