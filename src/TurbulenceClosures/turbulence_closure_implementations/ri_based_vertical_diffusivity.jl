@@ -31,8 +31,8 @@ struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
 """
-    RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                               FT = Float64;
+    RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
+                               FT = Float64;]
                                Ri_dependent_tapering = ExponentialRiDependentTapering(),
                                ν₀  = 0.30,
                                κ₀  = 0.42,
@@ -42,23 +42,26 @@ struct HyperbolicTangentRiDependentTapering end
                                Riᵟ = 0.20,
                                warning = true)
 
-Return a closure that estimates the vertical viscosity and diffusivity
+Return a closure that estimates the vertical viscosity and diffusivit
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
-a decreasing function of the Richardson number, ``Ri``.
+a decreasing function of the Richardson number, ``Ri``. 
 
 Keyword Arguments
 =================
-* `Ri_dependent_tapering`: The ``Ri``-dependent tapering. Default: `ExponentialRiDependentTapering()`.
-* `ν₀` (Float64): Non-convective viscosity.
-* `κ₀` (Float64): Non-convective diffusivity for tracers.
-* `κᶜ` (Float64): Convective adjustment diffusivity for tracers.
-* `Cᵉ` (Float64): Entrainment coefficient for tracers.
-* `Ri₀` (Float64): ``Ri`` threshold for decreasing viscosity and diffusivity.
-* `Riᵟ` (Float64): ``Ri``-width over which viscosity and diffusivity decreases to 0.
+
+* `Ri_dependent_tapering`: The ``Ri``-dependent tapering.
+  Options are: `PiecewiseLinearRiDependentTapering()`,
+  `HyperbolicTangentRiDependentTapering()` (default), and
+  `ExponentialRiDependentTapering()`.
+* `ν₀`: Non-convective viscosity.
+* `κ₀`: Non-convective diffusivity for tracers.
+* `κᶜ`: Convective adjustment diffusivity for tracers.
+* `Cᵉ`: Entrainment coefficient for tracers.
+* `Ri₀`: ``Ri`` threshold for decreasing viscosity and diffusivity.
+* `Riᵟ`: ``Ri``-width over which viscosity and diffusivity decreases to 0.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
                                     FT = Float64;
-                                    #Ri_dependent_tapering = ExponentialRiDependentTapering(),
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     ν₀  = 0.30,
                                     κ₀  = 0.42,
