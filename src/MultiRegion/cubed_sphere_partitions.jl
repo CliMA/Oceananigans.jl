@@ -2,11 +2,11 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
-    div :: Int
+               div :: Int
     div_per_side_x :: M
     div_per_side_y :: P
-    function CubedSpherePartition(div, div_per_side_x, div_per_side_y)
-        return new{typeof(div), typeof(div_per_face), typeof{div_per_face}}(div, div_per_side_x, div_per_side_y)
+    function CubedSpherePartition(div, div_per_side_x::M, div_per_side_y::P) where {M, P}
+        return new{M, P}(div, div_per_side_x, div_per_side_y)
     end
 end
 
@@ -14,7 +14,8 @@ function CubedSpherePartition(; div_per_side_x = 1, div_per_side_y = 1)
 
     if div_per_side_x isa Number 
         if div_per_side_y isa Number
-            div_per_side_x != div_per_side_y $$ throw(ArgumentError("Regular cubed sphere must have div_per_side_x == div_per_side_y!!"))
+            div_per_side_x != div_per_side_y && 
+                    throw(ArgumentError("Regular cubed sphere must have div_per_side_x == div_per_side_y!!"))
             div = 6 * div_per_side_x * div_per_side_y
         else
             div = sum(div_per_side_y .* div_per_side_x)
@@ -34,22 +35,31 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 
 Base.length(p::CubedSpherePartition) = p.div
 
-@inline face_index(r, p::CubedSpherePartition)         = r ÷ p.div_per_face + 1
-@inline intra_face_index(r, p::CubedSpherePartition)   = mod(r, p.div_per_face) + 1
-@inline intra_face_index_x(r, p::CubedSpherePartition) = mod(intra_face_index(r, p), p.div_per_side) + 1
-@inline intra_face_index_y(r, p::CubedSpherePartition) = intra_face_index(r, p) ÷ p.div_per_side + 1 
+@inline div_per_face(r, p::RegularCubedSpherePartition)  = p.div_per_side_x    * p.div_per_side_y  
+@inline div_per_face(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    * p.div_per_side_y[r]
+@inline div_per_face(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] * p.div_per_side_y
 
-@inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * p.div_per_face + p.div_per_side * (fj  - 1) + fi
+
+@inline div_per_side_x(r, p::RegularCubedSpherePartition)  = p.div_per_side_x    
+@inline div_per_side_x(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    
+@inline div_per_side_x(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] 
+
+@inline face_index(r, p)         = r ÷ div_per_face(r, p) + 1
+@inline intra_face_index(r, p)   = mod(r, div_per_face(r, p)) + 1
+@inline intra_face_index_x(r, p) = mod(intra_face_index(r, p), div_per_side_x(r, p)) + 1
+@inline intra_face_index_y(r, p) = intra_face_index(r, p) ÷ div_per_side_x(r, p) + 1 
+
+@inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * div_per_face(r, p) + div_per_side_x(r, p) * (fj  - 1) + fi
 
 @inline function region_corners(r, p::CubedSpherePartition)  
  
-    face_idx_x = intra_face_index_x(r, p)
-    face_idx_y = intra_face_index_y(r, p)
+    fi = intra_face_index_x(r, p)
+    fj = intra_face_index_y(r, p)
 
-    bottom_left  = face_idx_x == 1 && face_idx_y == 1 ? true : false
-    bottom_right = face_idx_x == p.div_per_side && face_idx_y == 1 ? true : false
-    top_left     = face_idx_x == 1 && face_idx_y == p.div_per_side ? true : false
-    top_right    = face_idx_x == p.div_per_side && face_idx_y == p.div_per_side ? true : false
+    bottom_left  = fi == 1              && fj == 1              ? true : false
+    bottom_right = fi == p.div_per_side && fj == 1              ? true : false
+    top_left     = fi == 1              && fj == p.div_per_side ? true : false
+    top_right    = fi == p.div_per_side && fj == p.div_per_side ? true : false
 
     return (; bottom_left, bottom_right, top_left, top_right)
 end
@@ -98,18 +108,18 @@ end
 #####
 
 struct CubedSphereConnectivity
-    rank :: Int
+         rank :: Int
     from_rank :: Int
-    side :: Symbol
+         side :: Symbol
     from_side :: Symbol
 end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_face_index_x(region, p)
+    fj = intra_face_index_y(region, p)
 
-    face_idx = face_index(r, p)
+    face_idx = face_index(region, p)
 
     if fi == 1
         if mod(face_idx, 2) == 0
@@ -136,10 +146,10 @@ end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_face_index_x(region, p)
+    fj = intra_face_index_y(region, p)
 
-    face_idx = face_index(r, p)
+    face_idx = face_index(region, p)
 
     if fi == p.div_per_side
         if mod(face_idx, 2) != 0
@@ -166,10 +176,10 @@ end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_face_index_x(region, p)
+    fj = intra_face_index_y(region, p)
 
-    face_idx = face_index(r, p)
+    face_idx = face_index(region, p)
 
     if fj == 1
         if mod(face_idx, 2) != 0
@@ -196,10 +206,10 @@ end
 
 function inject_north_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_face_index_x(region, p)
+    fj = intra_face_index_y(region, p)
 
-    face_idx = face_index(r, p)
+    face_idx = face_index(region, p)
 
     if fj == p.div_per_side
         if mod(face_idx, 2) == 0
