@@ -51,19 +51,20 @@ pressure anomaly.
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      hydrostatic_pressure,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯u(i, j, k, grid, advection, velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, background_fields.velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
@@ -108,19 +109,20 @@ pressure anomaly.
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      hydrostatic_pressure,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯v(i, j, k, grid, advection, velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, background_fields.velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
@@ -163,17 +165,18 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      background_fields,
                                      velocities,
                                      tracers,
+                                     auxiliary_fields,
                                      diffusivities,
                                      forcings,
                                      clock)
 
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯w(i, j, k, grid, advection, velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, background_fields.velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, velocities, tracers, clock, buoyancy)
+             - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
@@ -215,18 +218,19 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                  background_fields,
                                  velocities,
                                  tracers,
+                                 auxiliary_fields,
                                  diffusivities,
                                  forcing,
                                  clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, velocities, tracers, clock, buoyancy)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end

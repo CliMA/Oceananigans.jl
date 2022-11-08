@@ -5,7 +5,8 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     PreconditionedConjugateGradientSolver,
-    HeptadiagonalIterativeSolver
+    HeptadiagonalIterativeSolver,
+    MultigridSolver
 
 using Statistics
 using FFTW
@@ -19,6 +20,7 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
+using Oceananigans: @ifhasamgx, hasamgx
 using Oceananigans.Grids: unpack_grid
 
 """
@@ -44,5 +46,6 @@ include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
 include("heptadiagonal_iterative_solver.jl")
+include("multigrid_solver.jl")
 
 end # module

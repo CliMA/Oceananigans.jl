@@ -216,7 +216,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO5())
+        for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO())
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
                 @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection=momentum_advection)

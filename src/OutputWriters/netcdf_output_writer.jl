@@ -167,7 +167,10 @@ Keyword arguments
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: false.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
+                Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                information about the boundary conditions is often crucial. In that case
+                you might need to set `with_halos = true`.
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
@@ -503,10 +506,10 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-              "├── filepath: ", ow.filepath, '\n',
-              "├── dimensions: $dims", '\n',
-              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: ", ow.filepath, "\n",
+              "├── dimensions: $dims", "\n",
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type))
 end
 

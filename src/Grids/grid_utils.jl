@@ -313,7 +313,7 @@ julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1)
                                                  topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Center, horz_periodic_grid)
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, 0:4), 1:3) with eltype Float64:
+3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
  -0.8333333333333334
  -0.5
  -0.16666666666666666
@@ -321,7 +321,7 @@ julia> zC = znodes(Center, horz_periodic_grid)
 
 ``` jldoctest znodes
 julia> zF = znodes(Face, horz_periodic_grid)
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}}, 0:5), 1:4) with eltype Float64:
+4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:5), 1:4) with eltype Float64:
  -1.0
  -0.6666666666666666
  -0.3333333333333333
@@ -403,7 +403,7 @@ Base.summary(::ZDirection) = "ZDirection"
 #####
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
 function domain_summary(topo, name, left, right)
@@ -414,10 +414,10 @@ function domain_summary(topo, name, left, right)
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   "RightConnected "
-    
-    prefix = string(topo_string, name, " ∈ [",
-                    scalar_summary(left), ", ",
-                    scalar_summary(right), interval)
+
+    return string(topo_string, name, " ∈ [",
+                  prettysummary(left), ", ",
+                  prettysummary(right), interval)
 end
 
 function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
@@ -426,7 +426,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
     return string(prefix, padding, coordinate_summary(spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
+coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
-                                                       name, scalar_summary(minimum(parent(Δ))),
-                                                       name, scalar_summary(maximum(parent(Δ))))
+                                                       name, prettysummary(minimum(parent(Δ))),
+                                                       name, prettysummary(maximum(parent(Δ))))

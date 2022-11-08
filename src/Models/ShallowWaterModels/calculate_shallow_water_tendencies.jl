@@ -1,13 +1,13 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans.Utils: work_layout
-using Oceananigans: fields
-
+using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 
 using Oceananigans.Architectures: device
 
 using Oceananigans.BoundaryConditions 
+
 
 """
     calculate_tendencies!(model::ShallowWaterModel)
@@ -15,7 +15,7 @@ using Oceananigans.BoundaryConditions
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::ShallowWaterModel)
+function calculate_tendencies!(model::ShallowWaterModel, callbacks)
 
     # Note:
     #
@@ -32,6 +32,7 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.grid,
                                                model.gravitational_acceleration,
                                                model.advection,
+                                               model.velocities,
                                                model.coriolis,
                                                model.closure,
                                                model.bathymetry,
@@ -51,6 +52,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.clock,
                                                fields(model))
 
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
+
     return nothing
 end
 
@@ -60,6 +63,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     grid,
                                                     gravitational_acceleration,
                                                     advection,
+                                                    velocities,
                                                     coriolis,
                                                     closure, 
                                                     bathymetry,
@@ -79,7 +83,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    args_vel = (grid, gravitational_acceleration, advection.momentum, coriolis, closure, 
+    args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
     args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
                       solution, tracers, diffusivities, forcings, clock, formulation)
@@ -115,6 +119,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure, 
                                 bathymetry,
@@ -127,7 +132,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
+    @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 
@@ -136,6 +141,7 @@ end
                                 grid,
                                 gravitational_acceleration,
                                 advection,
+                                velocities,
                                 coriolis,
                                 closure,
                                 bathymetry,
@@ -148,7 +154,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, 
+    @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure, 
                                                     bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 end
 

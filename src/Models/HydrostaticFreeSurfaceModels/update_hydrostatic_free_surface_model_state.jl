@@ -17,7 +17,7 @@ hydrostatic pressure) to the current model state.
 """
 update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid)
+function update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
     @apply_regionally masking_actions!(model)
 
@@ -29,6 +29,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
     fill_halo_regions!(model.pressure.pHY′)
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     return nothing
 end

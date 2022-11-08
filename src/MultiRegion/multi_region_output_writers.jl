@@ -10,13 +10,11 @@ import Oceananigans.OutputWriters:
 # a performant operation
 function fetch_output(mrf::MultiRegionField, model)
     field = reconstruct_global_field(mrf)
-    compute_at!(field, time(model))
+    compute_at!(field, model.clock.time)
     return parent(field)
 end
   
 function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
-    grid = user_output.grid
-  
     # TODO: support non-default indices I guess
     # for that we have to figure out how to partition indices, eg user_indices is "global"
     # indices = output_indices(user_output, grid, user_indices, with_halos)

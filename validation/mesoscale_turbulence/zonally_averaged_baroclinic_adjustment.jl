@@ -73,8 +73,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."
@@ -172,7 +172,6 @@ outputs = merge(fields(model), (; Rb))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
-                                                      field_slicer = nothing,
                                                       prefix = filename * "_fields",
                                                       overwrite_existing = true)
 

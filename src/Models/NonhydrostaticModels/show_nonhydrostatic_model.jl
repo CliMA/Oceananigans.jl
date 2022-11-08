@@ -12,20 +12,20 @@ function Base.show(io::IO, model::NonhydrostaticModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
     
-    print(io, summary(model), '\n',
-        "├── grid: ", summary(model.grid), '\n',
-        "├── timestepper: ", TS, '\n',
-        "├── tracers: ", tracernames, '\n',
-        "├── closure: ", closure_summary(model.closure), '\n',
-        "├── buoyancy: ", summary(model.buoyancy), '\n')
+    print(io, summary(model), "\n",
+        "├── grid: ", summary(model.grid), "\n",
+        "├── timestepper: ", TS, "\n",
+        "├── tracers: ", tracernames, "\n",
+        "├── closure: ", closure_summary(model.closure), "\n",
+        "├── buoyancy: ", summary(model.buoyancy), "\n")
 
     if isnothing(model.particles)
         print(io, "└── coriolis: ", summary(model.coriolis))
     else
         particles = model.particles.properties
         properties = propertynames(particles)
-        print(io, "├── coriolis: ", summary(model.coriolis), '\n')
-        print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
+        print(io, "├── coriolis: ", summary(model.coriolis), "\n")
+        print(io, "└── particles: ", summary(model.particles))
     end
 end
 

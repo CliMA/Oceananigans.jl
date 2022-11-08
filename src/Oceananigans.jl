@@ -4,8 +4,8 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.6"
-    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
+if VERSION < v"1.8"
+    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
 end
 
 export
@@ -28,7 +28,9 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder, 
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
@@ -92,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -112,7 +115,10 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    
+    # AMGX
+    @ifhasamgx
 
 using Printf
 using Logging
@@ -135,6 +141,19 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
+
+"Boolean denoting whether AMGX.jl can be loaded on machine."
+const hasamgx = @static Sys.islinux() ? true : false
+
+"""
+    @ifhasamgx expr
+
+Evaluate `expr` only if `hasamgx == true`.
+"""
+macro ifhasamgx(expr)
+
+    hasamgx ? :($(esc(expr))) : :(nothing) 
+end
 
 #####
 ##### Abstract types
@@ -161,6 +180,10 @@ abstract type AbstractDiagnostic end
 Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
+
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
 
 #####
 ##### Place-holder functions
@@ -198,10 +221,10 @@ include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 

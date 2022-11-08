@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
-using Oceananigans.Grids: scalar_summary
+using Oceananigans.Utils: prettysummary
 
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
@@ -20,20 +20,20 @@ required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EO
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
 Base.nameof(::Type{SeawaterBuoyancy}) = "SeawaterBuoyancy"
-Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", scalar_summary(b.gravitational_acceleration),
+Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", prettysummary(b.gravitational_acceleration),
                                            " and ", summary(b.equation_of_state))
 
 function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 
-    print(io, nameof(typeof(b)), "{$FT}:", '\n',
-              "├── gravitational_acceleration: ", b.gravitational_acceleration, '\n')
+    print(io, nameof(typeof(b)), "{$FT}:", "\n",
+              "├── gravitational_acceleration: ", b.gravitational_acceleration, "\n")
 
     if !isnothing(b.constant_temperature)
-        print(io, "├── constant_temperature: ", b.constant_temperature, '\n')
+        print(io, "├── constant_temperature: ", b.constant_temperature, "\n")
     end
 
     if !isnothing(b.constant_salinity)
-        print(io, "├── constant_salinity: ", b.constant_salinity, '\n')
+        print(io, "├── constant_salinity: ", b.constant_salinity, "\n")
     end
         
     print(io, "└── equation of state: ", summary(b.equation_of_state))

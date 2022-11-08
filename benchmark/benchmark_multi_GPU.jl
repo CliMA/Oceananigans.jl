@@ -70,7 +70,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         tracers = (:T, :b),
-                                        tracer_advection = WENO5(),
+                                        tracer_advection = WENO(),
                                         buoyancy = BuoyancyTracer(),                                        
                                         closure = closure)
 

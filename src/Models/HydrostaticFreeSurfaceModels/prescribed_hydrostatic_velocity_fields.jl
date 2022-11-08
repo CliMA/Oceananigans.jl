@@ -4,9 +4,13 @@
 
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField
+using Oceananigans.TimeSteppers: tick!
+using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
+import Oceananigans.Utils: datatuple
+import Oceananigans.TimeSteppers: time_step!
 
 using Adapt
 
@@ -69,6 +73,8 @@ end
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
+@inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
+
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
 ab2_step_free_surface!(::Nothing, args...) = NoneEvent()
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
@@ -79,6 +85,7 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
+FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
@@ -90,3 +97,13 @@ Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
                              Adapt.adapt(to, velocities.v),
                              Adapt.adapt(to, velocities.w),
                              nothing)
+
+# If the model only tracks particles... do nothing but that!!!
+const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T, V, B, R, F, P, U, C} where
+                 {TS, E, A, S, G, T, V, B, R, F, P<:LagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}                 
+
+function time_step!(model::OnlyParticleTrackingModel, Δt; euler=false) 
+    model.timestepper.previous_Δt = Δt
+    tick!(model.clock, Δt)
+    update_particle_properties!(model, Δt)
+end

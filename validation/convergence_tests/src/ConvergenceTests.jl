@@ -50,6 +50,31 @@ include("OneDimensionalUtils.jl")
 #
 include("OneDimensionalGaussianAdvectionDiffusion.jl")
 
+# Advection and diffusion of a 2D Gaussian:
+#
+# c = 1/√(4πκt) * exp( -(x - Ut)^2 / 4κt )
+#
+# Tests xy-advection, yz-advection and xz-advection.
+#
+include("TwoDimensionalGaussianAdvectionDiffusion.jl")
+
+# Advection of an Isoentropic 2D Vortex:
+#
+# 
+#
+# Tests xy-advection for conservative and vector invariant formulation
+#
+include("TwoDimensionalVortexAdvection.jl")
+
+# Advection of an Isoentropic 2D Vortex:
+#
+# 
+#
+# Tests xy-advection for conservative and vector invariant formulation
+#
+include("TwoDimensionalBurgersAdvection.jl")
+
+
 # Advection and diffusion of a 1D cosine:
 #
 # c = exp(-κt) * cos(x - Ut)
