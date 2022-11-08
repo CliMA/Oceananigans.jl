@@ -29,7 +29,7 @@ end
 # Recompute location of binary operation
 @inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
-indices(β::BinaryOperation) = construct_regionally(interpolate_indices, β.a, β.b; loc_operation = location(β))
+indices(β::BinaryOperation) = construct_regionally(intersect_indices, β.a, β.b; loc_operation = location(β))
 
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""

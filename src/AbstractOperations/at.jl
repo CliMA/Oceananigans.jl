@@ -58,34 +58,36 @@ indices(f::Function) = default_indices(3)
 indices(f::Number)   = default_indices(3)
 
 """
-    interpolate_indices(operands..., loc_operation = abstract_operation_location)
+    intersect_indices(operands..., loc_operation = abstract_operation_location)
 
 Utility to propagate operands' indices in `AbstractOperations`s with multiple operands 
 (`BinaryOperation`s and `MultiaryOperation`s).
 """
-function interpolate_indices(args...; loc_operation = (Center, Center, Center))
+function intersect_indices(loc, operands...)
     idxs = Any[:, :, :]
+    
     for i in 1:3
-        for arg in args
-            idxs[i] = interpolate_index(indices(arg)[i], idxs[i], location(arg)[i], loc_operation[i])
+        for op in operands
+            idxs[i] = combine_index(indices(op)[i], idxs[i], location(op)[i], loc[i])
         end
     end
 
     return Tuple(idxs)
 end
 
-interpolate_index(::Colon, ::Colon, args...)       = Colon()
-interpolate_index(::Colon, b::UnitRange, args...)  = b
+combine_index(::Colon, ::Colon, args...)       = Colon()
+combine_index(::Colon, b::UnitRange, args...)  = b
 
-function interpolate_index(a::UnitRange, ::Colon, loc, new_loc)  
+function combine_index(a::UnitRange, ::Colon, loc, new_loc)  
     a = corrected_index(a, loc, new_loc)
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
     first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
-    return a
+
+    return aloc
 end
 
-function interpolate_index(a::UnitRange, b::UnitRange, loc, new_loc)   
+function combine_index(a::UnitRange, b::UnitRange, loc, new_loc)   
     a = corrected_index(a, loc, new_loc)
 
     # Abstract operations that require an interpolation of a sliced fields are not supported!
