@@ -13,53 +13,64 @@ mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVe
 end
 
 """
-the sparse_approximate_inverse function calculates a SParse Approximate Inverse M ≈ A⁻¹ to be used as a preconditioner
-Since it can be applied to the residual with just a matrix multiplication instead of the solution
-of a triangular linear problem it makes it very appealing to GPU use
+    sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
 
-The algorithm implemeted here calculates M following the specifications found in
+Compute a Sparse Approximate Inverse `M ≈ A⁻¹` to be used as a preconditioner.
+Since it can be applied to the residual with just a matrix multiplication instead
+of the solution of a triangular linear problem it makes it very appealing to use
+on the GPU.
 
-Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
+The algorithm implemeted here computes `M` following the specifications found in
+
+> Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
 
 In particular, the algorithm tries to minimize the Frobenius norm of
 
-‖ A mⱼ - eⱼ ‖ where mⱼ and eⱼ are the jₜₕ column of matrix M and the identity matrix I, respectively
+```
+‖ A mⱼ - eⱼ ‖
+```
 
-Since we are solving for an "sparse approximate" inverse (i.e. a sparse version of the actually non-sparse A⁻¹),
-we start assuming that mⱼ has a sparsity pattern J, which means that
+where `mⱼ` and `eⱼ` denote the `jₜₕ` column of matrix `M` and the identity
+matrix `I`, respectively. Since we are solving for an "sparse approximate" inverse
+(i.e., a sparse version of the actually non-sparse `A⁻¹`), we start assuming that
+`mⱼ` has a sparsity pattern `J`, which means that
 
-mⱼ(k) = 0 ∀k ∉ J 
+```
+mⱼ(k) = 0 ∀k ∉ J
+```
 
-we call m̂ⱼ = mⱼ(J). From here we calculate the set of row indices I for which
+We denote `m̂ⱼ = mⱼ(J)`. From here we calculate the set of row indices `I` for which
 
-A(i, J) !=0 for i ∈ I 
+```
+A(i, J) !=0 for i ∈ I
+```
 
-we call Â = A(I, J). The problem is now reduced to a much smaller minimization problem which can be solved 
-with QR decomposition (which luckily we have neatly implemented in julia: Hooray! but not on GPUs... booo)
+We denote `Â = A(I, J)`. The problem is now reduced to a much smaller minimization
+problem which can be solved with QR decomposition (which luckily we have neatly implemented
+in Julia: Hooray! but not on GPUs... booo)
 
-once solved for m̂ⱼ we compute the residuals of the minimization problem
+Once solved for `m̂ⱼ` we compute the residuals of the minimization problem
 
+```
 r = eⱼ - A[:, J] * m̂
+```
 
-we can repeat the computation on the indices for which r != 0 (J̃ and respective Ĩ on the rows),
-so that we have Â = A(I U Ĩ, J U J̃) and m̂ = mⱼ(J U J̃)
+We can repeat the computation on the indices for which `r != 0` (`J̃` and respective `Ĩ`
+on the rows), so that we have `Â = A(I U Ĩ, J U J̃)` and `m̂ = mⱼ(J U J̃)`.
 
-(... in practice we choose only the more proficuous of the J̃, the ones that will have the larger
-change in residual value ...)
+(... in practice we choose only the more proficuous of the `J̃`, the ones that will have
+the larger change in residual value ...)
 
-To do that we do not need to recompute the entire QR factorization but just update it by appending the
-new terms (and recomputing QR for a small part of Â).
+To do that we do not need to recompute the entire QR factorization but just update it
+by appending the new terms (and recomputing QR for a small part of `Â`).
 
-sparse_approximate_inverse(A::AbstractMatrix; ε, nzrel)
+`sparse_approximate_inverse(A; ε, nzrel)` returns `M ≈ A⁻¹` where
+`‖ AM - I ‖ ≈ ε` and `nnz(M) ≈ nnz(A) * nzrel`.
 
-returns M ≈ A⁻¹ where `|| AM - I ||` ≈ ε and `nnz(M) ≈ nnz(A) * nzrel`
-
-if we choose a sufficiently large `nzrel` (`nzrel = size(A, 1)` for example), then
-`sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision`
-
+If we choose a sufficiently large `nzrel` (for example, `nzrel = size(A, 1)`), then
+`sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision`.
 """
 function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
-   
     FT = eltype(A)
     n  = size(A, 1)
     r  = spzeros(FT, n)
