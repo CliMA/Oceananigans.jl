@@ -11,6 +11,9 @@ function Δ_min(grid)
     return min(Δx_min, Δy_min)
 end
 
+show_grid(::RegRectilinearGrid)  = "Regular Grid"
+show_grid(::HRegRectilinearGrid) = "Stretched Grid"
+
 # Simulation with random initial velocities
 function random_nonhydrostatic_simulation(uᵢ, vᵢ, wᵢ, grid; P = XPartition, regions = 1, timestepper = :RungeKutta3)
 
@@ -77,7 +80,7 @@ for arch in archs
             wₑ = Array(interior(wₑ))
 
             for regions in [2, 4], P in partitioning
-                @info "  Testing $regions $(P)s with $(timestepper) on $(typeof(grid).name.wrapper) on the $arch"
+                @info "  Testing $regions $(P)s with $(timestepper) on $(show_grid(grid)) on the $arch"
                 u, v, w = random_nonhydrostatic_simulation(uᵢ, vᵢ, wᵢ, grid; P=P, regions=regions, timestepper)
 
                 u = interior(reconstruct_global_field(u))

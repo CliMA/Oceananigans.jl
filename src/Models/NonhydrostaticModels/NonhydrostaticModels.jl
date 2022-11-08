@@ -7,6 +7,8 @@ using DocStringExtensions
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using FFTW
+
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
