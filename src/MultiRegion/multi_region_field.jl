@@ -90,7 +90,7 @@ function reconstruct_global_indices(indices, p::XPartition, N)
     if idx1 == Colon() && idxl == Colon()
         idx_x = Colon()
     else
-        idx_x = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
+        idx_x = UnitRange(idx1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
     end
 
     idx_y = getregion(indices, 1)[2]

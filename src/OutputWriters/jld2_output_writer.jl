@@ -5,8 +5,8 @@ using Oceananigans.Models
 using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
 using Oceananigans.Fields: boundary_conditions, indices
 
-default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::NonhydrostaticModel)         = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel)           = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
 mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
@@ -201,9 +201,10 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
             # Serialize the location and boundary conditions of each output.
             for (i, (field_name, field)) in enumerate(pairs(outputs))
-                file["timeseries/$field_name/serialized/location"] = location(field)
-                file["timeseries/$field_name/serialized/indices"] = indices(field)
-                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
+                global_field = reconstruct_field(field)
+                file["timeseries/$field_name/serialized/location"] = location(global_field)
+                file["timeseries/$field_name/serialized/indices"]  =  indices(global_field)
+                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(global_field))
             end
         end
     catch err
@@ -212,6 +213,8 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     return nothing
 end
+
+reconstruct_field(field) = field
 
 initialize_jld2_file!(writer::JLD2OutputWriter, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
