@@ -58,51 +58,71 @@ indices(f::Function) = default_indices(3)
 indices(f::Number)   = default_indices(3)
 
 """
-    intersect_indices(operands..., loc_operation = abstract_operation_location)
+    intersect_indices(loc, operands...)
 
-Utility to propagate operands' indices in `AbstractOperations`s with multiple operands 
-(`BinaryOperation`s and `MultiaryOperation`s).
+Utility to compute the intersection of `operands' indices.
 """
 function intersect_indices(loc, operands...)
-    idxs = Any[:, :, :]
-    
-    for i in 1:3
-        for op in operands
-            idxs[i] = combine_index(indices(op)[i], idxs[i], location(op)[i], loc[i])
-        end
-    end
 
-    return Tuple(idxs)
+    idx1 = compute_index_intersection(Colon(), loc[1], operands...; dim=1)
+    idx2 = compute_index_intersection(Colon(), loc[2], operands...; dim=2)
+    idx3 = compute_index_intersection(Colon(), loc[3], operands...; dim=3)
+            
+    return (idx1, idx2, idx3)
 end
 
-combine_index(::Colon, ::Colon, args...)       = Colon()
-combine_index(::Colon, b::UnitRange, args...)  = b
+compute_index_intersection(to_idx, to_loc, op; dim) =
+    _compute_index_intersection(to_idx,
+                                indices(op, dim),
+                                to_loc,
+                                location(op, dim))
 
-function combine_index(a::UnitRange, ::Colon, loc, new_loc)  
-    a = corrected_index(a, loc, new_loc)
-
-    # Abstract operations that require an interpolation of a sliced fields are not supported!
-    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
-
-    return aloc
+"""Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
+function compute_index_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
+    new_to_idx = _compute_index_intersection(to_idx, location(op1, dim), to_loc, indices(op1, dim))
+    return compute_index_intersection(new_to_idx, to_loc, op2, more_ops...; dim)
 end
 
-function combine_index(a::UnitRange, b::UnitRange, loc, new_loc)   
-    a = corrected_index(a, loc, new_loc)
+# Life is pretty simple in this case.
+_compute_index_intersection(to_idx::Colon, from_idx::Colon, args...) = Colon()
 
-    # Abstract operations that require an interpolation of a sliced fields are not supported!
-    first(a) > last(a) && throw(ArgumentError("Cannot interpolate a sliced field from $loc to $(new_loc)!"))
-    
-    indices = UnitRange(max(first(a), first(b)), min(last(a), last(b)))
-    
-    # Abstract operations between parallel non-intersecating windowed fields are not supported
-    first(indices) > last(indices) && throw(ArgumentError("BinaryOperation operand indices $(a) and $(b) do not intersect!"))
-    return indices
+# Because `from_idx` imposes no restrictions, we just return `to_idx`.
+_compute_index_intersection(to_idx::UnitRange, from_idx::Colon, args...) = to_idx
+
+# This time we account for the possible range-reducing effect of interpolation on `from_idx`.
+function _compute_index_intersection(to_idx::Colon, from_idx::UnitRange, to_loc, from_loc)
+    shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
+    validate_shifted_index(shifted_idx)
+    return shifted_idx
 end
 
-# Windowed fields interpolated from `Center`s to `Face`s lose the first index.
-# Viceverse, windowed fields interpolated from `Face`s to `Center`s lose the last index
-corrected_index(a, ::Type{Face},   ::Type{Face})   = UnitRange(first(a),   last(a))
-corrected_index(a, ::Type{Center}, ::Type{Center}) = UnitRange(first(a),   last(a))
-corrected_index(a, ::Type{Face},   ::Type{Center}) = UnitRange(first(a),   last(a)-1)
-corrected_index(a, ::Type{Center}, ::Type{Face})   = UnitRange(first(a)+1, last(a))
+# Compute the intersection of two index ranges
+function _compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange, to_loc, from_loc)
+    shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
+    validate_shifted_index(shifted_idx)
+    
+    range_intersection = UnitRange(max(first(shifted_idx), first(to_idx)), min(last(shifted_idx), last(to_idx)))
+    
+    # Check validity of the intersection index range
+    first(range_intersection) > last(range_intersection) &&
+        throw(ArgumentError("Indices $(from_idx) and $(to_idx) interpolated from $(from_loc) to $(to_loc) do not intersect!"))
+
+    return range_intersection
+end
+
+validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
+    throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))
+
+"""
+    restrict_index_for_interpolation(from_idx, from_loc, to_loc)
+
+Return a "restricted" index range for the result of interpolating from
+`from_loc` to `to_loc`, over the index range `from_idx`:
+
+    * Windowed fields interpolated from `Center`s to `Face`s lose the first index.
+    * Conversely, windowed fields interpolated from `Face`s to `Center`s lose the last index
+"""
+restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Face})   = UnitRange(first(from_idx),   last(from_idx))
+restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx))
+restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx)-1)
+restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Face})   = UnitRange(first(from_idx)+1, last(from_idx))

@@ -20,7 +20,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, Π.args...; loc_operation = location(Π))
+indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
 function _multiary_operation(L, op, args, Largs, grid)
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
