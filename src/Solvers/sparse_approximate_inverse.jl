@@ -15,10 +15,11 @@ end
 """
     sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
 
-Compute a Sparse Approximate Inverse `M ≈ A⁻¹` to be used as a preconditioner.
-Since it can be applied to the residual with just a matrix multiplication instead
-of the solution of a triangular linear problem, it makes it very appealing to use
-on the GPU.
+Compute a sparse approximate inverse of `A`, `M ≈ A⁻¹`, that is a sparse version
+of the generally non-sparse `A⁻¹`. Sparse approximate inverse are very useful to
+be used as preconditioners. Since they can be applied to the residual with just a
+matrix multiplication instead of the solution of a triangular linear problem, it
+makes it very appealing to use on the GPU.
 
 The algorithm implemeted here computes `M` following the specifications found in
 
@@ -31,9 +32,8 @@ In particular, the algorithm tries to minimize the Frobenius norm of
 ```
 
 where `mⱼ` and `eⱼ` denote the j-th column of matrix `M` and the identity
-matrix `I`, respectively. Since we are solving for an "sparse approximate" inverse
-(i.e., a sparse version of the actually non-sparse `A⁻¹`), we start assuming that
-`mⱼ` has a sparsity pattern `J`, which means that
+matrix `I`, respectively. Since we are solving for an "sparse approximate" inverse,
+we start assuming that `mⱼ` has a sparsity pattern `J`, which means that
 
 ```
 mⱼ(k) = 0 ∀k ∉ J
@@ -64,8 +64,11 @@ the larger change in residual value ...)
 To do that we do not need to recompute the entire QR factorization but just update it
 by appending the new terms (and recomputing QR for a small part of `Â`).
 
-`sparse_approximate_inverse(A; ε, nzrel)` returns `M ≈ A⁻¹` where
-`‖ AM - I ‖ ≈ ε` and `nnz(M) ≈ nnz(A) * nzrel`.
+```julia
+sparse_approximate_inverse(A; ε, nzrel)
+```
+
+returns `M ≈ A⁻¹`, where `‖ AM - I ‖ ≈ ε` and `nnz(M) ≈ nnz(A) * nzrel`.
 
 If we choose a sufficiently large `nzrel` (for example, `nzrel = size(A, 1)`), then
 `sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision`.
