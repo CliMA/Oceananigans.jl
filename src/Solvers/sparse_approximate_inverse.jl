@@ -30,7 +30,7 @@ In particular, the algorithm tries to minimize the Frobenius norm of
 ‖ A mⱼ - eⱼ ‖
 ```
 
-where `mⱼ` and `eⱼ` denote the `jₜₕ` column of matrix `M` and the identity
+where `mⱼ` and `eⱼ` denote the j-th column of matrix `M` and the identity
 matrix `I`, respectively. Since we are solving for an "sparse approximate" inverse
 (i.e., a sparse version of the actually non-sparse `A⁻¹`), we start assuming that
 `mⱼ` has a sparsity pattern `J`, which means that
