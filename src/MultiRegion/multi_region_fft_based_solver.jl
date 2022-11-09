@@ -23,7 +23,7 @@ transposed_grid :: P
      operations :: T
 end
 
-PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFFTBasedPoissonSolver(grid, planner_flag)
+PressureSolver(::GPU, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFFTBasedPoissonSolver(grid, planner_flag)
 
 function MultiRegionFFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
     

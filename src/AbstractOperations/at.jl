@@ -71,6 +71,9 @@ function intersect_indices(loc, operands...)
     return (idx1, idx2, idx3)
 end
 
+# Fallback for `KernelFunctionOperation`s with no argument 
+compute_index_intersection(::Colon, to_loc; kw...) = Colon()
+
 compute_index_intersection(to_idx, to_loc, op; dim) =
     _compute_index_intersection(to_idx, indices(op, dim),
                                 to_loc, location(op, dim))

@@ -26,7 +26,7 @@ batched_tridiagonal_solver :: B
                source_term :: R
 end
 
-PressureSolver(arch, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFourierTridiagonalSolver(grid, planner_flag)
+PressureSolver(::GPU, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionFourierTridiagonalSolver(grid, planner_flag)
 
 function MultiRegionFourierTridiagonalSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
     

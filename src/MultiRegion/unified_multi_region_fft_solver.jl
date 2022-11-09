@@ -10,13 +10,13 @@ import Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSol
 using Oceananigans.Grids 
 using Oceananigans.Solvers: poisson_eigenvalues, plan_transforms
 
-struct MultiRegionPoissonSolver{G, S}
+struct UnifiedMultiRegionPoissonSolver{G, S}
     grid :: G
     solver :: S
 end
 
-# PressureSolver(arch, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT)  = MultiRegionPoissonSolver(grid, FFTBasedPoissonSolver(grid, planner_flag))
-# PressureSolver(arch, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = MultiRegionPoissonSolver(grid, FourierTridiagonalPoissonSolver(grid, planner_flag))
+PressureSolver(::CPU, grid::RegMultiRegionGrid, planner_flag=FFTW.PATIENT)  = UnifiedMultiRegionPoissonSolver(grid, FFTBasedPoissonSolver(grid, planner_flag))
+PressureSolver(::CPU, grid::HRegMultiRegionGrid, planner_flag=FFTW.PATIENT) = UnifiedMultiRegionPoissonSolver(grid, FourierTridiagonalPoissonSolver(grid, planner_flag))
 
 function FFTBasedPoissonSolver(grid::MultiRegionGrid, planner_flag=FFTW.PATIENT)
     global_grid = reconstruct_global_grid(grid)
@@ -39,8 +39,8 @@ function FourierTridiagonalPoissonSolver(grid::MultiRegionGrid, planner_flag=FFT
     return FourierTridiagonalPoissonSolver(s.grid, s.batched_tridiagonal_solver, source_term, storage, s.buffer, s.transforms)
 end
 
-const MRFFT = MultiRegionPoissonSolver{<:RegMultiRegionGrid}
-const MRFTS = MultiRegionPoissonSolver{<:HRegMultiRegionGrid}
+const MRFFT = UnifiedMultiRegionPoissonSolver{<:RegMultiRegionGrid}
+const MRFTS = UnifiedMultiRegionPoissonSolver{<:HRegMultiRegionGrid}
 
 function solve_for_pressure!(pressure, multi_solver::MRFFT, Δt, U★)
 
