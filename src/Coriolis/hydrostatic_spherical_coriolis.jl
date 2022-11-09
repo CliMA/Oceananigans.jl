@@ -14,7 +14,7 @@ struct WetCellEnstrophyConservingScheme end
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 
-A parameter object for constant rotation around a vertical axis.
+A parameter object for constant rotation around a vertical axis on the sphere.
 """
 struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
     rotation_rate :: FT
@@ -26,7 +26,7 @@ end
                                  rotation_rate = Ω_Earth,
                                  scheme = EnergyConservingScheme())
 
-Returns a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
+Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 By default, `rotation_rate` is assumed to be Earth's.
 
 Keyword arguments
@@ -34,7 +34,9 @@ Keyword arguments
 
 - `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `WetCellEnstrophyConservingScheme()`.
 """
-HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=EnergyConservingScheme()) where S =
+HydrostaticSphericalCoriolis(FT::DataType=Float64;
+                             rotation_rate = Ω_Earth,
+                             scheme :: S = EnergyConservingScheme()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
@@ -43,7 +45,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 
-@inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
+@inline z_f_cross_U(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, U) = zero(grid)
 
 #####
 ##### Wet Point Enstrophy-conserving scheme

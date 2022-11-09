@@ -5,12 +5,12 @@ using Oceananigans.Fields: ZeroField
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
 @inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
 
-@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
 
-@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(eltype(grid))
-@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 
 #####
 ##### Tracer advection operator

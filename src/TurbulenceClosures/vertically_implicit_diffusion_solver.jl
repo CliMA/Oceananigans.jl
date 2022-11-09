@@ -46,7 +46,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     κᵏ⁺¹ = κz(i, j, k+1, grid, closure_ij, K, id, clock)
 
     return ifelse(k > grid.Nz-1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
 
@@ -56,7 +56,7 @@ end
     κᵏ = κz(i, j, k′, grid, closure_ij, K, id, clock)
 
     return ifelse(k < 1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
 end
 
@@ -69,7 +69,7 @@ end
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end
 
@@ -78,7 +78,7 @@ end
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     return ifelse(k < 1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
 end
 

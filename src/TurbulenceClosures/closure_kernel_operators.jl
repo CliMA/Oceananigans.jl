@@ -128,7 +128,7 @@ const f = Face()
 ##### Immersed flux divergences
 #####
 
-@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, args...)   = zero(eltype(grid))
-@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, args...)   = zero(eltype(grid))
-@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, args...)   = zero(eltype(grid))
-@inline immersed_∇_dot_qᶜ(i, j, k, grid, args...) = zero(eltype(grid))
+@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, args...)   = zero(grid)
+@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, args...)   = zero(grid)
+@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, args...)   = zero(grid)
+@inline immersed_∇_dot_qᶜ(i, j, k, grid, args...) = zero(grid)
