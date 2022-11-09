@@ -72,10 +72,8 @@ function intersect_indices(loc, operands...)
 end
 
 compute_index_intersection(to_idx, to_loc, op; dim) =
-    _compute_index_intersection(to_idx,
-                                indices(op, dim),
-                                to_loc,
-                                location(op, dim))
+    _compute_index_intersection(to_idx, indices(op, dim),
+                                to_loc, location(op, dim))
 
 """Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
 function compute_index_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
