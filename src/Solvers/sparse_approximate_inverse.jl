@@ -17,7 +17,7 @@ end
 
 Compute a Sparse Approximate Inverse `M ≈ A⁻¹` to be used as a preconditioner.
 Since it can be applied to the residual with just a matrix multiplication instead
-of the solution of a triangular linear problem it makes it very appealing to use
+of the solution of a triangular linear problem, it makes it very appealing to use
 on the GPU.
 
 The algorithm implemeted here computes `M` following the specifications found in
