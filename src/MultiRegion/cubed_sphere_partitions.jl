@@ -2,31 +2,31 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
-               div :: Int
-    div_per_side_x :: M
-    div_per_side_y :: P
-    function CubedSpherePartition(div, div_per_side_x::M, div_per_side_y::P) where {M, P}
-        return new{M, P}(div, div_per_side_x, div_per_side_y)
+   div :: Int
+    Rx :: M
+    Ry :: P
+    function CubedSpherePartition(div, Rx::M, Ry::P) where {M, P}
+        return new{M, P}(div, Rx, Ry)
     end
 end
 
-function CubedSpherePartition(; div_per_side_x = 1, div_per_side_y = 1) 
+function CubedSpherePartition(; Rx = 1, Ry = 1) 
 
-    if div_per_side_x isa Number 
-        if div_per_side_y isa Number
-            div_per_side_x != div_per_side_y && 
-                    throw(ArgumentError("Regular cubed sphere must have div_per_side_x == div_per_side_y!!"))
-            div = 6 * div_per_side_x * div_per_side_y
+    if Rx isa Number 
+        if Ry isa Number
+            Rx != Ry && 
+                    throw(ArgumentError("Regular cubed sphere must have Rx == Ry!!"))
+            div = 6 * Rx * Ry
         else
-            div = sum(div_per_side_y .* div_per_side_x)
+            div = sum(Ry .* Rx)
         end
     else
-        div = sum(div_per_side_y .* div_per_side_x)
+        div = sum(Ry .* Rx)
     end
     
     div < 6 && throw(ArgumentError("Cubed sphere requires at least 6 regions!"))
 
-    return CubedSpherePartition(div, div_per_side_x, div_per_side_y)
+    return CubedSpherePartition(div, Rx, Ry)
 end
 
 const RegularCubedSpherePartition  = CubedSpherePartition{<:Number, <:Number}
@@ -35,20 +35,20 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 
 Base.length(p::CubedSpherePartition) = p.div
 
-@inline div_per_face(r, p::RegularCubedSpherePartition)  = p.div_per_side_x    * p.div_per_side_y  
-@inline div_per_face(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    * p.div_per_side_y[r]
-@inline div_per_face(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] * p.div_per_side_y
+@inline div_per_face(face_idx, p::RegularCubedSpherePartition)  = p.Rx    * p.Ry  
+@inline div_per_face(face_idx, p::XRegularCubedSpherePartition) = p.Rx    * p.Ry[face_idx]
+@inline div_per_face(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] * p.Ry
 
-@inline div_per_side_x(r, p::RegularCubedSpherePartition)  = p.div_per_side_x    
-@inline div_per_side_x(r, p::XRegularCubedSpherePartition) = p.div_per_side_x    
-@inline div_per_side_x(r, p::YRegularCubedSpherePartition) = p.div_per_side_x[r] 
+@inline Rx(face_idx, p::RegularCubedSpherePartition)  = p.Rx    
+@inline Rx(face_idx, p::XRegularCubedSpherePartition) = p.Rx    
+@inline Rx(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] 
 
 @inline face_index(r, p)         = r ÷ div_per_face(r, p) + 1
 @inline intra_face_index(r, p)   = mod(r, div_per_face(r, p)) + 1
-@inline intra_face_index_x(r, p) = mod(intra_face_index(r, p), div_per_side_x(r, p)) + 1
-@inline intra_face_index_y(r, p) = intra_face_index(r, p) ÷ div_per_side_x(r, p) + 1 
+@inline intra_face_index_x(r, p) = mod(intra_face_index(r, p), Rx(r, p)) + 1
+@inline intra_face_index_y(r, p) = intra_face_index(r, p) ÷ Rx(r, p) + 1 
 
-@inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * div_per_face(r, p) + div_per_side_x(r, p) * (fj  - 1) + fi
+@inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * div_per_face(face_idx, p) + Rx(face_idx, p) * (fj  - 1) + fi
 
 @inline function region_corners(r, p::CubedSpherePartition)  
  

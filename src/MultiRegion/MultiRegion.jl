@@ -39,6 +39,7 @@ getname(type) = typeof(type).name.wrapper
 include("multi_region_utils.jl")
 include("x_partitions.jl")
 include("y_partitions.jl")
+include("cubed_sphere_partitions.jl")
 include("multi_region_grid.jl")
 include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
