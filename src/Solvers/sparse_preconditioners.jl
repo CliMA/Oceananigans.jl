@@ -117,7 +117,7 @@ containing the diagonal of `A`, then
 
 - the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
 
-All preconditioners are calculated on CPU and then moved to the GPU.
+All preconditioners are calculated on CPU and, if the model is based on a GPU architecture, then moved to the GPU.
 
 Additionally, the first-order expansion has a method to calculate the preconditioner directly
 on the GPU `asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable
