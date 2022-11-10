@@ -101,9 +101,13 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
         devs = devices(mra)
     end
    
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
-        func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    @sync begin
+        for (r, dev) in enumerate(devs)
+            @async begin
+                switch_device!(dev)
+                func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+            end
+        end
     end
 
     sync_all_devices!(devs)
@@ -122,9 +126,13 @@ end
     end
 
     res = Vector(undef, length(devs))
-    for (r, dev) in enumerate(devs)
-        switch_device!(dev)
-        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    @sync begin
+        for (r, dev) in enumerate(devs)
+            @asyn begin
+                switch_device!(dev)
+                res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
+            end
+        end
     end
     sync_all_devices!(devs)
 
@@ -135,10 +143,14 @@ end
 @inline sync_all_devices!(mo::MultiRegionObject) = sync_all_devices!(devices(mo))
 
 @inline function sync_all_devices!(devices)
-    for dev in devices
-        switch_device!(dev)
-        sync_device!(dev)
-    end
+    @sync begin
+        for dev in devices
+            @async begin
+                switch_device!(dev)
+                sync_device!(dev)
+            end
+        end
+    end 
 end
 
 @inline sync_device!(::CuDevice) = CUDA.device_synchronize()
