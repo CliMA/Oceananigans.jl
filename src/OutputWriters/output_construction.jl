@@ -34,6 +34,13 @@ maybe_sliced_field(user_output::Field, indices) = view(user_output, indices...)
 ##### Function output fallback
 #####
 
+"""
+    construct_output(output, grid, indices, with_halos)
+
+Return a `Field` constructed from `output` and `indices`, recomputing `indices`
+if `with_halos` is false. The resulting `Field` is utilized by output writers
+for computing `output` and saving it to disk.
+"""
 function construct_output(output, grid, indices, with_halos)
     if !(indices isa typeof(default_indices(3)))
         output_type = output isa Function ? "Function" : ""
