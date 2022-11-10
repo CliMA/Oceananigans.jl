@@ -94,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -114,11 +115,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
     
-    # Library check
-    @ifhasamgx, @ifhasnetcdf
-
 using Printf
 using Logging
 using Statistics
@@ -140,11 +138,14 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-"Boolean denoting whether AMGX.jl can be loaded on machine."
+
 # TODO: find a way to check whether the libraries for AMGX and NETCDF 
 # (libamgxsh and libnetcdf, respectively) are installed on the machine
-const hasamgx   = false #@static Sys.islinux() ? true : false
-const hasnetcdf = false
+"Boolean denoting whether AMGX.jl can be loaded on machine."
+const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
+"Boolean denoting whether NCDatasets.jl can be loaded on machine."
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
 """
     @ifhasamgx expr
@@ -163,8 +164,6 @@ Evaluate `expr` only if `hasnetcdf == true`.
 macro ifhasnetcdf(expr)
     hasnetcdf ? :($(esc(expr))) : :(nothing) 
 end
-
-@ifhasnetcdf using NCDatasets
 
 #####
 ##### Abstract types
@@ -191,6 +190,10 @@ abstract type AbstractDiagnostic end
 Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
+
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
 
 #####
 ##### Place-holder functions

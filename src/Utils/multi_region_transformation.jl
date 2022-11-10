@@ -157,10 +157,11 @@ end
 @inline sync_device!(dev)        = nothing
 
 """
-macro `@apply_regionally` to distribute locally the function calls
-
-calls `compute_regionally` in case of a returning value and `apply_regionally!` 
-in case of no return
+    @apply_regionally expr
+    
+Use `@apply_regionally` to distribute locally the function calls.
+Call `compute_regionally` in case of a returning value and `apply_regionally!` 
+in case of no return.
 """
 macro apply_regionally(expr)
     if expr.head == :call

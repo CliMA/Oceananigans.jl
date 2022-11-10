@@ -67,7 +67,7 @@ end
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
@@ -87,9 +87,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.timestepper.previous_Δt = Δt
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
-    @apply_regionally calculate_tendencies!(model)
+    @apply_regionally calculate_tendencies!(model, callbacks)
     
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
     calculate_pressure_correction!(model, Δt)
@@ -97,7 +97,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
-    update_state!(model)
+    update_state!(model, callbacks)
     update_particle_properties!(model, Δt)
 
     return nothing

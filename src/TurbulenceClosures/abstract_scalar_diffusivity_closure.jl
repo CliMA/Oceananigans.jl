@@ -110,14 +110,14 @@ for (dir, Clo) in zip((:h, :z), (:AVD, :AHD))
     for code in (:ᶜᶜᶜ, :ᶠᶠᶜ, :ᶠᶜᶠ, :ᶜᶠᶠ)
         ν = Symbol(:ν, dir, code)
         @eval begin
-            @inline $ν(i, j, k, grid, clo::$Clo, K, clock, args...) = zero(eltype(grid))
+            @inline $ν(i, j, k, grid, clo::$Clo, K, clock, args...) = zero(grid)
         end
     end
 
     for code in (:ᶠᶜᶜ, :ᶜᶠᶜ, :ᶜᶜᶠ)
         κ = Symbol(:κ, dir, code)
         @eval begin
-            @inline $κ(i, j, k, grid, clo::$Clo, K, id, clock, args...) = zero(eltype(grid))
+            @inline $κ(i, j, k, grid, clo::$Clo, K, id, clock, args...) = zero(grid)
         end
     end
 end
@@ -214,8 +214,8 @@ const VITD = VerticallyImplicitTimeDiscretization
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, clo, args...)
 @inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_vz(i, j, k, grid, clo, args...)
-@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(grid)
                   
 # Vertically bounded grids
 #
@@ -240,12 +240,12 @@ end
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
     return ifelse((k == 1) | (k == grid.Nz+1), 
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(eltype(grid)))
+                  zero(grid))
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
     return ifelse((k == 1) | (k == grid.Nz+1), 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  zero(eltype(grid)))
+                  zero(grid))
 end
 

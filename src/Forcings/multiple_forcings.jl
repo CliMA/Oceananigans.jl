@@ -42,7 +42,7 @@ end
 
 # The magic (which doesn't seem to work on GPU now)
 @inline function (mf::MultipleForcings{N})(i, j, k, grid, clock, model_fields) where N
-    total_forcing = zero(eltype(grid))
+    total_forcing = zero(grid)
     forcings = mf.forcings
     ntuple(Val(N)) do n
         Base.@_inline_meta

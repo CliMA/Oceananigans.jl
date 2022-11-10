@@ -90,8 +90,7 @@ for S in (:MixingLength, :TurbulentKineticEnergyEquation)
 end
 
 """
-    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization, FT=Float64;
-                             Cᴰ = 0.215,
+    CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                              mixing_length = MixingLength{FT}(),
                              turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation{FT}(),
                              warning = true)
@@ -159,7 +158,6 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
     buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
-
 
     event = launch!(arch, grid, :xyz,
                     calculate_CATKE_diffusivities!,

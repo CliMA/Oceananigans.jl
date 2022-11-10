@@ -99,8 +99,8 @@ end
 @kernel function compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) 
     i, j, k, = @index(Global, NTuple)
 
-    closure_ij = getclosure(i, j, closure)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure_ij.isopycnal_tensor)
+    closure = getclosure(i, j, closure)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 

@@ -10,20 +10,20 @@ Turbulent kinetic energy dissipation
 Surface flux model
 ==================
 
-```math
+```
 Qᵉ = - Cᴰ * (Cᵂu★ * u★³ + CᵂwΔ * w★³)
 ```
 
 where `Qᵉ` is the surface flux of TKE, `Cᴰ` is a free parameter called the "dissipation parameter",
-`u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
+`u★ = (Qᵘ² + Qᵛ²)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
 turbulent velocity scale associated with the surface vertical grid spacing `Δz` and the
 surface buoyancy flux `Qᵇ`.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     Cᴰ⁻   :: FT = 1.0
     Cᴰ⁺   :: FT = 1.0
-    CᴰRiᶜ :: FT = Inf
-    CᴰRiʷ :: FT = 0.0
+    CᴰRiᶜ :: FT = 0.0
+    CᴰRiʷ :: FT = 1.0
     Cᵂu★  :: FT = 1.0
     CᵂwΔ  :: FT = 1.0
 end
@@ -36,12 +36,12 @@ end
 
 # Temporary way to get the vertical diffusivity for the TKE equation terms...
 # Assumes that the vertical diffusivity is dominated by the CATKE contribution.
-@inline shear_production(i, j, k, grid, closure, velocities, diffusivities) = zero(eltype(grid))
-@inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(eltype(grid))
+# TODO: include shear production and buoyancy flux from AbstractScalarDiffusivity
+@inline shear_production(i, j, k, grid, closure, velocities, diffusivities) = zero(grid)
+@inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) = zero(grid)
 
 # Unlike the above, this fallback for dissipation is generically correct (we only want to compute dissipation once)
-@inline dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs) = zero(eltype(grid))
-
+@inline dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs) = zero(grid)
 
 @inline function shear_productionᶜᶜᶠ(i, j, k, grid, velocities, diffusivities)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
@@ -49,29 +49,14 @@ end
     return @inbounds diffusivities.Kᵘ[i, j, k] * (∂z_u² + ∂z_v²)
 end
 
-@inline shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities) =
-    ℑzᵃᵃᶜ(i, j, k, grid, shear_productionᶜᶜᶠ, velocities, diffusivities)
-
-#=
-@inline function shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    νᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᵘ)
-    return νᶻ * (∂z_u² + ∂z_v²)
-end
-
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities)
-    κᶻ = ℑzᵃᵃᶜ(i, j, k, grid, diffusivities.Kᶜ)
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    return - κᶻ * N²
-end
-=#
-
 @inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
     κᶻ = @inbounds diffusivities.Kᶜ[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κᶻ * N²
 end
+
+@inline shear_production(i, j, k, grid, closure::FlavorOfCATKE, velocities, diffusivities) =
+    ℑzᵃᵃᶜ(i, j, k, grid, shear_productionᶜᶜᶠ, velocities, diffusivities)
 
 @inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
     ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
@@ -79,23 +64,22 @@ end
 const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    Qᵇ = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+    wb = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
-    Qᵇ_eⁱʲᵏ = Qᵇ / eⁱʲᵏ
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-    return ifelse(sign(Qᵇ) * sign(eⁱʲᵏ) < 0, zero(grid), Qᵇ)
+    return ifelse(sign(wb) * sign(eⁱʲᵏ) < 0, zero(grid), wb)
 end
 
-@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(eltype(grid))
+@inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD},
                                                   velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
 
-    # Start with Tracer mixing length
+    # Start with tracer mixing length
     ℓ = ℑzᵃᵃᶜ(i, j, k, grid, tracer_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # Ri-dependent dissipation coefficient
@@ -108,10 +92,6 @@ end
 
     eᵢ = @inbounds e[i, j, k]
 
-    # Reduce ℓ to grid scale when e is negative.
-    # ℓ_eff = ifelse(eᵢ > 0, ℓ, Δzᶜᶜᶠ(i, j, k, grid) / 10)
-    ℓ_eff = ℓ 
-
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -120,7 +100,7 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    return - Cᴰ * sqrt(abs(eᵢ)) / ℓ_eff
+    return - Cᴰ * sqrt(abs(eᵢ)) / ℓ
 end
 
 # Fallbacks for explicit time discretization
@@ -210,7 +190,6 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
     inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy)
 
-
 @inline inner_top_tke_flux(i, j, grid, clock, fields, parameters, closure::Tuple, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy) +
@@ -222,11 +201,9 @@ end
     wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
-    Cᴰ = tke.Cᴰ⁻
     Cᵂu★ = tke.Cᵂu★
     CᵂwΔ = tke.CᵂwΔ
 
-    #return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
     return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
 end
 

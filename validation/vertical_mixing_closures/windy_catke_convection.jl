@@ -3,29 +3,43 @@ using Oceananigans
 using Oceananigans.Units
 using Printf
 
-using Oceananigans.TurbulenceClosures:
-    RiBasedVerticalDiffusivity,
+using Oceananigans.TurbulenceClosures: RiBasedVerticalDiffusivity
+
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities:
     CATKEVerticalDiffusivity,
-    ConvectiveAdjustmentVerticalDiffusivity,
-    ExplicitTimeDiscretization
+    TurbulentKineticEnergyEquation,
+    MixingLength
 
 #####
 ##### Setup simulation
 #####
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1, convective_νz=0.01)
-
-grid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=16, z=(-128, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=1e-4)
 
 N² = 1e-5
 Qᵇ = +1.2e-7
-Qᵘ = -1e-4 #
+Qᵘ = -1e-4
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
-closure = CATKEVerticalDiffusivity()
+mixing_length = MixingLength(Cᴬc  = 0.5,
+                             Cᴬe  = 0.5,
+                             Cᵇu  = 0.5,
+                             Cᵇc  = 0.5,
+                             Cᵇe  = 0.5,
+                             Cᴷu⁺ = 0.5,
+                             Cᴷc⁺ = 0.5,
+                             Cᴷe⁺ = 0.5)
+
+turbulent_kinetic_energy_equation =
+    TurbulentKineticEnergyEquation(CᴰRiʷ = 0.5,
+                                   Cᵂu★ = 0.5,
+                                   CᵂwΔ = 0.5,
+                                   Cᴰ⁻ = 0.5)
+
+closure = CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
 
 model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
                                     tracers = (:b, :e),
@@ -35,9 +49,9 @@ model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
 bᵢ(x, y, z) = N² * z
 set!(model, b = bᵢ)
 
-simulation = Simulation(model, Δt=10minute, stop_time=48hours)
-
-closurename = string(nameof(typeof(closure)))
+stop_time = 12hours
+Δt = 10minutes
+simulation = Simulation(model; Δt, stop_iteration)
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers),

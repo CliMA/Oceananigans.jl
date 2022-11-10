@@ -105,21 +105,24 @@ end
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
 """
-The diagonally dominant inverse preconditioner is constructed with an asymptotic expansion of `A⁻¹` up to the second order
-If `I` is the Identity matrix and `D` is the matrix containing the diagonal of `A`, then
+    asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
 
-the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹` 
+Compute the diagonally-dominant inverse preconditioner is constructed with an asymptotic
+expansion of `A⁻¹` up to the second order. If `I` is the Identity matrix and `D` is the matrix
+containing the diagonal of `A`, then
 
-the 1st order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` 
+- the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹`
 
-the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
+- the 1st order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹`
 
-all preconditioners are calculated on CPU and then moved to the GPU. 
-Additionally the first order expansion has a method to calculate the preconditioner directly on the GPU
-`asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable time step where the preconditioner
-has to be recalculated often
+- the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
+
+All preconditioners are calculated on CPU and, if the model is based on a GPU architecture, then moved to the GPU.
+
+Additionally, the first-order expansion has a method to calculate the preconditioner directly
+on the GPU `asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable
+time step where the preconditioner has to be recalculated often.
 """
-
 function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
     
     arch                  = architecture(A)
