@@ -128,7 +128,7 @@ end
     res = Vector(undef, length(devs))
     @sync begin
         for (r, dev) in enumerate(devs)
-            @asyn begin
+            @async begin
                 switch_device!(dev)
                 res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
             end
