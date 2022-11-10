@@ -214,3 +214,9 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
 @inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
 @inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)
+
+@inline function get_multi_property(mrg::ImmersedMultiRegionGrid, ::Val{:underlying_grid})
+    global_grid = reconstruct_global_grid(mrg)
+    grid        = global_grid.underlying_grid
+    return MultiRegionGrid(grid, partition = mrg.partition, devices = mrg.devices, validate = false)
+end
