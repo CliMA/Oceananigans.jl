@@ -104,15 +104,20 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
 
     # TODO: is there a better way to set mean to 0?
     mean_ϕ = mean(real, ϕ)
-    copy_event = launch!(arch, solver.grid, :xyz, copy_real_subtract_mean!, x, ϕ, mean_ϕ, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.grid, :xyz, copy_real_subtract_mean!, x, ϕ, mean_ϕ, indices(x), dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return nothing
 end
 
-@kernel function copy_real_subtract_mean!(ϕ, ϕc, mean_ϕ)
+@kernel function copy_real_subtract_mean!(ϕ, ϕc, mean_ϕ, index_ranges)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[i, j, k] - mean_ϕ)
+
+    i′ = offset_compute_index(index_ranges[1], i)
+    j′ = offset_compute_index(index_ranges[2], j)
+    k′ = offset_compute_index(index_ranges[3], k)
+
+    @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k] - mean_ϕ)
 end
 
 """

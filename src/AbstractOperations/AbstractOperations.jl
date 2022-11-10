@@ -24,7 +24,7 @@ using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Fields: compute_at!
+import Oceananigans.Fields: compute_at!, indices
 
 #####
 ##### Basic functionality
@@ -33,6 +33,15 @@ import Oceananigans.Fields: compute_at!
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
+
+function Base.axes(f::AbstractOperation)
+    idx = indices(f)
+    if idx === (:, : ,:)
+        return Base.OneTo.(size(f))
+    else
+        return Tuple(idx[i] isa Colon ? Base.OneTo(size(f, i)) : idx[i] for i = 1:3)
+    end
+end
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
@@ -68,7 +77,7 @@ include("show_abstract_operations.jl")
 # Some operators:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary sqrt sin cos exp tanh
+@unary sqrt sin cos exp tanh abs
 @unary -
 @unary +
 

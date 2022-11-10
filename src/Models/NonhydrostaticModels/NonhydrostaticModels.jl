@@ -42,10 +42,17 @@ include("set_nonhydrostatic_model.jl")
 """
     fields(model::NonhydrostaticModel)
 
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
+Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
+auxiliary fields for a `NonhydrostaticModel` model.
 """
-fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
-prognostic_fields(model::NonhydrostaticModel) = fields(model)
+fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, model.auxiliary_fields)
+
+"""
+    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+
+Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
+"""
+prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")

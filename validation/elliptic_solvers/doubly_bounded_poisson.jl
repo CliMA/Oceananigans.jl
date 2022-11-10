@@ -13,6 +13,7 @@ using Oceananigans.Solvers: solve!,
 using BenchmarkTools,
       CUDA,
       IterativeSolvers
+using Oceananigans.Solvers: initialize_AMGX, finalize_AMGX
 
 using KernelAbstractions: @kernel, @index, Event
 using Statistics: mean
@@ -108,6 +109,8 @@ fill_halo_regions!(φ_cg)
 
 
 # Solve ∇²φ = r with `AlgebraicMultigrid` solver
+initialize_AMGX(arch)
+
 φ_mg = CenterField(grid)
 
 @info "Constructing an Algebraic Multigrid solver..."
@@ -182,6 +185,7 @@ end
 
 fill_halo_regions!(φ_cgmg)
 finalize_solver!(cgmg_solver)
+finalize_AMGX(arch)
 
 #=
 using  GLMakie
