@@ -74,8 +74,8 @@ end
     # Transform Cartesian velocities into grid-dependent particle coordinate system.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity.
-    @inbounds particles.x[p] += coordinate_transform_u(i, j, k, grid, u) * Δt
-    @inbounds particles.y[p] += coordinate_transform_v(i, j, k, grid, v) * Δt
+    @inbounds particles.x[p] += coordinate_transform_u(j, grid, u) * Δt
+    @inbounds particles.y[p] += coordinate_transform_v(j, grid, v) * Δt
     @inbounds particles.z[p] += w * Δt
 
     x, y, z = return_face_metrics(grid)
@@ -108,11 +108,11 @@ end
 # associated with `grid`:
 #     * No transform for `RectilinearGrid` / Cartesian coordinates
 #     * Transform to longitudinal / meridional angular velocity components for `LatitudeLongitudeGrid` and geographic coordinates
-@inline coordinate_transform_u(i, j, k, grid::RectilinearGrid, u) = u
-@inline coordinate_transform_u(i, j, k, grid::LatitudeLongitudeGrid, v) = u / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * 360 / 2π
+@inline coordinate_transform_u(j, grid::RectilinearGrid, u) = u
+@inline coordinate_transform_u(j, grid::LatitudeLongitudeGrid, v) = u / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * 360 / 2π
 
-@inline coordinate_transform_v(i, j, k, grid::RectilinearGrid, v) = v
-@inline coordinate_transform_v(i, j, k, grid::LatitudeLongitudeGrid, v) = v / grid.radius * 360 / 2π
+@inline coordinate_transform_v(j, grid::RectilinearGrid, v) = v
+@inline coordinate_transform_v(j, grid::LatitudeLongitudeGrid, v) = v / grid.radius * 360 / 2π
 
 @inline return_face_metrics(g::LatitudeLongitudeGrid) = (g.λᶠᵃᵃ, g.φᵃᶠᵃ, g.zᵃᵃᶠ)
 @inline return_face_metrics(g::RectilinearGrid)       = (g.xᶠᵃᵃ, g.yᵃᶠᵃ, g.zᵃᵃᶠ)
