@@ -14,10 +14,9 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data, validate_boundary_conditions, validate_indices
+import Oceananigans.Grids: validate_index
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
-
-validate_indices(indices, loc, grid::ConformalCubedSphereGrid) = indices
 
 function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
 
@@ -27,6 +26,8 @@ function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
 
     return nothing
 end
+
+
 
 # We don't support validating cubed sphere boundary conditions at this time
 validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
@@ -72,6 +73,20 @@ end
 # This means we don't support fluxes through immersed boundaries on the cubed sphere
 import Oceananigans.Fields: immersed_boundary_condition
 immersed_boundary_condition(::AbstractCubedSphereField) = nothing
+
+import Oceananigans.OutputWriters: construct_output, fetch_output
+
+construct_output(user_output::AbstractCubedSphereField, args...) = user_output
+
+# Needed to support `fetch_output` with `model::Nothing`.
+time(model) = model.clock.time
+time(::Nothing) = nothing
+
+function fetch_output(field::AbstractCubedSphereField, model)
+    compute_at!(field, time(model))
+    data = Tuple(parent(field.data[n]) for n in 1:length(field.data))
+    return data
+end
 
 #####
 ##### Applying flux boundary conditions

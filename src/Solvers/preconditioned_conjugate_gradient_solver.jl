@@ -40,6 +40,7 @@ initialize_precondition_product(::Nothing, template_field) = nothing
 
 Returns a `PreconditionedConjugateGradientSolver` that solves the linear equation
 ``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+
 The solver is used by calling
 
 ```
@@ -51,22 +52,21 @@ for `solver`, right-hand side `b`, solution `x`, and optional arguments `args...
 Arguments
 =========
 
+* `linear_operation`: Function with signature `linear_operation!(p, y, args...)` that calculates
+                      `A * y` and stores the result in `p` for a "candidate solution" `y`. `args...`
+                      are optional positional arguments passed from `solve!(x, solver, b, args...)`.
+
 * `template_field`: Dummy field that is the same type and size as `x` and `b`, which
                     is used to infer the `architecture`, `grid`, and to create work arrays
                     that are used internally by the solver.
-
-* `linear_operation`: Function with signature `linear_operation!(p, y, args...)` that calculates
-                     `A*y` and stores the result in `p` for a "candidate solution `y`. `args...`
-                     are optional positional arguments passed from `solve!(x, solver, b, args...)`.
 
 * `maxiter`: Maximum number of iterations the solver may perform before exiting.
 
 * `reltol, abstol`: Relative and absolute tolerance for convergence of the algorithm.
                     The iteration stops when `norm(A * x - b) < tolerance`.
 
-* `preconditioner`: Object for which `precondition!(z, preconditioner, r, args...)`
-                    computes `z = P * r`, where `r` is the residual. Typically `P`
-                    is approximately `A⁻¹`.
+* `preconditioner`: Object for which `precondition!(z, preconditioner, r, args...)` computes `z = P * r`,
+                    where `r` is the residual. Typically `P` is approximately `A⁻¹`.
 
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
@@ -159,23 +159,23 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     # Initialize
     solver.iteration = 0
 
-    # q = A*x
+    # q = A * x
     q = solver.linear_operator_product
     solver.linear_operation!(q, x, args...)
 
-    # r = b - A*x
+    # r = b - A * x
     parent(solver.residual) .= parent(b) .- parent(q)
 
     residual_norm = norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
-    @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver, |A * x|: $(norm(q))"
 
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
-
+    
     return x
 end
 
@@ -233,14 +233,16 @@ function iterating(solver, tolerance)
     return true
 end
 
+finalize_solver!(solver::PreconditionedConjugateGradientSolver) = 
+    finalize_solver!(solver.preconditioner)
+
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
-    print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), '\n',
-              "├── template field: ", summary(solver.residual), '\n',
-              "├── grid: ", summary(solver.grid),
-              "├── linear_operation!: ", prettysummary(solver.linear_operation!), '\n',
-              "├── preconditioner: ", prettysummary(solver.preconditioner), '\n',
-              "├── reltol: ", prettysummary(solver.reltol), '\n',
-              "├── abstol: ", prettysummary(solver.abstol), '\n',
+    print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), "\n",
+              "├── template field: ", summary(solver.residual), "\n",
+              "├── grid: ", summary(solver.grid), "\n",
+              "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",
+              "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
+              "├── reltol: ", prettysummary(solver.reltol), "\n",
+              "├── abstol: ", prettysummary(solver.abstol), "\n",
               "└── maxiter: ", solver.maxiter)
 end
-

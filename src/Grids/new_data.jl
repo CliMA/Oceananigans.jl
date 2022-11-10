@@ -19,7 +19,7 @@ offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
 is `Bounded` and has length `N` and with halo points `H`.
 """
-offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Type{Face}, ::Type{<:BoundedTopology}, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
@@ -57,6 +57,7 @@ function new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices
     arch = architecture(grid)
     Tx, Ty, Tz = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
+    indices = validate_indices(indices, loc, grid)
     return offset_data(underlying_data, grid, loc, indices)
 end
 

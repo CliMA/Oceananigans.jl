@@ -43,13 +43,11 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
     fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
-
-    U, C = velocities, tracers
-
+     
     K, b = nothing, nothing
-    closure_args = (U, C, clock, b)
+    closure_args = (clock, model_fields, b)
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), closure_args...) == - 2κ
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), tracers[1], closure_args...) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
     @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 4ν
     @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 6ν
@@ -89,13 +87,11 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
     model_fields = merge(datatuple(velocities), datatuple(tracers))
     fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = velocities, tracers
-
     K, b = nothing, nothing
-    closure_args = (U, C, clock, b)
+    closure_args = (clock, model_fields, b)
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), closure_args...) == -  8κh &&
-            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), closure_args...) == - 10κz &&
+    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), T, closure_args...) == -  8κh &&
+            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), T, closure_args...) == - 10κz &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (2νh) &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (4νz) &&
               ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (4νh) &&
@@ -124,6 +120,19 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
         time_step!(model, 1, euler=true)
     end
+    return true
+end
+
+function time_step_with_variable_discrete_diffusivity(arch)
+    @inline νd(i, j, k, grid, clock, fields) = 1 + fields.u[i, j, k] * 5
+    @inline κd(i, j, k, grid, clock, fields) = 1 + fields.v[i, j, k] * 5
+
+    closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
+    closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
+
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
+    time_step!(model, 1, euler=true)
+
     return true
 end
 
@@ -211,6 +220,7 @@ end
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
+            @test time_step_with_variable_discrete_diffusivity(arch)
         end
     end
 

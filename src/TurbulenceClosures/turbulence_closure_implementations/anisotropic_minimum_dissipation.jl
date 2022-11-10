@@ -4,8 +4,8 @@ using Oceananigans.Operators
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
 Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
-by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
+proposed originally by [Rozema15](@cite) and [Abkar16](@cite), then modified by [Verstappen18](@cite),
+and finally described and validated for by [Vreugdenhil18](@cite).
 """
 struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
     Cν :: PN
@@ -24,16 +24,16 @@ const AMD = AnisotropicMinimumDissipation
 
 Base.show(io::IO, closure::AMD{TD}) where TD =
     print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
-              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
-              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
+              "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, "\n",
+              "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, "\n",
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
 
 """
-    AnisotropicMinimumDissipation(time_discretization = ExplicitTimeDiscretization, FT = Float64;
+    AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
                                   C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
                                   
                                        
-Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
+Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
@@ -100,6 +100,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
 
 References
 ==========
+
 Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
     flow using the anisotropic minimum-dissipation model", Physics of Fluids 30, 085104.
 
@@ -135,7 +136,7 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
-@inline function νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
+@inline function calc_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
@@ -157,15 +158,14 @@ end
     return max(zero(FT), νˢᵍˢ)
 end
 
-@inline function κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index},
-                       U) where {tracer_index}
+@inline function calc_κᶜᶜᶜ(i, j, k, grid, closure::AMD, c, ::Val{tracer_index}, U) where {tracer_index}
 
     FT = eltype(grid)
     ijk = (i, j, k, grid)
 
     @inbounds Cκ = closure.Cκ[tracer_index]
 
-    σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c)
+    σ = norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c)
 
     if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
@@ -186,8 +186,8 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     buoyancy = model.buoyancy
 
     workgroup, worksize = work_layout(grid, :xyz)
-    viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
-    diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
+    viscosity_kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
     barrier = device_event(arch)
     viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers, dependencies=barrier)
@@ -205,15 +205,6 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     return nothing
 end
 
-@kernel function calculate_viscosity!(νₑ, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
-    i, j, k = @index(Global, NTuple)
-    @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
-end
-
-@kernel function calculate_tracer_diffusivity!(κₑ, grid, closure, c, tracer_index, U)
-    i, j, k = @index(Global, NTuple)
-    @inbounds κₑ[i, j, k] = κᶜᶜᶜ(i, j, k, grid, closure, c, tracer_index, U)
-end
 
 #####
 ##### Filter width at various locations
@@ -366,4 +357,3 @@ function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
 
     return (; νₑ, κₑ)
 end
-

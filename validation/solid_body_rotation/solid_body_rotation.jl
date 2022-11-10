@@ -125,7 +125,7 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                           schedule = TimeInterval(super_rotation_period / 1000),
-                                                          prefix = output_prefix,
+                                                          filename = output_prefix,
                                                           field_slicer = nothing,
                                                           overwrite_existing = true)
 
@@ -215,5 +215,5 @@ end
 
 filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=VectorInvariant(), prefix = "2ndorder")
 plot_zonal_average_solid_body_rotation(filepath)
-filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=WENO5(zweno=true, vector_invariant=true), prefix = "weno")
+filepath = run_solid_body_rotation(Nx=180, Ny=60, super_rotations=0.5, advection_scheme=WENO(zweno=true, vector_invariant=true), prefix = "weno")
 plot_zonal_average_solid_body_rotation(filepath)

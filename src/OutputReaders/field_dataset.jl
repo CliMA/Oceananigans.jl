@@ -49,5 +49,5 @@ end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
 
-Base.show(io::IO, fds::FieldDataset) where {X, Y, Z, K, A} =
+Base.show(io::IO, fds::FieldDataset) =
   print(io, "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries.")

@@ -7,9 +7,6 @@ Documenting the public user interface.
 ```@autodocs
 Modules = [Oceananigans]
 Private = false
-Pages   = [
-    "Oceananigans.jl"
-]
 ```
 
 ## Abstract operations
@@ -31,7 +28,6 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Architectures]
 Private = false
-Pages   = ["Architectures.jl"]
 ```
 
 ## Boundary conditions
@@ -59,6 +55,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Diagnostics]
+Private = false
+```
+
+## Distributed
+
+```@autodocs
+Modules = [Oceananigans.Distributed]
 Private = false
 ```
 
@@ -132,8 +135,20 @@ Private = false
 ```@autodocs
 Modules = [Oceananigans.Models.ShallowWaterModels]
 Private = false
-Pages   = [
-    "Models/ShallowWaterModels/shallow_water_model.jl"
+```
+
+## MultiRegion
+
+```@autodocs
+Modules = [Oceananigans.MultiRegion]
+Private = false
+```
+
+## Operators
+
+```@autodocs
+Modules = [Oceananigans.Operators]
+Private = false
 ]
 ```
 
@@ -192,5 +207,12 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Utils]
+Private = false
+```
+
+## Units
+
+```@autodocs
+Modules = [Oceananigans.Units]
 Private = false
 ```

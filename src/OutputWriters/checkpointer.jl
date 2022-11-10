@@ -1,7 +1,7 @@
 using Glob
 import Oceananigans.Fields: set!
 
-using Oceananigans: fields
+using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
@@ -20,12 +20,8 @@ end
                  dir = ".",
                  prefix = "checkpoint",
                  overwrite_existing = false,
-                 verbose = false,
                  cleanup = false,
-                 properties = [:architecture, :grid, :clock, :coriolis,
-                               :buoyancy, :closure, :velocities, :tracers,
-                               :timestepper, :particles]
-                )
+                 additional_kwargs...)
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -60,7 +56,10 @@ Keyword arguments
 - `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
              Default: `false`.
 
-- `properties`: List of model properties to checkpoint. Some are required.
+- `properties`: List of model properties to checkpoint. This list must contain
+                `[:grid, :architecture, :timestepper, :particles]`.
+                Default: [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure,
+                          :velocities, :tracers, :timestepper, :particles]
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -209,7 +208,7 @@ function set!(model, filepath::AbstractString)
         model.grid == checkpointed_grid ||
              error("The grid associated with $filepath and model.grid are not the same!")
 
-        model_fields = fields(model)
+        model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
             try

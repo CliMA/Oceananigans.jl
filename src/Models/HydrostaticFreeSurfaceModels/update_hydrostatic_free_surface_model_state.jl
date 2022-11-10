@@ -9,45 +9,49 @@ import Oceananigans.TimeSteppers: update_state!
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
+# Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
+# single column models.
+
 """
-    update_state!(model::HydrostaticFreeSurfaceModel)
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
-hydrostatic pressure) to the current model state.
+hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
+they are called in the end.
 """
-update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    # Mask immersed fields
-    η = displacement(model.free_surface)
+    @apply_regionally masking_actions!(model)
 
-    masking_events = Any[mask_immersed_field!(field)
-                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
-
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(grid, 3)))
-
-    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
-
-    # Fill halos for velocities and tracers. On the CubedSphere, the halo filling for velocity fields is wrong.
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-
-    # This _refills_ the halos for horizontal velocity fields when grid::ConformalCubedSphereGrid
-    # For every other type of grid, fill_horizontal_velocity_halos! does nothing.
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
-    compute_w_from_continuity!(model)
+    @apply_regionally compute_w_diffusivities_pressure!(model)
 
     fill_halo_regions!(model.velocities.w, model.clock, fields(model))
-
-    compute_auxiliary_fields!(model.auxiliary_fields)
-
-    # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
-
-    update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
     fill_halo_regions!(model.pressure.pHY′)
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+    
+    return nothing
+end
+
+# Mask immersed fields
+function masking_actions!(model)
+    η = displacement(model.free_surface)
+    masking_events = Any[mask_immersed_field!(field)
+                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3)))    
+    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
+end
+
+function compute_w_diffusivities_pressure!(model) 
+    compute_w_from_continuity!(model)
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
+    update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
 
     return nothing
 end

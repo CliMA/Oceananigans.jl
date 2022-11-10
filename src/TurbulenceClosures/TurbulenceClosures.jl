@@ -4,15 +4,19 @@ export
     AbstractEddyViscosityClosure,
     VerticalScalarDiffusivity,
     HorizontalScalarDiffusivity,
+    HorizontalDivergenceScalarDiffusivity,
     ScalarDiffusivity,
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
+    HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
@@ -29,8 +33,9 @@ export
 
 using CUDA
 using KernelAbstractions
+using Adapt 
 
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -59,14 +64,11 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
+with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
+calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
-
-# To allow indexing a diffusivity with (Lx, Ly, Lz, i, j, k, grid)
-struct DiscreteDiffusionFunction{F} <: Function
-    func :: F
-end
 
 #####
 ##### Tracer indices
@@ -84,6 +86,7 @@ end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
+include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")

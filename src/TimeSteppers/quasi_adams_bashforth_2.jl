@@ -1,6 +1,7 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -66,7 +67,7 @@ end
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
@@ -79,28 +80,32 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         # Ensure zeroing out all previous tendency fields to avoid errors in
         # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
         for field in model.timestepper.G⁻
-            !isnothing(field) && fill!(field, 0)
+            !isnothing(field) && @apply_regionally fill!(field, 0)
         end
     end
 
     model.timestepper.previous_Δt = Δt
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
-    calculate_tendencies!(model)
-
+    @apply_regionally calculate_tendencies!(model, callbacks)
+    
     ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
-
     calculate_pressure_correction!(model, Δt)
-    pressure_correct_velocities!(model, Δt)
+
+    @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
-    update_state!(model)
-    store_tendencies!(model)
+    update_state!(model, callbacks)
     update_particle_properties!(model, Δt)
 
     return nothing
+end
+
+function correct_velocities_and_store_tendecies!(model, Δt)
+    pressure_correct_velocities!(model, Δt)
+    store_tendencies!(model)
 end
 
 #####

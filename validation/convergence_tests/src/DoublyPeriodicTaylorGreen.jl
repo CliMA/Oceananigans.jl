@@ -41,7 +41,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, model.velocities;
                                                           dir = dir, overwrite_existing = true, field_slicer = nothing,
-                                                          prefix = @sprintf("taylor_green_Nx%d_Δt%.1e", Nx, Δt),
+                                                          filename = @sprintf("taylor_green_Nx%d_Δt%.1e", Nx, Δt),
                                                           schedule = TimeInterval(stop_iteration * Δt / 10))
 
     return simulation

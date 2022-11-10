@@ -33,11 +33,11 @@ using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
+using Oceananigans.MultiRegion
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
 
 using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
-using TimesDates: TimeDate
 using Statistics: mean
 using LinearAlgebra: norm
 using NCDatasets: Dataset
@@ -67,11 +67,8 @@ closures = (
 ##### Run tests!
 #####
 
-CUDA.allowscalar(true)
-
 float_types = (Float32, Float64)
 
-include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 archs = test_architectures()

@@ -3,6 +3,7 @@
 @inline adapt_if_vector(to, var) = var
 @inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
 
+get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
@@ -12,16 +13,16 @@ get_coord_face(coord::Function, i) = coord(i)
 get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 lower_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::Type{<:Bounded}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
 
 upper_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::Type{<:Bounded}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
 
-upper_interior_F(topology, coord, Δ)       = coord - Δ
-upper_interior_F(::Type{<:Bounded}, coord) = coord
+upper_interior_F(topology, coord, Δ)               = coord - Δ
+upper_interior_F(::Type{<:BoundedTopology}, coord) = coord
 
-total_interior_length(topology, N)          = N
-total_interior_length(::Type{<:Bounded}, N) = N + 1
+total_interior_length(topology, N)                  = N
+total_interior_length(::Type{<:BoundedTopology}, N) = N + 1
 
 # generate a stretched coordinate passing the explicit coord faces as vector of functionL
 function generate_coordinate(FT, topology, N, H, coord, arch)
@@ -80,15 +81,12 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     @assert length(coord) == 2
 
-    c₁, c₂ = @. FT(coord)
+    c₁, c₂ = @. BigFloat(coord)
     @assert c₁ < c₂
     L = c₂ - c₁
 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
-    
-    F₋ = c₁
-    F₊ = upper_interior_F(topology, c₂, Δ)
 
     F = range(c₁, c₂, length = total_interior_length(topology, N))
     F = StepRangeLen(F.ref, F.step, F.len + 2 * H, F.offset + H)

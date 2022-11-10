@@ -12,11 +12,11 @@ The explicit free surface solver.
 
 $(TYPEDFIELDS)
 """
-struct ExplicitFreeSurface{E, T}
+struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
     "free surface elevation"
     η :: E
     "gravitational accelerations"
-    gravitational_acceleration :: T
+    gravitational_acceleration :: G
 end
 
 ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
@@ -41,32 +41,44 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.η)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.η)
 
 #####
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, velocities_update) =
-    explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) 
+    @apply_regionally prognostic_field_events = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
+    return prognostic_field_events
+end
 
-explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
-    launch!(model.architecture, model.grid, :xy,
-            _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
-            model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
-            dependencies = device_event(model.architecture))
+# ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
+#     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events)
+
+function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognostic_field_events) 
+    
+    free_surface_event = launch!(model.architecture, model.grid, :xy,
+                                _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
+                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3),
+                                dependencies = device_event(model.architecture))
+    
+    return MultiEvent(tuple(prognostic_field_events[1]..., prognostic_field_events[2]..., free_surface_event))
+    
+    # wait(device(model.architecture), free_surface_event)
+    # return nothing
+end
 
 #####
 ##### Kernel
 #####
 
-@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻) where FT
+@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        η[i, j, 1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
+        η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
     end
 end

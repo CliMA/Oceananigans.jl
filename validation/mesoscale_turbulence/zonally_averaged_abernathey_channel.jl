@@ -261,10 +261,9 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = "eddying_channel",
                                                         overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       schedule = TimeInterval(10day),
-                                                      prefix = "eddying_channel",
-                                                      field_slicer = nothing,
+                                                      filename = "eddying_channel",
                                                       overwrite_existing = true)
 
 try

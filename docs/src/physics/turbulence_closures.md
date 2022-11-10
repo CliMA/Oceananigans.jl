@@ -2,7 +2,8 @@
 
 The turbulence closure selected by the user determines the form of stress divergence
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}`` and diffusive flux divergence
-``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c`` in the momentum and tracer conservation equations.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c`` in the momentum and tracer
+conservation equations.
 
 ## Constant isotropic diffusivity
 
@@ -167,8 +168,7 @@ each direction:
                                               + \frac{1}{\Delta z^2} \right) \, .
 ```
 The constant ``C_b`` permits the "buoyancy modification" term it multiplies to be omitted
-from a calculation.
-By default we use the model constants ``C=1/12`` and ``C_b=0``.
+from a calculation. By default we use the model constants ``C = 1/12`` and ``C_b = 0``.
 
 ## Convective adjustment vertical diffusivity
 

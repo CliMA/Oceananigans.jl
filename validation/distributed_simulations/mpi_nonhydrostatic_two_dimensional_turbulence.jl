@@ -34,7 +34,7 @@ grid = RectilinearGrid(arch; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y
 @info "Built $Nranks grids:"
 @show grid
 
-model = NonhydrostaticModel(; grid, advection=WENO5(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
+model = NonhydrostaticModel(; grid, advection=WENO(), closure=ScalarDiffusivity(ν=1e-4, κ=1e-4))
 
 # This doesn't work?
 # ϵ(x, y, z) = 2rand() - 1 # ∈ (-1, 1)
@@ -76,8 +76,8 @@ outputs = merge(model.velocities, (; e, ζ))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(0.1),
                                                       with_halos = true,
-                                                      prefix = "two_dimensional_turbulence_rank$rank",
-                                                      force = true)
+                                                      filename = "two_dimensional_turbulence_rank$rank",
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

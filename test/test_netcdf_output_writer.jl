@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using TimesDates: TimeDate
 using Dates: DateTime, Nanosecond, Millisecond
 using TimesDates: TimeDate
 using CUDA
@@ -93,7 +94,7 @@ function test_thermal_bubble_netcdf_output(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     outputs = Dict("v" => model.velocities.v,
                    "u" => model.velocities.u,
@@ -264,7 +265,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),

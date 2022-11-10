@@ -1,7 +1,7 @@
-using Oceananigans.Grids: scalar_summary
+using Oceananigans.Utils: prettysummary
 
 """
-    FPlane{FT} <: AbstractRotation
+    struct FPlane{FT} <: AbstractRotation
 
 A parameter object for constant rotation around a vertical axis.
 """
@@ -12,7 +12,7 @@ end
 """
     FPlane([FT=Float64;] f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
-Returns a parameter object for constant rotation at the angular frequency
+Return a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
 If `f` is not specified, it is calculated from `rotation_rate` and
 `latitude` (in degrees) according to the relation `f = 2 * rotation_rate * sind(latitude)`.
@@ -41,12 +41,11 @@ end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = zero(eltype(grid))
+@inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   zero(grid)
 
 function Base.summary(fplane::FPlane{FT}) where FT 
-    fstr = scalar_summary(fplane.f)
+    fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end
 
 Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
-

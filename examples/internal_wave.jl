@@ -10,7 +10,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## The physical domain
@@ -20,8 +20,7 @@
 
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
-                       topology=(Periodic, Flat, Periodic))
+grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π), topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters
 #
@@ -42,10 +41,9 @@ coriolis = FPlane(f=0.2)
 
 ## Background fields are functions of `x, y, z, t`, and optional parameters.
 ## Here we have one parameter, the buoyancy frequency
-B_func(x, y, z, t, N) = N^2 * z
 
 N = 1 ## buoyancy frequency
-
+B_func(x, y, z, t, N) = N^2 * z
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
@@ -54,16 +52,13 @@ B = BackgroundField(B_func, parameters=N)
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
-model = NonhydrostaticModel(
-                 grid = grid,
-            advection = CenteredFourthOrder(),
-          timestepper = :RungeKutta3,
-              closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
-             coriolis = coriolis,
-              tracers = :b,
-    background_fields = (b=B,), # `background_fields` is a `NamedTuple`
-             buoyancy = BuoyancyTracer()
-)
+model = NonhydrostaticModel(; grid, coriolis,
+                            advection = CenteredFourthOrder(),
+                            timestepper = :RungeKutta3,
+                            closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            background_fields = (; b=B)) # `background_fields` is a `NamedTuple`
 
 # ## A Gaussian wavepacket
 #
@@ -122,13 +117,13 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 #
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
-simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
+simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 
 # and add an output writer that saves the vertical velocity field every two iterations:
 
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+filename = "internal_wave.jld2"
+simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities; filename,
                                                           schedule = IterationInterval(1),
-                                                          filename = "internal_wave.jld2",
                                                           overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
@@ -137,33 +132,54 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To visualize the solution, we load a FieldTimeSeries of w and make contour
-# plots of vertical velocity.
+# To animate a the propagating wavepacket we just simulated, we load CairoMakie
+# and make a Figure and an Axis for the animation,
 
-using Printf, Plots
+using CairoMakie
+set_theme!(Theme(fontsize = 24))
 
-w_timeseries = FieldTimeSeries("internal_wave.jld2", "w")
+fig = Figure(resolution = (600, 600))
+
+ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
+          limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))
+
+nothing #hide
+
+# Next, we load `w` data with `FieldTimeSeries` of `w` and make contour
+# plots of vertical velocity. We use Makie's `Observable` to animate the data.
+# To dive into how `Observable`s work, refer to
+# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+
+n = Observable(1)
+
+w_timeseries = FieldTimeSeries(filename, "w")
 x, y, z = nodes(w_timeseries)
 
-# and makes an animation with Plots.jl:
+w = @lift interior(w_timeseries[$n], :, 1, :)
+w_lim = 1e-8
 
-anim = @animate for (i, t) in enumerate(w_timeseries.times)
+contourf!(ax, x, z, w; 
+          levels = range(-w_lim, stop=w_lim, length=10),
+          colormap = :balance,
+          colorrange = (-w_lim, w_lim),
+          extendlow = :auto,
+          extendhigh = :auto)
 
-    @info "Drawing frame $i from iteration $iter..."
+title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
+fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
 
-    w = interior(w_timeseries[i], :, 1, :)
+# And, finally, we record a movie.
+using Printf
 
-    contourf(x, z, w', title = @sprintf("ωt = %.2f", ω * t),
-                      levels = range(-1e-8, stop=1e-8, length=10),
-                       clims = (-1e-8, 1e-8),
-                      xlabel = "x",
-                      ylabel = "z",
-                       xlims = (-π, π),
-                       ylims = (-π, π),
-                   linewidth = 0,
-                       color = :balance,
-                      legend = false,
-                 aspectratio = :equal)
+frames = 1:length(w_timeseries.times)
+
+@info "Animating a propagating internal wave..."
+
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
+nothing #hide
 
-mp4(anim, "internal_wave.mp4", fps = 8) # hide
+# ![](internal_wave.mp4)

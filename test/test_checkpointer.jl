@@ -1,11 +1,6 @@
-using Oceananigans
-using CUDA
+include("dependencies_for_runtests.jl")
+using Oceananigans: prognostic_fields
 using Glob
-using Test
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### Checkpointer tests
@@ -13,8 +8,8 @@ archs = test_architectures()
 
 function test_model_equality(test_model, true_model)
     CUDA.@allowscalar begin
-        test_model_fields = fields(test_model)
-        true_model_fields = fields(true_model)
+        test_model_fields = prognostic_fields(test_model)
+        true_model_fields = prognostic_fields(true_model)
         field_names = keys(test_model_fields)
 
         for name in field_names
@@ -49,9 +44,7 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(grid=grid, closure=closure,
-                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-
+    true_model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -59,7 +52,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    view(true_model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
@@ -77,7 +70,7 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
     true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
-    ηᵢ(x, y) = 1e-1 * exp(-x^2 - y^2)
+    ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
     ϵᵢ(x, y, z) = 1e-6 * randn()
     set!(true_model, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
 

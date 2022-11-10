@@ -7,10 +7,26 @@ using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 import Oceananigans.Solvers: solve!
 
+
 """
-    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
+    struct MatrixImplicitFreeSurfaceSolver{S, R, T}
+
+The matrix-based implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
+struct MatrixImplicitFreeSurfaceSolver{S, R, T}
+    "The matrix iterative solver"
+    matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
+    right_hand_side :: R
+    storage :: T
+end
+
+"""
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
-Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
+Return a solver for the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
         
 ```math
@@ -21,41 +37,30 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-struct MatrixImplicitFreeSurfaceSolver{V, S, R}
-    "The vertically-integrated lateral areas"
-    vertically_integrated_lateral_areas :: V
-    "The matrix iterative solver"
-    matrix_iterative_solver :: S
-    "The right hand side of the free surface evolution equation"
-    right_hand_side :: R
+function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
+    
+    # Initialize vertically integrated lateral face areas
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
 
-    function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
-        
-        # Initialize vertically integrated lateral face areas
-        ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-        ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
-    
-        vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-    
-        compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    
-        arch = architecture(grid)
-        right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
-    
-        # Set maximum iterations to Nx * Ny if not set
-        settings = Dict{Symbol, Any}(settings)
-        maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
-        settings[:maximum_iterations] = maximum_iterations
-    
-        coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
-        solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true), grid, settings...)
+    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-        V = typeof(vertically_integrated_lateral_areas)
-        S = typeof(solver)
-        R = typeof(right_hand_side)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+
+    arch = architecture(grid)
+    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
-        return new{V, S, R}(vertically_integrated_lateral_areas, solver, right_hand_side)
-    end
+    storage = deepcopy(right_hand_side)
+    
+    # Set maximum iterations to Nx * Ny if not set
+    settings = Dict{Symbol, Any}(settings)
+    maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
+    settings[:maximum_iterations] = maximum_iterations
+
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
+    solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
+
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
@@ -66,8 +71,13 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 #####
 
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
-    solver = implicit_free_surface_solver.matrix_iterative_solver
-    solve!(η, solver, rhs, Δt)
+    solver  = implicit_free_surface_solver.matrix_iterative_solver
+    storage = implicit_free_surface_solver.storage
+    
+    solve!(storage, solver, rhs, Δt)
+        
+    set!(η, reshape(storage, solver.problem_size...))
+
     return nothing
 end
 
@@ -83,24 +93,26 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                     implicit_linearized_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
 		            dependencies = device_event(arch))
-
-    return event
+    
+    wait(device(arch), event)
+    return nothing
 end
 
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az   = Azᶜᶜᶜ(i, j, 1, grid)
-    δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    k_top = grid.Nz + 1
+    Az   = Azᶜᶜᶠ(i, j, k_top, grid)
+    δ_Q  = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
-    @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
+    @inbounds rhs[t] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Δt)
 end
 
 function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitational_acceleration)
 
     arch = grid.architecture
 
-    Nx, Ny = (grid.Nx, grid.Ny)
+    Nx, Ny = grid.Nx, grid.Ny
 
     C     = zeros(Nx, Ny, 1)
     diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
@@ -123,8 +135,10 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end
+
+@ifhasamgx finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)

@@ -9,11 +9,6 @@ default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyanc
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-"""
-    JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
-
-An output writer for writing to JLD2 files.
-"""
 mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
@@ -76,6 +71,9 @@ Keyword arguments
                will save xy-slices of the bottom-most index.
 
   - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
+                         Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                         information about the boundary conditions is often crucial. In that case
+                         you might need to set `with_halos = true`.
 
   - `array_type`: The array type to which output arrays are converted to prior to saving.
                   Default: `Array{Float32}`.
@@ -218,13 +216,14 @@ end
 initialize_jld2_file!(writer::JLD2OutputWriter, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
-function iteration_zero_exists(filepath)
+function iteration_exists(filepath, iter=0)
     file = jldopen(filepath, "r")
 
     zero_exists = try
-        t₀ = file["timeseries/t/0"]
+        t₀ = file["timeseries/t/$iter"]
         true
-    catch
+    catch # This can fail for various reasons:
+          #     the path does not exist, "t" does not exist...
         false
     finally
         close(file)
@@ -235,44 +234,47 @@ end
 
 function write_output!(writer::JLD2OutputWriter, model)
 
-    # Catch an error that occurs when a simulation is initialized but not time-stepped:
-    if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
-        if writer.overwrite_existing
-            # Re-initialize file:
-            rm(writer.filepath, force=true)
-            initialize_jld2_file!(writer, model)
-        else
-            error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
-                  re-initialized. Use `overwrite_existing=true` when constructing JLD2OutputWriter to
-                  replace any existing files and avoid this error.")
-        end
-    end
-
     verbose = writer.verbose
-
-    # Fetch JLD2 output and store in dictionary `data`
-    verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
-
-    tc = Base.@elapsed data = Dict((name, fetch_and_convert_output(output, model, writer)) for (name, output)
-                                   in zip(keys(writer.outputs), values(writer.outputs)))
-
-    verbose && @info "Fetching time: $(prettytime(tc))"
-
-    # Start a new file if the filesize exceeds max_filesize
-    filesize(writer.filepath) >= writer.max_filesize && start_next_file(model, writer)
-
-    # Write output from `data`
     path = writer.filepath
-    verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+    current_iteration = model.clock.iteration
 
-    start_time, old_filesize = time_ns(), filesize(path)
-    jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-    end_time, new_filesize = time_ns(), filesize(path)
+    # Some logic to handle writing to existing files
+    if iteration_exists(path, current_iteration)
 
-    verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                              prettytime((end_time - start_time) / 1e9),
-                              pretty_filesize(new_filesize),
-                              pretty_filesize(new_filesize - old_filesize))
+        if writer.overwrite_existing
+            # Something went wrong, so we remove the file re-initialize it.
+            rm(path, force=true)
+            initialize_jld2_file!(writer, model)
+        else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
+            @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+        end
+
+    else # ok let's do this
+
+        # Fetch JLD2 output and store in `data`
+        verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
+
+        tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
+                                             in zip(keys(writer.outputs), values(writer.outputs)))
+
+        verbose && @info "Fetching time: $(prettytime(tc))"
+
+        # Start a new file if the filesize exceeds max_filesize
+        filesize(path) >= writer.max_filesize && start_next_file(model, writer)
+        path = writer.filepath # we might have a new path...
+
+        # Write output from `data`
+        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+
+        start_time, old_filesize = time_ns(), filesize(path)
+        jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        end_time, new_filesize = time_ns(), filesize(path)
+
+        verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                                  prettytime((end_time - start_time) / 1e9),
+                                  pretty_filesize(new_filesize),
+                                  pretty_filesize(new_filesize - old_filesize))
+    end
 
     return nothing
 end
@@ -288,8 +290,8 @@ the JLD2 file.
 function jld2output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
         file["timeseries/t/$iter"] = time
-        for (name, datum) in data
-            file["timeseries/$name/$iter"] = datum
+        for name in keys(data)
+            file["timeseries/$name/$iter"] = data[name]
         end
     end
     return nothing
@@ -327,10 +329,10 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-              "├── filepath: $(ow.filepath)", '\n',
-              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
-              "├── array type: ", show_array_type(ow.array_type), '\n',
-              "├── including: ", ow.including, '\n',
+    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: $(ow.filepath)", "\n",
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
+              "├── array type: ", show_array_type(ow.array_type), "\n",
+              "├── including: ", ow.including, "\n",
               "└── max filesize: ", pretty_filesize(ow.max_filesize))
 end

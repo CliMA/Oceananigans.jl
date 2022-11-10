@@ -4,20 +4,21 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.6"
-    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
+if VERSION < v"1.8"
+    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
 end
 
 export
     # Architectures
-    CPU, GPU,
+    CPU, GPU, 
 
     # Logging
     OceananigansLogger,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat,
+    Periodic, Bounded, Flat, 
+    FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
     ConformalCubedSphereFaceGrid,
@@ -27,7 +28,9 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder, 
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
@@ -64,7 +67,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
     VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
@@ -73,7 +78,7 @@ export
     # Models
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
-    ShallowWaterModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     PressureField,
     fields,
 
@@ -89,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -104,25 +110,23 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Cubed sphere
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, XPartition, 
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime
-
-
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
-
 using CUDA
 using Adapt
 using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -133,6 +137,33 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
+
+
+# TODO: find a way to check whether the libraries for AMGX and NETCDF 
+# (libamgxsh and libnetcdf, respectively) are installed on the machine
+"Boolean denoting whether AMGX.jl can be loaded on machine."
+const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
+"Boolean denoting whether NCDatasets.jl can be loaded on machine."
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
+"""
+    @ifhasamgx expr
+
+Evaluate `expr` only if `hasamgx == true`.
+"""
+macro ifhasamgx(expr)
+    hasamgx ? :($(esc(expr))) : :(nothing) 
+end
+
+"""
+    @ifnetcdf expr
+
+Evaluate `expr` only if `hasnetcdf == true`.
+"""
+macro ifhasnetcdf(expr)
+    hasnetcdf ? :($(esc(expr))) : :(nothing) 
+end
 
 #####
 ##### Abstract types
@@ -160,6 +191,10 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
+
 #####
 ##### Place-holder functions
 #####
@@ -169,7 +204,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
@@ -197,10 +231,10 @@ include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -211,6 +245,7 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
+include("MultiRegion/MultiRegion.jl")
 include("CubedSpheres/CubedSpheres.jl")
 
 #####
@@ -240,6 +275,7 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
+using .MultiRegion
 using .CubedSpheres
 
 function __init__()
