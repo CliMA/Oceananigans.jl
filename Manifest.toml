@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "805ba4f256b0112aca53be8b580f63e30d2f8d0b"
+project_hash = "a4995b60686d82011ed52a33a7533a8246769dc0"
 
 [[deps.AMGX]]
 deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
