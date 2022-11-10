@@ -201,10 +201,9 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
             # Serialize the location and boundary conditions of each output.
             for (i, (field_name, field)) in enumerate(pairs(outputs))
-                global_field = reconstruct_field(field)
-                file["timeseries/$field_name/serialized/location"] = location(global_field)
-                file["timeseries/$field_name/serialized/indices"]  =  indices(global_field)
-                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(global_field))
+                serializeproperty!(file, "timeseries/$field_name/serialized/location", location(field))
+                serializeproperty!(file, "timeseries/$field_name/serialized/indices", indices(field))
+                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
             end
         end
     catch err
@@ -213,8 +212,6 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     return nothing
 end
-
-reconstruct_field(field) = field
 
 initialize_jld2_file!(writer::JLD2OutputWriter, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
