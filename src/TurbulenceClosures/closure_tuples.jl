@@ -5,11 +5,11 @@
 function closure_summary(closures::Tuple, padchar="│")
     Nclosures = length(closures)
     if Nclosures == 1
-        return string("Tuple with 1 closure:", '\n',
+        return string("Tuple with 1 closure:", "\n",
                       "$padchar   └── ", summary(closures[1]))
     else
-        return string("Tuple with $Nclosures closures:", '\n',
-         Tuple(string("$padchar   ├── ", summary(c), '\n') for c in closures[1:end-1])...,
+        return string("Tuple with $Nclosures closures:", "\n",
+         Tuple(string("$padchar   ├── ", summary(c), "\n") for c in closures[1:end-1])...,
                       "$padchar   └── ", summary(closures[end]))
     end
 end
@@ -41,7 +41,7 @@ for (f, alt_f) in zip(funcs, alt_funcs)
                   + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 
                   + $alt_f(i, j, k, grid, closures[4], Ks[4], args...))
 
-    @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
+        @inline $f(i, j, k, grid, closures::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, Ks, args...) = (
                     $alt_f(i, j, k, grid, closures[1], Ks[1], args...)
                   + $alt_f(i, j, k, grid, closures[2], Ks[2], args...) 
                   + $alt_f(i, j, k, grid, closures[3], Ks[3], args...) 

@@ -16,7 +16,6 @@ required_halo_size(CenteredFourthOrder())
 # output
 2
 """
-
 function required_halo_size end
 
 required_halo_size(tendency_term) = 1

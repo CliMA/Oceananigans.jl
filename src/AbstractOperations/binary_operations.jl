@@ -11,8 +11,8 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     @doc """
         BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 
-    Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
-    on `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
+    Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
+    `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
     """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
         T = eltype(grid)
@@ -29,11 +29,14 @@ end
 # Recompute location of binary operation
 @inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
+indices(β::BinaryOperation) = interpolate_indices(β.a, β.b; loc_operation = location(β))
+
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
 function _binary_operation(Lc, op, a, b, La, Lb, grid)
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
+
     return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
 end
 
@@ -90,10 +93,10 @@ function define_binary_operator(op)
         """
             $($op)(Lc, a, b)
 
-        Returns an abstract representation of the operator `$($op)` acting on `a` and `b`.
-        The operation occurs at location(a) except for Nothing dimensions. In that case,
-        the location of the dimension in question is supplied either by location(b) or
-        if that is also Nothing, Lc.
+        Return an abstract representation of the operator `$($op)` acting on `a` and `b`.
+        The operation occurs at `location(a)` except for Nothing dimensions. In that case,
+        the location of the dimension in question is supplied either by `location(b)` or
+        if that is also Nothing, `Lc`.
         """
         function $op(Lc::Tuple, a, b)
             La = location(a)

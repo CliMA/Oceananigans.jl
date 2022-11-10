@@ -143,9 +143,9 @@ function Base.summary(grid::ImmersedBoundaryGrid)
 end
 
 function show(io::IO, ibg::ImmersedBoundaryGrid)
-    print(io, summary(ibg), ":", '\n',
-              "├── immersed_boundary: ", summary(ibg.immersed_boundary), '\n',
-              "├── underlying_grid: ", summary(ibg.underlying_grid), '\n')
+    print(io, summary(ibg), ":", "\n",
+              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
+              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
 
     return show(io, ibg.underlying_grid, false)
 end
@@ -194,19 +194,19 @@ i-1          i
 
 We then have
 
-    * `inactive_node(f, c, c, i, 1, 1, grid) = false`
+    * `inactive_node(i, 1, 1, grid, f, c, c) = false`
 
 As well as
 
-    * `inactive_node(c, c, c, i,   1, 1, grid) = false`
-    * `inactive_node(c, c, c, i-1, 1, 1, grid) = true`
-    * `inactive_node(f, c, c, i-1, 1, 1, grid) = true`
+    * `inactive_node(i,   1, 1, grid, c, c, c) = false`
+    * `inactive_node(i-1, 1, 1, grid, c, c, c) = true`
+    * `inactive_node(i-1, 1, 1, grid, f, c, c) = true`
 """
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 
 # Isolate periphery of the immersed boundary
-@inline immersed_peripheral_node(LX, LY, LZ, i, j, k, ibg::IBG) =  peripheral_node(LX, LY, LZ, i, j, k, ibg) &
-                                                                  !peripheral_node(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
+                                                                  !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
 #####
 ##### Utilities
@@ -259,7 +259,7 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(inactive_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+            ifelse(inactive_node(i, j, k, ibg, loc...), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
     end
 end
 

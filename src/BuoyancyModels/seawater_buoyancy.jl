@@ -25,15 +25,15 @@ Base.summary(b::SeawaterBuoyancy) = string(nameof(typeof(b)), " with g=", pretty
 
 function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 
-    print(io, nameof(typeof(b)), "{$FT}:", '\n',
-              "├── gravitational_acceleration: ", b.gravitational_acceleration, '\n')
+    print(io, nameof(typeof(b)), "{$FT}:", "\n",
+              "├── gravitational_acceleration: ", b.gravitational_acceleration, "\n")
 
     if !isnothing(b.constant_temperature)
-        print(io, "├── constant_temperature: ", b.constant_temperature, '\n')
+        print(io, "├── constant_temperature: ", b.constant_temperature, "\n")
     end
 
     if !isnothing(b.constant_salinity)
-        print(io, "├── constant_salinity: ", b.constant_salinity, '\n')
+        print(io, "├── constant_salinity: ", b.constant_salinity, "\n")
     end
         
     print(io, "└── equation of state: ", summary(b.equation_of_state))

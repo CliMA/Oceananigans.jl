@@ -115,7 +115,7 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     ZS = (Zᶜᶜᵃ, Zᶠᶜᵃ, Zᶜᶠᵃ, Zᶠᶠᵃ)
 
     for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-        for i in 1:length(ξ), j in 1:length(η)
+        for i in 1:Nξ, j in 1:Nη
             @inbounds X[i, j], Y[i, j], Z[i, j] = conformal_cubed_sphere_mapping(ξ[i], η[j])
         end
     end
@@ -124,7 +124,7 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
 
     if !isnothing(rotation)
         for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-            for i in 1:length(ξ), j in 1:length(η)
+            for i in 1:Nξ, j in 1:Nη
                 @inbounds X[i, j], Y[i, j], Z[i, j] = rotation * [X[i, j], Y[i, j], Z[i, j]]
             end
         end
@@ -146,7 +146,7 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     φS = (φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
     for (ξ, η, X, Y, Z, λ, φ) in zip(ξS, ηS, XS, YS, ZS, λS, φS)
-        for i in 1:length(ξ), j in 1:length(η)
+        for i in 1:Nξ, j in 1:Nη
             @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
         end
     end
@@ -350,7 +350,7 @@ end
 
 function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
     print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), "\n",
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 

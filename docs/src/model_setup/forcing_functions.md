@@ -97,7 +97,7 @@ of GPU-compiliability.
 
 ### Forcing functions that depend on model fields
 
-Forcing functions may depend on model fields evaluated at the `x, y, z` where forcing is applied.
+Forcing functions may depend on model fields (velocity, tracers or auxiliary fields) evaluated at the `x, y, z` where forcing is applied.
 Here's a somewhat non-sensical example:
 
 ```jldoctest field_dependent_forcing

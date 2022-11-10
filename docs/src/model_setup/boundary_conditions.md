@@ -108,14 +108,14 @@ There are three primary boundary condition classifications:
 1. `FluxBoundaryCondition` specifies fluxes directly.
 
    Some applications of `FluxBoundaryCondition` are:
-       * surface momentum fluxes due to wind, or "wind stress";
-       * linear or quadratic bottom drag;
-       * surface temperature fluxes due to heating or cooling;
-       * surface salinity fluxes due to precipitation and evaporation;
-       * relaxation boundary conditions that restores a field to some boundary distribution
-         over a given time-scale.
+     * surface momentum fluxes due to wind, or "wind stress";
+     * linear or quadratic bottom drag;
+     * surface temperature fluxes due to heating or cooling;
+     * surface salinity fluxes due to precipitation and evaporation;
+     * relaxation boundary conditions that restores a field to some boundary distribution
+       over a given time-scale.
 
-2. `ValueBoundaryCondition` (Dirchlet) specifies the value of a field on
+2. `ValueBoundaryCondition` (Dirichlet) specifies the value of a field on
    the given boundary, which when used in combination with a turbulence closure
    results in a flux across the boundary.
    
@@ -123,13 +123,12 @@ There are three primary boundary condition classifications:
    (see the note below about `ImpenetrableBoundaryCondition`).
    
    Some applications of `ValueBoundaryCondition` are:
-
-       * no-slip boundary condition for wall-tangential velocity components via `ValueBoundaryCondition(0)`;
-       * surface temperature distribution, where heat fluxes in and out of the domain
-         at a rate controlled by the near-surface temperature gradient and the temperature diffusivity;
-       * constant velocity tangential to a boundary as in a driven-cavity flow (for example), 
-         where the top boundary is moving. Momentum will flux into the domain do the difference
-         between the top boundary velocity and the interior velocity, and the prescribed viscosity.
+     * no-slip boundary condition for wall-tangential velocity components via `ValueBoundaryCondition(0)`;
+     * surface temperature distribution, where heat fluxes in and out of the domain
+       at a rate controlled by the near-surface temperature gradient and the temperature diffusivity;
+     * constant velocity tangential to a boundary as in a driven-cavity flow (for example), 
+       where the top boundary is moving. Momentum will flux into the domain do the difference
+       between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
 3. `GradientBoundaryCondition` (Neumann) specifies the gradient of a field on a boundary.
    For example, if there is a known `diffusivity`, we can express `FluxBoundaryCondition(flux)`
@@ -388,7 +387,7 @@ In general, boundary condition defaults are inferred from the field location and
 To specify non-default boundary conditions, a named tuple of [`FieldBoundaryConditions`](@ref) objects is
 passed to the keyword argument `boundary_conditions` in the [`NonhydrostaticModel`](@ref) constructor.
 The keys of `boundary_conditions` indicate the field to which the boundary condition is applied.
-Below, non-default boundary conditions are imposed on the ``u``-velocity and temperature.
+Below, non-default boundary conditions are imposed on the ``u``-velocity and tracer ``c``.
 
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
@@ -433,7 +432,7 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 ## Immersed boundary conditions
 
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
-by writing
+with
 
 ```jldoctest
 julia> underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded));
@@ -488,11 +487,10 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
-A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref). Let's see here how we can add linear bottom drag on `u` in the case we have
-an immersed boundary. In essence, we'd need to boundary conditions: one that would apply at the grid's bottom,
-and when that would apply on the immersed boundary.
+A boundary condition that depends on the fields may be prescribed using the `immersed` keyword argument in [`FieldBoundaryConditions`](@ref).
+We illustrate field-dependent boundary conditions with an example that imposes linear bottom drag on `u` on both immersed facets _and_ the bottom boundary of the underlying grid.
 
-First let's create the boundary condition for the grid's bottom:
+First we create the boundary condition for the grid's bottom:
 
 ```jldoctest immersed_bc
 julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
@@ -502,7 +500,7 @@ julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
 ```
 
-Then let's create the immersed boundary condition:
+Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag` and imposing drag only on "bottom" facets of the immersed boundary:
 
 ```jldoctest immersed_bc
 julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
@@ -521,7 +519,7 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
-And last, we can combine the two together:
+Finally, we combine the two:
 
 ```jldoctest immersed_bc
 julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
@@ -535,7 +533,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
 ```
 
-!!! warn"Positional argument requirements"
+!!! warning "Positional argument requirements"
     Note the difference between the arguments required for the function within the `bottom` boundary
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.

@@ -1,10 +1,9 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: arch_array
-import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!
+import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
-
 struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
     func :: F
@@ -19,9 +18,12 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
 end
 
 """
-    ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+    ConditionalOperation(operand::AbstractField;
+                         func = identity,
+                         condition = nothing,
+                         mask = 0)
 
-Returns an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
+Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
 
 Positional arguments
@@ -32,7 +34,8 @@ Positional arguments
 Keyword arguments
 =================
 
-- `func`: A unary transformation applied element-wise to the field `operand` at locations where `condition == true`. Default is `identity`
+- `func`: A unary transformation applied element-wise to the field `operand` at locations where
+          `condition == true`. Default is `identity`.
 
 - `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
                or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
@@ -58,8 +61,8 @@ julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── func: typeof(cos)
-├── condition: typeof(f)
+├── func: cos (generic function with 26 methods)
+├── condition: f (generic function with 1 method)
 └── mask: 10
 
 julia> d[1, 1, 1]
@@ -134,11 +137,13 @@ Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summa
     
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 
+indices(c::ConditionalOperation) = indices(c.operand)
+
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          "ConditionalOperation at $(location(operation))", '\n',
-          "├── operand: ", summary(operation.operand), '\n',
-          "├── grid: ", summary(operation.grid), '\n',
-          "├── func: ", summary(operation.func), '\n',
-          "├── condition: ", summary(operation.condition), '\n',
+          "ConditionalOperation at $(location(operation))", "\n",
+          "├── operand: ", summary(operation.operand), "\n",
+          "├── grid: ", summary(operation.grid), "\n",
+          "├── func: ", summary(operation.func), "\n",
+          "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)

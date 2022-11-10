@@ -1,5 +1,5 @@
 using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
 using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
@@ -43,12 +43,8 @@ end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
     indices = output_indices(user_output, grid, user_indices, with_halos)
-    return construct_output(user_output, indices)
+    return Field(user_output; indices)
 end
-
-construct_output(user_output::Field, indices) = view(user_output, indices...)
-construct_output(user_output::Reduction, indices) = Field(user_output; indices)
-construct_output(user_output::AbstractOperation, indices) = Field(user_output; indices)
 
 #####
 ##### Time-averaging

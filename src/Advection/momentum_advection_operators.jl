@@ -20,32 +20,34 @@ using Oceananigans.Fields: ZeroField
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
 # Compiler hints
-@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 
 """
     div_𝐯u(i, j, k, grid, advection, U, u)
 
 Calculate the advection of momentum in the ``x``-direction using the conservative form, ``𝛁⋅(𝐯 u)``,
 
-    1/Vᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u)) + δz_fac(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(u))]
+```
+1/Vᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u)) + δz_fac(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(u))]
+```
 
 which ends up at the location `fcc`.
 """
@@ -60,7 +62,9 @@ end
 
 Calculate the advection of momentum in the ``y``-direction using the conservative form, ``𝛁⋅(𝐯 v)``,
 
-    1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(w))]
+```
+1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(w))]
+```
 
 which ends up at the location `cfc`.
 """
@@ -75,8 +79,9 @@ end
 
 Calculate the advection of momentum in the ``z``-direction using the conservative form, ``𝛁⋅(𝐯 w)``,
 
-    1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
-
+```
+1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
+```
 which ends up at the location `ccf`.
 """
 @inline function div_𝐯w(i, j, k, grid, advection, U, w)
