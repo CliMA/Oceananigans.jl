@@ -14,7 +14,7 @@ using OffsetArrays
 import CUDAKernels: next_stream
 
 if CUDA.has_cuda_gpu()     
-using CUDAKernels: STREAM_GC_LOCK
+    using CUDAKernels: STREAM_GC_LOCK
 
     DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
     DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
