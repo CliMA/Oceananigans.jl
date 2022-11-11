@@ -206,13 +206,13 @@ function ShallowWaterModel(;
     return model
 end
 
-using Oceananigans.Advection: VectorInvariantSchemes
+using Oceananigans.Advection: VectorInvariant
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
     throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
                         "Use `momentum_advection = VectorInvariant()`."))
-validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, Nothing}, ::VectorInvariantFormulation) = momentum_advection
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
