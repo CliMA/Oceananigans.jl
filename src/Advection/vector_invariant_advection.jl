@@ -22,7 +22,6 @@ VectorInvariant(grid; scheme::S = EnstrophyConservingScheme(), stencil = nothing
 const VectorInvariantEnergyConserving    = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
-
 const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
       VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
 const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} = 
@@ -85,6 +84,19 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
+@inline function vertical_vorticity_U(i, j, k, grid, advection::VectorInvariant{<:UpwindBiased}, u, v) 
+    v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, u, v)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, u, v)
+    return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
+end
+
+@inline function vertical_vorticity_V(i, j, k, grid, advection::VectorInvariant{<:UpwindBiased}, u, v) 
+    û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, u, v)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, u, v)
+    return + upwind_biased_product(û, ζᴸ, ζᴿ) 
+end
 ####
 #### Vertical advection terms
 ####
