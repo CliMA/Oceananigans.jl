@@ -116,8 +116,7 @@ target_sea_surface_temperature = T★ = arch_array(arch, T★)
 κh = 1e+3
 κz = 1e-4
 
-vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), 
-                                     ν = νz, κ = κz)
+vertical_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
                                        
@@ -190,7 +189,7 @@ equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO(vector_invariant=VelocityStencil()),
+                                    momentum_advection = VectorInvariant(scheme=WENO(), stencil=VelocityStencil()),
                                     tracer_advection = WENO(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),

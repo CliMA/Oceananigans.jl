@@ -100,8 +100,8 @@ function run_shallow_water_experiment(model, solution, form, order)
 end
 
 @inline weno_advection(::Val{:conservative}, order)     = WENO(; order)
-@inline weno_advection(::Val{:vorticitystencil}, order) = WENO(; order, vector_invariant = VorticityStencil())
-@inline weno_advection(::Val{:velocitystencil}, order)  = WENO(; order, vector_invariant = VelocityStencil())
+@inline weno_advection(::Val{:vorticitystencil}, order) = VectorInvariant(scheme=WENO(; order), stencil=VorticityStencil())
+@inline weno_advection(::Val{:velocitystencil}, order)  = VectorInvariant(scheme=WENO(; order), stencil=VelocityStencil())
 
 @inline Formulation(::Val{:conservative})     = ConservativeFormulation()
 @inline Formulation(::Val{:vorticitystencil}) = VectorInvariantFormulation()

@@ -166,12 +166,10 @@ function visualize_bickley_jet(experiment_name)
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-advection_schemes = [WENO(vector_invariant=VelocityStencil()),
-                     WENO(vector_invariant=VorticityStencil()),
+advection_schemes = [VectorInvariant(scheme=WENO(), stencil=VelocityStencil()),
+                     VectorInvariant(scheme=WENO(), stencil=VorticityStencil()),
                      WENO(),
                      VectorInvariant()]
-
-advection_schemes = [WENO(vector_invariant = VelocityStencil())]
 
 for Nx in [128]
     for advection in advection_schemes

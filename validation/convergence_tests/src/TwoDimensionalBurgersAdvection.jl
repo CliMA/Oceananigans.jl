@@ -44,7 +44,7 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 0.0,
-                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
+                 momentum_advection = VectorInvariant(scheme=WENO(; order), stencil=VelocityStencil()),
                 boundary_conditions = (u = u_bcs, v = v_bcs),
                            coriolis = nothing,
                         formulation = VectorInvariantFormulation())

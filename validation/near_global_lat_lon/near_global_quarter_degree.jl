@@ -228,7 +228,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       free_surface,
-                                      momentum_advection = WENO(vector_invariant = VelocityStencil()),
+                                      momentum_advection = VectorInvariant(scheme=WENO(), stencil=VelocityStencil()),
                                       coriolis = HydrostaticSphericalCoriolis(),
                                       buoyancy,
                                       tracers = (:T, :S),

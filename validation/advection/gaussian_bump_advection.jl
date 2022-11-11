@@ -94,7 +94,7 @@ model = HydrostaticFreeSurfaceModel(; grid = ibg,
                                     forcing = (; u = u_forcing, v = v_forcing, b = b_forcing),
                                     boundary_conditions = (u = u_bcs, v = v_bcs),
                                     closure, 
-                                    momentum_advection = WENOFifthOrder(nothing, vector_invariant = VelocityStencil()))
+                                    momentum_advection = VectorInvariant(scheme = WENO(), stencil = VelocityStencil()))
 
 g  = model.free_surface.gravitational_acceleration
 b = model.tracers.b

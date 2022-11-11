@@ -171,7 +171,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 
 model = ShallowWaterModel(grid = grid,
 			              gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO(vector_invariant = VorticityStencil()),
+                          momentum_advection = VectorInvariant(scheme=WENO(), stencil=VorticityStencil()),
                           mass_advection = WENO(),
                           bathymetry = bat,
                           coriolis = HydrostaticSphericalCoriolis(),

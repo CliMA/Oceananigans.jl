@@ -82,8 +82,8 @@ for N in 10:10:250
         tracer_advection = WENO()
     else
         coriolis = HydrostaticSphericalCoriolis()
-        momentum_advection = WENO(vector_invariant = VelocityStencil())
-        tracer_advection = WENO(vector_invariant = VelocityStencil())
+        momentum_advection = VectionInvariant(scheme = WENO(), stencil = VelocityStencil())
+        tracer_advection = WENO()
     end
 
     for implicit_free_surface_solver in implicit_free_surface_solvers

@@ -36,8 +36,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VorticityStencil(), order = order),
-                     mass_advection = WENO(order = order),
+                 momentum_advection = VectorInvariant(scheme=WENO(; order), stencil=VorticityStencil()),
+                     mass_advection = WENO(; order),
                            coriolis = nothing,
                             closure = nothing,
                         formulation = VectorInvariantFormulation())
@@ -82,8 +82,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
 
     model = ShallowWaterModel( grid = grid,
          gravitational_acceleration = 2.0,
-                 momentum_advection = WENO(vector_invariant = VelocityStencil(), order = order),
-                     mass_advection = WENO(order = order),
+                 momentum_advection = VectorInvariant(scheme=WENO(; order), stencil=VelocityStencil()),
+                     mass_advection = WENO(; order),
                            coriolis = nothing,
                             closure = nothing,
                         formulation = VectorInvariantFormulation())

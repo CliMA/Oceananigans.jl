@@ -104,8 +104,8 @@ function visualize_bickley_jet(name)
     end
 end
 
-advection_schemes = [WENO(vector_invariant=VelocityStencil()),
-                     WENO(vector_invariant=VorticityStencil()),
+advection_schemes = [VectorInvariant(scheme=WENO(), stencil=VelocityStencil()),
+                     VectorInvariant(scheme=WENO(), stencil=VorticityStencil()),
                      WENO(),
                      VectorInvariant()]
 

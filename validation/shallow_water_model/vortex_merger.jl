@@ -21,7 +21,7 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
                             gravitational_acceleration = g,
                             coriolis = FPlane(f = f),
                             mass_advection = WENO(),
-                            momentum_advection = WENO(vector_invariant = stencil()),
+                            momentum_advection = VectorInvariant(scheme=WENO(), stencil=stencil()),
                             formulation = VectorInvariantFormulation())
 
     # Model initialization

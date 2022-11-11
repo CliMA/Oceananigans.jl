@@ -211,7 +211,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
     end
 end
 
-using Oceananigans.Advection: WENOVectorInvariantVel, VorticityStencil, VelocityStencil
+using Oceananigans.Advection: VorticityStencil, VelocityStencil
 
 for bias in (:left_biased, :right_biased)
     for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
@@ -222,7 +222,7 @@ for bias in (:left_biased, :right_biased)
 
         @eval begin
             # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENOVectorInvariantVel, ζ, ::Type{VelocityStencil}, u, v) =
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ζ, ::Type{VelocityStencil}, u, v) =
                 ifelse($near_horizontal_boundary(i, j, k, ibg, scheme),
                     $alt_interp(i, j, k, ibg, scheme, ζ, VorticityStencil, u, v),
                     $interp(i, j, k, ibg, scheme, ζ, VelocityStencil, u, v))

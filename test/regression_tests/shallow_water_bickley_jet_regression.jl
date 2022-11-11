@@ -6,7 +6,7 @@ Lx, Ly, Lz = 2π, 20, 10
 Nx, Ny = 128, 128
 
 advection(formulation::ConservativeFormulation) = WENO()
-advection(formulation::VectorInvariantFormulation) = WENO(vector_invariant=VelocityStencil())
+advection(formulation::VectorInvariantFormulation) = VectorInvariant(scheme = WENO(), stencil=VelocityStencil())
 
 function run_shallow_water_regression(arch, formulation; regenerate_data = false)
     grid = RectilinearGrid(arch, size = (Nx, Ny),
