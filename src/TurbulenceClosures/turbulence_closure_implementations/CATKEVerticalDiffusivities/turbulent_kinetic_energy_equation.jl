@@ -24,6 +24,7 @@ Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     Cᴰ⁺   :: FT = 1.0
     CᴰRiᶜ :: FT = 0.0
     CᴰRiʷ :: FT = 1.0
+    CᴰnRi :: FT = 1.0
     Cᵂu★  :: FT = 1.0
     CᵂwΔ  :: FT = 1.0
 end
@@ -87,8 +88,9 @@ end
     Cᴰ⁺ = closure.turbulent_kinetic_energy_equation.Cᴰ⁺
     Riᶜ = closure.turbulent_kinetic_energy_equation.CᴰRiᶜ
     Riʷ = closure.turbulent_kinetic_energy_equation.CᴰRiʷ
+    n = closure.turbulent_kinetic_energy_equation.CᴰnRi
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    Cᴰ = scale(Ri, Cᴰ⁻, Cᴰ⁺, Riᶜ, Riʷ)
+    Cᴰ = scale(Ri, Cᴰ⁻, Cᴰ⁺, Riᶜ, Riʷ, n)
 
     eᵢ = @inbounds e[i, j, k]
 
