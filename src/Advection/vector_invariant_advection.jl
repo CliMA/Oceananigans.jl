@@ -17,19 +17,32 @@ struct VectorInvariant{S, T}
     end
 end
 
-VectorInvariant(grid; scheme::S = EnstrophyConservingScheme(), stencil = nothing) where S = VectorInvariant{S}(scheme, stencil)
+VectorInvariant(; scheme::S = EnstrophyConservingScheme(), stencil = nothing) where S = VectorInvariant{S}(scheme, stencil)
 
 const VectorInvariantEnergyConserving    = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
 const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
-      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
+      VectorInvariant{<:WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
 const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} = 
-      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VorticityStencil, WF, PP}
+      VectorInvariant{<:WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VorticityStencil, WF, PP}
 const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} =      
-      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
+      VectorInvariant{<:WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
 
 required_halo_size(scheme::WENOVectorInvariant{N}) where N = N + 1
+
+smoothness_variable(::VelocityStencil) = "Velocity"
+smoothness_variable(::VelocityStencil) = "Vorticity"
+
+smoothness_summary(scheme::WENOVectorInvariant) =  "    └── $(smoothness_variable(scheme.stencil)) as smoothness indicator"
+smoothness_summary(scheme) =  ""
+
+Base.show(io::IO, a::VectorInvariant) =
+    print(io, "Vector Invariant advection using: \n",
+              "    └── $(summary(a.scheme)) \n",
+              "$(smoothness_summary(a))")
+
+Adapt.adapt_structure(to, scheme::VectorInvariant{S}) where S = VectorInvariant{S}(Adapt.adapt(to, scheme), Adapt.adapt(to, stencil))
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
@@ -140,3 +153,4 @@ const U1Z = UpwindBiased{1, <:Any, <:Any, <:Nothing}
 @inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1Y, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
 @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1,  f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
 @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1Z, f::Function, idx, loc, VI::Type{<:SmoothnessStencil}, args...) = @inbounds f(i, j, k, grid, args...)
+

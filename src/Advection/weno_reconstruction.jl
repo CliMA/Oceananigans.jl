@@ -120,11 +120,10 @@ function WENO(FT::DataType=Float64;
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
         return UpwindBiased(order = 1)
     else
-        VI = typeof(vector_invariant)
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
+        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
@@ -141,9 +140,9 @@ WENOFifthOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; 
 const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
 const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1, " in ", formulation(a))
+Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1)
 
-Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, VI, WF, PP}) where {N, FT, RX, RY, RZ, VI, WF, PP} =
+Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, WF, PP}) where {N, FT, RX, RY, RZ, WF, PP} =
     print(io, summary(a), " \n",
               " Smoothness formulation: ", "\n",
               "    └── $(WF ? "Z-weno" : "JS-weno") \n",
