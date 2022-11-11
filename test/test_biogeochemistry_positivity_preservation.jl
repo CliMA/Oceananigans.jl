@@ -34,16 +34,31 @@ required_biogeochemical_tracers(::PositivityPreservingNutrientPhytoplanktonDetri
     phytoplankton_death = bgc.mortality*Pⁿ
     detritus_remineralisation = bgc.remineralisation_rate*Dⁿ
 
-    # since this has such simple interactions it is probably easier to not use matrices for this but this is more general
-    C⃗ⁿ = [Nⁿ, Pⁿ, Dⁿ]
-    P⃗ = [0.0                                0.0                             detritus_remineralisation; 
-            phytoplankton_growth 0.0                              0.0; 
-            0.0                                phytoplankton_death 0.0]
-    D⃗ = [Nⁿ + Δt*phytoplankton_growth 0.0                                          0.0;
-            0.0                                             Pⁿ + Δt*phytoplankton_death 0.0;
-            0.0                                             0.0                                           detritus_remineralisation]
+    Nⁿ⁺¹ = Nⁿ + Δt * (detritus_remineralisation - phytoplankton_growth)
+    Pⁿ⁺¹ = Pⁿ + Δt * (phytoplankton_growth - phytoplankton_death)
+    Dⁿ⁺¹ = Dⁿ + Δt * (phytoplankton_death - detritus_remineralisation)
 
-    Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹ = (C⃗ⁿ.*C⃗ⁿ)\(D⃗ - Δt.*P⃗)
+    # hybrid method because it is *very* slow to compute the inv(...)*... line
+    if min(Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹) < 0.0
+        # since this has such simple interactions it is probably easier to not use matrices for this but this is more general
+        C⃗ⁿ = [Nⁿ, Pⁿ, Dⁿ]
+        production = [eps(0.0)                                eps(0.0)                             detritus_remineralisation; 
+                phytoplankton_growth eps(0.0)                              eps(0.0); 
+                eps(0.0)                                phytoplankton_death eps(0.0)]
+        destruction⃗ = [Nⁿ + Δt*phytoplankton_growth, Pⁿ + Δt*phytoplankton_death, detritus_remineralisation]
+
+        destruction = diagm(destruction⃗)
+        Cⁿ = diagm(C⃗ⁿ)
+        C⁻¹ⁿ = diagm(1 ./(C⃗ⁿ))
+        C⁻¹ⁿ[C⁻¹ⁿ .== Inf] .= 0.0 #hopefully the other thing it gets multiplied by is also zero
+
+        #Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹ = (Δt .* destruction + Cⁿ * (I - Δt .* production * C⁻¹ⁿ))\(Cⁿ*C⃗ⁿ)
+
+        Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹ = inv(Δt .* destruction + Cⁿ * (I - Δt .* production * C⁻¹ⁿ))*(Cⁿ*C⃗ⁿ) # seems to be slower but the other one sometimes produces errors
+        if !all(isfinite.([Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹]))
+            error("A NaN [$(Nⁿ⁺¹), $(Pⁿ⁺¹), $(Dⁿ⁺¹)], [$(Nⁿ), $(Pⁿ), $(Dⁿ)]\n$((Δt .* destruction + Cⁿ * (I - Δt .* production * C⁻¹ⁿ))), $(Cⁿ*C⃗ⁿ)")
+        end
+    end
 
     @inbounds N[i, j, k], P[i, j, k], D[i, j, k] = Nⁿ⁺¹, Pⁿ⁺¹, Dⁿ⁺¹
 end
@@ -52,6 +67,17 @@ end
 @inline get_stage_Δt(timestepper::RungeKutta3TimeStepper, val_stage::Val{2}, Δt) = (timestepper.γ² + timestepper.ζ²) * Δt
 @inline get_stage_Δt(timestepper::RungeKutta3TimeStepper, val_stage::Val{3}, Δt) = (timestepper.γ³ + timestepper.ζ³) * Δt
 @inline get_stage_Δt(timestepper::QuasiAdamsBashforth2TimeStepper, ::Val, Δt) = Δt
+
+"""
+    update_biogeochemical_state!(bgc::PositivityPreservingNutrientPhytoplanktonDetritus, model)
+
+Integrates a Nutrient-Phytoplankton-Detritus biogeochemical model using a Modified Patankar Euler scheme with substep Δt.
+
+Since this is ∼100x slower than taking normal timesteps then unless you're using a static flow field, a massive grid, 
+or some set of equations that realllly want to become negative then its not going to be worth it in this form.
+
+Could only step the BGC every N steps like a coupled model?
+"""
 
 @inline update_biogeochemical_state!(bgc::PositivityPreservingNutrientPhytoplanktonDetritus, model) = update_biogeochemical_state!(bgc, model, Val(model.clock.iteration))
 @inline update_biogeochemical_state!(bgc::PositivityPreservingNutrientPhytoplanktonDetritus, model, ::Val{0}) = nothing
@@ -67,19 +93,18 @@ end
     wait(tendencies_event)
 end
 
-grid = RectilinearGrid(size=(64, ), extent=(64, ), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=(1, 1, 50), extent=(20, 20, 200)) 
 
-Δt = 0.001days
+Δt = 1days
 
 model = NonhydrostaticModel(; grid,
-                            timestepper = :RungeKutta3,
                             tracers = (:N, :P, :D),
                             biogeochemistry = PositivityPreservingNutrientPhytoplanktonDetritus(1/day, 5.0, 0.1/day, 0.09/day, 0.01),
                             auxiliary_fields = (Δt = [Δt], ))
+@warn "This is about 100x slower than the non-positivity preserving version..."
+set!(model, N = 10.0, P = 0.1, D = 0.01)
 
-set!(model, N = 10.0, P = 0.1, D = 0.0)
-
-simulation = Simulation(model, Δt = Δt, stop_time=20days)#Δt=1day, stop_time=20days)
+simulation = Simulation(model, Δt = Δt, stop_time=20days)
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
