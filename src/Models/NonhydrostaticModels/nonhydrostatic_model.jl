@@ -138,7 +138,7 @@ function NonhydrostaticModel(; grid,
         error("CATKEVerticalDiffusivity is not supported for " *
               "NonhydrostaticModel --- yet!")
 
-    validate_biogeochemistry!(tracers, biogeochemistry)
+    validate_biogeochemistry!(tracers, auxiliary_fields, biogeochemistry)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
