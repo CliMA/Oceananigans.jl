@@ -1,9 +1,10 @@
 module Biogeochemistry
-using Oceananigans.Grids: Center
-using Oceananigans.Forcings: model_forcing, maybe_constant_field
+using Oceananigans.Grids: Center, xnode, ynode, znode
+using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
 using Oceananigans.Advection: div_Uc, UpwindBiasedFifthOrder
 
 import Oceananigans.Fields: location
+import Oceananigans.Forcings: regularize_forcing
 #####
 ##### Generic fallbacks for biogeochemistry
 #####
@@ -71,13 +72,46 @@ function regularize_sinking_velocities(sinking_speeds)
     return NamedTuple{keys(sinking_speeds)}(sinking_velocities)
 end
 
-# `model_forcing` expects to be passed a NamedTuple of fields and checks the location for evaluating continuous forcing functions so it can force velocities
-# here we will only ever be passing tracer fields so they will always be center fields
-struct FillerTracerField end
-location(::FillerTracerField) =  (Center, Center, Center)
+# we can't use the standard `ContinuousForcing` regularisation here because it requires all the tracers to be inplace to have the correct indices
+struct ContinuousBiogeochemicalForcing
+    func
+    params
+    field_dependencies
+end
+
+DiscreteBiogeochemicalForcing = DiscreteForcing
+
+ContinuousBiogeochemicalForcing(func; parameters=nothing, field_dependencies=()) = ContinuousBiogeochemicalForcing(func, parameters, field_dependencies)
+
+function BiogeochemicalForcing(func; parameters=nothing, discrete_form=false, field_dependencies=())
+    if discrete_form
+        return DiscreteBiogeochemicalForcing(func, parameters)
+    else
+        return ContinuousBiogeochemicalForcing(func, parameters, field_dependencies)
+    end
+end
+
+function regularize_biogeochemical_forcing(forcing::Function)
+    return ContinuousBiogeochemicalForcing(forcing)
+end
+
+regularize_biogeochemical_forcing(forcing) = forcing
+
+@inline getargs(fields, field_dependencies, i, j, k, params::Nothing) =@inbounds map(field_name -> fields[field_name][i, j, k], field_dependencies)
+@inline getargs(fields, field_dependencies, i, j, k, params) = @inbounds tuple(map(field_name -> fields[field_name][i, j, k], field_dependencies)..., params)
+
+@inline function (forcing::ContinuousBiogeochemicalForcing)(i, j, k, grid, clock, fields)
+    args = getargs(fields, forcing.field_dependencies, i, j, k, forcing.params)
+
+    x = xnode(Center(), Center(), Center(), i, j, k, grid)
+    y = ynode(Center(), Center(), Center(), i, j, k, grid)
+    z = znode(Center(), Center(), Center(), i, j, k, grid)
+
+    return forcing.func(x, y, z, clock.time, args...)
+end
 
 @inline function TracerBasedBiogeochemistry(tracers, reactions; advection_scheme=UpwindBiasedFifthOrder, sinking_velocities=NamedTuple(), auxiliary_fields=())
-    reactions = model_forcing(NamedTuple{tracers}(repeat([FillerTracerField()], length(tracers))); reactions...)
+    reactions = NamedTuple{keys(reactions)}([regularize_biogeochemical_forcing(reaction) for reaction in values(reactions)]) 
     sinking_velocities = regularize_sinking_velocities(sinking_velocities)
     return TracerBasedBiogeochemistry(tracers, reactions, advection_scheme, sinking_velocities, auxiliary_fields)
 end

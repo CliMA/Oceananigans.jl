@@ -1,6 +1,6 @@
 using Oceananigans, Printf, KernelAbstractions, LinearAlgebra
 using Oceananigans.Units: minutes, hour, hours, day, days, years
-using Oceananigans.Biogeochemistry: TracerBasedBiogeochemistry
+using Oceananigans.Biogeochemistry: TracerBasedBiogeochemistry, BiogeochemicalForcing
 using Oceananigans.Grids: znode
 using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
@@ -19,23 +19,23 @@ function nutrient_reaction(x, y, z, t, N, P, D, params)
     return detritus_remineralisation - phytoplankton_growth
 end
 
-function phytoplankton_reaction(x, y, z, t, N, P, D, params)
+function phytoplankton_reaction(x, y, z, t, N, P, params)
     phytoplankton_growth = params.max_growth_rate*exp(z/params.light_e_folding_distance)*nutrient_limitation(N, params.nutrient_limitation_half_saturation)*P
     phytoplankton_death = params.mortality*P
 
     return phytoplankton_growth - phytoplankton_death
 end
 
-function detritus_reaction(x, y, z, t, N, P, D, params)
+function detritus_reaction(x, y, z, t, P, D, params)
     phytoplankton_death = params.mortality*P
     detritus_remineralisation = params.remineralisation_rate*D
 
     return phytoplankton_death - detritus_remineralisation
 end
 
-nutrient_forcing = Forcing(nutrient_reaction, field_dependencies=(:N, :P, :D), parameters=parameters)
-phytoplankton_forcing = Forcing(phytoplankton_reaction, field_dependencies=(:N, :P, :D), parameters=parameters)
-detritus_forcing = Forcing(detritus_reaction, field_dependencies=(:N, :P, :D), parameters=parameters)
+nutrient_forcing = BiogeochemicalForcing(nutrient_reaction, field_dependencies=(:N, :P, :D), parameters=parameters)
+phytoplankton_forcing = BiogeochemicalForcing(phytoplankton_reaction, field_dependencies=(:N, :P), parameters=parameters)
+detritus_forcing = BiogeochemicalForcing(detritus_reaction, field_dependencies=(:P, :D), parameters=parameters)
 
 NutrientPhytoplanktonDetritus = TracerBasedBiogeochemistry((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing))
 NutrientPhytoplanktonDetritusSinking = TracerBasedBiogeochemistry((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing); sinking_velocities=(D = 200/day, ))
