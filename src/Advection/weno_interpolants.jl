@@ -357,7 +357,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, VI::Type{VorticityStencil}, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
@@ -368,7 +368,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
                                                ψ, idx, loc, VI::Type{VelocityStencil}, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin

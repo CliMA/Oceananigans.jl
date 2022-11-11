@@ -3,21 +3,33 @@ using Oceananigans.Operators
 struct EnergyConservingScheme end
 struct EnstrophyConservingScheme end
 
-struct VectorInvariant{S, CA}
-    scheme :: S
-    buffer_scheme :: CA
+abstract type SmoothnessStencil end
 
-    function VectorInvariant{S}(scheme::S, buffer_scheme::CA) where {S, CA}
-        return new{S, CA}(scheme, buffer_scheme)
+struct VorticityStencil <:SmoothnessStencil end
+struct VelocityStencil <:SmoothnessStencil end
+
+struct VectorInvariant{S, T}
+    scheme :: S
+    stencil :: T
+
+    function VectorInvariant{S}(scheme::S, stencil::T) where {S, T}
+        return new{S, T}(scheme, stencil)
     end
 end
 
-VectorInvariant(; scheme::S = EnstrophyConservingScheme()) where S = VectorInvariant{S}(scheme, nothing)
+VectorInvariant(grid; scheme::S = EnstrophyConservingScheme(), stencil = nothing) where S = VectorInvariant{S}(scheme, stencil)
 
-const VectorInvariantEnergyConserving = VectorInvariant{<:EnergyConservingScheme}
+const VectorInvariantEnergyConserving    = VectorInvariant{<:EnergyConservingScheme}
 const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConservingScheme}
 
-const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant} 
+
+const WENOVectorInvariantVel{N, FT, XT, YT, ZT, VI, WF, PP}  = 
+      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VelocityStencil, WF, PP}
+const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} = 
+      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:VorticityStencil, WF, PP}
+const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} =      
+      VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
+
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
@@ -25,12 +37,12 @@ const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
 ###### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
 ######
 
-@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
+@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
     + vertical_vorticity_U(i, j, k, grid, scheme, U.u, U.v)  # Vertical relative vorticity term
     + vertical_advection_U(i, j, k, grid, scheme, U.u, U.w)  # Horizontal vorticity / vertical advection term
     + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))     # Bernoulli head term
     
-@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariantSchemes, U) = (
+@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = (
     + vertical_vorticity_V(i, j, k, grid, scheme, U.u, U.v)  # Vertical relative vorticity term
     + vertical_advection_V(i, j, k, grid, scheme, U.v, U.w)  # Horizontal vorticity / vertical advection term
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))     # Bernoulli head term
@@ -39,11 +51,11 @@ const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
 #### Bernoulli head terms
 ####
 
-@inline bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantSchemes, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)
-@inline bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantSchemes, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)
+@inline bernoulli_head_U(i, j, k, grid, scheme::VectorInvariant, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)
+@inline bernoulli_head_V(i, j, k, grid, scheme::VectorInvariant, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, scheme, u, v)
 
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
-@inline Khᶜᶜᶜ(i, j, k, grid, ::VectorInvariantSchemes, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
+@inline Khᶜᶜᶜ(i, j, k, grid, ::VectorInvariant, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
 ####
 #### Horizontal advection terms
@@ -58,17 +70,17 @@ const VectorInvariantSchemes  = Union{VectorInvariant, WENOVectorInvariant}
 @inline vertical_vorticity_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 @inline vertical_vorticity_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
-@inline function vertical_vorticity_U(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
+@inline function vertical_vorticity_U(i, j, k, grid, advection::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
     v̂  =  ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ) 
 end
 
-@inline function vertical_vorticity_V(i, j, k, grid, scheme::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
+@inline function vertical_vorticity_V(i, j, k, grid, advection::WENOVectorInvariant{N, FT, XT, YT, ZT, VI}, u, v) where {N, FT, XT, YT, ZT, VI}
     û  =  ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, VI, u, v)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, advection.scheme, ζ₃ᶠᶠᶜ, VI, u, v)
     return + upwind_biased_product(û, ζᴸ, ζᴿ) 
 end
 
@@ -79,8 +91,8 @@ end
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
     
-@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantSchemes, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
-@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantSchemes, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariant, u, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u, w) / Azᶠᶜᶜ(i, j, k, grid)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariant, v, w) =  ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v, w) / Azᶜᶠᶜ(i, j, k, grid)
 
 ######
 ###### Conservative formulation of momentum advection

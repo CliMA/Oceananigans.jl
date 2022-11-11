@@ -55,10 +55,10 @@ include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
+include("vector_invariant_advection.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")
 
-include("vector_invariant_advection.jl")
 include("topologically_conditional_interpolation.jl")
 
 include("momentum_advection_operators.jl")
