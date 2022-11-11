@@ -30,6 +30,7 @@ const WENOVectorInvariantVort{N, FT, XT, YT, ZT, VI, WF, PP} =
 const WENOVectorInvariant{N, FT, XT, YT, ZT, VI, WF, PP} =      
       VectorInvariant{WENO{N, FT, XT, YT, ZT, WF, PP}, VI} where {N, FT, XT, YT, ZT, VI<:SmoothnessStencil, WF, PP}
 
+required_halo_size(scheme::WENOVectorInvariant{N}) where N = N + 1
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
