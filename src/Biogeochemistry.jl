@@ -51,7 +51,7 @@ tracernames(tracers::Tuple) = tracers
 end
 
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
-required_biogeochemical_auxiliary_fields(::NoBiogeochemistry) = ()
+required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
 """Sets up a tracer based biogeochemical model in a similar way to SeawaterBouyancy"""
 struct TracerBasedBiogeochemistry <: AbstractBiogeochemistry
