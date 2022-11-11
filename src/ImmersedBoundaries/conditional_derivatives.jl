@@ -34,7 +34,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
         
         @eval begin
             @inline $∂ξ(i, j, k, ibg::IBG, args...)              = $conditional_∂ξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $∂ξ, args...)
-            @inline $∂ξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_∂ξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $∂ξ, f::Function, args...)
+            @inline $∂ξ(i, j, k, ibg::IBG, f::F, args...) where F <: Function = $conditional_∂ξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $∂ξ, f, args...)
         end
     end
 end
