@@ -1,3 +1,6 @@
+import Oceananigans.Fields: flatten_tuple
+
+flatten_tuple(mro::MultiRegionObject) = flatten_tuple(mro.regions)
 
 validate_devices(partition, ::CPU, devices) = nothing
 validate_devices(p, ::CPU, ::Nothing) = nothing
@@ -17,6 +20,7 @@ function validate_devices(partition, ::GPU, devices::Number)
     @assert devices <= length(partition)
     return devices
 end
+
 assign_devices(p, ::Nothing) = Tuple(CPU() for i in 1:length(p))
 
 function assign_devices(p::AbstractPartition, dev::Number) 
