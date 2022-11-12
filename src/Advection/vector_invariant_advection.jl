@@ -42,7 +42,7 @@ Base.show(io::IO, a::VectorInvariant) =
               "    └── $(summary(a.scheme)) \n",
               "$(smoothness_summary(a))")
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{S}) where S = VectorInvariant{S}(Adapt.adapt(to, scheme), Adapt.adapt(to, stencil))
+Adapt.adapt_structure(to, vi::VectorInvariant{S}) where S = VectorInvariant{S}(Adapt.adapt(to, vi.scheme), Adapt.adapt(to, vi.stencil))
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum scheme
