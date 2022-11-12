@@ -75,18 +75,14 @@ end
 ##### Mixing length
 #####
 
-@inline surface(i, j, k, grid)                = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
-@inline bottom(i, j, k, grid)                 = znode(Center(), Center(), Face(), i, j, 1, grid)
-@inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Face(), i, j, k, grid)
-@inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(Center(), Center(), Face(), i, j, k, grid) - bottom(i, j, k, grid)
-
-@inline ψ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
+@inline ϕ⁺(i, j, k, grid, ψ) = @inbounds clip(ψ[i, j, k])
+@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²⁺ = clip(N²)
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ϕ⁺, e)
     return ifelse(N²⁺ == 0, FT(Inf), sqrt(e⁺ / N²⁺))
 end
 
@@ -95,7 +91,7 @@ end
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S² = ∂z_u² + ∂z_v²
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, e)
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ϕ⁺, e)
     return ifelse(S² == 0, FT(Inf), sqrt(e⁺ / S²))
 end
 
@@ -117,7 +113,7 @@ end
 
     # "Sheared convection number"
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ψ⁺, tracers.e)
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ϕ⁺, tracers.e)
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
     ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     S = sqrt(∂z_u² + ∂z_v²)
@@ -130,24 +126,10 @@ end
     return ifelse(convecting, ℓʰ, zero(grid))
 end
 
-@inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
-
-# This is used to calculate the dissipation coefficient
-@inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    S² = ∂z_u² + ∂z_v²
-    Ri = N² / S²
-    return ifelse(N² <= 0, zero(grid), Ri)
-end
-
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
-@inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w)) # (1 + tanh(x / w - c)) / 2
+@inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
 @inline scale(Ri, σ⁻, σ⁺, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+@inline scale(Ri, σ⁻, σ⁺, c, w, n) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)^n
 
 @inline function stable_mixing_scale(i, j, k, grid, Cᴷ⁻, Cᴷ⁺, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
@@ -169,7 +151,7 @@ end
     Cˢ = closure.mixing_length.Cˢu
     ℓ★ = σ * stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
-    return ℓᵟ + ℓ★
+    return ℓ★ + ℓʰ
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -212,9 +194,6 @@ Base.show(io::IO, ML::MixingLength) =
               "     Cˢu  = $(ML.Cˢu)",   "\n",
               "     Cˢc  = $(ML.Cˢc)",   "\n",
               "     Cˢe  = $(ML.Cˢe)",   "\n",
-              "     Cᵟu  = $(ML.Cᵟu)",   "\n",
-              "     Cᵟc  = $(ML.Cᵟc)",   "\n",
-              "     Cᵟe  = $(ML.Cᵟe)",   "\n",
               "     Cᴬu  = $(ML.Cᴬu)",   "\n",
               "     Cᴬc  = $(ML.Cᴬc)",   "\n",
               "     Cᴬe  = $(ML.Cᴬe)",   "\n",
