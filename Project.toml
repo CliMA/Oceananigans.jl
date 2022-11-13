@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.78.1"
+version = "0.78.3"
 
 [deps]
 AMGX = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
@@ -60,7 +60,7 @@ OrderedCollections = "1.1"
 PencilArrays = "0.16, 0.17"
 PencilFFTs = "0.13.5, 0.14"
 Rotations = "1.0"
-SeawaterPolynomials = "^0.3"
+SeawaterPolynomials = "0.3"
 StructArrays = "0.4, 0.5, 0.6"
 Tullio = "0.2, 0.3"
 julia = "1.7"

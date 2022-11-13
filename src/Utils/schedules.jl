@@ -207,7 +207,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    AndSchedule(schedules...)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -223,7 +223,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    OrSchedule(schedules...)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """

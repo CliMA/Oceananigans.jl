@@ -1,13 +1,13 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
 using Oceananigans.Utils: work_layout
-using Oceananigans: fields
-
+using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 
 using Oceananigans.Architectures: device
 
 using Oceananigans.BoundaryConditions 
+
 
 """
     calculate_tendencies!(model::ShallowWaterModel)
@@ -15,7 +15,7 @@ using Oceananigans.BoundaryConditions
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::ShallowWaterModel)
+function calculate_tendencies!(model::ShallowWaterModel, callbacks)
 
     # Note:
     #
@@ -51,6 +51,8 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.tracers,
                                                model.clock,
                                                fields(model))
+
+    [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
 end

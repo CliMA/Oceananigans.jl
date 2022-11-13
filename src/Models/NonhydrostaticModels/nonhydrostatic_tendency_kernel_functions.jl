@@ -8,11 +8,11 @@ using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ
 
 "return the ``x``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(eltype(grid))
+hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(grid)
 
 "return the ``y``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure) = ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure)
-hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(eltype(grid))
+hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 
 """
     $(SIGNATURES)
