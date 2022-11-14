@@ -4,7 +4,7 @@ using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
 using Oceananigans.Advection: div_Uc, UpwindBiasedFifthOrder
 using Oceananigans.Operators: identity1
 
-import Oceananigans.Fields: location
+import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing
 #####
 ##### Generic fallbacks for biogeochemistry
@@ -36,17 +36,29 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
+@inline function all_fields_present(fields::NamedTuple, required_fields, grid)
+    field_names = keys(fields)
+    field_values = values(fields)
+
+    for field_name in required_fields
+        if field_name not in field_names
+            push!(field_names, field_name)
+            push!(field_values, CenterField(grid))
+        end
+    end
+
+    return NamedTuple{field_names}(field_values)
+end
+
+@inline all_fields_present(fields::Tuple, required_fields, grid) = (fields..., required_fields...)
+
 """Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields` contains biogeochemical auxiliary fields (e.g. PAR)."""
-@inline function validate_biogeochemistry!(tracers, auxiliary_fields, bgc)
+@inline function validate_biogeochemistry!(tracers, auxiliary_fields, bgc, grid)
     req_tracers = required_biogeochemical_tracers(bgc)
-    
-    all(tracer ∈ tracernames(tracers) for tracer in req_tracers) ||
-        error("$(req_tracers) must be among the list of tracers to use $(typeof(bgc).name.wrapper)")
+    tracers = all_fields_present(tracers, req_tracers, grid)
 
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
-    
-    all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
-        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
+    auxiliary_fields = all_fields_present(auxiliary_fields, req_auxiliary_fields, grid)
     
     return nothing
 end
@@ -55,7 +67,7 @@ required_biogeochemical_tracers(::NoBiogeochemistry) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
 """Sets up a tracer based biogeochemical model in a similar way to SeawaterBouyancy"""
-struct TracerBasedBiogeochemistry <: AbstractBiogeochemistry
+struct BiogeochemicalModel <: AbstractBiogeochemistry
     biogeochemical_tracers::NTuple{N, Symbol} where N
     reactions::NamedTuple
     advection_scheme::NamedTuple
@@ -111,13 +123,13 @@ regularize_biogeochemical_forcing(forcing) = forcing
     return forcing.func(x, y, z, clock.time, args...)
 end
 
-@inline function TracerBasedBiogeochemistry(tracers, reactions; advection_scheme=UpwindBiasedFifthOrder, sinking_velocities=NamedTuple(), auxiliary_fields=())
+@inline function BiogeochemicalModel(tracers, reactions; advection_scheme=UpwindBiasedFifthOrder, sinking_velocities=NamedTuple(), auxiliary_fields=())
     reactions = NamedTuple{keys(reactions)}([regularize_biogeochemical_forcing(reaction) for reaction in values(reactions)]) 
     sinking_velocities = regularize_sinking_velocities(sinking_velocities)
-    return TracerBasedBiogeochemistry(tracers, reactions, advection_scheme, sinking_velocities, auxiliary_fields)
+    return BiogeochemicalModel(tracers, reactions, advection_scheme, sinking_velocities, auxiliary_fields)
 end
 
-@inline function (bgc::TracerBasedBiogeochemistry)(i, j, k, grid, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
+@inline function (bgc::BiogeochemicalModel)(i, j, k, grid, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
     # there is probably a cleaner way todo this with multiple dispathc
     reaction = bgc.reactions[tracer_name](i, j, k, grid, clock, fields)
 
@@ -129,7 +141,7 @@ end
     end
 end
 
-required_biogeochemical_tracers(bgc::TracerBasedBiogeochemistry) = bgc.biogeochemical_tracers
-required_biogeochemical_auxiliary_fields(bgc::TracerBasedBiogeochemistry) = bgc.auxiliary_fields
+required_biogeochemical_tracers(bgc::BiogeochemicalModel) = bgc.biogeochemical_tracers
+required_biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel) = bgc.auxiliary_fields
 
 end # module
