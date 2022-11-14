@@ -30,7 +30,7 @@ function time_step_with_discrete_forcing(arch)
     time_step!(model, 1, euler=true)
 
     return true
-endd
+end
 
 """ Take one time step with ParameterizedForcing forcing functions. """
 function time_step_with_parameterized_discrete_forcing(arch)
