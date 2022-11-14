@@ -2,6 +2,7 @@ module Biogeochemistry
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
 using Oceananigans.Advection: div_Uc, UpwindBiasedFifthOrder
+using Oceananigans.Operators: identity1
 
 import Oceananigans.Fields: location
 import Oceananigans.Forcings: regularize_forcing
@@ -55,11 +56,11 @@ required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
 """Sets up a tracer based biogeochemical model in a similar way to SeawaterBouyancy"""
 struct TracerBasedBiogeochemistry <: AbstractBiogeochemistry
-    biogeochemical_tracers
-    reactions
-    advection_scheme
-    sinking_velocities
-    auxiliary_fields
+    biogeochemical_tracers::NTuple{N, Symbol} where N
+    reactions::NamedTuple
+    advection_scheme::NamedTuple
+    sinking_velocities::NamedTuple
+    auxiliary_fields::NTuple{M, Symbol} where M
 end
 
 function regularize_sinking_velocities(sinking_speeds)
@@ -74,9 +75,9 @@ end
 
 # we can't use the standard `ContinuousForcing` regularisation here because it requires all the tracers to be inplace to have the correct indices
 struct ContinuousBiogeochemicalForcing
-    func
-    params
-    field_dependencies
+    func::Function
+    parameters::NamedTuple
+    field_dependencies::NTuple{N, Symbol} where N
 end
 
 DiscreteBiogeochemicalForcing = DiscreteForcing
@@ -97,11 +98,11 @@ end
 
 regularize_biogeochemical_forcing(forcing) = forcing
 
-@inline getargs(fields, field_dependencies, i, j, k, params::Nothing) =@inbounds map(field_name -> fields[field_name][i, j, k], field_dependencies)
-@inline getargs(fields, field_dependencies, i, j, k, params) = @inbounds tuple(map(field_name -> fields[field_name][i, j, k], field_dependencies)..., params)
+@inline getargs(fields, field_dependencies, i, j, k, grid, params::Nothing) = @inbounds identity1.(i, j, k, grid, fields[field_dependencies])
+@inline getargs(fields, field_dependencies, i, j, k, grid, params) = @inbounds tuple(identity1.(i, j, k, grid, fields[field_dependencies])..., params)
 
 @inline function (forcing::ContinuousBiogeochemicalForcing)(i, j, k, grid, clock, fields)
-    args = getargs(fields, forcing.field_dependencies, i, j, k, forcing.params)
+    args = getargs(fields, forcing.field_dependencies, i, j, k, grid, forcing.parameters)
 
     x = xnode(Center(), Center(), Center(), i, j, k, grid)
     y = ynode(Center(), Center(), Center(), i, j, k, grid)
