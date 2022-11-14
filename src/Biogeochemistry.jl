@@ -53,14 +53,14 @@ end
 @inline all_fields_present(fields::Tuple, required_fields, grid) = (fields..., required_fields...)
 
 """Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields` contains biogeochemical auxiliary fields (e.g. PAR)."""
-@inline function validate_biogeochemistry!(tracers, auxiliary_fields, bgc, grid)
+@inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid)
     req_tracers = required_biogeochemical_tracers(bgc)
     tracers = all_fields_present(tracers, req_tracers, grid)
 
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
     auxiliary_fields = all_fields_present(auxiliary_fields, req_auxiliary_fields, grid)
     
-    return nothing
+    return tracers, auxiliary_fields
 end
 
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
