@@ -25,7 +25,7 @@ function time_step_with_discrete_forcing(arch)
 
     Fu = Forcing(Fu_discrete_func, discrete_form=true)
 
-    grid = RectilinearGdrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(; grid, forcing=(u=Fu,))
     time_step!(model, 1, euler=true)
 
