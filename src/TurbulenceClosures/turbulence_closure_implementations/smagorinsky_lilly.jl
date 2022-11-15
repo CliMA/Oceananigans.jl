@@ -106,15 +106,6 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 end
 
 
-@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, buoyancy, velocities, tracers, ::Val{tracer_index}) where {tracer_index}
-    νₑ = calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, velocities, tracers)
-
-    @inbounds Pr = closure.Pr[tracer_index]
-
-    return νₑ / Pr
-end
-
-
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
     arch = model.architecture
