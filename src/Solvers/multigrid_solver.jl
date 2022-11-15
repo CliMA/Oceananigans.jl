@@ -2,7 +2,7 @@ using Oceananigans.Architectures: architecture
 using LinearAlgebra
 using AlgebraicMultigrid: _solve!, RugeStubenAMG, ruge_stuben, SmoothedAggregationAMG, smoothed_aggregation
 using CUDA
-@ifhasamgx using AMGX
+using AMGX
 
 import Oceananigans.Architectures: architecture
 
@@ -154,16 +154,16 @@ function MultigridSolver_on_architecture(::CPU;
                               )
 end
 
-@ifhasamgx function MultigridSolver_on_architecture(::GPU;
-                                                    template_field::AbstractField,
-                                                    maxiter,
-                                                    reltol,
-                                                    abstol,
-                                                    amg_algorithm,
-                                                    matrix,
-                                                    x_array,
-                                                    b_array
-                                                    )
+function MultigridSolver_on_architecture(::GPU;
+                                         template_field::AbstractField,
+                                         maxiter,
+                                         reltol,
+                                         abstol,
+                                         amg_algorithm,
+                                         matrix,
+                                         x_array,
+                                         b_array
+                                         )
 
     amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
 
@@ -179,7 +179,7 @@ end
                               )
 end
 
-@ifhasamgx function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
     tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
     try
         global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
@@ -293,9 +293,11 @@ function solve!(x, solver::MultigridCPUSolver, b; kwargs...)
             kwargs...)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
+
+    return nothing
 end
 
-@ifhasamgx function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
+function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     Nx, Ny, Nz = size(b)
 
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
@@ -308,6 +310,8 @@ end
     AMGX.copy!(solver.x_array, s.device_x)
 
     interior(x) .= reshape(solver.x_array, Nx, Ny, Nz)
+
+    return nothing
 end
 
 """
@@ -318,7 +322,7 @@ This function needs to be called before creating a multigrid solver on GPU.
 """
 function initialize_AMGX(::GPU)
     try
-        @ifhasamgx AMGX.initialize(); AMGX.initialize_plugins()
+        AMGX.initialize(); AMGX.initialize_plugins()
     catch e
         @info "It appears AMGX was not finalized. Have you called `finalize_AMGX`?"
         AMGX.finalize_plugins()
@@ -337,13 +341,13 @@ Finalize the AMGX package required to use the multigrid solver on `architecture`
 This should be called after `finalize_solver!`.
 """
 function finalize_AMGX(::GPU)
-    @ifhasamgx AMGX.finalize_plugins(); AMGX.finalize()
+    AMGX.finalize_plugins(); AMGX.finalize()
 end
 
 finalize_AMGX(::CPU) = nothing
 
 
-@ifhasamgx function finalize_solver!(s::AMGXMultigridSolver)
+function finalize_solver!(s::AMGXMultigridSolver)
     @info "Finalizing the AMGX Multigrid solver on GPU"
     close(s.device_matrix)
     close(s.device_x)
@@ -355,7 +359,7 @@ finalize_AMGX(::CPU) = nothing
     return nothing
 end
 
-@ifhasamgx finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
+finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 
