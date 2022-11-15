@@ -51,24 +51,24 @@ and ``step`` is the piecewise linear function
 
 """
 Base.@kwdef struct MixingLength{FT}
-    Cᵇu   :: FT = Inf
-    Cᵇc   :: FT = Inf
-    Cᵇe   :: FT = Inf
-    Cˢu   :: FT = Inf
-    Cˢc   :: FT = Inf
-    Cˢe   :: FT = Inf
-    Cᴬu   :: FT = 0.0
-    Cᴬc   :: FT = 0.0
-    Cᴬe   :: FT = 0.0
-    Cᴬˢ   :: FT = 0.0
-    Cᴷu⁻  :: FT = 1.0
-    Cᴷu⁺  :: FT = 1.0
-    Cᴷc⁻  :: FT = 1.0
-    Cᴷc⁺  :: FT = 1.0
-    Cᴷe⁻  :: FT = 1.0
-    Cᴷe⁺  :: FT = 1.0
-    CᴷRiʷ :: FT = 1.0
-    CᴷRiᶜ :: FT = 0.0
+    Cᵇu  :: FT = Inf
+    Cᵇc  :: FT = Inf
+    Cᵇe  :: FT = Inf
+    Cˢu  :: FT = Inf
+    Cˢc  :: FT = Inf
+    Cˢe  :: FT = Inf
+    Cᴬu  :: FT = 0.0
+    Cᴬc  :: FT = 0.0
+    Cᴬe  :: FT = 0.0
+    Cᴬˢ  :: FT = 0.0
+    Cᴷu⁻ :: FT = 1.0
+    Cᴷu⁺ :: FT = 1.0
+    Cᴷc⁻ :: FT = 1.0
+    Cᴷc⁺ :: FT = 1.0
+    Cᴷe⁻ :: FT = 1.0
+    Cᴷe⁺ :: FT = 1.0
+    CRiʷ :: FT = 1.0
+    CRiᶜ :: FT = 0.0
 end
 
 #####
@@ -128,14 +128,14 @@ end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
-@inline scale(Ri, σ⁻, σ⁺, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+@inline scale(Ri, σ⁻, σ⁺, c, w)    = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 @inline scale(Ri, σ⁻, σ⁺, c, w, n) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)^n
 
 @inline function stable_mixing_scale(i, j, k, grid, Cᴷ⁻, Cᴷ⁺, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    CᴷRiᶜ = closure.mixing_length.CᴷRiᶜ
-    CᴷRiʷ = closure.mixing_length.CᴷRiʷ
-    return scale(Ri, Cᴷ⁻, Cᴷ⁺, CᴷRiᶜ, CᴷRiʷ)
+    CRiᶜ = closure.mixing_length.CRiᶜ
+    CRiʷ = closure.mixing_length.CRiʷ
+    return scale(Ri, Cᴷ⁻, Cᴷ⁺, CRiᶜ, CRiʷ)
 end
 
 @inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)

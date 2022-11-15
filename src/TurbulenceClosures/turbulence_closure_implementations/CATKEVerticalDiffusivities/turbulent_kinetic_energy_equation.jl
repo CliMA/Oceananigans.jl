@@ -22,8 +22,6 @@ surface buoyancy flux `Qᵇ`.
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
     Cᴰ⁻   :: FT = 1.0
     Cᴰ⁺   :: FT = 1.0
-    CᴰRiᶜ :: FT = 0.0
-    CᴰRiʷ :: FT = 1.0
     Cᵂu★  :: FT = 1.0
     CᵂwΔ  :: FT = 1.0
 end
@@ -85,8 +83,8 @@ end
     # Ri-dependent dissipation coefficient
     Cᴰ⁻ = closure.turbulent_kinetic_energy_equation.Cᴰ⁻
     Cᴰ⁺ = closure.turbulent_kinetic_energy_equation.Cᴰ⁺
-    Riᶜ = closure.turbulent_kinetic_energy_equation.CᴰRiᶜ
-    Riʷ = closure.turbulent_kinetic_energy_equation.CᴰRiʷ
+    Riᶜ = closure.mixing_length.CRiᶜ
+    Riʷ = closure.mixing_length.CRiʷ
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     Cᴰ = scale(Ri, Cᴰ⁻, Cᴰ⁺, Riᶜ, Riʷ)
 
