@@ -64,6 +64,8 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
+with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
+calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs

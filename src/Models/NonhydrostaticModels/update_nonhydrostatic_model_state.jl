@@ -7,9 +7,11 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::NonhydrostaticModel)
+    update_state!(model::NonhydrostaticModel, callbacks=[])
 
-Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic pressure) to the current model state.
+Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
+pressure) to the current model state. If `callbacks` are provided (in an array),
+they are called in the end.
 """
 function update_state!(model::NonhydrostaticModel, callbacks=[])
     

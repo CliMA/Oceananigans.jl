@@ -4,8 +4,8 @@ using Oceananigans.Operators
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
 Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
-by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
+proposed originally by [Rozema15](@cite) and [Abkar16](@cite), then modified by [Verstappen18](@cite),
+and finally described and validated for by [Vreugdenhil18](@cite).
 """
 struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation}
     Cν :: PN
@@ -29,11 +29,11 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
 
 """
-    AnisotropicMinimumDissipation(time_discretization = ExplicitTimeDiscretization, FT = Float64;
+    AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
                                   C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
                                   
                                        
-Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
+Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
@@ -100,6 +100,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
 
 References
 ==========
+
 Vreugdenhil C., and Taylor J. (2018), "Large-eddy simulations of stratified plane Couette
     flow using the anisotropic minimum-dissipation model", Physics of Fluids 30, 085104.
 
@@ -164,7 +165,7 @@ end
 
     @inbounds Cκ = closure.Cκ[tracer_index]
 
-    σ =  norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, tracer)
+    σ = norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, tracer)
 
     if σ == 0 # denominator is zero: short-circuit computations and set subfilter diffusivity to zero.
         κˢᵍˢ = zero(FT)
@@ -356,4 +357,3 @@ function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
 
     return (; νₑ, κₑ)
 end
-
