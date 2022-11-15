@@ -115,11 +115,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
     
-    # AMGX
-    @ifhasamgx
-
 using Printf
 using Logging
 using Statistics
@@ -130,7 +127,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -142,8 +138,14 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
+
+# TODO: find a way to check whether the libraries for AMGX and NETCDF 
+# (libamgxsh and libnetcdf, respectively) are installed on the machine
 "Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx = @static Sys.islinux() ? true : false
+const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
+"Boolean denoting whether NCDatasets.jl can be loaded on machine."
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
 """
     @ifhasamgx expr
@@ -151,8 +153,16 @@ const hasamgx = @static Sys.islinux() ? true : false
 Evaluate `expr` only if `hasamgx == true`.
 """
 macro ifhasamgx(expr)
-
     hasamgx ? :($(esc(expr))) : :(nothing) 
+end
+
+"""
+    @ifnetcdf expr
+
+Evaluate `expr` only if `hasnetcdf == true`.
+"""
+macro ifhasnetcdf(expr)
+    hasnetcdf ? :($(esc(expr))) : :(nothing) 
 end
 
 #####

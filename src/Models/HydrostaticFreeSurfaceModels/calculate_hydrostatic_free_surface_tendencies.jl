@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 """
-    calculate_tendencies!(model::NonhydrostaticModel)
+    calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
