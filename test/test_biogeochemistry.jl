@@ -1,48 +1,78 @@
 using Oceananigans, Printf
 using Oceananigans.Units: minutes, hour, hours, day
-using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
+using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry
 using Oceananigans.Grids: znode
 
-import Oceananigans.Biogeochemistry: required_biogeochemical_tracers
+import Oceananigans.Biogeochemistry:
+    required_biogeochemical_tracers
+    biogeochemical_drift_velocity,
+    biogeochemical_advection_schemes
 
-struct SimplePlanktonGrowthDeath <: AbstractBiogeochemistry
-    μ₀ :: Float64
-    λ :: Float64
-    m :: Float64
+struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemistry
+     growth_rate :: FT
+     light_penetration_depth :: FT
+     mortality_rate :: FT
+     sinking_velocity :: W     
+     advection_scheme :: A
 end
 
-@inline SimplePlanktonGrowthDeath() = SimplePlanktonGrowthDeath(1/day, 5.0, 0.1/day)
+function SimplePlanktonGrowthDeath(; growth_rate,
+                                     light_penetration_depth,
+                                     mortality_rate,
+                                     sinking_velocity = 0,
+                                     advection_scheme = nothing)
 
-required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P, )
+    return SimplePlanktonGrowthDeath(growth_rate,
+                                     light_penetration_depth,
+                                     mortality_rate,
+                                     sinking_velocity,
+                                     advection_scheme)
+end
 
+######
+###### Functions we have to define
+######
+
+@inline required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P,)
+@inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{P}) = (0.0, 0.0, bgc.w)
+@inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{P}) = bgc.advection
+
+@inline (bgc::SimplePlanktonGrowthDeath)(::Val{P}, x, y, z, t, P, bgc) = (bgc.μ₀ * exp(z / bgc.λ) - bgc.m) * P
+
+#=
+# Note, if we subtypted AbstractBiogeochemistry we would write
 @inline function (bgc::SimplePlanktonGrowthDeath)(i, j, k, grid, ::Val{:P}, clock, fields)
     z = znode(Center(), k, grid)
     P = @inbounds fields.P[i, j, k]
     return (bgc.μ₀ * exp(z / bgc.λ) - bgc.m) * P
 end
+=#
 
-grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size = (64, 64),
+                       extent = (64, 64),
+                       halo = (3, 3),
+                       topology = (Periodic, Flat, Bounded))
 
-buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
-buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, shut_off_time = 2hours)
-buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_flux_parameters)
+buoyancy_flux_bc = FluxBoundaryCondition(1e-8)
 
 N² = 1e-4 # s⁻²
 buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
-model = NonhydrostaticModel(; grid,
-                            advection = WENO(;grid),
+biogeochemistry = SimplePlanktonGrowthDeath(growth_rate = 1/day,
+                                            light_penetration_depth = 5.0,
+                                            mortality_rate = 0.1/day)
+
+model = NonhydrostaticModel(; grid, biogeochemistry,
+                            advection = WENO(; grid),
                             timestepper = :RungeKutta3,
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
-                            tracers = (:b, :P), # P for Plankton
+                            tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            biogeochemistry = SimplePlanktonGrowthDeath(),
                             boundary_conditions = (; b=buoyancy_bcs))
 
 mixed_layer_depth = 32 # m
-
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
 initial_buoyancy(x, y, z) = stratification(z) + noise(z)
@@ -52,19 +82,12 @@ set!(model, b=initial_buoyancy, P = 1.0)
 simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
 
 wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
-
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
-
-
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         iteration(sim), prettytime(sim), prettytime(sim.Δt))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-
-# and a basic `JLD2OutputWriter` that writes velocities and both
-# the two-dimensional and horizontally-averaged plankton concentration,
-
 
 outputs = (w = model.velocities.w,
            P = model.tracers.P,
@@ -76,18 +99,9 @@ simulation.output_writers[:simple_output] =
                      filename = "convecting_NPD.jld2",
                      overwrite_existing = true)
 
-# !!! info "Using multiple output writers"
-#     Because each output writer is associated with a single output `schedule`,
-#     it often makes sense to use _different_ output writers for different types of output.
-#     For example, smaller outputs that consume less disk space may be written more
-#     frequently without threatening the capacity of your hard drive.
-#     An arbitrary number of output writers may be added to `simulation.output_writers`.
-#
-# The simulation is set up. Let there be plankton:
-
 run!(simulation)
 
-
+#=
 # Notice how the time-step is reduced at early times, when turbulence is strong,
 # and increases again towards the end of the simulation when turbulence fades.
 
@@ -168,3 +182,4 @@ end
 nothing #hide
 
 # ![](convecting_plankton.mp4)
+# =#

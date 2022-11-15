@@ -1,4 +1,5 @@
 module Biogeochemistry
+
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
 using Oceananigans.Advection: div_Uc, UpwindBiasedFifthOrder
@@ -6,14 +7,17 @@ using Oceananigans.Operators: identity1
 
 import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing
+
+"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
+abstract type AbstractBiogeochemistry end
+abstract type AbstractContinuousFormBiogeochemistry end
+
 #####
 ##### Generic fallbacks for biogeochemistry
 #####
 
-nothing_function(args...) = nothing
-
 """
-Update tracer tendencies.
+Update tendencies.
 
 Called at the end of calculate_tendencies!
 """
@@ -26,10 +30,56 @@ Called at the end of calculate_tendencies!
 """
 update_biogeochemical_state!(bgc, model) = nothing
 
-"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
-abstract type AbstractBiogeochemistry end
+@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
+@inline biogeochemical_advection_scheme(bgc, val_tracer_name) = nothing
 
-@inline (::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
+@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+    U = drift_velocity(bgc, val_tracer_name)
+    scheme = advection_scheme(bgc, val_tracer_name)
+
+    src = biogeochemical_transition(i, j, k, grid, val_tracer_name, clock, fields)
+    c = fields[val_tracer_name]
+        
+    return src + div_Uc(i, j, k, grid, scheme, U, c)
+end
+
+#####
+##### Default (discrete form) biogeochemical source fallback
+#####
+
+@inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
+    bgc(i, j, k, grid, val_tracer_name, clock, fields)
+
+@inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
+
+#####
+##### Continuous form biogeochemical source
+#####
+ 
+@inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{1}) =
+    @inbounds (fields[names[1]][i, j, k],)
+
+@inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{2}) =
+    @inbounds (fields[names[1]][i, j, k],
+               fields[names[2]][i, j, k])
+
+@inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{N}) where N =
+    @inbounds ntuple(n -> fields[names[n]][i, j, k], Val(N))
+
+@inline function biogeochemical_transition(i, j, k, grid, bgc::AbstractContinuousFormBiogeochemistry,
+                                           val_tracer_name, clock, fields)
+
+    names_to_extract = tuple(required_biogeochemical_tracers(bgc)...,
+                             required_biogeochemical_auxiliary_fields(bgc)...)
+
+    fields_ijk = extract_biogeochemical_fields(i, j, k, grid, fields, names_to_extract)
+
+    x = xnode(Center(), Center(), Center(), i, j, k, grid)
+    y = ynode(Center(), Center(), Center(), i, j, k, grid)
+    z = znode(Center(), Center(), Center(), i, j, k, grid)
+
+    return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
+end
 
 struct NoBiogeochemistry <: AbstractBiogeochemistry end
 
@@ -66,13 +116,22 @@ end
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
-"""Sets up a tracer based biogeochemical model in a similar way to SeawaterBouyancy"""
-struct BiogeochemicalModel <: AbstractBiogeochemistry
-    biogeochemical_tracers::NTuple{N, Symbol} where N
-    reactions::NamedTuple
-    advection_scheme::NamedTuple
-    sinking_velocities::NamedTuple
-    auxiliary_fields::NTuple{M, Symbol} where M
+#=
+"""
+    BiogeochemicalModel <: AbstractBiogeochemistry
+
+Sets up a tracer based biogeochemical model in a similar way to SeawaterBuoyancy.
+
+Example
+======
+
+"""
+struct BiogeochemicalModel{A, B, C, D, E} <: AbstractBiogeochemistry
+    biogeochemical_tracers :: NTuple{N, Symbol} where N
+    reactions :: NamedTuple
+    advection_scheme :: NamedTuple
+    sinking_velocities :: NamedTuple
+    auxiliary_fields :: NTuple{M, Symbol} where M
 end
 
 function regularize_sinking_velocities(sinking_speeds)
@@ -143,5 +202,6 @@ end
 
 required_biogeochemical_tracers(bgc::BiogeochemicalModel) = bgc.biogeochemical_tracers
 required_biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel) = bgc.auxiliary_fields
+=#
 
 end # module
