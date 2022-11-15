@@ -4,9 +4,9 @@ using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry
 using Oceananigans.Grids: znode
 
 import Oceananigans.Biogeochemistry:
-    required_biogeochemical_tracers
+    required_biogeochemical_tracers,
     biogeochemical_drift_velocity,
-    biogeochemical_advection_schemes
+    biogeochemical_advection_scheme
 
 struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemistry
      growth_rate :: FT
@@ -34,10 +34,16 @@ end
 ######
 
 @inline required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P,)
-@inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{P}) = (0.0, 0.0, bgc.w)
-@inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{P}) = bgc.advection
+@inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = (0.0, 0.0, bgc.w)
+@inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.advection
 
-@inline (bgc::SimplePlanktonGrowthDeath)(::Val{P}, x, y, z, t, P, bgc) = (bgc.μ₀ * exp(z / bgc.λ) - bgc.m) * P
+@inline function (bgc::SimplePlanktonGrowthDeath)(::Val{:P}, x, y, z, t, P)
+    μ₀ = bgc.growth_rate
+    λ = bgc.light_penetration_depth
+    m = bgc.mortality_rate
+
+    (μ₀ * exp(z / λ) - m) * P
+end
 
 #=
 # Note, if we subtypted AbstractBiogeochemistry we would write
@@ -101,85 +107,7 @@ simulation.output_writers[:simple_output] =
 
 run!(simulation)
 
-#=
-# Notice how the time-step is reduced at early times, when turbulence is strong,
-# and increases again towards the end of the simulation when turbulence fades.
+#####
+##### Example using Biogeochemistry
+#####
 
-# ## Visualizing the solution
-#
-# We'd like to a make a plankton movie. First we load the output file
-# and build a time-series of the buoyancy flux,
-
-filepath = simulation.output_writers[:simple_output].filepath
-
-w_timeseries = FieldTimeSeries(filepath, "w")
-P_timeseries = FieldTimeSeries(filepath, "P")
-avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
-
-times = w_timeseries.times
-buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
-nothing # hide
-
-# and then we construct the ``x, z`` grid,
-
-xw, yw, zw = nodes(w_timeseries)
-xp, yp, zp = nodes(P_timeseries)
-nothing # hide
-
-# Finally, we animate plankton mixing and blooming,
-
-using CairoMakie
-
-@info "Making a movie about plankton..."
-
-n = Observable(1)
-
-title = @lift @sprintf("t = %s", prettytime(times[$n]))
-
-wₙ = @lift interior(w_timeseries[$n], :, 1, :)
-Pₙ = @lift interior(P_timeseries[$n], :, 1, :)
-avg_Pₙ = @lift interior(avg_P_timeseries[$n], 1, 1, :)
-
-w_lim = maximum(abs, interior(w_timeseries))
-w_lims = (-w_lim, w_lim)
-
-P_lims = (0.95, 1.1)
-
-fig = Figure(resolution = (1200, 1000))
-
-ax_w = Axis(fig[2, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
-ax_P = Axis(fig[3, 2]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
-ax_b = Axis(fig[2, 3]; xlabel = "Time (hours)", ylabel = "Buoyancy flux (m² s⁻³)", yaxisposition = :right)
-
-ax_avg_P = Axis(fig[3, 3]; xlabel = "Plankton concentration (μM)", ylabel = "z (m)", yaxisposition = :right)
-xlims!(ax_avg_P, 0.85, 1.3)
-
-fig[1, 1:3] = Label(fig, title, tellwidth=false)
-
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = w_lims)
-Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m s⁻¹)", flipaxis = false)
-
-hm_P = heatmap!(ax_P, xp, zp, Pₙ; colormap = :matter, colorrange = P_lims)
-Colorbar(fig[3, 1], hm_P; label = "Plankton 'concentration'", flipaxis = false)
-
-lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :black, alpha = 0.4)
-
-b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
-scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
-lines!(ax_avg_P, avg_Pₙ, zp)
-
-# And, finally, we record a movie.
-
-frames = 1:length(times)
-
-@info "Making an animation of convecting plankton..."
-
-record(fig, "convecting_plankton.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
-    n[] = i
-end
-nothing #hide
-
-# ![](convecting_plankton.mp4)
-# =#
