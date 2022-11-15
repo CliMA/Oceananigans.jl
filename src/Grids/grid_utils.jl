@@ -8,14 +8,14 @@ using OffsetArrays: IdOffsetRange
 #####
 const BoundedTopology = Union{Bounded, LeftConnected}
 
-Base.length(::Type{Face}, topo, N) = N
-Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
-Base.length(::Type{Center}, topo, N) = N
-Base.length(::Type{Nothing}, topo, N) = 1
+@inline Base.length(::Type{Face}, topo, N) = N
+@inline Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
+@inline Base.length(::Type{Center}, topo, N) = N
+@inline Base.length(::Type{Nothing}, topo, N) = 1
 
-Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
-Base.length(::Type{Face},    ::Type{Flat}, N) = N
-Base.length(::Type{Center},  ::Type{Flat}, N) = N
+@inline Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
+@inline Base.length(::Type{Face},    ::Type{Flat}, N) = N
+@inline Base.length(::Type{Center},  ::Type{Flat}, N) = N
 
 """
     topology(grid)
@@ -42,9 +42,9 @@ Return the architecture (CPU or GPU) that the `grid` lives on.
     Constant Grid Definitions 
 """
 
-Base.eltype(::AbstractGrid{FT}) where FT = FT
+@inline Base.eltype(::AbstractGrid{FT}) where FT = FT
 
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+@inline function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     #check if grids are of the same type
     !isa(grid2, typeof(grid1).name.wrapper) && return false
 
@@ -63,15 +63,15 @@ Return the size of a `grid` at `loc`, not including halos.
 This is a 3-tuple of integers corresponding to the number of interior nodes
 along `x, y, z`.
 """
-Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
-                                      length(loc[2], topology(grid, 2), grid.Ny),
-                                      length(loc[3], topology(grid, 3), grid.Nz))
+@inline Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
+                                              length(loc[2], topology(grid, 2), grid.Ny),
+                                              length(loc[3], topology(grid, 3), grid.Nz))
 
-Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
-Base.size(grid::AbstractGrid, d) = size(grid)[d]
-Base.size(loc, grid, d) = size(loc, grid)[d]
+@inline Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
+@inline Base.size(grid::AbstractGrid, d) = size(grid)[d]
+@inline Base.size(loc, grid, d) = size(loc, grid)[d]
 
-total_size(a) = size(a) # fallback
+@inline total_size(a) = size(a) # fallback
 
 """
     total_size(loc, grid)
@@ -79,17 +79,17 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                         total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                         total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
 
-function total_size(loc, grid, indices::Tuple)
+@inline function total_size(loc, grid, indices::Tuple)
     sz = total_size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
 
-function Base.size(loc, grid::AbstractGrid, indices::Tuple)
+@inline function Base.size(loc, grid::AbstractGrid, indices::Tuple)
     sz = size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
@@ -101,7 +101,7 @@ end
 
 Return a tuple with the size of the halo in each dimension.
 """
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+@inline halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 """
     total_extent(topology, H, Δ, L)
@@ -135,7 +135,7 @@ one dimension of `topo`logy with `N` centered cells and
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
 @inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
-regular_dimensions(grid) = ()
+@inline regular_dimensions(grid) = ()
 
 #####
 ##### << Indexing >>
@@ -208,15 +208,15 @@ regular_dimensions(grid) = ()
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_parent_z_indices(loc, grid) = all_parent_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
-parent_index_range(::Colon,                       loc, topo, halo) = Colon()
-parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
+@inline parent_index_range(::Colon,                       loc, topo, halo) = Colon()
+@inline parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+@inline parent_index_range(index::UnitRange,              loc, topo, halo) = index .+ interior_parent_offset(loc, topo, halo)
 
-parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
-parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
+@inline parent_index_range(index::UnitRange, ::Type{Nothing}, ::Type{Flat}, halo) = index
+@inline parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 # or Colon()
 
-index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
-index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
+@inline index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
+@inline index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
 #####
 ##### << Nodes >>
@@ -243,9 +243,9 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
 @inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
 
-all_x_nodes(::Type{Nothing}, grid) = 1:1
-all_y_nodes(::Type{Nothing}, grid) = 1:1
-all_z_nodes(::Type{Nothing}, grid) = 1:1
+@inline all_x_nodes(::Type{Nothing}, grid) = 1:1
+@inline all_y_nodes(::Type{Nothing}, grid) = 1:1
+@inline all_z_nodes(::Type{Nothing}, grid) = 1:1
 
 """
     xnodes(loc, grid, reshape=false)
@@ -261,7 +261,7 @@ Keyword argument
 
 See `znodes` for examples.
 """
-function xnodes(loc, grid; reshape=false)
+@inline function xnodes(loc, grid; reshape=false)
 
     x = view(all_x_nodes(loc, grid),
              interior_indices(loc, topology(grid, 1), grid.Nx))
@@ -283,7 +283,7 @@ Keyword argument
 
 See [`znodes`](@ref) for examples.
 """
-function ynodes(loc, grid; reshape=false)
+@inline function ynodes(loc, grid; reshape=false)
 
     y = view(all_y_nodes(loc, grid),
              interior_indices(loc, topology(grid, 2), grid.Ny))
@@ -328,7 +328,7 @@ julia> zF = znodes(Face, horz_periodic_grid)
   0.0
 ```
 """
-function znodes(loc, grid; reshape=false)
+@inline function znodes(loc, grid; reshape=false)
 
     z = view(all_z_nodes(loc, grid),
              interior_indices(loc, topology(grid, 3), grid.Nz))
@@ -349,7 +349,7 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(loc, grid::AbstractGrid; reshape=false)
+@inline function nodes(loc, grid::AbstractGrid; reshape=false)
     if reshape
         x, y, z = nodes(loc, grid; reshape=false)
 
@@ -371,10 +371,10 @@ end
 ##### Convenience functions
 #####
 
-unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
+@inline unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
 
-flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
-flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
+@inline flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
+@inline flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 
 """
     pop_flat_elements(tup, topo)
@@ -383,7 +383,7 @@ Return a new tuple that contains the elements of `tup`,
 except for those elements corresponding to the `Flat` directions
 in `topo`.
 """
-function pop_flat_elements(tup, topo)
+@inline function pop_flat_elements(tup, topo)
     new_tup = []
     for i = 1:3
         topo[i] != Flat && push!(new_tup, tup[i])
