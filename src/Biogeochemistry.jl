@@ -8,10 +8,6 @@ using Oceananigans.Operators: identity1
 import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing
 
-"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
-abstract type AbstractBiogeochemistry end
-abstract type AbstractContinuousFormBiogeochemistry end
-
 #####
 ##### Generic fallbacks for biogeochemistry
 #####
@@ -33,19 +29,20 @@ update_biogeochemical_state!(bgc, model) = nothing
 @inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
 @inline biogeochemical_advection_scheme(bgc, val_tracer_name) = nothing
 
-@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name, clock, fields)
-    U = drift_velocity(bgc, val_tracer_name)
-    scheme = advection_scheme(bgc, val_tracer_name)
+#####
+##### Default (discrete form) biogeochemical source
+#####
 
+abstract type AbstractBiogeochemistry end
+
+@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+    U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
+    scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
     src = biogeochemical_transition(i, j, k, grid, val_tracer_name, clock, fields)
     c = fields[val_tracer_name]
         
-    return src + div_Uc(i, j, k, grid, scheme, U, c)
+    return src + div_Uc(i, j, k, grid, scheme, U_drift, c)
 end
-
-#####
-##### Default (discrete form) biogeochemical source fallback
-#####
 
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
     bgc(i, j, k, grid, val_tracer_name, clock, fields)
@@ -56,6 +53,9 @@ end
 ##### Continuous form biogeochemical source
 #####
  
+"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
+abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry end
+
 @inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{1}) =
     @inbounds (fields[names[1]][i, j, k],)
 
@@ -80,6 +80,8 @@ end
 
     return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
 end
+
+@inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(x)
 
 struct NoBiogeochemistry <: AbstractBiogeochemistry end
 
@@ -116,33 +118,46 @@ end
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
-#=
 """
-    BiogeochemicalModel <: AbstractBiogeochemistry
+    SomethingBiogeochemistry <: AbstractBiogeochemistry
 
 Sets up a tracer based biogeochemical model in a similar way to SeawaterBuoyancy.
 
 Example
-======
+=======
 
+@inline growth(x, y, z, t, P, μ₀, λ, m) = (μ₀ * exp(z / λ) - m) * P 
+
+biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct BiogeochemicalModel{A, B, C, D, E} <: AbstractBiogeochemistry
+struct Biogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
-    reactions :: NamedTuple
-    advection_scheme :: NamedTuple
-    sinking_velocities :: NamedTuple
-    auxiliary_fields :: NTuple{M, Symbol} where M
+    transitions :: T
+    advection_schemes :: S
+    drift_velocities :: U
+    auxiliary_fields :: A
+    parameters :: P
 end
 
-function regularize_sinking_velocities(sinking_speeds)
-    sinking_velocities = []
-    for w in values(sinking_speeds)
+@inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
+@inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
+@inline biogeochemical_drift_velocity(bgc::Biogeochemistry, val_tracer_name) = bgc.drift_velocities[val_tracer_name]
+@inline biogeochemical_advection_scheme(bgc::Biogeochemistry, val_tracer_name) = bgc.advection_schemes[val_tracer_name]
+
+@inline (bgc::Biogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) = 
+    bgc.transitions[name](x, y, z, t, fields_ijk..., bgc.parameters...)
+
+#=
+function regularize_drift_velocities(drift_speeds)
+    drift_velocities = []
+    for w in values(drift_speeds)
         u, v, w = maybe_constant_field.((0.0, 0.0, - w))
-        push!(sinking_velocities, (; u, v, w))
+        push!(drift_velocities, (; u, v, w))
     end
 
-    return NamedTuple{keys(sinking_speeds)}(sinking_velocities)
+    return NamedTuple{keys(drift_speeds)}(drift_velocities)
 end
+=#
 
 # we can't use the standard `ContinuousForcing` regularisation here because it requires all the tracers to be inplace to have the correct indices
 struct ContinuousBiogeochemicalForcing
@@ -182,26 +197,23 @@ regularize_biogeochemical_forcing(forcing) = forcing
     return forcing.func(x, y, z, clock.time, args...)
 end
 
-@inline function BiogeochemicalModel(tracers, reactions; advection_scheme=UpwindBiasedFifthOrder, sinking_velocities=NamedTuple(), auxiliary_fields=())
-    reactions = NamedTuple{keys(reactions)}([regularize_biogeochemical_forcing(reaction) for reaction in values(reactions)]) 
-    sinking_velocities = regularize_sinking_velocities(sinking_velocities)
-    return BiogeochemicalModel(tracers, reactions, advection_scheme, sinking_velocities, auxiliary_fields)
+@inline function SomethingBiogeochemistry(tracers, transitions; advection_scheme=UpwindBiasedFifthOrder, drift_velocities=NamedTuple(), auxiliary_fields=())
+    transitions = NamedTuple{keys(transitions)}([regularize_biogeochemical_forcing(transition) for transition in values(transitions)]) 
+    drift_velocities = regularize_drift_velocities(drift_velocities)
+    return SomethingBiogeochemistry(tracers, transitions, advection_scheme, drift_velocities, auxiliary_fields)
 end
 
-@inline function (bgc::BiogeochemicalModel)(i, j, k, grid, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
+@inline function (bgc::SomethingBiogeochemistry)(i, j, k, grid, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
     # there is probably a cleaner way todo this with multiple dispathc
-    reaction = bgc.reactions[tracer_name](i, j, k, grid, clock, fields)
+    transition = bgc.transitions[tracer_name](i, j, k, grid, clock, fields)
 
-    if tracer_name in keys(bgc.sinking_velocities)
-        sinking = - div_Uc(i, j, k, grid, bgc.adv_scheme, bgc.sinking_velocities[tracer_name], fields[tracer_name])
-        return reaction + sinking
+    if tracer_name in keys(bgc.drift_velocities)
+        drift = - div_Uc(i, j, k, grid, bgc.adv_scheme, bgc.drift_velocities[tracer_name], fields[tracer_name])
+        return transition + drift
     else
-        return reaction
+        return transition
     end
 end
 
-required_biogeochemical_tracers(bgc::BiogeochemicalModel) = bgc.biogeochemical_tracers
-required_biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel) = bgc.auxiliary_fields
-=#
 
 end # module
