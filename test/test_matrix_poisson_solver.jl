@@ -138,13 +138,14 @@ end
         end
     end
 
-    @info "  Testing Sparse Approximate Inverse..."
+    if arch isa CPU
+        @info "  Testing Sparse Approximate Inverse..."
 
-    A   = sprand(100, 100, 0.1)
-    A   = A + A' + 1I
-    A⁻¹ = sparse(inv(Array(A)))
-    M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
-    
-    @test all(Array(M) .≈ A⁻¹)
-    
+        A   = sprand(100, 100, 0.1)
+        A   = A + A' + 1I
+        A⁻¹ = sparse(inv(Array(A)))
+        M   = sparse_approximate_inverse(A, ε = eps(eltype(A)), nzrel = size(A, 1))
+
+        @test all(Array(M) .≈ A⁻¹)
+    end
 end
