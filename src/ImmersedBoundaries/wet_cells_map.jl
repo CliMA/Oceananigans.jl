@@ -22,9 +22,8 @@ end
 wet_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
 function compute_wet_cells(grid, ib)
-    cpu_grid = on_architecture(CPU(), grid)
-    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(wet_cell, cpu_grid; computed_dependencies = (ib, ))
-    wet_cells_field = Field{Center, Center, Center}(cpu_grid, Bool)
+    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(wet_cell, grid; computed_dependencies = (ib, ))
+    wet_cells_field = Field{Center, Center, Center}(grid, Bool)
     set!(wet_cells_field, is_immersed_operation)
     return wet_cells_field
 end
@@ -35,7 +34,7 @@ const MAXUInt32 = 2^32 - 1
 
 function create_cells_map(grid, ib)
     wet_cells_field = compute_wet_cells(grid, ib)
-    full_indices    = findall(interior(wet_cells_field))
+    full_indices    = arch_array(CPU(), findall(interior(wet_cells_field)))
     
     # Reduce the size of the wet_cells_map (originally a tuple of Int64)
     N = maximum(size(grid))
