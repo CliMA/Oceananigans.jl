@@ -89,17 +89,14 @@ tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
 @inline function all_fields_present(fields::NamedTuple, required_fields, grid)
-    field_names = keys(fields)
-    field_values = values(fields)
 
     for field_name in required_fields
-        if field_name not in field_names
-            push!(field_names, field_name)
-            push!(field_values, CenterField(grid))
+        if !(field_name in keys(fields))
+            fields = merge(fields, NamedTuple{(field_name, )}((CenterField(grid), )))
         end
     end
 
-    return NamedTuple{field_names}(field_values)
+    return fields
 end
 
 @inline all_fields_present(fields::Tuple, required_fields, grid) = (fields..., required_fields...)
@@ -130,7 +127,7 @@ Example
 
 biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct Biogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
+struct SomethingBiogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
     transitions :: T
     advection_schemes :: S
@@ -141,10 +138,10 @@ end
 
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
 @inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
-@inline biogeochemical_drift_velocity(bgc::Biogeochemistry, val_tracer_name) = bgc.drift_velocities[val_tracer_name]
-@inline biogeochemical_advection_scheme(bgc::Biogeochemistry, val_tracer_name) = bgc.advection_schemes[val_tracer_name]
+@inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.drift_velocities[val_tracer_name]
+@inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.advection_schemes[val_tracer_name]
 
-@inline (bgc::Biogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) = 
+@inline (bgc::SomethingBiogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) where name = 
     bgc.transitions[name](x, y, z, t, fields_ijk..., bgc.parameters...)
 
 #=
