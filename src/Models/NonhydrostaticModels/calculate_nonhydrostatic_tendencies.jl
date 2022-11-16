@@ -98,7 +98,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
-                                forcing, clock)
+                                forcings, clock)
     
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
