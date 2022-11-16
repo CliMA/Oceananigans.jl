@@ -130,7 +130,7 @@ end
 
 @kernel function calculate_Gu!(Gu, grid::ImmersedBoundaryGrid, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -142,7 +142,7 @@ end
 
 @kernel function calculate_Gv!(Gv, grid::ImmersedBoundaryGrid, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -154,7 +154,7 @@ end
 
 @kernel function calculate_Gw!(Gw, grid::ImmersedBoundaryGrid, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
