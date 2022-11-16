@@ -98,7 +98,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
                                 forcings, clock)
     
-    for tracer_index in eachindex(tracers)
+    for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
