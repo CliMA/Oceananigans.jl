@@ -71,12 +71,11 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
                                 velocities,
                                 tracers,
                                 auxiliary_fields,
-                                diffusivities,
-                                forcings)
+                                diffusivities)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., hydrostatic_pressure, clock)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., hydrostatic_pressure, clock)
-    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., clock)
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
     
     only_active_cells = true
 
@@ -107,7 +106,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
                            c_tendency, grid, Val(tracer_index),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
-                           end_tracer_kernel_args...;
+                           end_tracer_kernel_args..., forcing, clock;
                            dependencies, only_active_cells)
 
         push!(events, Gc_event)
