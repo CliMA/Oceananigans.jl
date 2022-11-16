@@ -1,4 +1,4 @@
-using KernelAbstractions
+using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.Fields: location, ZReducedField, Field
