@@ -94,8 +94,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     events = [Gu_event, Gv_event, Gw_event]
 
     start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
-                                forcings, clock)
+    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
     
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
@@ -106,7 +105,8 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
                            c_tendency, grid, Val(tracer_index),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
-                           end_tracer_kernel_args..., forcing, clock;
+                           end_tracer_kernel_args...,
+                           forcing, clock;
                            dependencies, only_active_cells)
 
         push!(events, Gc_event)
