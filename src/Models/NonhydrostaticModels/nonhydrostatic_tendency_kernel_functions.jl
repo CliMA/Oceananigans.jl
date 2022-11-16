@@ -4,7 +4,7 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrift
 
-using Oceananigans.Biogeochemistry: biogeochemical_transition
+using Oceananigans.Biogeochemistry: biogeochemistry_rhs
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 
@@ -236,7 +236,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + biogeochemistry_rhs(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 

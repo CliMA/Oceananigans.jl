@@ -1,7 +1,6 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
 using Oceananigans.Advection: div_Uc
 using Oceananigans.Utils: tupleit
 
@@ -35,13 +34,13 @@ update_biogeochemical_state!(bgc, model) = nothing
 
 abstract type AbstractBiogeochemistry end
 
-@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
     U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
     scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
-    src = biogeochemical_transition(i, j, k, grid, val_tracer_name, clock, fields)
-    c = fields[val_tracer_name]
+    src = biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+    c = fields[tracer_name]
         
-    return src + div_Uc(i, j, k, grid, scheme, U_drift, c)
+    return src - div_Uc(i, j, k, grid, scheme, U_drift, c)
 end
 
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =

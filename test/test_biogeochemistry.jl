@@ -2,8 +2,10 @@ using Oceananigans, Printf, KernelAbstractions
 using Oceananigans.Units: minutes, hour, hours, day, days
 using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry, SomethingBiogeochemistry
 using Oceananigans.Grids: znode
+using Oceananigans.Forcings: maybe_constant_field
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: launch!
+using Oceananigans.Advection: CenteredSecondOrder
 
 import Oceananigans.Biogeochemistry:
     required_biogeochemical_tracers,
@@ -54,7 +56,9 @@ function SimplePlanktonGrowthDeath(; growth_rate,
                                      phytoplankton_light_attenuation_exponent = 0.6,
                                      surface_PAR = 100.0,
                                      sinking_velocity = 0,
-                                     advection_scheme = nothing)
+                                     advection_scheme = sinking_velocity == 0 ? nothing : CenteredSecondOrder())
+
+    u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
 
     return SimplePlanktonGrowthDeath(growth_rate,
                                      light_limit,
@@ -63,7 +67,7 @@ function SimplePlanktonGrowthDeath(; growth_rate,
                                      phytoplankton_light_attenuation_coefficient,
                                      phytoplankton_light_attenuation_exponent,
                                      isa(surface_PAR, Number) ? t -> surface_PAR : surface_PAR,
-                                     sinking_velocity,
+                                     (; u, v, w),
                                      advection_scheme)
 end
 
@@ -71,12 +75,10 @@ end
 ###### Functions we have to define
 ######
 
-# TODO: add sinking
-
 @inline required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P, )
 @inline required_biogeochemical_auxiliary_fields(::SimplePlanktonGrowthDeath) = (:PAR, )
-@inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = (0.0, 0.0, bgc.w)
-@inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.advection
+@inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.sinking_velocity
+@inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.advection_scheme
 
 @inline function (bgc::SimplePlanktonGrowthDeath)(::Val{:P}, x, y, z, t, P, PAR)
     μ₀ = bgc.growth_rate
@@ -117,7 +119,9 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 biogeochemistry = SimplePlanktonGrowthDeath(growth_rate = 1/day,
                                             light_limit = 3.5,
                                             mortality_rate = 0.1/day,
-                                            surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours))))
+                                            surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours))),
+                                            sinking_velocity = 200/day
+                                            )
 
 model = NonhydrostaticModel(; grid, biogeochemistry,
                             advection = WENO(; grid),
@@ -135,7 +139,7 @@ initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P = 1.0)
 
-simulation = Simulation(model, Δt=2minutes, stop_time=5days)
+simulation = Simulation(model, Δt=2minutes, stop_time=1day)
 
 wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
@@ -157,7 +161,7 @@ simulation.output_writers[:simple_output] =
                      overwrite_existing = true)
 
 run!(simulation)
-
+#=
 #####
 ##### Example using SomethingBiogeochemistry
 #####
@@ -295,9 +299,9 @@ frames = 1:length(times)
 
 @info "Making an animation of convecting plankton..."
 
-record(fig, "convecting_plankton.mp4", frames, framerate=8) do i
+record(fig, "biogeochemistry_test.mp4", frames, framerate=8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
 end
-=#
+=#=#
