@@ -33,7 +33,7 @@ import Oceananigans.Biogeochemistry:
     end
 end 
 
-
+#=
 struct SimplePlanktonGrowthDeath{FT, P, W, A} <: AbstractContinuousFormBiogeochemistry
      growth_rate :: FT
      light_limit :: FT
@@ -161,7 +161,7 @@ simulation.output_writers[:simple_output] =
                      overwrite_existing = true)
 
 run!(simulation)
-#=
+=#
 #####
 ##### Example using SomethingBiogeochemistry
 #####
@@ -191,7 +191,8 @@ biogeochemistry = SomethingBiogeochemistry(tracers = :P,
                                            auxiliary_fields = :PAR, 
                                            transitions = (; P=growth),
                                            state_updates = integrate_light!,
-                                           parameters = biogeochemistry_parameters)
+                                           parameters = biogeochemistry_parameters,
+                                           drift_velocities = (P = (0.0, 0.0, -200/day), ))
 
 
 grid = RectilinearGrid(size = (64, 64),
@@ -304,4 +305,4 @@ record(fig, "biogeochemistry_test.mp4", frames, framerate=8) do i
     print(msg * " \r")
     n[] = i
 end
-=#=#
+=#

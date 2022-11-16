@@ -1,11 +1,12 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Advection: div_Uc
+using Oceananigans.Advection: div_Uc, CenteredSecondOrder
 using Oceananigans.Utils: tupleit
+using Oceananigans: Field
 
 import Oceananigans.Fields: location, CenterField
-import Oceananigans.Forcings: regularize_forcing
+import Oceananigans.Forcings: regularize_forcing, maybe_constant_field
 
 #####
 ##### Generic fallbacks for biogeochemistry
@@ -139,34 +140,42 @@ end
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
 @inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
 
-@inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.drift_velocities[val_tracer_name]
-@inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.advection_schemes[val_tracer_name]
+@inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.drift_velocities) ? bgc.drift_velocities[tracer_name] : 0
+@inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.advection_schemes) ? bgc.advection_schemes[tracer_name] : nothing
 
 @inline update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model) = bgc.state_updates(bgc, model)
 
-@inline (bgc::SomethingBiogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) where name = name in bgc.biogeochemical_tracers ? bgc.transitions[name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
+@inline (bgc::SomethingBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
-#=
-function regularize_drift_velocities(drift_speeds)
+function maybe_velocity_fields(drift_speeds)
     drift_velocities = []
-    for w in values(drift_speeds)
-        u, v, w = maybe_constant_field.((0.0, 0.0, - w))
-        push!(drift_velocities, (; u, v, w))
+    for (u, v, w) in values(drift_speeds) 
+        if !all(isa.(values(w), Field))
+            u, v, w = maybe_constant_field.((u, v, w))
+            push!(drift_velocities, (; u, v, w))
+        else
+            ush!(drift_velocities, w)
+        end
     end
 
     return NamedTuple{keys(drift_speeds)}(drift_velocities)
 end
 
-@inline function SomethingBiogeochemistry(;tracers, transitions, advection_scheme=UpwindBiasedFifthOrder, drift_velocities=NamedTuple(), auxiliary_fields=())
-    drift_velocities = regularize_drift_velocities(drift_velocities)
-    return SomethingBiogeochemistry(tupleit(tracers), transitions, advection_scheme, drift_velocities, tupleit(auxiliary_fields))
-end
-=#
-
 @inline nothingfunction(args...) = nothing
 
-SomethingBiogeochemistry(;tracers, transitions, adveciton_schemes = nothing, drift_velocitiies = NamedTuple(), auxiliary_fields=(), parameters=NamedTuple(), state_updates = nothingfunction) = 
-    SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocitiies, tupleit(auxiliary_fields), parameters, state_updates)
+function SomethingBiogeochemistry(;tracers,
+                          transitions, 
+                          drift_velocities = NamedTuple(), 
+                          adveciton_schemes = 
+                                NamedTuple{keys(drift_velocities)}(repeat([CenteredSecondOrder()], length(drift_velocities))),  
+                          auxiliary_fields=(), 
+                          parameters=NamedTuple(), 
+                          state_updates = nothingfunction)
+
+    drift_velocities = maybe_velocity_fields(drift_velocities)
+
+    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), parameters, state_updates)
+end
 
 
 end # module
