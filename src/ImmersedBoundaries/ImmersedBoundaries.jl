@@ -8,6 +8,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Fields
 using Oceananigans.Utils
+using Oceananigans.Architectures
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 using Oceananigans.Grids: size_summary, inactive_node, peripheral_node
