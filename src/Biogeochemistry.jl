@@ -2,8 +2,8 @@ module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Forcings: maybe_constant_field, DiscreteForcing
-using Oceananigans.Advection: div_Uc, UpwindBiasedFifthOrder
-using Oceananigans.Operators: identity1
+using Oceananigans.Advection: div_Uc
+using Oceananigans.Utils: tupleit
 
 import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing
@@ -127,22 +127,25 @@ Example
 
 biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct SomethingBiogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
+struct SomethingBiogeochemistry{T, S, U, A, P, SU} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
     transitions :: T
     advection_schemes :: S
     drift_velocities :: U
     auxiliary_fields :: A
     parameters :: P
+    state_updates :: SU
 end
 
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
 @inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
+
 @inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.drift_velocities[val_tracer_name]
 @inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, val_tracer_name) = bgc.advection_schemes[val_tracer_name]
 
-@inline (bgc::SomethingBiogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) where name = 
-    bgc.transitions[name](x, y, z, t, fields_ijk..., bgc.parameters...)
+@inline update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model) = bgc.state_updates(bgc, model)
+
+@inline (bgc::SomethingBiogeochemistry)(::Val{name}, x, y, z, t, fields_ijk...) where name = name in bgc.biogeochemical_tracers ? bgc.transitions[name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
 #=
 function regularize_drift_velocities(drift_speeds)
@@ -154,63 +157,17 @@ function regularize_drift_velocities(drift_speeds)
 
     return NamedTuple{keys(drift_speeds)}(drift_velocities)
 end
+
+@inline function SomethingBiogeochemistry(;tracers, transitions, advection_scheme=UpwindBiasedFifthOrder, drift_velocities=NamedTuple(), auxiliary_fields=())
+    drift_velocities = regularize_drift_velocities(drift_velocities)
+    return SomethingBiogeochemistry(tupleit(tracers), transitions, advection_scheme, drift_velocities, tupleit(auxiliary_fields))
+end
 =#
 
-# we can't use the standard `ContinuousForcing` regularisation here because it requires all the tracers to be inplace to have the correct indices
-struct ContinuousBiogeochemicalForcing
-    func::Function
-    parameters::NamedTuple
-    field_dependencies::NTuple{N, Symbol} where N
-end
+@inline nothingfunction(args...) = nothing
 
-DiscreteBiogeochemicalForcing = DiscreteForcing
-
-ContinuousBiogeochemicalForcing(func; parameters=nothing, field_dependencies=()) = ContinuousBiogeochemicalForcing(func, parameters, field_dependencies)
-
-function BiogeochemicalForcing(func; parameters=nothing, discrete_form=false, field_dependencies=())
-    if discrete_form
-        return DiscreteBiogeochemicalForcing(func, parameters)
-    else
-        return ContinuousBiogeochemicalForcing(func, parameters, field_dependencies)
-    end
-end
-
-function regularize_biogeochemical_forcing(forcing::Function)
-    return ContinuousBiogeochemicalForcing(forcing)
-end
-
-regularize_biogeochemical_forcing(forcing) = forcing
-
-@inline getargs(fields, field_dependencies, i, j, k, grid, params::Nothing) = @inbounds identity1.(i, j, k, grid, fields[field_dependencies])
-@inline getargs(fields, field_dependencies, i, j, k, grid, params) = @inbounds tuple(identity1.(i, j, k, grid, fields[field_dependencies])..., params)
-
-@inline function (forcing::ContinuousBiogeochemicalForcing)(i, j, k, grid, clock, fields)
-    args = getargs(fields, forcing.field_dependencies, i, j, k, grid, forcing.parameters)
-
-    x = xnode(Center(), Center(), Center(), i, j, k, grid)
-    y = ynode(Center(), Center(), Center(), i, j, k, grid)
-    z = znode(Center(), Center(), Center(), i, j, k, grid)
-
-    return forcing.func(x, y, z, clock.time, args...)
-end
-
-@inline function SomethingBiogeochemistry(tracers, transitions; advection_scheme=UpwindBiasedFifthOrder, drift_velocities=NamedTuple(), auxiliary_fields=())
-    transitions = NamedTuple{keys(transitions)}([regularize_biogeochemical_forcing(transition) for transition in values(transitions)]) 
-    drift_velocities = regularize_drift_velocities(drift_velocities)
-    return SomethingBiogeochemistry(tracers, transitions, advection_scheme, drift_velocities, auxiliary_fields)
-end
-
-@inline function (bgc::SomethingBiogeochemistry)(i, j, k, grid, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
-    # there is probably a cleaner way todo this with multiple dispathc
-    transition = bgc.transitions[tracer_name](i, j, k, grid, clock, fields)
-
-    if tracer_name in keys(bgc.drift_velocities)
-        drift = - div_Uc(i, j, k, grid, bgc.adv_scheme, bgc.drift_velocities[tracer_name], fields[tracer_name])
-        return transition + drift
-    else
-        return transition
-    end
-end
+SomethingBiogeochemistry(;tracers, transitions, adveciton_schemes = nothing, drift_velocitiies = NamedTuple(), auxiliary_fields=(), parameters=NamedTuple(), state_updates = nothingfunction) = 
+    SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocitiies, tupleit(auxiliary_fields), parameters, state_updates)
 
 
 end # module
