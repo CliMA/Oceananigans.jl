@@ -1,7 +1,6 @@
 using Oceananigans
 import Oceananigans.Utils: only_active_cells_in_worksize, calc_tendency_index
-using KernelAbstractions
-using KernelAbstractions: @index
+using KernelAbstractions: @kernel, @index
 
 only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.wet_cells_map), 256), length(grid.wet_cells_map)
 
