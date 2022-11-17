@@ -141,4 +141,4 @@ end
     end
 end
 
-@ifhasamgx finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)
+finalize_solver!(s::MatrixImplicitFreeSurfaceSolver) = finalize_solver!(s.matrix_iterative_solver)
