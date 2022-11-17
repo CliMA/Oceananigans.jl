@@ -8,7 +8,8 @@ using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
+using Oceananigans.Fields: BackgroundFields, Field, VelocityFields, TracerFields, PressureFields
+using Oceananigans.Fields: tracernames, extract_boundary_conditions
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_halo

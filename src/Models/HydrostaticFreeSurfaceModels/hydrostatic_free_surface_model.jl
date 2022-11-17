@@ -7,7 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
+using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields, extract_boundary_conditions
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
