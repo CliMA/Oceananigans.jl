@@ -102,31 +102,38 @@ end
 @inline function convective_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᶜ::Number, Cᵉ::Number, Cᶜˢ::Number,
                                              velocities, tracers, buoyancy, clock, tracer_bcs)
 
-    # A kind of convective adjustment...
+    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
+    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ϕ⁺, tracers.e)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    S² = ∂z_u² + ∂z_v²
+
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers) # buoyancy frequency
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers) # buoyancy frequency
 
     convecting = N² < 0
     entraining = (!convecting) & (N²_above < 0)
 
-    C = ifelse(convecting, Cᶜ,
-        ifelse(entraining, Cᵉ, zero(grid)))
+    # A kind of convective adjustment using the Deardorff length h ∼ w★³ / Qᵇ
+    #ℓᶜ = Cᶜ * max(E * sqrt(E) / Qᵇ, Δzᶜᶜᶠ(i, j, k, grid))
+    ℓᶜ = Cᶜ * e⁺ * sqrt(e⁺) / Qᵇ
 
-    ℓʰ = C * Δzᶜᶜᶠ(i, j, k, grid)
+    # "Entrainment length"
+    ℓᵉ = Cᵉ * Qᵇ / (sqrt(e⁺) * N²)
+    
+    # Choose
+    ℓ = ifelse(Qᵇ > 0,
+               ifelse(convecting, ℓᶜ, ifelse(entraining, ℓᵉ, zero(grid))),
+               zero(grid))
 
     # "Sheared convection number"
-    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
-    e⁺ = ℑzᵃᵃᶠ(i, j, k, grid, ϕ⁺, tracers.e)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
-    S = sqrt(∂z_u² + ∂z_v²)
-    α = ifelse(Qᵇ > 0, S * Qᵇ / e⁺, zero(S))
+    Cs = sqrt(S²) * Qᵇ / e⁺
 
     # "Shear aware" mising length
-    ℓʰ *= 1 - Cᶜˢ * α
-    ℓʰ = max(zero(grid), ℓʰ)
+    ℓ *= 1 - Cᶜˢ * Cs
+    ℓ = max(zero(grid), ℓ)
     
-    return ℓʰ
+    return ℓ
 end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
@@ -188,19 +195,19 @@ end
 end
 
 Base.show(io::IO, ML::MixingLength) =
-    print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", "\n",
-              "    Cᵇ   = $(ML.Cᵇ)",   "\n",
-              "    Cˢ   = $(ML.Cˢ)",   "\n",
-              "    Cᶜc  = $(ML.Cᶜc)",  "\n",
-              "    Cᶜe  = $(ML.Cᶜe)",  "\n",
-              "    Cᵉc  = $(ML.Cᵉc)",  "\n",
-              "    Cᵉe  = $(ML.Cᵉe)",  "\n",
-              "    Cᴷu⁻ = $(ML.Cᴷu⁻)", "\n",
-              "    Cᴷc⁻ = $(ML.Cᴷc⁻)", "\n",
-              "    Cᴷe⁻ = $(ML.Cᴷe⁻)", "\n",
-              "    Cᴷu⁺ = $(ML.Cᴷu⁺)", "\n",
-              "    Cᴷc⁺ = $(ML.Cᴷc⁺)", "\n",
-              "    Cᴷe⁺ = $(ML.Cᴷe⁺)", "\n",
-              "    CRiʷ = $(ML.CRiʷ)", "\n",
+    print(io, "CATKEVerticalDiffusivities.MixingLength parameters:", '\n',
+              "    Cᵇ   = $(ML.Cᵇ)",   '\n',
+              "    Cˢ   = $(ML.Cˢ)",   '\n',
+              "    Cᶜc  = $(ML.Cᶜc)",  '\n',
+              "    Cᶜe  = $(ML.Cᶜe)",  '\n',
+              "    Cᵉc  = $(ML.Cᵉc)",  '\n',
+              "    Cᵉe  = $(ML.Cᵉe)",  '\n',
+              "    Cᴷu⁻ = $(ML.Cᴷu⁻)", '\n',
+              "    Cᴷc⁻ = $(ML.Cᴷc⁻)", '\n',
+              "    Cᴷe⁻ = $(ML.Cᴷe⁻)", '\n',
+              "    Cᴷu⁺ = $(ML.Cᴷu⁺)", '\n',
+              "    Cᴷc⁺ = $(ML.Cᴷc⁺)", '\n',
+              "    Cᴷe⁺ = $(ML.Cᴷe⁺)", '\n',
+              "    CRiʷ = $(ML.CRiʷ)", '\n',
               "    CRiᶜ = $(ML.CRiᶜ)")
 

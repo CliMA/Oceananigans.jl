@@ -296,7 +296,7 @@ end
 
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
-              "          Cᴰ⁻: $(tke.Cᴰ⁻), \n" *
-              "          Cᴰ⁺: $(tke.Cᴰ⁺), \n" *
-              "         Cᵂu★: $(tke.Cᵂu★), \n" *
-              "         CᵂwΔ: $(tke.CᵂwΔ)")
+              "    Cᴰ⁻  = $(tke.Cᴰ⁻),  \n" *
+              "    Cᴰ⁺  = $(tke.Cᴰ⁺),  \n" *
+              "    Cᵂu★ = $(tke.Cᵂu★), \n" *
+              "    CᵂwΔ = $(tke.CᵂwΔ)")
