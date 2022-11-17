@@ -11,7 +11,7 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_halo
+using Oceananigans.Models: validate_model_halo
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -115,7 +115,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     # Check halos and throw an error if the grid's halo is too small
-    @apply_regionally validate_halo(grid, momentum_advection, tracer_advection, closure)
+    @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     validate_buoyancy(buoyancy, tracernames(tracers))

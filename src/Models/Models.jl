@@ -21,7 +21,7 @@ abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 ##### Halo validation for models
 #####
 
-function validate_halo(grid, tendency_terms...)
+function validate_model_halo(grid, tendency_terms...)
     user_halo = halo_size(grid)
     required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
 

@@ -12,7 +12,7 @@ using Oceananigans.Fields: BackgroundFields, Field, VelocityFields, TracerFields
 using Oceananigans.Fields: tracernames, extract_boundary_conditions
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: validate_halo
+using Oceananigans.Models: validate_model_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
@@ -136,7 +136,7 @@ function NonhydrostaticModel(;    grid,
     buoyancy = regularize_buoyancy(buoyancy)
 
     # Check halos and throw an error if the grid's halo is too small
-    validate_halo(grid, momentum_advection, tracer_advection, closure)
+    validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
