@@ -6,6 +6,9 @@ using AMGX
 
 import Oceananigans.Architectures: architecture
 
+"Boolean denoting whether AMGX.jl can be loaded on machine."
+const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
 abstract type MultigridSolver{A, G, L, T, F} end
 
 mutable struct MultigridCPUSolver{A, G, L, T, F, R, M} <: MultigridSolver{A, G, L, T, F}
