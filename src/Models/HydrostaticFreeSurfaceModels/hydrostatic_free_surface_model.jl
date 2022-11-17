@@ -9,15 +9,17 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.Grids: AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: validate_halo
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
+
+import Oceananigans.Architectures: architecture
 
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
@@ -109,14 +111,12 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-    # Check halos and throw an error if the grid's halo is too small
-    @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-
     arch = architecture(grid)
-
-    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    # Check halos and throw an error if the grid's halo is too small
+    @apply_regionally validate_halo(grid, momentum_advection, tracer_advection, closure)
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
@@ -212,13 +212,5 @@ validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
 validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-  user_halo = halo_size(grid)
-  required_halo = inflate_halo_size(1, 1, 1, grid,
-                                    momentum_advection,
-                                    tracer_advection,
-                                    closure)
+architecture(model::HydrostaticFreeSurfaceModel) = model.architecture
 
-  any(user_halo .< required_halo) &&
-    throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
-end

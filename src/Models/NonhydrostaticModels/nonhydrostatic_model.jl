@@ -10,8 +10,8 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: validate_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
@@ -122,7 +122,6 @@ function NonhydrostaticModel(;    grid,
     )
 
     arch = architecture(grid)
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     # We don't support CAKTE for NonhydrostaticModel yet.
@@ -135,10 +134,8 @@ function NonhydrostaticModel(;    grid,
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
-    # Adjust halos when the advection scheme or turbulence closure requires it.
-    # Note that halos are isotropic by default; however we respect user-input here
-    # by adjusting each (x, y, z) halo individually.
-    grid = inflate_grid_halo_size(grid, advection, closure)
+    # Check halos and throw an error if the grid's halo is too small
+    validate_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -197,36 +194,3 @@ end
 
 architecture(model::NonhydrostaticModel) = model.architecture
 
-#####
-##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
-#####
-##### Note: ignores tuples, including tuples of Symbols (tracer names) and
-##### tuples of DiffusivityFields (which occur for tupled closures)
-#####
-
-extract_boundary_conditions(::Nothing) = NamedTuple()
-extract_boundary_conditions(::Tuple) = NamedTuple()
-
-function extract_boundary_conditions(field_tuple::NamedTuple)
-    names = propertynames(field_tuple)
-    bcs = Tuple(extract_boundary_conditions(field) for field in field_tuple)
-    return NamedTuple{names}(bcs)
-end
-
-extract_boundary_conditions(field::Field) = field.boundary_conditions
-
-function inflate_grid_halo_size(grid, tendency_terms...)
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
-
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "Note that an ImmersedBoundaryGrid requires an extra halo point. "
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
-
-    return grid
-end
