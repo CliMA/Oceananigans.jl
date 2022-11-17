@@ -12,8 +12,11 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
+
+using Oceananigans.Models: validate_model_halo
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
+
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids =  Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -138,7 +141,7 @@ function ShallowWaterModel(;
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
 
-    grid = inflate_grid_halo_size(grid, momentum_advection, tracer_advection, mass_advection, closure)
+    validate_model_halo(grid, momentum_advection, tracer_advection, mass_advection, closure)
 
     prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
