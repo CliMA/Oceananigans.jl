@@ -46,8 +46,6 @@ end
 
 function ab2_step_velocities!(velocities, model, Δt, χ)
 
-    barrier = device_event(model)
-
     # Launch velocity update kernels
     explicit_velocity_step_events = []
 

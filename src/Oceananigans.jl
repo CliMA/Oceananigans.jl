@@ -139,22 +139,11 @@ import Base:
     push!
 
 
-# TODO: find a way to check whether the libraries for AMGX and NETCDF 
-# (libamgxsh and libnetcdf, respectively) are installed on the machine
-"Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+# TODO: find a way to check whether the libraries for NETCDF 
+# (libnetcdf) are installed on the machine
 
 "Boolean denoting whether NCDatasets.jl can be loaded on machine."
 const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
-
-"""
-    @ifhasamgx expr
-
-Evaluate `expr` only if `hasamgx == true`.
-"""
-macro ifhasamgx(expr)
-    hasamgx ? :($(esc(expr))) : :(nothing) 
-end
 
 """
     @ifnetcdf expr
