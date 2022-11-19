@@ -24,7 +24,7 @@ const VectorInvariantEnstrophyConserving = VectorInvariant{<:EnstrophyConserving
 
 const WENOVectorInvariant{VI} = VectorInvariant{<:WENO, VI} where VI
 
-required_halo_size(scheme::WENOVectorInvariant) = required_halo_size(scheme.advection) + 1
+required_halo_size(scheme::WENOVectorInvariant) = required_halo_size(scheme.scheme) + 1
 
 smoothness_variable(::VelocityStencil) = "Velocity"
 smoothness_variable(::VelocityStencil) = "Vorticity"
