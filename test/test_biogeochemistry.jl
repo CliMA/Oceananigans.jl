@@ -46,9 +46,8 @@ struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemis
 end
 
 
-
 ######
-###### Functions we have to define
+###### Functions we have to define to setup the biogeochemical mdoel
 ######
 
 @inline required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P, )
@@ -64,7 +63,29 @@ end
    (μ₀ * (1 - exp(-PAR/k)) - m) * P
 end
 
-@kernel function update_PAR!(PAR, grid, t) 
+#=
+# Note, if we subtypted AbstractBiogeochemistry we would write
+@inline function (bgc::SimplePlanktonGrowthDeath)(i, j, k, grid, ::Val{:P}, clock, fields)
+    z = znode(Center(), k, grid)
+    P = @inbounds fields.P[i, j, k]
+    return (bgc.μ₀ * exp(z / bgc.λ) - bgc.m) * P
+end
+=#
+
+#####
+##### Setting up the integration of the Photosynthetically Available Radiation
+#####
+
+struct PhotosyntheticallyActiveRatiationOperand{FT, SP, P, C}
+    water_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_exponent :: FT
+    surface_PAR :: SP
+    P_field :: P
+    clock :: C
+end
+
+@kernel function update_PhotosyntheticallyActiveRatiation!(PAR, grid, t) 
     i, j = @index(Global, NTuple)
 
     data = PAR.data
@@ -85,15 +106,6 @@ end
     end
 end 
 
-struct PhotosyntheticallyActiveRatiationOperand{FT, SP, P, C}
-    water_light_attenuation_coefficient :: FT
-    phytoplankton_light_attenuation_coefficient :: FT
-    phytoplankton_light_attenuation_exponent :: FT
-    surface_PAR :: SP
-    P_field :: P
-    clock :: C
-end
-
 # Restricting to center for now because integral defintion changes for face fields
 const PhotosyntheticallyActiveRatiationField = Field{<:Center, <:Center, <:Center, <:PhotosyntheticallyActiveRatiationOperand}
 
@@ -110,12 +122,14 @@ function PhotosyntheticallyActiveRatiation(;grid, P, clock,
                                                                                   clock))
 end
 
+# Call the integration
 function compute!(par::PhotosyntheticallyActiveRatiationField)
     arch = architecture(par.grid)
-    event = launch!(arch, par.grid, :xy, update_PAR!, par, par.grid, par.operand.clock.time)
+    event = launch!(arch, par.grid, :xy, update_PhotosyntheticallyActiveRatiation!, par, par.grid, par.operand.clock.time)
     wait(event)
 end
 
+# Overload the validaiton function to define the PAR field, need to do it here as we need the phytoplankton field defined
 @inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc::SimplePlanktonGrowthDeath, grid, clock)
     req_tracers = required_biogeochemical_tracers(bgc)
     tracers = TracerFields(all_fields_present(tracers, req_tracers, grid), grid)
@@ -125,15 +139,9 @@ end
     return tracers, merge(auxiliary_fields, (; PAR))
 end
 
-
-#=
-# Note, if we subtypted AbstractBiogeochemistry we would write
-@inline function (bgc::SimplePlanktonGrowthDeath)(i, j, k, grid, ::Val{:P}, clock, fields)
-    z = znode(Center(), k, grid)
-    P = @inbounds fields.P[i, j, k]
-    return (bgc.μ₀ * exp(z / bgc.λ) - bgc.m) * P
-end
-=#
+#####
+##### Setup the model
+#####
 
 grid = RectilinearGrid(size = (64, 64),
                        extent = (64, 64),
@@ -219,19 +227,20 @@ N² = 1e-4 # s⁻²
 buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
+# Have to predefine the PAR (and therefore P) field before to use this setup method
 P = CenterField(grid)
 clock = Clock{eltype(grid)}(0, 0, 1)
 PAR = PhotosyntheticallyActiveRatiation(;grid, P, clock)
 
 model = NonhydrostaticModel(; grid, biogeochemistry, clock,
-     advection = WENO(; grid),
-     timestepper = :RungeKutta3,
-     closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
-     coriolis = FPlane(f=1e-4),
-     tracers = :b,
-     buoyancy = BuoyancyTracer(),
-     boundary_conditions = (; b=buoyancy_bcs),
-     auxiliary_fields = (; PAR))
+                            advection = WENO(; grid),
+                            timestepper = :RungeKutta3,
+                            closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
+                            coriolis = FPlane(f=1e-4),
+                            tracers = :b,
+                            buoyancy = BuoyancyTracer(),
+                            boundary_conditions = (; b=buoyancy_bcs),
+                            auxiliary_fields = (; PAR))
 
 mixed_layer_depth = 32 # m
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth

@@ -1,6 +1,6 @@
 using Oceananigans, Printf, KernelAbstractions, LinearAlgebra
 using Oceananigans.Units: minutes, hour, hours, day, days, years
-using Oceananigans.Biogeochemistry: TracerBasedBiogeochemistry, BiogeochemicalForcing
+using Oceananigans.Biogeochemistry: BiogeochemicalModel, BiogeochemicalForcing
 using Oceananigans.Grids: znode
 using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
@@ -37,8 +37,8 @@ nutrient_forcing = BiogeochemicalForcing(nutrient_reaction, field_dependencies=(
 phytoplankton_forcing = BiogeochemicalForcing(phytoplankton_reaction, field_dependencies=(:N, :P), parameters=parameters)
 detritus_forcing = BiogeochemicalForcing(detritus_reaction, field_dependencies=(:P, :D), parameters=parameters)
 
-NutrientPhytoplanktonDetritus = TracerBasedBiogeochemistry((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing))
-NutrientPhytoplanktonDetritusSinking = TracerBasedBiogeochemistry((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing); sinking_velocities=(D = 200/day, ))
+NutrientPhytoplanktonDetritus = BiogeochemicalModel((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing))
+#NutrientPhytoplanktonDetritusSinking = BiogeochemicalModel((:N, :P, :D), (N=nutrient_forcing, P=phytoplankton_forcing, D=detritus_forcing); sinking_velocities=(D = 200/day, ))
 
 grid = RectilinearGrid(size=(1, 1, 50), extent=(20, 20, 30)) 
 

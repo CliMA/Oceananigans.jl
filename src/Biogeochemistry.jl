@@ -88,7 +88,6 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
-# TODO: Change to error ...
 @inline function all_fields_present(fields::NamedTuple, required_fields, grid)
 
     for field_name in required_fields
@@ -108,9 +107,11 @@ end
     tracers = all_fields_present(tracers, req_tracers, grid)
 
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
-    auxiliary_fields = all_fields_present(auxiliary_fields, req_auxiliary_fields, grid)
+
+    all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
+        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
     
-    return tracers, auxiliary_fields
+    return tracers, auxiliary_fields # returning both so that users can overload and define their own special auxiliary fields (e.g. PAR in test)
 end
 
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
