@@ -128,14 +128,13 @@ Example
 
 biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct SomethingBiogeochemistry{T, S, U, A, P, SU} <: AbstractContinuousFormBiogeochemistry
+struct SomethingBiogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
     transitions :: T
     advection_schemes :: S
     drift_velocities :: U
     auxiliary_fields :: A
     parameters :: P
-    state_updates :: SU
 end
 
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
@@ -148,6 +147,12 @@ end
 
 @inline (bgc::SomethingBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
+"""
+    maybe_velocity_fields(drift_speeds)
+
+Returns converts a `NamdedTuple` containing the `u`, `v`, and `w` components of velocity 
+either as scalars or fields, and returns them all as fields.
+"""
 function maybe_velocity_fields(drift_speeds)
     drift_velocities = []
     for (u, v, w) in values(drift_speeds) 
@@ -155,28 +160,26 @@ function maybe_velocity_fields(drift_speeds)
             u, v, w = maybe_constant_field.((u, v, w))
             push!(drift_velocities, (; u, v, w))
         else
-            ush!(drift_velocities, w)
+            push!(drift_velocities, w)
         end
     end
 
     return NamedTuple{keys(drift_speeds)}(drift_velocities)
 end
 
-@inline nothingfunction(args...) = nothing
 
 function SomethingBiogeochemistry(;tracers,
-                          transitions, 
-                          drift_velocities = NamedTuple(), 
-                          adveciton_schemes = 
-                                NamedTuple{keys(drift_velocities)}(repeat([CenteredSecondOrder()], length(drift_velocities))),  
-                          auxiliary_fields=(), 
-                          parameters=NamedTuple(), 
-                          state_updates = nothingfunction)
+                                   transitions, 
+                                   drift_velocities = NamedTuple(), 
+                                   adveciton_schemes = NamedTuple{keys(drift_velocities)}(
+                                                        repeat([CenteredSecondOrder()], 
+                                                                length(drift_velocities))),  
+                                   auxiliary_fields=(), 
+                                   parameters=NamedTuple())
 
     drift_velocities = maybe_velocity_fields(drift_velocities)
 
-    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), parameters, state_updates)
+    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), parameters)
 end
-
 
 end # module
