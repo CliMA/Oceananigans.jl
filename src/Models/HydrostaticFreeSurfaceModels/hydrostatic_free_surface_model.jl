@@ -126,7 +126,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    tracers, auxiliary_fields = validate_biogeochemistry(tracers, auxiliary_fields, biogeochemistry, grid)
+    tracers, auxiliary_fields = validate_biogeochemistry(tracers, auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 

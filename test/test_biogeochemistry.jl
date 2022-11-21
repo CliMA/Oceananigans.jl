@@ -1,75 +1,51 @@
 using Oceananigans, Printf, KernelAbstractions
 using Oceananigans.Units: minutes, hour, hours, day, days
-using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry, SomethingBiogeochemistry
+using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry, SomethingBiogeochemistry, all_fields_present
 using Oceananigans.Grids: znode
 using Oceananigans.Forcings: maybe_constant_field
-using Oceananigans.Architectures: device
+using Oceananigans.Architectures: device, architecture
 using Oceananigans.Utils: launch!
 using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Fields: Field, TracerFields, CenterField
 
 import Oceananigans.Biogeochemistry:
-    required_biogeochemical_tracers,
-    required_biogeochemical_auxiliary_fields,
-    biogeochemical_drift_velocity,
-    biogeochemical_advection_scheme, 
-    update_biogeochemical_state!
+       required_biogeochemical_tracers,
+       required_biogeochemical_auxiliary_fields,
+       biogeochemical_drift_velocity,
+       biogeochemical_advection_scheme, 
+       update_biogeochemical_state!,
+       validate_biogeochemistry
 
-@kernel function update_PAR!(PAR, grid, P, t, bgc) 
-    i, j = @index(Global, NTuple) 
-    
-    surface_PAR = bgc.surface_PAR(t)
-    
-    z = grid.zᵃᵃᶜ[grid.Nz]
-    
-    ∫chl = - P[i, j, grid.Nz]^bgc.phytoplankton_light_attenuation_exponent*z
-    PAR[i, j, grid.Nz] =  surface_PAR*exp(bgc.water_light_attenuation_coefficient * z - bgc.phytoplankton_light_attenuation_coefficient * ∫chl)
-    for k=grid.Nz-1:-1:1
-        z = grid.zᵃᵃᶜ[k]
-        dz = grid.zᵃᵃᶜ[k+1] - z 
-    
-        ∫chl += P[i, j, grid.Nz]^bgc.phytoplankton_light_attenuation_exponent*dz
-    
-        PAR[i, j, k] =  PAR[i, j, k+1]*exp(- bgc.water_light_attenuation_coefficient * dz - bgc.phytoplankton_light_attenuation_coefficient * ∫chl)
+import Oceananigans.Fields: compute!
+
+
+struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemistry
+    growth_rate :: FT
+    light_limit :: FT
+    mortality_rate :: FT
+
+    sinking_velocity :: W     
+    advection_scheme :: A
+
+    function SimplePlanktonGrowthDeath(;growth_rate::FT,
+                                        light_limit::FT,
+                                        mortality_rate::FT,
+                                        sinking_velocity = 0,
+                                        advection_scheme::A = sinking_velocity == 0 ? nothing : CenteredSecondOrder()) where {FT, A}
+
+        u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
+        sinking_velocity = (; u, v, w)
+        W = typeof(sinking_velocity)
+
+        return new{FT, W, A}(growth_rate,
+                   light_limit,
+                   mortality_rate,
+                   sinking_velocity,
+                   advection_scheme)
     end
-end 
-
-#=
-struct SimplePlanktonGrowthDeath{FT, P, W, A} <: AbstractContinuousFormBiogeochemistry
-     growth_rate :: FT
-     light_limit :: FT
-     mortality_rate :: FT
-
-     water_light_attenuation_coefficient :: FT
-     phytoplankton_light_attenuation_coefficient :: FT
-     phytoplankton_light_attenuation_exponent :: FT
-     surface_PAR :: P
-
-     sinking_velocity :: W     
-     advection_scheme :: A
 end
 
-function SimplePlanktonGrowthDeath(; growth_rate,
-                                     light_limit,
-                                     mortality_rate,
-                                     water_light_attenuation_coefficient = 0.12,
-                                     phytoplankton_light_attenuation_coefficient = 0.06,
-                                     phytoplankton_light_attenuation_exponent = 0.6,
-                                     surface_PAR = 100.0,
-                                     sinking_velocity = 0,
-                                     advection_scheme = sinking_velocity == 0 ? nothing : CenteredSecondOrder())
 
-    u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
-
-    return SimplePlanktonGrowthDeath(growth_rate,
-                                     light_limit,
-                                     mortality_rate,
-                                     water_light_attenuation_coefficient,
-                                     phytoplankton_light_attenuation_coefficient,
-                                     phytoplankton_light_attenuation_exponent,
-                                     isa(surface_PAR, Number) ? t -> surface_PAR : surface_PAR,
-                                     (; u, v, w),
-                                     advection_scheme)
-end
 
 ######
 ###### Functions we have to define
@@ -81,20 +57,74 @@ end
 @inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.advection_scheme
 
 @inline function (bgc::SimplePlanktonGrowthDeath)(::Val{:P}, x, y, z, t, P, PAR)
-    μ₀ = bgc.growth_rate
-    k = bgc.light_limit
-    m = bgc.mortality_rate
+   μ₀ = bgc.growth_rate
+   k = bgc.light_limit
+   m = bgc.mortality_rate
 
-    (μ₀ * (1 - exp(-PAR/k)) - m) * P
+   (μ₀ * (1 - exp(-PAR/k)) - m) * P
 end
 
-@inline function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
-    # Assuming light is attenuated like PAR*exp(-∫(kʷ + Chl*kᶜʰˡ)dz)
-    par_calculation =  launch!(model.architecture, model.grid, :xy, update_PAR!,
-                               model.auxiliary_fields.PAR, model.grid, model.tracers.P, model.clock.time, bgc,
-                               dependencies = Event(device(model.architecture)))
-    wait(device(model.architecture), par_calculation)
+@kernel function update_PAR!(PAR, grid, t) 
+    i, j = @index(Global, NTuple)
+
+    data = PAR.data
+    P = PAR.operand.P_field
+    
+    PAR⁰ = PAR.operand.surface_PAR(t)
+    e, kʷ, χ = PAR.operand.phytoplankton_light_attenuation_exponent, PAR.operand.water_light_attenuation_coefficient, PAR.operand.phytoplankton_light_attenuation_coefficient
+
+    zᶜ = znodes(Center, grid)
+    zᶠ = znodes(Face, grid)
+    
+    ∫chl = @inbounds - (zᶜ[grid.Nz] - zᶠ[grid.Nz])*P[i, j, grid.Nz]^e
+    @inbounds data[i, j, grid.Nz] =  PAR⁰*exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
+
+    @inbounds for k in grid.Nz-1:-1:1
+        ∫chl += (zᶜ[k + 1] - zᶠ[k])*P[i, j, k + 1]^e + (zᶠ[k] - zᶜ[k])*P[i, j, k]^e
+        data[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
+    end
+end 
+
+struct PhotosyntheticallyActiveRatiationOperand{FT, SP, P, C}
+    water_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_exponent :: FT
+    surface_PAR :: SP
+    P_field :: P
+    clock :: C
 end
+
+# Restricting to center for now because integral defintion changes for face fields
+const PhotosyntheticallyActiveRatiationField = Field{<:Center, <:Center, <:Center, <:PhotosyntheticallyActiveRatiationOperand}
+
+function PhotosyntheticallyActiveRatiation(;grid, P, clock,
+                                            water_light_attenuation_coefficient = 0.12,
+                                            phytoplankton_light_attenuation_coefficient = 0.06,
+                                            phytoplankton_light_attenuation_exponent = 0.6,
+                                            surface_PAR = t -> 100.0)
+        return CenterField(grid, operand=PhotosyntheticallyActiveRatiationOperand(water_light_attenuation_coefficient,
+                                                                                  phytoplankton_light_attenuation_coefficient,
+                                                                                  phytoplankton_light_attenuation_exponent,
+                                                                                  surface_PAR,
+                                                                                  P,
+                                                                                  clock))
+end
+
+function compute!(par::PhotosyntheticallyActiveRatiationField)
+    arch = architecture(par.grid)
+    event = launch!(arch, par.grid, :xy, update_PAR!, par, par.grid, par.operand.clock.time)
+    wait(event)
+end
+
+@inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc::SimplePlanktonGrowthDeath, grid, clock)
+    req_tracers = required_biogeochemical_tracers(bgc)
+    tracers = TracerFields(all_fields_present(tracers, req_tracers, grid), grid)
+
+    PAR = PhotosyntheticallyActiveRatiation(;grid, P = tracers.P, clock=clock, surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours))))
+    
+    return tracers, merge(auxiliary_fields, (; PAR))
+end
+
 
 #=
 # Note, if we subtypted AbstractBiogeochemistry we would write
@@ -119,9 +149,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 biogeochemistry = SimplePlanktonGrowthDeath(growth_rate = 1/day,
                                             light_limit = 3.5,
                                             mortality_rate = 0.1/day,
-                                            surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours))),
-                                            sinking_velocity = 200/day
-                                            )
+                                            sinking_velocity = 200/day)
 
 model = NonhydrostaticModel(; grid, biogeochemistry,
                             advection = WENO(; grid),
@@ -139,7 +167,7 @@ initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P = 1.0)
 
-simulation = Simulation(model, Δt=2minutes, stop_time=1day)
+simulation = Simulation(model, Δt=2minutes, stop_time=5day)
 
 wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
@@ -161,39 +189,24 @@ simulation.output_writers[:simple_output] =
                      overwrite_existing = true)
 
 run!(simulation)
-=#
+
 #####
 ##### Example using SomethingBiogeochemistry
 #####
 
 @inline growth(x, y, z, t, P, PAR, μ₀, k, m, other_params...) = (μ₀ * (1 - exp(-PAR/k)) - m) * P
 
-@inline function integrate_light!(bgc, model)
-    # have to slightly rewrite to pass parameters
-    par_calculation =  launch!(model.architecture, model.grid, :xy, update_PAR!,
-                               model.auxiliary_fields.PAR, model.grid, model.tracers.P, model.clock.time, bgc.parameters,
-                               dependencies = Event(device(model.architecture)))
-    wait(device(model.architecture), par_calculation)
-end
-
 biogeochemistry_parameters = (
     growth_rate = 1/day,
     light_limit = 3.5,
     mortality_rate = 0.1/day,
-
-    water_light_attenuation_coefficient = 0.12,
-    phytoplankton_light_attenuation_coefficient = 0.06,
-    phytoplankton_light_attenuation_exponent = 0.6,
-    surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours)))
 )
 
 biogeochemistry = SomethingBiogeochemistry(tracers = :P, 
                                            auxiliary_fields = :PAR, 
                                            transitions = (; P=growth),
-                                           state_updates = integrate_light!,
                                            parameters = biogeochemistry_parameters,
                                            drift_velocities = (P = (0.0, 0.0, -200/day), ))
-
 
 grid = RectilinearGrid(size = (64, 64),
 extent = (64, 64),
@@ -206,15 +219,19 @@ N² = 1e-4 # s⁻²
 buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
+P = CenterField(grid)
+clock = Clock{eltype(grid)}(0, 0, 1)
+PAR = PhotosyntheticallyActiveRatiation(;grid, P, clock)
 
-model = NonhydrostaticModel(; grid, biogeochemistry,
+model = NonhydrostaticModel(; grid, biogeochemistry, clock,
      advection = WENO(; grid),
      timestepper = :RungeKutta3,
      closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
      coriolis = FPlane(f=1e-4),
      tracers = :b,
      buoyancy = BuoyancyTracer(),
-     boundary_conditions = (; b=buoyancy_bcs))
+     boundary_conditions = (; b=buoyancy_bcs),
+     auxiliary_fields = (; PAR))
 
 mixed_layer_depth = 32 # m
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
@@ -244,12 +261,13 @@ simulation.output_writers[:simple_output] =
                             filename = "biogeochemistry_test.jld2",
                             overwrite_existing = true)
 
-run!(simulation)
-#=
-# Plot to sanity check
+#run!(simulation)
+
+
+#= Plot to sanity check
 
 filepath = simulation.output_writers[:simple_output].filepath
-using CairoMakie
+#using CairoMakie
 
 w_timeseries = FieldTimeSeries(filepath, "w")
 P_timeseries = FieldTimeSeries(filepath, "P")
@@ -286,13 +304,13 @@ ax_PAR = Axis(fig[2, 4]; xlabel = "x (m)", ylabel = "z (m)", aspect = 1)
 fig[1, 1:3] = Label(fig, title, tellwidth=false)
 
 hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = w_lims)
-Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m s⁻¹)", flipaxis = false)
+Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m/s)", flipaxis = false)
 
 hm_P = heatmap!(ax_P, xp, zp, Pₙ; colormap = :matter, colorrange = P_lims)
-Colorbar(fig[3, 1], hm_P; label = "Plankton 'concentration'", flipaxis = false)
+Colorbar(fig[3, 1], hm_P; label = "Plankton concentration (mmmol N/m³)", flipaxis = false)
 
 hm_PAR = heatmap!(ax_PAR, xp, zp, PARₙ; colormap = :matter, colorrange = PAR_lims)
-Colorbar(fig[2, 3], hm_PAR; label = "Light availability (W/m²)'", flipaxis = false)
+Colorbar(fig[2, 3], hm_PAR; label = "Photosynthetically Available Ratiation (einstein/m²/s)", flipaxis = false)
 
 # And, finally, we record a movie.
 

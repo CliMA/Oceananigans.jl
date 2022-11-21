@@ -3,7 +3,7 @@ module Biogeochemistry
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Advection: div_Uc, CenteredSecondOrder
 using Oceananigans.Utils: tupleit
-using Oceananigans: Field
+using Oceananigans.Fields: Field
 
 import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing, maybe_constant_field
@@ -88,6 +88,7 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
+# TODO: Change to error ...
 @inline function all_fields_present(fields::NamedTuple, required_fields, grid)
 
     for field_name in required_fields
@@ -102,7 +103,7 @@ end
 @inline all_fields_present(fields::Tuple, required_fields, grid) = (fields..., required_fields...)
 
 """Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields` contains biogeochemical auxiliary fields (e.g. PAR)."""
-@inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid)
+@inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
     req_tracers = required_biogeochemical_tracers(bgc)
     tracers = all_fields_present(tracers, req_tracers, grid)
 
