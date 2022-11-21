@@ -60,7 +60,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
     end
 end
 
-function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
+function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
                                       FT::DataType = Float64;
                                       size,
                                       z,
@@ -74,11 +74,10 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
-    Arch = typeof(arch)
     
     ## Use a regular rectilinear grid for the face of the cube
 
-    ξη_grid = RectilinearGrid(arch, FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
+    ξη_grid = RectilinearGrid(architecture, FT; size=(Nξ, Nη, Nz), x=ξ, y=η, z, topology, halo)
 
     ξᶠᵃᵃ = xnodes(Face, ξη_grid)
     ξᶜᵃᵃ = xnodes(Center, ξη_grid)
@@ -115,7 +114,7 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     ZS = (Zᶜᶜᵃ, Zᶠᶜᵃ, Zᶜᶠᵃ, Zᶠᶠᵃ)
 
     for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-        for i in 1:Nξ, j in 1:Nη
+        for j in 1:Nη, i in 1:Nξ
             @inbounds X[i, j], Y[i, j], Z[i, j] = conformal_cubed_sphere_mapping(ξ[i], η[j])
         end
     end
@@ -124,7 +123,7 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
 
     if !isnothing(rotation)
         for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-            for i in 1:Nξ, j in 1:Nη
+            for j in 1:Nη, i in 1:Nξ
                 @inbounds X[i, j], Y[i, j], Z[i, j] = rotation * [X[i, j], Y[i, j], Z[i, j]]
             end
         end
@@ -146,13 +145,13 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     φS = (φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
     for (ξ, η, X, Y, Z, λ, φ) in zip(ξS, ηS, XS, YS, ZS, λS, φS)
-        for i in 1:Nξ, j in 1:Nη
+        for j in 1:Nη, i in 1:Nξ
             @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
         end
     end
 
     any(any.(isnan, λS)) &&
-        @warn "Your cubed sphere face contains a grid point at a pole so its longitude λ is undefined (NaN)."
+        @warn "Cubed sphere face contains a grid point at a pole whose longitude λ is undefined (NaN)."
 
     ## Not sure how to compute these right now so how about zeros?
 
@@ -171,12 +170,13 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(arch, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
-                                                     φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                                     φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
+                                                     zᵃᵃᶜ,  zᵃᵃᶠ,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
-                                                    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                                    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                                                    Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 # architecture = CPU() default, assuming that a DataType positional arg
@@ -209,13 +209,13 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
                                           halo = (1, 1, 1),
                                       rotation = nothing)
 
-    TX, TY, TZ = topo = topology
+    TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξη_grid = RectilinearGrid(architecture, FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
+    ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=(0, 1), y=(0, 1), z, topology, halo)
 
     Δz = ξη_grid.Δzᵃᵃᶜ
     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
@@ -269,12 +269,16 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
     return ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
-         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
-        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                                     λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                     φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
+                                                     zᵃᵃᶜ,  zᵃᵃᶠ,
+                                                    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                                                       Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 function on_architecture(arch::AbstractArchitecture, grid::ConformalCubedSphereFaceGrid)
+
     horizontal_coordinates = (:λᶜᶜᵃ,
                               :λᶠᶜᵃ,
                               :λᶜᶠᵃ,
@@ -319,6 +323,7 @@ end
 
 function Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid)
     TX, TY, TZ = topology(grid)
+
     return ConformalCubedSphereFaceGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
