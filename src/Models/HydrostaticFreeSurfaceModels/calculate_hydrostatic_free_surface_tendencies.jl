@@ -138,7 +138,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-        @inbounds tracer_name = keys(tracers)[tracer_index]
+        @inbounds tracer_name = keys(model.tracers)[tracer_index]
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
         Gc_event = launch!(arch, grid, :xyz,
