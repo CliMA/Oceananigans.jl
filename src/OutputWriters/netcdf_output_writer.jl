@@ -173,7 +173,10 @@ Keyword arguments
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: false.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
+                Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                information about the boundary conditions is often crucial. In that case
+                you might need to set `with_halos = true`.
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 

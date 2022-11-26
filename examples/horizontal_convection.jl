@@ -37,7 +37,6 @@ Nx, Nz = 128, 64 # horizontal, vertical resolution
 grid = RectilinearGrid(size = (Nx, Nz),
                           x = (-Lx/2, Lx/2),
                           z = (-H, 0),
-                       halo = (3, 3),
                    topology = (Bounded, Flat, Bounded))
 
 # ### Boundary conditions
@@ -119,9 +118,9 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(50))
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
 
-progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, CFL: %.2e\n",
+progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, advective CFL: %.2e, diffusive CFL: %.2e\n",
                         iteration(sim), time(sim), prettytime(sim.run_wall_time),
-                        sim.Δt, AdvectiveCFL(sim.Δt)(sim.model))
+                        sim.Δt, AdvectiveCFL(sim.Δt)(sim.model), DiffusiveCFL(sim.Δt)(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 
@@ -135,13 +134,18 @@ u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = sqrt(u^2 + w^2)
+s = @at (Center, Center, Center) sqrt(u^2 + w^2)
 
 ## y-component of vorticity
 ζ = ∂z(u) - ∂x(w)
 nothing # hide
 
-# We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
+# We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
+# to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
+# to ``|\boldsymbol{\nabla} b|^2) we use the `with_halos = true`. This way, the halos for
+# the fields are saved and thus when we load them as fields the will come with the proper
+# boundary conditions.
+#
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
 saved_output_filename = "horizontal_convection.jld2"
@@ -149,6 +153,7 @@ saved_output_filename = "horizontal_convection.jld2"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       schedule = TimeInterval(0.5),
                                                       filename = saved_output_filename,
+                                                      with_halos = true,
                                                       overwrite_existing = true)
 nothing # hide
 
@@ -180,8 +185,7 @@ b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 times = b_timeseries.times
 
 ## Coordinate arrays
-xs, ys, zs = nodes(s_timeseries[1])
-xb, yb, zb = nodes(b_timeseries[1])
+xc, yc, zc = nodes(b_timeseries[1])
 xζ, yζ, zζ = nodes(ζ_timeseries[1])
 nothing # hide
 
@@ -189,7 +193,7 @@ nothing # hide
 
 for i in 1:length(times)
   bᵢ = b_timeseries[i]
-  χ_timeseries[i] .= κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
+  χ_timeseries[i] .= @at (Center, Center, Center) κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
 end
 
 
@@ -211,34 +215,34 @@ blim = 0.6
 ζlim = 9
 χlim = 0.025
 
-axis_kwargs = (xlabel = "x / H",
-               ylabel = "z / H",
+axis_kwargs = (xlabel = L"x / H",
+               ylabel = L"z / H",
                limits = ((-Lx/2, Lx/2), (-H, 0)),
-               aspect = Lx/H,
+               aspect = Lx / H,
                titlesize = 20)
 
 fig = Figure(resolution = (600, 1100))
 
 ax_s = Axis(fig[2, 1];
-            title = "speed √[(u²+w²)/(b⋆H)]", axis_kwargs...)
+            title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
 
 ax_b = Axis(fig[3, 1];
-            title = "buoyancy, b/b⋆", axis_kwargs...)
+            title = L"buoyancy, $b / b_*$", axis_kwargs...)
 
 ax_ζ = Axis(fig[4, 1];
-            title = "vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆)", axis_kwargs...)
+            title = L"vorticity, $(∂u/∂z - ∂w/∂x) \, (L_x / b_*)^{1/2}$", axis_kwargs...)
 
 ax_χ = Axis(fig[5, 1];
-            title = "buoyancy dissipation, κ|∇b|² √(H/b⋆⁵)", axis_kwargs...)
+            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 \, (L_x / {b_*}^5)^{1/2}$", axis_kwargs...)
 
 fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
 
-hm_s = heatmap!(ax_s, xs, zs, sₙ;
+hm_s = heatmap!(ax_s, xc, zc, sₙ;
                 colorrange = (0, slim),
                 colormap = :speed)
 Colorbar(fig[2, 2], hm_s)
 
-hm_b = heatmap!(ax_b, xb, zb, bₙ;
+hm_b = heatmap!(ax_b, xc, zc, bₙ;
                 colorrange = (-blim, blim),
                 colormap = :thermal)
 Colorbar(fig[3, 2], hm_b)
@@ -248,7 +252,7 @@ hm_ζ = heatmap!(ax_ζ, xζ, zζ, ζₙ;
                 colormap = :balance)
 Colorbar(fig[4, 2], hm_ζ)
 
-hm_χ = heatmap!(ax_χ, xs, zs, χₙ;
+hm_χ = heatmap!(ax_χ, xc, zc, χₙ;
                 colorrange = (0, χlim),
                 colormap = :dense)
 Colorbar(fig[5, 2], hm_χ)
@@ -280,7 +284,7 @@ nothing #hide
 # Nu = \frac{\langle \chi \rangle}{\langle \chi_{\rm diff} \rangle} \, ,
 # ```
 #
-# where angle brackets above denote both a volume and time average and  ``\chi_{\rm diff}`` is
+# where angle brackets above denote both a volume and time average and ``\chi_{\rm diff}`` is
 # the buoyancy dissipation that we get without any flow, i.e., the buoyancy dissipation associated
 # with the buoyancy distribution that satisfies
 #
@@ -288,12 +292,13 @@ nothing #hide
 # \kappa \nabla^2 b_{\rm diff} = 0 \, ,
 # ```
 #
-# with the same boundary conditions same as our setup. In this case we can readily find that
+# with the same boundary conditions same as our setup. In this case, we can readily find that
 #
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx)``.
+# where $b_s(x)$ is the surface boundary condition. The diffusive solution implies 
+# ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -301,17 +306,8 @@ nothing #hide
 # First we compute the diffusive buoyancy dissipation, ``\chi_{\rm diff}`` (which is just a
 # scalar):
 
-χ_diff = κ * b★^2 * π * tanh(2π * H / Lx)
+χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
 nothing # hide
-
-# We then create two `ReducedField`s to store the volume integrals of the kinetic energy density
-# and the buoyancy dissipation. We need the `grid` to do so; the `grid` can be recoverd from
-# any `FieldTimeSeries`, e.g.,
-
-grid = b_timeseries.grid
-
-∫ⱽ_s² = Field{Nothing, Nothing, Nothing}(grid)
-∫ⱽ_mod²_∇b = Field{Nothing, Nothing, Nothing}(grid)
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,
@@ -321,25 +317,27 @@ t = b_timeseries.times
 kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
 nothing # hide
 
-# Now we can loop over the fields in the `FieldTimeSeries`, compute `KineticEnergy` and `Nu`,
-# and plot.
+# Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
+# and plot. We make use of `Integral` to compute the volume integral of fields over our domain.
 
 for i = 1:length(t)
-    s = s_timeseries[i]
-    sum!(∫ⱽ_s², s^2 * volume)
-    kinetic_energy[i] = 0.5 * ∫ⱽ_s²[1, 1, 1]  / (Lx * H)
+    ke = Field(Integral(1/2 * s_timeseries[i]^2 / (Lx * H)))
+    compute!(ke)
+    kinetic_energy[i] = ke[1, 1, 1]
     
-    b = b_timeseries[i]
-    sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
+    χ = Field(Integral(χ_timeseries[i] / (Lx * H)))
+    compute!(χ)
+
+    Nu[i] = χ[1, 1, 1] / χ_diff
 end
 
 fig = Figure(resolution = (850, 450))
  
-ax_KE = Axis(fig[1, 1], xlabel = "time", ylabel = "KE / (b⋆H)")
+ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 
-ax_Nu = Axis(fig[2, 1], xlabel = "time", ylabel = "Nu")
+ax_Nu = Axis(fig[2, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() # hide
+fig

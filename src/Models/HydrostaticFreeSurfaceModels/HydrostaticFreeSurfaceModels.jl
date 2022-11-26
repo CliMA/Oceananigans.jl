@@ -24,7 +24,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, grid) = Field{Center, Center, Nothing}(grid)
+FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
@@ -34,10 +34,11 @@ include("rigid_lid.jl")
 include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
+include("implicit_free_surface_utils.jl")
 include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
-include("pcg_implicit_free_surface_solver.jl")
 include("mg_implicit_free_surface_solver.jl")
+include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
@@ -57,14 +58,16 @@ include("set_hydrostatic_free_surface_model.jl")
 """
     fields(model::HydrostaticFreeSurfaceModel)
 
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
+Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
+`model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
 @inline fields(model::HydrostaticFreeSurfaceModel) = 
         merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
+
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
 
-Returns a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
+Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)

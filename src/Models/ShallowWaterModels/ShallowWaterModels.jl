@@ -27,9 +27,16 @@ include("show_shallow_water_model.jl")
 """
     fields(model::ShallowWaterModel)
 
-Returns a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers`.
+Return a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers` for
+a `ShallowWaterModel` model.
 """
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
+
+"""
+    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+
+Return a flattened `NamedTuple` of the prognostic fields associated with `ShallowWaterModel`.
+"""
 prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")

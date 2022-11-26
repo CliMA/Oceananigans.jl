@@ -186,4 +186,21 @@ function validate_unit_vector(ê)
     return tuple(ê...)
 end
 
+function validate_index(idx, loc, topo, N, H)
+    isinteger(idx) && return validate_index(Int(idx), loc, topo, N, H)
+    return throw(ArgumentError("$idx are not supported window indices for Field!"))
+end
 
+validate_index(::Colon, loc, topo, N, H) = Colon()
+validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
+
+function validate_index(idx::UnitRange, loc, topo, N, H)
+    all_idx = all_indices(loc, topo, N, H)
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
+    return idx
+end
+
+validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
+
+validate_indices(indices, loc, grid::AbstractGrid) =
+    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))

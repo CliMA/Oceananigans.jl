@@ -23,6 +23,7 @@ using Oceananigans.Utils: tupleit
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -200,6 +201,7 @@ function validate_vertical_velocity_boundary_conditions(w)
 end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
+
 function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
     @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
           "The momentum advection scheme has been set to VectorInvariant()"
@@ -218,5 +220,5 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                                     closure)
 
   any(user_halo .< required_halo) &&
-    throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
+    throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end

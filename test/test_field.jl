@@ -72,7 +72,7 @@ function run_field_reduction_tests(FT, arch)
         ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
         @info "    Testing field reductions with tolerance $ε..."
 
-        @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
+        @test CUDA.@allowscalar all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
         CUDA.allowscalar(false)
@@ -93,8 +93,6 @@ function run_field_reduction_tests(FT, arch)
             @test all(isapprox(maximum(cos, ϕ, dims=dims), maximum(cos, ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(mean(cosh, ϕ, dims=dims), mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
-
-        CUDA.allowscalar(true)
     end
 
     return nothing
@@ -125,15 +123,17 @@ function run_field_interpolation_tests(FT, arch)
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
 
-    ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
-    ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
-    ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
-    ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
+    CUDA.@allowscalar begin
+        ℑu = interpolate.(Ref(u), nodes(u, reshape=true)...)
+        ℑv = interpolate.(Ref(v), nodes(v, reshape=true)...)
+        ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
+        ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-    @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
-    @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
-    @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
-    @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+        @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
+        @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
+        @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
+        @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
+    end
 
     # Check that interpolating between grid points works as expected.
 
@@ -141,17 +141,19 @@ function run_field_interpolation_tests(FT, arch)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    ℑu = interpolate.(Ref(u), xs, ys, zs)
-    ℑv = interpolate.(Ref(v), xs, ys, zs)
-    ℑw = interpolate.(Ref(w), xs, ys, zs)
-    ℑc = interpolate.(Ref(c), xs, ys, zs)
+    CUDA.@allowscalar begin
+        ℑu = interpolate.(Ref(u), xs, ys, zs)
+        ℑv = interpolate.(Ref(v), xs, ys, zs)
+        ℑw = interpolate.(Ref(w), xs, ys, zs)
+        ℑc = interpolate.(Ref(c), xs, ys, zs)
 
-    F = f.(xs, ys, zs)
+        F = f.(xs, ys, zs)
 
-    @test all(isapprox.(ℑu, F, atol=ε_max))
-    @test all(isapprox.(ℑv, F, atol=ε_max))
-    @test all(isapprox.(ℑw, F, atol=ε_max))
-    @test all(isapprox.(ℑc, F, atol=ε_max))
+        @test all(isapprox.(ℑu, F, atol=ε_max))
+        @test all(isapprox.(ℑv, F, atol=ε_max))
+        @test all(isapprox.(ℑw, F, atol=ε_max))
+        @test all(isapprox.(ℑc, F, atol=ε_max))
+    end
 
     return nothing
 end
@@ -270,9 +272,8 @@ end
     end
 
     @testset "Setting fields" begin
+        
         @info "  Testing field setting..."
-
-        CUDA.allowscalar(true)
 
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
@@ -309,7 +310,7 @@ end
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
-                @test field.data[1, 1, 1] == A[1, 1, 1]
+                @test CUDA.@allowscalar field.data[1, 1, 1] == A[1, 1, 1]
             end
 
             Nx = 8
@@ -331,10 +332,10 @@ end
             xw, yw, zw = nodes(w)
             xc, yc, zc = nodes(c)
 
-            @test u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
-            @test v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
-            @test w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
-            @test c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
+            @test CUDA.@allowscalar u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
+            @test CUDA.@allowscalar v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
+            @test CUDA.@allowscalar w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
+            @test CUDA.@allowscalar c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
         end
     end
 
@@ -386,16 +387,16 @@ end
         Lz = 1.1
         ℓz = 0.5
         topology = (Flat, Flat, Bounded)
-        
+
         for arch in archs
             fine_regular_grid                = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z=(0, Lz), topology=(Periodic, Periodic, Bounded))
             fine_stretched_grid              = RectilinearGrid(arch, size=(4, 6, 2), x=(0, 1), y=(0, 2), z = [0, ℓz, Lz], topology=(Periodic, Periodic, Bounded))
-            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz), topology=topology)
-            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz), topology=topology)
-            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz], topology=topology)
-            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology)
-            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
-            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz), topology=topology)
+            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz); topology)
+            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz); topology)
+            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz]; topology)
+            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz]; topology)
+            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz]; topology)
+            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz); topology)
             
             fine_stretched_c              = CenterField(fine_stretched_grid)
             coarse_column_regular_c       = CenterField(coarse_column_regular_grid)
@@ -410,12 +411,12 @@ end
             # grids, and check whether we get the anticipated results
             c₁ = 1
             c₂ = 3
+
             CUDA.@allowscalar begin
                 fine_column_stretched_c[1, 1, 1] = c₁
                 fine_column_stretched_c[1, 1, 2] = c₂
             end
 
-            @show typeof(fine_stretched_c[:, :, 1])
             fine_stretched_c[:, :, 1] .= c₁
             fine_stretched_c[:, :, 2] .= c₂
 

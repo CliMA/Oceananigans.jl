@@ -107,10 +107,10 @@ end
 ##### ∂(biharmonic_mask(∇²(var))) ensures that laplacians are 0 on the boundaries
 #####
 
-@inline biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(x_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-@inline biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(y_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
-@inline biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(z_peripheral_node(i, j, k, grid), zero(eltype(grid)), f(i, j, k, grid, args...))
+@inline biharmonic_mask_x(i, j, k, grid, f, args...) = ifelse(x_peripheral_node(i, j, k, grid), zero(grid), f(i, j, k, grid, args...))
+@inline biharmonic_mask_y(i, j, k, grid, f, args...) = ifelse(y_peripheral_node(i, j, k, grid), zero(grid), f(i, j, k, grid, args...))
+@inline biharmonic_mask_z(i, j, k, grid, f, args...) = ifelse(z_peripheral_node(i, j, k, grid), zero(grid), f(i, j, k, grid, args...))
 
-@inline x_peripheral_node(i, j, k, grid) = peripheral_node(Face(), Center(), Center(), i, j, k, grid)
-@inline y_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Face(), Center(), i, j, k, grid)
-@inline z_peripheral_node(i, j, k, grid) = peripheral_node(Center(), Center(), Face(), i, j, k, grid)
+@inline x_peripheral_node(i, j, k, grid) = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+@inline y_peripheral_node(i, j, k, grid) = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+@inline z_peripheral_node(i, j, k, grid) = peripheral_node(i, j, k, grid, Center(), Center(), Face())

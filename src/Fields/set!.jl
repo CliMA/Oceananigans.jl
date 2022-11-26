@@ -20,7 +20,7 @@ set!(u::Field, v) = u .= v # fallback
 function set!(u::Field, f::Function)
     if architecture(u) isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
-        u_cpu = Field(location(u), cpu_grid)
+        u_cpu = Field(location(u), cpu_grid; indices = indices(u))
         f_field = field(location(u), f, cpu_grid)
         set!(u_cpu, f_field)
         set!(u, u_cpu)
@@ -39,28 +39,15 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
 end
 
 function set!(u::Field, v::Field)
+    # Note: we only copy interior points.
+    # To copy halos use `parent(u) .= parent(v)`.
+    
     if architecture(u) === architecture(v)
-        try # to transfer halos between architectures
-            parent(u) .= parent(v)
-        catch # just copy interior points
-            interior(u) .= interior(v)
-        end
+        interior(u) .= interior(v)
     else
-        try # to transfer halos between architectures
-            u_parent = parent(u)
-            v_parent = parent(v)
-            # If u_parent is a view, we have to convert to an Array.
-            # If u_parent or v_parent is on the GPU, we don't expect
-            # SubArray.
-            u_parent isa SubArray && (u_parent = Array(u_parent))
-            v_parent isa SubArray && (v_parent = Array(v_parent))
-            copyto!(u_parent, v_parent)
-        catch # just copy interior points
-            v_data = arch_array(architecture(u), v.data)
-            interior(u) .= interior(v_data, location(v), v.grid)
-        end
+        v_data = arch_array(architecture(u), v.data)
+        interior(u) .= interior(v_data, location(v), v.grid, v.indices)
     end
 
     return u
 end
-

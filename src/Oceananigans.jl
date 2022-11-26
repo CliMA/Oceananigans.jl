@@ -4,8 +4,8 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.6"
-    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
+if VERSION < v"1.8"
+    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
 end
 
 export
@@ -94,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -115,7 +116,7 @@ export
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
-
+    
 using Printf
 using Logging
 using Statistics
@@ -126,7 +127,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -137,6 +137,22 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
+
+
+# TODO: find a way to check whether the libraries for NETCDF 
+# (libnetcdf) are installed on the machine
+
+"Boolean denoting whether NCDatasets.jl can be loaded on machine."
+const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
+
+"""
+    @ifnetcdf expr
+
+Evaluate `expr` only if `hasnetcdf == true`.
+"""
+macro ifhasnetcdf(expr)
+    hasnetcdf ? :($(esc(expr))) : :(nothing) 
+end
 
 #####
 ##### Abstract types
@@ -163,6 +179,10 @@ abstract type AbstractDiagnostic end
 Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
+
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
 
 #####
 ##### Place-holder functions

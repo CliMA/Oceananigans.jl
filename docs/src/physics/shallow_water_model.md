@@ -7,7 +7,7 @@ but with varying fluid depth ``h(x, y, t)`` and whose velocity only varies in th
 [`ShallowWaterModel`](@ref) allows users to prescribe the shallow water dynamics using two different formulations:
 `VectorInvariantFormulation()` and `ConservativeFormulation()`.
 
-The `VectorInvariantFormulation` uses the velocity ``\boldsymbol{u}=(u, v)`` and the total depth of the fluid, ``h``,
+The `VectorInvariantFormulation` uses the horizontal velocity ``\boldsymbol{u}`` and the total depth of the fluid, ``h``,
 as the dynamical variables. Furthermore, the advective terms are rewritten via the vector identity:
 ```math
 \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{u} = (\boldsymbol{\nabla} \times \boldsymbol{u}) \times \boldsymbol{u} + \boldsymbol{\nabla} \left( \frac1{2} \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{u} \right ) \, .
@@ -16,7 +16,7 @@ Thus, the shallow water dynamics in vector-invariant form become:
 
 ```math
 \begin{align}
-  \partial_t \boldsymbol{u} + (\zeta \boldsymbol{\hat k} + \boldsymbol{f})  \times\boldsymbol{u} & = 
+  \partial_t \boldsymbol{u} + (\zeta \boldsymbol{\hat z} + \boldsymbol{f})  \times\boldsymbol{u} & = 
   - \boldsymbol{\nabla} \left [ g (h +b) + \frac12 \boldsymbol{u} \cdot \boldsymbol{u} \right ] \, , \\
   \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}

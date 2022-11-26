@@ -3,6 +3,7 @@ using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
+using AlgebraicMultigrid: aspreconditioner
 
 using LinearAlgebra, SparseArrays, IncompleteLU
 using SparseArrays: nnz
@@ -74,6 +75,7 @@ end
 build_preconditioner(::Val{nothing},            A, settings)  = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
+build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
@@ -103,21 +105,24 @@ end
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
 """
-The diagonally dominant inverse preconditioner is constructed with an asymptotic expansion of `A⁻¹` up to the second order
-If `I` is the Identity matrix and `D` is the matrix containing the diagonal of `A`, then
+    asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
 
-the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹` 
+Compute the diagonally-dominant inverse preconditioner is constructed with an asymptotic
+expansion of `A⁻¹` up to the second order. If `I` is the Identity matrix and `D` is the matrix
+containing the diagonal of `A`, then
 
-the 1st order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` 
+- the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹`
 
-the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
+- the 1st order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹`
 
-all preconditioners are calculated on CPU and then moved to the GPU. 
-Additionally the first order expansion has a method to calculate the preconditioner directly on the GPU
-`asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable time step where the preconditioner
-has to be recalculated often
+- the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
+
+All preconditioners are calculated on CPU and, if the model is based on a GPU architecture, then moved to the GPU.
+
+Additionally, the first-order expansion has a method to calculate the preconditioner directly
+on the GPU `asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable
+time step where the preconditioner has to be recalculated often.
 """
-
 function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
     
     arch                  = architecture(A)
@@ -174,3 +179,29 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
    return SparseInversePreconditioner(Minv)
 end
+
+multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
+
+multigrid_preconditioner(A::CuSparseMatrixCSC) = MultigridGPUPreconditioner(AMGXMultigridSolver(A))
+
+struct MultigridGPUPreconditioner{AMGXMultigridSolver}
+    amgx_solver :: AMGXMultigridSolver
+end
+
+import LinearAlgebra: \, *, ldiv!, mul!
+
+ldiv!(p::MultigridGPUPreconditioner, b) = copyto!(b, p \ b)
+
+function ldiv!(x, p::MultigridGPUPreconditioner, b)
+    x .= 0
+    AMGX.upload!(p.amgx_solver.device_b, b)
+    AMGX.upload!(p.amgx_solver.device_x, x)
+    AMGX.solve!(p.amgx_solver.device_x, p.amgx_solver.solver, p.amgx_solver.device_b)
+    AMGX.copy!(x, p.amgx_solver.device_x)
+end
+
+mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
+
+\(p::MultigridGPUPreconditioner, b) = ldiv!(similar(b), p, b)
+
+finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amgx_solver)

@@ -6,11 +6,13 @@ using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    low, high = index_binary_search(vec, val, length(vec))
+    index_binary_search(vec, val, array_size)
 
-Returns indices `low, high` of `vec`tor for which 
+Return indices `low, high` of `vec`tor for which 
 
-    `vec[low] <= val && vec[high] >= val`
+```
+vec[low] <= val && vec[high] >= val
+```
 
 using a binary search. The input array `vec` has to be monotonically increasing.
 
@@ -80,7 +82,7 @@ const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
 @inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
 
 """
-    fractional_indices(x, y, z, loc, grid::RectilinearGrid)
+    fractional_indices(x, y, z, loc, grid)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid located at `loc`
 where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
@@ -90,6 +92,7 @@ grid points.
     i = fractional_x_index(x, loc[1], grid)
     j = fractional_y_index(y, loc[2], grid)
     k = fractional_z_index(z, loc[3], grid)
+    
     return (i, j, k)
 end
 
