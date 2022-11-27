@@ -595,12 +595,11 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 
 
 #####
-##### Get minima of grid
+##### Grid spacings
 #####
 
 function min_Δx(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[1] == Flat
+    if topology(grid)[1] == Flat
         return Inf
     else
         ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
@@ -608,20 +607,5 @@ function min_Δx(grid::LatitudeLongitudeGrid)
     end
 end
 
-function min_Δy(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[2] == Flat
-        return Inf
-    else
-        return grid.radius * deg2rad(min_number_or_array(grid.Δφᵃᶜᵃ))
-    end
-end
-
-function min_Δz(grid::LatitudeLongitudeGrid)
-    topo = topology(grid)
-    if topo[3] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δzᵃᵃᶜ)
-    end
-end
+min_Δy(grid::LatitudeLongitudeGrid) = topology(grid)[2] == Flat ? Inf : grid.radius * deg2rad(min_number_or_array(grid.Δφᵃᶜᵃ))
+min_Δz(grid::LatitudeLongitudeGrid) = topology(grid)[3] == Flat ? Inf : min_number_or_array(grid.Δzᵃᵃᶜ)

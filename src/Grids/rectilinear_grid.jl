@@ -423,37 +423,21 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 
 
 #####
-##### Get minima of grid
+##### Grid spacings
 #####
 
-function min_Δx(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[1] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δxᶜᵃᵃ)
-    end
-end
+Δx(::Type{Center}, grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
+Δx(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
+Δy(::Type{Center}, grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
+Δy(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
+Δz(::Type{Center}, grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
+Δz(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
 
-function min_Δy(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[2] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δyᵃᶜᵃ)
-    end
-end
-
-function min_Δz(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[3] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δzᵃᵃᶜ)
-    end
-end
 
 @inline min_number_or_array(var) = var
 @inline min_number_or_array(var::AbstractVector) = minimum(parent(var))
+min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : min_number_or_array(grid.Δxᶜᵃᵃ)
+min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : min_number_or_array(grid.Δyᵃᶜᵃ)
+min_Δz(grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : min_number_or_array(grid.Δzᵃᵃᶜ)
 
 isrectilinear(::RectilinearGrid) = true

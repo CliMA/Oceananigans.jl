@@ -35,6 +35,9 @@ end
 
 
 return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
+Δx(grid::ImmersedBoundaryGrid) = Δx(grid.underlying_grid)
+Δy(grid::ImmersedBoundaryGrid) = Δy(grid.underlying_grid)
+Δz(grid::ImmersedBoundaryGrid) = Δz(grid.underlying_grid)
 min_Δx(grid::ImmersedBoundaryGrid) = min_Δx(grid.underlying_grid)
 min_Δy(grid::ImmersedBoundaryGrid) = min_Δy(grid.underlying_grid)
 min_Δz(grid::ImmersedBoundaryGrid) = min_Δz(grid.underlying_grid)
