@@ -433,9 +433,6 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 Δz(::Type{Center}, grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
 Δz(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
 
-
-@inline min_number_or_array(var) = var
-@inline min_number_or_array(var::AbstractVector) = minimum(parent(var))
 min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : min_number_or_array(grid.Δxᶜᵃᵃ)
 min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : min_number_or_array(grid.Δyᵃᶜᵃ)
 min_Δz(grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : min_number_or_array(grid.Δzᵃᵃᶜ)
