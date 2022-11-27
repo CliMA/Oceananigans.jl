@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz
+import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz, Δx, Δy, Δz
 
 const c = Center()
 const f = Face()
@@ -35,9 +35,9 @@ end
 
 
 return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
-Δx(grid::ImmersedBoundaryGrid) = Δx(grid.underlying_grid)
-Δy(grid::ImmersedBoundaryGrid) = Δy(grid.underlying_grid)
-Δz(grid::ImmersedBoundaryGrid) = Δz(grid.underlying_grid)
+Δx(loc, grid::ImmersedBoundaryGrid) = Δx(loc, grid.underlying_grid)
+Δy(loc, grid::ImmersedBoundaryGrid) = Δy(loc, grid.underlying_grid)
+Δz(loc, grid::ImmersedBoundaryGrid) = Δz(loc, grid.underlying_grid)
 min_Δx(grid::ImmersedBoundaryGrid) = min_Δx(grid.underlying_grid)
 min_Δy(grid::ImmersedBoundaryGrid) = min_Δy(grid.underlying_grid)
 min_Δz(grid::ImmersedBoundaryGrid) = min_Δz(grid.underlying_grid)
