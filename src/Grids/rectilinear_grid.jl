@@ -426,12 +426,12 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 ##### Grid spacings
 #####
 
-Δx(::Type{Center}, grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
-Δx(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
-Δy(::Type{Center}, grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
-Δy(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
-Δz(::Type{Center}, grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
-Δz(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
+xspacing(::Type{Center}, grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
+xspacing(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
+yspacing(::Type{Center}, grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
+yspacing(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
+zspacing(::Type{Center}, grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
+zspacing(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
 
 min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : min_number_or_array(grid.Δxᶜᵃᵃ)
 min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : min_number_or_array(grid.Δyᵃᶜᵃ)

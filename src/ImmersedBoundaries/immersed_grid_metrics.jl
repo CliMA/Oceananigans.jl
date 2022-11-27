@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz, Δx, Δy, Δz
+import Oceananigans.Grids: return_metrics, min_Δx, min_Δy, min_Δz, xspacing, yspacing, zspacing
 
 const c = Center()
 const f = Face()
@@ -34,10 +34,10 @@ end
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 
-return_metrics(grid::ImmersedBoundaryGrid) = return_metrics(grid.underlying_grid)
-Δx(loc, grid::ImmersedBoundaryGrid) = Δx(loc, grid.underlying_grid)
-Δy(loc, grid::ImmersedBoundaryGrid) = Δy(loc, grid.underlying_grid)
-Δz(loc, grid::ImmersedBoundaryGrid) = Δz(loc, grid.underlying_grid)
-min_Δx(grid::ImmersedBoundaryGrid) = min_Δx(grid.underlying_grid)
-min_Δy(grid::ImmersedBoundaryGrid) = min_Δy(grid.underlying_grid)
-min_Δz(grid::ImmersedBoundaryGrid) = min_Δz(grid.underlying_grid)
+return_metrics(grid::IBG) = return_metrics(grid.underlying_grid)
+xspacing(X, grid::IBG) = xspacing(X, grid.underlying_grid)
+yspacing(Y, grid::IBG) = yspacing(Y, grid.underlying_grid)
+zspacing(Z, grid::IBG) = zspacing(Z, grid.underlying_grid)
+min_Δx(grid::IBG) = min_Δx(grid.underlying_grid)
+min_Δy(grid::IBG) = min_Δy(grid.underlying_grid)
+min_Δz(grid::IBG) = min_Δz(grid.underlying_grid)
