@@ -3,25 +3,12 @@
 
 Parameters for the evolution of oceanic turbulent kinetic energy at the O(1 m) scales associated with
 isotropic turbulence and diapycnal mixing.
-
-Turbulent kinetic energy dissipation
-====================================
-
-Surface flux model
-==================
-
-```
-Qᵉ = - Cᴰ * (Cᵂu★ * u★³ + CᵂwΔ * w★³)
-```
-
-where `Qᵉ` is the surface flux of TKE, `Cᴰ` is a free parameter called the "dissipation parameter",
-`u★ = (Qᵘ² + Qᵛ²)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
-turbulent velocity scale associated with the surface vertical grid spacing `Δz` and the
-surface buoyancy flux `Qᵇ`.
 """
 Base.@kwdef struct TurbulentKineticEnergyEquation{FT}
-    Cᴰ⁻   :: FT = 1.0
-    Cᴰ⁺   :: FT = 1.0
+    C⁻D   :: FT = 1.0
+    C⁺D   :: FT = 1.0
+    CᶜD   :: FT = 0.0
+    CᵉD   :: FT = 0.0
     Cᵂu★  :: FT = 1.0
     CᵂwΔ  :: FT = 1.0
 end
@@ -77,16 +64,26 @@ end
     e = tracers.e
     FT = eltype(grid)
 
-    # Start with tracer mixing length
-    ℓ = ℑzᵃᵃᶜ(i, j, k, grid, tracer_mixing_lengthᶜᶜᶠ, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
+    # Convective dissipation length
+    Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
+    Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
+    Cˢᶜ = closure.mixing_length.Cˢᶜ
+    ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_mixing_lengthᶜᶜᶠ, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
 
-    # Ri-dependent dissipation coefficient
-    Cᴰ⁻ = closure.turbulent_kinetic_energy_equation.Cᴰ⁻
-    Cᴰ⁺ = closure.turbulent_kinetic_energy_equation.Cᴰ⁺
+    # "Stable" dissipation length
+    C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
+    C⁺D = closure.turbulent_kinetic_energy_equation.C⁺D
     Riᶜ = closure.mixing_length.CRiᶜ
     Riʷ = closure.mixing_length.CRiʷ
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
-    Cᴰ = scale(Ri, Cᴰ⁻, Cᴰ⁺, Riᶜ, Riʷ)
+    σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
+
+    Cᵇ = closure.mixing_length.Cᵇ
+    Cˢ = closure.mixing_length.Cˢ
+    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_mixing_lengthᶜᶜᶠ, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
+
+    # Dissipation length
+    ℓᴰ = ℓ★ + ℓʰ
 
     eᵢ = @inbounds e[i, j, k]
 
@@ -98,7 +95,7 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    return - Cᴰ * sqrt(abs(eᵢ)) / ℓ
+    return - sqrt(abs(eᵢ)) / ℓᴰ
 end
 
 # Fallbacks for explicit time discretization
@@ -289,14 +286,16 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
     end
 
-    new_boundary_conditions = merge(user_bcs, (e = tke_bcs,))
+    new_boundary_conditions = merge(user_bcs, (; e = tke_bcs))
 
     return new_boundary_conditions
 end
 
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
-              "    Cᴰ⁻  = $(tke.Cᴰ⁻),  \n" *
-              "    Cᴰ⁺  = $(tke.Cᴰ⁺),  \n" *
+              "    C⁻D  = $(tke.C⁻D),  \n" *
+              "    C⁺D  = $(tke.C⁺D),  \n" *
+              "    CᶜD  = $(tke.CᶜD),  \n" *
+              "    CᵉD  = $(tke.CᵉD),  \n" *
               "    Cᵂu★ = $(tke.Cᵂu★), \n" *
               "    CᵂwΔ = $(tke.CᵂwΔ)")
