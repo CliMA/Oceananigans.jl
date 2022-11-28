@@ -20,7 +20,6 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 
-using Oceananigans: @ifhasamgx, hasamgx
 using Oceananigans.Grids: unpack_grid
 
 """

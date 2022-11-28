@@ -13,7 +13,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     # Step locally velocity and tracers
     @apply_regionally prognostic_field_events = local_ab2_step!(model, Δt, χ)
-    
+
     # blocking step for implicit free surface, non blocking for explicit
     prognostic_field_events = ab2_step_free_surface!(model.free_surface, model, Δt, χ, prognostic_field_events)
 
@@ -35,7 +35,7 @@ function local_ab2_step!(model, Δt, χ)
     explicit_tracer_step_events   = ab2_step_tracers!(model.tracers, model, Δt, χ)
     
     prognostic_field_events = (tuple(explicit_velocity_step_events...),
-        tuple(explicit_tracer_step_events...))
+                               tuple(explicit_tracer_step_events...))
 
     return prognostic_field_events    
 end
@@ -45,8 +45,6 @@ end
 #####
 
 function ab2_step_velocities!(velocities, model, Δt, χ)
-
-    barrier = device_event(model)
 
     # Launch velocity update kernels
     explicit_velocity_step_events = []
