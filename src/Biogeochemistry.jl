@@ -4,6 +4,9 @@ using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Advection: div_Uc, CenteredSecondOrder
 using Oceananigans.Utils: tupleit
 using Oceananigans.Fields: Field
+using Oceananigans.Architectures: device, architecture
+using Oceananigans.Utils: launch!
+using KernelAbstractions: @kernel
 
 import Oceananigans.Fields: location, CenterField
 import Oceananigans.Forcings: regularize_forcing, maybe_constant_field
@@ -129,14 +132,21 @@ Example
 
 biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct SomethingBiogeochemistry{T, S, U, A, P} <: AbstractContinuousFormBiogeochemistry
+struct SomethingBiogeochemistry{T, S, U, A, L, P} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
     transitions :: T
     advection_schemes :: S
     drift_velocities :: U
     auxiliary_fields :: A
+    light_attenuation_model :: L
     parameters :: P
 end
+
+struct NothingLightAttenuation{P, A}
+    par_fields :: P
+    attenuating_fields :: A
+end
+@kernel update_PhotosyntheticallyActiveRatiation!(::NothingLightAttenuation, args...) = nothing
 
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
 @inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
@@ -144,8 +154,16 @@ end
 @inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.drift_velocities) ? bgc.drift_velocities[tracer_name] : 0
 @inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.advection_schemes) ? bgc.advection_schemes[tracer_name] : nothing
 
-@inline update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model) = bgc.state_updates(bgc, model)
-
+function update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model)
+    arch = architecture(model.grid)
+    event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
+                    bgc.light_attenuation_model,
+                    model.auxiliary_fields[bgc.light_attenuation_model.par_fields]..., 
+                    model.tracers[bgc.light_attenuation_model.attenuating_fields]..., 
+                    model.grid, 
+                    model.clock.time)
+    wait(event)
+end
 @inline (bgc::SomethingBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
 """
@@ -175,12 +193,13 @@ function SomethingBiogeochemistry(;tracers,
                                    adveciton_schemes = NamedTuple{keys(drift_velocities)}(
                                                         repeat([CenteredSecondOrder()], 
                                                                 length(drift_velocities))),  
-                                   auxiliary_fields=(), 
-                                   parameters=NamedTuple())
+                                   auxiliary_fields = (), 
+                                   light_attenuation_model = NothingLightAttenuation((), ()),
+                                   parameters = NamedTuple())
 
     drift_velocities = maybe_velocity_fields(drift_velocities)
 
-    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), parameters)
+    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), light_attenuation_model, parameters)
 end
 
 end # module

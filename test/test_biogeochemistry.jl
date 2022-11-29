@@ -14,12 +14,11 @@ import Oceananigans.Biogeochemistry:
        biogeochemical_drift_velocity,
        biogeochemical_advection_scheme, 
        update_biogeochemical_state!,
-       validate_biogeochemistry
+       update_PhotosyntheticallyActiveRatiation!,
+       cpu_update_PhotosyntheticallyActiveRatiation!,
+       gpu_update_PhotosyntheticallyActiveRatiation!
 
-import Oceananigans.Fields: compute!
-
-
-struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemistry
+struct SimplePlanktonGrowthDeath{FT, W, A, LA} <: AbstractContinuousFormBiogeochemistry
     growth_rate :: FT
     light_limit :: FT
     mortality_rate :: FT
@@ -27,21 +26,25 @@ struct SimplePlanktonGrowthDeath{FT, W, A} <: AbstractContinuousFormBiogeochemis
     sinking_velocity :: W     
     advection_scheme :: A
 
+    light_attenuation_model :: LA
+
     function SimplePlanktonGrowthDeath(;growth_rate::FT,
                                         light_limit::FT,
                                         mortality_rate::FT,
                                         sinking_velocity = 0,
-                                        advection_scheme::A = sinking_velocity == 0 ? nothing : CenteredSecondOrder()) where {FT, A}
+                                        advection_scheme::A = sinking_velocity == 0 ? nothing : CenteredSecondOrder(),
+                                        light_attenuation_model::LA = SimplePhyotosyntheticallyActiveRadiation()) where {FT, A, LA}
 
         u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
         sinking_velocity = (; u, v, w)
         W = typeof(sinking_velocity)
 
-        return new{FT, W, A}(growth_rate,
+        return new{FT, W, A, LA}(growth_rate,
                    light_limit,
                    mortality_rate,
                    sinking_velocity,
-                   advection_scheme)
+                   advection_scheme,
+                   light_attenuation_model)
     end
 end
 
@@ -76,67 +79,59 @@ end
 ##### Setting up the integration of the Photosynthetically Available Radiation
 #####
 
-struct PhotosyntheticallyActiveRatiationOperand{FT, SP, P, C}
+struct SimplePhyotosyntheticallyActiveRadiation{FT, SP, P, A}
     water_light_attenuation_coefficient :: FT
     phytoplankton_light_attenuation_coefficient :: FT
     phytoplankton_light_attenuation_exponent :: FT
     surface_PAR :: SP
-    P_field :: P
-    clock :: C
+
+    par_fields :: P
+    attenuating_fields :: A
 end
 
-@kernel function update_PhotosyntheticallyActiveRatiation!(PAR, grid, t) 
+@kernel function update_PhotosyntheticallyActiveRatiation!(light_attenuation_model::SimplePhyotosyntheticallyActiveRadiation,
+                                                           PAR, P, grid, t) 
     i, j = @index(Global, NTuple)
-
-    data = PAR.data
-    P = PAR.operand.P_field
     
-    PAR⁰ = PAR.operand.surface_PAR(t)
-    e, kʷ, χ = PAR.operand.phytoplankton_light_attenuation_exponent, PAR.operand.water_light_attenuation_coefficient, PAR.operand.phytoplankton_light_attenuation_coefficient
+    PAR⁰ = light_attenuation_model.surface_PAR(t)
+    e, kʷ, χ = light_attenuation_model.phytoplankton_light_attenuation_exponent, light_attenuation_model.water_light_attenuation_coefficient, light_attenuation_model.phytoplankton_light_attenuation_coefficient
 
     zᶜ = znodes(Center, grid)
     zᶠ = znodes(Face, grid)
     
     ∫chl = @inbounds - (zᶜ[grid.Nz] - zᶠ[grid.Nz])*P[i, j, grid.Nz]^e
-    @inbounds data[i, j, grid.Nz] =  PAR⁰*exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
+    @inbounds PAR[i, j, grid.Nz] =  PAR⁰*exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
 
     @inbounds for k in grid.Nz-1:-1:1
         ∫chl += (zᶜ[k + 1] - zᶠ[k])*P[i, j, k + 1]^e + (zᶠ[k] - zᶜ[k])*P[i, j, k]^e
-        data[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
+        PAR[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
     end
 end 
 
-# Restricting to center for now because integral defintion changes for face fields
-const PhotosyntheticallyActiveRatiationField = Field{<:Center, <:Center, <:Center, <:PhotosyntheticallyActiveRatiationOperand}
-
-function PhotosyntheticallyActiveRatiation(;grid, P, clock,
-                                            water_light_attenuation_coefficient = 0.12,
-                                            phytoplankton_light_attenuation_coefficient = 0.06,
-                                            phytoplankton_light_attenuation_exponent = 0.6,
-                                            surface_PAR = t -> 100.0)
-        return CenterField(grid, operand=PhotosyntheticallyActiveRatiationOperand(water_light_attenuation_coefficient,
-                                                                                  phytoplankton_light_attenuation_coefficient,
-                                                                                  phytoplankton_light_attenuation_exponent,
-                                                                                  surface_PAR,
-                                                                                  P,
-                                                                                  clock))
+function SimplePhyotosyntheticallyActiveRadiation(;water_light_attenuation_coefficient = 0.12,
+                                                   phytoplankton_light_attenuation_coefficient = 0.06,
+                                                   phytoplankton_light_attenuation_exponent = 0.6,
+                                                   surface_PAR = t -> 100.0*max(0.0, sin(t*π/(12hours))),
+                                                   par_fields = (:PAR, ),
+                                                   attenuating_fields = (:P, ))
+        return SimplePhyotosyntheticallyActiveRadiation(water_light_attenuation_coefficient,
+                                                        phytoplankton_light_attenuation_coefficient,
+                                                        phytoplankton_light_attenuation_exponent,
+                                                        surface_PAR,
+                                                        par_fields,
+                                                        attenuating_fields)
 end
 
 # Call the integration
-function compute!(par::PhotosyntheticallyActiveRatiationField)
-    arch = architecture(par.grid)
-    event = launch!(arch, par.grid, :xy, update_PhotosyntheticallyActiveRatiation!, par, par.grid, par.operand.clock.time)
+function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
+    arch = architecture(model.grid)
+    event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
+                    bgc.light_attenuation_model,
+                    model.auxiliary_fields.PAR, 
+                    model.tracers.P, 
+                    model.grid, 
+                    model.clock.time)
     wait(event)
-end
-
-# Overload the validaiton function to define the PAR field, need to do it here as we need the phytoplankton field defined
-@inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc::SimplePlanktonGrowthDeath, grid, clock)
-    req_tracers = required_biogeochemical_tracers(bgc)
-    tracers = TracerFields(all_fields_present(tracers, req_tracers, grid), grid)
-
-    PAR = PhotosyntheticallyActiveRatiation(;grid, P = tracers.P, clock=clock, surface_PAR = t -> 100*max(0.0, sin(t*π/(12hours))))
-    
-    return tracers, merge(auxiliary_fields, (; PAR))
 end
 
 #####
@@ -159,6 +154,8 @@ biogeochemistry = SimplePlanktonGrowthDeath(growth_rate = 1/day,
                                             mortality_rate = 0.1/day,
                                             sinking_velocity = 200/day)
 
+PAR = CenterField(grid)
+
 model = NonhydrostaticModel(; grid, biogeochemistry,
                             advection = WENO(; grid),
                             timestepper = :RungeKutta3,
@@ -166,7 +163,8 @@ model = NonhydrostaticModel(; grid, biogeochemistry,
                             coriolis = FPlane(f=1e-4),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            boundary_conditions = (; b=buoyancy_bcs))
+                            boundary_conditions = (; b=buoyancy_bcs),
+                            auxiliary_fields = (; PAR))
 
 mixed_layer_depth = 32 # m
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
@@ -196,7 +194,7 @@ simulation.output_writers[:simple_output] =
                      filename = "biogeochemistry_test.jld2",
                      overwrite_existing = true)
 
-run!(simulation)
+#run!(simulation)
 
 #####
 ##### Example using SomethingBiogeochemistry
@@ -214,7 +212,8 @@ biogeochemistry = SomethingBiogeochemistry(tracers = :P,
                                            auxiliary_fields = :PAR, 
                                            transitions = (; P=growth),
                                            parameters = biogeochemistry_parameters,
-                                           drift_velocities = (P = (0.0, 0.0, -200/day), ))
+                                           drift_velocities = (P = (0.0, 0.0, -200/day), ),
+                                           light_attenuation_model = SimplePhyotosyntheticallyActiveRadiation())
 
 grid = RectilinearGrid(size = (64, 64),
 extent = (64, 64),
@@ -227,12 +226,9 @@ N² = 1e-4 # s⁻²
 buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
-# Have to predefine the PAR (and therefore P) field before to use this setup method
-P = CenterField(grid)
-clock = Clock{eltype(grid)}(0, 0, 1)
-PAR = PhotosyntheticallyActiveRatiation(;grid, P, clock)
+PAR = CenterField(grid)
 
-model = NonhydrostaticModel(; grid, biogeochemistry, clock,
+model = NonhydrostaticModel(; grid, biogeochemistry,
                             advection = WENO(; grid),
                             timestepper = :RungeKutta3,
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
@@ -270,8 +266,7 @@ simulation.output_writers[:simple_output] =
                             filename = "biogeochemistry_test.jld2",
                             overwrite_existing = true)
 
-#run!(simulation)
-
+run!(simulation)
 
 #= Plot to sanity check
 
