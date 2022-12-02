@@ -146,7 +146,7 @@ struct NothingLightAttenuation{P, A}
     par_fields :: P
     attenuating_fields :: A
 end
-@kernel update_PhotosyntheticallyActiveRatiation!(::NothingLightAttenuation, args...) = nothing
+@inline (::NothingLightAttenuation)(args...) = nothing
 
 @inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
 @inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
@@ -155,15 +155,9 @@ end
 @inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.advection_schemes) ? bgc.advection_schemes[tracer_name] : nothing
 
 function update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model)
-    arch = architecture(model.grid)
-    event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
-                    bgc.light_attenuation_model,
-                    model.auxiliary_fields[bgc.light_attenuation_model.par_fields]..., 
-                    model.tracers[bgc.light_attenuation_model.attenuating_fields]..., 
-                    model.grid, 
-                    model.clock.time)
-    wait(event)
+    bgc.light_attenuation_model(bgc, model)
 end
+
 @inline (bgc::SomethingBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
 """

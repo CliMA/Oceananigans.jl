@@ -12,11 +12,7 @@ import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
        required_biogeochemical_auxiliary_fields,
        biogeochemical_drift_velocity,
-       biogeochemical_advection_scheme, 
-       update_biogeochemical_state!,
-       update_PhotosyntheticallyActiveRatiation!,
-       cpu_update_PhotosyntheticallyActiveRatiation!,
-       gpu_update_PhotosyntheticallyActiveRatiation!
+       biogeochemical_advection_scheme
 
 struct SimplePlanktonGrowthDeath{FT, W, A, LA} <: AbstractContinuousFormBiogeochemistry
     growth_rate :: FT
@@ -123,10 +119,10 @@ function SimplePhyotosyntheticallyActiveRadiation(;water_light_attenuation_coeff
 end
 
 # Call the integration
-function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
+function (light_attenuation_model::SimplePhyotosyntheticallyActiveRadiation)(bgc::SomethingBiogeochemistry, model)
     arch = architecture(model.grid)
     event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
-                    bgc.light_attenuation_model,
+                    light_attenuation_model,
                     model.auxiliary_fields.PAR, 
                     model.tracers.P, 
                     model.grid, 
