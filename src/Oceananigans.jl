@@ -143,7 +143,12 @@ import Base:
 # (libnetcdf) are installed on the machine
 
 "Boolean denoting whether NCDatasets.jl can be loaded on machine."
-const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? false : true
+const hasnetcdf = try
+    using NCDatasets
+    true
+catch
+    false
+end
 
 """
     @ifnetcdf expr
