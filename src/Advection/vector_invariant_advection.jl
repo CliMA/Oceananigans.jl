@@ -107,10 +107,10 @@ const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorI
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
 
-const UpwingVorticityVectorInvariant = VectorInvariant{<:AbstractUpwindBiasedAdvectionScheme, Nothing, <:Any, <:Any, EnergyConservingScheme}
+const UpwindVorticityVectorInvariant = VectorInvariant{<:AbstractUpwindBiasedAdvectionScheme, Nothing, <:Any, <:Any, EnergyConservingScheme}
 const UpwindFullVectorInvariant      = VectorInvariant{<:AbstractUpwindBiasedAdvectionScheme, <:AbstractUpwindBiasedAdvectionScheme}
 
-@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwingVorticityVectorInvariant, u, v)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
@@ -121,7 +121,7 @@ const UpwindFullVectorInvariant      = VectorInvariant{<:AbstractUpwindBiasedAdv
     return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwingVorticityVectorInvariant, u, v) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v) 
 
     Sζ = scheme.vorticity_stencil
 
