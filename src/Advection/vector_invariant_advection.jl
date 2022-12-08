@@ -185,7 +185,7 @@ const UX{N} = UpwindBiased{N, <:Any, <:Nothing}
 const UY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
 const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
 
-# For vector Invariant downgrading near the boundaries 
+# To adapt passing smoothness stencils to upwind biased schemes (not weno) 
 for buffer in 1:6
     @eval begin
         @inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::U{$buffer},  f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, f, idx, loc, args...)
