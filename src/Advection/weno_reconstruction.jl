@@ -52,9 +52,6 @@ Keyword arguments
 
 - `order`: The order of the WENO advection scheme. Default: 5
 - `grid`: (defaults to `nothing`)
-- `vector_invariant`: The stencil for which the vector-invariant form of the advection
-                      scheme would use. Options `VelocityStencil()` or `VorticityStencil()`;
-                      defaults to `nothing`.
 
 - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation.
            (defaults to `true`)
@@ -137,12 +134,8 @@ WENOThirdOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; 
 WENOFifthOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=5, kwargs...)
 
 # Flavours of WENO
-const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, true}
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
-
-formulation(scheme::WENO)                = "Flux form"
-
-required_halo_size(scheme::WENOVectorInvariant{N}) where N = N + 1
+const ZWENO        = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, true}
+const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
 Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1)
 

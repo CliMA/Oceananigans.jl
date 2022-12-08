@@ -16,6 +16,11 @@
 # where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
 #
 
+abstract type AbstractSmoothnessStencil end
+
+struct VelocityStencil <:AbstractSmoothnessStencil end
+struct DefaultStencil  <:AbstractSmoothnessStencil end
+
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 

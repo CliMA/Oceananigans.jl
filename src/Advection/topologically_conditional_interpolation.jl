@@ -68,7 +68,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WVI, ζ, VI, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
