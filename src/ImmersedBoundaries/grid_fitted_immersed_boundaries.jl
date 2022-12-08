@@ -7,7 +7,8 @@ using Oceananigans.BoundaryConditions: FBC
 using Printf
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
-                                        ivd_lower_diagonal
+                                        ivd_lower_diagonal,
+                                        bottom
 
 import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
                                         immersed_∂ⱼ_τ₂ⱼ,
@@ -95,6 +96,8 @@ end
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
+
+@inline bottom(i, j, k, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     
