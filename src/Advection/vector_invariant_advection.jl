@@ -3,8 +3,8 @@ using Oceananigans.Operators
 struct EnergyConservingScheme{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConservingScheme{FT} <: AbstractAdvectionScheme{1, FT} end
 
-EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme(FT)
-EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme(FT)
+EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
+EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
 struct VectorInvariant{N, FT, Z, D, ZS, DS, V} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme   :: Z

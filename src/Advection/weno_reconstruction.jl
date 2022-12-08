@@ -120,7 +120,7 @@ function WENO(FT::DataType=Float64;
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, vector_invariant, bounds)
+        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
 
