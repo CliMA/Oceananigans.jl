@@ -139,11 +139,37 @@ import Base:
     push!
 
 
-# TODO: find a way to check whether the libraries for NETCDF 
-# (libnetcdf) are installed on the machine
+function __init__()
+    threads = Threads.nthreads()
+    if threads > 1
+        @info "Oceananigans will use $threads threads"
 
-"Boolean denoting whether NCDatasets.jl can be loaded on machine."
-const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :powerpc64le) ? false : true
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
+        FFTW.set_num_threads(4*threads)
+    end
+
+    if CUDA.has_cuda()
+        @debug "CUDA-enabled GPU(s) detected:"
+        for (gpu, dev) in enumerate(CUDA.devices())
+            @debug "$dev: $(CUDA.name(dev))"
+        end
+
+        CUDA.allowscalar(false)
+    end
+
+    # TODO: find a way to check whether the libraries for NETCDF 
+    # (libnetcdf) are installed on the machine
+
+    "Boolean denoting whether NCDatasets.jl can be loaded on machine."
+    const hasnetcdf = try
+        using NCDatasets
+        true
+    catch
+        false
+    end
+    
+    @show hasnetcdf
+end
 
 """
     @ifnetcdf expr
@@ -266,24 +292,5 @@ using .Simulations
 using .AbstractOperations
 using .MultiRegion
 using .CubedSpheres
-
-function __init__()
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4*threads)
-    end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
-end
 
 end # module
