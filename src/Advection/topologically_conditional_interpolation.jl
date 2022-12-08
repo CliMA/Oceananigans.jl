@@ -36,7 +36,6 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, Centered, UpwindBiased} 
 const LOADV = Union{VectorInvariant, UpwindBiased{1}, Centered{1}}
-const WVI   = WENOVectorInvariant
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
@@ -81,7 +80,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, ψ),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
 
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WVI, ζ, VI, u, v) =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ζ, VI, u, v),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, ζ, VI, u, v))
