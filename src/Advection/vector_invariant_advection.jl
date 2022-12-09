@@ -38,6 +38,8 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
     return VectorInvariant{N, FT}(vorticity_scheme, divergence_scheme, vorticity_stencil, divergence_stencil, vertical_scheme)
 end
 
+# Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
+# halo for vector invariant advection
 required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT}) where {N, FT} =
@@ -100,6 +102,11 @@ const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorI
 
 @inline ζ_ℑx_vᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 @inline ζ_ℑy_uᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+
+######
+###### Conserving scheme
+###### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
+######
 
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) / Δxᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) / Δyᶜᶠᶜ(i, j, k, grid)

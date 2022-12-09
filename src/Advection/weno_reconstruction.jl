@@ -52,7 +52,6 @@ Keyword arguments
 
 - `order`: The order of the WENO advection scheme. Default: 5
 - `grid`: (defaults to `nothing`)
-
 - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation.
            (defaults to `true`)
 
@@ -62,11 +61,11 @@ Examples
 julia> using Oceananigans;
 
 julia> WENO()
-WENO reconstruction order 5 in Flux form 
+WENO reconstruction order 5
  Smoothness formulation: 
     └── Z-weno  
  Boundary scheme: 
-    └── WENO reconstruction order 3 in Flux form
+    └── WENO reconstruction order 3
  Symmetric scheme: 
     └── Centered reconstruction order 4
  Directions:
@@ -88,11 +87,11 @@ julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic
                               x = (0, Lx), z = chebychev_spaced_z_faces);
 
 julia> WENO(grid; order=7)
-WENO reconstruction order 7 in Flux form 
+WENO reconstruction order 7
  Smoothness formulation: 
     └── Z-weno  
  Boundary scheme: 
-    └── WENO reconstruction order 5 in Flux form
+    └── WENO reconstruction order 5
  Symmetric scheme: 
     └── Centered reconstruction order 6
  Directions:
