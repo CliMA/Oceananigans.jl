@@ -49,8 +49,8 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT}) where {N, FT} =
 
 @inline vertical_scheme(scheme::VectorInvariant) = string(nameof(typeof(scheme.vertical_scheme)))
 
-const VectorInvariantEnergyConserving    = VectorInvariant{<:Any, <:Any, EnergyConservingScheme}
-const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, EnstrophyConservingScheme}
+const VectorInvariantEnergyConserving    = VectorInvariant{<:Any, <:Any, <:EnergyConservingScheme}
+const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, <:EnstrophyConservingScheme}
 
 const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving}
 
