@@ -18,7 +18,7 @@ struct VectorInvariant{N, FT, Z, D, ZS, DS, V} <: AbstractAdvectionScheme{N, FT}
     end
 end
 
-function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnergyConservingScheme(), 
+function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            divergence_scheme  = nothing, 
                            vorticity_stencil  = VelocityStencil(),
                            divergence_stencil = DefaultStencil(),
