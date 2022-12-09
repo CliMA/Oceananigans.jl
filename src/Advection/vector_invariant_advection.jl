@@ -38,7 +38,7 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
     return VectorInvariant{N, FT}(vorticity_scheme, divergence_scheme, vorticity_stencil, divergence_stencil, vertical_scheme)
 end
 
-required_halo_size(scheme::VectorInvariant{N}) where N = N + 1
+required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
 
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT}) where {N, FT} =
         VectorInvariant{N, FT}(Adapt.adapt(to, scheme.vorticity_scheme), 
