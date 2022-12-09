@@ -142,7 +142,7 @@ end
     return + upwind_biased_product(û, ζᴸ, ζᴿ)
 end
 
-@inline function vhorizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
     
     Sζ = scheme.vorticity_stencil
 
