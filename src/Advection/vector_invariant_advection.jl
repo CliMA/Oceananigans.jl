@@ -24,19 +24,21 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
                            divergence_stencil = DefaultStencil(),
                            vertical_scheme    = EnergyConservingScheme()) where {N, FT}
 
+    divergence_scheme, vertical_scheme = validate_divergence_and_vertical_scheme(divergence_scheme, vertical_scheme)
+
     if divergence_scheme isa Nothing
         @warn "Using a fully conservative vector invariant scheme, divergence transport is absorbed in the vertical advection"
         vertical_scheme    = EnergyConservingScheme()
     end
 
-    if vorticity_scheme isa EnergyConservingScheme || vorticity_scheme isa EnstrophyConservingScheme
-        @warn "Using a fully conservative vector invariant scheme, divergence transport is absorbed in the vertical advection"
-        divergence_scheme  = nothing 
-        vertical_scheme    = EnergyConservingScheme()
-    end
-
     return VectorInvariant{N, FT}(vorticity_scheme, divergence_scheme, vorticity_stencil, divergence_stencil, vertical_scheme)
 end
+
+# Make sure that divergence is absorbed in the vertical scheme is 1. divergence_schem == Nothing 2. vertical_scheme == EnergyConservingScheme
+validate_divergence_and_vertical_scheme(divergence_scheme, vertical_scheme)          = (divergence_scheme, vertical_scheme)
+validate_divergence_and_vertical_scheme(::Nothing, vertical_scheme)                  = (nothing, EnergyConservingScheme())
+validate_divergence_and_vertical_scheme(::Nothing, ::EnergyConservingScheme)         = (nothing, EnergyConservingScheme())
+validate_divergence_and_vertical_scheme(divergence_scheme, ::EnergyConservingScheme) = (nothing, EnergyConservingScheme())
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
@@ -94,25 +96,29 @@ const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorI
 
 #####
 ##### Horizontal advection 4 formulations:
-#####  1. Energy conservative    (divergence transport absorbed in vertical advection term)
-#####  2. Enstrophy conservative (divergence transport absorbed in vertical advection term)
-#####  3. Vorticity upwinding    (divergence transport absorbed in vertical advection term)
-#####  4. Vorticity and Divergence upwinding    (vertical advection term formulated in flux form)
+#####  1. Energy conservative                (divergence transport absorbed in vertical advection term, vertical advection with EnergyConservingScheme())
+#####  2. Enstrophy conservative             (divergence transport absorbed in vertical advection term, vertical advection with EnergyConservingScheme())
+#####  3. Vorticity upwinding                (divergence transport absorbed in vertical advection term, vertical advection with EnergyConservingScheme())
+#####  4. Vorticity and Divergence upwinding (vertical advection term formulated in flux form, requires an advection scheme other than EnergyConservingScheme)
 #####
-
-@inline ζ_ℑx_vᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
-@inline ζ_ℑy_uᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
 
 ######
 ###### Conserving scheme
 ###### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
 ######
 
+@inline ζ_ℑx_vᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
+@inline ζ_ℑy_uᶠᶠᵃ(i, j, k, grid, u, v) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ_ℑx_vᶠᶠᵃ, u, v) / Δxᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnergyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ_ℑy_uᶠᶠᵃ, u, v) / Δyᶜᶠᶜ(i, j, k, grid)
 
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+
+######
+###### Upwinding schemes
+######
 
 const UpwindVorticityVectorInvariant = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, Nothing}
 const UpwindFullVectorInvariant      = VectorInvariant{<:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:AbstractUpwindBiasedAdvectionScheme}
