@@ -26,11 +26,8 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
 
     divergence_scheme, vertical_scheme = validate_divergence_and_vertical_scheme(divergence_scheme, vertical_scheme)
 
-    if divergence_scheme isa Nothing
-        @warn "Using a fully conservative vector invariant scheme, divergence transport is absorbed in the vertical advection"
-        vertical_scheme    = EnergyConservingScheme()
-    end
-
+    divergence_scheme isa Nothing && @warn "Using a fully conservative vector invariant scheme, divergence transport is absorbed in the vertical advection"
+        
     return VectorInvariant{N, FT}(vorticity_scheme, divergence_scheme, vorticity_stencil, divergence_stencil, vertical_scheme)
 end
 
