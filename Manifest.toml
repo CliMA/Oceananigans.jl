@@ -2,7 +2,7 @@
 
 julia_version = "1.8.3"
 manifest_format = "2.0"
-project_hash = "7f290d4a19bbc030b7da9c4680a37adf28560b9b"
+project_hash = "7bf202aa8dc7242d51b844c1c4b36f0677ae1899"
 
 [[deps.AMGX]]
 deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
@@ -438,9 +438,11 @@ version = "2022.2.1"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "DataStructures", "Dates", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "1818d54a489492517841c2cb87475ba20918264c"
+git-tree-sha1 = "94e42ec3b86180d4c7246d79fdc0dd9b43728f2e"
+repo-rev = "master"
+repo-url = "https://github.com/Alexander-Barth/NCDatasets.jl.git"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.12.8"
+version = "0.12.10"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
