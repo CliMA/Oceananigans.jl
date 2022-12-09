@@ -193,7 +193,7 @@ end
 const U{N}  = UpwindBiased{N}
 const UX{N} = UpwindBiased{N, <:Any, <:Nothing} 
 const UY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
-const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
+const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 
 # To adapt passing smoothness stencils to upwind biased schemes (not weno) 
 for buffer in 1:6
