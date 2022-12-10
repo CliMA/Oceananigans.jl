@@ -15,7 +15,6 @@ using Oceananigans.Utils: tupleit
 
 using Oceananigans.Models: validate_model_halo
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
-using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 
 import Oceananigans.Architectures: architecture
 
