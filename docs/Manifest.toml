@@ -773,9 +773,7 @@ version = "2022.2.1"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "DataStructures", "Dates", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "94e42ec3b86180d4c7246d79fdc0dd9b43728f2e"
-repo-rev = "master"
-repo-url = "https://github.com/Alexander-Barth/NCDatasets.jl.git"
+git-tree-sha1 = "6ad0a7da2848fb47012ce63ff457585d15e9d0bb"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 version = "0.12.10"
 
