@@ -1,7 +1,5 @@
 module OutputWriters
 
-__precompile__(false)
-
 export
     JLD2OutputWriter, NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint,
