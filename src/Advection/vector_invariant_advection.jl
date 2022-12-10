@@ -7,10 +7,15 @@ EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
 struct VectorInvariant{N, FT, Z, D, ZS, DS, V} <: AbstractAdvectionScheme{N, FT}
+    "reconstruction scheme for vorticity transport"
     vorticity_scheme   :: Z
+    "reconstruction scheme for divergence transport"
     divergence_scheme  :: D
+    "stencil used for assessing vorticity smoothness"
     vorticity_stencil  :: ZS
+    "stencil used for assessing divergence smoothness"
     divergence_stencil :: DS
+    "reconstruction scheme for vertical advection"
     vertical_scheme    :: V
     
     function VectorInvariant{N, FT}(vorticity_scheme::Z, divergence_scheme::D, vorticity_stencil::ZS, divergence_stencil::DS, vertical_scheme::V) where {N, FT, Z, D, ZS, DS, V}
@@ -18,6 +23,63 @@ struct VectorInvariant{N, FT, Z, D, ZS, DS, V} <: AbstractAdvectionScheme{N, FT}
     end
 end
 
+"""
+    VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
+                      divergence_scheme  = nothing, 
+                      vorticity_stencil  = VelocityStencil(),
+                      divergence_stencil = DefaultStencil(),
+                      vertical_scheme    = EnergyConservingScheme()) where {N, FT}
+               
+Construct a vector invariant momentum advection scheme of order `N * 2 - 1`.
+
+Keyword arguments
+=================
+
+- `vorticity_scheme`: Scheme used for `Center` reconstruction of vorticity, options are upwind advection schemes
+                      - `UpwindBiased` and `WENO` - in addition to an `EnergyConservingScheme` and an `EnstrophyConservingScheme`
+                      (defaults to `EnstrophyConservingScheme`)
+- `divergence_scheme`: Scheme used for `Face` reconstruction of divergence. Options are upwind advection schemes
+                       - `UpwindBiased` and `WENO` - or `nothing`. In case `nothing` is specified, divergence flux is
+                       absorbed into the vertical advection term (defaults to `nothing`). If `vertical_scheme` isa `EnergyConservingScheme`,
+                       divergence flux is absorbed in vertical advection and this keyword argument has no effect
+- `vorticity_stencil`: Stencil used for smoothness indicators in case of a `WENO` upwind reconstruction. Choices are between `VelocityStencil`
+                       which uses the horizontal velocity field to diagnose smoothness and `DefaultStencil` which uses the variable
+                       being transported (defaults to `VelocityStencil`)
+- `divergence_stencil`: same as `vorticity_stencil` but for divergence reconstruction (defaults to `DefaultStencil`)
+- `vertical_scheme`: Scheme used for vertical advection of horizontal momentum. It has to be consistent with the choice of 
+                     `divergence_stencil`. If the latter is a `Nothing`, only `EnergyConservingScheme` is available (this keyword
+                     argument has no effect). In case `divergence_scheme` is an `AbstractUpwindBiasedAdvectionScheme`, 
+                     `vertical_scheme` describes a flux form reconstruction of vertical momentum advection, and any 
+                     advection scheme can be used - `Centered`, `UpwindBiased` and `WENO` (defaults to `EnergyConservingScheme`)
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans;
+
+julia> VectorInvariant()
+Vector Invariant reconstruction, maximum order 1 
+ Vorticity flux scheme: 
+    └── EnstrophyConservingScheme{Float64} 
+ Divergence flux scheme: 
+    └── Nothing 
+ Vertical advection scheme: 
+    └── EnergyConservingScheme{Float64}
+
+```
+```jldoctest
+julia> using Oceananigans;
+
+julia> VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(order = 3))
+Vector Invariant reconstruction, maximum order 5 
+ Vorticity flux scheme: 
+    └── WENO reconstruction order 5 with smoothness stencil Oceananigans.Advection.VelocityStencil()
+ Divergence flux scheme: 
+    └── WENO reconstruction order 5 with smoothness stencil Oceananigans.Advection.DefaultStencil()
+ Vertical advection scheme: 
+    └── WENO reconstruction order 3
+```
+"""
 function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = EnstrophyConservingScheme(), 
                            divergence_scheme  = nothing, 
                            vorticity_stencil  = VelocityStencil(),
@@ -25,11 +87,20 @@ function VectorInvariant(; vorticity_scheme::AbstractAdvectionScheme{N, FT} = En
                            vertical_scheme    = EnergyConservingScheme()) where {N, FT}
 
     divergence_scheme, vertical_scheme = validate_divergence_and_vertical_scheme(divergence_scheme, vertical_scheme)
-
-    divergence_scheme isa Nothing && @warn "Using a fully conservative vector invariant scheme, divergence transport is absorbed in the vertical advection"
         
     return VectorInvariant{N, FT}(vorticity_scheme, divergence_scheme, vorticity_stencil, divergence_stencil, vertical_scheme)
 end
+
+Base.summary(a::VectorInvariant{N}) where N = string("Vector Invariant reconstruction, maximum order ", N*2-1)
+
+Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
+    print(io, summary(a), " \n",
+              " Vorticity flux scheme: ", "\n",
+              "    └── $(summary(a.vorticity_scheme)) $(a.vorticity_scheme isa WENO ? "with smoothness stencil $(a.vorticity_stencil)" : "")\n",
+              " Divergence flux scheme: ", "\n",
+              "    └── $(summary(a.divergence_scheme)) $(a.divergence_scheme isa WENO ? "with smoothness stencil $(a.divergence_stencil)" : "")\n",
+              " Vertical advection scheme: ", "\n",
+              "    └── $(summary(a.vertical_scheme))")
 
 # Make sure that divergence is absorbed in the vertical scheme is 1. divergence_schem == Nothing 2. vertical_scheme == EnergyConservingScheme
 validate_divergence_and_vertical_scheme(divergence_scheme, vertical_scheme)          = (divergence_scheme, vertical_scheme)
