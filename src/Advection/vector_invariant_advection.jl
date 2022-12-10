@@ -61,7 +61,7 @@ const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorI
     + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))
     
 @inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = (
-    + horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)      
+    + horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)
     + vertical_advection_V(i, j, k, grid, scheme, U.w, U.v)
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
