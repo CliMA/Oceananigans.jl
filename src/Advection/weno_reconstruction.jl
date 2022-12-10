@@ -29,7 +29,7 @@ struct WENO{N, FT, XT, YT, ZT, WF, PP, CA, SI} <: AbstractUpwindBiasedAdvectionS
                              coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
                              coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
                              bounds::PP, buffer_scheme::CA,
-                             advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, VI, WF, PP, CA, SI}
+                             advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, WF, PP, CA, SI}
 
             return new{N, FT, XT, YT, ZT, WF, PP, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
                                                           coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
