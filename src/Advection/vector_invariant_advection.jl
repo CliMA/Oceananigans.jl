@@ -56,9 +56,9 @@ const VectorInvariantEnstrophyConserving = VectorInvariant{<:Any, <:Any, <:Enstr
 const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving}
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = (
-    + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)      
+    + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
     + vertical_advection_U(i, j, k, grid, scheme, U.w, U.u)
-    + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))              
+    + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))
     
 @inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = (
     + horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)      
