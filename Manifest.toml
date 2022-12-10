@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.8.2"
+julia_version = "1.8.3"
 manifest_format = "2.0"
-project_hash = "f6464a834537dc16cda28b2f9dd3b7da0b24f89d"
+project_hash = "be044408c2038dbf085bc45ca12c77f40fde80b0"
 
 [[deps.AMGX]]
 deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
