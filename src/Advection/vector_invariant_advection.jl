@@ -7,9 +7,9 @@ EnergyConservingScheme(FT::DataType = Float64)    = EnergyConservingScheme{FT}()
 EnstrophyConservingScheme(FT::DataType = Float64) = EnstrophyConservingScheme{FT}()
 
 struct VectorInvariant{N, FT, Z, D, ZS, DS, V} <: AbstractAdvectionScheme{N, FT}
-    "reconstruction scheme for vorticity transport"
+    "reconstruction scheme for vorticity flux"
     vorticity_scheme   :: Z
-    "reconstruction scheme for divergence transport"
+    "reconstruction scheme for divergence flux"
     divergence_scheme  :: D
     "stencil used for assessing vorticity smoothness"
     vorticity_stencil  :: ZS
