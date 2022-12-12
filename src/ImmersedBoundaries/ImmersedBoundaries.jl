@@ -38,9 +38,8 @@ using Oceananigans.Advection:
     advective_momentum_flux_Ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
-    advective_tracer_flux_z,
-    WENOVectorInvariant
-
+    advective_tracer_flux_z
+    
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
 
