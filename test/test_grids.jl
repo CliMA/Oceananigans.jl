@@ -174,6 +174,18 @@ function test_xnode_ynode_znode_are_correct(FT)
     @test ynode(Face(), 2, grid) ≈ FT(π/3)
     @test znode(Face(), 2, grid) ≈ FT(π/3)
 
+    @test min_Δx(grid) ≈ FT(π/3)
+    @test min_Δy(grid) ≈ FT(π/3)
+    @test min_Δz(grid) ≈ FT(π/3)
+
+    @test xspacing(Center, grid) ≈ FT(π/N)
+    @test yspacing(Center, grid) ≈ FT(π/N)
+    @test zspacing(Center, grid) ≈ FT(π/N)
+
+    @test xspacing(Face, grid) ≈ FT(π/N)
+    @test yspacing(Face, grid) ≈ FT(π/N)
+    @test zspacing(Face, grid) ≈ FT(π/N)
+
     return nothing
 end
 
@@ -375,6 +387,11 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
     @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+
+    @test all(isapprox.(zspacing(Face, grid), grid.Δzᵃᵃᶠ[1:Nz]))
+    @test all(isapprox.(zspacing(Center, grid), grid.Δzᵃᵃᶜ[1:Nz]))
+
+    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
@@ -609,6 +626,7 @@ function test_cubed_sphere_face_array_size(FT)
 
     return nothing
 end
+
 
 #####
 ##### Test the tests
