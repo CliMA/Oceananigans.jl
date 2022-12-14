@@ -235,7 +235,7 @@ ax_ζ = Axis(fig[4, 1];
 ax_χ = Axis(fig[5, 1];
             title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 \, (L_x / {b_*}^5)^{1/2}$", axis_kwargs...)
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 hm_s = heatmap!(ax_s, xc, zc, sₙ;
                 colorrange = (0, slim),

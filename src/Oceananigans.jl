@@ -138,22 +138,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-
-# TODO: find a way to check whether the libraries for NETCDF 
-# (libnetcdf) are installed on the machine
-
-"Boolean denoting whether NCDatasets.jl can be loaded on machine."
-const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
-
-"""
-    @ifnetcdf expr
-
-Evaluate `expr` only if `hasnetcdf == true`.
-"""
-macro ifhasnetcdf(expr)
-    hasnetcdf ? :($(esc(expr))) : :(nothing) 
-end
-
+    
 #####
 ##### Abstract types
 #####
