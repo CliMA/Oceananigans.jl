@@ -39,11 +39,11 @@ wireframe!(ax, Sphere(Point3f(0), 0.99f0), show_axis=false)
 sf = surface!(ax, xc, yc, zc, color=η, colormap=:balance, colorrange=(-0.01, 0.01))
 rotate_cam!(ax.scene, (3π/4, π/6, 0))
 # zoom!(ax.scene, (0, 0, 0), 5, false)
-# fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
+# fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], fontsize = 50) # put names in center
 
 cb1 = fig[1, 2] = Colorbar(fig, sf, label="η′", width=30)
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
 record(fig, "cubed_sphere_waves.mp4", iterations, framerate=60) do i
     @info "Animating iteration $i/$(iterations[end])..."
