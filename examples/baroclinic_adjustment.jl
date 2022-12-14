@@ -277,7 +277,7 @@ times = avg_b_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
-fig[1, 1:2] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
+fig[1, 1:2] = Label(fig, title; fontsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
 
