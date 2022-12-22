@@ -25,9 +25,9 @@ Code credit: https://computersciencehub.io/julia/code-for-binary-search-algorith
 
         while low + 1 < high 
             mid = middle_point(low, high)
-            if vec[mid + 1] == val 
+            if @inbounds vec[mid + 1] == val 
                 return (mid + 1, mid + 1)
-            elseif vec[mid + 1] < val
+            elseif @inbounds vec[mid + 1] < val
                 low = mid
             else
                 high = mid
