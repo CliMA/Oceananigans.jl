@@ -16,7 +16,7 @@ vec[low] <= val && vec[high] >= val
 
 using a binary search. The input array `vec` has to be monotonically increasing.
 
-Code credit: https://computersciencehub.io/julia/code-for-binary-search-algorithm-julia
+Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """
 @inline function index_binary_search(vec, val, array_size)
     low = 0
