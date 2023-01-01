@@ -35,9 +35,9 @@ end
 
 
 return_metrics(grid::IBG) = return_metrics(grid.underlying_grid)
-xspacing(X, grid::IBG) = xspacing(X, grid.underlying_grid)
-yspacing(Y, grid::IBG) = yspacing(Y, grid.underlying_grid)
-zspacing(Z, grid::IBG) = zspacing(Z, grid.underlying_grid)
+xspacings(X, grid::IBG) = xspacings(X, grid.underlying_grid)
+yspacings(Y, grid::IBG) = yspacings(Y, grid.underlying_grid)
+zspacings(Z, grid::IBG) = zspacings(Z, grid.underlying_grid)
 min_Δx(grid::IBG) = min_Δx(grid.underlying_grid)
 min_Δy(grid::IBG) = min_Δy(grid.underlying_grid)
 min_Δz(grid::IBG) = min_Δz(grid.underlying_grid)
