@@ -362,12 +362,12 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
 end
 
 CoF = Union{Face, Center}
-@inline xnode(i, j, k, grid::RectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.xᶠᵃᵃ[i]
 @inline xnode(i, j, k, grid::RectilinearGrid, XL::Center, YL::CoF,    ZL::CoF)    = @inbounds grid.xᶜᵃᵃ[i]
-@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::Face,   ZL::CoF)    = @inbounds grid.yᵃᶠᵃ[i]
+@inline xnode(i, j, k, grid::RectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.xᶠᵃᵃ[i]
 @inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::Center, ZL::CoF)    = @inbounds grid.yᵃᶜᵃ[i]
-@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Face)   = @inbounds grid.zᵃᵃᶠ[i]
+@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::Face,   ZL::CoF)    = @inbounds grid.yᵃᶠᵃ[i]
 @inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Center) = @inbounds grid.zᵃᵃᶜ[i]
+@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Face)   = @inbounds grid.zᵃᵃᶠ[i]
 
 @inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
@@ -434,12 +434,12 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 ##### Grid spacings
 #####
 
-@inline xspacing(i, j, k, grid::RectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.Δxᶠᵃᵃ[i]
 @inline xspacing(i, j, k, grid::RectilinearGrid, XL::Center, YL::CoF,    ZL::CoF)    = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline yspacing(i, j, k, grid::RectilinearGrid, XL::CoF,   YL::Face,    ZL::CoF)    = @inbounds grid.Δyᵃᶠᵃ[i]
+@inline xspacing(i, j, k, grid::RectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.Δxᶠᵃᵃ[i]
 @inline yspacing(i, j, k, grid::RectilinearGrid, XL::CoF, YL::Center,    ZL::CoF)    = @inbounds grid.Δyᵃᶜᵃ[i]
-@inline zspacing(i, j, k, grid::RectilinearGrid, XL::CoF,   YL::CoF,    ZL::Face)    = @inbounds grid.Δzᵃᵃᶠ[i]
+@inline yspacing(i, j, k, grid::RectilinearGrid, XL::CoF,   YL::Face,    ZL::CoF)    = @inbounds grid.Δyᵃᶠᵃ[i]
 @inline zspacing(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF,    ZL::Center)    = @inbounds grid.Δzᵃᵃᶜ[i]
+@inline zspacing(i, j, k, grid::RectilinearGrid, XL::CoF,   YL::CoF,    ZL::Face)    = @inbounds grid.Δzᵃᵃᶠ[i]
 
 xspacings(::Type{Center}, grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
 xspacings(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
