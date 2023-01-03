@@ -178,13 +178,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     @test min_Δy(grid) ≈ FT(π/3)
     @test min_Δz(grid) ≈ FT(π/3)
 
-    @test xspacing(Center, grid) ≈ FT(π/N)
-    @test yspacing(Center, grid) ≈ FT(π/N)
-    @test zspacing(Center, grid) ≈ FT(π/N)
+    @test xspacings(Center, grid) ≈ FT(π/N)
+    @test yspacings(Center, grid) ≈ FT(π/N)
+    @test zspacings(Center, grid) ≈ FT(π/N)
 
-    @test xspacing(Face, grid) ≈ FT(π/N)
-    @test yspacing(Face, grid) ≈ FT(π/N)
-    @test zspacing(Face, grid) ≈ FT(π/N)
+    @test xspacings(Face, grid) ≈ FT(π/N)
+    @test yspacings(Face, grid) ≈ FT(π/N)
+    @test zspacings(Face, grid) ≈ FT(π/N)
 
     return nothing
 end
