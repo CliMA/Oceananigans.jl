@@ -227,7 +227,7 @@ Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 
 times = collect(ds["time"])
 title = @lift "t = " * string(prettytime(times[$n]))
-fig[1, :] = Label(fig, title, textsize=20, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
 # Finally, we record a movie.
 

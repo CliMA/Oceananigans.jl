@@ -52,7 +52,7 @@ zoom!(ax.scene, (0, 0, 0), 8, false)
 
 cb1 = fig[1, 2] = Colorbar(fig, sf, label="sea surface height η′ (m)", width=30)
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
 record(fig, "surface_gravity_waves_on_a_cubed_sphere.mp4", iterations, framerate=15) do i
     @info "Animating iteration $i/$(iterations[end])..."
@@ -88,7 +88,7 @@ end
 
 # cb1 = fig[1, 2] = Colorbar(fig, sf, label="u-velocity (m/s)", width=30)
 
-# supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+# supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
 # record(fig, "surface_gravity_waves_on_a_cubed_sphere_u.mp4", iterations[1:20], framerate=15) do i
 #     @info "Animating iteration $i/$(iterations[end])..."
@@ -124,7 +124,7 @@ end
 
 # cb1 = fig[1, 2] = Colorbar(fig, sf, label="v-velocity (m/s)", width=30)
 
-# supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+# supertitle = fig[0, :] = Label(fig, plot_title, fontsize=50)
 
 # record(fig, "surface_gravity_waves_on_a_cubed_sphere_v.mp4", iterations[1:20], framerate=15) do i
 #     @info "Animating iteration $i/$(iterations[end])..."
