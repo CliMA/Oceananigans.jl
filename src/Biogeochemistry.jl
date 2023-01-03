@@ -121,7 +121,7 @@ required_biogeochemical_tracers(::NoBiogeochemistry) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
 """
-    SomethingBiogeochemistry <: AbstractBiogeochemistry
+    BasicBiogeochemistry <: AbstractContinuousFormBiogeochemistry
 
 Sets up a tracer based biogeochemical model in a similar way to SeawaterBuoyancy.
 
@@ -132,7 +132,7 @@ Example
 
 biogeochemistry = Biogeochemistry(tracers = :P, transitions = (; P=growth))
 """
-struct SomethingBiogeochemistry{T, S, U, A, L, P} <: AbstractContinuousFormBiogeochemistry
+struct BasicBiogeochemistry{T, S, U, A, L, P} <: AbstractContinuousFormBiogeochemistry
     biogeochemical_tracers :: NTuple{N, Symbol} where N
     transitions :: T
     advection_schemes :: S
@@ -148,17 +148,17 @@ struct NothingLightAttenuation{P, A}
 end
 @inline (::NothingLightAttenuation)(args...) = nothing
 
-@inline required_biogeochemical_tracers(bgc::SomethingBiogeochemistry) = bgc.biogeochemical_tracers
-@inline required_biogeochemical_auxiliary_fields(bgc::SomethingBiogeochemistry) = bgc.auxiliary_fields
+@inline required_biogeochemical_tracers(bgc::BasicBiogeochemistry) = bgc.biogeochemical_tracers
+@inline required_biogeochemical_auxiliary_fields(bgc::BasicBiogeochemistry) = bgc.auxiliary_fields
 
-@inline biogeochemical_drift_velocity(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.drift_velocities) ? bgc.drift_velocities[tracer_name] : 0
-@inline biogeochemical_advection_scheme(bgc::SomethingBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.advection_schemes) ? bgc.advection_schemes[tracer_name] : nothing
+@inline biogeochemical_drift_velocity(bgc::BasicBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.drift_velocities) ? bgc.drift_velocities[tracer_name] : 0
+@inline biogeochemical_advection_scheme(bgc::BasicBiogeochemistry, ::Val{tracer_name}) where tracer_name = tracer_name in keys(bgc.advection_schemes) ? bgc.advection_schemes[tracer_name] : nothing
 
-function update_biogeochemical_state!(bgc::SomethingBiogeochemistry, model)
+function update_biogeochemical_state!(bgc::BasicBiogeochemistry, model)
     bgc.light_attenuation_model(bgc, model)
 end
 
-@inline (bgc::SomethingBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
+@inline (bgc::BasicBiogeochemistry)(::Val{tracer_name}, x, y, z, t, fields_ijk...) where tracer_name = tracer_name in bgc.biogeochemical_tracers ? bgc.transitions[tracer_name](x, y, z, t, fields_ijk..., bgc.parameters...) : 0.0
 
 """
     maybe_velocity_fields(drift_speeds)
@@ -181,7 +181,7 @@ function maybe_velocity_fields(drift_speeds)
 end
 
 
-function SomethingBiogeochemistry(;tracers,
+function BasicBiogeochemistry(;tracers,
                                    transitions, 
                                    drift_velocities = NamedTuple(), 
                                    adveciton_schemes = NamedTuple{keys(drift_velocities)}(
@@ -193,7 +193,7 @@ function SomethingBiogeochemistry(;tracers,
 
     drift_velocities = maybe_velocity_fields(drift_velocities)
 
-    return SomethingBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), light_attenuation_model, parameters)
+    return BasicBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), light_attenuation_model, parameters)
 end
 
 end # module
