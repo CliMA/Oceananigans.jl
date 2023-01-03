@@ -31,6 +31,7 @@ update_biogeochemical_state!(bgc, model) = nothing
 
 @inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
 @inline biogeochemical_advection_scheme(bgc, val_tracer_name) = nothing
+@inline biogeochemical_auxiliary_fieilds(bgc) = nothing
 
 #####
 ##### Default (discrete form) biogeochemical source

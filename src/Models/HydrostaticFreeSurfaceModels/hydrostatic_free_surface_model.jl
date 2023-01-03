@@ -7,7 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Biogeochemistry: validate_biogeochemistry, NoBiogeochemistry, AbstractBiogeochemistry
+using Oceananigans.Biogeochemistry: validate_biogeochemistry, NoBiogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fieilds
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
@@ -126,7 +126,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    tracers, auxiliary_fields = validate_biogeochemistry(tracers, auxiliary_fields, biogeochemistry, grid, clock)
+    tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fieilds(biogeochemistry)), biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
