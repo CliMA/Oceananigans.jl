@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacing, yspacing, zspacing, xspacings, yspacings, zspacings
+using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacings, yspacings, zspacings
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -388,8 +388,8 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
     @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
 
-    @test all(isapprox.(zspacing(Face, grid), grid.Δzᵃᵃᶠ))
-    @test all(isapprox.(zspacing(Center, grid), grid.Δzᵃᵃᶜ))
+    @test all(isapprox.(zspacings(Face, grid), grid.Δzᵃᵃᶠ))
+    @test all(isapprox.(zspacings(Center, grid), grid.Δzᵃᵃᶜ))
 
     @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
 
