@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacing, yspacing, zspacing
+using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacing, yspacing, zspacing, xspacings, yspacings, zspacings
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
