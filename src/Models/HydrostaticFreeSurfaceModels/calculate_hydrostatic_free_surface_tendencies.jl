@@ -98,13 +98,13 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
 end
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-using Oceananigans.TurbulenceClosures: MEWS
+#using Oceananigans.TurbulenceClosures: MEWS
 
 const HFSM = HydrostaticFreeSurfaceModel
 
 # Fallback
 @inline tracer_tendency_kernel_function(model::HFSM, closure, tracer_name)       = hydrostatic_free_surface_tracer_tendency
-@inline tracer_tendency_kernel_function(model::HFSM, ::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency
+#@inline tracer_tendency_kernel_function(model::HFSM, ::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency
 @inline tracer_tendency_kernel_function(model::HFSM, ::FlavorOfCATKE, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
 
 function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:e})
@@ -114,15 +114,16 @@ function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:e}
     return hydrostatic_free_surface_tracer_tendency
 end
 
+#=
 function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:K})
     if any(cl isa MEWS for cl in closures)
         return hydrostatic_turbulent_kinetic_energy_tendency
     end
     return hydrostatic_free_surface_tracer_tendency
 end
+=#
 
-top_tracer_boundary_conditions(grid, tracers) =
-    NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+top_tracer_boundary_conditions(grid, tracers) = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
