@@ -97,21 +97,28 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     return events
 end
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, CATKEVDArray
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures: MEWS
+
+const HFSM = HydrostaticFreeSurfaceModel
 
 # Fallback
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) =
-    hydrostatic_free_surface_tracer_tendency
+@inline tracer_tendency_kernel_function(model::HFSM, closure, tracer_name)       = hydrostatic_free_surface_tracer_tendency
+@inline tracer_tendency_kernel_function(model::HFSM, ::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency
+@inline tracer_tendency_kernel_function(model::HFSM, ::FlavorOfCATKE, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVD, ::Val{:e}) =
-    hydrostatic_turbulent_kinetic_energy_tendency
-
-function tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e})
-    if any(cl isa Union{CATKEVD, CATKEVDArray} for cl in closures)
+function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:e})
+    if any(cl isa FlavorOfCATKE for cl in closures)
         return hydrostatic_turbulent_kinetic_energy_tendency
-    else
-        return hydrostatic_free_surface_tracer_tendency
     end
+    return hydrostatic_free_surface_tracer_tendency
+end
+
+function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:K})
+    if any(cl isa MEWS for cl in closures)
+        return hydrostatic_turbulent_kinetic_energy_tendency
+    end
+    return hydrostatic_free_surface_tracer_tendency
 end
 
 top_tracer_boundary_conditions(grid, tracers) =
