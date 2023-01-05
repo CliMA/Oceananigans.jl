@@ -16,34 +16,49 @@ import Oceananigans.Biogeochemistry:
        biogeochemical_auxiliary_fieilds,
        update_biogeochemical_state!
 
-struct SimplePlanktonGrowthDeath{FT, W, A, LA} <: AbstractContinuousFormBiogeochemistry
+struct SimplePlanktonGrowthDeath{FT, W, SP, A, P} <: AbstractContinuousFormBiogeochemistry
     growth_rate :: FT
     light_limit :: FT
     mortality_rate :: FT
+    sinking_velocity :: W
+    water_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_coefficient :: FT
+    phytoplankton_light_attenuation_exponent :: FT
+    
 
-    sinking_velocity :: W     
+    surface_PAR :: SP
     advection_scheme :: A
 
-    light_attenuation_model :: LA
+    PAR_field :: P
 
     function SimplePlanktonGrowthDeath(; grid,
                                          growth_rate::FT = 1/day,
                                          light_limit::FT = 3.5,
                                          mortality_rate::FT = 0.3/day,
-                                         sinking_velocity::FT = 200/day,
-                                         advection_scheme::A = sinking_velocity == 0 ? nothing : CenteredSecondOrder(),
-                                         light_attenuation_model::LA = SimplePhyotosyntheticallyActiveRadiation(; grid)) where {FT, A, LA}
+                                         sinking_velocity::FT = 0.0,#200/day,
+                                         water_light_attenuation_coefficient :: FT = 0.01,
+                                         phytoplankton_light_attenuation_coefficient :: FT = 0.3,
+                                         phytoplankton_light_attenuation_exponent :: FT = 0.6,
+                                         surface_PAR :: SP = t -> 100.0 * max(0.0, sin(t * π / (12hours))),
+                                         advection_scheme::A = sinking_velocity == 0 ? nothing : CenteredSecondOrder()) where {FT, SP, A}
 
         u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
         sinking_velocity = (; u, v, w)
         W = typeof(sinking_velocity)
 
-        return new{FT, W, A, LA}(growth_rate,
-                                 light_limit,
-                                 mortality_rate,
-                                 sinking_velocity,
-                                 advection_scheme,
-                                 light_attenuation_model)
+        PAR_field = CenterField(grid)
+        P = typeof(PAR_field)
+
+        return new{FT, W, SP, A, P}(growth_rate,
+                                    light_limit,
+                                    mortality_rate,
+                                    sinking_velocity,
+                                    water_light_attenuation_coefficient,
+                                    phytoplankton_light_attenuation_coefficient,
+                                    phytoplankton_light_attenuation_exponent,
+                                    surface_PAR,
+                                    advection_scheme,
+                                    PAR_field)
     end 
 end
 
@@ -53,11 +68,14 @@ end
 ######
 
 @inline required_biogeochemical_tracers(::SimplePlanktonGrowthDeath) = (:P, )
+
 @inline required_biogeochemical_auxiliary_fields(::SimplePlanktonGrowthDeath) = (:PAR, )
+
 @inline biogeochemical_drift_velocity(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.sinking_velocity
+
 @inline biogeochemical_advection_scheme(bgc::SimplePlanktonGrowthDeath, ::Val{:P}) = bgc.advection_scheme
 
-@inline biogeochemical_auxiliary_fieilds(bgc::SimplePlanktonGrowthDeath) = (PAR = bgc.light_attenuation_model.par_field, )
+@inline biogeochemical_auxiliary_fieilds(bgc::SimplePlanktonGrowthDeath) = (PAR = bgc.PAR_field, )
 
 @inline function (bgc::SimplePlanktonGrowthDeath)(::Val{:P}, x, y, z, t, P, PAR)
    μ₀ = bgc.growth_rate
@@ -68,7 +86,7 @@ end
 end
 
 #=
-# Note, if we subtypted AbstractBiogeochemistry we would write
+# Note, if we subtypted `AbstractBiogeochemistry` we would write rather than `AbstractContinuousFormBiogeochemistry`
 @inline function (bgc::SimplePlanktonGrowthDeath)(i, j, k, grid, ::Val{:P}, clock, fields)
     z = znode(Center(), k, grid)
     P = @inbounds fields.P[i, j, k]
@@ -80,67 +98,36 @@ end
 ##### Setting up the integration of the Photosynthetically Available Radiation
 #####
 
-struct SimplePhyotosyntheticallyActiveRadiation{FT, SP, P, A}
-    water_light_attenuation_coefficient :: FT
-    phytoplankton_light_attenuation_coefficient :: FT
-    phytoplankton_light_attenuation_exponent :: FT
-    surface_PAR :: SP
-
-    par_field :: P
-    attenuating_fields :: A
-
-    function SimplePhyotosyntheticallyActiveRadiation(; grid,
-                                                        water_light_attenuation_coefficient :: FT = 0.12,
-                                                        phytoplankton_light_attenuation_coefficient :: FT = 0.06,
-                                                        phytoplankton_light_attenuation_exponent :: FT = 0.6,
-                                                        surface_PAR :: SP = t -> 100.0*max(0.0, sin(t*π/(12hours))),
-                                                        attenuating_fields :: A = (:P, )) where {FT, SP, A}
-
-        PAR_field = CenterField(grid)
-
-        P = typeof(PAR_field)
-
-        return new{FT, SP, P, A}(water_light_attenuation_coefficient,
-                                 phytoplankton_light_attenuation_coefficient,
-                                 phytoplankton_light_attenuation_exponent,
-                                 surface_PAR,
-                                 PAR_field,
-                                 attenuating_fields)
-        end
-end
-
-@kernel function update_PhotosyntheticallyActiveRatiation!(light_attenuation_model::SimplePhyotosyntheticallyActiveRadiation,
-                                                           P, grid, t) 
+@kernel function update_PhotosyntheticallyActiveRatiation!(bgc, P, PAR, grid, t) 
     i, j = @index(Global, NTuple)
     
-    PAR⁰ = light_attenuation_model.surface_PAR(t)
-    e, kʷ, χ = light_attenuation_model.phytoplankton_light_attenuation_exponent, light_attenuation_model.water_light_attenuation_coefficient, light_attenuation_model.phytoplankton_light_attenuation_coefficient
+    PAR⁰ = bgc.surface_PAR(t)
+    e, kʷ, χ = bgc.phytoplankton_light_attenuation_exponent, bgc.water_light_attenuation_coefficient, bgc.phytoplankton_light_attenuation_coefficient
 
     zᶜ = znodes(Center, grid)
     zᶠ = znodes(Face, grid)
     
     ∫chl = @inbounds - (zᶜ[grid.Nz] - zᶠ[grid.Nz]) * P[i, j, grid.Nz] ^ e
-    @inbounds light_attenuation_model.par_field[i, j, grid.Nz] =  PAR⁰ * exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
+    @inbounds PAR[i, j, grid.Nz] =  PAR⁰ * exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
 
     @inbounds for k in grid.Nz-1:-1:1
         ∫chl += (zᶜ[k + 1] - zᶠ[k])*P[i, j, k + 1]^e + (zᶠ[k] - zᶜ[k])*P[i, j, k]^e
-        light_attenuation_model.par_field[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
+        PAR[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
     end
 end 
 
 
 # Call the integration
-function (light_attenuation_model::SimplePhyotosyntheticallyActiveRadiation)(model)
+@inline function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
     arch = architecture(model.grid)
     event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
-                    light_attenuation_model,
+                    bgc,
                     model.tracers.P, 
+                    bgc.PAR_field,
                     model.grid, 
                     model.clock.time)
     wait(event)
 end
-
-@inline update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model) = bgc.light_attenuation_model(model)
 
 #####
 ##### Setup the model
@@ -187,7 +174,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 outputs = (w = model.velocities.w,
            P = model.tracers.P,
-           PAR = model.biogeochemistry.light_attenuation_model.par_field,
+           PAR = model.biogeochemistry.PAR_field,
            avg_P = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
