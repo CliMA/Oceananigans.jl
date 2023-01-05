@@ -184,25 +184,23 @@ simulation.output_writers[:simple_output] =
                      overwrite_existing = true)
 
 run!(simulation)
-#=
+
 #####
 ##### Example using BasicBiogeochemistry
 #####
-
-@inline growth(x, y, z, t, P, PAR, μ₀, k, m, other_params...) = (μ₀ * (1 - exp(-PAR/k)) - m) * P
+#=
+@inline growth(x, y, z, t, P, μ₀, λ, m, other_params...) = (μ₀ * exp(z / λ) - m) * P
 
 biogeochemistry_parameters = (
     growth_rate = 1/day,
-    light_limit = 3.5,
+    light_attenuation_length_scale = 5,
     mortality_rate = 0.1/day,
 )
 
 biogeochemistry = BasicBiogeochemistry(tracers = :P, 
-                                           auxiliary_fields = :PAR, 
-                                           transitions = (; P=growth),
-                                           parameters = biogeochemistry_parameters,
-                                           drift_velocities = (P = (0.0, 0.0, -200/day), ),
-                                           light_attenuation_model = SimplePhyotosyntheticallyActiveRadiation())
+                                       transitions = (; P = growth),
+                                       parameters = biogeochemistry_parameters,
+                                       drift_velocities = (P = (0.0, 0.0, -200/day), ))
 
 grid = RectilinearGrid(size = (64, 64),
 extent = (64, 64),
@@ -215,17 +213,14 @@ N² = 1e-4 # s⁻²
 buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
-PAR = CenterField(grid)
-
 model = NonhydrostaticModel(; grid, biogeochemistry,
-                            advection = WENO(; grid),
-                            timestepper = :RungeKutta3,
-                            closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
-                            coriolis = FPlane(f=1e-4),
-                            tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            boundary_conditions = (; b=buoyancy_bcs),
-                            auxiliary_fields = (; PAR))
+                              advection = WENO(; grid),
+                              timestepper = :RungeKutta3,
+                              closure = ScalarDiffusivity(ν = 1e-4, κ = 1e-4),
+                              coriolis = FPlane(f=1e-4),
+                              tracers = :b,
+                              buoyancy = BuoyancyTracer(),
+                              boundary_conditions = (; b = buoyancy_bcs))
 
 mixed_layer_depth = 32 # m
 stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
@@ -246,7 +241,6 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 outputs = (w = model.velocities.w,
            P = model.tracers.P,
-           PAR = model.auxiliary_fields.PAR,
            avg_P = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
@@ -256,7 +250,7 @@ simulation.output_writers[:simple_output] =
                             overwrite_existing = true)
 
 run!(simulation)
-
+=#
 #= Plot to sanity check
 
 filepath = simulation.output_writers[:simple_output].filepath
@@ -264,13 +258,18 @@ filepath = simulation.output_writers[:simple_output].filepath
 
 w_timeseries = FieldTimeSeries(filepath, "w")
 P_timeseries = FieldTimeSeries(filepath, "P")
-PAR_timeseries = FieldTimeSeries(filepath, "PAR")
+#PAR_timeseries = FieldTimeSeries(filepath, "PAR")
+
 
 times = w_timeseries.times
 
 xw, yw, zw = nodes(w_timeseries)
 xp, yp, zp = nodes(P_timeseries)
-
+PAR_timeseries = similar(P_timeseries)
+PAR_timeseries .= 0.0
+for (k, z) in enumerate(zp)
+    PAR_timeseries[:, :, k, :] .= exp(z / biogeochemistry.parameters.light_attenuation_length_scale)
+end
 
 @info "Making a movie about plankton..."
 
@@ -316,4 +315,4 @@ record(fig, "biogeochemistry_test.mp4", frames, framerate=8) do i
     print(msg * " \r")
     n[] = i
 end
-=#=#
+=#
