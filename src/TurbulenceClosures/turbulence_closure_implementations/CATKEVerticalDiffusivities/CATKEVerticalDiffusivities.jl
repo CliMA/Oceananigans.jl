@@ -9,7 +9,8 @@ using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
-using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
+using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
@@ -64,6 +65,10 @@ Turbulent Kinetic Energy (TKE).
 """
 CATKEVerticalDiffusivity(FT::DataType; kw...) = CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
+const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
+const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
+const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
+
 include("mixing_length.jl")
 include("turbulent_kinetic_energy_equation.jl")
 
@@ -112,12 +117,6 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
     return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation)
 end
 
-const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
-
-# Support for "ManyIndependentColumnMode"
-const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
-const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
-
 function with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
@@ -137,8 +136,6 @@ validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=c
 catke_first(closure1, catke::FlavorOfCATKE) = false
 catke_first(catke::FlavorOfCATKE, closure2) = true
 catke_first(closure1, closure2) = false
-
-# Two CATKEs?!
 catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have two CATKEs in one closure tuple.")
 
 #####
