@@ -43,7 +43,7 @@ abstract type AbstractBiogeochemistry end
     U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
     scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
     src = biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
-    c = fields[tracer_name]
+    c = @inbounds fields[tracer_name]
         
     return src - div_Uc(i, j, k, grid, scheme, U_drift, c)
 end
