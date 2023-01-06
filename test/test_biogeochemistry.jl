@@ -1,9 +1,9 @@
-include("test/dependencies_for_runtests.jl") # remove
+include("dependencies_for_runtests.jl") # remove
 
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, AbstractContinuousFormBiogeochemistry
 using Oceananigans.Fields: ConstantField
 using Oceananigans.Utils: launch!
-using KernelAbstractions, CUDA
+using KernelAbstractions
 
 import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
@@ -110,8 +110,8 @@ function test_biogeochemical_model(arch, bgc, model)
 
     time_step!(model_instance, 1.0)
 
-    @test CUDA.@allowscalar any(biogeochemistry.PAR_field .!= 0.0) # update state did get called
-    @test CUDA.@allowscalar any(model_instance.tracers.P .!= 1.0) # bgc forcing did something
+    @test any(biogeochemistry.PAR_field .!= 0.0) # update state did get called
+    @test any(model_instance.tracers.P .!= 1.0) # bgc forcing did something
 end
 
 #####
