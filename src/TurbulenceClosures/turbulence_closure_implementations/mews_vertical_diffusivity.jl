@@ -1,3 +1,5 @@
+module MEWSVerticalDiffusivities
+
 import Oceananigans.Grids: required_halo_size
 using Oceananigans.Utils: prettysummary
 
@@ -111,4 +113,4 @@ function add_closure_specific_boundary_conditions(closure::MEWS,
     return new_boundary_conditions
 end
 
-
+end # module
