@@ -178,13 +178,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     @test min_Δy(grid) ≈ FT(π/3)
     @test min_Δz(grid) ≈ FT(π/3)
 
-    @test xspacings(Center, grid) ≈ FT(π/N)
-    @test yspacings(Center, grid) ≈ FT(π/N)
-    @test zspacings(Center, grid) ≈ FT(π/N)
+    @test xspacings(grid, Center()) ≈ FT(π/N)
+    @test yspacings(grid, Center()) ≈ FT(π/N)
+    @test zspacings(grid, Center()) ≈ FT(π/N)
 
-    @test xspacings(Face, grid) ≈ FT(π/N)
-    @test yspacings(Face, grid) ≈ FT(π/N)
-    @test zspacings(Face, grid) ≈ FT(π/N)
+    @test xspacings(grid, Face()) ≈ FT(π/N)
+    @test yspacings(grid, Face()) ≈ FT(π/N)
+    @test zspacings(grid, Face()) ≈ FT(π/N)
 
     return nothing
 end
@@ -388,8 +388,8 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
     @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
 
-    @test all(isapprox.(zspacings(Face, grid), grid.Δzᵃᵃᶠ))
-    @test all(isapprox.(zspacings(Center, grid), grid.Δzᵃᵃᶜ))
+    @test all(isapprox.(zspacings(grid, Face()), grid.Δzᵃᵃᶠ))
+    @test all(isapprox.(zspacings(grid, Center()), grid.Δzᵃᵃᶜ))
 
     @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
 

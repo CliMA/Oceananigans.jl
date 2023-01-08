@@ -369,16 +369,21 @@ CoF = Union{Face, Center}
 @inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Face)   = @inbounds grid.zᵃᵃᶠ[k]
 
+@inline xnode(i, grid::RectilinearGrid, XL::CoF) = xnode(i, 1, 1, grid, XL, XL, XL)
+@inline ynode(j, grid::RectilinearGrid, YL::CoF) = ynode(1, j, 1, grid, YL, YL, YL)
+@inline znode(k, grid::RectilinearGrid, ZL::CoF) = znode(1, 1, k, grid, ZL, ZL, ZL)
+
 @inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
 @inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))
 @inline znodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(znode, grid, computed_dependencies=(; XL, YL, ZL))
 
-@inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
-@inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
-@inline ynode(::Face  , j, grid::RectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
-@inline ynode(::Center, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline znode(::Face  , k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Center, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline xnodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.xᶠᵃᵃ
+@inline xnodes(grid::RectilinearGrid, ::Center) = @inbounds grid.xᶜᵃᵃ
+@inline ynodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.yᵃᶠᵃ
+@inline ynodes(grid::RectilinearGrid, ::Center) = @inbounds grid.yᵃᶜᵃ
+@inline znodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.zᵃᵃᶠ
+@inline znodes(grid::RectilinearGrid, ::Center) = @inbounds grid.zᵃᵃᶜ
+
 
 all_x_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.xᶠᵃᵃ
 all_x_nodes(::Type{Center}, grid::RectilinearGrid) = grid.xᶜᵃᵃ
@@ -457,12 +462,12 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 @inline yspacings(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(yspacing, grid, computed_dependencies=(; XL, YL, ZL))
 @inline zspacings(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(zspacing, grid, computed_dependencies=(; XL, YL, ZL))
 
-xspacings(::Type{Center}, grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
-xspacings(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
-yspacings(::Type{Center}, grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
-yspacings(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
-zspacings(::Type{Center}, grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
-zspacings(::Type{Face}  , grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
+xspacings(grid::RectilinearGrid, ::Center) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
+xspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
+yspacings(grid::RectilinearGrid, ::Center) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
+yspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
+zspacings(grid::RectilinearGrid, ::Center) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
+zspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
 
 min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : min_number_or_array(grid.Δxᶜᵃᵃ)
 min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : min_number_or_array(grid.Δyᵃᶜᵃ)
