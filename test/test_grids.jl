@@ -166,13 +166,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                   topology=(Periodic, Periodic, Bounded))
 
-    @test xnode(Center(), 2, grid) ≈ FT(π/2)
-    @test ynode(Center(), 2, grid) ≈ FT(π/2)
-    @test znode(Center(), 2, grid) ≈ FT(π/2)
+    @test xnode(2, grid, Center()) ≈ FT(π/2)
+    @test ynode(2, grid, Center()) ≈ FT(π/2)
+    @test znode(2, grid, Center()) ≈ FT(π/2)
 
-    @test xnode(Face(), 2, grid) ≈ FT(π/3)
-    @test ynode(Face(), 2, grid) ≈ FT(π/3)
-    @test znode(Face(), 2, grid) ≈ FT(π/3)
+    @test xnode(2, grid, Face()) ≈ FT(π/3)
+    @test ynode(2, grid, Face()) ≈ FT(π/3)
+    @test znode(2, grid, Face()) ≈ FT(π/3)
 
     @test min_Δx(grid) ≈ FT(π/3)
     @test min_Δy(grid) ≈ FT(π/3)

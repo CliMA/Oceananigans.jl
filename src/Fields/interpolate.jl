@@ -54,13 +54,13 @@ end
 #### Use other methods if a more accurate interpolation is required
 ####
 
-@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid))
-@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid))
-@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(Center, grid))
+@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(grid, Center()))
+@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(grid, Center()))
+@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(grid, Center()))
 
-@inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[1], grid.Nx), x, xnodes(Face, grid)) - 1
-@inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(Face, grid)) - 1
-@inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[3], grid.Nz), z, znodes(Face, grid)) - 1
+@inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[1], grid.Nx), x, xnodes(grid, Face())) - 1
+@inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(grid, Face())) - 1
+@inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[3], grid.Nz), z, znodes(grid, Face())) - 1
 
 @inline fractional_x_index(x::FT, ::Face,   grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
 @inline fractional_x_index(x::FT, ::Center, grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)
