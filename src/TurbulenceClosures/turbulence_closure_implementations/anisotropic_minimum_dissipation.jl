@@ -134,7 +134,7 @@ end
 # Only numbers, arrays, and functions supported now.
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(i, grid, Center()), ynode(j, grid, Center()), znode(k, grid, Center()))
 
 @inline function calc_νᶜᶜᶜ(i, j, k, grid, closure::AMD, buoyancy, U, C)
     FT = eltype(grid)

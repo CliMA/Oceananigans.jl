@@ -261,9 +261,9 @@ Keyword argument
 
 See `znodes` for examples.
 """
-function xnodes(loc, grid; reshape=false)
+function xnodes(grid, loc; reshape=false)
 
-    x = view(all_x_nodes(loc, grid),
+    x = view(all_x_nodes(typeof(loc), grid),
              interior_indices(loc, topology(grid, 1), grid.Nx))
 
     return reshape ? Base.reshape(x, length(x), 1, 1) : x
@@ -283,9 +283,9 @@ Keyword argument
 
 See [`znodes`](@ref) for examples.
 """
-function ynodes(loc, grid; reshape=false)
+function ynodes(grid, loc; reshape=false)
 
-    y = view(all_y_nodes(loc, grid),
+    y = view(all_y_nodes(typeof(loc), grid),
              interior_indices(loc, topology(grid, 2), grid.Ny))
 
     return reshape ? Base.reshape(y, 1, length(y), 1) : y
@@ -328,9 +328,9 @@ julia> zF = znodes(Face, horz_periodic_grid)
   0.0
 ```
 """
-function znodes(loc, grid; reshape=false)
+function znodes(grid, loc; reshape=false)
 
-    z = view(all_z_nodes(loc, grid),
+    z = view(all_z_nodes(typeof(loc), grid),
              interior_indices(loc, topology(grid, 3), grid.Nz))
 
     return reshape ? Base.reshape(z, 1, 1, length(z)) : z
