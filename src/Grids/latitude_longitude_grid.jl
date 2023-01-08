@@ -323,12 +323,12 @@ end
 @inline znode(::Face,   k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(::Center, k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
-all_x_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.λᶠᵃᵃ
-all_x_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.λᶜᵃᵃ
-all_y_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.φᵃᶠᵃ
-all_y_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.φᵃᶜᵃ
-all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
-all_z_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶜ
+xnodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.λᶠᵃᵃ
+xnodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.λᶜᵃᵃ
+ynodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.φᵃᶠᵃ
+ynodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.φᵃᶜᵃ
+znodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.zᵃᵃᶠ
+znodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.zᵃᵃᶜ
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)

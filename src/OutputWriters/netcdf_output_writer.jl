@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, parent_index_range
+using Oceananigans.Grids: topology, halo_size, xnodes, ynodes, znodes, parent_index_range
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
@@ -60,12 +60,12 @@ function default_dimensions(output, grid, indices, with_halos)
                        for name in keys(locs))
     end
 
-    dims = Dict("xC" => parent(all_x_nodes(Center, grid))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
-                "xF" => parent(all_x_nodes(Face,   grid))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
-                "yC" => parent(all_y_nodes(Center, grid))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
-                "yF" => parent(all_y_nodes(Face,   grid))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
-                "zC" => parent(all_z_nodes(Center, grid))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
-                "zF" => parent(all_z_nodes(Face,   grid))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
+    dims = Dict("xC" => parent(xnodes(grid, Center()))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
+                "xF" => parent(xnodes(grid, Face()  ))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
+                "yC" => parent(ynodes(grid, Center()))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
+                "yF" => parent(ynodes(grid, Face()  ))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
+                "zC" => parent(znodes(grid, Center()))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
+                "zF" => parent(znodes(grid, Face()  ))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
 
     return dims
 end

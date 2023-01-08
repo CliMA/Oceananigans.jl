@@ -49,7 +49,7 @@ import Oceananigans.Grids:
         cpu_face_constructor_z
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
-import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
+import Oceananigans.Grids: xnode, ynode, znode, xnodes, ynodes, znodes
 import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
@@ -229,9 +229,9 @@ const f = Face()
 @inline ynode(LX, LY, LZ, i, j, k, ibg::IBG) = ynode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
 @inline znode(LX, LY, LZ, i, j, k, ibg::IBG) = znode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
 
-all_x_nodes(loc, ibg::IBG) = all_x_nodes(loc, ibg.underlying_grid)
-all_y_nodes(loc, ibg::IBG) = all_y_nodes(loc, ibg.underlying_grid)
-all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
+xnodes(ibg::IBG, loc) = xnodes(ibg.underlying_grid, loc)
+ynodes(ibg::IBG, loc) = ynodes(ibg.underlying_grid, loc)
+znodes(ibg::IBG, loc) = znodes(ibg.underlying_grid, loc)
 
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)

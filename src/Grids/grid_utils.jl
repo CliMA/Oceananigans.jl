@@ -239,13 +239,13 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
-@inline cpu_face_constructor_x(grid) = Array(all_x_nodes(Face, grid)[1:grid.Nx+1])
-@inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
-@inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
+@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face())[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face())[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face())[1:grid.Nz+1])
 
-all_x_nodes(::Type{Nothing}, grid) = 1:1
-all_y_nodes(::Type{Nothing}, grid) = 1:1
-all_z_nodes(::Type{Nothing}, grid) = 1:1
+xnodes(grid, ::Type{Nothing}) = 1:1
+ynodes(grid, ::Type{Nothing}) = 1:1
+znodes(grid, ::Type{Nothing}) = 1:1
 
 """
     xnodes(loc, grid, reshape=false)
@@ -263,7 +263,7 @@ See `znodes` for examples.
 """
 function xnodes(loc, grid; reshape=false)
 
-    x = view(all_x_nodes(loc, grid),
+    x = view(xnodes(grid, loc),
              interior_indices(loc, topology(grid, 1), grid.Nx))
 
     return reshape ? Base.reshape(x, length(x), 1, 1) : x
