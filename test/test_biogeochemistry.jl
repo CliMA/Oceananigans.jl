@@ -120,7 +120,7 @@ end
 
 @testset "Biogeochemistry" begin
     @info "Testing biogeochemistry setup..."
-    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry), model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel), arch in (GPU(), )
+    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry), model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel), arch in archs
         @testset "$bgc in $model on $arch" begin
             test_biogeochemical_model(arch, bgc, model)
         end
