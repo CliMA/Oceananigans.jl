@@ -50,8 +50,8 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
 
     topology(grid1) !== topology(grid2) && return false
 
-    x1, y1, z1 = nodes((Face, Face, Face), grid1)
-    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
+    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
 
     CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
@@ -337,7 +337,7 @@ function znodes(grid, loc; reshape=false)
 end
 
 """
-    nodes(loc, grid; reshape=false)
+    nodes(grid, loc; reshape=false)
 
 Return a 3-tuple of views over the interior nodes
 at the locations in `loc` in `x, y, z`.
@@ -349,9 +349,9 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(loc, grid::AbstractGrid; reshape=false)
+function nodes(grid::AbstractGrid, loc; reshape=false)
     if reshape
-        x, y, z = nodes(loc, grid; reshape=false)
+        x, y, z = nodes(grid, loc; reshape=false)
 
         N = (length(x), length(y), length(z))
 
@@ -361,9 +361,9 @@ function nodes(loc, grid::AbstractGrid; reshape=false)
 
         return (x, y, z)
     else
-        return (xnodes(loc[1], grid),
-                ynodes(loc[2], grid),
-                znodes(loc[3], grid))
+        return (xnodes(grid, loc[1]),
+                ynodes(grid, loc[2]),
+                znodes(grid, loc[3]))
     end
 end
 
