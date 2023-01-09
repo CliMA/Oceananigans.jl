@@ -60,6 +60,59 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
     end
 end
 
+"""
+    ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
+                                 FT::DataType = Float64;
+                                 size,
+                                 z,
+                                 topology = (Bounded, Bounded, Bounded),
+                                 ξ = (-1, 1),
+                                 η = (-1, 1),
+                                 radius = R_Earth,
+                                 halo = (1, 1, 1),
+                                 rotation = nothing)
+
+Create a `ConformalCubedSphereFaceGrid` that represents a section of a spherical cubed after it has been 
+mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, take values
+in the range ``[-1, 1]``.
+
+Positional arguments
+====================
+
+- `architecture`: Specifies whether arrays of coordinates and spacings are stored
+                  on the CPU or GPU. Default: `CPU()`.
+
+- `FT` : Floating point data type. Default: `Float64`.
+
+Keyword arguments
+=================
+
+- `size` (required): A 3-tuple prescribing the number of grid points each direction.
+
+- `z` (required): Either a
+    1. 2-tuple that specify the end points of the ``z``-domain,
+    2. one-dimensional array specifying the cell interface locations, or
+    3. a single-argument function that takes an index and returns cell interface location.
+
+- `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
+
+- `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
+          the physical interior. The default is 1 halo cells in every direction.
+
+Examples
+========
+
+* A default grid with `Float64` type:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> ConformalCubedSphereFaceGrid(size=(36, 34, 25), z=(-1000, 0))
+ConformalCubedSphereFaceGrid{Float64}
+        size (Nx, Ny, Nz): (36, 34, 25)
+        halo (Hx, Hy, Hz): (1, 1, 1)
+```
+"""
 function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
                                       FT::DataType = Float64;
                                       size,
@@ -74,7 +127,7 @@ function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU()
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
-    
+
     ## Use a regular rectilinear grid for the face of the cube
 
     ξη_grid = RectilinearGrid(architecture, FT; size=(Nξ, Nη, Nz), x=ξ, y=η, z, topology, halo)
