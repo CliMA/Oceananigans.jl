@@ -103,23 +103,29 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 const HFSM = HydrostaticFreeSurfaceModel
 
 # Fallback
-@inline tracer_tendency_kernel_function(model::HFSM, closure, tracer_name)       = hydrostatic_free_surface_tracer_tendency
-#@inline tracer_tendency_kernel_function(model::HFSM, ::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency
-@inline tracer_tendency_kernel_function(model::HFSM, ::FlavorOfCATKE, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
+@inline tracer_tendency_kernel_function(model::HFSM, closure, tracer_name)       = hydrostatic_free_surface_tracer_tendency, closure
+#@inline tracer_tendency_kernel_function(model::HFSM, c::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency, c
+@inline tracer_tendency_kernel_function(model::HFSM, c::FlavorOfCATKE, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency, c
 
 function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:e})
-    if any(cl isa FlavorOfCATKE for cl in closures)
-        return hydrostatic_turbulent_kinetic_energy_tendency
+    maybe_catke_tuple = filter(c -> c isa FlavorOfCATKE, closures)
+
+    if isempty(maybe_catke_tuple)
+        return hydrostatic_free_surface_tracer_tendency, closures
+    else
+        catke = first(maybe_catke_tuple)
+        return hydrostatic_free_surface_tracer_tendency, catke
     end
-    return hydrostatic_free_surface_tracer_tendency
 end
 
 #=
 function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:K})
-    if any(cl isa MEWS for cl in closures)
-        return hydrostatic_turbulent_kinetic_energy_tendency
+    if isempty(maybe_mews_tuple)
+        return hydrostatic_free_surface_tracer_tendency, closures
+    else
+        mews = first(maybe_mews_tuple)
+        return hydrostatic_free_surface_tracer_tendency, mews
     end
-    return hydrostatic_free_surface_tracer_tendency
 end
 =#
 
@@ -142,7 +148,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-        c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
+        c_kernel_function, closure = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
         Gc_event = launch!(arch, grid, :xyz,
                            calculate_hydrostatic_free_surface_Gc!,
@@ -151,7 +157,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            grid,
                            Val(tracer_index),
                            c_advection,
-                           model.closure,
+                           closure,
                            c_immersed_bc,
                            model.buoyancy,
                            model.velocities,
