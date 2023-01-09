@@ -358,10 +358,10 @@ function test_netcdf_function_output(arch)
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
 
-    g(model) = model.clock.time .* exp.(znodes(Center, grid))
+    g(model) = model.clock.time .* exp.(znodes(grid, Center()))
 
-    h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                    .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+    h(model) = model.clock.time .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
+                                    .* cos.(ynodes(grid, Face(), reshape=true)[:, :, 1]))
 
     outputs = (scalar=f, profile=g, slice=h)
     dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
@@ -444,7 +444,7 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
     end
 
     @test ds["slice"].attrib["longname"] == "Some slice"
@@ -453,8 +453,8 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
+                                                 .* cos.(ynodes(grid, Face(),   reshape=true)[:, :, 1]))
     end
 
     close(ds)
@@ -484,9 +484,9 @@ function test_netcdf_function_output(arch)
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
+        @test ds["profile"][:, n+1] == n*Δt .*      exp.(znodes(grid, Center()))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
+                                                 .* cos.(ynodes(grid, Face(), reshape=true)[:, :, 1]))
     end
 
     close(ds)

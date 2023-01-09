@@ -83,7 +83,7 @@ xnodes(ψ::AbstractField) = xnodes(ψ.grid, instantiated_location(ψ, 1))
 ynodes(ψ::AbstractField) = ynodes(ψ.grid, instantiated_location(ψ, 2))
 znodes(ψ::AbstractField) = znodes(ψ.grid, instantiated_location(ψ, 3))
 
-nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, location(ψ); kwargs...)
+nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
 
 #####
 ##### Some conveniences

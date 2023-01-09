@@ -496,7 +496,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
             # Derive coordinates
-            x = xnodes(Center, grid, reshape=true)
+            x = xnodes(grid, Center(), reshape=true)
             y = permutedims(x, (2, 1, 3))
             z = permutedims(x, (2, 3, 1))
 
@@ -554,7 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                           topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
-            z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
+            z_immersed = znodes(immersed_vertical_grid, Center(), reshape=true)
 
             append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
@@ -576,7 +576,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                      GridFittedBottom((x, y) -> L))
 
             stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
-            append!(coords, [znodes(Center, grid, reshape=true) for grid in stretched_grids])
+            append!(coords, [znodes(grid, Center(), reshape=true) for grid in stretched_grids])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
             append!(closures, [vertical_scalar_diffusivity,
                                implicit_vertical_scalar_diffusivity,
@@ -636,7 +636,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                               size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
         # Vertically stretched grid with regular spacing and no flat dimension
-        z_faces = collect(znodes(Face, y_periodic_regular_grid))
+        z_faces = collect(znodes(y_periodic_regular_grid, Face()))
         y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                                                 size=(Nx, 1, Nz),
                                                                                 x=(0, Lx), y=(0, Lx), z=z_faces)
