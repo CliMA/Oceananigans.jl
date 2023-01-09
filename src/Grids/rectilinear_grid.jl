@@ -362,27 +362,25 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
 end
 
 CoF = Union{Face, Center}
-@inline xnode(i, j, k, grid::RectilinearGrid, XL::Center, YL::CoF,    ZL::CoF)    = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(i, j, k, grid::RectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.xᶠᵃᵃ[i]
-@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::Center, ZL::CoF)    = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::Face,   ZL::CoF)    = @inbounds grid.yᵃᶠᵃ[j]
-@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF,    YL::CoF,    ZL::Face)   = @inbounds grid.zᵃᵃᶠ[k]
-
-@inline xnode(i, grid::RectilinearGrid, XL::CoF) = xnode(i, 1, 1, grid, XL, XL, XL)
-@inline ynode(j, grid::RectilinearGrid, YL::CoF) = ynode(1, j, 1, grid, YL, YL, YL)
-@inline znode(k, grid::RectilinearGrid, ZL::CoF) = znode(1, 1, k, grid, ZL, ZL, ZL)
-
-@inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
-@inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))
-@inline znodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(znode, grid, computed_dependencies=(; XL, YL, ZL))
-
 @inline xnodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.xᶠᵃᵃ
 @inline xnodes(grid::RectilinearGrid, ::Center) = @inbounds grid.xᶜᵃᵃ
 @inline ynodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.yᵃᶠᵃ
 @inline ynodes(grid::RectilinearGrid, ::Center) = @inbounds grid.yᵃᶜᵃ
 @inline znodes(grid::RectilinearGrid, ::Face  ) = @inbounds grid.zᵃᵃᶠ
 @inline znodes(grid::RectilinearGrid, ::Center) = @inbounds grid.zᵃᵃᶜ
+
+@inline xnode(i, grid::RectilinearGrid, XL::CoF) = xnodes(grid, XL)[i]
+@inline ynode(j, grid::RectilinearGrid, YL::CoF) = ynodes(grid, YL)[j]
+@inline znode(k, grid::RectilinearGrid, ZL::CoF) = znodes(grid, ZL)[k]
+
+@inline xnode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = xnode(i, grid, XL)
+@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = ynode(j, grid, YL)
+@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = znode(k, grid, ZL)
+
+@inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
+@inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))
+@inline znodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(znode, grid, computed_dependencies=(; XL, YL, ZL))
+
 
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)

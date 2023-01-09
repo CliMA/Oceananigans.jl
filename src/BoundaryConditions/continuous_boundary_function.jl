@@ -141,7 +141,7 @@ end
     cbf = bc.condition
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    x, y, z = node(Face(), LY(), LZ(), i′, j, k, grid)
+    x, y, z = node(i′, j, k, grid, Face(), LY(), LZ())
     return cbf.func(x, y, z, clock.time, args...)
 end
 
@@ -150,7 +150,7 @@ end
     cbf = bc.condition
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    x, y, z = node(LX(), Face(), LZ(), i, j′, k, grid)
+    x, y, z = node(i, j′, k, grid, LX(), Face(), LZ())
     return cbf.func(x, y, z, clock.time, args...)
 end
 
@@ -159,7 +159,7 @@ end
     cbf = bc.condition
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    x, y, z = node(LX(), LY(), Face(), i, j, k′, grid)
+    x, y, z = node(i, j, k′, grid, LX(), LY(), Face())
     return cbf.func(x, y, z, clock.time, args...)
 end
 

@@ -223,21 +223,21 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 
 # Fallback
-@inline xnode(LX, LY, LZ, i, j, k, grid) = xnode(LX, i, grid)
-@inline ynode(LX, LY, LZ, i, j, k, grid) = ynode(LY, j, grid)
-@inline znode(LX, LY, LZ, i, j, k, grid) = znode(LZ, k, grid)
+@inline xnode(i, j, k, grid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid, LX, LY, LZ) = znode(k, grid, LZ)
 
-@inline node(LX, LY, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid),
-                                           ynode(LX, LY, LZ, i, j, k, grid),
-                                           znode(LX, LY, LZ, i, j, k, grid))
+@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
+                                           ynode(i, j, k, grid, LX, LY, LZ),
+                                           znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(LX::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, LY::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, LY, LZ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(LX, LY::Nothing, LZ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
 @inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face())[1:grid.Nx+1])
 @inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face())[1:grid.Ny+1])
@@ -261,7 +261,7 @@ Keyword argument
 
 See `znodes` for examples.
 """
-function xnodes(loc, grid; reshape=false)
+function xnodes(grid, loc; reshape=false)
 
     x = view(xnodes(grid, loc),
              interior_indices(loc, topology(grid, 1), grid.Nx))
@@ -283,9 +283,9 @@ Keyword argument
 
 See [`znodes`](@ref) for examples.
 """
-function ynodes(loc, grid; reshape=false)
+function ynodes(grid, loc; reshape=false)
 
-    y = view(all_y_nodes(loc, grid),
+    y = view(all_y_nodes(typeof(loc), grid),
              interior_indices(loc, topology(grid, 2), grid.Ny))
 
     return reshape ? Base.reshape(y, 1, length(y), 1) : y
@@ -328,9 +328,9 @@ julia> zF = znodes(Face, horz_periodic_grid)
   0.0
 ```
 """
-function znodes(loc, grid; reshape=false)
+function znodes(grid, loc; reshape=false)
 
-    z = view(all_z_nodes(loc, grid),
+    z = view(all_z_nodes(typeof(loc), grid),
              interior_indices(loc, topology(grid, 3), grid.Nz))
 
     return reshape ? Base.reshape(z, 1, 1, length(z)) : z

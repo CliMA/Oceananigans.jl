@@ -79,10 +79,10 @@ add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = 
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
-@inline surface(i, j, k, grid)                = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
-@inline bottom(i, j, k, grid)                 = znode(Center(), Center(), Face(), i, j, 1, grid)
-@inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Face(), i, j, k, grid)
-@inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(Center(), Center(), Face(), i, j, k, grid) - bottom(i, j, k, grid)
+@inline surface(i, j, k, grid)                = znode(i, j, grid.Nz+1, grid, Center(), Center(), Face())
+@inline bottom(i, j, k, grid)                 = znode(i, j, 1,         grid, Center(), Center(), Face())
+@inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(i, j, k, grid, Center(), Center(), Face())
+@inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(i, j, k, grid, Center(), Center(), Face()) - bottom(i, j, k, grid)
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
 include("discrete_diffusion_function.jl")

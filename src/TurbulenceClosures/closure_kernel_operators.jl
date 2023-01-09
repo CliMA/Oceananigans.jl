@@ -105,14 +105,14 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(c, c, c, i, j, k, grid)..., clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(f, c, f, i, j, k, grid)..., clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(c, f, f, i, j, k, grid)..., clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(f, f, c, i, j, k, grid)..., clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, c, c)..., clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, f, f)..., clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, f, c)..., clock.time)
 
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(f, c, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(c, f, c, i, j, k, grid)..., clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(c, c, f, i, j, k, grid)..., clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, c)..., clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, c)..., clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, c, f)..., clock.time)
 
 # "DiscreteDiffusionFunction"
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clock, fields)
