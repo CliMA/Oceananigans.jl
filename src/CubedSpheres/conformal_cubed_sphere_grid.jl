@@ -122,26 +122,28 @@ struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurviline
     face_connectivity :: C
 end
 
-function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, radius=R_Earth)
+function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_halo=(1, 1, 1), radius=R_Earth)
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
+    size, halo = face_size, face_halo
+
     # +z face (face 1)
-    z⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=nothing)
+    z⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=nothing)
 
     # +x face (face 2)
-    x⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
+    x⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2))
 
     # +y face (face 3)
-    y⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
+    y⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2))
 
     # -x face (face 4)
-    x⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
+    x⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=RotX(-π/2))
 
     # -y face (face 5)
-    y⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
+    y⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=RotY(-π/2))
 
     # -z face (face 6)
-    z⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
+    z⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT; size, z, halo, radius, rotation=RotX(π))
 
     faces = (
         z⁺_face_grid,
