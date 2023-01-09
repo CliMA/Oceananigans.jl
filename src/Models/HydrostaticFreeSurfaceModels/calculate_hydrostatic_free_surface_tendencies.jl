@@ -55,7 +55,7 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
 end
     
 
-""" Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
+""" Calculate momentum tendencies if momentum is not prescribed."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
 
     grid = model.grid
