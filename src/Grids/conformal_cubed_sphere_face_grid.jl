@@ -80,10 +80,10 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
 
     ξη_grid = RectilinearGrid(arch, FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
 
-    ξᶠᵃᵃ = xnodes(Face, ξη_grid)
-    ξᶜᵃᵃ = xnodes(Center, ξη_grid)
-    ηᵃᶠᵃ = ynodes(Face, ξη_grid)
-    ηᵃᶜᵃ = ynodes(Center, ξη_grid)
+    ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+    ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+    ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+    ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
@@ -354,15 +354,15 @@ function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 
-@inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline xnode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline xnode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline xnode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
+@inline xnode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Face,   ::Face,   LZ) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline xnode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Face,   ::Center, LZ) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline xnode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Center, ::Face,   LZ) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline xnode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Center, ::Center, LZ) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline ynode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline ynode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline ynode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline ynode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline ynode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Face,   ::Face,   LZ) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline ynode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Face,   ::Center, LZ) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline ynode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Center, ::Face,   LZ) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline ynode(i, j, k, grid::ConformalCubedSphereFaceGrid, ::Center, ::Center, LZ) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-@inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(i, j, k, grid::ConformalCubedSphereFaceGrid, LX, LY, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(i, j, k, grid::ConformalCubedSphereFaceGrid, LX, LY, ::Center) = @inbounds grid.zᵃᵃᶜ[k]

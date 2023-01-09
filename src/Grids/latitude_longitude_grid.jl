@@ -316,19 +316,19 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 end
 
 # Node by node
-@inline xnode(::Face,   i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
-@inline xnode(::Center, i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
-@inline ynode(::Face,   j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
-@inline ynode(::Center, j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
-@inline znode(::Face,   k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Center, k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline xnode(i, grid::LatitudeLongitudeGrid, ::Face  ) = @inbounds grid.λᶠᵃᵃ[i]
+@inline xnode(i, grid::LatitudeLongitudeGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
+@inline ynode(j, grid::LatitudeLongitudeGrid, ::Face  ) = @inbounds grid.φᵃᶠᵃ[j]
+@inline ynode(j, grid::LatitudeLongitudeGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
+@inline znode(k, grid::LatitudeLongitudeGrid, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(k, grid::LatitudeLongitudeGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 
-xnodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.λᶠᵃᵃ
-xnodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.λᶜᵃᵃ
-ynodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.φᵃᶠᵃ
-ynodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.φᵃᶜᵃ
-znodes(grid::LatitudeLongitudeGrid, ::Type{Face}, ) = grid.zᵃᵃᶠ
-znodes(grid::LatitudeLongitudeGrid, ::Type{Center}) = grid.zᵃᵃᶜ
+xnodes(grid::LatitudeLongitudeGrid, ::Face  ) = grid.λᶠᵃᵃ
+xnodes(grid::LatitudeLongitudeGrid, ::Center) = grid.λᶜᵃᵃ
+ynodes(grid::LatitudeLongitudeGrid, ::Face  ) = grid.φᵃᶠᵃ
+ynodes(grid::LatitudeLongitudeGrid, ::Center) = grid.φᵃᶜᵃ
+znodes(grid::LatitudeLongitudeGrid, ::Face  ) = grid.zᵃᵃᶠ
+znodes(grid::LatitudeLongitudeGrid, ::Center) = grid.zᵃᵃᶜ
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
@@ -602,7 +602,7 @@ function min_Δx(grid::LatitudeLongitudeGrid)
     if topology(grid)[1] == Flat
         return Inf
     else
-        ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+        ϕᵃᶜᵃ_max = maximum(abs, ynodes(grid, Center()))
         return grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(min_number_or_array(grid.Δλᶜᵃᵃ))
     end
 end
