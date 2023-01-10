@@ -18,18 +18,17 @@ using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.TurbulenceClosures:
     getclosure,
     time_discretization,
-    AbstractTurbulenceClosure,
     AbstractScalarDiffusivity,
-    ConvectiveAdjustmentVerticalDiffusivity,
-    ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
-    ThreeDimensionalFormulation, 
     VerticalFormulation
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
+    shear_production,
+    buoyancy_flux,
+    dissipation,
     add_closure_specific_boundary_conditions,
     calculate_diffusivities!,
     DiffusivityFields,
@@ -40,7 +39,6 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
-function hydrostatic_turbulent_kinetic_energy_tendency end
 
 struct CATKEVerticalDiffusivity{TD, CL, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     mixing_length :: CL

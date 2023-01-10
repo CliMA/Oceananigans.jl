@@ -1,258 +1,176 @@
-ENV["GKSwstype"] = "100"
-
 using Printf
 using Statistics
 using Random
-using JLD2
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans: fields
-using Oceananigans.TurbulenceClosures
-using Oceananigans.TurbulenceClosures: FluxTapering
-
-filename = "zonally_averaged_baroclinic_adjustment_withGM"
-
-# Architecture
-architecture = CPU()
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization 
+using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWSVerticalDiffusivity
 
 # Domain
-Ly = 1000kilometers  # north-south extent [m]
+Ny = 64
+Nz = 32
+Ly = 2000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
+Δy = 100kilometers
+N² = 1e-5 # [s⁻²] buoyancy frequency / stratification
+M² = 1e-7 # [s⁻²] horizontal buoyancy gradient
+Δb = Δy * M²
 
-Ny = 128
-Nz = 40
-
-save_fields_interval = 0.5day
-stop_time = 60days
-Δt₀ = 5minutes
+save_interval = 1day
+stop_time = 30days
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
-grid = RectilinearGrid(architecture;
+grid = RectilinearGrid(CPU();
                        topology = (Flat, Bounded, Bounded), 
                        size = (Ny, Nz), 
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
-                       halo = (3, 3))
+                       halo = (4, 4))
 
 coriolis = BetaPlane(latitude = -45)
 
-Δy, Δz = Ly/Ny, Lz/Nz
+#vitd = VerticallyImplicitTimeDiscretization()
+#mesoscale_closure = VerticalScalarDiffusivity(vitd, ν=1e0)
+mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=1e-1, Cⁿ=10.0, Cᴰ=1e-3, Cʰ=1)
 
-𝒜 = Δz/Δy   # Grid cell aspect ratio.
-
-κh = 0.1    # [m² s⁻¹] horizontal diffusivity
-νh = 0.1    # [m² s⁻¹] horizontal viscosity
-κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
-νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
-
-vertical_closure = VerticalScalarDiffusivity(ν = νz, κ = κz)
-
-horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
-diffusive_closures = (vertical_closure, horizontal_closure)
-
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 0.0)
-
-gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
-                                                                κ_symmetric = 900,
-                                                                slope_limiter = gerdes_koberle_willebrand_tapering)
-#####
-##### Model building
-#####
-
-@info "Building a model..."
-
-closures = (diffusive_closures..., convective_adjustment, gent_mcwilliams_diffusivity)
-
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
-                                    tracers = (:b, :c),
+                                    closure = mesoscale_closure,
+                                    tracers = (:b, :K),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     free_surface = ImplicitFreeSurface())
 
 @info "Built $model."
 
-#####
-##### Initial conditions
-#####
+# Baroclinically unstable initial condition
+f = coriolis.f₀
+ramp(y, Δy) = (1 + tanh(y / Δy)) / 2
+d_ramp_dy(y, Δy) = sech(y / Δy)^2 / (2Δy)
 
-"""
-Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
+bᵢ(x, y, z) =   Δb * ramp(y, Δy) + N² * z
+uᵢ(x, y, z) = - Δb / f * d_ramp_dy(y, Δy) * (z + Lz/2)
 
-For example:
+set!(model, b=bᵢ, u=uᵢ, K=1e-4)
 
-y < y₀           => ramp = 0
-y₀ < y < y₀ + Δy => ramp = y / Δy
-y > y₀ + Δy      => ramp = 1
-"""
-ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
+simulation = Simulation(model; Δt=20minutes, stop_time)
 
-# Parameters
-N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
-
-Δy = 100kilometers
-Δz = 100
-
-Δc = 2Δy
-Δb = Δy * M²
-ϵb = 1e-2 * Δb # noise amplitude
-
-bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
-
-set!(model, b=bᵢ, c=cᵢ)
-
-#####
-##### Simulation building
-#####
-
-simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
-
-# add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+νₑ = model.diffusivity_fields.νₑ
+νₖ = model.diffusivity_fields.νₖ
 
 # add progress callback
-wall_clock = [time_ns()]
+wall_clock = Ref(time_ns())
 
 function print_progress(sim)
-    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
-            100 * (sim.model.clock.time / sim.stop_time),
-            sim.model.clock.iteration,
-            prettytime(sim.model.clock.time),
-            prettytime(1e-9 * (time_ns() - wall_clock[1])),
-            maximum(abs, sim.model.velocities.u),
-            maximum(abs, sim.model.velocities.v),
-            maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt))
+    msg1 = @sprintf("i: % 4d, t: % 12s, wall time: % 12s, extrema(νₑ): (%6.3e, %6.3e) m² s⁻¹, extrema(νₖ): (%6.3e, %6.3e) m² s⁻¹, ",
+                    iteration(sim),
+                    prettytime(sim),
+                    prettytime(1e-9 * (time_ns() - wall_clock[])),
+                    maximum(νₑ),
+                    minimum(νₑ),
+                    maximum(νₖ),
+                    minimum(νₖ))
 
-    wall_clock[1] = time_ns()
+     msg2 = @sprintf(" extrema(K): (%6.3e, %6.3e) m² s⁻², max|u|: (%6.3e, %6.3e, %6.3e) m s⁻¹",
+                     maximum(sim.model.tracers.K),
+                     minimum(sim.model.tracers.K),
+                     maximum(abs, sim.model.velocities.u),
+                     maximum(abs, sim.model.velocities.v),
+                     maximum(abs, sim.model.velocities.w))
+
+    @info msg1 * msg2
+
+    wall_clock[] = time_ns()
     
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
 
-
-#####
-##### Output
-#####
-
-Redi_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = (b=0, c=0),
-                                                     κ_symmetric = (b=1, c=0),
-                                                     slope_limiter = gerdes_koberle_willebrand_tapering)
-
-dependencies = (Redi_diffusivity,
-                model.tracers.b,
-                Val(1),
-                model.clock,
-                model.diffusivity_fields,
-                model.tracers,
-                model.buoyancy,
-                model.velocities)
-
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
-
-∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ,
-                                                         grid,
-                                                         computed_dependencies = dependencies)
-
-# R(b) eg the Redi operator applied to buoyancy
-Rb = Field(∇_q_op)
-
-outputs = merge(fields(model), (; Rb))
+u, v, w = model.velocities
+outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, uz=∂z(u)))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      prefix = filename * "_fields",
+                                                      #schedule = TimeInterval(save_interval),
+                                                      schedule = IterationInterval(10),
+                                                      filename = "zonally_averaged_baroclinic_adjustment",
                                                       overwrite_existing = true)
 
 @info "Running the simulation..."
 
-run!(simulation, pickup=false)
+run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
-
-#=
 
 #####
 ##### Visualize
 #####
 
 using GLMakie
+using Oceananigans
 
-fig = Figure(resolution = (1400, 700))
+fig = Figure(resolution = (2400, 1200))
 
-filepath = filename * "_fields.jld2"
+filepath = "zonally_averaged_baroclinic_adjustment.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
+uzt = FieldTimeSeries(filepath, "uz")
 bt = FieldTimeSeries(filepath, "b")
-ct = FieldTimeSeries(filepath, "c")
-rt = FieldTimeSeries(filepath, "Rb")
-
-# Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes((Center, Center, Center), grid)
-
-zscale = 1
-z = z .* zscale
-
-#####
-##### Plot buoyancy...
-#####
+Kt = FieldTimeSeries(filepath, "K")
+νₑt = FieldTimeSeries(filepath, "νₑ")
+νₖt = FieldTimeSeries(filepath, "νₖ")
 
 times = bt.times
+grid = bt.grid
 Nt = length(times)
 
-un(n) = interior(ut[n])[1, :, :]
-bn(n) = interior(bt[n])[1, :, :]
-cn(n) = interior(ct[n])[1, :, :]
-rn(n) = interior(rt[n])[1, :, :]
+slider = Slider(fig[1, 1], range=1:Nt, startvalue=1)
+n = slider.value
 
-@show min_c = 0
-@show max_c = 1
-@show max_u = maximum(abs, un(Nt))
-min_u = - max_u
+x, y, z = nodes((Center, Center, Center), grid)
 
-@show max_r = maximum(abs, rn(Nt))
-@show min_r = - max_r
+bn = @lift interior(bt[$n], 1, :, :)
+un = @lift interior(ut[$n], 1, :, :)
+uzn = @lift interior(uzt[$n], 1, :, :)
+Kn = @lift interior(Kt[$n], 1, :, :)
+νₑn = @lift interior(νₑt[$n], 1, :, :)
+νₖn = @lift interior(νₖt[$n], 1, :, :)
 
-n = Node(1)
-u = @lift un($n)
-b = @lift bn($n)
-c = @lift cn($n)
-r = @lift rn($n)
+ulim = maximum(abs, ut) / 4
+uzlim = maximum(abs, uzt) / 10
+Klim = maximum(abs, Kt) / 2
 
-ax = Axis(fig[1, 1], title="Zonal velocity")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[1, 2], hm)
+x, y, z = nodes(bt)
+xz, yz, zz = nodes(uzt)
 
-ax = Axis(fig[2, 1], title="Tracer concentration")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[2, 2], hm)
+x = x ./ 1e3
+y = y ./ 1e3
 
-ax = Axis(fig[3, 1], title="R(b)")
-hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
-contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[3, 2], hm)
+xz = xz ./ 1e3
+yz = yz ./ 1e3
 
-title_str = @lift "Baroclinic adjustment with GM at t = " * prettytime(times[$n])
-ax_t = fig[0, :] = Label(fig, title_str)
+titlestr = @lift string("Zonal velocity at ", prettytime(times[$n]))
 
-display(fig)
+axu = Axis(fig[2, 1])
+hm = heatmap!(axu, y, z, un, colorrange=(-ulim, ulim), colormap=:balance)
+contour!(axu, y, z, bn, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[2, 2], hm, label="Zonally-averaged zonal velocity (m s⁻¹)")
 
-record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
-    @info "Plotting frame $i of $Nt"
-    n[] = i
-end
+axuz = Axis(fig[3, 1])
+hm = heatmap!(axuz, yz, zz, uzn, colorrange=(-uzlim, uzlim), colormap=:balance)
+contour!(axuz, y, z, bn, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[3, 2], hm, label="Zonally-averaged shear (s⁻¹)")
 
-=#
+axk = Axis(fig[4, 1])
+hm = heatmap!(axk, y, z, Kn, colorrange=(Klim/10, Klim), colormap=:solar)
+contour!(axk, y, z, bn, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[4, 2], hm, label="Zonally-averaged eddy kinetic energy (m² s⁻²)")
+
+#display(fig)
+
+# record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
+#     @info "Plotting frame $i of $Nt"
+#     n[] = i
+# end
+

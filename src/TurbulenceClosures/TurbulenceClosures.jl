@@ -70,6 +70,12 @@ calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothi
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
+# Interface for KE-based closures
+function shear_production end
+function buoyancy_flux end
+function dissipation end
+function hydrostatic_turbulent_kinetic_energy_tendency end
+
 #####
 ##### The magic
 #####
@@ -109,6 +115,7 @@ include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/mews_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
