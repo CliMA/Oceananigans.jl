@@ -163,7 +163,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Flo
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     face_topo = (FullyConnected, FullyConnected, Bounded)
-    face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
+    face_kwargs = (; Nz, z, topology=face_topo, radius, halo)
 
     faces = Tuple(ConformalCubedSphereFaceGrid(filepath, arch, FT; face=n, face_kwargs...) for n in 1:6)
 
