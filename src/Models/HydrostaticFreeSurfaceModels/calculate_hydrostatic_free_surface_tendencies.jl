@@ -103,29 +103,31 @@ using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWS
 const HFSM = HydrostaticFreeSurfaceModel
 
 # Fallback
-@inline tracer_tendency_kernel_function(model::HFSM, closure, tracer_name)       = hydrostatic_free_surface_tracer_tendency, closure
-@inline tracer_tendency_kernel_function(model::HFSM, c::MEWS,          ::Val{:K}) = hydrostatic_turbulent_kinetic_energy_tendency, c
-@inline tracer_tendency_kernel_function(model::HFSM, c::FlavorOfCATKE, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency, c
+@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                  = hydrostatic_free_surface_tracer_tendency, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, c::MEWS,          K) = hydrostatic_turbulent_kinetic_energy_tendency, c, K
+@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = hydrostatic_turbulent_kinetic_energy_tendency, c, K
 
-function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:e})
-    maybe_catke_tuple = filter(c -> c isa FlavorOfCATKE, closures)
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
+    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
 
-    if isempty(maybe_catke_tuple)
-        return hydrostatic_free_surface_tracer_tendency, closures
+    if isnothing(catke_index)
+        return hydrostatic_free_surface_tracer_tendency, closures, diffusivity_fields
     else
-        catke = first(maybe_catke_tuple)
-        return hydrostatic_free_surface_tracer_tendency, catke
+        catke_closure = closures[catke_index]
+        catke_diffusivity_fields = diffusivity_fields[catke_index]
+        return hydrostatic_turbulent_kinetic_energy_tendency, catke_closure, catke_diffusivity_fields 
     end
 end
 
-function tracer_tendency_kernel_function(model::HFSM, closures::Tuple, ::Val{:K})
-    maybe_mews_tuple = filter(c -> c isa MEWS, closures)
+function tracer_tendency_kernel_function(model::HFSM, ::Val{:K}, closures::Tuple, diffusivity_fields::Tuple)
+    mews_index = findfirst(c -> c isa MEWS, closures)
 
-    if isempty(maybe_mews_tuple)
-        return hydrostatic_free_surface_tracer_tendency, closures
+    if isnothing(mews_index)
+        return hydrostatic_free_surface_tracer_tendency, closures, diffusivity_fields
     else
-        mews = first(maybe_mews_tuple)
-        return hydrostatic_free_surface_tracer_tendency, mews
+        mews_closure = closures[mews_index]
+        mews_diffusivity_fields = diffusivity_fields[mews_index]
+        return  hydrostatic_turbulent_kinetic_energy_tendency, mews_closure, mews_diffusivity_fields 
     end
 end
 
@@ -148,7 +150,11 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-        c_kernel_function, closure = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
+
+        c_kernel_function, closure, diffusivity_fields = tracer_tendency_kernel_function(model,
+                                                                                         Val(tracer_name),
+                                                                                         model.closure,
+                                                                                         model.diffusivity_fields)
 
         Gc_event = launch!(arch, grid, :xyz,
                            calculate_hydrostatic_free_surface_Gc!,
@@ -164,7 +170,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            model.free_surface,
                            model.tracers,
                            top_tracer_bcs,
-                           model.diffusivity_fields,
+                           diffusivity_fields,
                            model.auxiliary_fields,
                            c_forcing,
                            model.clock;
