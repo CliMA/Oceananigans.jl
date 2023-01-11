@@ -19,6 +19,7 @@ using Oceananigans.Coriolis: fᶠᶠᵃ
 
 using Oceananigans.TurbulenceClosures:
     wall_vertical_distanceᶜᶜᶠ,
+    max_vertical_distanceᶜᶜᶠ,
     getclosure,
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
@@ -133,10 +134,8 @@ end
     h★ = ifelse(u★ == 0, zero(grid), u★ / sqrt(N²⁺))
 
     d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
-
     Cʰ = closure.Cʰ
-    h = min(10 * grid.Lz, Cʰ * h★)
-    #h = Cʰ * h★
+    h = min(d, Cʰ * h★)
 
     return h
 end

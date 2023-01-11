@@ -3,19 +3,21 @@ using Statistics
 using Random
 
 using Oceananigans
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization 
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWSVerticalDiffusivity
 
 # Domain
-Ny = 64
+Ny = 128
 Nz = 32
 Ly = 2000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 Δy = 100kilometers
 N² = 1e-5 # [s⁻²] buoyancy frequency / stratification
-M² = 1e-7 # [s⁻²] horizontal buoyancy gradient
+M² = 2e-7 # [s⁻²] horizontal buoyancy gradient
 Δb = Δy * M²
+Cᴰ = 2e-3
 
 save_interval = 1day
 stop_time = 30days
@@ -32,9 +34,24 @@ coriolis = BetaPlane(latitude = -45)
 
 #vitd = VerticallyImplicitTimeDiscretization()
 #mesoscale_closure = VerticalScalarDiffusivity(vitd, ν=1e0)
-mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=1e-1, Cⁿ=10.0, Cᴰ=1e-3, Cʰ=1)
+mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=1.0, Cⁿ=1.0, Cᴰ=Cᴰ, Cʰ=1)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+
+@inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
+@inline speedᶠᶜᶜ(i, j, k, grid, u, v) = @inbounds sqrt(u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, ϕ², v))
+@inline speedᶜᶠᶜ(i, j, k, grid, u, v) = @inbounds sqrt(v[i, j, k]^2 + ℑxyᶜᶠᵃ(i, j, k, grid, ϕ², u))
+@inline u_drag(i, j, grid, clock, fields, Cᴰ) = @inbounds - Cᴰ * u[i, j, 1] * speedᶠᶜᶜ(i, j, 1, grid, fields.u, fields.v)
+@inline v_drag(i, j, grid, clock, fields, Cᴰ) = @inbounds - Cᴰ * v[i, j, 1] * speedᶜᶠᶜ(i, j, 1, grid, fields.u, fields.v)
+
+u_drag_bc = FluxBoundaryCondition(u_drag; discrete_form=true, parameters=Cᴰ)
+v_drag_bc = FluxBoundaryCondition(v_drag; discrete_form=true, parameters=Cᴰ)
+
+u_bcs = FieldBoundaryConditions(bottom=u_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom=v_drag_bc)
+
+boundary_conditions=(u=u_bcs, v=v_bcs)
+
+model = HydrostaticFreeSurfaceModel(; grid, coriolis, boundary_conditions,
                                     buoyancy = BuoyancyTracer(),
                                     closure = mesoscale_closure,
                                     tracers = (:b, :K),
@@ -52,7 +69,7 @@ d_ramp_dy(y, Δy) = sech(y / Δy)^2 / (2Δy)
 bᵢ(x, y, z) =   Δb * ramp(y, Δy) + N² * z
 uᵢ(x, y, z) = - Δb / f * d_ramp_dy(y, Δy) * (z + Lz/2)
 
-set!(model, b=bᵢ, u=uᵢ, K=1e-4)
+set!(model, b=bᵢ, u=uᵢ, K=1e-2)
 
 simulation = Simulation(model; Δt=20minutes, stop_time)
 
@@ -88,8 +105,14 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
 
+using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: mews_vertical_displacement
+
+computed_dependencies = (; model.closure, model.buoyancy, model.tracers)
+h = KernelFunctionOperation{Center, Center, Face}(mews_vertical_displacement, grid; computed_dependencies)
 u, v, w = model.velocities
-outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, uz=∂z(u)))
+b = model.tracers.b
+N² = ∂z(b)
+outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, N², uz=∂z(u)))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       #schedule = TimeInterval(save_interval),
@@ -118,6 +141,7 @@ ut = FieldTimeSeries(filepath, "u")
 uzt = FieldTimeSeries(filepath, "uz")
 bt = FieldTimeSeries(filepath, "b")
 Kt = FieldTimeSeries(filepath, "K")
+Nt = FieldTimeSeries(filepath, "N²")
 νₑt = FieldTimeSeries(filepath, "νₑ")
 νₖt = FieldTimeSeries(filepath, "νₖ")
 
@@ -134,12 +158,13 @@ bn = @lift interior(bt[$n], 1, :, :)
 un = @lift interior(ut[$n], 1, :, :)
 uzn = @lift interior(uzt[$n], 1, :, :)
 Kn = @lift interior(Kt[$n], 1, :, :)
+Nn = @lift interior(Nt[$n], 1, :, :)
 νₑn = @lift interior(νₑt[$n], 1, :, :)
 νₖn = @lift interior(νₖt[$n], 1, :, :)
 
-ulim = maximum(abs, ut) / 4
-uzlim = maximum(abs, uzt) / 10
-Klim = maximum(abs, Kt) / 2
+ulim = 0.5 #maximum(abs, ut) / 4
+uzlim = 1e-3 #maximum(abs, uzt) / 2
+@show Klim = 0.5 #maximum(abs, Kt) / 2
 
 x, y, z = nodes(bt)
 xz, yz, zz = nodes(uzt)
@@ -162,10 +187,15 @@ hm = heatmap!(axuz, yz, zz, uzn, colorrange=(-uzlim, uzlim), colormap=:balance)
 contour!(axuz, y, z, bn, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm, label="Zonally-averaged shear (s⁻¹)")
 
-axk = Axis(fig[4, 1])
+axN = Axis(fig[4, 1])
+hm = heatmap!(axN, yz, zz, Nn, colorrange=(0, 2e-5), colormap=:thermal)
+contour!(axN, y, z, bn, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[4, 2], hm, label="Zonally-averaged shear (s⁻¹)")
+
+axk = Axis(fig[5, 1])
 hm = heatmap!(axk, y, z, Kn, colorrange=(Klim/10, Klim), colormap=:solar)
 contour!(axk, y, z, bn, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[4, 2], hm, label="Zonally-averaged eddy kinetic energy (m² s⁻²)")
+cb = Colorbar(fig[5, 2], hm, label="Zonally-averaged eddy kinetic energy (m² s⁻²)")
 
 #display(fig)
 
