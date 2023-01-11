@@ -19,7 +19,7 @@ using Oceananigans.Coriolis: fᶠᶠᵃ
 
 using Oceananigans.TurbulenceClosures:
     wall_vertical_distanceᶜᶜᶠ,
-    max_vertical_distanceᶜᶜᶠ,
+    opposite_wall_vertical_distanceᶜᶜᶠ,
     getclosure,
     AbstractScalarDiffusivity,
     VerticallyImplicitTimeDiscretization,
@@ -76,13 +76,15 @@ end
 function DiffusivityFields(grid, tracer_names, bcs, closure::MEWS)
     νₑ = Field{Center, Center, Face}(grid)
     νₖ = Field{Center, Center, Face}(grid)
+    νh = Field{Center, Center, Center}(grid)
     Lₖ = CenterField(grid)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
-    _tupled_tracer_diffusivities         = NamedTuple(name => name === :K ? νₖ : ZeroField() for name in tracer_names)
-    _tupled_implicit_linear_coefficients = NamedTuple(name => name === :K ? Lₖ : ZeroField() for name in tracer_names)
+    _tupled_tracer_vertical_diffusivities   = NamedTuple(name => name === :K ? νₖ : ZeroField() for name in tracer_names)
+    _tupled_tracer_horizontal_diffusivities = NamedTuple(name => name === :K ? νh : ZeroField() for name in tracer_names)
+    _tupled_implicit_linear_coefficients    = NamedTuple(name => name === :K ? Lₖ : ZeroField() for name in tracer_names)
 
-    return (; νₑ, νₖ, Lₖ, _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+    return (; νₑ, νₖ, νh, Lₖ, _tupled_tracer_vertical_diffusivities, _tupled_implicit_linear_coefficients)
 end
 
 @inline function implicit_linear_coefficient(i, j, k, grid, closure::MEWS, K, ::Val{id}, args...) where id
@@ -91,9 +93,7 @@ end
 end
 
 @inline viscosity(::MEWS, diffusivities) = diffusivities.νₑ
-@inline diffusivity(::MEWS, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
-
-calculate_diffusivities!(diffusivities, ::MEWS, args...) = nothing
+@inline diffusivity(::MEWS, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_vertical_diffusivities[id]
 
 @inline bottom_drag_coefficient(closure::MEWSVerticalDiffusivity) = closure.Cᴰ
 
@@ -134,8 +134,13 @@ end
     h★ = ifelse(u★ == 0, zero(grid), u★ / sqrt(N²⁺))
 
     d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
+    #d = opposite_wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
+
     Cʰ = closure.Cʰ
     h = min(d, Cʰ * h★)
+
+    # z = znode(Center(), Center(), Face(), i, j, k, grid)
+    # h *= (1.0 + abs(cos(π * z / grid.Lz)))
 
     return h
 end
@@ -149,22 +154,21 @@ end
     f = abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis))
     f² = ℑxyᶜᶜᵃ(i, j, k, grid, ϕ², fᶠᶠᵃ, coriolis)
 
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    ∇h_b = sqrt(bx^2 + by^2)
-    ∇h_b⁻¹ = ifelse(∇h_b == 0, zero(grid), 1 / ∇h_b)
-
     ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     ∂z_u⁻¹ = ifelse(∂z_u² == 0, zero(grid), 1 / sqrt(∂z_u²))
 
     h = mews_vertical_displacement(i, j, k, grid, closure, buoyancy, tracers)
 
     u★ = ℑzᵃᵃᶠ(i, j, k, grid, mesoscale_turbulent_velocity, tracers.K)
-    ℵ = u★ * ∂z_u⁻¹
+    ℵ = ∂z_u⁻¹ * u★
     ℵ = min(grid.Lz, ℵ)
 
     Cⁿ = closure.Cⁿ
     @inbounds diffusivities.νₑ[i, j, k] = Cⁿ * f * h * ℵ
+
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺ = max(N², zero(grid))
+    @inbounds diffusivities.νh[i, j, k] = N²⁺ / f² * diffusivities.νₑ[i, j, k]
 
     # Vertical flux of mesoscale energy
     Cᴷ = closure.Cᴷ
@@ -173,6 +177,9 @@ end
     ∂z_K = abs(∂zᶜᶜᶠ(i, j, k, grid, clip, tracers.K))
     K_∂z_K = ifelse(∂z_K == 0, zero(grid), Kᶜᶜᶠ / ∂z_K)
     K_∂z_K = min(grid.Lz, K_∂z_K)
+
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺ = max(N², zero(grid))
 
     @inbounds diffusivities.νₖ[i, j, k] = Cᴷ * f * h * K_∂z_K
 
@@ -189,6 +196,13 @@ end
     # At ccc
     @inbounds diffusivities.Lₖ[i, j, k] = Lₖ
 end
+
+#=
+@inline νhᶜᶜᶜ(i, j, k, grid, clo::MEWS, K, args...) = @inbounds K.νh[i, j, k]
+@inline νhᶠᶠᶜ(i, j, k, grid, clo::MEWS, K, args...) = ℑxyᶠᶠᵃ(i, j, k, grid, K.νh)
+@inline νhᶠᶜᶠ(i, j, k, grid, clo::MEWS, K, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, K.νh)
+@inline νhᶜᶠᶠ(i, j, k, grid, clo::MEWS, K, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, K.νh)
+=#
 
 #=
 # Anisotropic viscosity...

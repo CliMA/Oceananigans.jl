@@ -112,7 +112,8 @@ h = KernelFunctionOperation{Center, Center, Face}(mews_vertical_displacement, gr
 u, v, w = model.velocities
 b = model.tracers.b
 N² = ∂z(b)
-outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, N², uz=∂z(u)))
+M² = sqrt(∂x(b)^2 + ∂y(b)^2)
+outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, N², M², uz=∂z(u)))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       #schedule = TimeInterval(save_interval),
@@ -133,15 +134,17 @@ run!(simulation)
 using GLMakie
 using Oceananigans
 
-fig = Figure(resolution = (2400, 1200))
+fig = Figure(resolution = (2800, 1600))
 
 filepath = "zonally_averaged_baroclinic_adjustment.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
+vt = FieldTimeSeries(filepath, "v")
 uzt = FieldTimeSeries(filepath, "uz")
 bt = FieldTimeSeries(filepath, "b")
 Kt = FieldTimeSeries(filepath, "K")
 N²t = FieldTimeSeries(filepath, "N²")
+M²t = FieldTimeSeries(filepath, "M²")
 νₑt = FieldTimeSeries(filepath, "νₑ")
 νₖt = FieldTimeSeries(filepath, "νₖ")
 
@@ -156,18 +159,22 @@ x, y, z = nodes((Center, Center, Center), grid)
 
 bn = @lift interior(bt[$n], 1, :, :)
 un = @lift interior(ut[$n], 1, :, :)
+vn = @lift interior(vt[$n], 1, :, :)
 uzn = @lift interior(uzt[$n], 1, :, :)
 Kn = @lift interior(Kt[$n], 1, :, :)
 Nn = @lift interior(N²t[$n], 1, :, :)
+Mn = @lift interior(M²t[$n], 1, :, :)
 νₑn = @lift interior(νₑt[$n], 1, :, :)
 νₖn = @lift interior(νₖt[$n], 1, :, :)
 
 ulim = 0.5 #maximum(abs, ut) / 4
+vlim = 0.05 #maximum(abs, ut) / 4
 uzlim = 1e-3 #maximum(abs, uzt) / 2
-@show Klim = 0.5 #maximum(abs, Kt) / 2
+Klim = 0.5 #maximum(abs, Kt) / 2
 
 x, y, z = nodes(bt)
 xz, yz, zz = nodes(uzt)
+xv, yv, zv = nodes(vt)
 
 x = x ./ 1e3
 y = y ./ 1e3
@@ -180,24 +187,29 @@ titlestr = @lift string("Zonal velocity at ", prettytime(times[$n]))
 axu = Axis(fig[2, 1])
 hm = heatmap!(axu, y, z, un, colorrange=(-ulim, ulim), colormap=:balance)
 contour!(axu, y, z, bn, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[2, 2], hm, label="Zonally-averaged zonal velocity (m s⁻¹)")
+cb = Colorbar(fig[2, 2], hm, label="Zonal velocity (m s⁻¹)")
 
-axuz = Axis(fig[3, 1])
+axv = Axis(fig[3, 1])
+hm = heatmap!(axv, y, z, vn, colorrange=(-vlim, vlim), colormap=:balance)
+contour!(axu, y, z, bn, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[3, 2], hm, label="Meridional velocity (m s⁻¹)")
+
+axuz = Axis(fig[4, 1])
 hm = heatmap!(axuz, yz, zz, uzn, colorrange=(-uzlim, uzlim), colormap=:balance)
 contour!(axuz, y, z, bn, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[3, 2], hm, label="Zonally-averaged shear (s⁻¹)")
+cb = Colorbar(fig[4, 2], hm, label="Zonal shear (s⁻¹)")
 
-axN = Axis(fig[4, 1])
+axN = Axis(fig[5, 1])
 hm = heatmap!(axN, yz, zz, Nn, colorrange=(0, 1e-4), colormap=:thermal)
 contour!(axN, y, z, bn, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[4, 2], hm, label="Zonally-averaged shear (s⁻¹)")
+cb = Colorbar(fig[5, 2], hm, label="∂z(b) (s⁻²)")
 
-axk = Axis(fig[5, 1])
+axk = Axis(fig[6, 1])
 hm = heatmap!(axk, y, z, Kn, colorrange=(Klim/10, Klim), colormap=:solar)
 contour!(axk, y, z, bn, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[5, 2], hm, label="Zonally-averaged eddy kinetic energy (m² s⁻²)")
+cb = Colorbar(fig[6, 2], hm, label="K (m² s⁻²)")
 
-#display(fig)
+display(fig)
 
 # record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
 #     @info "Plotting frame $i of $Nt"
