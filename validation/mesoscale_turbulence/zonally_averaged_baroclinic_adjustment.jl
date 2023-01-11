@@ -34,7 +34,7 @@ coriolis = BetaPlane(latitude = -45)
 
 #vitd = VerticallyImplicitTimeDiscretization()
 #mesoscale_closure = VerticalScalarDiffusivity(vitd, ν=1e0)
-mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=1.0, Cⁿ=1.0, Cᴰ=Cᴰ, Cʰ=1)
+mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=0.0, Cⁿ=0.1, Cᴰ=Cᴰ, Cʰ=1)
 
 
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
@@ -141,7 +141,7 @@ ut = FieldTimeSeries(filepath, "u")
 uzt = FieldTimeSeries(filepath, "uz")
 bt = FieldTimeSeries(filepath, "b")
 Kt = FieldTimeSeries(filepath, "K")
-Nt = FieldTimeSeries(filepath, "N²")
+N²t = FieldTimeSeries(filepath, "N²")
 νₑt = FieldTimeSeries(filepath, "νₑ")
 νₖt = FieldTimeSeries(filepath, "νₖ")
 
@@ -158,7 +158,7 @@ bn = @lift interior(bt[$n], 1, :, :)
 un = @lift interior(ut[$n], 1, :, :)
 uzn = @lift interior(uzt[$n], 1, :, :)
 Kn = @lift interior(Kt[$n], 1, :, :)
-Nn = @lift interior(Nt[$n], 1, :, :)
+Nn = @lift interior(N²t[$n], 1, :, :)
 νₑn = @lift interior(νₑt[$n], 1, :, :)
 νₖn = @lift interior(νₖt[$n], 1, :, :)
 
@@ -188,7 +188,7 @@ contour!(axuz, y, z, bn, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[3, 2], hm, label="Zonally-averaged shear (s⁻¹)")
 
 axN = Axis(fig[4, 1])
-hm = heatmap!(axN, yz, zz, Nn, colorrange=(0, 2e-5), colormap=:thermal)
+hm = heatmap!(axN, yz, zz, Nn, colorrange=(0, 1e-4), colormap=:thermal)
 contour!(axN, y, z, bn, levels = 25, color=:black, linewidth=2)
 cb = Colorbar(fig[4, 2], hm, label="Zonally-averaged shear (s⁻¹)")
 
