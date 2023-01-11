@@ -107,10 +107,11 @@ Examples
 ```jldoctest
 julia> using Oceananigans
 
-julia> ConformalCubedSphereFaceGrid(size=(36, 34, 25), z=(-1000, 0))
-ConformalCubedSphereFaceGrid{Float64}
-        size (Nx, Ny, Nz): (36, 34, 25)
-        halo (Hx, Hy, Hz): (1, 1, 1)
+julia> grid = ConformalCubedSphereFaceGrid(size=(36, 34, 25), z=(-1000, 0))
+36×34×25 ConformalCubedSphereFaceGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
+├── longitude: Bounded  λ ∈ [-176.397, 180.0] variably spaced with min(Δλ)=0.0, max(Δλ)=0.0
+├── latitude:  Bounded  φ ∈ [0.0, 90.0]       variably spaced with min(Δφ)=0.0, max(Δφ)=0.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0]    regularly spaced with Δz=40.0
 ```
 """
 function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
@@ -406,10 +407,41 @@ function Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid)
                                                     grid.radius)
 end
 
-function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
-    print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), "\n",
-              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
+function Base.summary(grid::ConformalCubedSphereFaceGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+
+    return string(size_summary(size(grid)),
+                  " ConformalCubedSphereFaceGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo",
+                  " and ", metric_computation)
+end
+
+function Base.show(io::IO, grid::ConformalCubedSphereFaceGrid, withsummary=true)
+    TX, TY, TZ = topology(grid)
+
+    λ₁, λ₂ = minimum(grid.λᶠᶠᵃ), maximum(grid.λᶠᶠᵃ)
+    φ₁, φ₂ = minimum(grid.φᶠᶠᵃ), maximum(grid.φᶠᶠᵃ)
+    z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+
+    x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
+    y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
+    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+
+    longest = max(length(x_summary), length(y_summary), length(z_summary))
+
+    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δxᶠᶠᵃ[1:grid.Nx, 1:grid.Ny], longest - length(x_summary))
+    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δyᶠᶠᵃ[1:grid.Nx, 1:grid.Ny], longest - length(y_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δz, longest - length(z_summary))
+
+    if withsummary
+        print(io, summary(grid), "\n")
+    end
+
+    return print(io, "├── ", x_summary, "\n",
+                     "├── ", y_summary, "\n",
+                     "└── ", z_summary)
 end
 
 @inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
