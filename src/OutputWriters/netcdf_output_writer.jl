@@ -60,12 +60,12 @@ function default_dimensions(output, grid, indices, with_halos)
                        for name in keys(locs))
     end
 
-    dims = Dict("xC" => parent(xnodes(grid, Center()))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
-                "xF" => parent(xnodes(grid, Face()  ))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
-                "yC" => parent(ynodes(grid, Center()))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
-                "yF" => parent(ynodes(grid, Face()  ))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
-                "zC" => parent(znodes(grid, Center()))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
-                "zF" => parent(znodes(grid, Face()  ))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
+    dims = Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center, TX, Hx)],
+                "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face, TX, Hx)],
+                "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center, TY, Hy)],
+                "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face, TY, Hy)],
+                "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center, TZ, Hz)],
+                "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face, TZ, Hz)])
 
     return dims
 end

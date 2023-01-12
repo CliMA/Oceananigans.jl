@@ -229,9 +229,9 @@ const f = Face()
 @inline ynode(i, j, k, ibg::IBG, LX, LY, LZ) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 @inline znode(i, j, k, ibg::IBG, LX, LY, LZ) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
-xnodes(ibg::IBG, loc) = xnodes(ibg.underlying_grid, loc)
-ynodes(ibg::IBG, loc) = ynodes(ibg.underlying_grid, loc)
-znodes(ibg::IBG, loc) = znodes(ibg.underlying_grid, loc)
+xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
+ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
+znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
 
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)

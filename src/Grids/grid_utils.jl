@@ -239,13 +239,13 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
 @inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
-@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face())[1:grid.Nx+1])
-@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face())[1:grid.Ny+1])
-@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face())[1:grid.Nz+1])
+@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
 
-xnodes(grid, ::Type{Nothing}) = 1:1
-ynodes(grid, ::Type{Nothing}) = 1:1
-znodes(grid, ::Type{Nothing}) = 1:1
+xnodes(grid, ::Nothing) = 1:1
+ynodes(grid, ::Nothing) = 1:1
+znodes(grid, ::Nothing) = 1:1
 
 """
     xnodes(loc, grid, reshape=false)
