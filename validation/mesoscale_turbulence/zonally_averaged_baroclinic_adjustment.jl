@@ -34,8 +34,7 @@ coriolis = BetaPlane(latitude = -45)
 
 #vitd = VerticallyImplicitTimeDiscretization()
 #mesoscale_closure = VerticalScalarDiffusivity(vitd, ν=1e0)
-mesoscale_closure = MEWSVerticalDiffusivity(Cᴷ=0.0, Cⁿ=0.1, Cᴰ=Cᴰ, Cʰ=1)
-
+mesoscale_closure = MEWSVerticalDiffusivity(Cᴷᶻ=0.0, Cᴷʰ=1e4, Cⁿ=100.0, Cᴰ=Cᴰ, Cʰ=1e-3)
 
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 @inline speedᶠᶜᶜ(i, j, k, grid, u, v) = @inbounds sqrt(u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, ϕ², v))
@@ -69,29 +68,29 @@ d_ramp_dy(y, Δy) = sech(y / Δy)^2 / (2Δy)
 bᵢ(x, y, z) =   Δb * ramp(y, Δy) + N² * z
 uᵢ(x, y, z) = - Δb / f * d_ramp_dy(y, Δy) * (z + Lz/2)
 
-set!(model, b=bᵢ, u=uᵢ, K=1e-2)
+Kᵢ(x, y, z) = 2e-2 * (exp(10z / Lz) + exp(-10 * (z + Lz) / Lz))
+set!(model, b=bᵢ, u=uᵢ, K=Kᵢ)
 
 simulation = Simulation(model; Δt=20minutes, stop_time)
 
 νₑ = model.diffusivity_fields.νₑ
-νₖ = model.diffusivity_fields.νₖ
+κₖz = model.diffusivity_fields.κₖz
+κₖh = model.diffusivity_fields.κₖh
 
 # add progress callback
 wall_clock = Ref(time_ns())
 
 function print_progress(sim)
-    msg1 = @sprintf("i: % 4d, t: % 12s, wall time: % 12s, extrema(νₑ): (%6.3e, %6.3e) m² s⁻¹, extrema(νₖ): (%6.3e, %6.3e) m² s⁻¹, ",
+    msg1 = @sprintf("i: % 4d, t: % 12s, wall time: % 12s, max(νₑ): %6.3e m² s⁻¹, max(κₖz): %6.3e m² s⁻¹, max(κₖh): %6.3e m² s⁻¹, ",
                     iteration(sim),
                     prettytime(sim),
                     prettytime(1e-9 * (time_ns() - wall_clock[])),
                     maximum(νₑ),
-                    minimum(νₑ),
-                    maximum(νₖ),
-                    minimum(νₖ))
+                    maximum(κₖz),
+                    maximum(κₖh))
 
-     msg2 = @sprintf(" extrema(K): (%6.3e, %6.3e) m² s⁻², max|u|: (%6.3e, %6.3e, %6.3e) m s⁻¹",
+     msg2 = @sprintf(" max(K): %6.3e m² s⁻², max|u|: (%6.3e, %6.3e, %6.3e) m s⁻¹",
                      maximum(sim.model.tracers.K),
-                     minimum(sim.model.tracers.K),
                      maximum(abs, sim.model.velocities.u),
                      maximum(abs, sim.model.velocities.v),
                      maximum(abs, sim.model.velocities.w))
@@ -113,12 +112,12 @@ u, v, w = model.velocities
 b = model.tracers.b
 N² = ∂z(b)
 M² = sqrt(∂x(b)^2 + ∂y(b)^2)
-outputs = merge(model.velocities, model.tracers, (; νₑ, νₖ, N², M², uz=∂z(u)))
+outputs = merge(model.velocities, model.tracers, (; νₑ, κₖz, κₖh, N², M², uz=∂z(u)))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+filename = "zonally_averaged_baroclinic_adjustment"
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs; filename,
                                                       #schedule = TimeInterval(save_interval),
                                                       schedule = IterationInterval(10),
-                                                      filename = "zonally_averaged_baroclinic_adjustment",
                                                       overwrite_existing = true)
 
 @info "Running the simulation..."
@@ -126,6 +125,8 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
+
+filename = "zonally_averaged_baroclinic_adjustment"
 
 #####
 ##### Visualize
@@ -136,7 +137,7 @@ using Oceananigans
 
 fig = Figure(resolution = (2800, 1600))
 
-filepath = "zonally_averaged_baroclinic_adjustment.jld2"
+filepath = filename * ".jld2"
 
 ut = FieldTimeSeries(filepath, "u")
 vt = FieldTimeSeries(filepath, "v")
@@ -146,7 +147,7 @@ Kt = FieldTimeSeries(filepath, "K")
 N²t = FieldTimeSeries(filepath, "N²")
 M²t = FieldTimeSeries(filepath, "M²")
 νₑt = FieldTimeSeries(filepath, "νₑ")
-νₖt = FieldTimeSeries(filepath, "νₖ")
+κₖzt = FieldTimeSeries(filepath, "κₖz")
 
 times = bt.times
 grid = bt.grid
@@ -165,7 +166,7 @@ Kn = @lift interior(Kt[$n], 1, :, :)
 Nn = @lift interior(N²t[$n], 1, :, :)
 Mn = @lift interior(M²t[$n], 1, :, :)
 νₑn = @lift interior(νₑt[$n], 1, :, :)
-νₖn = @lift interior(νₖt[$n], 1, :, :)
+κₖzn = @lift interior(κₖzt[$n], 1, :, :)
 
 ulim = 0.5 #maximum(abs, ut) / 4
 vlim = 0.05 #maximum(abs, ut) / 4
@@ -211,8 +212,8 @@ cb = Colorbar(fig[6, 2], hm, label="K (m² s⁻²)")
 
 display(fig)
 
-# record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
-#     @info "Plotting frame $i of $Nt"
-#     n[] = i
-# end
+record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
+    @info "Plotting frame $i of $Nt"
+    n[] = i
+end
 

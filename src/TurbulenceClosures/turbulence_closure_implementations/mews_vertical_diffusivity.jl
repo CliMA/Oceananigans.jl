@@ -37,28 +37,33 @@ import Oceananigans.TurbulenceClosures:
     DiffusivityFields,
     implicit_linear_coefficient,
     viscosity,
-    diffusivity
+    diffusivity,
+    diffusive_flux_x,
+    diffusive_flux_y
 
 struct MEWSVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
-    Cʰ :: FT
-    Cᴷ :: FT
-    Cⁿ :: FT
-    Cᴰ :: FT
+    Cʰ  :: FT
+    Cᴷʰ :: FT
+    Cᴷᶻ :: FT
+    Cⁿ  :: FT
+    Cᴰ  :: FT
 
-    function MEWSVerticalDiffusivity{TD}(Cʰ::FT, Cᴷ::FT, Cⁿ::FT, Cᴰ::FT) where {TD, FT}
-        return new{TD, FT}(Cʰ, Cᴷ, Cⁿ, Cᴰ)
+    function MEWSVerticalDiffusivity{TD}(Cʰ::FT, Cᴷʰ::FT, Cᴷᶻ::FT, Cⁿ::FT, Cᴰ::FT) where {TD, FT}
+        return new{TD, FT}(Cʰ, Cᴷʰ, Cᴷᶻ, Cⁿ, Cᴰ)
     end
 end
 
 function MEWSVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization(), FT=Float64;
-                                 Cʰ=1, Cᴷ=1, Cⁿ=1, Cᴰ=2e-3)
+                                 Cʰ=1, Cᴷʰ=1, Cᴷᶻ=1, Cⁿ=1, Cᴰ=2e-3)
                            
     TD = typeof(time_discretization)
 
-    return MEWSVerticalDiffusivity{TD}(FT(Cʰ), FT(Cᴷ), FT(Cⁿ), FT(Cᴰ))
+    return MEWSVerticalDiffusivity{TD}(FT(Cʰ), FT(Cᴷʰ), FT(Cᴷᶻ), FT(Cⁿ), FT(Cᴰ))
 end
 
-const MEWS = MEWSVerticalDiffusivity
+const MEWSVD{TD} = MEWSVerticalDiffusivity{TD} where TD
+const MEWSVDArray{TD} = AbstractArray{<:MEWSVD{TD}} where TD
+const MEWS{TD} = Union{MEWSVD{TD}, MEWSVDArray{TD}} where TD
 
 required_halo_size(closure::MEWS) = 1 
 
@@ -75,16 +80,19 @@ end
 
 function DiffusivityFields(grid, tracer_names, bcs, closure::MEWS)
     νₑ = Field{Center, Center, Face}(grid)
-    νₖ = Field{Center, Center, Face}(grid)
-    νh = Field{Center, Center, Center}(grid)
+    κₖz = Field{Center, Center, Face}(grid)
+    κₖh = Field{Center, Center, Center}(grid)
     Lₖ = CenterField(grid)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
-    _tupled_tracer_vertical_diffusivities   = NamedTuple(name => name === :K ? νₖ : ZeroField() for name in tracer_names)
-    _tupled_tracer_horizontal_diffusivities = NamedTuple(name => name === :K ? νh : ZeroField() for name in tracer_names)
-    _tupled_implicit_linear_coefficients    = NamedTuple(name => name === :K ? Lₖ : ZeroField() for name in tracer_names)
+    _tupled_tracer_vertical_diffusivities   = NamedTuple(name => name === :K ? κₖz  : ZeroField() for name in tracer_names)
+    _tupled_tracer_horizontal_diffusivities = NamedTuple(name => name === :K ? κₖh : ZeroField() for name in tracer_names)
+    _tupled_implicit_linear_coefficients    = NamedTuple(name => name === :K ? Lₖ  : ZeroField() for name in tracer_names)
 
-    return (; νₑ, νₖ, νh, Lₖ, _tupled_tracer_vertical_diffusivities, _tupled_implicit_linear_coefficients)
+    return (; νₑ, κₖz, κₖh, Lₖ,
+            _tupled_tracer_vertical_diffusivities,
+            _tupled_tracer_horizontal_diffusivities,
+            _tupled_implicit_linear_coefficients)
 end
 
 @inline function implicit_linear_coefficient(i, j, k, grid, closure::MEWS, K, ::Val{id}, args...) where id
@@ -98,7 +106,15 @@ end
 @inline bottom_drag_coefficient(closure::MEWSVerticalDiffusivity) = closure.Cᴰ
 
 Base.summary(closure::MEWS) = "MEWSVerticalDiffusivity"
-Base.show(io::IO, closure::MEWS) = print(io, summary(closure))
+
+function Base.show(io::IO, closure::MEWS)
+    print(io, summary(closure), " with parameters:", '\n',
+          string("    Cʰ  : ", closure.Cʰ, '\n',
+                 "    Cᴷʰ : ", closure.Cᴷʰ, '\n',
+                 "    Cᴷᶻ : ", closure.Cᴷᶻ, '\n',
+                 "    Cⁿ  : ", closure.Cⁿ, '\n',
+                 "    Cᴰ  : ", closure.Cᴰ))
+end
 
 function calculate_diffusivities!(diffusivities, closure::MEWS, model)
     arch = model.architecture
@@ -134,7 +150,6 @@ end
     h★ = ifelse(u★ == 0, zero(grid), u★ / sqrt(N²⁺))
 
     d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
-    #d = opposite_wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
 
     Cʰ = closure.Cʰ
     h = min(d, Cʰ * h★)
@@ -145,10 +160,12 @@ end
     return h
 end
 
-@kernel function compute_mews_diffusivities!(diffusivities, grid, closure,
+@kernel function compute_mews_diffusivities!(diffusivities, grid, maybe_closure_ensemble,
                                              velocities, tracers, buoyancy, coriolis)
 
     i, j, k, = @index(Global, NTuple)
+
+    closure = getclosure(i, j, maybe_closure_ensemble)
 
     # Vertical flux of mesoscale energy
     f = abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis))
@@ -166,12 +183,15 @@ end
     Cⁿ = closure.Cⁿ
     @inbounds diffusivities.νₑ[i, j, k] = Cⁿ * f * h * ℵ
 
+    Cᴷʰ = closure.Cᴷʰ
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²⁺ = max(N², zero(grid))
-    @inbounds diffusivities.νh[i, j, k] = N²⁺ / f² * diffusivities.νₑ[i, j, k]
+
+    ℓ = sqrt(N²⁺) * h / f # "eddy length scale"
+    @inbounds diffusivities.κₖh[i, j, k] = Cᴷʰ * ℓ * u★
 
     # Vertical flux of mesoscale energy
-    Cᴷ = closure.Cᴷ
+    Cᴷᶻ = closure.Cᴷᶻ
 
     Kᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, clip, tracers.K)
     ∂z_K = abs(∂zᶜᶜᶠ(i, j, k, grid, clip, tracers.K))
@@ -181,7 +201,9 @@ end
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²⁺ = max(N², zero(grid))
 
-    @inbounds diffusivities.νₖ[i, j, k] = Cᴷ * f * h * K_∂z_K
+    # Horizontal flux of mesoscale energy
+    Cᴷᶻ = closure.Cᴷᶻ
+    @inbounds diffusivities.κₖz[i, j, k] = Cᴷᶻ * f * h * K_∂z_K
 
     # Bottom drag
     Cᴰ = bottom_drag_coefficient(closure)
@@ -195,6 +217,16 @@ end
 
     # At ccc
     @inbounds diffusivities.Lₖ[i, j, k] = Lₖ
+end
+
+@inline function diffusive_flux_x(i, j, k, grid, cl::MEWS, K, ::Val{id}, c, clk, fields, b) where id
+    κh = ℑxᶠᵃᵃ(i, j, k, grid, K._tupled_tracer_horizontal_diffusivities[id])
+    return - κh * ∂xᶠᶜᶜ(i, j, k, grid, c)
+end
+
+@inline function diffusive_flux_y(i, j, k, grid, cl::MEWS, K, ::Val{id}, c, clk, fields, b) where id
+    κh = ℑyᵃᶠᵃ(i, j, k, grid, K._tupled_tracer_horizontal_diffusivities[id])
+    return - κh * ∂yᶜᶠᶜ(i, j, k, grid, c)
 end
 
 #=
@@ -235,36 +267,5 @@ end
 @inline clip(i, j, k, grid, a) = @inbounds clip(a[i, j, k])
 @inline mesoscale_turbulent_velocity(i, j, k, grid, K) = @inbounds sqrt(clip(K[i, j, k]))
 @inline mke_bottom_dissipation(i, j, grid, clock, fields, Cᴰ) = - Cᴰ * mesoscale_turbulent_velocity(i, j, 1, grid, fields.K)^3
-
-#=
-""" Add MEKE boundary conditions specific to `MEWSVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::MEWS,
-                                                  user_bcs,
-                                                  grid,
-                                                  tracer_names,
-                                                  buoyancy)
-
-    Cᴰ = bottom_drag_coefficient(closure)
-    bottom_mke_bc = FluxBoundaryCondition(mke_bottom_dissipation, discrete_form=true, parameters=Cᴰ)
-
-    if :K ∈ keys(user_bcs)
-        K_bcs = user_bcs[:K]
-        
-        mke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
-                                          top    = K_bcs.top,
-                                          bottom = bottom_mke_bc,
-                                          north  = K_bcs.north,
-                                          south  = K_bcs.south,
-                                          east   = K_bcs.east,
-                                          west   = K_bcs.west)
-    else
-        mke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=bottom_mke_bc)
-    end
-
-    new_boundary_conditions = merge(user_bcs, (; K = mke_bcs))
-
-    return new_boundary_conditions
-end
-=#
 
 end # module
