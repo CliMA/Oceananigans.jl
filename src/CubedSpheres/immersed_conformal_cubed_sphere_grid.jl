@@ -13,4 +13,4 @@ end
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 @inline Γᶠᶠᶜ(i, j, k, ibg::ImmersedBoundaryGrid{F, TX, TY, TZ, G, I}, u, v) where
-    {F, TX, TY, TZ, G<:ConformalCubedSphereFaceGrid, I} = Γᶠᶠᶜ(i, j, k, ibg.grid, u, v)
+    {F, TX, TY, TZ, G<:OrthogonalSphericalShellGrid, I} = Γᶠᶠᶜ(i, j, k, ibg.grid, u, v)

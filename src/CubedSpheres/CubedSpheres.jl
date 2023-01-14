@@ -30,7 +30,7 @@ end
 
 # We don't support validating cubed sphere boundary conditions at this time
 validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
-validate_boundary_conditions(loc, grid::ConformalCubedSphereFaceGrid, bcs) = nothing
+validate_boundary_conditions(loc, grid::OrthogonalSphericalShellGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
@@ -124,7 +124,7 @@ end
 using Oceananigans.Forcings: user_function_arguments
 import Oceananigans.Forcings: ContinuousForcing
 
-@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::ConformalCubedSphereFaceGrid, clock, model_fields) where {LX, LY, LZ}
+@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::OrthogonalSphericalShellGrid, clock, model_fields) where {LX, LY, LZ}
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 

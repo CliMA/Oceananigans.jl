@@ -583,7 +583,7 @@ end
 #####
 
 function test_cubed_sphere_face_array_size(FT)
-    grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -783,18 +783,18 @@ end
         end
 
         # Testing show function
-        grid = ConformalCubedSphereFaceGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = OrthogonalSphericalShellGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
             show(grid); println()
             true
         catch err
-            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println("error in show(::OrthogonalSphericalShellGrid)")
             println(sprint(showerror, err))
             false
         end
 
-        @test grid isa ConformalCubedSphereFaceGrid
+        @test grid isa OrthogonalSphericalShellGrid
     end
 
     @testset "Conformal cubed sphere face grid from file" begin
@@ -803,8 +803,8 @@ end
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6
-            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
-            @test grid isa ConformalCubedSphereFaceGrid
+            grid = OrthogonalSphericalShellGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa OrthogonalSphericalShellGrid
         end
     end
 end

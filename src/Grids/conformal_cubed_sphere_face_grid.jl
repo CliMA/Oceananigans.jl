@@ -6,7 +6,7 @@ using Adapt: adapt_structure
 
 using Oceananigans
 
-struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -39,7 +39,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
     Azᶠᶠᵃ :: A
     radius :: FT
 
-    function ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture::Arch,
+    function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                       Nx, Ny, Nz,
                                                       Hx, Hy, Hz,
                                                        λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
@@ -61,7 +61,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
 end
 
 """
-    ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
+    OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
                                  FT::DataType = Float64;
                                  size,
                                  z,
@@ -72,7 +72,7 @@ end
                                  halo = (1, 1, 1),
                                  rotation = nothing)
 
-Create a `ConformalCubedSphereFaceGrid` that represents a section of a spherical cubed after it has been 
+Create a `OrthogonalSphericalShellGrid` that represents a section of a spherical cubed after it has been 
 mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, take values
 in the range ``[-1, 1]``.
 
@@ -107,14 +107,14 @@ Examples
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = ConformalCubedSphereFaceGrid(size=(36, 34, 25), z=(-1000, 0))
-36×34×25 ConformalCubedSphereFaceGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
+julia> grid = OrthogonalSphericalShellGrid(size=(36, 34, 25), z=(-1000, 0))
+36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
 ├── longitude: Bounded  λ ∈ [-176.397, 180.0] variably spaced with min(Δλ)=0.0, max(Δλ)=0.0
 ├── latitude:  Bounded  φ ∈ [0.0, 90.0]       variably spaced with min(Δφ)=0.0, max(Δφ)=0.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]    regularly spaced with Δz=40.0
 ```
 """
-function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU(),
+function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
                                       FT::DataType = Float64;
                                       size,
                                       z,
@@ -224,7 +224,7 @@ function ConformalCubedSphereFaceGrid(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
@@ -235,7 +235,7 @@ end
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
-ConformalCubedSphereFaceGrid(FT::DataType; kwargs...) = ConformalCubedSphereFaceGrid(CPU(), FT; kwargs...)
+OrthogonalSphericalShellGrid(FT::DataType; kwargs...) = OrthogonalSphericalShellGrid(CPU(), FT; kwargs...)
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
@@ -256,7 +256,7 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     return offset_data(underlying_data, loc[1:2], topo[1:2], N[1:2], H[1:2])
 end
 
-function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
+function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       face, Nz, z,
                                       topology = (Bounded, Bounded, Bounded),
                                         radius = R_Earth,
@@ -322,7 +322,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
@@ -331,7 +331,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
                                                        Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-function on_architecture(arch::AbstractArchitecture, grid::ConformalCubedSphereFaceGrid)
+function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalShellGrid)
 
     horizontal_coordinates = (:λᶜᶜᵃ,
                               :λᶠᶜᵃ,
@@ -365,7 +365,7 @@ function on_architecture(arch::AbstractArchitecture, grid::ConformalCubedSphereF
 
     TX, TY, TZ = topology(grid)
 
-    new_grid = ConformalCubedSphereFaceGrid{TX, TY, TZ}(arch,
+    new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
@@ -375,10 +375,10 @@ function on_architecture(arch::AbstractArchitecture, grid::ConformalCubedSphereF
     return new_grid
 end
 
-function Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid)
+function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     TX, TY, TZ = topology(grid)
 
-    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(nothing,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
                                                     adapt(to, grid.λᶜᶜᵃ),  
@@ -407,18 +407,18 @@ function Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid)
                                                     grid.radius)
 end
 
-function Base.summary(grid::ConformalCubedSphereFaceGrid)
+function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
     metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)),
-                  " ConformalCubedSphereFaceGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " OrthogonalSphericalShellGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo",
                   " and ", metric_computation)
 end
 
-function Base.show(io::IO, grid::ConformalCubedSphereFaceGrid, withsummary=true)
+function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
     λ₁, λ₂ = minimum(grid.λᶠᶠᵃ), maximum(grid.λᶠᶠᵃ)
@@ -444,15 +444,15 @@ function Base.show(io::IO, grid::ConformalCubedSphereFaceGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-@inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline xnode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline xnode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline xnode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
+@inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline xnode(::Face,   ::Center, LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline xnode(::Center, ::Face,   LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline xnode(::Center, ::Center, LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline ynode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline ynode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline ynode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline ynode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline ynode(::Face,   ::Face,   LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline ynode(::Face,   ::Center, LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline ynode(::Center, ::Face,   LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline ynode(::Center, ::Center, LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-@inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(LX, LY, ::Face,   i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(LX, LY, ::Center, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶜ[k]

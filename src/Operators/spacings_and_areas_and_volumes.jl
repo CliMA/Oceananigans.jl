@@ -5,7 +5,7 @@ const RGX  = XRegRectilinearGrid
 const RGY  = YRegRectilinearGrid
 const RGZ  = ZRegRectilinearGrid
 
-const CCSG = ConformalCubedSphereFaceGrid
+const CCSG = OrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegLatLonGrid
@@ -151,7 +151,7 @@ end
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
 
 #####
-#####  ConformalCubedSphereFaceGrid
+#####  OrthogonalSphericalShellGrid
 #####
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
@@ -197,7 +197,7 @@ end
 
 
 ####
-#### Special 2D z Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
+#### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
