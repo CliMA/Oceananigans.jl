@@ -39,9 +39,8 @@ using Oceananigans.Advection:
     advective_momentum_flux_Ww,
     advective_tracer_flux_x,
     advective_tracer_flux_y,
-    advective_tracer_flux_z,
-    WENOVectorInvariant
-
+    advective_tracer_flux_z
+    
 import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
 
@@ -88,7 +87,8 @@ import Oceananigans.TurbulenceClosures:
     νᶜᶜᶜ,
     νᶠᶠᶜ,
     νᶜᶠᶠ,
-    νᶠᶜᶠ
+    νᶠᶜᶠ,
+    bottom
 
 """
     abstract type AbstractImmersedBoundary
@@ -136,6 +136,8 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 # (which requires checking `Center` nodes at N + H and N + H + 1)
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
+
+@inline bottom(i, j, k, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)

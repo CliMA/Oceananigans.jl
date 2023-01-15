@@ -24,7 +24,7 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
                 Wy == 1 ?
 
                     # Two-dimensional x-z slice models:
-                    (1, min(256, Wx)) :
+                    (min(256, Wx), 1) :
 
                     # Three-dimensional models
                     (16, 16)
