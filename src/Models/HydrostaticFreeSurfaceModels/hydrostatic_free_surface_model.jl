@@ -12,7 +12,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions, maybe_add_wet_cells_map
+using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions, maybe_add_active_cells_map
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
@@ -107,12 +107,15 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
+                       calculate_only_active_cells = true
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    grid = maybe_add_wet_cells_map(grid)
+    if calculate_only_active_cells
+      grid = maybe_add_active_cells_map(grid)
+    end
 
     arch = architecture(grid)
 

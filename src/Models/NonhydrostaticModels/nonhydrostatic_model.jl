@@ -118,7 +118,8 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple()
+                      auxiliary_fields = NamedTuple(),
+           calculate_only_active_cells = true
     )
 
     arch = architecture(grid)
@@ -142,7 +143,9 @@ function NonhydrostaticModel(;    grid,
 
     # In case of an immersed boundary grid add a wet cell map to avoid calculating 
     # the tendency in dry cells
-    grid = maybe_add_wet_cells_map(grid)
+    if calculate_only_active_cells
+        grid = maybe_add_active_cells_map(grid)
+    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -235,6 +238,6 @@ function inflate_grid_halo_size(grid, tendency_terms...)
     return grid
 end
 
-maybe_add_wet_cells_map(grid) = grid
-maybe_add_wet_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
-      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_wet_cell_map = true)
+maybe_add_active_cells_map(grid) = grid
+maybe_add_active_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
+      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_active_cell_map = true)

@@ -6,6 +6,8 @@ using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsit
 using Oceananigans.Utils: work_layout, calc_tendency_index
 using Oceananigans.Fields: immersed_boundary_condition
 
+using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
+
 """
     calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -82,7 +84,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
     
-    only_active_cells = true
+    only_active_cells = use_only_active_cells(grid)
 
     Gu_event = launch!(arch, grid, :xyz,
                        calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
@@ -131,14 +133,14 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
+    only_active_cells = use_only_active_cells(grid)
+
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds c_forcing = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
-
-        only_active_cells = true
 
         Gc_event = launch!(arch, grid, :xyz,
                            calculate_hydrostatic_free_surface_Gc!,
@@ -179,7 +181,7 @@ end
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
@@ -191,7 +193,7 @@ end
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
@@ -207,7 +209,7 @@ end
     @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
