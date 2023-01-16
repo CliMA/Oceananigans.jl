@@ -125,6 +125,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
+    radius = FT(radius)
+
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
@@ -256,6 +258,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
                                                     Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+end
 
 function lat_lon_to_cartesian(lat, lon, radius)
     abs(lat) > 90 && error("lat must be within -90 ≤ lat ≤ 90")
