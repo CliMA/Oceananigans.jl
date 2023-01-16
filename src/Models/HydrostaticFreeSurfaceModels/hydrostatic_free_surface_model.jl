@@ -65,6 +65,7 @@ end
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
+            calculate_only_active_cells_tendencies = false
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -89,6 +90,8 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `calculate_only_active_cells_tendencies`: In case of an immersed boundary grid, calculate the tendency only in active cells.
+                                   Default: `false`
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -107,13 +110,13 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
-                       calculate_only_active_cells = true
+            calculate_only_active_cells_tendencies = false
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    if calculate_only_active_cells
+    if calculate_only_active_cells_tendencies
       grid = maybe_add_active_cells_map(grid)
     end
 
