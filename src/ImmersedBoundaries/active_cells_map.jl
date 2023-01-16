@@ -8,7 +8,7 @@ const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <
 @inline use_only_active_cells(grid::AbstractGrid)   = false
 @inline use_only_active_cells(grid::ActiveCellsIBG) = true
 
-@inilne only_active_cells_in_worksize(size, grid::ActiveCellsIBG) = min(length(grid.active_cells_map), 256), length(grid.active_cells_map)
+@inline only_active_cells_in_worksize(size, grid::ActiveCellsIBG) = min(length(grid.active_cells_map), 256), length(grid.active_cells_map)
 @inline calc_tendency_index(idx, grid::ActiveCellsIBG)            = Int.(grid.active_cells_map[idx])
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map = false) where {TX, TY, TZ} 
