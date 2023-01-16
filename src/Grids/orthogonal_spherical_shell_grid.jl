@@ -211,45 +211,49 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     any(any.(isnan, λS)) &&
         @warn "Cubed sphere face contains a grid point at a pole whose longitude λ is undefined (NaN)."
 
-    Δλᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
-    Δλᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    Δλᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-    Δλᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
-
-    Δλᶜᶜᵃ[1:Nξ  , :] = λᶠᶜᵃ[2:Nξ+1, :] .- λᶠᶜᵃ[1:Nξ, :]
-    Δλᶜᶠᵃ[1:Nξ  , :] = λᶠᶠᵃ[2:Nξ+1, :] .- λᶠᶠᵃ[1:Nξ, :]
-    Δλᶠᶠᵃ[1:Nξ+1, :] = λᶜᶠᵃ[1:Nξ+1, :] .- λᶜᶠᵃ[0:Nξ, :]
-    Δλᶠᶜᵃ[1:Nξ+1, :] = λᶠᶜᵃ[1:Nξ+1, :] .- λᶠᶜᵃ[0:Nξ, :]
-
-    Δφᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
-    Δφᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    Δφᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-    Δφᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
-
-    Δφᶜᶜᵃ[:, 1:Nη  ] = φᶜᶠᵃ[:, 2:Nη+1] .- φᶜᶠᵃ[:, 1:Nη]
-    Δφᶠᶜᵃ[:, 1:Nη  ] = φᶠᶠᵃ[:, 2:Nη+1] .- φᶠᶠᵃ[:, 1:Nη]
-    Δφᶜᶠᵃ[:, 1:Nη+1] = φᶜᶜᵃ[:, 1:Nη+1] .- φᶜᶜᵃ[:, 0:Nη]
-    Δφᶠᶠᵃ[:, 1:Nη+1] = φᶠᶜᵃ[:, 1:Nη+1] .- φᶠᶜᵃ[:, 0:Nη]
-
     ## Not sure how to compute these right now so how about zeros?
     Δxᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
     Δxᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δxᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Δxᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
+    [Δxᶜᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[i+1, j], λᶠᶜᵃ[i+1, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j])) for i in 1:Nξ   , j in 1:Nη  ]
+
+    [Δxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in 2:Nξ   , j in 1:Nη  ]
+    [Δxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]))     for i in (1,)   , j in 1:Nη  ]
+    [Δxᶠᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in (Nξ+1,), j in 1:Nη  ]
+
+    [Δxᶜᶠᵃ[i, j] = central_angled((φᶠᶠᵃ[i+1, j], λᶠᶠᵃ[i+1, j]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j])) for i in 1:Nξ   , j in 1:Nη+1]
+
+    [Δxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in 2:Nξ   , j in 1:Nη+1]
+    [Δxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]))     for i in (1,)   , j in 1:Nη+1]
+    [Δxᶠᶠᵃ[i, j] = central_angled((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in (Nξ+1,), j in 1:Nη+1]
+
     Δyᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
-    Δyᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    Δyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    Δyᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    Δyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δyᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
+    [Δyᶜᶜᵃ[i, j] = central_angled((φᶜᶠᵃ[i, j+1], λᶜᶠᵃ[i, j+1]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j])) for i in 1:Nξ, j in 1:Nη]
+
+    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1])) for i in 1:Nξ, j in 1:Nη+1]
+    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j])) for i in 1:Nξ, j in (1,)]
+    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1])) for i in 1:Nξ, j in (Nη+1,)]
+
+    [Δyᶠᶜᵃ[i, j] = central_angled((φᶠᶠᵃ[i, j+1], λᶠᶠᵃ[i, j+1]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j])) for i in 1:Nξ+1, j in 1:Nη]
     
-    [Δxᶜᶜᵃ[i, j] = radius * deg2rad(central_angled((φᶠᶠᵃ[i+1, j], λᶠᶠᵃ[i+1, j]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))) for i in 1:Nξ, j in 1:Nη]
-    [Δyᶜᶜᵃ[i, j] = radius * deg2rad(central_angled((φᶠᶠᵃ[i, j+1], λᶠᶠᵃ[i, j+1]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))) for i in 1:Nξ, j in 1:Nη]
+    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1])) for i in 1:Nξ+1, j in 1:Nη+1]
+    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j])) for i in 1:Nξ+1, j in (1,)]
+    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1])) for i in 1:Nξ+1, j in (Nη+1,)]
+
+    for Δ in [Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ]
+        @. Δ = radius * deg2rad(Δ)
+    end
 
     Azᶜᶜᵃ = Δxᶜᶜᵃ .* Δyᶜᶜᵃ
-    Azᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-    Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
+    Azᶠᶜᵃ = Δxᶠᶜᵃ .* Δyᶠᶜᵃ
+    Azᶜᶠᵃ = Δxᶜᶠᵃ .* Δyᶜᶠᵃ
+    Azᶠᶠᵃ = Δxᶠᶠᵃ .* Δyᶠᶠᵃ
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
