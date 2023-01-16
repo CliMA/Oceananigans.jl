@@ -55,11 +55,6 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
 
-    if only_active_cells
-        workgroup, worksize = only_active_cells_in_worksize((Nx′, Ny′, Nz′), grid) 
-        return workgroup, worksize
-    end
-
     workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
 
     # Drop omitted dimemsions
@@ -67,6 +62,11 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
                workdims == :xy  ? (Nx′, Ny′) :
                workdims == :xz  ? (Nx′, Nz′) :
                workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
+
+
+    if only_active_cells
+        workgroup, worksize = only_active_cells_in_worksize(worksize, grid) 
+    end
 
     return workgroup, worksize
 end
