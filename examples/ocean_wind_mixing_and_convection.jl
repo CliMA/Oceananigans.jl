@@ -288,7 +288,7 @@ Colorbar(fig[3, 2], hm_S; label = "g / kg")
 hm_νₑ = heatmap!(ax_νₑ, xT, zT, νₑₙ; colormap = :thermal, colorrange = νₑlims)
 Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
 
-fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # And now record a movie.
 

@@ -16,6 +16,11 @@
 # where the weights wᵣ are calculated dynamically with `side_biased_weno_weights(ψ, scheme)`.
 #
 
+abstract type AbstractSmoothnessStencil end
+
+struct VelocityStencil <:AbstractSmoothnessStencil end
+struct DefaultStencil  <:AbstractSmoothnessStencil end
+
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
@@ -214,7 +219,7 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             end
         end
 
-        @inline function $biased_weno_weights(ijk, scheme::WENO{N, FT}, dir, ::Type{VelocityStencil}, u, v) where {N, FT}
+        @inline function $biased_weno_weights(ijk, scheme::WENO{N, FT}, dir, ::VelocityStencil, u, v) where {N, FT}
             @inbounds begin
                 i, j, k = ijk
             
@@ -357,8 +362,8 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::Type{VorticityStencil}, args...) where {N, FT, XT, YT, ZT}
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
+                                               ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
                     ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
@@ -368,8 +373,8 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             end
 
             @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENOVectorInvariant{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::Type{VelocityStencil}, args...) where {N, FT, XT, YT, ZT}
+                                               scheme::WENO{N, FT, XT, YT, ZT}, 
+                                               ψ, idx, loc, VI::VelocityStencil, args...) where {N, FT, XT, YT, ZT}
 
                 @inbounds begin
                     ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)

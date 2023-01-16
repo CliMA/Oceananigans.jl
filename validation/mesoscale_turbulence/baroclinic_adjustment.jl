@@ -283,7 +283,7 @@ rotate_cam!(ax_c.scene, (π/24, -π/6, 0))
 title = @lift(string("Buoyancy and tracer concentration at t = ",
                      prettytime(slice_files[1]["timeseries/t/" * string($iter)])))
 
-fig[0, :] = Label(fig, title, textsize=30)
+fig[0, :] = Label(fig, title, fontsize=30)
 
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))

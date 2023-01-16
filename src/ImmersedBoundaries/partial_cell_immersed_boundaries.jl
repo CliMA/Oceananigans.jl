@@ -97,3 +97,5 @@ end
 @inline Δzᶠᶜᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i-1, j, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))
 @inline Δzᶜᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
 @inline Δzᶠᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
+
+@inline bottom(i, j, k, ibg::PCIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]

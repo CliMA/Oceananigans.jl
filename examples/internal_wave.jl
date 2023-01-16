@@ -166,7 +166,7 @@ contourf!(ax, x, z, w;
           extendhigh = :auto)
 
 title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
-fig[1, 1] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 using Printf
