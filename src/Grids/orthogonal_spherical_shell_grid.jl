@@ -211,7 +211,9 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     any(any.(isnan, λS)) &&
         @warn "Cubed sphere face contains a grid point at a pole whose longitude λ is undefined (NaN)."
 
-    ## Not sure how to compute these right now so how about zeros?
+
+    ## Grid metrics
+
     Δxᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
     Δxᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δxᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
@@ -246,6 +248,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j])) for i in 1:Nξ+1, j in (1,)]
     [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1])) for i in 1:Nξ+1, j in (Nη+1,)]
 
+    # convert degrees to meters
     for Δ in [Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ]
         @. Δ = radius * deg2rad(Δ)
     end
