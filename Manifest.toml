@@ -438,9 +438,9 @@ version = "2022.2.1"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "DataStructures", "Dates", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "1818d54a489492517841c2cb87475ba20918264c"
+git-tree-sha1 = "6ad0a7da2848fb47012ce63ff457585d15e9d0bb"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.12.8"
+version = "0.12.10"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
