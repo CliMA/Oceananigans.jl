@@ -1,4 +1,5 @@
 using Oceananigans
+using Oceananigans.Grids: AbstractGrid
 import Oceananigans.Utils: only_active_cells_in_worksize, calc_tendency_index
 using KernelAbstractions: @kernel, @index
 
@@ -8,7 +9,7 @@ only_active_cells_in_worksize(size, grid::IBG) = min(length(grid.active_cells_ma
 const FullIBG        = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-@inline use_only_active_cells(grid::FullIBG)        = false
+@inline use_only_active_cells(grid::AbstractGrid)   = false
 @inline use_only_active_cells(grid::ActiveCellsIBG) = true
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map = false) where {TX, TY, TZ} 
