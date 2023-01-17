@@ -58,15 +58,15 @@ WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg,
 @inline  getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
                 VectorInvariant{N, FT}(_getregion(t.vorticity_scheme, r), 
                                        _getregion(t.divergence_scheme, r),
-                                       vorticity_stencil, 
-                                       divergence_stencil, 
+                                       t.vorticity_stencil, 
+                                       t.divergence_stencil, 
                                        _getregion(t.vertical_scheme, r))
 
 @inline _getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
                 VectorInvariant{N, FT}(getregion(t.vorticity_scheme, r), 
                                        getregion(t.divergence_scheme, r), 
-                                       vorticity_stencil, 
-                                       divergence_stencil, 
+                                       t.vorticity_stencil, 
+                                       t.divergence_stencil, 
                                        getregion(t.vertical_scheme, r))
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
