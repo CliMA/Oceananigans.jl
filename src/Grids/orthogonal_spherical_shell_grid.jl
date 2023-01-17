@@ -322,7 +322,7 @@ the same as the volume defined by the vectors `a₁`, `a₂`, and `a₃`, that i
 
 References
 ==========
-Eriksson, F. (1990) On the Measure of Solid Angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
+Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
 """
 function spherical_area_triangle(a₁, a₂, a₃)
     (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
