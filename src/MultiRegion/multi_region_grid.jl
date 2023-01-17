@@ -138,10 +138,27 @@ function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX
     return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
 end
 
+function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+
+    devices   = mrg.devices
+
+    # Construct a MRG on the CPU
+    cpu_mrg   = on_architecture(CPU(), mrg)
+    cpu_grids = construct_regionally(with_halo, new_halo, cpu_mrg)
+    new_grids = construct_regionally(on_specific_architecture, mrg.architecture, Iterate(devices), cpu_grids)
+
+    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, devices)
+end
+
 function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(on_architecture, CPU(), mrg)
     devices   = Tuple(CPU() for i in 1:length(mrg))  
     return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
+end
+
+function on_specific_architecture(arch, dev, grid)
+    switch_device!(dev)
+    return on_architecture(arch, grid)
 end
 
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
