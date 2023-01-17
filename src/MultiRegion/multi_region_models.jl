@@ -56,18 +56,18 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
 @inline  getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
-                VectorInvariant{N, FT}(_getregion(t.vorticity_scheme), 
-                                       _getregion(t.divergence_scheme),
+                VectorInvariant{N, FT}(_getregion(t.vorticity_scheme, r), 
+                                       _getregion(t.divergence_scheme, r),
                                        vorticity_stencil, 
                                        divergence_stencil, 
-                                       _getregion(t.vertical_scheme))
+                                       _getregion(t.vertical_scheme, r))
 
 @inline _getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
-                VectorInvariant{N, FT}(getregion(t.vorticity_scheme), 
-                                       getregion(t.divergence_scheme), 
+                VectorInvariant{N, FT}(getregion(t.vorticity_scheme, r), 
+                                       getregion(t.divergence_scheme, r), 
                                        vorticity_stencil, 
                                        divergence_stencil, 
-                                       getregion(t.vertical_scheme))
+                                       getregion(t.vertical_scheme, r))
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
