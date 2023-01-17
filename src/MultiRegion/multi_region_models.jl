@@ -1,5 +1,5 @@
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Advection: WENO
+using Oceananigans.Advection: WENO, VectorInvariant
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -29,7 +29,8 @@ Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
-         :PrescribedVelocityFields)
+         :PrescribedVelocityFields,
+         :VectorInvariant)
 
 for T in Types
     @eval begin
@@ -54,6 +55,8 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
+
+
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
