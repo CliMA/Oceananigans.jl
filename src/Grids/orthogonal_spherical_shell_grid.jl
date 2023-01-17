@@ -315,8 +315,9 @@ by Eriksson (1990).
 Denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with ``a``, ``b``,
 and ``c`` the side os the triangle. It's been known since Euler and Lagrange that
 ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the triangle's
-excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``. Erikkson (1990)\
-showed that ``P`` is the same as the volume defined by the vectors `a₁`, `a₂`, and `a₃`, that is
+excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``. On the unit
+sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed that ``P`` above 
+the same as the volume defined by the vectors `a₁`, `a₂`, and `a₃`, that is
 ``P = |\\boldsymbol{a}_1 \\cdot (\\boldsymbol{a}_2 \\times \\boldsymbol{a}_2)|``.
 
 References
@@ -326,10 +327,10 @@ Eriksson, F. (1990) On the Measure of Solid Angles, Mathematics Magazine, 63 (3)
 function spherical_area_triangle(a₁, a₂, a₃)
     (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
 
-    t = abs(dot(a₁, cross(a₂, a₃)))
-    t /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
+    tan½E = abs(dot(a₁, cross(a₂, a₃)))
+    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
 
-    return 2atan(t)
+    return 2atan(tan½E)
 end
 
 """
