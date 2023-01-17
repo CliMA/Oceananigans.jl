@@ -29,8 +29,7 @@ Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
-         :PrescribedVelocityFields,
-         :VectorInvariant)
+         :PrescribedVelocityFields)
 
 for T in Types
     @eval begin
@@ -56,7 +55,19 @@ implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretizat
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
+@inline  getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
+                VectorInvariant{N, FT}(_getregion(t.vorticity_scheme), 
+                                       _getregion(t.divergence_scheme),
+                                       vorticity_stencil, 
+                                       divergence_stencil, 
+                                       _getregion(t.vertical_scheme))
 
+@inline _getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
+                VectorInvariant{N, FT}(getregion(t.vorticity_scheme), 
+                                       getregion(t.divergence_scheme), 
+                                       vorticity_stencil, 
+                                       divergence_stencil, 
+                                       getregion(t.vertical_scheme))
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
