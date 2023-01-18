@@ -76,8 +76,8 @@ Arguments
                     The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings.
-                   Options are `RugeStubenAMG()` (default) or `SmoothedAggregationAMG()`.
-                   Note: This keyword is relevant *only* on the CPU.
+                   Options are `:Classic` (default, using a RugeStuben algorithm) or `:Aggregation`
+                   (using a Smoothed and Unsmoothed Aggregation algorithm with V Cycle on `CPU` and `GPU`, respectively).
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
@@ -85,7 +85,7 @@ function MultigridSolver(linear_operation!::Function,
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = RugeStubenAMG(),
+                         amg_algorithm = :Classic,
                          )
 
     arch = architecture(template_field)
@@ -102,7 +102,7 @@ function MultigridSolver(matrix;
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = RugeStubenAMG(),
+                         amg_algorithm = :Classic,
                          )
 
     arch = architecture(template_field)
@@ -131,7 +131,14 @@ function MultigridSolver_on_architecture(::CPU;
                                          x_array,
                                          b_array
                                          )
-    ml = create_multilevel(amg_algorithm, matrix)
+
+    if amg_algorithm == :Classic
+        algorithm = RugeStubenAMG()
+    else
+        algorithm = SmoothedAggregationAMG()
+    end
+
+    ml = create_multilevel(algorithm, matrix)
 
     return MultigridSolver(CPU(),
                           template_field.grid,
@@ -157,7 +164,7 @@ function MultigridSolver_on_architecture(::GPU;
                                          b_array
                                          )
 
-    amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
+    amgx_solver = AMGXMultigridSolver(matrix; maxiter, reltol, abstol)
 
     return MultigridSolver(GPU(),
                               template_field.grid,
@@ -172,22 +179,35 @@ function MultigridSolver_on_architecture(::GPU;
                               )
 end
 
-function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Classical, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
     tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
+    algorithm = algorithm == :Classical ? "CLASSICAL" : "AGGREGATION"
     try
-        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
+        global config = AMGX.Config(Dict("monitor_residual"  => 1, 
+                                         "max_iters"         => maxiter, 
+                                         "store_res_history" => 1, 
+                                         "tolerance"         => tolerance, 
+                                         "convergence"       => convergence,
+                                         "algorithm"         => algorithm,
+                                         "cycle"             => "V"))
     catch e 
         @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX()`?"
         AMGX.initialize()
         AMGX.initialize_plugins()
-        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
+        global config = AMGX.Config(Dict("monitor_residual"  => 1, 
+                                         "max_iters"         => maxiter, 
+                                         "store_res_history" => 1,
+                                         "tolerance"         => tolerance, 
+                                         "convergence"       => convergence,
+                                         "algorithm"         => algorithm,
+                                         "cycle"             => "V"))
     end
-    resources = AMGX.Resources(config)
-    solver = AMGX.Solver(resources, AMGX.dDDI, config)
+    resources     = AMGX.Resources(config)
+    solver        = AMGX.Solver(resources, AMGX.dDDI, config)
     device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
-    device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
-    device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
-    csr_matrix = CuSparseMatrixCSR(transpose(matrix))
+    device_b      = AMGX.AMGXVector(resources, AMGX.dDDI)
+    device_x      = AMGX.AMGXVector(resources, AMGX.dDDI)
+    csr_matrix    = CuSparseMatrixCSR(transpose(matrix))
     
     @inline subtract_one(x) = x - oneunit(x)
     
