@@ -138,10 +138,6 @@ Return the sparse matrix constructors based on the pentadiagonal coeffients (`co
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
-    Ax = arch_array(CPU(), Ax)
-    Ay = arch_array(CPU(), Ay)
-    Az = arch_array(CPU(), Az)
-    C  = arch_array(CPU(), C)
     D  = arch_array(arch,  D)
 
     N = size(grid)
@@ -165,13 +161,13 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     posy = (1, Ny-1) .* Nx
     posz = (1, Nz-1) .* Nx .* Ny
 
-    coeff_d       = zeros(eltype(grid), M)
-    coeff_x       = zeros(eltype(grid), M - posx[1])
-    coeff_y       = zeros(eltype(grid), M - posy[1])
-    coeff_z       = zeros(eltype(grid), M - posz[1])
-    coeff_bound_x = zeros(eltype(grid), M - posx[2])
-    coeff_bound_y = zeros(eltype(grid), M - posy[2])
-    coeff_bound_z = zeros(eltype(grid), M - posz[2])
+    coeff_d       = arch_array(arch, zeros(eltype(grid), M))
+    coeff_x       = arch_array(arch, zeros(eltype(grid), M - posx[1]))
+    coeff_y       = arch_array(arch, zeros(eltype(grid), M - posy[1]))
+    coeff_z       = arch_array(arch, zeros(eltype(grid), M - posz[1]))
+    coeff_bound_x = arch_array(arch, zeros(eltype(grid), M - posx[2]))
+    coeff_bound_y = arch_array(arch, zeros(eltype(grid), M - posy[2]))
+    coeff_bound_z = arch_array(arch, zeros(eltype(grid), M - posz[2]))
 
     # Initialize elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N...), N)
@@ -179,20 +175,48 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     wait(event)
 
     # Fill matrix elements that stay constant in time
-    fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
+
+    workgroup, worksize  = (16, 16), N
+
+    fill_core_matrix! = _fill_core_matrix!(device(arch), workgroup, worksize)
+    event_core        =  fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
+    wait(device(arch), event_core)
 
     # Ensure that Periodic boundary conditions are satisifed
-    dims[1] && fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
-    dims[2] && fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
-    dims[3] && fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
+    if dims[1] 
+        workgroup, worksize  = (16, 16), (N[2], N[3])
+        fill_boundaries_x! = _fill_boundaries_x!(device(arch), workgroup, worksize)
+        event_boundaries_x =  fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
+        wait(device(arch), event_boundaries_x)
+    end
+    if dims[2]
+        workgroup, worksize  = (16, 16), (N[1], N[3])
+        fill_boundaries_y! = _fill_boundaries_y!(device(arch), workgroup, worksize)
+        event_boundaries_y =  fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
+        wait(device(arch), event_boundaries_y)
+    end
+    if dims[3]
+        workgroup, worksize  = (16, 16), (N[1], N[2])
+        fill_boundaries_z! = _fill_boundaries_z!(device(arch), workgroup, worksize)
+        event_boundaries_z =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N, topo[3])
+        wait(device(arch), event_boundaries_z)
+    end
 
-    sparse_matrix = spdiagm(0 => coeff_d,
-                      posx[1] => coeff_x,       -posx[1] => coeff_x,
-                      posx[2] => coeff_bound_x, -posx[2] => coeff_bound_x,
-                      posy[1] => coeff_y,       -posy[1] => coeff_y,
-                      posy[2] => coeff_bound_y, -posy[2] => coeff_bound_y,
-                      posz[1] => coeff_z,       -posz[1] => coeff_z,
-                      posz[2] => coeff_bound_z, -posz[2] => coeff_bound_z)
+    cpu_coeff_d       = arch_array(CPU(), coeff_d      )
+    cpu_coeff_x       = arch_array(CPU(), coeff_x      )
+    cpu_coeff_y       = arch_array(CPU(), coeff_y      )
+    cpu_coeff_z       = arch_array(CPU(), coeff_z      )
+    cpu_coeff_bound_x = arch_array(CPU(), coeff_bound_x)
+    cpu_coeff_bound_y = arch_array(CPU(), coeff_bound_y)
+    cpu_coeff_bound_z = arch_array(CPU(), coeff_bound_z)
+
+    sparse_matrix = spdiagm(0 => cpu_coeff_d,
+                      posx[1] => cpu_coeff_x,       -posx[1] => cpu_coeff_x,
+                      posx[2] => cpu_coeff_bound_x, -posx[2] => cpu_coeff_bound_x,
+                      posy[1] => cpu_coeff_y,       -posy[1] => cpu_coeff_y,
+                      posy[2] => cpu_coeff_bound_y, -posy[2] => cpu_coeff_bound_y,
+                      posz[1] => cpu_coeff_z,       -posz[1] => cpu_coeff_z,
+                      posz[2] => cpu_coeff_bound_z, -posz[2] => cpu_coeff_bound_z)
 
     ensure_diagonal_elements_are_present!(sparse_matrix)
 
@@ -208,35 +232,29 @@ end
     @inbounds diag[t] = D[i, j, k]
 end
 
-function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
+@kernel function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
+    i, j, k = @index(Global, NTuple)
+
     Nx, Ny, Nz = N
-    for k = 1:Nz, j = 1:Ny, i = 1:Nx
-        t          = i +  Nx * (j - 1 + Ny * (k - 1))
-        coeff_d[t] = C[i, j, k]
-    end
+    
+    t = i +  Nx * (j - 1 + Ny * (k - 1))
+
+    coeff_d[t] = C[i, j, k]
+
     if dims[1]
-        for k = 1:Nz, j = 1:Ny, i = 1:Nx-1
-            t             = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_x[t]    = Ax[i+1, j, k] 
-            coeff_d[t]   -= coeff_x[t]
-            coeff_d[t+1] -= coeff_x[t]
-        end
+        coeff_x[t]    = Ax[i+1, j, k] 
+        coeff_d[t]   -= coeff_x[t]
+        coeff_d[t+1] -= coeff_x[t]
     end
     if dims[2]
-        for k = 1:Nz, j = 1:Ny-1, i = 1:Nx
-            t              = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_y[t]     = Ay[i, j+1, k] 
-            coeff_d[t]    -= coeff_y[t] 
-            coeff_d[t+Nx] -= coeff_y[t]
-        end
+        coeff_y[t]     = Ay[i, j+1, k] 
+        coeff_d[t]    -= coeff_y[t] 
+        coeff_d[t+Nx] -= coeff_y[t]
     end
     if dims[3]
-        for k = 1:Nz-1, j = 1:Ny, i = 1:Nx
-            t                 = i +  Nx * (j - 1 + Ny * (k - 1))
-            coeff_z[t]        = Az[i, j, k+1] 
-            coeff_d[t]       -= coeff_z[t]
-            coeff_d[t+Nx*Ny] -= coeff_z[t]
-        end
+        coeff_z[t]        = Az[i, j, k+1] 
+        coeff_d[t]       -= coeff_z[t]
+        coeff_d[t+Nx*Ny] -= coeff_z[t]
     end
 end
 
@@ -253,44 +271,40 @@ end
 # Since zero-flux BC were implied, we have to also have to add the coefficients corresponding to i-1 and i+1
 # (respectively). Since the off-diagonal elements are symmetric we can fill it in only once
 
- @inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Bounded}) = nothing
- @inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Flat})    = nothing
-function fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Periodic})
+@kernel fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Bounded}) = nothing
+@kernel fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Flat})    = nothing
+@kernel function fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Periodic})
+    j, k = @index(Global, NTuple)
     Nx, Ny, Nz = N
-    for k = 1:Nz, j = 1:Ny
-        tₘ = 1  + Nx * (j - 1 + Ny * (k - 1))
-        tₚ = Nx + Nx * (j - 1 + Ny * (k - 1))
-        coeff_bound_x[tₘ] = Ax[1, j, k]
-        coeff_d[tₘ]      -= coeff_bound_x[tₘ]
-        coeff_d[tₚ]      -= coeff_bound_x[tₘ]
-    end
+    tₘ = 1  + Nx * (j - 1 + Ny * (k - 1))
+    tₚ = Nx + Nx * (j - 1 + Ny * (k - 1))
+    coeff_bound_x[tₘ] = Ax[1, j, k]
+    coeff_d[tₘ]      -= coeff_bound_x[tₘ]
+    coeff_d[tₚ]      -= coeff_bound_x[tₘ]
 end
 
- @inline fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Bounded}) = nothing
- @inline fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Flat})    = nothing
-function fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Periodic})
+@kernel fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Bounded}) = nothing
+@kernel fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Flat})    = nothing
+@kernel function fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Periodic})
+    i, k = @index(Global, NTuple)
     Nx, Ny, Nz = N
-
-    for k = 1:Nz, i = 1:Nx
-        tₘ = i + Nx * (1 - 1 + Ny * (k - 1))
-        tₚ = i + Nx * (Ny- 1 + Ny * (k - 1))
-        coeff_bound_y[tₘ] = Ay[i, 1, k]
-        coeff_d[tₘ]      -= coeff_bound_y[tₘ]
-        coeff_d[tₚ]      -= coeff_bound_y[tₘ]
-    end
+    tₘ = i + Nx * (1 - 1 + Ny * (k - 1))
+    tₚ = i + Nx * (Ny- 1 + Ny * (k - 1))
+    coeff_bound_y[tₘ] = Ay[i, 1, k]
+    coeff_d[tₘ]      -= coeff_bound_y[tₘ]
+    coeff_d[tₚ]      -= coeff_bound_y[tₘ]
 end
     
- @inline fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Bounded}) = nothing 
- @inline fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Flat})    = nothing
-function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
+@kernel fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Bounded}) = nothing 
+@kernel fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Flat})    = nothing
+@kernel function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
+    i, j = @index(Global, NTuple)
     Nx, Ny, Nz = N
-    for j = 1:Ny, i = 1:Nx
-        tₘ = i + Nx * (j - 1 + Ny * (1 - 1))
-        tₚ = i + Nx * (j - 1 + Ny * (Nz- 1))
-        coeff_bound_z[tₘ] = Az[i, j, 1]
-        coeff_d[tₘ]      -= coeff_bound_z[tₘ]
-        coeff_d[tₚ]      -= coeff_bound_z[tₘ]
-    end
+    tₘ = i + Nx * (j - 1 + Ny * (1 - 1))
+    tₚ = i + Nx * (j - 1 + Ny * (Nz- 1))
+    coeff_bound_z[tₘ] = Az[i, j, 1]
+    coeff_d[tₘ]      -= coeff_bound_z[tₘ]
+    coeff_d[tₚ]      -= coeff_bound_z[tₘ]
 end
 
 function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
