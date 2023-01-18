@@ -73,7 +73,7 @@ returns `M ≈ A⁻¹`, where `‖ AM - I ‖ ≈ ε` and `nnz(M) ≈ nnz(A) * n
 If we choose a sufficiently large `nzrel` (for example, `nzrel = size(A, 1)`), then
 `sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision`.
 """
-function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel, ::CPU)
+function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
     FT = eltype(A)
     n  = size(A, 1)
     r  = spzeros(FT, n)
