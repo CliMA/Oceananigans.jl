@@ -57,9 +57,11 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list must contain
-                `[:grid, :architecture, :timestepper, :particles]`.
+                `[:grid, :architecture, :timestepper, :particles]`, except when using a
+                 `ShallowWaterModel`, in which case `:particles` is not required.
                 Default: [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure,
-                          :velocities, :tracers, :timestepper, :particles]
+                          :velocities, :tracers, :timestepper, :particles], except when using a
+                          `ShallowWaterModel`, in which case `:particles` is not added.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
