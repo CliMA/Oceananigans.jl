@@ -169,7 +169,7 @@ function plot_zonal_average_solid_body_rotation(filepath)
     theory = lines!(ax, solid_body_rotation.(φ), φ, color=:black)
     simulation = lines!(ax, zonal_average_u, φ, color=:blue)
 
-    supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+    supertitle = fig[0, :] = Label(fig, plot_title, fontsize=30)
 
     leg = Legend(fig, [theory, simulation], ["U cos(φ)", "Simulation"], markersize = 7,
                  halign = :right, valign = :top, bgcolor = :transparent)

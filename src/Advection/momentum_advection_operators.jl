@@ -20,25 +20,25 @@ using Oceananigans.Fields: ZeroField
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
 # Compiler hints
-@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 
 """
     div_𝐯u(i, j, k, grid, advection, U, u)

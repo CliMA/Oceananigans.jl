@@ -64,16 +64,11 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
+with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
+calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
-
-#####
-##### Tracer indices
-#####
-
-# For "vanilla" tracers we use `Val(id)`.
-# "Special" tracers need custom types.
 
 #####
 ##### The magic
@@ -83,6 +78,12 @@ add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = 
 @inline getclosure(i, j, closure::AbstractMatrix{<:AbstractTurbulenceClosure}) = @inbounds closure[i, j]
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
+
+@inline surface(i, j, k, grid)                = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
+@inline bottom(i, j, k, grid)                 = znode(Center(), Center(), Face(), i, j, 1, grid)
+@inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Face(), i, j, k, grid)
+@inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(Center(), Center(), Face(), i, j, k, grid) - bottom(i, j, k, grid)
+@inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
 include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
