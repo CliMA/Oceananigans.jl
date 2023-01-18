@@ -312,7 +312,7 @@ function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    s = solver.amgx_solver
+    s = solver.amg_solver
     AMGX.upload!(s.device_b, solver.b_array)
     AMGX.upload!(s.device_x, solver.x_array)
     AMGX.solve!(s.device_x, s.solver, s.device_b)
@@ -354,7 +354,6 @@ function finalize_AMGX(::GPU)
 end
 
 finalize_AMGX(::CPU) = nothing
-
 
 function finalize_solver!(s::AMGXMultigridSolver)
     @info "Finalizing the AMGX Multigrid solver on GPU"
