@@ -196,7 +196,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
         wait(device(arch), event_boundaries_y)
     end
     if dims[3] && topo[3] == Periodic
-        workgroup, worksize = heuristic_workgroup(N[2], N[2]), (N[1], N[2])
+        workgroup, worksize = heuristic_workgroup(N[1], N[2]), (N[1], N[2])
         fill_boundaries_z!  = _fill_boundaries_z!(device(arch), workgroup, worksize)
         event_boundaries_z  =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N)
         wait(device(arch), event_boundaries_z)
