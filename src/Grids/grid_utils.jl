@@ -427,6 +427,7 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
 end
 
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
-coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
-                                                       name, prettysummary(minimum(parent(Δ))),
-                                                       name, prettysummary(maximum(parent(Δ))))
+coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+    @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
+             name, prettysummary(minimum(parent(Δ))),
+             name, prettysummary(maximum(parent(Δ))))
