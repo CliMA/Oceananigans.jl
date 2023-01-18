@@ -1,10 +1,9 @@
 using CubedSphere
 using JLD2
+using LinearAlgebra
 using OffsetArrays
 using Adapt
 using Adapt: adapt_structure
-
-using LinearAlgebra
 
 using Oceananigans
 
@@ -106,13 +105,13 @@ Examples
 
 * A default grid with `Float64` type:
 
-```jldoctest
+```@example
 julia> using Oceananigans
 
 julia> grid = OrthogonalSphericalShellGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
-├── longitude: Bounded  λ ∈ [-176.397, 180.0] variably spaced with min(Δλ)=0.0, max(Δλ)=0.0
-├── latitude:  Bounded  φ ∈ [0.0, 90.0]       variably spaced with min(Δφ)=0.0, max(Δφ)=0.0
+├── longitude: Bounded  λ ∈ [-176.397, 180.0] variably spaced with min(Δλ)=48351.7, max(Δλ)=2.87833e5
+├── latitude:  Bounded  φ ∈ [35.2644, 90.0]   variably spaced with min(Δφ)=50632.2, max(Δφ)=3.04768e5
 └── z:         Bounded  z ∈ [-1000.0, 0.0]    regularly spaced with Δz=40.0
 ```
 """
@@ -394,7 +393,7 @@ References
 ==========
 Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
 """
-function spherical_area_triangle(a₁, a₂, a₃)
+function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
     (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
 
     tan½E = abs(dot(a₁, cross(a₂, a₃)))
@@ -411,7 +410,7 @@ Return the area of a spherical quadrilateral on the unit sphere whose points are
 taken so that points `a₁`, `a₂`, `a₃`, and `a₄` correspond to the edges of the quadrilateral in clockwise
 or counterclockwise order.
 """
-function spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
+function spherical_area_quadrilateral(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector, a₄::AbstractVector)
     # a₁, a₂, a₃, a₄ = check_ccw(a₁, a₂, a₃, a₄)
     return spherical_area_triangle(a₁, a₂, a₃) + spherical_area_triangle(a₁, a₄, a₃)
 end
@@ -673,8 +672,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
 
-    λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx, 1:Ny]), maximum(grid.λᶠᶠᵃ[1:Nx, 1:Ny])
-    φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx, 1:Ny]), maximum(grid.φᶠᶠᵃ[1:Nx, 1:Ny])
+    λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1])
+    φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1])
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
