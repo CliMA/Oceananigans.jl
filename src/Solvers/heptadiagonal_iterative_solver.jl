@@ -241,17 +241,17 @@ end
 
     coeff_d[t] = C[i, j, k]
 
-    if dims[1]
+    if dims[1] && i < Nx
         coeff_x[t]    = Ax[i+1, j, k] 
         coeff_d[t]   -= coeff_x[t]
         coeff_d[t+1] -= coeff_x[t]
     end
-    if dims[2]
+    if dims[2] && j < Ny
         coeff_y[t]     = Ay[i, j+1, k] 
         coeff_d[t]    -= coeff_y[t] 
         coeff_d[t+Nx] -= coeff_y[t]
-    end
-    if dims[3]
+    end 
+    if dims[3] && k < Nz
         coeff_z[t]        = Az[i, j, k+1] 
         coeff_d[t]       -= coeff_z[t]
         coeff_d[t+Nx*Ny] -= coeff_z[t]
