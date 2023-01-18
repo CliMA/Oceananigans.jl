@@ -9,9 +9,7 @@ import Oceananigans.Architectures: architecture
 "Boolean denoting whether AMGX.jl can be loaded on machine."
 const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
-abstract type MultigridSolver{A, G, L, T, F} end
-
-mutable struct MultigridCPUSolver{A, G, L, T, F, R, M} <: MultigridSolver{A, G, L, T, F}
+mutable struct MultigridSolver{A, G, L, T, F, R, M} 
                   architecture :: A
                           grid :: G
                         matrix :: L
@@ -20,20 +18,8 @@ mutable struct MultigridCPUSolver{A, G, L, T, F, R, M} <: MultigridSolver{A, G, 
                        maxiter :: Int
                        x_array :: F
                        b_array :: F
-                 amg_algorithm :: R
+                    amg_solver :: R
                             ml :: M
-end
-
-mutable struct MultigridGPUSolver{A, G, L, T, F, S} <: MultigridSolver{A, G, L, T, F}
-                  architecture :: A
-                          grid :: G
-                        matrix :: L
-                        abstol :: T
-                        reltol :: T
-                       maxiter :: Int
-                       x_array :: F
-                       b_array :: F
-                   amgx_solver :: S
 end
 
 mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
@@ -46,6 +32,9 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
                      csr_matrix :: A
 
 end
+
+const MultiGridCPUSolver = MultigridSolver{CPU}
+const MultiGridGPUSolver = MultigridSolver{GPU}
 
 architecture(solver::MultigridSolver) = solver.architecture
     
@@ -144,17 +133,17 @@ function MultigridSolver_on_architecture(::CPU;
                                          )
     ml = create_multilevel(amg_algorithm, matrix)
 
-    return MultigridCPUSolver(CPU(),
-                              template_field.grid,
-                              matrix,
-                              abstol,
-                              reltol,
-                              maxiter,
-                              x_array,
-                              b_array,
-                              amg_algorithm,
-                              ml
-                              )
+    return MultigridSolver(CPU(),
+                          template_field.grid,
+                          matrix,
+                          abstol,
+                          reltol,
+                          maxiter,
+                          x_array,
+                          b_array,
+                          amg_algorithm,
+                          ml
+                          )
 end
 
 function MultigridSolver_on_architecture(::GPU;
@@ -162,7 +151,7 @@ function MultigridSolver_on_architecture(::GPU;
                                          maxiter,
                                          reltol,
                                          abstol,
-                                         amg_algorithm,
+                                         algorithm,
                                          matrix,
                                          x_array,
                                          b_array
@@ -170,7 +159,7 @@ function MultigridSolver_on_architecture(::GPU;
 
     amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
 
-    return MultigridGPUSolver(GPU(),
+    return MultigridSolver(GPU(),
                               template_field.grid,
                               matrix,
                               abstol,
@@ -178,7 +167,8 @@ function MultigridSolver_on_architecture(::GPU;
                               maxiter,
                               x_array,
                               b_array,
-                              amgx_solver
+                              amgx_solver,
+                              nothing
                               )
 end
 
@@ -219,7 +209,7 @@ function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sq
                                )
 end
 
-@inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
+@inline create_multilevel(::RugeStubenAMG, A)          = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
 function initialize_matrix(::CPU, template_field, linear_operator!, args...)
