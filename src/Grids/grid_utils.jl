@@ -285,7 +285,7 @@ See [`znodes`](@ref) for examples.
 """
 function ynodes(grid, loc; reshape=false)
 
-    y = view(all_y_nodes(typeof(loc), grid),
+    y = view(ynodes(grid, loc),
              interior_indices(loc, topology(grid, 2), grid.Ny))
 
     return reshape ? Base.reshape(y, 1, length(y), 1) : y
@@ -330,7 +330,7 @@ julia> zF = znodes(Face, horz_periodic_grid)
 """
 function znodes(grid, loc; reshape=false)
 
-    z = view(all_z_nodes(typeof(loc), grid),
+    z = view(znodes(grid, loc),
              interior_indices(loc, topology(grid, 3), grid.Nz))
 
     return reshape ? Base.reshape(z, 1, 1, length(z)) : z
