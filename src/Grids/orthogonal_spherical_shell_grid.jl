@@ -127,6 +127,9 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
+    @warn "OrthogonalSphericalShellGrid is still under development. Use with caution!"
+    @warn "Azᶜᶜᵃ are correct for interior points, but Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ are wrong close to boundaries"
+
     radius = FT(radius)
 
     TX, TY, TZ = topology
@@ -226,33 +229,47 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δyᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    [Δxᶜᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
+    Δσxᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
+    Δσxᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
+    Δσxᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    Δσxᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    [Δxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη   ]
-    [Δxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη   ]
-    [Δxᶠᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη   ]
+    Δσyᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
+    Δσyᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    Δσyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
+    Δσyᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    [Δxᶜᶠᵃ[i, j] = central_angled((φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη+1 ]
+    [Δσxᶜᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
 
-    [Δxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη+1 ] 
-    [Δxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη+1 ]
-    [Δxᶠᶠᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη+1 ]
+    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη   ]
+    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη   ]
+    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη   ]
 
-    [Δyᶜᶜᵃ[i, j] = central_angled((φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
+    [Δσxᶜᶠᵃ[i, j] = central_angled((φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη+1 ]
 
-    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in 1:Nη+1 ]
-    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in (1,)   ]
-    [Δyᶜᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in (Nη+1,)]
+    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη+1 ] 
+    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη+1 ]
+    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη+1 ]
 
-    [Δyᶠᶜᵃ[i, j] = central_angled((φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in 1:Nη   ]
+    [Δσyᶜᶜᵃ[i, j] = central_angled((φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
+
+    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in 1:Nη+1 ]
+    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in (1,)   ]
+    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in (Nη+1,)]
+
+    [Δσyᶠᶜᵃ[i, j] = central_angled((φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in 1:Nη   ]
     
-    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in 1:Nη+1 ]
-    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in (1,)   ]
-    [Δyᶠᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in (Nη+1,)]
+    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in 1:Nη+1 ]
+    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in (1,)   ]
+    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in (Nη+1,)]
+
+    ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ]
+    ΔΣ = [Δσxᶜᶜᵃ, Δσxᶠᶜᵃ, Δσxᶜᶠᵃ, Δσxᶠᶠᵃ, Δσyᶜᶜᵃ, Δσyᶜᶠᵃ, Δσyᶠᶜᵃ, Δσyᶠᶠᵃ]
 
     # convert degrees to meters
-    for Δs in [Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ]
-        @. Δs = radius * deg2rad(Δs)
+    for (Δs, Δσ) in zip(ΔS, ΔΣ)
+        @. Δσ = deg2rad(Δσ)
+        @. Δs = radius * Δσ
     end
 
     Azᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
@@ -269,6 +286,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
 
+    fill_halos_orthogonal_spherical_shell_grid!(Azᶜᶜᵃ, (ξᶜᵃᵃ, ηᵃᶜᵃ), (Hx, Hy))
+
     for j in 1:Nη, i in 1:Nξ+1
         a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶠᶠᵃ[i-1,  j ], 1)
         b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
@@ -277,6 +296,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
         Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
+
+    fill_halos_orthogonal_spherical_shell_grid!(Azᶠᶜᵃ, (ξᶠᵃᵃ, ηᵃᶜᵃ), (Hx, Hy))
 
     for j in 1:Nη+1, i in 1:Nξ
         a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
@@ -287,6 +308,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Azᶜᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
 
+    fill_halos_orthogonal_spherical_shell_grid!(Azᶜᶠᵃ, (ξᶜᵃᵃ, ηᵃᶠᵃ), (Hx, Hy))
+
     for j in 1:Nη+1, i in 1:Nη+1
         a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
         b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
@@ -295,6 +318,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
         Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
+
+    fill_halos_orthogonal_spherical_shell_grid!(Azᶠᶠᵃ, (ξᶠᵃᵃ, ηᵃᶠᵃ), (Hx, Hy))
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -305,15 +330,60 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                                     Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
+"""placeholder; to be deleted"""
+function fill_halos_orthogonal_spherical_shell_grid!(A::OffsetArray, (ξ, η), (Hx, Hy))
+    Nx, Ny = length(ξ), length(η)
+
+    for i in 1:Hx
+        @inbounds @. A[ 1-i, :] = A[Nx-i, :]
+        @inbounds @. A[Nx+i, :] = A[ i-1, :]
+    end
+
+    for j in 1:Hy
+        @inbounds @. A[:,  1-j] = A[:, Ny-j]
+        @inbounds @. A[:, Ny+j] = A[:,  j-1]
+    end
+
+    if Hx==Hy
+        H = Hx
+        for d in 1:H
+            @inbounds A[ 1-d,  1-d] = A[Nx-d, Ny-d]
+            @inbounds A[Nx+d, Ny+d] = A[ d-1,  d-1]
+        end
+    end
+
+    return nothing
+end
+
+"""
+    spherical_area_triangle(a, b, c)
+
+Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
+
+The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
+are the triangle's inner angles.
+
+It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
+``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``.
+"""
+function spherical_area_triangle(a::Number, b::Number, c::Number)
+    cosa, cosb, cosc = cos.((a, b, c))
+
+    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
+    tan½E /= 1 + cosa + cosb + cosc
+
+    return 2atan(tan½E)
+end
+
 """
     spherical_area_triangle(a₁, a₂, a₃)
 
-Return the area of a spherical triangle on the unit sphere whose points are given by 3-vectors,
+Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
 `a₁`, `a₂`, and `a₃` whose origin is the the center of the sphere. The formula was first given
-by Eriksson (1990). 
+by Eriksson (1990).
 
 Denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with ``a``, ``b``,
-and ``c`` the side os the triangle. It's been known since Euler and Lagrange that
+and ``c`` the side of the triangle. It has been known since Euler and Lagrange that
 ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the triangle's
 excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``. On the unit
 sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed that ``P`` above 
@@ -341,7 +411,35 @@ Return the area of a spherical quadrilateral on the unit sphere whose points are
 taken so that points `a₁`, `a₂`, `a₃`, and `a₄` correspond to the edges of the quadrilateral in clockwise
 or counterclockwise order.
 """
-spherical_area_quadrilateral(a₁, a₂, a₃, a₄) = spherical_area_triangle(a₁, a₂, a₃) + spherical_area_triangle(a₁, a₄, a₃)
+function spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
+    # a₁, a₂, a₃, a₄ = check_ccw(a₁, a₂, a₃, a₄)
+    return spherical_area_triangle(a₁, a₂, a₃) + spherical_area_triangle(a₁, a₄, a₃)
+end
+
+ccw(a, b, c) = sign((b[1]-a[1]) * (c[2]-a[2]) - (c[1] - a[1])*(b[2]-a[2]))
+ccw(a, b, c, d) = ccw(d, a, b), ccw(a, b, c), ccw(b, c, d), ccw(c, d, a)
+
+function check_ccw(a₁, a₂, a₃, a₄)
+    check = ccw(a₁, a₂, a₃, a₄) .> 0
+
+    if check == (true, true, true, true)
+        return a₁, a₂, a₃, a₄
+    elseif check == (false, false, true, true)
+        return check_ccw(a₂, a₁, a₃, a₄)
+    elseif check == (false, true, false, true)
+        return check_ccw(a₃, a₂, a₁, a₄)
+    elseif check == (false, true, true, false)
+        return check_ccw(a₄, a₂, a₃, a₁)
+    elseif check == (true, false, false, true)
+        return check_ccw(a₁, a₃, a₂, a₄)
+    elseif check == (true, false, true, false)
+        return check_ccw(a₁, a₄, a₃, a₂)
+    elseif check == (true, true, false, false)
+        return check_ccw(a₁, a₂, a₄, a₃)
+    elseif check == (false, false, false, false)
+        return check_ccw(a₄, a₃, a₂, a₁)
+    end
+end
 
 function lat_lon_to_cartesian(lat, lon, radius)
     abs(lat) > 90 && error("lat must be within -90 ≤ lat ≤ 90")
