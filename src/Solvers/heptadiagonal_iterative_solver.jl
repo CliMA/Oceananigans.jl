@@ -183,22 +183,22 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     wait(device(arch), event_core)
 
     # Ensure that Periodic boundary conditions are satisifed
-    if dims[1] 
+    if dims[1] && topo[1] == Periodic
         workgroup, worksize  = (16, 16), (N[2], N[3])
         fill_boundaries_x! = _fill_boundaries_x!(device(arch), workgroup, worksize)
-        event_boundaries_x =  fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, topo[1])
+        event_boundaries_x =  fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N)
         wait(device(arch), event_boundaries_x)
     end
-    if dims[2]
+    if dims[2] && topo[2] == Periodic
         workgroup, worksize  = (16, 16), (N[1], N[3])
         fill_boundaries_y! = _fill_boundaries_y!(device(arch), workgroup, worksize)
-        event_boundaries_y =  fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, topo[2])
+        event_boundaries_y =  fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N)
         wait(device(arch), event_boundaries_y)
     end
-    if dims[3]
+    if dims[3] && topo[3] == Periodic
         workgroup, worksize  = (16, 16), (N[1], N[2])
         fill_boundaries_z! = _fill_boundaries_z!(device(arch), workgroup, worksize)
-        event_boundaries_z =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N, topo[3])
+        event_boundaries_z =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N)
         wait(device(arch), event_boundaries_z)
     end
 
@@ -271,9 +271,7 @@ end
 # Since zero-flux BC were implied, we have to also have to add the coefficients corresponding to i-1 and i+1
 # (respectively). Since the off-diagonal elements are symmetric we can fill it in only once
 
-@kernel _fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Bounded}) = nothing
-@kernel _fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Flat})    = nothing
-@kernel function _fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Periodic})
+@kernel function _fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N)
     j, k = @index(Global, NTuple)
     Nx, Ny, Nz = N
     tₘ = 1  + Nx * (j - 1 + Ny * (k - 1))
@@ -283,9 +281,7 @@ end
     coeff_d[tₚ]      -= coeff_bound_x[tₘ]
 end
 
-@kernel _fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Bounded}) = nothing
-@kernel _fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Flat})    = nothing
-@kernel function _fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N, ::Type{Periodic})
+@kernel function _fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N)
     i, k = @index(Global, NTuple)
     Nx, Ny, Nz = N
     tₘ = i + Nx * (1 - 1 + Ny * (k - 1))
@@ -295,9 +291,7 @@ end
     coeff_d[tₚ]      -= coeff_bound_y[tₘ]
 end
     
-@kernel _fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Bounded}) = nothing 
-@kernel _fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Flat})    = nothing
-@kernel function _fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
+@kernel function _fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N)
     i, j = @index(Global, NTuple)
     Nx, Ny, Nz = N
     tₘ = i + Nx * (j - 1 + Ny * (1 - 1))
