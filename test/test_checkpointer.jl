@@ -77,17 +77,15 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
     return run_checkpointer_tests(true_model, test_model, 1e-6)
 end
 
-function test_shallow_water_checkpointer(arch, free_surface)
+function test_shallow_water_checkpointer(arch)
     #####
     ##### Create and run "true model"
     #####
 
-    using Oceananigans
-    using Oceananigans.Models: ShallowWaterModel
     Lx, Ly, Lz = 2π, 20, 10
     Nx, Ny = 16, 16
     
-    grid = RectilinearGrid(size = (Nx, Ny),
+    grid = RectilinearGrid(arch,size = (Nx, Ny),
                            x = (0, Lx), y = (-Ly/2, Ly/2),
                            topology = (Periodic, Bounded, Flat))
 
@@ -221,6 +219,7 @@ for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
         test_thermal_bubble_checkpointer_output(arch)
+        test_shallow_water_checkpointer(arch)
     
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
                              ImplicitFreeSurface(gravitational_acceleration=1)]
