@@ -138,8 +138,8 @@ Return the sparse matrix constructors based on the pentadiagonal coeffients (`co
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
-    D  = arch_array(arch,  D)
-
+    D = arch_array(arch,  D)
+    
     N = size(grid)
 
     topo = topology(grid)
@@ -176,7 +176,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
 
     # Fill matrix elements that stay constant in time
 
-    workgroup, worksize  = (16, 16), N
+    workgroup, worksize  = heuristic_workgroup(N...), N
 
     fill_core_matrix! = _fill_core_matrix!(device(arch), workgroup, worksize)
     event_core        =  fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N, dims)
@@ -184,21 +184,21 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
 
     # Ensure that Periodic boundary conditions are satisifed
     if dims[1] && topo[1] == Periodic
-        workgroup, worksize  = (16, 16), (N[2], N[3])
-        fill_boundaries_x! = _fill_boundaries_x!(device(arch), workgroup, worksize)
-        event_boundaries_x =  fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N)
+        workgroup, worksize = heuristic_workgroup(N[2], N[3]), (N[2], N[3])
+        fill_boundaries_x!  = _fill_boundaries_x!(device(arch), workgroup, worksize)
+        event_boundaries_x  =  fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N)
         wait(device(arch), event_boundaries_x)
     end
     if dims[2] && topo[2] == Periodic
-        workgroup, worksize  = (16, 16), (N[1], N[3])
-        fill_boundaries_y! = _fill_boundaries_y!(device(arch), workgroup, worksize)
-        event_boundaries_y =  fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N)
+        workgroup, worksize = heuristic_workgroup(N[1], N[3]), (N[1], N[3])
+        fill_boundaries_y!  = _fill_boundaries_y!(device(arch), workgroup, worksize)
+        event_boundaries_y  =  fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, N)
         wait(device(arch), event_boundaries_y)
     end
     if dims[3] && topo[3] == Periodic
-        workgroup, worksize  = (16, 16), (N[1], N[2])
-        fill_boundaries_z! = _fill_boundaries_z!(device(arch), workgroup, worksize)
-        event_boundaries_z =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N)
+        workgroup, worksize = heuristic_workgroup(N[2], N[2]), (N[1], N[2])
+        fill_boundaries_z!  = _fill_boundaries_z!(device(arch), workgroup, worksize)
+        event_boundaries_z  =  fill_boundaries_z!(coeff_d, coeff_bound_yz, Az, N)
         wait(device(arch), event_boundaries_z)
     end
 
