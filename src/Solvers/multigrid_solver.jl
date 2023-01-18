@@ -158,7 +158,7 @@ function MultigridSolver_on_architecture(::GPU;
                                          maxiter,
                                          reltol,
                                          abstol,
-                                         algorithm,
+                                         amg_algorithm,
                                          matrix,
                                          x_array,
                                          b_array
@@ -187,9 +187,7 @@ function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Aggregation
                                          "max_iters"         => maxiter, 
                                          "store_res_history" => 1, 
                                          "tolerance"         => tolerance, 
-                                         "convergence"       => convergence,
-                                         "algorithm"         => algorithm,
-                                         "cycle"             => "V"))
+                                         "convergence"       => convergence))
     catch e 
         @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX()`?"
         AMGX.initialize()
@@ -198,9 +196,7 @@ function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Aggregation
                                          "max_iters"         => maxiter, 
                                          "store_res_history" => 1,
                                          "tolerance"         => tolerance, 
-                                         "convergence"       => convergence,
-                                         "algorithm"         => algorithm,
-                                         "cycle"             => "V"))
+                                         "convergence"       => convergence))
     end
     resources     = AMGX.Resources(config)
     solver        = AMGX.Solver(resources, AMGX.dDDI, config)
