@@ -30,7 +30,6 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
                        device_x :: V
                        device_b :: V
                      csr_matrix :: A
-
 end
 
 const MultigridCPUSolver = MultigridSolver{CPU}
@@ -164,7 +163,7 @@ function MultigridSolver_on_architecture(::GPU;
                                          b_array
                                          )
 
-    amgx_solver = AMGXMultigridSolver(matrix; maxiter, reltol, abstol)
+    amg_solver = AMGXMultigridSolver(matrix; maxiter, reltol, abstol)
 
     return MultigridSolver(GPU(),
                               template_field.grid,
@@ -174,7 +173,7 @@ function MultigridSolver_on_architecture(::GPU;
                               maxiter,
                               x_array,
                               b_array,
-                              amgx_solver,
+                              amg_solver,
                               nothing
                               )
 end
