@@ -1,4 +1,4 @@
-using SparseArrays, LinearAlgebra, Statistics
+using SparseArrays, LinearAlgebra, Statistics, Threads
 
 mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVector, Ti}
      mhat :: VF
