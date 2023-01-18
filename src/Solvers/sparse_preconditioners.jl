@@ -66,6 +66,8 @@ validate_settings(::Val{:AsymptoticInverse}, arch, settings) = haskey(settings, 
                                                                       settings :
                                                                       throw(ArgumentError("and order ∈ [0, 1, 2] has to be specified for AsymptoticInverse"))
 
+build_preconditioner(M::AbstractMatrix, matrix, settings)     = SparseInversePreconditioner(M)
+build_preconditioner(preconditioner_method, matrix, settings) = build_preconditioner(Val(preconditioner_method), matrix, settings)
 
 function build_preconditioner(::Val{:Default}, matrix, settings)
     default_method = architecture(matrix) isa CPU ? :ILUFactorization : :AsymptoticInverse
