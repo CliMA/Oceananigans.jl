@@ -138,7 +138,11 @@ Return the sparse matrix constructors based on the pentadiagonal coeffients (`co
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
-    D = arch_array(arch,  D)
+    Ax = arch_array(arch, Ax)
+    Ay = arch_array(arch, Ay)
+    Az = arch_array(arch, Az)
+    C  = arch_array(arch, C )
+    D  = arch_array(arch, D )
     
     N = size(grid)
 
