@@ -54,7 +54,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
                                 HeptadiagonalIterativeSolver(coeffs; reduced_dim, 
                                                              template = right_hand_side,
-                                                             grid = on_architecture(arch, grid), 
+                                                             grid, 
                                                              settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
