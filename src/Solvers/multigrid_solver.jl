@@ -367,7 +367,7 @@ function finalize_solver!(s::AMGXMultigridSolver)
     return nothing
 end
 
-finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
+finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amg_solver)
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 
