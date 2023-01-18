@@ -179,7 +179,7 @@ function MultigridSolver_on_architecture(::GPU;
                               )
 end
 
-function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Classical, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Aggregation, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
     tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
     algorithm = algorithm == :Classical ? "CLASSICAL" : "AGGREGATION"
     try
