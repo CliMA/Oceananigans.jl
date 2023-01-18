@@ -77,6 +77,44 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
     return run_checkpointer_tests(true_model, test_model, 1e-6)
 end
 
+function test_shallow_water_checkpointer(arch, free_surface)
+    #####
+    ##### Create and run "true model"
+    #####
+
+    using Oceananigans
+    using Oceananigans.Models: ShallowWaterModel
+    Lx, Ly, Lz = 2π, 20, 10
+    Nx, Ny = 16, 16
+    
+    grid = RectilinearGrid(size = (Nx, Ny),
+                           x = (0, Lx), y = (-Ly/2, Ly/2),
+                           topology = (Periodic, Bounded, Flat))
+
+    gravitational_acceleration = 1
+    coriolis = FPlane(f=1)
+    true_model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
+                                     timestepper = :RungeKutta3,
+                                     momentum_advection = WENO())
+    test_model = deepcopy(true_model)
+
+    U = 1 # Maximum jet velocity
+    f = coriolis.f
+    g = gravitational_acceleration
+    Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
+    
+    h̄(x, y, z) = Lz - Δη * tanh(y)
+    ū(x, y, z) = U * sech(y)^2
+    small_amplitude = 1e-4
+
+    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
+    uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
+    ū̄h(x, y, z) = ū(x, y, z) * h̄(x, y, z)
+    set!(true_model, uh = ū̄h, h = h̄)
+    
+    return run_checkpointer_tests(true_model, test_model, 1e-6)
+end
+
 function run_checkpointer_tests(true_model, test_model, Δt)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
