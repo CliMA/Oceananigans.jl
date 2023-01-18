@@ -316,12 +316,12 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 end
 
 
-@inline xnodes(grid::LatitudeLongitudeGrid, XL::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(XL, topology(grid, 1), grid.Nx))
-@inline xnodes(grid::LatitudeLongitudeGrid, XL::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(XL, topology(grid, 1), grid.Nx))
-@inline ynodes(grid::LatitudeLongitudeGrid, YL::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(YL, topology(grid, 2), grid.Ny))
-@inline ynodes(grid::LatitudeLongitudeGrid, YL::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(YL, topology(grid, 2), grid.Ny))
-@inline znodes(grid::LatitudeLongitudeGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ZL, topology(grid, 3), grid.Nz))
-@inline znodes(grid::LatitudeLongitudeGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ZL, topology(grid, 3), grid.Nz))
+@inline xnodes(grid::LatitudeLongitudeGrid, XL::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
+@inline xnodes(grid::LatitudeLongitudeGrid, XL::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
+@inline ynodes(grid::LatitudeLongitudeGrid, YL::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::LatitudeLongitudeGrid, YL::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
+@inline znodes(grid::LatitudeLongitudeGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
+@inline znodes(grid::LatitudeLongitudeGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 
 @inline xnode(i, grid::LatitudeLongitudeGrid, XL::CoF) = xnodes(grid, XL)[i]
 @inline ynode(j, grid::LatitudeLongitudeGrid, YL::CoF) = ynodes(grid, YL)[j]

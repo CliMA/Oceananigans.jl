@@ -362,12 +362,12 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
 end
 
 CoF = Union{Face, Center}
-@inline xnodes(grid::RectilinearGrid, XL::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(XL, topology(grid, 1), grid.Nx))
-@inline xnodes(grid::RectilinearGrid, XL::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(XL, topology(grid, 1), grid.Nx))
-@inline ynodes(grid::RectilinearGrid, YL::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(YL, topology(grid, 2), grid.Ny))
-@inline ynodes(grid::RectilinearGrid, YL::Center; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(YL, topology(grid, 2), grid.Ny))
-@inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ZL, topology(grid, 3), grid.Nz))
-@inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ZL, topology(grid, 3), grid.Nz))
+@inline xnodes(grid::RectilinearGrid, XL::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
+@inline xnodes(grid::RectilinearGrid, XL::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
+@inline ynodes(grid::RectilinearGrid, YL::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::RectilinearGrid, YL::Center; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
+@inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
+@inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 
 @inline xnode(i, grid::RectilinearGrid, XL::CoF) = xnodes(grid, XL)[i]
 @inline ynode(j, grid::RectilinearGrid, YL::CoF) = ynodes(grid, YL)[j]
