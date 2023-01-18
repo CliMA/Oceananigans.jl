@@ -85,15 +85,17 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel, ::CPU
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
 
     # this loop can be parallelized!
-    Threads.@threads for j = 1:n 
-        @show j, n
-        # maximum number of elements in a column
-        ncolmax = nzrel * nnz(A[:, j])
+    @sync for j = 1:n 
+        @async begin
+            @show j, n
+            # maximum number of elements in a column
+            ncolmax = nzrel * nnz(A[:, j])
 
-        set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
-        mj             = spzeros(FT, n, 1)
-        mj[iterator.J] = iterator.mhat
-        M[:, j]        = mj
+            set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
+            mj             = spzeros(FT, n, 1)
+            mj[iterator.J] = iterator.mhat
+            M[:, j]        = mj
+        end
     end
 
     return M
