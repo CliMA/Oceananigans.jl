@@ -33,8 +33,8 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
 
 end
 
-const MultiGridCPUSolver = MultigridSolver{CPU}
-const MultiGridGPUSolver = MultigridSolver{GPU}
+const MultigridCPUSolver = MultigridSolver{CPU}
+const MultigridGPUSolver = MultigridSolver{GPU}
 
 architecture(solver::MultigridSolver) = solver.architecture
     
