@@ -76,7 +76,7 @@ Arguments
                     The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings.
-                   Options are `:Classic` (default, using a RugeStuben algorithm) or `:Aggregation`
+                   Options are `:Classical` (default, using a RugeStuben algorithm) or `:Aggregation`
                    (using a Smoothed and Unsmoothed Aggregation algorithm with V Cycle on `CPU` and `GPU`, respectively).
 """
 function MultigridSolver(linear_operation!::Function,
@@ -85,7 +85,7 @@ function MultigridSolver(linear_operation!::Function,
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = :Classic,
+                         amg_algorithm = :Classical,
                          )
 
     arch = architecture(template_field)
@@ -102,7 +102,7 @@ function MultigridSolver(matrix;
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = :Classic,
+                         amg_algorithm = :Classical,
                          )
 
     arch = architecture(template_field)
@@ -132,7 +132,7 @@ function MultigridSolver_on_architecture(::CPU;
                                          b_array
                                          )
 
-    if amg_algorithm == :Classic
+    if amg_algorithm == :Classical
         algorithm = RugeStubenAMG()
     else
         algorithm = SmoothedAggregationAMG()
