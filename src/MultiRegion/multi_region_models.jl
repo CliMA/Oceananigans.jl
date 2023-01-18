@@ -48,7 +48,6 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 @inline isregional(mrm::MultiRegionModel)        = true
 @inline devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 @inline getdevice(mrm::MultiRegionModel, d)      = getdevice(mrm.grid, d)
-@inline switch_region!(mrm::MultiRegionModel, d) = switch_region!(mrm.grid, d)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)

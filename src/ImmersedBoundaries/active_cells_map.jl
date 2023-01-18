@@ -3,7 +3,7 @@ using Oceananigans.Grids: AbstractGrid
 import Oceananigans.Utils: only_active_cells_in_worksize, calc_tendency_index
 using KernelAbstractions: @kernel, @index
 
-const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 @inline use_only_active_cells(grid::AbstractGrid)   = false
 @inline use_only_active_cells(grid::ActiveCellsIBG) = true
