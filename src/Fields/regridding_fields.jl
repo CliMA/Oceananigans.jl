@@ -60,7 +60,7 @@ end
 function regrid!(a, target_grid, source_grid, b)
     if we_can_regrid(a, target_grid, source_grid, b)
         arch = architecture(a)
-        source_z_faces = znodes(Face, source_grid)
+        source_z_faces = znodes(source_grid, Face())
 
         event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
         wait(device(arch), event)
@@ -91,8 +91,8 @@ end
     @unroll for k = 1:target_grid.Nz
         @inbounds target_field[i, j, k] = 0
 
-        z₋ = znode(Center(), Center(), Face(), i, j, k,   target_grid)
-        z₊ = znode(Center(), Center(), Face(), i, j, k+1, target_grid)
+        z₋ = znode(i, j, k,   target_grid, Center(), Center(), Face())
+        z₊ = znode(i, j, k+1, target_grid, Center(), Center(), Face())
 
         # Integrate source field from z₋ to z₊
         k₋_src = searchsortedfirst(source_z_faces, z₋)
@@ -103,8 +103,8 @@ end
             @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
-        zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
-        zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src+1, source_grid)
+        zk₋_src = znode(i_src, j_src, k₋_src, source_grid  , Center(), Center(), Face())
+        zk₊_src = znode(i_src, j_src, k₊_src+1, source_grid, Center(), Center(), Face())
 
         # Add contribution to integral from fractional bottom part,
         # if that region is a part of the grid.
