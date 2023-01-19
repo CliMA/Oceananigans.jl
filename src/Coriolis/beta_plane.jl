@@ -45,7 +45,7 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
     return BetaPlane{T}(f₀, β)
 end
 
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(Face(), Face(), Center(), i, j, k, grid)
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Face(), Center())
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
     @inbounds - (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Center(), Center())) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
