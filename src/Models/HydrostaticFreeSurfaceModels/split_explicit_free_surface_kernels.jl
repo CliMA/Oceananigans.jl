@@ -149,7 +149,10 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     wait(device(arch), event)
 end
 
-@inline calc_ab2_tendencies!(Gⁿ, G⁻, χ) = G⁻ .= (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ .- (convert(eltype(Gⁿ), (0.5)) + χ) .* G⁻
+@kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds G⁻[i, j, k] = (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ)
+end
 
 """
 Explicitly step forward η in substeps.
@@ -163,30 +166,30 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     arch = architecture(grid)
 
     # we start the time integration of η from the average ηⁿ     
-    η = free_surface.η
-    state = free_surface.state
+    η         = free_surface.η
+    state     = free_surface.state
     auxiliary = free_surface.auxiliary
-    settings = free_surface.settings
-    g = free_surface.gravitational_acceleration
+    settings  = free_surface.settings
+    g         = free_surface.gravitational_acceleration
 
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
 
     Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
-    calc_ab2_tendencies!(model.timestepper.Gⁿ.u, Gu⁻, χ)
-    calc_ab2_tendencies!(model.timestepper.Gⁿ.v, Gv⁻, χ)
-
-    # reset free surface averages
-    set_average_to_zero!(state)
+    event_Gu = launch(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
+    event_Gv = launch(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]..., velocities_update[2]...)))
 
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
-    wait(device(arch), MultiEvent(masking_events))
+    wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
 
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
+
+    # reset free surface averages
+    set_average_to_zero!(state)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
