@@ -204,6 +204,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     set!(state.V, state.V̅)
 
     # Solve for the free surface at tⁿ⁺¹
+
     for substep in 1:settings.substeps
         split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
