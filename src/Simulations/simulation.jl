@@ -150,6 +150,7 @@ function reset!(sim::Simulation)
     sim.initialized = false
     sim.running = true
     reset!(sim.model.timestepper)
+    reset!(sim.model)
     return nothing
 end
 

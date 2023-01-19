@@ -6,6 +6,7 @@ using Oceananigans.AbstractOperations: Δz, GridMetricOperation
 using KernelAbstractions: @index, @kernel
 using Adapt
 
+import Oceananigans.TimeSteppers: reset!
 import Base.show
 
 """
@@ -83,7 +84,7 @@ Return the split-explicit state. Note that `η̅` is solely used for setting the
 at the next substep iteration -- it essentially acts as a filter for `η`.
 """
 function SplitExplicitState(grid::AbstractGrid)
-    η̅ = Field{Center, Center, Nothing}(grid)
+    η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     U = Field{Face, Center, Nothing}(grid)
     U̅ = Field{Face, Center, Nothing}(grid)
@@ -179,6 +180,17 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 # convenience functor
 function (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings)
     return SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
+end
+
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(sefs.settings.substeps) steps")
+
+Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
+
+function reset!(sefs::SplitExplicitFreeSurface)
+    for name in propertynames(sefs.state)
+        var = getproperty(free_surface.state, name)
+        fill!(var, 0.0)
+    end
 end
 
 # Adapt

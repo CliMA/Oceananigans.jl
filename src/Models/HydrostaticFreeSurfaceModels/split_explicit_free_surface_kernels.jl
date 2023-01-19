@@ -49,7 +49,7 @@ using Oceananigans.ImmersedBoundaries: conditional_∂x_f, conditional_∂x_c, c
 
 @inline div_xyᶜᶜᶠ_bound(i, j, k, ibg::IBG, TX, TY, u, v) = 
     1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(Center(), Center(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, u) +
-                                conditional_∂y_c(Center(), Center(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
+                               conditional_∂y_c(Center(), Center(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
@@ -69,7 +69,7 @@ end
     TX, TY, _ = topology(grid)
 
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, 1, grid, TX, TY, U, V)
+    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, k_top, grid, TX, TY, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
@@ -184,7 +184,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
 
-    Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
+    Δτ =   # we evolve for two times the Δt 
 
     event_Gu = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
     event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
@@ -199,6 +199,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     set_average_to_zero!(state)
+
+    set!(state.U, state.U̅)
+    set!(state.V, state.V̅)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
