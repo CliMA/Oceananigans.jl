@@ -13,7 +13,6 @@ export instantiate
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule 
 export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
 export isregional, getregion, _getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
-export spherical_area_triangle, central_angle, central_angle_degrees
 
 import CUDA  # To avoid name conflicts
 
