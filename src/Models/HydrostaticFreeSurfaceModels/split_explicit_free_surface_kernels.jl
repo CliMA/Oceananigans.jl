@@ -169,25 +169,26 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     settings = free_surface.settings
     g = free_surface.gravitational_acceleration
 
-    U, V = (state.U, state.V)
     Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
-
-    u, v, _ = model.velocities # this is u⋆
 
     Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
+
+    u, v, _ = model.velocities
 
     # reset free surface averages
     set_average_to_zero!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]..., velocities_update[2]...)))
+
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic mode of tendency fields
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
-
+    sum!(auxiliary.Gᵁ, u * Δz)
+    sum!(auxiliary.Gⱽ, v * Δz)
+    
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
 
