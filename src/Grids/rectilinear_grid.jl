@@ -361,7 +361,7 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.zᵃᵃᶜ))
 end
 
-CoF = Union{Face, Center}
+const CoF = Union{Face, Center}
 @inline xnodes(grid::RectilinearGrid, XL::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
 @inline xnodes(grid::RectilinearGrid, XL::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
 @inline ynodes(grid::RectilinearGrid, YL::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
@@ -380,8 +380,6 @@ CoF = Union{Face, Center}
 @inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
 @inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))
 @inline znodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(znode, grid, computed_dependencies=(; XL, YL, ZL))
-
-
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)

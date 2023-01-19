@@ -7,6 +7,7 @@ using OffsetArrays: IdOffsetRange
 ##### Convenience functions
 #####
 const BoundedTopology = Union{Bounded, LeftConnected}
+const CoF = Union{Face, Center}
 
 Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
@@ -349,9 +350,9 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(grid::AbstractGrid, loc; reshape=false)
+function nodes(grid::AbstractGrid, loc::NTuple{3, CoF}; reshape=false, kwargs...)
     if reshape
-        x, y, z = nodes(grid, loc; reshape=false)
+        x, y, z = nodes(grid, loc; reshape=false, kwargs...)
 
         N = (length(x), length(y), length(z))
 
@@ -361,9 +362,9 @@ function nodes(grid::AbstractGrid, loc; reshape=false)
 
         return (x, y, z)
     else
-        return (xnodes(grid, loc[1]),
-                ynodes(grid, loc[2]),
-                znodes(grid, loc[3]))
+        return (xnodes(grid, loc[1]; kwargs...),
+                ynodes(grid, loc[2]; kwargs...),
+                znodes(grid, loc[3]; kwargs...))
     end
 end
 
