@@ -186,9 +186,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic mode of tendency fields
-    sum!(auxiliary.Gᵁ, u * Δz)
-    sum!(auxiliary.Gⱽ, v * Δz)
-    
+    sum!(auxiliary.Gᵁ, Gu * Δz)
+    sum!(auxiliary.Gⱽ, Gv * Δz)
+
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
 
