@@ -157,10 +157,10 @@ end
 """
 Explicitly step forward η in substeps.
 """
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update) =
+ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ, velocities_update)
 
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events)
 
     grid = model.grid
     arch = architecture(grid)
@@ -181,7 +181,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), MultiEvent(tuple(velocities_update[1]..., velocities_update[2]...)))
+    wait(device(arch), MultiEvent(prognostic_field_events[1]))
 
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
@@ -207,5 +207,5 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     fill_halo_regions!(η)
 
-    return NoneEvent()
+    return prognostic_field_events
 end
