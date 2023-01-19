@@ -6,6 +6,7 @@ using Adapt
 using Adapt: adapt_structure
 
 using Oceananigans
+using Oceananigans.Utils
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -215,7 +216,6 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     any(any.(isnan, λS)) &&
         @warn "Cubed sphere face contains a grid point at a pole whose longitude λ is undefined (NaN)."
 
-
     ## Grid metrics
 
     Δxᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
@@ -238,29 +238,29 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δσyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δσyᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    [Δσxᶜᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
+    [Δσxᶜᶜᵃ[i, j] = central_angle_degrees((φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
 
-    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη   ]
-    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη   ]
-    [Δσxᶠᶜᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη   ]
+    [Δσxᶠᶜᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη   ]
+    [Δσxᶠᶜᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη   ]
+    [Δσxᶠᶜᵃ[i, j] = central_angle_degrees((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη   ]
 
-    [Δσxᶜᶠᵃ[i, j] = central_angled((φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη+1 ]
+    [Δσxᶜᶠᵃ[i, j] = central_angle_degrees((φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη+1 ]
 
-    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη+1 ] 
-    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη+1 ]
-    [Δσxᶠᶠᵃ[i, j] = central_angled((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη+1 ]
+    [Δσxᶠᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in 2:Nξ   , j in 1:Nη+1 ] 
+    [Δσxᶠᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])) for i in (1,)   , j in 1:Nη+1 ]
+    [Δσxᶠᶠᵃ[i, j] = central_angle_degrees((φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])) for i in (Nξ+1,), j in 1:Nη+1 ]
 
-    [Δσyᶜᶜᵃ[i, j] = central_angled((φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
+    [Δσyᶜᶜᵃ[i, j] = central_angle_degrees((φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in 1:Nη   ]
 
-    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in 1:Nη+1 ]
-    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in (1,)   ]
-    [Δσyᶜᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in (Nη+1,)]
+    [Δσyᶜᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in 1:Nη+1 ]
+    [Δσyᶜᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ   , j in (1,)   ]
+    [Δσyᶜᶠᵃ[i, j] = central_angle_degrees((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ   , j in (Nη+1,)]
 
-    [Δσyᶠᶜᵃ[i, j] = central_angled((φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in 1:Nη   ]
+    [Δσyᶠᶜᵃ[i, j] = central_angle_degrees((φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1]), (φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in 1:Nη   ]
     
-    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in 1:Nη+1 ]
-    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in (1,)   ]
-    [Δσyᶠᶠᵃ[i, j] = central_angled((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in (Nη+1,)]
+    [Δσyᶠᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in 1:Nη+1 ]
+    [Δσyᶠᶠᵃ[i, j] = central_angle_degrees((φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ]), (φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])) for i in 1:Nξ+1 , j in (1,)   ]
+    [Δσyᶠᶠᵃ[i, j] = central_angle_degrees((φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ]), (φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])) for i in 1:Nξ+1 , j in (Nη+1,)]
 
     ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ]
     ΔΣ = [Δσxᶜᶜᵃ, Δσxᶠᶜᵃ, Δσxᶜᶠᵃ, Δσxᶠᶠᵃ, Δσyᶜᶜᵃ, Δσyᶜᶠᵃ, Δσyᶠᶜᵃ, Δσyᶠᶠᵃ]
@@ -355,54 +355,6 @@ function fill_halos_orthogonal_spherical_shell_grid!(A::OffsetArray, (ξ, η), (
 end
 
 """
-    spherical_area_triangle(a, b, c)
-
-Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
-
-The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
-are the triangle's inner angles.
-
-It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
-``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``.
-"""
-function spherical_area_triangle(a::Number, b::Number, c::Number)
-    cosa, cosb, cosc = cos.((a, b, c))
-
-    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
-    tan½E /= 1 + cosa + cosb + cosc
-
-    return 2atan(tan½E)
-end
-
-"""
-    spherical_area_triangle(a₁, a₂, a₃)
-
-Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
-`a₁`, `a₂`, and `a₃` whose origin is the the center of the sphere. The formula was first given
-by Eriksson (1990).
-
-Denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with ``a``, ``b``,
-and ``c`` the side of the triangle. It has been known since Euler and Lagrange that
-``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the triangle's
-excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2\\cos a \\cos b \\cos c)^{1/2}``. On the unit
-sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed that ``P`` above 
-the same as the volume defined by the vectors `a₁`, `a₂`, and `a₃`, that is
-``P = |\\boldsymbol{a}_1 \\cdot (\\boldsymbol{a}_2 \\times \\boldsymbol{a}_2)|``.
-
-References
-==========
-Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
-"""
-function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
-    (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
-
-    tan½E = abs(dot(a₁, cross(a₂, a₃)))
-    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
-
-    return 2atan(tan½E)
-end
-
-"""
     spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
 
 Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
@@ -450,38 +402,6 @@ lat_lon_to_x(lat, lon, radius) = radius * cosd(lon) * cosd(lat)
 lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
 lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
 
-"""
-    hav(x)
-
-Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
-"""
-hav(x) = sin(x/2)^2
-
-"""
-    central_angle((φ₁, λ₁), (φ₂, λ₂))
-
-Compute the central angle (in radians) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
-
-References
-==========
-- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
-"""
-function central_angle((φ₁, λ₁), (φ₂, λ₂))
-    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
-
-    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
-end
-
-"""
-    central_angled((φ₁, λ₁), (φ₂, λ₂))
-
-Compute the central angle (in degrees) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
-
-See also [`central_angle`](@ref).
-"""
-central_angled((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
