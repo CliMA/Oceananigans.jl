@@ -196,8 +196,8 @@ end
 
 Base.summary(grid::OrthogonalSphericalShellGrid{FT, FullyConnected, FullyConnected, TZ}) where {FT, TZ} = 
     string(size_summary(size(grid)),
-           " OrthogonalSphericalShellGrid topology(FullyConnected, FullyConnected, $TZ)",
-           " with ", size_summary(halo_size(grid)), " halo")
+           " OrthogonalSphericalShellGrid with topology (FullyConnected, FullyConnected, $TZ)",
+           " and with ", size_summary(halo_size(grid)), " halo")
 
 function Base.summary(grid::ConformalCubedSphereGrid)
     Nx, Ny, Nz, Nf = size(grid)
