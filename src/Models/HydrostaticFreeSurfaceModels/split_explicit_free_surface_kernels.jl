@@ -36,8 +36,8 @@ using Oceananigans.Operators
     k_top = grid.Nz+1
 
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜ(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠ(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜ_bound(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠ_bound(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
@@ -45,7 +45,7 @@ end
     k_top = grid.Nz+1
     
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ(i, j, 1, grid, U, V)
+    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, 1, grid, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
@@ -60,14 +60,9 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     vel_weight = settings.velocity_weights[substep_index]
     η_weight   = settings.free_surface_weights[substep_index]
 
-    fill_halo_regions!(η)
-
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
             dependencies=Event(device(arch)))
-
-    fill_halo_regions!(U)
-    fill_halo_regions!(V)
 
     wait(device(arch), event)
 
