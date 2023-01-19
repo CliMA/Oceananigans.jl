@@ -49,6 +49,8 @@ to use `sparse_inverse_preconditioner`
 `ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 """
+@inline architecture(::CuSparseMatrixCSC) = GPU()
+@inline architecture(::SparseMatrixCSC)   = CPU()
 
 validate_settings(T, arch, settings)                                  = settings
 validate_settings(::Val{:Default}, arch, settings)                    = arch isa CPU ? (τ = 0.001, ) : (order = 1, ) 
@@ -78,17 +80,7 @@ build_preconditioner(::Val{nothing},            A, settings)  = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
 build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A)
-
-function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
-    if architecture(A) isa GPU 
-        throw(ArgumentError("the ILU factorization is not available on the GPU! choose another method"))
-    else
-        return ilu(A, τ = settings.τ)
-    end
-end
-
-@inline architecture(::CuSparseMatrixCSC) = GPU()
-@inline architecture(::SparseMatrixCSC)   = CPU()
+build_preconditioner(::Val{:ILUFactorization},  A::SparseMatrixCSC,   settings) = ilu(A, τ = settings.τ)
 
 abstract type AbstractInversePreconditioner{M} end
 
@@ -182,12 +174,11 @@ function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
    return SparseInversePreconditioner(Minv)
 end
 
-multigrid_preconditioner(A::AbstractMatrix) = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
-
+multigrid_preconditioner(A::AbstractMatrix)    = aspreconditioner(create_multilevel(RugeStubenAMG(), A))
 multigrid_preconditioner(A::CuSparseMatrixCSC) = MultigridGPUPreconditioner(AMGXMultigridSolver(A))
 
 struct MultigridGPUPreconditioner{AMGXMultigridSolver}
-    amgx_solver :: AMGXMultigridSolver
+    amg_solver :: AMGXMultigridSolver
 end
 
 import LinearAlgebra: \, *, ldiv!, mul!
@@ -196,14 +187,14 @@ ldiv!(p::MultigridGPUPreconditioner, b) = copyto!(b, p \ b)
 
 function ldiv!(x, p::MultigridGPUPreconditioner, b)
     x .= 0
-    AMGX.upload!(p.amgx_solver.device_b, b)
-    AMGX.upload!(p.amgx_solver.device_x, x)
-    AMGX.solve!(p.amgx_solver.device_x, p.amgx_solver.solver, p.amgx_solver.device_b)
-    AMGX.copy!(x, p.amgx_solver.device_x)
+    AMGX.upload!(p.amg_solver.device_b, b)
+    AMGX.upload!(p.amg_solver.device_x, x)
+    AMGX.solve!(p.amg_solver.device_x, p.amg_solver.solver, p.amg_solver.device_b)
+    AMGX.copy!(x, p.amg_solver.device_x)
 end
 
-mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amgx_solver.csr_matrix, x)
+mul!(b, p::MultigridGPUPreconditioner, x) = mul!(b, p.amg_solver.csr_matrix, x)
 
 \(p::MultigridGPUPreconditioner, b) = ldiv!(similar(b), p, b)
 
-finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amgx_solver)
+finalize_solver!(p::MultigridGPUPreconditioner) = finalize_solver!(p.amg_solver)
