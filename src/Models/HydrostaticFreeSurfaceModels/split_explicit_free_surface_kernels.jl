@@ -18,25 +18,25 @@ using Oceananigans.Operators
 @inline ∂xᶠᶜᶠ_bound(i, j, k, grid, T, c) = δxᶠᵃᵃ_bound(i, j, k, grid, T, c) / Δxᶠᶜᶠ(i, j, k, grid)
 @inline ∂yᶜᶠᶠ_bound(i, j, k, grid, T, c) = δyᵃᶠᵃ_bound(i, j, k, grid, T, c) / Δyᶜᶠᶠ(i, j, k, grid)
 
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, kgrid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, kgrid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, f, args...))
+
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == grid.Nx, f(grid.Nx, j, k, grid, args...) - f(1, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == grid.Ny, f(i, grid.Ny, k, grid, args...) - f(i, 1, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, f, args...))
+
 @inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, c) = ifelse(i == 1, c[1, j, k] - c[grid.Nx, j, k], δxᶠᵃᵃ(i, j, k, grid, c))
 @inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, c) = ifelse(j == 1, c[i, 1, k] - c[i, grid.Ny, k], δyᵃᶠᵃ(i, j, k, grid, c))
-@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, kgrid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, kgrid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  c) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, c))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded},  c) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, c))
 
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, u) = ifelse(i == grid.Nx, u[grid.Nx, j, k] - u[1, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
 @inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, v) = ifelse(j == grid.Ny, v[i, grid.Ny, k] - v[i, 1, k], δyᵃᶜᵃ(i, j, k, grid, v))
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(i == grid.Nx, f(grid.Nx, j, k, grid, args...) - f(1, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(j == grid.Ny, f(i, grid.Ny, k, grid, args...) - f(i, 1, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
-
-@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, c) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, c))
-@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded}, c) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, c))
-@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, f, args...))
-
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, u) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, u))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded}, v) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, v))
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  u) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  v) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, v))
 
 @inline div_xyᶜᶜᶠ_bound(i, j, k, grid, TX, TY, u, v) = 
     1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, u) +
