@@ -177,8 +177,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
-    event_Gu = launch(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
-    event_Gv = launch(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
+    event_Gu = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
+    event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]..., velocities_update[2]...)))
