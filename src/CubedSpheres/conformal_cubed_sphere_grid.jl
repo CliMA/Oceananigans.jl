@@ -190,7 +190,7 @@ end
 @inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Center, LZ) = @inbounds grid.λᶠᶜᵃ[i, j]
 @inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Face,   LZ) = @inbounds grid.λᶜᶠᵃ[i, j]
 @inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Center, LZ) = @inbounds grid.λᶜᶜᵃ[i, j]
-                                                                                     
+
 @inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Face,   LZ) = @inbounds grid.φᶠᶠᵃ[i, j]
 @inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Center, LZ) = @inbounds grid.φᶠᶜᵃ[i, j]
 @inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Face,   LZ) = @inbounds grid.φᶜᶠᵃ[i, j]
