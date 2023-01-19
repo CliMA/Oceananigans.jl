@@ -10,6 +10,13 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
     end
 end
 
+
+""""
+    function CubedSpherePartition(; Rx = 1, Ry = 1) 
+
+`Rx`: number of x-division of faces, can be a number (faces divided in the same way) or a vector of 6
+`Ry`: number of y-division of faces, can be a number (faces divided in the same way) or a vector of 6
+"""
 function CubedSpherePartition(; Rx = 1, Ry = 1) 
 
     if Rx isa Number 
@@ -35,6 +42,9 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 
 Base.length(p::CubedSpherePartition) = p.div
 
+"""
+utilities to get the index of the face the index within the face and the global index
+"""
 @inline div_per_face(face_idx, p::RegularCubedSpherePartition)  = p.Rx    * p.Ry  
 @inline div_per_face(face_idx, p::XRegularCubedSpherePartition) = p.Rx    * p.Ry[face_idx]
 @inline div_per_face(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] * p.Ry
@@ -106,11 +116,13 @@ end
 ##### Boundary specific Utils
 #####
 
-struct CubedSphereConnectivity
-         rank :: Int
-    from_rank :: Int
-         side :: Symbol
-    from_side :: Symbol
+abstract type AbstractCubedSphereConnectivity end
+
+struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
+      rank :: Int
+ from_rank :: Int
+      side :: Symbol
+ from_side :: Symbol
 end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc) 
