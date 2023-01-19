@@ -181,7 +181,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    wait(device(arch), MultiEvent(prognostic_field_events[1]))
+    @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
 
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
