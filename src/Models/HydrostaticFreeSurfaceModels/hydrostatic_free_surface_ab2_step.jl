@@ -49,7 +49,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     # Launch velocity update kernels
     explicit_velocity_step_events = []
 
-    for name in (:u, :v)
+    for (i, name) in enumerate((:u, :v))
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
@@ -57,12 +57,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         event = launch!(model.architecture, model.grid, :xyz,
                         ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻,
                         dependencies = device_event(model))
-
-        push!(explicit_velocity_step_events, event)
-    end
-
-    for (i, name) in enumerate((:u, :v))
-        velocity_field = model.velocities[name]
 
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
@@ -74,7 +68,9 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        nothing,
                        model.clock, 
                        Δt,
-                       dependencies = explicit_velocity_step_events[i])
+                       dependencies = event)
+
+        push!(explicit_velocity_step_events, event)
     end
 
     return explicit_velocity_step_events
@@ -97,18 +93,11 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
         G⁻ = model.timestepper.G⁻[tracer_name]
         tracer_field = tracers[tracer_name]
+        closure = model.closure
 
         event = launch!(model.architecture, model.grid, :xyz,
                         ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻,
                         dependencies = device_event(model))
-
-        push!(explicit_tracer_step_events, event)
-    end
-
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        tracer_field = tracers[tracer_name]
-        explicit_tracer_step_event = explicit_tracer_step_events[tracer_index]
-        closure = model.closure
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
@@ -117,7 +106,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        Val(tracer_index),
                        model.clock,
                        Δt,
-                       dependencies = explicit_tracer_step_event)
+                       dependencies = event)
+
+        push!(explicit_tracer_step_events, event)
     end
 
     return explicit_tracer_step_events

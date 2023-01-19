@@ -9,7 +9,7 @@
 ##### See: https://github.com/CliMA/Oceananigans.jl/issues/1584
 #####
 
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSphereFaceGrid, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
     # South-west corner
     if i == 1 && j == 1
         return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
