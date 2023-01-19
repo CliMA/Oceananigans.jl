@@ -76,11 +76,28 @@ end
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 
+@kernel function barotropic_mode_kernel!(U, V, grid, u, v)	
+    i, j = @index(Global, NTuple)	
+
+    # hand unroll first loop 	
+    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]	
+    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]	
+
+    @unroll for k in 2:grid.Nz	
+        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]	
+        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]	
+    end	
+end
+
 # may need to do Val(Nk) since it may not be known at compile
 function barotropic_mode!(U, V, grid, u, v)
-    sum!(U, u * Δz)
-    sum!(V, v * Δz)
 
+    arch  = architecture(grid)
+    event = launch(arch, grid, barotropic_mode_kernel!, U, V, grid, u, v,
+    dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
+    
     fill_halo_regions!((U, V))
 end
 
