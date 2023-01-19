@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology, architecture, halo_size, on_architecture
+import Oceananigans.Grids: topology, architecture, halo_size, on_architecture, size_summary
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -122,28 +122,36 @@ struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurviline
     face_connectivity :: C
 end
 
-function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_halo=(1, 1, 1), radius=R_Earth)
+function ConformalCubedSphereGrid(arch = CPU(), FT=Float64;
+                                  face_size, z,
+                                  face_halo = (1, 1, 1),
+                                  face_topology = (FullyConnected, FullyConnected, Bounded),
+                                  radius = R_Earth)
+
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     size, halo = face_size, face_halo
+    topology = face_topology
+
+    face_kwargs = (; z, size, topology, halo, radius)
 
     # +z face (face 1)
-    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=nothing)
+    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=nothing, face_kwargs...)
 
     # +x face (face 2)
-    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2))
+    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π/2), face_kwargs...)
 
     # +y face (face 3)
-    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2))
+    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(π/2), face_kwargs...)
 
     # -x face (face 4)
-    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(-π/2))
+    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(-π/2), face_kwargs...)
 
     # -y face (face 5)
-    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(-π/2))
+    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(-π/2), face_kwargs...)
 
     # -z face (face 6)
-    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π))
+    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π), face_kwargs...)
 
     faces = (
         z⁺_face_grid,
@@ -177,9 +185,20 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Flo
     return grid
 end
 
-function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
+function Base.summary(grid::ConformalCubedSphereGrid)
     Nx, Ny, Nz, Nf = size(grid)
-    print(io, "ConformalCubedSphereGrid{$FT}: $Nf faces with size = ($Nx, $Ny, $Nz)")
+    FT = eltype(grid)
+
+    return string(size_summary(size(grid)), " × $Nf faces",
+                  " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)))
+end
+
+function Base.show(io::IO, grid::ConformalCubedSphereGrid, withsummary=true)
+    if withsummary
+        print(io, summary(grid), "\n")
+    end
+
+    return print(io, "└── ", summary(grid.faces[1]))
 end
 
 #####
