@@ -42,6 +42,15 @@ using Oceananigans.Operators
     1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, u) +
                                 δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, v))
 
+using Oceananigans.ImmersedBoundaries: conditional_∂x_f, conditional_∂x_c, conditional_∂y_f, conditional_∂y_c, IBG
+
+@inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, args...) = conditional_∂x_f(Center(), Face(), i, j, k, ibg, ∂xᶠᶜᶠ_bound, args...)
+@inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, args...) = conditional_∂y_f(Center(), Face(), i, j, k, ibg, ∂yᶜᶠᶠ_bound, args...)
+
+@inline div_xyᶜᶜᶠ_bound(i, j, k, ibg::IBG, TX, TY, u, v) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * (conditional_∂x_c(Center(), Center(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, u) +
+                                conditional_∂y_c(Center(), Center(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
+
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
@@ -158,7 +167,7 @@ end
 Explicitly step forward η in substeps.
 """
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
-    split_explicit_free_surface_step!(free_surface, model, Δt, χ, velocities_update)
+    split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events)
 
