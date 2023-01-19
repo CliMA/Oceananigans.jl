@@ -204,8 +204,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     set!(state.V, state.V̅)
 
     # Solve for the free surface at tⁿ⁺¹
-    start_time = time_ns()
-
     for substep in 1:settings.substeps
         split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
@@ -214,8 +212,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
     set!(η, free_surface.state.η̅)
-
-    @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η)
 
