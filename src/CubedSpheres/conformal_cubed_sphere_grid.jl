@@ -1,4 +1,5 @@
 using Rotations
+using Suppressor
 using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
@@ -136,22 +137,22 @@ function ConformalCubedSphereGrid(arch = CPU(), FT=Float64;
     face_kwargs = (; z, size, topology, halo, radius)
 
     # +z face (face 1)
-    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=nothing, face_kwargs...)
+    z⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=nothing, face_kwargs...)
 
     # +x face (face 2)
-    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π/2), face_kwargs...)
+    x⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π/2), face_kwargs...)
 
     # +y face (face 3)
-    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(π/2), face_kwargs...)
+    y⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(π/2), face_kwargs...)
 
     # -x face (face 4)
-    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(-π/2), face_kwargs...)
+    x⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(-π/2), face_kwargs...)
 
     # -y face (face 5)
-    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(-π/2), face_kwargs...)
+    y⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(-π/2), face_kwargs...)
 
     # -z face (face 6)
-    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π), face_kwargs...)
+    z⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π), face_kwargs...)
 
     faces = (
         z⁺_face_grid,
@@ -193,12 +194,33 @@ function Base.summary(grid::ConformalCubedSphereGrid)
                   " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)))
 end
 
+Base.summary(grid::OrthogonalSphericalShellGrid{FT, FullyConnected, FullyConnected, TZ}) where {FT, TZ} = 
+    string(size_summary(size(grid)),
+           " OrthogonalSphericalShellGrid topology(FullyConnected, FullyConnected, $TZ)",
+           " with ", size_summary(halo_size(grid)), " halo")
+
+function Base.summary(grid::ConformalCubedSphereGrid)
+    Nx, Ny, Nz, Nf = size(grid)
+    FT = eltype(grid)
+    metric_computation = isnothing(grid.faces[1].Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+
+    return string(size_summary(size(grid)), " × $Nf faces",
+                  " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)),
+                  " ", metric_computation)
+end
+
 function Base.show(io::IO, grid::ConformalCubedSphereGrid, withsummary=true)
     if withsummary
         print(io, summary(grid), "\n")
     end
 
-    return print(io, "└── ", summary(grid.faces[1]))
+    return print(io, "|   Faces: \n",
+                     "├── ", summary(grid.faces[1]), "\n",
+                     "├── ", summary(grid.faces[2]), "\n",
+                     "├── ", summary(grid.faces[3]), "\n",
+                     "├── ", summary(grid.faces[4]), "\n",
+                     "├── ", summary(grid.faces[5]), "\n",
+                     "└── ", summary(grid.faces[6]))
 end
 
 #####
