@@ -149,7 +149,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     wait(device(arch), event)
 end
 
-@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) * Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) * G⁻
+@inline calc_ab2_tendencies!(Gⁿ, G⁻, χ) = G⁻ .= (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ .- (convert(eltype(Gⁿ), (0.5)) + χ) .* G⁻
 
 """
 Explicitly step forward η in substeps.
@@ -169,12 +169,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     settings = free_surface.settings
     g = free_surface.gravitational_acceleration
 
+    Gu⁻ = model.timestepper.G⁻.u
+    Gv⁻ = model.timestepper.G⁻.v
+
     Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
-    Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
-    Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
-
-    u, v, _ = model.velocities
+    calc_ab2_tendencies!(model.timestepper.Gⁿ.u, Gu⁻, χ)
+    calc_ab2_tendencies!(model.timestepper.Gⁿ.v, Gv⁻, χ)
 
     # reset free surface averages
     set_average_to_zero!(state)
@@ -185,9 +186,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
 
-    # Compute barotropic mode of tendency fields
-    sum!(auxiliary.Gᵁ, Gu * Δz)
-    sum!(auxiliary.Gⱽ, Gv * Δz)
+    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
