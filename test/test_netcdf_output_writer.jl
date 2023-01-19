@@ -360,8 +360,8 @@ function test_netcdf_function_output(arch)
 
     g(model) = model.clock.time .* exp.(znodes(grid, Center()))
 
-    h(model) = model.clock.time .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
-                                    .* cos.(ynodes(grid, Face(), reshape=true)[:, :, 1]))
+    h(model) = model.clock.time .* (   sin.(xnodes_reshaped(grid, Center())[:, :, 1])
+                                    .* cos.(ynodes_reshaped(grid, Face())[:, :, 1]))
 
     outputs = (scalar=f, profile=g, slice=h)
     dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
@@ -453,8 +453,8 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(grid, Face(),   reshape=true)[:, :, 1]))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes_reshaped(grid, Center())[:, :, 1])
+                                                 .* cos.(ynodes_reshaped(grid, Face())[:, :, 1]))
     end
 
     close(ds)
@@ -485,8 +485,8 @@ function test_netcdf_function_output(arch)
 
     for n in 0:iters
         @test ds["profile"][:, n+1] == n*Δt .*      exp.(znodes(grid, Center()))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
-                                                 .* cos.(ynodes(grid, Face(), reshape=true)[:, :, 1]))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes_reshaped(grid, Center())[:, :, 1])
+                                                 .* cos.(ynodes_reshaped(grid, Face())[:, :, 1]))
     end
 
     close(ds)

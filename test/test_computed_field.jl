@@ -98,8 +98,8 @@ function zonal_average_of_plus(model)
 
     @compute ST = Field(Average(S + T, dims=1))
 
-    yC = ynodes(model.grid, Center(), reshape=true)
-    zC = znodes(model.grid, Center(), reshape=true)
+    yC = ynodes_reshaped(model.grid, Center())
+    zC = znodes_reshaped(model.grid, Center())
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
 
     result = Array(interior(ST))

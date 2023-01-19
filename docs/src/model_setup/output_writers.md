@@ -106,6 +106,7 @@ provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans
+using Oceananigans.Grids: xnodes_reshaped, ynodes_reshaped
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
@@ -115,8 +116,8 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 g(model) = model.clock.time .* exp.(znodes(grid, Center())); # vector/profile output
-h(model) = model.clock.time .* (   sin.(xnodes(grid, Center(), reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(grid, Face(), reshape=true)[:, :, 1])) # xy slice output
+h(model) = model.clock.time .* (   sin.(xnodes_reshaped(grid, Center())[:, :, 1])
+                            .*     cos.(ynodes_reshaped(grid, Face())[:, :, 1])) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 

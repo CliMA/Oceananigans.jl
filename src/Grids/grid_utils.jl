@@ -249,96 +249,31 @@ ynodes(grid, ::Nothing) = 1:1
 znodes(grid, ::Nothing) = 1:1
 
 """
-    xnodes(loc, grid, reshape=false)
-
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``x``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
-
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `Nx×1×1`.
-
-See `znodes` for examples.
+    xnodes_reshaped(loc, grid; kwargs...)
 """
-function xnodes(grid, loc; reshape=false)
-
-    x = view(xnodes(grid, loc),
-             interior_indices(loc, topology(grid, 1), grid.Nx))
-
-    return reshape ? Base.reshape(x, length(x), 1, 1) : x
+function xnodes_reshaped(grid, loc::CoF; kwargs...)
+    x = xnodes(grid, loc; kwargs...)
+    return Base.reshape(x, length(x), 1, 1)
 end
 
 """
-    ynodes(loc, grid, reshape=false)
-
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``y``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
-
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `1×Ny×1`.
-
-See [`znodes`](@ref) for examples.
+    ynodes_reshaped(loc, grid; kwargs...)
 """
-function ynodes(grid, loc; reshape=false)
-
-    y = view(ynodes(grid, loc),
-             interior_indices(loc, topology(grid, 2), grid.Ny))
-
-    return reshape ? Base.reshape(y, 1, length(y), 1) : y
+function ynodes_reshaped(grid, loc; kwargs...)
+    y = ynodes(grid, loc; kwargs...)
+    return Base.reshape(y, 1, length(y), 1)
 end
 
 """
-    znodes(loc, grid, reshape=false)
-
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``z``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
-
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `1×1×Nz`.
-
-Examples
-========
-
-```jldoctest znodes
-julia> using Oceananigans
-
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                                 topology=(Periodic, Periodic, Bounded));
-
-julia> zC = znodes(Center, horz_periodic_grid)
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-```
-
-``` jldoctest znodes
-julia> zF = znodes(Face, horz_periodic_grid)
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:5), 1:4) with eltype Float64:
- -1.0
- -0.6666666666666666
- -0.3333333333333333
-  0.0
-```
+    znodes_reshaped(loc, grid; kwargs...)
 """
-function znodes(grid, loc; reshape=false)
-
-    z = view(znodes(grid, loc),
-             interior_indices(loc, topology(grid, 3), grid.Nz))
-
-    return reshape ? Base.reshape(z, 1, 1, length(z)) : z
+function znodes_reshaped(grid, loc; kwargs...)
+    z = znodes(grid, loc; kwargs...)
+    return Base.reshape(z, 1, 1, length(z))
 end
 
 """
-    nodes(grid, loc; reshape=false)
+    nodes(grid, loc; reshape=false, kwargs...)
 
 Return a 3-tuple of views over the interior nodes
 at the locations in `loc` in `x, y, z`.

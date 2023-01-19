@@ -496,7 +496,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
             # Derive coordinates
-            x = xnodes(grid, Center(), reshape=true)
+            x = xnodes_reshaped(grid, Center())
             y = permutedims(x, (2, 1, 3))
             z = permutedims(x, (2, 3, 1))
 
@@ -554,7 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                           topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
-            z_immersed = znodes(immersed_vertical_grid, Center(), reshape=true)
+            z_immersed = znodes_reshaped(immersed_vertical_grid, Center())
 
             append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
@@ -576,7 +576,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                      GridFittedBottom((x, y) -> L))
 
             stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
-            append!(coords, [znodes(grid, Center(), reshape=true) for grid in stretched_grids])
+            append!(coords, [znodes_reshaped(grid, Center()) for grid in stretched_grids])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
             append!(closures, [vertical_scalar_diffusivity,
                                implicit_vertical_scalar_diffusivity,
