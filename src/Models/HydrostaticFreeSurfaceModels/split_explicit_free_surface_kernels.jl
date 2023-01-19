@@ -108,8 +108,8 @@ end
 function barotropic_mode!(U, V, grid, u, v)
 
     arch  = architecture(grid)
-    event = launch(arch, grid, barotropic_mode_kernel!, U, V, grid, u, v,
-    dependencies=Event(device(arch)))
+    event = launch(arch, grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
+                   dependencies=Event(device(arch)))
 
     wait(device(arch), event)
     
