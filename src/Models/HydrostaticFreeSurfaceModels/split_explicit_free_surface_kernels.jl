@@ -48,8 +48,8 @@ using Oceananigans.ImmersedBoundaries: conditional_∂x_f, conditional_∂x_c, c
 @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, args...) = conditional_∂y_f(Center(), Face(), i, j, k, ibg, ∂yᶜᶠᶠ_bound, args...)
 
 @inline div_xyᶜᶜᶠ_bound(i, j, k, ibg::IBG, TX, TY, u, v) = 
-    1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(Center(), Center(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, u) +
-                               conditional_∂y_c(Center(), Center(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
+    1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(Center(), Face(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, u) +
+                               conditional_∂y_c(Center(), Face(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
