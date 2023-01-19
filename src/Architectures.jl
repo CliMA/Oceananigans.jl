@@ -16,8 +16,10 @@ import CUDAKernels: next_stream
 if CUDA.has_cuda_gpu()     
     using CUDAKernels: STREAM_GC_LOCK
 
-    DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
-    DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
+    @info "Oceananigans can run on $(CUDA.ndevices()) GPUs"
+
+    DEVICE_FREE_STREAMS = tuple((CUDA.CuStream[] for dev in 1:CUDA.ndevices())...)
+    DEVICE_STREAMS      = tuple((CUDA.CuStream[] for dev in 1:CUDA.ndevices())...)
     const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
 
     function next_stream()
