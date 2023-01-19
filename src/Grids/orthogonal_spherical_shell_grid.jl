@@ -1,6 +1,5 @@
 using CubedSphere
 using JLD2
-using LinearAlgebra
 using OffsetArrays
 using Adapt
 using Adapt: adapt_structure
