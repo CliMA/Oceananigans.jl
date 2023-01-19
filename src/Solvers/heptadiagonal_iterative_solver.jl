@@ -324,7 +324,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     return nothing
 end
 
-@ifhasamgx finalize_solver!(p::HeptadiagonalIterativeSolver) = finalize_solver!(p.preconditioner)
+finalize_solver!(p::HeptadiagonalIterativeSolver) = finalize_solver!(p.preconditioner)
 
 function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")

@@ -5,8 +5,8 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Vv,
     _advective_tracer_flux_x, 
     _advective_tracer_flux_y,
-    vertical_vorticity_U,
-    vertical_vorticity_V,
+    horizontal_advection_U,
+    horizontal_advection_V,
     bernoulli_head_U,
     bernoulli_head_V
 
@@ -43,11 +43,11 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
                                 δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 @inline div_mom_u(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + horizontal_advection_U(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
     + bernoulli_head_U(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
     
 @inline div_mom_v(i, j, k, grid, advection, solution, ::VectorInvariantFormulation) = (
-    + vertical_vorticity_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
+    + horizontal_advection_V(i, j, k, grid, advection, solution[1], solution[2])  # Vertical relative vorticity term
     + bernoulli_head_V(i, j, k, grid, advection, solution[1], solution[2]))     # Bernoulli head term
 
 # Support for no advection
