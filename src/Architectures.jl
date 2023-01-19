@@ -15,37 +15,36 @@ import CUDAKernels: next_stream
 
 using CUDAKernels: STREAM_GC_LOCK
 
-DEVICE_FREE_STREAMS = ()
-DEVICE_STREAMS      = ()
+if CUDA.has_cuda_gpu()
+    const device_number = CUDA.ndevices()
 
-for i in 1:CUDA.ndevices()
-    DEVICE_FREE_STREAMS = (DEVICE_FREE_STREAMS..., CUDA.CuStream[])
-    DEVICE_STREAMS      = (DEVICE_STREAMS...,      CUDA.CuStream[])
-end
+    const DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for i in 1:device_number)
+    const DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for i in 1:device_number)
 
-const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
+    const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
 
-function next_stream()
-    lock(STREAM_GC_LOCK) do
-        handle = CUDA.device().handle + 1
-        if !isempty(DEVICE_FREE_STREAMS[handle])
-            return pop!(DEVICE_FREE_STREAMS[handle])
-        end
+    function next_stream()
+        lock(STREAM_GC_LOCK) do
+            handle = CUDA.device().handle + 1
+            if !isempty(DEVICE_FREE_STREAMS[handle])
+                return pop!(DEVICE_FREE_STREAMS[handle])
+            end
 
-        if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
-            for stream in DEVICE_STREAMS[handle]
-                if CUDA.isdone(stream)
-                    push!(DEVICE_FREE_STREAMS[handle], stream)
+            if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
+                for stream in DEVICE_STREAMS[handle]
+                    if CUDA.isdone(stream)
+                        push!(DEVICE_FREE_STREAMS[handle], stream)
+                    end
                 end
             end
-        end
 
-        if !isempty(DEVICE_FREE_STREAMS[handle])
-            return pop!(DEVICE_FREE_STREAMS[handle])
+            if !isempty(DEVICE_FREE_STREAMS[handle])
+                return pop!(DEVICE_FREE_STREAMS[handle])
+            end
+            stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
+            push!(DEVICE_STREAMS[handle], stream)
+            return stream
         end
-        stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
-        push!(DEVICE_STREAMS[handle], stream)
-        return stream
     end
 end
 
