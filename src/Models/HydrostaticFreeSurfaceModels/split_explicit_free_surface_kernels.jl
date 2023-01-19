@@ -1,5 +1,6 @@
 using KernelAbstractions: @index, @kernel, Event
 using KernelAbstractions.Extras.LoopInfo: @unroll
+using Oceananigans.Grids: topology
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
@@ -14,38 +15,52 @@ using Oceananigans.Operators
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
-@inline ∂xᶠᶜᶠ_bound(i, j, k, grid, c) = δxᶠᵃᵃ_bound(i, j, k, grid, c) / Δxᶠᶜᶠ(i, j, k, grid)
-@inline ∂yᶜᶠᶠ_bound(i, j, k, grid, c) = δyᵃᶠᵃ_bound(i, j, k, grid, c) / Δyᶜᶠᶠ(i, j, k, grid)
+@inline ∂xᶠᶜᶠ_bound(i, j, k, grid, T, c) = δxᶠᵃᵃ_bound(i, j, k, grid, T, c) / Δxᶠᶜᶠ(i, j, k, grid)
+@inline ∂yᶜᶠᶠ_bound(i, j, k, grid, T, c) = δyᵃᶠᵃ_bound(i, j, k, grid, T, c) / Δyᶜᶠᶠ(i, j, k, grid)
 
-@inline δxᶠᵃᵃ_bound(i, j, k, grid, c) = ifelse(i == 1, (c[1, j, k] - c[grid.Nx, j, k]), δxᶠᵃᵃ(i, j, k, grid, c))
-@inline δyᵃᶠᵃ_bound(i, j, k, grid, c) = ifelse(j == 1, (c[i, 1, k] - c[i, grid.Ny, k]), δyᵃᶠᵃ(i, j, k, grid, c))
-@inline δxᶠᵃᵃ_bound(i, j, k, grid, f, args...) = ifelse(i == 1, (f(1, j, k, grid, args...) - f(grid.Nx, j, kgrid, args...)), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶠᵃ_bound(i, j, k, grid, f, args...) = ifelse(j == 1, (f(i, 1, k, grid, args...) - f(i, grid.Ny, kgrid, args...)), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, c) = ifelse(i == 1, c[1, j, k] - c[grid.Nx, j, k], δxᶠᵃᵃ(i, j, k, grid, c))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, c) = ifelse(j == 1, c[i, 1, k] - c[i, grid.Ny, k], δyᵃᶠᵃ(i, j, k, grid, c))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, kgrid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, kgrid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, u) = ifelse(i == grid.Nx, (u[grid.Nx, j, k] - u[1, j, k]), δxᶜᵃᵃ(i, j, k, grid, u))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, v) = ifelse(j == grid.Ny, (v[i, grid.Ny, k] - v[i, 1, k]), δyᵃᶜᵃ(i, j, k, grid, v))
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, f, args...) = ifelse(i == grid.Nx, (f(grid.Nx, j, k, grid, args...) - f(1, j, k, grid, args...)), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, f, args...) = ifelse(j == grid.Ny, (f(i, grid.Ny, k, grid, args...) - f(i, 1, k, grid, args...)), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, u) = ifelse(i == grid.Nx, u[grid.Nx, j, k] - u[1, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, v) = ifelse(j == grid.Ny, v[i, grid.Ny, k] - v[i, 1, k], δyᵃᶜᵃ(i, j, k, grid, v))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(i == grid.Nx, f(grid.Nx, j, k, grid, args...) - f(1, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f, args...) = ifelse(j == grid.Ny, f(i, grid.Ny, k, grid, args...) - f(i, 1, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline div_xyᶜᶜᶠ_bound(i, j, k, grid, u, v) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, Δy_qᶠᶜᶠ, u) +
-                                δyᵃᶜᵃ_bound(i, j, k, grid, Δx_qᶜᶠᶠ, v))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, c) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, c))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded}, c) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, c))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(i == 1, 0.0, δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(j == 1, 0.0, δyᵃᶠᵃ(i, j, k, grid, f, args...))
+
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, u) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded}, v) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, v))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded}, f, args...) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, f, args...))
+
+@inline div_xyᶜᶜᶠ_bound(i, j, k, grid, TX, TY, u, v) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, u) +
+                                δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, v))
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
+    TX, TY, _ = topology(grid)
+
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜ_bound(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠ_bound(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜ_bound(i, j, k_top, grid, TX, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠ_bound(i, j, k_top, grid, TY, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
+    TX, TY, _ = topology(grid)
+
     # ∂τ(η) = - ∇⋅U
-    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, 1, grid, U, V)
+    @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, 1, grid, TX, TY, U, V)
     # time-averaging
     @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
     @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
