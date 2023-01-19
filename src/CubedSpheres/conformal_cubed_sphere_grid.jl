@@ -186,14 +186,6 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Flo
     return grid
 end
 
-function Base.summary(grid::ConformalCubedSphereGrid)
-    Nx, Ny, Nz, Nf = size(grid)
-    FT = eltype(grid)
-
-    return string(size_summary(size(grid)), " × $Nf faces",
-                  " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)))
-end
-
 Base.summary(grid::OrthogonalSphericalShellGrid{FT, FullyConnected, FullyConnected, TZ}) where {FT, TZ} = 
     string(size_summary(size(grid)),
            " OrthogonalSphericalShellGrid with topology (FullyConnected, FullyConnected, $TZ)",

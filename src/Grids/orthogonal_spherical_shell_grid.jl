@@ -5,7 +5,6 @@ using Adapt
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Utils
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch

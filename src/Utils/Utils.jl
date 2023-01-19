@@ -41,6 +41,5 @@ include("versioninfo.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
-include("spherical_geometry.jl")
 
 end # module
