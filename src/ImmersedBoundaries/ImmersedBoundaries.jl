@@ -47,7 +47,10 @@ import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Grids: 
         cpu_face_constructor_x,
         cpu_face_constructor_y,
-        cpu_face_constructor_z
+        cpu_face_constructor_z,
+        x_domain,
+        y_domain,
+        z_domain
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
@@ -126,6 +129,10 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:active_cells_map})   = getfield(ibg, :active_cells_map)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+
+@inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
+@inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
+@inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))

@@ -14,13 +14,30 @@ using Oceananigans.Operators
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
+@inline ∂xᶠᶜᶠ_bound(i, j, k, grid, c) = δxᶠᵃᵃ_bound(i, j, k, grid, c) / Δxᶠᶜᶠ(i, j, k, grid)
+@inline ∂yᶜᶠᶠ_bound(i, j, k, grid, c) = δyᵃᶠᵃ_bound(i, j, k, grid, c) / Δyᶜᶠᶠ(i, j, k, grid)
+
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, c) = ifelse(i == 1, (c[1, j, k] - c[grid.Nx, j, k]), δxᶠᵃᵃ(i, j, k, grid, c))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, c) = ifelse(j == 1, (c[i, 1, k] - c[i, grid.Ny, k]), δyᵃᶠᵃ(i, j, k, grid, c))
+@inline δxᶠᵃᵃ_bound(i, j, k, grid, f, args...) = ifelse(i == 1, (f(1, j, k, grid, args...) - f(grid.Nx, j, kgrid, args...)), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶠᵃ_bound(i, j, k, grid, f, args...) = ifelse(j == 1, (f(i, 1, k, grid, args...) - f(i, grid.Ny, kgrid, args...)), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, u) = ifelse(i == grid.Nx, (u[grid.Nx, j, k] - u[1, j, k]), δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, v) = ifelse(j == grid.Ny, (v[i, grid.Ny, k] - v[i, 1, k]), δyᵃᶜᵃ(i, j, k, grid, v))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, f, args...) = ifelse(i == grid.Nx, (f(grid.Nx, j, k, grid, args...) - f(1, j, k, grid, args...)), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, f, args...) = ifelse(j == grid.Ny, (f(i, grid.Ny, k, grid, args...) - f(i, 1, k, grid, args...)), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+
+@inline div_xyᶜᶜᶠ_bound(i, j, k, grid, u, v) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, Δy_qᶠᶜᶠ, u) +
+                                δyᵃᶜᵃ_bound(i, j, k, grid, Δx_qᶜᶠᶠ, v))
+
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     # ∂τ(U) = - ∇η + G
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
+    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜ(i, j, k_top, grid, η) + Gᵁ[i, j, 1])
+    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠ(i, j, k_top, grid, η) + Gⱽ[i, j, 1])
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
@@ -49,35 +66,20 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
             dependencies=Event(device(arch)))
 
-    wait(device(arch), event)
-
-    # U, V has been updated thus need to refill halo
     fill_halo_regions!(U)
     fill_halo_regions!(V)
+
+    wait(device(arch), event)
 
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
             grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight,
             dependencies=Event(device(arch)))
 
     wait(device(arch), event)
-            
 end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-
-@kernel function barotropic_mode_kernel!(U, V, u, v, grid)
-    i, j = @index(Global, NTuple)
-
-    # hand unroll first loop 
-    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
-
-    @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
-    end
-end
 
 # may need to do Val(Nk) since it may not be known at compile
 function barotropic_mode!(U, V, grid, u, v)
