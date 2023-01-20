@@ -92,7 +92,7 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
-@inline function all_fields_present(fields::NamedTuple, required_fields, grid)
+@inline function has_biogeochemical_tracers(fields::NamedTuple, required_fields, grid)
 
     for field_name in required_fields
         if !(field_name in keys(fields))
@@ -103,24 +103,32 @@ tracernames(tracers::Tuple) = tracers
     return fields
 end
 
-@inline all_fields_present(fields::Tuple, required_fields, grid) = (fields..., required_fields...)
+@inline has_biogeochemical_tracers(user_tracer_names::Tuple, required_names, grid) =
+    tuple(user_tracer_names..., required_names...)
 
-"""Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields` contains biogeochemical auxiliary fields (e.g. PAR)."""
+"""
+    validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
+
+Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields`
+contains biogeochemical auxiliary fields (e.g. PAR).
+"""
 @inline function validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
     req_tracers = required_biogeochemical_tracers(bgc)
-    tracers = all_fields_present(tracers, req_tracers, grid)
-
+    tracers = has_biogeochemical_tracers(tracers, req_tracers, grid)
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
 
     all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
         error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
-    
-    return tracers, auxiliary_fields # returning both so that users can overload and define their own special auxiliary fields (e.g. PAR in test)
+
+    # Return tracers and aux fields so that users may overload and
+    # define their own special auxiliary fields (e.g. PAR in test)
+    return tracers, auxiliary_fields 
 end
 
 required_biogeochemical_tracers(::NoBiogeochemistry) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
+#=
 """
     BasicBiogeochemistry <: AbstractContinuousFormBiogeochemistry
 
@@ -184,5 +192,6 @@ function BasicBiogeochemistry(;tracers,
 
     return BasicBiogeochemistry(tupleit(tracers), transitions, adveciton_schemes, drift_velocities, tupleit(auxiliary_fields), parameters)
 end
+=#
 
 end # module
