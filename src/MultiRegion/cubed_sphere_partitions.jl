@@ -2,9 +2,9 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
-   div :: Int
-    Rx :: M
-    Ry :: P
+    div :: Int
+     Rx :: M
+     Ry :: P
 
     CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
 end
@@ -13,18 +13,18 @@ end
 """"
     CubedSpherePartition(; Rx = 1, Ry = 1)
 
-Return the Cubed Sphere partition.
+Return a cubed sphere partition.
 
-* `Rx`: number of ``x``-division of faces, can be a number (faces divided in the same way)
-        or a vector of 6.
-* `Ry`: number of ``y``-division of faces, can be a number (faces divided in the same way)
-        or a vector of 6.
+* `Rx`: number of ``x``-division of each panel. Can be a number (i.e., all panels are divided in
+        the same way) or a vector of length 6.
+* `Ry`: number of ``y``-division of each panel. Can be a number (i.e., all panels are divided in
+        the same way) or a vector of length 6.
 """
 function CubedSpherePartition(; Rx = 1, Ry = 1)
     if Rx isa Number 
         if Ry isa Number
             Rx != Ry && 
-                    throw(ArgumentError("Regular cubed sphere must have Rx == Ry!!"))
+                throw(ArgumentError("Regular cubed sphere partiction must have Rx == Ry!"))
             div = 6 * Rx * Ry
         else
             div = sum(Ry .* Rx)
@@ -45,27 +45,27 @@ const YRegularCubedSpherePartition = CubedSpherePartition{<:Any, <:Number}
 Base.length(p::CubedSpherePartition) = p.div
 
 """
-utilities to get the index of the face the index within the face and the global index
+utilities to get the index of the panel the index within the panel and the global index
 """
-@inline div_per_face(face_idx, p::RegularCubedSpherePartition)  = p.Rx           * p.Ry  
-@inline div_per_face(face_idx, p::XRegularCubedSpherePartition) = p.Rx           * p.Ry[face_idx]
-@inline div_per_face(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] * p.Ry
+@inline div_per_panel(panel_idx, p::RegularCubedSpherePartition)  = p.Rx           * p.Ry  
+@inline div_per_panel(panel_idx, p::XRegularCubedSpherePartition) = p.Rx           * p.Ry[panel_idx]
+@inline div_per_panel(panel_idx, p::YRegularCubedSpherePartition) = p.Rx[panel_idx] * p.Ry
 
-@inline Rx(face_idx, p::RegularCubedSpherePartition)  = p.Rx    
-@inline Rx(face_idx, p::XRegularCubedSpherePartition) = p.Rx    
-@inline Rx(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] 
+@inline Rx(panel_idx, p::RegularCubedSpherePartition)  = p.Rx    
+@inline Rx(panel_idx, p::XRegularCubedSpherePartition) = p.Rx    
+@inline Rx(panel_idx, p::YRegularCubedSpherePartition) = p.Rx[panel_idx] 
 
-@inline face_index(r, p)         = r ÷ div_per_face(r, p) + 1
-@inline intra_face_index(r, p)   = mod(r, div_per_face(r, p)) + 1
-@inline intra_face_index_x(r, p) = mod(intra_face_index(r, p), Rx(r, p)) + 1
-@inline intra_face_index_y(r, p) = intra_face_index(r, p) ÷ Rx(r, p) + 1 
+@inline panel_index(r, p)         = r ÷ div_per_panel(r, p) + 1
+@inline intra_panel_index(r, p)   = mod(r, div_per_panel(r, p)) + 1
+@inline intra_panel_index_x(r, p) = mod(intra_panel_index(r, p), Rx(r, p)) + 1
+@inline intra_panel_index_y(r, p) = intra_panel_index(r, p) ÷ Rx(r, p) + 1 
 
-@inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * div_per_face(face_idx, p) + Rx(face_idx, p) * (fj  - 1) + fi
+@inline rank_from_panel_idx(fi, fj, panel_idx, p::CubedSpherePartition) = panel_idx * div_per_panel(panel_idx, p) + Rx(panel_idx, p) * (fj - 1) + fi
 
 @inline function region_corners(r, p::CubedSpherePartition)  
 
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_panel_index_x(r, p)
+    fj = intra_panel_index_y(r, p)
 
     bottom_left  = fi == 1              && fj == 1              ? true : false
     bottom_right = fi == p.div_per_side && fj == 1              ? true : false
@@ -77,8 +77,8 @@ end
 
 @inline function region_edge(r, p::CubedSpherePartition)  
      
-    fi = intra_face_index_x(r, p)
-    fj = intra_face_index_y(r, p)
+    fi = intra_panel_index_x(r, p)
+    fj = intra_panel_index_y(r, p)
 
     west  = fi == 1              ? true : false
     east  = fi == p.div_per_side ? true : false
@@ -108,7 +108,7 @@ end
 #              |←3N      6W→|←3E      6S→| 
 #              |     2N     |     2E     | 
 #              |     ↓↓     |     ↓↓     | 
-# + -----------+------------+----------- + 
+# + -----------+------------+------------+ 
 # |     ↑↑     |     ↑↑     |  panel P4
 # |     3W     |     3S     |
 # |←5N      2W→|←1E      4S→|
@@ -120,7 +120,7 @@ end
 #   panel P1   panel P2
 
 #####
-##### Boundary specific Utils
+##### Boundary-specific Utils
 #####
 
 abstract type AbstractCubedSphereConnectivity end
@@ -134,27 +134,27 @@ end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(region, p)
-    fj = intra_face_index_y(region, p)
+    fi = intra_panel_index_x(region, p)
+    fj = intra_panel_index_y(region, p)
 
-    face_idx = face_index(region, p)
+    panel_idx = panel_index(region, p)
 
     if fi == 1
-        if mod(face_idx, 2) == 0
+        if mod(panel_idx, 2) == 0
             from_side = :east
-            from_face = face_index - 1
+            from_panel = panel_index - 1
             from_fi   = p.div_per_side
             from_fj   = fj
         else    
             from_side = :north
-            from_face = mod(face_idx + 3, 6) + 1
+            from_panel = mod(panel_idx + 3, 6) + 1
             from_fi   = p.div_per_side - fj + 1
             from_fj   = p.div_per_side
         end
-        from_rank = rank_from_face_idx(from_fi, from_fj, from_face, p)
+        from_rank = rank_from_panel_idx(from_fi, from_fj, from_panel, p)
     else
         from_side = :east
-        from_rank = rank_from_face_idx(fi - 1, fj, face_idx, p)
+        from_rank = rank_from_panel_idx(fi - 1, fj, panel_idx, p)
     end
 
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
@@ -164,27 +164,27 @@ end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(region, p)
-    fj = intra_face_index_y(region, p)
+    fi = intra_panel_index_x(region, p)
+    fj = intra_panel_index_y(region, p)
 
-    face_idx = face_index(region, p)
+    panel_idx = panel_index(region, p)
 
     if fi == p.div_per_side
-        if mod(face_idx, 2) != 0
+        if mod(panel_idx, 2) != 0
             from_side = :west
-            from_face = face_index + 1
+            from_panel = panel_index + 1
             from_fi   = 1
             from_fj   = fj
         else    
             from_side = :south
-            from_face = mod(face_idx + 1, 6) + 1
+            from_panel = mod(panel_idx + 1, 6) + 1
             from_fi   = p.div_per_side - fj + 1
             from_fj   = 1
         end
-        from_rank = rank_from_face_idx(from_fi, from_fj, from_face, p)
+        from_rank = rank_from_panel_idx(from_fi, from_fj, from_panel, p)
     else
         from_side = :west
-        from_rank = rank_from_face_idx(fi + 1, fj, face_idx, p)
+        from_rank = rank_from_panel_idx(fi + 1, fj, panel_idx, p)
     end
 
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
@@ -194,27 +194,27 @@ end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         
-    fi = intra_face_index_x(region, p)
-    fj = intra_face_index_y(region, p)
+    fi = intra_panel_index_x(region, p)
+    fj = intra_panel_index_y(region, p)
 
-    face_idx = face_index(region, p)
+    panel_idx = panel_index(region, p)
 
     if fj == 1
-        if mod(face_idx, 2) != 0
+        if mod(panel_idx, 2) != 0
             from_side = :north
-            from_face = mod(face_index + 4, 6) + 1
+            from_panel = mod(panel_index + 4, 6) + 1
             from_fi   = fi 
             from_fj   = p.div_per_side
         else    
             from_side = :east
-            from_face = mod(face_idx + 3, 6) + 1
+            from_panel = mod(panel_idx + 3, 6) + 1
             from_fi   = p.div_per_side
             from_fj   = p.div_per_side - fi + 1
         end
-        from_rank = rank_from_face_idx(from_fi, from_fj, from_face, p)
+        from_rank = rank_from_panel_idx(from_fi, from_fj, from_panel, p)
     else
         from_side = :north
-        from_rank = rank_from_face_idx(fi, fj - 1, face_idx, p)
+        from_rank = rank_from_panel_idx(fi, fj - 1, panel_idx, p)
     end
 
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
@@ -224,27 +224,27 @@ end
 
 function inject_north_boundary(region, p::CubedSpherePartition, global_bc) 
         
-    fi = intra_face_index_x(region, p)
-    fj = intra_face_index_y(region, p)
+    fi = intra_panel_index_x(region, p)
+    fj = intra_panel_index_y(region, p)
 
-    face_idx = face_index(region, p)
+    panel_idx = panel_index(region, p)
 
     if fj == p.div_per_side
-        if mod(face_idx, 2) == 0
+        if mod(panel_idx, 2) == 0
             from_side = :south
-            from_face = mod(face_index, 6) + 1
+            from_panel = mod(panel_index, 6) + 1
             from_fi   = fi 
             from_fj   = 1
         else    
             from_side = :west
-            from_face = mod(face_idx + 1, 6) + 1
+            from_panel = mod(panel_idx + 1, 6) + 1
             from_fi   = 1
             from_fj   = p.div_per_side - fi + 1
         end
-        from_rank = rank_from_face_idx(from_fi, from_fj, from_face, p)
+        from_rank = rank_from_panel_idx(from_fi, from_fj, from_panel, p)
     else
         from_side = :south
-        from_rank = rank_from_face_idx(fi, fj + 1, face_idx, p)
+        from_rank = rank_from_panel_idx(fi, fj + 1, panel_idx, p)
     end
 
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))

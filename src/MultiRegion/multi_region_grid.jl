@@ -154,7 +154,7 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
 end
 
 #### 
-#### Utilitites for MultiRegionGrid
+#### Utilities for MultiRegionGrid
 ####
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
@@ -184,7 +184,7 @@ function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
     vals = construct_regionally(Base.:(==), mrg1, mrg2)
     return all(vals.regions)
 end
-   
+
 # These are not used in the code, should we remove them?
 
 grids(mrg::MultiRegionGrid) = mrg.region_grids
