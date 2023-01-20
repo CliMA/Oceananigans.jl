@@ -86,31 +86,36 @@ end
     return (; west, east, south, north)
 end
 
-### TO FIX FIGURE!
-
-# See figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
+# Adopted from figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
+# The configuration of the panels for the cubed sphere. Each panel is partitioned in two parts YPartition(2)
 #
-#                         face  F5   face  F6
-#                       +----------+----------+
-#                       |          |          |
-#                       |          |          |
-#                       +----------+----------+
-#                       |          |          |
-#              face  F3 |          |          |
-#            +----------+----------+----------+
-#            |    ↑↑    |    ↑↑    |
-#            |    5W    |    5S    |
-#             ---------- ----------
-#            |    2N    |    2E    |
-#            |    ↓↓    |    ↓↓    |
-# +----------+----------+----------+
-# |    ↑↑    |    ↑↑    | face  F4
-# |    3W    |    3S    |
-# |←5N F1 2W→|←1E F2 4S→|
-# |    6N    |    6E    |
-# |    ↓↓    |    ↓↓    |
-# +----------+----------+
-#   face  F1   face  F2
+#                              ponel P5      panel P6
+#                           + ---------- + ---------- +
+#                           |     ↑↑     |     ↑↑     |
+#                           |     1W     |     1S     |
+#                           |←3N      6W→|←5E      2S→|
+#                           |------------|------------|
+#                           |←3N      6W→|←5E      2S→|
+#                           |     4N     |     4E     |
+#                 panel P3  |     ↓↓     |     ↓↓     |
+#              + ---------- +------------+------------+
+#              |     ↑↑     |     ↑↑     | 
+#              |     5W     |     5S     | 
+#              |←3N      6W→|←3E      6S→| 
+#              |------------|------------| 
+#              |←3N      6W→|←3E      6S→| 
+#              |     2N     |     2E     | 
+#              |     ↓↓     |     ↓↓     | 
+# + -----------+------------+----------- + 
+# |     ↑↑     |     ↑↑     |  panel P4
+# |     3W     |     3S     |
+# |←5N      2W→|←1E      4S→|
+# |------------|------------|
+# |←5N      2W→|←1E      4S→|
+# |     6N     |     6E     |
+# |     ↓↓     |     ↓↓     |
+# + -----------+------------+
+#   panel P1   panel P2
 
 #####
 ##### Boundary specific Utils
