@@ -13,11 +13,11 @@ end
 
 const EqualYPartition = YPartition{<:Number}
 
-length(p::EqualYPartition) = p.div
-length(p::YPartition)      = length(p.div)
+Base.length(p::YPartition)       = length(p.div)
+Base.length(p::EqualYPartition)  = p.div
 
-Base.summary(p::EqualYPartition) = "Equal partitioning in Y ($(p.div) regions)"
-Base.summary(p::YPartition)      = "partitioning in Y [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
+Base.summary(p::EqualYPartition) = "Equal partitioning in Y with ($(p.div) regions)"
+Base.summary(p::YPartition)      = "YPartition with [$(["$(p.div[i]) " for i in 1:length(p)]...)]"
 
 function partition_size(p::EqualYPartition, grid)
     Nx, Ny, Nz = size(grid)
@@ -27,6 +27,8 @@ end
 
 function partition_size(p::YPartition, grid)
     Nx, Ny, Nz = size(grid)
+    @show sum(p.div)
+    @show Ny
     @assert sum(p.div) != Ny
     return Tuple((Nx, p.div[i], Nz) for i in 1:length(p))
 end

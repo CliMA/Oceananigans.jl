@@ -30,19 +30,30 @@ end
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
 
 """
-julia> grid = RectilinearGrid(size=(10, 10), extent=(1, 1), topology=(Bounded, Bounded, Flat))
-mr10×10×1 RectilinearGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
+    MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+
+Return a `MultiRegionGrid` that is a `partition` of the `global_grid`.
+
+Example
+=======
+
+```@example
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(10, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat))
+10×12×1 RectilinearGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
 ├── Bounded  x ∈ [0.0, 1.0]       regularly spaced with Δx=0.1
-├── Bounded  y ∈ [0.0, 1.0]       regularly spaced with Δy=0.1
+├── Bounded  y ∈ [0.0, 1.0]       regularly spaced with Δy=0.0833333
 └── Flat z
 
-julia> mrg = MultiRegionGrid(grid, partition = XPartition(5))
+julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(5))
 ┌ Warning: MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!
-└ @ Oceananigans.MultiRegion ~/.julia/packages/Oceananigans/7G5bN/src/MultiRegion/multi_region_grid.jl:38
+└ @ Oceananigans.MultiRegion ~/Research/OC.jl/src/MultiRegion/multi_region_grid.jl:53
 MultiRegionGrid{Float64, Bounded, Bounded, Flat} partitioned on CPU(): 
-├── grids: 2×10×1 RectilinearGrid{Float64, RightConnected, Bounded, Flat} on CPU with 3×3×0 halo 
+├── grids: 2×12×1 RectilinearGrid{Float64, RightConnected, Bounded, Flat} on CPU with 3×3×0 halo 
 ├── partitioning: Equal partitioning in X with (5 regions) 
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU())
+```
 """
 function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 

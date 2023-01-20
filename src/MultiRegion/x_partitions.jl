@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct XPartition{N} <: AbstractPartition
     div :: N
-    function XPartition(sizes) 
+    function XPartition(sizes)
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end
@@ -97,7 +97,7 @@ function reconstruct_extent(mrg, p::XPartition)
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end
-    return (; x = x, y = y, z = z)
+    return (; x, y, z)
 end
 
 const FunctionMRO     = MultiRegionObject{<:Tuple{Vararg{<:Function}}}

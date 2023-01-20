@@ -111,7 +111,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
+    MultiRegionGrid, XPartition, YPartition,
     ConformalCubedSphereGrid,
 
     # Utils
