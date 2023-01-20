@@ -486,6 +486,19 @@ function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a�
 end
 
 """
+    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
+
+Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
+`a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
+non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
+overlapping, we compute the area of the quadrilateral as half the sum of the areas of all four potential
+triangles.
+"""
+spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
+    1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
+           spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
+
+"""
     hav(x)
 
 Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.

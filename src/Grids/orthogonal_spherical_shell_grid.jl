@@ -72,9 +72,12 @@ end
                                  halo = (1, 1, 1),
                                  rotation = nothing)
 
-Create a `OrthogonalSphericalShellGrid` that represents a section of a spherical cubed after it has been 
+Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been 
 mapped from the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, take values
 in the range ``[-1, 1]``.
+
+The mapping from the face of the cube to the sphere is done via the [CubedSphere.jl](https://github.com/CliMA/CubedSphere.jl)
+package.
 
 Positional arguments
 ====================
@@ -98,6 +101,10 @@ Keyword arguments
 
 - `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
           the physical interior. The default is 1 halo cells in every direction.
+
+- `rotation`: Rotation of the spherical shell grid about some axis that passes through the center
+              of the sphere. If `nothing` is provided (default), then the spherical shell includes
+              the North Pole of the sphere in its center.
 
 Examples
 ========
@@ -176,11 +183,12 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
         for j in 1:length(η), i in 1:length(ξ)
+            # maps (ξ, η) from cube's face to (X, Y, Y) on the unit sphere
             @inbounds X[i, j], Y[i, j], Z[i, j] = conformal_cubed_sphere_mapping(ξ[i], η[j])
         end
     end
 
-    ## Rotate the face if it's not the +z face (the one containing the North Pole).
+    ## Rotate the mapped (X, Y, Z) if needed
 
     if !isnothing(rotation)
         for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
@@ -207,6 +215,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     for (ξ, η, X, Y, Z, λ, φ) in zip(ξS, ηS, XS, YS, ZS, λS, φS)
         for j in 1:length(η), i in 1:length(ξ)
+            # convert cartesian (X, Y, Z) to lat-long (φ, λ)
             @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
         end
     end
@@ -226,6 +235,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δyᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δyᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
+    # central angles
+    
     Δσxᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
     Δσxᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
     Δσxᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
@@ -263,7 +274,6 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ]
     ΔΣ = [Δσxᶜᶜᵃ, Δσxᶠᶜᵃ, Δσxᶜᶠᵃ, Δσxᶠᶠᵃ, Δσyᶜᶜᵃ, Δσyᶜᶠᵃ, Δσyᶠᶜᵃ, Δσyᶠᶠᵃ]
 
-    # convert degrees to meters
     for (Δs, Δσ) in zip(ΔS, ΔΣ)
         @. Δσ = deg2rad(Δσ)
         @. Δs = radius * Δσ
@@ -274,10 +284,15 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
+    # approximate the areas Az = Δx * Δy
+
     @. Azᶜᶜᵃ = Δxᶜᶜᵃ * Δyᶜᶜᵃ
     @. Azᶠᶜᵃ = Δxᶠᶜᵃ * Δyᶠᶜᵃ
     @. Azᶜᶠᵃ = Δxᶜᶠᵃ * Δyᶜᶠᵃ
     @. Azᶠᶠᵃ = Δxᶠᶠᵃ * Δyᶠᶠᵃ
+
+
+    # for interior points compute Az as the area of the corresponding spherical quadrilateral  
 
     for j in 1:Nη, i in 1:Nξ
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
@@ -347,44 +362,6 @@ function fill_halos_orthogonal_spherical_shell_grid!(A::OffsetArray, (ξ, η), (
     end
 
     return nothing
-end
-
-"""
-    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
-
-Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
-`a₁`, `a₂`, `a₃`, and `a₄`. The area is computed as the sum of two spherical triangles. Care must be
-taken so that points `a₁`, `a₂`, `a₃`, and `a₄` correspond to the edges of the quadrilateral in clockwise
-or counterclockwise order.
-"""
-function spherical_area_quadrilateral(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector, a₄::AbstractVector)
-    # a₁, a₂, a₃, a₄ = check_ccw(a₁, a₂, a₃, a₄)
-    return spherical_area_triangle(a₁, a₂, a₃) + spherical_area_triangle(a₁, a₄, a₃)
-end
-
-ccw(a, b, c) = sign((b[1]-a[1]) * (c[2]-a[2]) - (c[1] - a[1])*(b[2]-a[2]))
-ccw(a, b, c, d) = ccw(d, a, b), ccw(a, b, c), ccw(b, c, d), ccw(c, d, a)
-
-function check_ccw(a₁, a₂, a₃, a₄)
-    check = ccw(a₁, a₂, a₃, a₄) .> 0
-
-    if check == (true, true, true, true)
-        return a₁, a₂, a₃, a₄
-    elseif check == (false, false, true, true)
-        return check_ccw(a₂, a₁, a₃, a₄)
-    elseif check == (false, true, false, true)
-        return check_ccw(a₃, a₂, a₁, a₄)
-    elseif check == (false, true, true, false)
-        return check_ccw(a₄, a₂, a₃, a₁)
-    elseif check == (true, false, false, true)
-        return check_ccw(a₁, a₃, a₂, a₄)
-    elseif check == (true, false, true, false)
-        return check_ccw(a₁, a₄, a₃, a₂)
-    elseif check == (true, true, false, false)
-        return check_ccw(a₁, a₂, a₄, a₃)
-    elseif check == (false, false, false, false)
-        return check_ccw(a₄, a₃, a₂, a₁)
-    end
 end
 
 function lat_lon_to_cartesian(lat, lon, radius)
