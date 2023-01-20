@@ -12,13 +12,16 @@ end
 
 
 """"
-    function CubedSpherePartition(; Rx = 1, Ry = 1) 
+    function CubedSpherePartition(; Rx = 1, Ry = 1)
 
-`Rx`: number of x-division of faces, can be a number (faces divided in the same way) or a vector of 6
-`Ry`: number of y-division of faces, can be a number (faces divided in the same way) or a vector of 6
+Return the Cubed Sphere partition.
+
+* `Rx`: number of ``x``-division of faces, can be a number (faces divided in the same way)
+        or a vector of 6.
+* `Ry`: number of ``y``-division of faces, can be a number (faces divided in the same way)
+        or a vector of 6.
 """
-function CubedSpherePartition(; Rx = 1, Ry = 1) 
-
+function CubedSpherePartition(; Rx = 1, Ry = 1)
     if Rx isa Number 
         if Ry isa Number
             Rx != Ry && 
