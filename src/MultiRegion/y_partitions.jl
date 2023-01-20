@@ -27,8 +27,6 @@ end
 
 function partition_size(p::YPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @show sum(p.div)
-    @show Ny
     @assert sum(p.div) != Ny
     return Tuple((Nx, p.div[i], Nz) for i in 1:length(p))
 end
@@ -99,7 +97,7 @@ function reconstruct_extent(mrg, p::YPartition)
             y = [y..., cpu_face_constructor_y(grid)[2:end]...]
         end
     end
-    return (; x = x, y = y, z = z)
+    return (; x, y, z)
 end
 
 function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
