@@ -30,9 +30,9 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 # use as a trait for dispatch purposes
-SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200) =
+SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
-                             gravitational_acceleration, SplitExplicitSettings(substeps))
+                             gravitational_acceleration, SplitExplicitSettings(; kwargs...))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -45,7 +45,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(200))
+                                        settings = SplitExplicitSettings(; kwargs...))
 
 η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
@@ -65,16 +65,26 @@ A struct containing the state fields for the split-explicit free surface.
 $(TYPEDFIELDS)
 """
 Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
-    "The instantaneous barotropic component of the zonal velocity. (`ReducedField`)"
-    U :: ℱ𝒞
-    "The instantaneous barotropic component of the meridional velocity. (`ReducedField`)"
-    V :: 𝒞ℱ
+    "The free surface at times at times `m`, `m-1` and `m-2`. (`ReducedField`)"
+    ηᵐ   :: 𝒞𝒞
+    ηᵐ⁻¹ :: 𝒞𝒞
+    ηᵐ⁻² :: 𝒞𝒞
+    "The instantaneous barotropic component of the zonal velocity at times `m`, `m-1` and `m-2`. (`ReducedField`)"
+    Uᵐ   :: ℱ𝒞
+    Uᵐ⁻¹ :: ℱ𝒞
+    Uᵐ⁻² :: ℱ𝒞
+    "The instantaneous barotropic component of the meridional velocity at times `m`, `m-1` and `m-2`. (`ReducedField`)"
+    Vᵐ   :: 𝒞ℱ
+    Vᵐ⁻¹ :: 𝒞ℱ
+    Vᵐ⁻² :: 𝒞ℱ
     "The time-filtered free surface. (`ReducedField`)"
-    η̅ :: 𝒞𝒞
+    η̅    :: 𝒞𝒞
     "The time-filtered barotropic component of the zonal velocity. (`ReducedField`)"
-    U̅ :: ℱ𝒞
+    U̅    :: ℱ𝒞
+    V̅    :: 𝒞ℱ    
     "The time-filtered barotropic component of the meridional velocity. (`ReducedField`)"
-    V̅ :: 𝒞ℱ
+    Ũ    :: ℱ𝒞
+    Ṽ    :: 𝒞ℱ
 end
 
 """
@@ -86,13 +96,26 @@ at the next substep iteration -- it essentially acts as a filter for `η`.
 function SplitExplicitState(grid::AbstractGrid)
     η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
-    U = Field{Face, Center, Nothing}(grid)
-    U̅ = Field{Face, Center, Nothing}(grid)
+    ηᵐ   = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+    ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+          
+    Uᵐ   = Field{Face, Center, Nothing}(grid)
+    Vᵐ   = Field{Center, Face, Nothing}(grid)
 
-    V = Field{Center, Face, Nothing}(grid)
-    V̅ = Field{Center, Face, Nothing}(grid)
-
-    return SplitExplicitState(; U, V, η̅, U̅, V̅)
+    Uᵐ⁻¹ = Field{Face, Center, Nothing}(grid)
+    Vᵐ⁻¹ = Field{Center, Face, Nothing}(grid)
+          
+    Uᵐ⁻² = Field{Face, Center, Nothing}(grid)
+    Vᵐ⁻² = Field{Center, Face, Nothing}(grid)
+          
+    U̅    = Field{Face, Center, Nothing}(grid)
+    V̅    = Field{Center, Face, Nothing}(grid)
+              
+    Ũ    = Field{Face, Center, Nothing}(grid)
+    Ṽ    = Field{Center, Face, Nothing}(grid)
+    
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ, Uᵐ⁻¹, Uᵐ⁻², Vᵐ, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, Ũ, V̅, Ṽ)
 end
 
 """
@@ -143,31 +166,56 @@ A struct containing settings for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-struct SplitExplicitSettings{𝒩, ℳ}
+struct SplitExplicitSettings{𝒩, T, ℳ}
     "substeps: (`Int`)"
     substeps :: 𝒩
-    "velocity_weights : (`Vector`)"
-    velocity_weights :: ℳ
-    "free_surface_weights : (`Vector`)"
-    free_surface_weights :: ℳ
+    "barotropic time step: (`Number`)" 
+    Δτ :: T 
+    "averaging_weights : (`Vector`)"
+    averaging_weights :: ℳ
+    "mass_flux_weights : (`Vector`)"
+    mass_flux_weights :: ℳ
 end
 
-function SplitExplicitSettings(; substeps = 200, velocity_weights = nothing, free_surface_weights = nothing)
-    velocity_weights = Tuple(ones(substeps) ./ substeps)
-    free_surface_weights = Tuple(ones(substeps) ./ substeps)
+# Weights that minimize dispersion error from http://falk.ucsd.edu/roms_class/shchepetkin04.pdf (p = 2, q = 4, r = 0.18927)
+@inline function averaging_shape_function(τ; p = 2, q = 4, r = 0.18927) 
+    τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1) 
+    return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
+end
 
+function SplitExplicitSettings(; substeps = 200, 
+                                 averaging_weighting_function = averaging_shape_function)
+    
+    τ = range(0.01, 2, length = 1000)
+
+    idx = 1
+    for (i, t) in enumerate(τ)
+        if averaging_weighting_function(t) > 0 
+            idx = i 
+            break
+        end
+    end
+
+    for l in idx:1000
+        if averaging_weighting_function(τ[l]) < 0
+            idx = l
+            break
+        end
+    end
+
+    τᶠ = range(0.0, τ[idx-1], length = substeps+1)
+    τᶜ = 0.5 * (τᶠ[2:end] + τᶠ[1:end-1])
+
+    averaging_weights = averaging_weighting_function.(τᶜ)
+    mass_flux_weights = similar(averaging_weights)
+    for i in substeps:-1:1
+        mass_flux_weights[i] = 1 / substeps * sum(averaging_weights[i:substeps]) 
+    end
+    
     return SplitExplicitSettings(substeps,
-        velocity_weights,
-        free_surface_weights)
-end
-
-function SplitExplicitSettings(substeps)
-    velocity_weights = Tuple(ones(substeps) ./ substeps)
-    free_surface_weights = Tuple(ones(substeps) ./ substeps)
-
-    return SplitExplicitSettings(substeps = substeps,
-        velocity_weights = velocity_weights,
-        free_surface_weights = free_surface_weights)
+                                 τᶠ[2] - τᶠ[1]
+                                 averaging_weights,
+                                 mass_flux_weights)
 end
 
 # Convenience Functions for grabbing free surface

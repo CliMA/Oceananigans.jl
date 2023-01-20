@@ -195,13 +195,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gᵁ .= gu_c
             Gⱽ .= gv_c
 
-            # overwrite weights
-            tmp = ones(Nt + 1) ./ Nt # since taking Nt+1 timesteps
-            tmp[end] = Δτ_end / T # since last timestep is different
-            velocity_weights = Tuple(tmp)
-            free_surface_weights = Tuple(tmp) # since taking Nt+1 timesteps
-
-            settings = SplitExplicitSettings(Nt + 1, velocity_weights, free_surface_weights)
+            settings = SplitExplicitSettings(substeps = Nt + 1)
             sefs = sefs(settings)
 
             for i in 1:Nt

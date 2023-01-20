@@ -6,6 +6,10 @@ using Oceananigans.AbstractOperations: Δz
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 
+const β = 1
+const γ = 1
+const ϵ = 1
+
 # Evolution Kernels
 #=
 ∂t(η) = -∇⋅U
@@ -38,31 +42,49 @@ using Oceananigans.Operators
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  u) = ifelse(i == grid.Nx, 0.0, δxᶜᵃᵃ(i, j, k, grid, u))
 @inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  v) = ifelse(j == grid.Ny, 0.0, δyᵃᶜᵃ(i, j, k, grid, v))
 
-@inline div_xyᶜᶜᶠ_bound(i, j, k, grid, TX, TY, u, v) = 
-    1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, u) +
-                                δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, v))
+@inline div_xᶜᶜᶠ_bound(i, j, k, grid, TX, f, args...) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_bound(i, j, k, ibg, TX, Δy_qᶠᶜᶠ, f, args...) 
+
+@inline div_yᶜᶜᶠ_bound(i, j, k, grid, TY, f, args...) = 
+    1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_bound(i, j, k, ibg, TY, Δx_qᶜᶠᶠ, f, args...) 
 
 using Oceananigans.ImmersedBoundaries: conditional_∂x_f, conditional_∂x_c, conditional_∂y_f, conditional_∂y_c, IBG
 
 @inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, args...) = conditional_∂x_f(Center(), Face(), i, j, k, ibg, ∂xᶠᶜᶠ_bound, args...)
 @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, args...) = conditional_∂y_f(Center(), Face(), i, j, k, ibg, ∂yᶜᶠᶠ_bound, args...)
 
-@inline div_xyᶜᶜᶠ_bound(i, j, k, ibg::IBG, TX, TY, u, v) = 
-    1 / Azᶜᶜᶠ(i, j, k, ibg) * (conditional_∂x_c(Center(), Face(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, u) +
-                               conditional_∂y_c(Center(), Face(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, v))
+@inline div_xᶜᶜᶠ_bound(i, j, k, ibg::IBG, TX, f, args...) = 
+    1 / Azᶜᶜᶠ(i, j, k, ibg) * conditional_∂x_c(Center(), Face(), i, j, k, ibg, δxᶜᵃᵃ_bound, TX, Δy_qᶠᶜᶠ, f, args...) 
 
-@kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
+@inline div_yᶜᶜᶠ_bound(i, j, k, ibg::IBG, TY, f, args...) = 
+    1 / Azᶜᶜᶠ(i, j, k, ibg) * conditional_∂y_c(Center(), Face(), i, j, k, ibg, δyᵃᶜᵃ_bound, TY, Δx_qᶜᶠᶠ, f, args...) 
+
+@inline ϕ★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)    = (1.5 + β) * ϕᵐ[i, j, k] - (0.5 + 2β) * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
+@inline D★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻², H) = (H[i, j] + ϕ★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²))
+
+@kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ, Uᵐ⁻¹, Uᵐ⁻², Vᵐ, Vᵐ⁻¹, Vᵐ⁻², Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
     TX, TY, _ = topology(grid)
 
+    @ibounds begin
+        tempη = η[i, j, k]
+        
+        η[i, j, k] =  ηᵐ[i, j, k] -  Δτ * (div_xᶜᶜᶠ_bound(i, j, k_top, grid, TX, D★, )
+
+        
+        ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
+        ηᵐ⁻¹[i, j, k] = ηᵐ[i, j, k]
+
+        ηᵐ[i, j, k] = η[i, j, k]
+    end
     # ∂τ(U) = - ∇η + G
     @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_bound(i, j, k_top, grid, TX, η) + Gᵁ[i, j, 1])
     @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_bound(i, j, k_top, grid, TY, η) + Gⱽ[i, j, 1])
 end
 
-@kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
+@kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, Ũ, Ṽ, averaging_weight, mass_flux_weight)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
@@ -71,9 +93,12 @@ end
     # ∂τ(η) = - ∇⋅U
     @inbounds η[i, j, k_top] -=  Δτ * div_xyᶜᶜᶠ_bound(i, j, k_top, grid, TX, TY, U, V)
     # time-averaging
-    @inbounds U̅[i, j, 1]         +=  velocity_weight * U[i, j, 1]
-    @inbounds V̅[i, j, 1]         +=  velocity_weight * V[i, j, 1]
-    @inbounds η̅[i, j, k_top] +=  free_surface_weight * η[i, j, k_top]
+
+    @inbounds η̅[i, j, k_top] +=  averaging_weight * η[i, j, k_top]
+    @inbounds U̅[i, j, 1]     +=  averaging_weight * U[i, j, 1]
+    @inbounds V̅[i, j, 1]     +=  averaging_weight * V[i, j, 1]
+    @inbounds Ũ[i, j, 1]     +=  mass_flux_weight * U[i, j, 1]
+    @inbounds Ṽ[i, j, 1]     +=  mass_flux_weight * V[i, j, 1]
 end
 
 function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
@@ -81,8 +106,8 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     U, V, η̅, U̅, V̅    = state.U, state.V, state.η̅, state.U̅, state.V̅
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
 
-    vel_weight = settings.velocity_weights[substep_index]
-    η_weight   = settings.free_surface_weights[substep_index]
+    vel_weight = settings.averaging_weights[substep_index]
+    η_weight   = settings.mass_flux_weights[substep_index]
 
     event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
@@ -100,8 +125,9 @@ end
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 
-@kernel function barotropic_mode_kernel!(U, V, grid, u, v)	
-    i, j = @index(Global, NTuple)	
+@kernel function barotropic_average_kernel!(U, V, grid, u, v, η, Hᶠᶜ, Hᶜᶠ)	
+    i, j  = @index(Global, NTuple)	
+    k_top = grid.Nz
 
     # hand unroll first loop 	
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]	
@@ -111,13 +137,16 @@ end
         @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]	
         @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]	
     end	
+
+    @inbounds U[i, j, 1] /= (Hᶠᶜ[i, j, 1] + ℑxᶠᵃᵃ(i, j, k_top, grid, η))
+    @inbounds V[i, j, 1] /= (Hᶜᶠ[i, j, 1] + ℑyᵃᶠᵃ(i, j, k_top, grid, η))
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-function barotropic_mode!(U, V, grid, u, v)
+function barotropic_average!(U, V, grid, u, v, η, Hᶠᶜ, Hᶜᶠ)
 
     arch  = architecture(grid)
-    event = launch!(arch, grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
+    event = launch!(arch, grid, :xy, barotropic_average_kernel!, U, V, grid, u, v, η, Hᶠᶜ, Hᶜᶠ,
                    dependencies=Event(device(arch)))
 
     wait(device(arch), event)
@@ -131,11 +160,11 @@ function set_average_to_zero!(free_surface_state)
     fill!(free_surface_state.V̅, 0.0)     
 end
 
-@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (-U[i, j] + U̅[i, j]) / Hᶠᶜ[i, j]
-        v[i, j, k] = v[i, j, k] + (-V[i, j] + V̅[i, j]) / Hᶜᶠ[i, j]
+        u[i, j, k] = u[i, j, k] + (-U[i, j] + U̅[i, j])
+        v[i, j, k] = v[i, j, k] + (-V[i, j] + V̅[i, j])
     end
 end
 
@@ -143,16 +172,15 @@ end
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs       = free_surface.state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
-    Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
     arch       = architecture(grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    barotropic_mode!(U, V, grid, u, v)
+    barotropic_average!(U, V, grid, u, v, sefs.η, sefs.Hᶠᶜ, sefs.Hᶜᶠ)
     # add in "good" barotropic mode
 
     event = launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
+        u, v, U̅, V̅, U, V,
         dependencies = Event(device(arch)))
 
     wait(device(arch), event)
@@ -184,7 +212,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
 
-    Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
+    Δτ = Δt * settings.Δτ  # we evolve for two times the Δt 
 
     event_Gu = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
     event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
@@ -195,13 +223,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
 
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
+    barotropic_average!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻, η, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ)
 
     # reset free surface averages
     set_average_to_zero!(state)
 
-    set!(state.U, state.U̅)
-    set!(state.V, state.V̅)
+    set!(state.U, state.Ũ)
+    set!(state.V, state.Ṽ)
 
     # Solve for the free surface at tⁿ⁺¹
 
