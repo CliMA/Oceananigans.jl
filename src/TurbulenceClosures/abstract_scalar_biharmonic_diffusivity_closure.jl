@@ -60,7 +60,7 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, lo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, c)
+@inline diffusive_flux_x(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_x, ∂xᶠᶜᶜ, ∇²ᶜᶜᶜ, c)
 @inline diffusive_flux_y(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶠᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_y, ∂yᶜᶠᶜ, ∇²ᶜᶜᶜ, c)
 @inline diffusive_flux_z(i, j, k, grid, clo::AIBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶜᶜᶠ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_z, ∂zᶜᶜᶠ, ∇²ᶜᶜᶜ, c)
 @inline diffusive_flux_x(i, j, k, grid, clo::AHBD, K, ::Val{id}, c, clk, fields, b) where id = κ_σᶠᶜᶜ(i, j, k, grid, clo, K, Val(id), clk, fields, biharmonic_mask_x, ∂x_∇²h_cᶠᶜᶜ, c)
