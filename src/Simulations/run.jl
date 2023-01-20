@@ -6,6 +6,8 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface_state!
+
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: aligned_time_step
@@ -115,6 +117,7 @@ function time_step!(sim::Simulation)
                 start_time = time_ns()
             end
 
+            initialize_free_surface_state!(sim.model)
             Δt = aligned_time_step(sim, sim.Δt)
             time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimeStepCallsite)])
 

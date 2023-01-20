@@ -9,10 +9,10 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
+function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ, euler = false)
 
     # Step locally velocity and tracers
-    @apply_regionally prognostic_field_events = local_ab2_step!(model, Δt, χ)
+    @apply_regionally prognostic_field_events = local_ab2_step!(model, Δt, χ, euler)
 
     # blocking step for implicit free surface, non blocking for explicit
     prognostic_field_events = ab2_step_free_surface!(model.free_surface, model, Δt, χ, prognostic_field_events)
@@ -23,13 +23,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     return nothing
 end
 
-function local_ab2_step!(model, Δt, χ)
-
-    if model.free_surface isa SplitExplicitFreeSurface
-        sefs = model.free_surface
-        u, v, _ = model.velocities
-        barotropic_mode!(sefs.state.U, sefs.state.V, model.grid, u, v)
-    end
+function local_ab2_step!(model, Δt, χ, euler)
 
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
     explicit_tracer_step_events   = ab2_step_tracers!(model.tracers, model, Δt, χ)

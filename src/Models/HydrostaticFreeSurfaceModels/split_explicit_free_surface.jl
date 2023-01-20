@@ -70,20 +70,20 @@ Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
     ηᵐ⁻¹ :: 𝒞𝒞
     ηᵐ⁻² :: 𝒞𝒞
     "The instantaneous barotropic component of the zonal velocity at times `m`, `m-1` and `m-2`. (`ReducedField`)"
-    Uᵐ   :: ℱ𝒞
+    U    :: ℱ𝒞
     Uᵐ⁻¹ :: ℱ𝒞
     Uᵐ⁻² :: ℱ𝒞
     "The instantaneous barotropic component of the meridional velocity at times `m`, `m-1` and `m-2`. (`ReducedField`)"
-    Vᵐ   :: 𝒞ℱ
+    V    :: 𝒞ℱ
     Vᵐ⁻¹ :: 𝒞ℱ
     Vᵐ⁻² :: 𝒞ℱ
     "The time-filtered free surface. (`ReducedField`)"
     η̅    :: 𝒞𝒞
     "The time-filtered barotropic component of the zonal velocity. (`ReducedField`)"
     U̅    :: ℱ𝒞
-    V̅    :: 𝒞ℱ    
-    "The time-filtered barotropic component of the meridional velocity. (`ReducedField`)"
     Ũ    :: ℱ𝒞
+    "The time-filtered barotropic component of the meridional velocity. (`ReducedField`)"
+    V̅    :: 𝒞ℱ    
     Ṽ    :: 𝒞ℱ
 end
 
@@ -100,8 +100,8 @@ function SplitExplicitState(grid::AbstractGrid)
     ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
           
-    Uᵐ   = Field{Face, Center, Nothing}(grid)
-    Vᵐ   = Field{Center, Face, Nothing}(grid)
+    U    = Field{Face, Center, Nothing}(grid)
+    V    = Field{Center, Face, Nothing}(grid)
 
     Uᵐ⁻¹ = Field{Face, Center, Nothing}(grid)
     Vᵐ⁻¹ = Field{Center, Face, Nothing}(grid)
@@ -115,7 +115,7 @@ function SplitExplicitState(grid::AbstractGrid)
     Ũ    = Field{Face, Center, Nothing}(grid)
     Ṽ    = Field{Center, Face, Nothing}(grid)
     
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ, Uᵐ⁻¹, Uᵐ⁻², Vᵐ, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, Ũ, V̅, Ṽ)
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, Ũ, V̅, Ṽ)
 end
 
 """
@@ -183,10 +183,14 @@ end
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
+@inline averaging_cosine_function(τ) = τ >= 0.5 && τ <= 1.5 ? 1 + cos(2π * (τ - 1)) : 0.0
+
+@inline averaging_fixed_function(τ) = 1.0
+
 function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_weighting_function = averaging_shape_function)
+                                 averaging_weighting_function = averaging_fixed_function)
     
-    τ = range(0.01, 2, length = 1000)
+    τ = range(0.6, 2, length = 1000)
 
     idx = 1
     for (i, t) in enumerate(τ)
@@ -196,24 +200,30 @@ function SplitExplicitSettings(; substeps = 200,
         end
     end
 
+    idx2 = 1
     for l in idx:1000
-        if averaging_weighting_function(τ[l]) < 0
-            idx = l
-            break
-        end
+        idx2 = l
+        averaging_weighting_function(τ[l]) <= 0 && break
     end
 
-    τᶠ = range(0.0, τ[idx-1], length = substeps+1)
+    τᶠ = range(0.0, τ[idx2-1], length = substeps+1)
     τᶜ = 0.5 * (τᶠ[2:end] + τᶠ[1:end-1])
 
-    averaging_weights = averaging_weighting_function.(τᶜ)
-    mass_flux_weights = similar(averaging_weights)
+    averaging_weights   = averaging_weighting_function.(τᶜ) 
+    mass_flux_weights   = similar(averaging_weights)
+
+    M = searchsortedfirst(τᶜ, 1.0) - 1
+
+    averaging_weights ./= sum(averaging_weights)
+
     for i in substeps:-1:1
-        mass_flux_weights[i] = 1 / substeps * sum(averaging_weights[i:substeps]) 
+        mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
     end
-    
+
+    mass_flux_weights ./= sum(mass_flux_weights)
+
     return SplitExplicitSettings(substeps,
-                                 τᶠ[2] - τᶠ[1]
+                                 τᶜ[2] - τᶜ[1],
                                  averaging_weights,
                                  mass_flux_weights)
 end
@@ -236,7 +246,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 
 function reset!(sefs::SplitExplicitFreeSurface)
     for name in propertynames(sefs.state)
-        var = getproperty(free_surface.state, name)
+        var = getproperty(sefs.state, name)
         fill!(var, 0.0)
     end
 end
