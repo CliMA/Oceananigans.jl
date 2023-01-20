@@ -6,179 +6,178 @@ using Oceananigans.Grids: R_Earth, interior_indices
 import Base: show, size, eltype
 import Oceananigans.Grids: topology, architecture, halo_size, on_architecture, size_summary
 
-struct CubedSphereFaceConnectivityDetails{F, S}
-    face :: F
-    side :: S
+struct CubedSpherePanelConnectivityDetails{P, S}
+    panel :: P
+     side :: S
 end
 
-short_string(deets::CubedSphereFaceConnectivityDetails) = "face $(deets.face) $(deets.side) side"
+short_string(deets::CubedSpherePanelConnectivityDetails) = "panel $(deets.panel) $(deets.side) side"
 
-Base.show(io::IO, deets::CubedSphereFaceConnectivityDetails) =
-    print(io, "CubedSphereFaceConnectivityDetails: $(short_string(deets))")
+Base.show(io::IO, deets::CubedSpherePanelConnectivityDetails) =
+    print(io, "CubedSpherePanelConnectivityDetails: $(short_string(deets))")
 
-struct CubedSphereFaceConnectivity{W, E, S, N}
+struct CubedSpherePanelConnectivity{W, E, S, N}
      west :: W
      east :: E
     south :: S
     north :: N
 end
 
-CubedSphereFaceConnectivity(; west, east, south, north) =
-    CubedSphereFaceConnectivity(west, east, south, north)
+CubedSpherePanelConnectivity(; west, east, south, north) =
+    CubedSpherePanelConnectivity(west, east, south, north)
 
-function Base.show(io::IO, connectivity::CubedSphereFaceConnectivity)
-    print(io, "CubedSphereFaceConnectivity:\n",
+function Base.show(io::IO, connectivity::CubedSpherePanelConnectivity)
+    print(io, "CubedSpherePanelConnectivity:\n",
               "├── west: $(short_string(connectivity.west))\n",
               "├── east: $(short_string(connectivity.east))\n",
               "├── south: $(short_string(connectivity.south))\n",
               "└── north: $(short_string(connectivity.north))")
 end
 
-function default_face_connectivity()
-    # See figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
+function default_panel_connectivity()
+    # Adopted from figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
     #
-    #                         face  F5   face  F6
+    #                         panel P5   panel P6
     #                       +----------+----------+
     #                       |    ↑↑    |    ↑↑    |
     #                       |    1W    |    1S    |
-    #                       |←3N F5 6W→|←5E F6 2S→|
+    #                       |←3N P5 6W→|←5E P6 2S→|
     #                       |    4N    |    4E    |
-    #              face  F3 |    ↓↓    |    ↓↓    |
+    #              panel P3 |    ↓↓    |    ↓↓    |
     #            +----------+----------+----------+
     #            |    ↑↑    |    ↑↑    |
     #            |    5W    |    5S    |
-    #            |←1N F3 4W→|←3E F4 6S→|
+    #            |←1N P3 4W→|←3E P4 6S→|
     #            |    2N    |    2E    |
     #            |    ↓↓    |    ↓↓    |
     # +----------+----------+----------+
-    # |    ↑↑    |    ↑↑    | face  F4
+    # |    ↑↑    |    ↑↑    | panel P4
     # |    3W    |    3S    |
-    # |←5N F1 2W→|←1E F2 4S→|
+    # |←5N P1 2W→|←1E P2 4S→|
     # |    6N    |    6E    |
     # |    ↓↓    |    ↓↓    |
     # +----------+----------+
-    #   face  F1   face  F2
+    #   panel P1   panel P2
 
-    face1_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(5, :north),
-        east  = CubedSphereFaceConnectivityDetails(2, :west),
-        south = CubedSphereFaceConnectivityDetails(6, :north),
-        north = CubedSphereFaceConnectivityDetails(3, :west),
+    panel1_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(5, :north),
+        east  = CubedSpherePanelConnectivityDetails(2, :west),
+        south = CubedSpherePanelConnectivityDetails(6, :north),
+        north = CubedSpherePanelConnectivityDetails(3, :west),
     )
 
-    face2_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(1, :east),
-        east  = CubedSphereFaceConnectivityDetails(4, :south),
-        south = CubedSphereFaceConnectivityDetails(6, :east),
-        north = CubedSphereFaceConnectivityDetails(3, :south),
+    panel2_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(1, :east),
+        east  = CubedSpherePanelConnectivityDetails(4, :south),
+        south = CubedSpherePanelConnectivityDetails(6, :east),
+        north = CubedSpherePanelConnectivityDetails(3, :south),
     )
 
-    face3_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(1, :north),
-        east  = CubedSphereFaceConnectivityDetails(4, :west),
-        south = CubedSphereFaceConnectivityDetails(2, :north),
-        north = CubedSphereFaceConnectivityDetails(5, :west),
+    panel3_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(1, :north),
+        east  = CubedSpherePanelConnectivityDetails(4, :west),
+        south = CubedSpherePanelConnectivityDetails(2, :north),
+        north = CubedSpherePanelConnectivityDetails(5, :west),
     )
 
-    face4_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(3, :east),
-        east  = CubedSphereFaceConnectivityDetails(6, :south),
-        south = CubedSphereFaceConnectivityDetails(2, :east),
-        north = CubedSphereFaceConnectivityDetails(5, :south),
+    panel4_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(3, :east),
+        east  = CubedSpherePanelConnectivityDetails(6, :south),
+        south = CubedSpherePanelConnectivityDetails(2, :east),
+        north = CubedSpherePanelConnectivityDetails(5, :south),
     )
 
-    face5_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(3, :north),
-        east  = CubedSphereFaceConnectivityDetails(6, :west),
-        south = CubedSphereFaceConnectivityDetails(4, :north),
-        north = CubedSphereFaceConnectivityDetails(1, :west),
+    panel5_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(3, :north),
+        east  = CubedSpherePanelConnectivityDetails(6, :west),
+        south = CubedSpherePanelConnectivityDetails(4, :north),
+        north = CubedSpherePanelConnectivityDetails(1, :west),
     )
 
 
-    face6_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(5, :east),
-        east  = CubedSphereFaceConnectivityDetails(2, :south),
-        south = CubedSphereFaceConnectivityDetails(4, :east),
-        north = CubedSphereFaceConnectivityDetails(1, :south),
+    panel6_connectivity = CubedSpherePanelConnectivity(
+        west  = CubedSpherePanelConnectivityDetails(5, :east),
+        east  = CubedSpherePanelConnectivityDetails(2, :south),
+        south = CubedSpherePanelConnectivityDetails(4, :east),
+        north = CubedSpherePanelConnectivityDetails(1, :south),
     )
 
-    face_connectivity = (
-        face1_connectivity,
-        face2_connectivity,
-        face3_connectivity,
-        face4_connectivity,
-        face5_connectivity,
-        face6_connectivity
+    panel_connectivity = (
+        panel1_connectivity,
+        panel2_connectivity,
+        panel3_connectivity,
+        panel4_connectivity,
+        panel5_connectivity,
+        panel6_connectivity
     )
 
-    return face_connectivity
+    return panel_connectivity
 end
 
-# Note: I think we want to keep faces and face_connectivity tuples
-# so it's easy to support an arbitrary number of faces.
+# Note: I think we want to keep panels and panel_connectivity tuples
+# so it's easy to support an arbitrary number of panels.
 
 struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, FullyConnected, FullyConnected, Bounded, Arch}
-         architecture :: Arch
-                faces :: F
-    face_connectivity :: C
+          architecture :: Arch
+                panels :: F
+    panel_connectivity :: C
 end
 
 function ConformalCubedSphereGrid(arch = CPU(), FT=Float64;
-                                  face_size, z,
-                                  face_halo = (1, 1, 1),
-                                  face_topology = (FullyConnected, FullyConnected, Bounded),
+                                  panel_size, z,
+                                  panel_halo = (1, 1, 1),
+                                  panel_topology = (FullyConnected, FullyConnected, Bounded),
                                   radius = R_Earth)
 
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    size, halo = face_size, face_halo
-    topology = face_topology
+    size, halo, topology = panel_size, panel_halo, panel_topology
 
-    face_kwargs = (; z, size, topology, halo, radius)
+    panel_kwargs = (; z, size, topology, halo, radius)
 
-    # +z face (face 1)
-    z⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=nothing, face_kwargs...)
+    # +z panel (panel 1)
+    z⁺_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=nothing, panel_kwargs...)
 
-    # +x face (face 2)
-    x⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π/2), face_kwargs...)
+    # +x panel (panel 2)
+    x⁺_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π/2), panel_kwargs...)
 
-    # +y face (face 3)
-    y⁺_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(π/2), face_kwargs...)
+    # +y panel (panel 3)
+    y⁺_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(π/2), panel_kwargs...)
 
-    # -x face (face 4)
-    x⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(-π/2), face_kwargs...)
+    # -x panel (panel 4)
+    x⁻_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(-π/2), panel_kwargs...)
 
-    # -y face (face 5)
-    y⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(-π/2), face_kwargs...)
+    # -y panel (panel 5)
+    y⁻_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotY(-π/2), panel_kwargs...)
 
-    # -z face (face 6)
-    z⁻_face_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π), face_kwargs...)
+    # -z panel (panel 6)
+    z⁻_panel_grid = @suppress OrthogonalSphericalShellGrid(arch, FT; rotation=RotX(π), panel_kwargs...)
 
-    faces = (
-        z⁺_face_grid,
-        x⁺_face_grid,
-        y⁺_face_grid,
-        x⁻_face_grid,
-        y⁻_face_grid,
-        z⁻_face_grid
+    panels = (
+        z⁺_panel_grid,
+        x⁺_panel_grid,
+        y⁺_panel_grid,
+        x⁻_panel_grid,
+        y⁻_panel_grid,
+        z⁻_panel_grid
     )
 
-    face_connectivity = default_face_connectivity()
+    panel_connectivity = default_panel_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
+    return ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    face_topo = (FullyConnected, FullyConnected, Bounded)
-    face_kwargs = (; Nz, z, topology=face_topo, radius, halo)
+    panel_topo = (FullyConnected, FullyConnected, Bounded)
+    panel_kwargs = (; Nz, z, topology=panel_topo, radius, halo)
 
-    faces = Tuple(OrthogonalSphericalShellGrid(filepath, arch, FT; face=n, face_kwargs...) for n in 1:6)
+    panels = Tuple(OrthogonalSphericalShellGrid(filepath, arch, FT; panel=n, panel_kwargs...) for n in 1:6)
 
-    face_connectivity = default_face_connectivity()
+    panel_connectivity = default_panel_connectivity()
 
-    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
+    grid = ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 
     fill_grid_metric_halos!(grid)
     fill_grid_metric_halos!(grid)
@@ -194,9 +193,9 @@ Base.summary(grid::OrthogonalSphericalShellGrid{FT, FullyConnected, FullyConnect
 function Base.summary(grid::ConformalCubedSphereGrid)
     Nx, Ny, Nz, Nf = size(grid)
     FT = eltype(grid)
-    metric_computation = isnothing(grid.faces[1].Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+    metric_computation = isnothing(grid.panels[1].Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
-    return string(size_summary(size(grid)), " × $Nf faces",
+    return string(size_summary(size(grid)), " × $Nf panels",
                   " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)),
                   " ", metric_computation)
 end
@@ -206,13 +205,13 @@ function Base.show(io::IO, grid::ConformalCubedSphereGrid, withsummary=true)
         print(io, summary(grid), "\n")
     end
 
-    return print(io, "|   Faces: \n",
-                     "├── ", summary(grid.faces[1]), "\n",
-                     "├── ", summary(grid.faces[2]), "\n",
-                     "├── ", summary(grid.faces[3]), "\n",
-                     "├── ", summary(grid.faces[4]), "\n",
-                     "├── ", summary(grid.faces[5]), "\n",
-                     "└── ", summary(grid.faces[6]))
+    return print(io, "|   Panels: \n",
+                     "├── ", summary(grid.panels[1]), "\n",
+                     "├── ", summary(grid.panels[2]), "\n",
+                     "├── ", summary(grid.panels[3]), "\n",
+                     "├── ", summary(grid.panels[4]), "\n",
+                     "├── ", summary(grid.panels[5]), "\n",
+                     "└── ", summary(grid.panels[6]))
 end
 
 #####
@@ -260,10 +259,10 @@ end
 ##### Grid utils
 #####
 
-Base.size(grid::ConformalCubedSphereGrid)      = (size(grid.faces[1])..., length(grid.faces))
-Base.size(loc, grid::ConformalCubedSphereGrid) = size(loc, grid.faces[1])
+Base.size(grid::ConformalCubedSphereGrid)      = (size(grid.panels[1])..., length(grid.panels))
+Base.size(loc, grid::ConformalCubedSphereGrid) = size(loc, grid.panels[1])
 Base.size(grid::ConformalCubedSphereGrid, i)   = size(grid)[i]
-halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.faces)) # hack
+halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.panels)) # hack
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
@@ -273,11 +272,11 @@ architecture(grid::ConformalCubedSphereGrid) = grid.architecture
 
 function on_architecture(arch, grid::ConformalCubedSphereGrid) 
 
-    faces = Tuple(on_architecture(arch, grid.faces[n]) for n in 1:6)
-    face_connectivity = grid.face_connectivity
+    panels = Tuple(on_architecture(arch, grid.panels[n]) for n in 1:6)
+    panel_connectivity = grid.panel_connectivity
     FT = eltype(grid)
     
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
+    return ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 end
 
 #####
@@ -311,48 +310,48 @@ function fill_grid_metric_halos!(grid)
     loc_fc = (Face,   Center)
     loc_ff = (Face,   Face  )
 
-    for face_number in 1:6, side in (:west, :east, :south, :north)
+    for panel_number in 1:6, side in (:west, :east, :south, :north)
 
-        connectivity_info = getproperty(grid.face_connectivity[face_number], side)
-        src_face_number = connectivity_info.face
+        connectivity_info = getproperty(grid.panel_connectivity[panel_number], side)
+        src_panel_number = connectivity_info.panel
         src_side = connectivity_info.side
 
-        grid_face = grid.faces[face_number]
-        src_grid_face = grid.faces[src_face_number]
+        grid_panel = grid.panels[panel_number]
+        src_grid_panel = grid.panels[src_panel_number]
 
         if sides_in_the_same_dimension(side, src_side)
-            grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side)
-            grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side)
-            grid_metric_halo(grid_face.Azᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_face.Azᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δxᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_panel.Δxᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δyᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_panel.Δyᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Azᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= grid_metric_boundary(grid_panel.Azᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side)
 
-            grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side)
-            grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side)
-            grid_metric_halo(grid_face.Azᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_face.Azᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δxᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_panel.Δxᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δyᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_panel.Δyᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Azᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= grid_metric_boundary(grid_panel.Azᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side)
 
-            grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side)
-            grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side)
-            grid_metric_halo(grid_face.Azᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_face.Azᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δxᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_panel.Δxᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δyᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_panel.Δyᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Azᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= grid_metric_boundary(grid_panel.Azᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side)
 
-            grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side)
-            grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side)
-            grid_metric_halo(grid_face.Azᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_face.Azᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δxᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_panel.Δxᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Δyᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_panel.Δyᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side)
+            grid_metric_halo(grid_panel.Azᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= grid_metric_boundary(grid_panel.Azᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side)
         else
             reverse_dim = src_side in (:west, :east) ? 1 : 2
-            grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Azᶜᶜᵃ, grid_face, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶜᶜᵃ, src_grid_face, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δxᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δyᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δyᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δxᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Azᶜᶜᵃ, grid_panel, loc_cc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Azᶜᶜᵃ, src_grid_panel, loc_cc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
 
-            grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Azᶜᶠᵃ, grid_face, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶠᶜᵃ, src_grid_face, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δxᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δyᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δyᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δxᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Azᶜᶠᵃ, grid_panel, loc_cf, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Azᶠᶜᵃ, src_grid_panel, loc_fc, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
 
-            grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Azᶠᶜᵃ, grid_face, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶜᶠᵃ, src_grid_face, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δxᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δyᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δyᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δxᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Azᶠᶜᵃ, grid_panel, loc_fc, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Azᶜᶠᵃ, src_grid_panel, loc_cf, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
 
-            grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
-            grid_metric_halo(grid_face.Azᶠᶠᵃ, grid_face, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶠᶠᵃ, src_grid_face, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δxᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δyᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Δyᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Δxᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_panel.Azᶠᶠᵃ, grid_panel, loc_ff, topo_bb, side) .= reverse(permutedims(grid_metric_boundary(grid_panel.Azᶠᶠᵃ, src_grid_panel, loc_ff, topo_bb, src_side), (2, 1, 3)), dims=reverse_dim)
         end
     end
 
