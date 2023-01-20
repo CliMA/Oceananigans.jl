@@ -122,7 +122,7 @@ FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
     construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
-  construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), indices; kwargs...)
+    construct_regionally(inject_regional_bcs, mrg, Iterate(1:length(mrg)), Reference(mrg.partition), Reference(loc), indices; kwargs...)
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               mrg::MultiRegionGrid,
@@ -175,5 +175,3 @@ function Base.show(io::IO, field::MultiRegionField)
 
   print(io, prefix, middle, suffix)
 end
-
-

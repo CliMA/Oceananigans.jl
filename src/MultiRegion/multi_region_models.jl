@@ -15,7 +15,7 @@ import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrid}
 
 # Utility to generate the inputs to complex `getregion`s
-function getregionalproperties(T, inner=true) 
+function getregionalproperties(T, inner=true)
     type = eval(T)
     names = fieldnames(type)
     args  = Vector(undef, length(names))

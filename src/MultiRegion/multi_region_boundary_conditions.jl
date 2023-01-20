@@ -3,8 +3,8 @@ using Oceananigans.Architectures: arch_array, device_event, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 
-using Oceananigans.BoundaryConditions: 
-            ContinuousBoundaryFunction, 
+using Oceananigans.BoundaryConditions:
+            ContinuousBoundaryFunction,
             DiscreteBoundaryFunction, 
             permute_boundary_conditions,
             fill_halo_event!,
@@ -18,8 +18,8 @@ import Oceananigans.BoundaryConditions:
             fill_west_and_east_halo!,
             fill_south_and_north_halo!,
             fill_bottom_and_top_halo!,
-            fill_west_halo!, 
-            fill_east_halo!, 
+            fill_west_halo!,
+            fill_east_halo!,
             fill_south_halo!,
             fill_north_halo!
 
@@ -120,7 +120,7 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     eastsrc = buffers[eastbc.condition.from_rank].west.send
     eastsrc .= view(parent(e), H+1:2H, :, :)
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
@@ -150,7 +150,7 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     northsrc = buffers[eastbc.condition.from_rank].north.send
     northsrc .= view(parent(n), :, H+1:2H, :)
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
@@ -161,7 +161,7 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
 end
 
 #####
-##### Single fill_halo! for Communicating boundary condition 
+##### Single fill_halo! for Communicating boundary condition
 #####
     
 function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
@@ -201,7 +201,7 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     src .= view(parent(e), H+1:2H, :, :)
     sync_device!(getdevice(e))
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
@@ -247,7 +247,7 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     src .= view(parent(n), :, H+1:2H, :)
     sync_device!(getdevice(n))
 
-    switch_device!(getdevice(c))    
+    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), :, N+H+1:N+2H, :)
@@ -261,10 +261,10 @@ end
 #####
 
 @inline getregion(fc::FieldBoundaryConditions, i) = 
-        FieldBoundaryConditions(_getregion(fc.west, i), 
-                                _getregion(fc.east, i), 
-                                _getregion(fc.south, i), 
-                                _getregion(fc.north, i), 
+        FieldBoundaryConditions(_getregion(fc.west, i),
+                                _getregion(fc.east, i),
+                                _getregion(fc.south, i),
+                                _getregion(fc.north, i),
                                 _getregion(fc.bottom, i),
                                 _getregion(fc.top, i),
                                 fc.immersed)
@@ -282,11 +282,11 @@ end
     DiscreteBoundaryFunction(df.func, _getregion(df.parameters, i))
 
 
-@inline _getregion(fc::FieldBoundaryConditions, i) = 
-FieldBoundaryConditions(getregion(fc.west, i), 
-                        getregion(fc.east, i), 
-                        getregion(fc.south, i), 
-                        getregion(fc.north, i), 
+@inline _getregion(fc::FieldBoundaryConditions, i) =
+FieldBoundaryConditions(getregion(fc.west, i),
+                        getregion(fc.east, i),
+                        getregion(fc.south, i),
+                        getregion(fc.north, i),
                         getregion(fc.bottom, i),
                         getregion(fc.top, i),
                         fc.immersed)
@@ -304,7 +304,7 @@ ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
 DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
-validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing 
-validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing 
+validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing
+validate_boundary_condition_location(::MultiRegionObject, ::Face, side)         = nothing
 validate_boundary_condition_topology(::MultiRegionObject, topo::Periodic, side) = nothing
 validate_boundary_condition_topology(::MultiRegionObject, topo::Flat,     side) = nothing

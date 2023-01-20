@@ -70,7 +70,7 @@ function UnifiedDiagonalIterativeSolver(coeffs;
 
     return UnifiedDiagonalIterativeSolver(mrg,
                                           devices,
-                                          problem_size, 
+                                          problem_size,
                                           matrix_constructors,
                                           diagonal,
                                           placeholder_matrix,

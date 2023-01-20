@@ -80,7 +80,7 @@ function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition
     event = launch!(arch, grid, :xy,
                     implicit_linearized_unified_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
-		            dependencies = device_event(arch))
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
     return nothing
@@ -118,7 +118,7 @@ end
 function redistribute_lhs!(η, sol, arch, grid, region, partition)
 
     event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
-		            dependencies = device_event(arch))
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 end

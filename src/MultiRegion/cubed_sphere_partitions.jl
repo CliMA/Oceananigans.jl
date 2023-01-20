@@ -5,9 +5,8 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
    div :: Int
     Rx :: M
     Ry :: P
-    function CubedSpherePartition(div, Rx::M, Ry::P) where {M, P}
-        return new{M, P}(div, Rx, Ry)
-    end
+
+    CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
 end
 
 
@@ -64,7 +63,7 @@ utilities to get the index of the face the index within the face and the global 
 @inline rank_from_face_idx(fi, fj, face_idx, p::CubedSpherePartition) = face_idx * div_per_face(face_idx, p) + Rx(face_idx, p) * (fj  - 1) + fi
 
 @inline function region_corners(r, p::CubedSpherePartition)  
- 
+
     fi = intra_face_index_x(r, p)
     fj = intra_face_index_y(r, p)
 
@@ -193,7 +192,7 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
     return bc
 end
 
-function inject_south_boundary(region, p::CubedSpherePartition, global_bc) 
+function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         
     fi = intra_face_index_x(region, p)
     fj = intra_face_index_y(region, p)

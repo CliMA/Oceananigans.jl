@@ -7,6 +7,7 @@ struct YPartition{N} <: AbstractPartition
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end
+
         return new{typeof(sizes)}(sizes)
     end
 end
