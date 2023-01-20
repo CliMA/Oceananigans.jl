@@ -12,7 +12,7 @@ end
 
 
 """"
-    function CubedSpherePartition(; Rx = 1, Ry = 1)
+    CubedSpherePartition(; Rx = 1, Ry = 1)
 
 Return the Cubed Sphere partition.
 
@@ -48,8 +48,8 @@ Base.length(p::CubedSpherePartition) = p.div
 """
 utilities to get the index of the face the index within the face and the global index
 """
-@inline div_per_face(face_idx, p::RegularCubedSpherePartition)  = p.Rx    * p.Ry  
-@inline div_per_face(face_idx, p::XRegularCubedSpherePartition) = p.Rx    * p.Ry[face_idx]
+@inline div_per_face(face_idx, p::RegularCubedSpherePartition)  = p.Rx           * p.Ry  
+@inline div_per_face(face_idx, p::XRegularCubedSpherePartition) = p.Rx           * p.Ry[face_idx]
 @inline div_per_face(face_idx, p::YRegularCubedSpherePartition) = p.Rx[face_idx] * p.Ry
 
 @inline Rx(face_idx, p::RegularCubedSpherePartition)  = p.Rx    
@@ -127,10 +127,10 @@ end
 abstract type AbstractCubedSphereConnectivity end
 
 struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
-      rank :: Int
- from_rank :: Int
-      side :: Symbol
- from_side :: Symbol
+         rank :: Int
+    from_rank :: Int
+         side :: Symbol
+    from_side :: Symbol
 end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc) 
