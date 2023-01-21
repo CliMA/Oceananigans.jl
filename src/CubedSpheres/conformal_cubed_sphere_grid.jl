@@ -127,14 +127,14 @@ function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_h
 
     size, halo = face_size, face_halo
 
-    # +z face (face 1)
-    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=nothing)
-
-    # +x face (face 2)
+    # +x face (face 1)
     x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2))
 
-    # +y face (face 3)
+    # +y face (face 2)
     y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2))
+
+    # +z face (face 3)
+    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=nothing)
 
     # -x face (face 4)
     x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(-π/2))
@@ -146,9 +146,9 @@ function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_h
     z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π))
 
     faces = (
-        z⁺_face_grid,
         x⁺_face_grid,
         y⁺_face_grid,
+        z⁺_face_grid,
         x⁻_face_grid,
         y⁻_face_grid,
         z⁻_face_grid
