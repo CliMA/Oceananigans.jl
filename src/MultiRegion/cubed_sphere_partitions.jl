@@ -9,7 +9,6 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
     CubedSpherePartition(div, Rx::M, Ry::P) where {M, P} = new{M, P}(div, Rx, Ry)
 end
 
-
 """"
     CubedSpherePartition(; Rx = 1, Ry = 1)
 
@@ -63,8 +62,7 @@ utilities to get the index of the panel the index within the panel and the globa
 @inline rank_from_panel_idx(pᵢ, pⱼ, panel_idx, partition::CubedSpherePartition) =
             panel_idx * div_per_panel(panel_idx, partition) + Rx(panel_idx, partition) * (pⱼ - 1) + pᵢ
 
-@inline function region_corners(r, p::CubedSpherePartition)  
-
+@inline function region_corners(r, p::CubedSpherePartition)
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
@@ -76,8 +74,7 @@ utilities to get the index of the panel the index within the panel and the globa
     return (; bottom_left, bottom_right, top_left, top_right)
 end
 
-@inline function region_edge(r, p::CubedSpherePartition)  
-     
+@inline function region_edge(r, p::CubedSpherePartition)
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
@@ -133,8 +130,7 @@ struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity
     from_side :: Symbol
 end
 
-function inject_west_boundary(region, p::CubedSpherePartition, global_bc) 
-        
+function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
     pᵢ = intra_panel_index_x(region, p)
     pⱼ = intra_panel_index_y(region, p)
 
@@ -164,7 +160,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
 end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
-        
+ 
     pᵢ = intra_panel_index_x(region, p)
     pⱼ = intra_panel_index_y(region, p)
 
@@ -194,7 +190,6 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
 end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
-        
     pᵢ = intra_panel_index_x(region, p)
     pⱼ = intra_panel_index_y(region, p)
 
@@ -223,8 +218,7 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
     return bc
 end
 
-function inject_north_boundary(region, p::CubedSpherePartition, global_bc) 
-        
+function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     pᵢ = intra_panel_index_x(region, p)
     pⱼ = intra_panel_index_y(region, p)
 
