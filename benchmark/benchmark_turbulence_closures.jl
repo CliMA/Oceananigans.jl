@@ -10,7 +10,7 @@ using Benchmarks
 
 function benchmark_closure(Arch, Closure)
     grid = RectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, closure=Closure())
+    model = NonhydrostaticModel(architecture=Arch(); grid, closure=Closure())
 
     time_step!(model, 1) # warmup
 

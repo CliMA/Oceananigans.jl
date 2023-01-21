@@ -20,7 +20,7 @@ function benchmark_particle_tracking(Arch, N_particles)
         particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
     end
 
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, particles=particles)
+    model = NonhydrostaticModel(architecture=Arch(); grid, particles)
 
     time_step!(model, 1) # warmup
 

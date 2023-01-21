@@ -12,7 +12,7 @@ using Benchmarks
 function benchmark_equation_of_state(Arch, EOS)
     grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state=EOS())
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, buoyancy=buoyancy)
+    model = NonhydrostaticModel(architecture=Arch(); grid, buoyancy)
 
     time_step!(model, 1) # warmup
 

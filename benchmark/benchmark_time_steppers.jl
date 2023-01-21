@@ -7,9 +7,9 @@ using Benchmarks
 
 # Benchmark function
 
-function benchmark_time_stepper(Arch, N, TimeStepper)
+function benchmark_time_stepper(Arch, N, timestepper)
     grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, timestepper=TimeStepper)
+    model = NonhydrostaticModel(architecture=Arch(); grid, timestepper)
 
     time_step!(model, 1) # warmup
 

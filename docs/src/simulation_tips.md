@@ -106,7 +106,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 ```julia
 using Oceananigans
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = Field(u^2)

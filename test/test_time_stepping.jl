@@ -10,7 +10,7 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
     grid = RectilinearGrid(arch, size=size, extent=extent, topology=topology)
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
 end
@@ -30,7 +30,7 @@ end
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
-    model = NonhydrostaticModel(grid=grid, coriolis=c)
+    model = NonhydrostaticModel(; grid, coriolis=c)
 
     time_step!(model, 1, euler=true)
 
@@ -54,14 +54,14 @@ end
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
+    model = NonhydrostaticModel(; grid, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid, closure=nothing)
+    model = NonhydrostaticModel(; grid, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -72,7 +72,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = NonhydrostaticModel(grid=grid, buoyancy=b,
+    model = NonhydrostaticModel(; grid, buoyancy=b,
                                 tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
@@ -85,7 +85,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(grid=grid, forcing=(T=add_ones,),
+    model = NonhydrostaticModel(; grid, forcing=(T=add_ones,),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
@@ -111,8 +111,7 @@ end
     velocity field.
 """
 function incompressible_in_time(grid, Nt, timestepper)
-    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, timestepper, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
 
@@ -203,7 +202,7 @@ function time_stepping_with_background_fields(arch)
     background_S_func(x, y, z, t, α) = α * y
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
-    model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
+    model = NonhydrostaticModel(; grid, background_fields=(u=background_u, v=background_v, w=background_w,
                                                               T=background_T, S=background_S),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 

@@ -8,7 +8,7 @@ grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 evd_closure = ScalarDiffusivity(κ = 1.0)
 ivd_closure = ScalarDiffusivity(κ = 1.0, time_discretization = VerticallyImplicit())
 
-model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing)
+model_kwargs = (; grid, tracers=:c, buoyancy=nothing)
 
 implicit_model = NonhydrostaticModel(; closure=ivd_closure, model_kwargs...)
 explicit_model = NonhydrostaticModel(; closure=evd_closure, model_kwargs...)

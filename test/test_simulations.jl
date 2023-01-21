@@ -11,7 +11,7 @@ function wall_time_step_wizard_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     Δx = grid.Δxᶜᵃᵃ
 
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     CFL = 0.45
     u₀ = 7
@@ -41,7 +41,7 @@ function wall_time_step_wizard_tests(arch)
     @test Δt ≈ 3.99
 
 
-    model = NonhydrostaticModel(grid=grid, closure=ScalarDiffusivity(ν=1))
+    model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1))
     diff_CFL = 0.45
 
     wizard = TimeStepWizard(cfl=Inf, diffusive_cfl=diff_CFL, max_change=Inf, min_change=0)
@@ -73,7 +73,7 @@ end
 
 function run_basic_simulation_tests(arch)
     grid  = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
     simulation = Simulation(model, Δt=3, stop_iteration=1)
 
     # Just make sure we can construct a simulation without any errors.
@@ -161,8 +161,8 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = NonhydrostaticModel(grid=grid, clock=clock)
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
+    model = NonhydrostaticModel(; grid, clock)
+    simulation = Simulation(model; Δt, stop_time=stop_time)
 
     @test model.clock.time == start_time
     @test simulation.stop_time == stop_time
@@ -177,7 +177,7 @@ end
 
 function run_nan_checker_test(arch; erroring)
     grid = RectilinearGrid(arch, size=(4, 2, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     model.velocities.u[1, 1, 1] = NaN
     erroring && erroring_NaNChecker!(simulation)

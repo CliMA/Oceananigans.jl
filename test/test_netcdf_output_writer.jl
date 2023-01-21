@@ -349,8 +349,7 @@ function test_netcdf_function_output(arch)
     iters = 3
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, 2L, 3L))
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -645,8 +644,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
     test_filename1 = "test_output_alignment1.nc"
@@ -681,8 +679,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25
     iters = 3
@@ -736,7 +733,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 function test_netcdf_regular_lat_lon_grid_output(arch)
     Nx = Ny = Nz = 16
     grid = LatitudeLongitudeGrid(arch; size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
-    model = HydrostaticFreeSurfaceModel(momentum_advection = VectorInvariant(), grid=grid)
+    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = VectorInvariant())
 
     Δt = 1.25
     iters = 3

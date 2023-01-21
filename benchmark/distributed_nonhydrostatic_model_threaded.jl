@@ -21,7 +21,7 @@ T = Threads.nthreads()
 
 topo = (Periodic, Periodic, Periodic)
 grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
-model = NonhydrostaticModel(architecture=CPU(), grid=grid)
+model = NonhydrostaticModel(architecture=CPU(); grid)
 
 @info "Warming up serial nonhydrostatic model..."
 

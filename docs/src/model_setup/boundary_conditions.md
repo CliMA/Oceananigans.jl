@@ -400,7 +400,7 @@ julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
 julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
                                        bottom = GradientBoundaryCondition(0.01));
 
-julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
+julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper

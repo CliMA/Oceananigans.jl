@@ -299,28 +299,28 @@ xv, yv, zv = nodes((Center,Face,  Center), grid)
 xw, yw, zw = nodes((Center, Center, Face), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
-u_timeseries = FieldTimeSeries(filepath, "u", grid=grid)
+u_timeseries = FieldTimeSeries(filepath, "u"; grid)
 @show umax = maximum(abs, u_timeseries[:, :, :, :])
 
-v_timeseries = FieldTimeSeries(filepath, "v", grid=grid)
+v_timeseries = FieldTimeSeries(filepath, "v"; grid)
 @show umax = maximum(abs, v_timeseries[:, :, :, :])
 
-w_timeseries = FieldTimeSeries(filepath, "w", grid=grid)
+w_timeseries = FieldTimeSeries(filepath, "w"; grid)
 @show umax = maximum(abs, w_timeseries[:, :, :, :])
 
-b_timeseries = FieldTimeSeries(filepath, "b", grid=grid)
+b_timeseries = FieldTimeSeries(filepath, "b"; grid)
 @show b_timeseries
 
-vb_timeseries = FieldTimeSeries(filepath, "vb", grid=grid)
+vb_timeseries = FieldTimeSeries(filepath, "vb"; grid)
 @show vb_timeseries
 
-wb_timeseries = FieldTimeSeries(filepath, "wb", grid=grid)
+wb_timeseries = FieldTimeSeries(filepath, "wb"; grid)
 @show wb_timeseries
 
-wb_timeseries = FieldTimeSeries(filepath, "wb", grid=grid)
+wb_timeseries = FieldTimeSeries(filepath, "wb"; grid)
 @show wb_timeseries
 
-∇_q_timeseries = FieldTimeSeries(filepath, "∇_q", grid=grid)
+∇_q_timeseries = FieldTimeSeries(filepath, "∇_q"; grid)
 @show ∇_q_timeseries
 
 _, _, _, nt = size(b_timeseries)

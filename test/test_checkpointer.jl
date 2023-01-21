@@ -162,9 +162,8 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
-                                )
+
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 

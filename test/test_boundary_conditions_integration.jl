@@ -9,7 +9,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs,
+    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
@@ -61,10 +61,9 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = NonhydrostaticModel(
-        grid=grid, tracers=:b, buoyancy=BuoyancyTracer(),
-        closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
-    )
+    model = NonhydrostaticModel(; grid, tracers=:b, buoyancy=BuoyancyTracer(),
+                                closure=AnisotropicMinimumDissipation(),
+                                boundary_conditions=model_bcs)
 
     b₀(x, y, z) = z * bz
     set!(model, b=b₀)

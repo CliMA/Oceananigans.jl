@@ -27,7 +27,7 @@ end
 function BackgroundFields(background_fields, tracer_names, grid, clock)
     velocities = BackgroundVelocityFields(background_fields, grid, clock)
     tracers = BackgroundTracerFields(background_fields, tracer_names, grid, clock)
-    return (velocities=velocities, tracers=tracers)
+    return (; velocities, tracers)
 end
 
 """

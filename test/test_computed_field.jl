@@ -209,7 +209,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     u, v, w = model.velocities
     @. u.data = 1 + rand()
@@ -249,8 +249,7 @@ end
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
-    model = NonhydrostaticModel(grid=grid,
-                                tracers=tracers, buoyancy=buoyancy)
+    model = NonhydrostaticModel(; grid, tracers, buoyancy)
 
     b = BuoyancyField(model)
     u, v, w = model.velocities

@@ -8,7 +8,7 @@ grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 evd_closure = VerticalScalarDiffusivity(κ = 1.0)
 ivd_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, κ = 1.0)
 
-model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
+model_kwargs = (; grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
 implicit_model = HydrostaticFreeSurfaceModel(; closure=ivd_closure, model_kwargs...)
 explicit_model = HydrostaticFreeSurfaceModel(; closure=evd_closure, model_kwargs...)
