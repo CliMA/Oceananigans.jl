@@ -26,13 +26,8 @@ end
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
-To restart or "pickup" a model from a checkpoint, specify `pickup=true` when calling `run!`, ensuring
-that the checkpoint file is the current working directory. See 
-
-```julia
-help> run!
-```
-for more details.
+To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
+that the checkpoint file is the current working directory. See [`run!`](@ref) for more details.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
 such as `:velocities` will make restoring from the checkpoint impossible.
@@ -42,9 +37,10 @@ but functions or objects containing functions cannot be serialized at this time.
 
 Keyword arguments
 =================
+
 - `schedule` (required): Schedule that determines when to checkpoint.
 
-- `dir`: Directory to save output to. Default: "." (current working directory).
+- `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: "checkpoint".
 
@@ -99,13 +95,13 @@ end
 ##### Checkpointer utils
 #####
 
-""" Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
+""" Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
     checkpoint_path(iteration::Int, c::Checkpointer)
 
-Returns the path to the `c`heckpointer file associated with model `iteration`.
+Return the path to the `c`heckpointer file associated with model `iteration`.
 """
 checkpoint_path(iteration::Int, c::Checkpointer) =
     joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
@@ -113,7 +109,7 @@ checkpoint_path(iteration::Int, c::Checkpointer) =
 # This is the default name used in the simulation.output_writers ordered dict.
 defaultname(::Checkpointer, nelems) = :checkpointer
 
-""" Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
+""" Return `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
 checkpoint_path(filepath::AbstractString, output_writers) = filepath
 
 function checkpoint_path(pickup, output_writers)
@@ -262,4 +258,3 @@ function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, m
     timestepper.previous_Δt = file["timestepper/previous_Δt"]
     return nothing
 end
-            

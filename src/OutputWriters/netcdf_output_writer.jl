@@ -155,14 +155,19 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
-- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+## Filenaming
+
+- `filename` (required): Descriptive filename. `".nc"` is appended to `filename` if `filename` does
+                         not end in `".nc"`.
 
 - `dir`: Directory to save output to.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float32}`.
+## Output frequency and time-averaging
+
+- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+
+## Slicing and type conversion prior to output
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
@@ -172,22 +177,31 @@ Keyword arguments
                 information about the boundary conditions is often crucial. In that case
                 you might need to set `with_halos = true`.
 
+- `array_type`: The array type to which output arrays are converted to prior to saving.
+                Default: `Array{Float32}`.
+
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
+
+## File management
+
+- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will be set to append to `filepath`. If `true`,
+                        `NetCDFOutputWriter` will overwrite `filepath` if it exists or create it if not.
+                        Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
+                        for more information about its `mode` option.
+
+- `compression`: Determines the compression level of data (0-9; default: 0).
+
+## Miscellaneous keywords
+
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
 - `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
                        otherwise `output_attributes` *must* be user-provided).
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
-
-- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
-                        will overwrite `filepath` if it exists or create it if it does not.
-                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
-
-- `compression`: Determines the compression level of data (0-9; default: 0)
-
 Examples
 ========
+
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
@@ -196,14 +210,14 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c)
+model = NonhydrostaticModel(; grid, tracers=:c)
 
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filename = "fields.nc", schedule = TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
@@ -215,8 +229,8 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
-                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
+    NetCDFOutputWriter(model, fields, filename = "surface_xy_slice.nc",
+                       schedule = TimeInterval(60), indices = (:, :, grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
@@ -249,7 +263,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(; grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -257,12 +271,12 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+h(model) = model.clock.time .* (sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
+                              .*  cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+dimensions = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -273,9 +287,13 @@ output_attributes = Dict(
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
-    NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
-                       global_attributes=global_attributes, output_attributes=output_attributes)
+    NetCDFOutputWriter(model, outputs;
+                       schedule = IterationInterval(1),
+                       filename = "things.nc",
+                       dimensions,
+                       verbose = true,
+                       global_attributes,
+                       output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
