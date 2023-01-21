@@ -35,7 +35,7 @@ end
 
 @kernel function _mask_immersed_reduced_field_xy!(field, loc, grid, value, k)
     i, j = @index(Global, NTuple)
-    @inbounds field[i, j, 1] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
+    @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
 #####
