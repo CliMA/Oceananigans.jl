@@ -27,7 +27,7 @@ end
 
 function partition_size(p::XPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert sum(p.div) != Nx
+    @assert sum(p.div) == Nx
     return Tuple((p.div[i], Ny, Nz) for i in 1:length(p))
 end
 
@@ -56,6 +56,13 @@ function divide_direction(x::AbstractArray, p::EqualXPartition)
     nelem = (length(x)-1)÷length(p)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
+
+divide_direction(x::Tuple, p::XPartition) =
+    Tuple((x[1]+sum(p.div[1:i-1])*(x[2] - x[1])/sum(p.div), 
+           x[1]+sum(p.div[1:i])  *(x[2] - x[1])/sum(p.div)) for i in 1:length(p))
+
+divide_direction(x::AbstractArray, p::XPartition) = 
+    Tuple(x[1+sum(p.div[1:i-1]):1+sum(p.div[1:i])] for i in 1:length(p))
 
 partition_global_array(a::Function, args...)  = a
 partition_global_array(a::Field, p::EqualXPartition, args...) = partition_global_array(a.data, p, args...)

@@ -124,7 +124,7 @@ end
     res = Vector(undef, length(devs))
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
     end
     sync_all_devices!(devs)
 
@@ -138,7 +138,7 @@ end
     for dev in devices
         switch_device!(dev)
         sync_device!(dev)
-    end
+    end 
 end
 
 @inline sync_device!(::CuDevice) = CUDA.device_synchronize()

@@ -1,4 +1,3 @@
-using Oceananigans.Operators
 using ..TurbulenceClosures: wall_vertical_distanceᶜᶜᶠ
 
 """
@@ -54,10 +53,11 @@ end
 end
 
 @inline function stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ::Number, Cˢ::Number, e, velocities, tracers, buoyancy)
-    d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
     ℓᵇ = Cᵇ * buoyancy_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, tracers, buoyancy)
-    ℓˢ = Cˢ * shear_mixing_lengthᶜᶜᶠ(i, j, k, grid, e, velocities)
-    return min(d, ℓᵇ, ℓˢ)
+    d = wall_vertical_distanceᶜᶜᶠ(i, j, k, grid)
+    ℓᵇ = ifelse(isnan(ℓᵇ), d, ℓᵇ)
+    ℓ = min(d, ℓᵇ)
+    return ℓ
 end
 
 @inline three_halves(i, j, k, grid, e) = @inbounds sqrt(clip(e[i, j, k])^3)
@@ -97,9 +97,8 @@ end
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
 
-    return ℓ
+    return ifelse(isnan(ℓ), zero(grid), ℓ)
 end
-
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
@@ -121,7 +120,9 @@ end
     Cˢ = closure.mixing_length.Cˢ
     ℓ★ = σ * stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
-    return ℓ★
+    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+
+    return min(grid.Lz, ℓ★)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -138,7 +139,10 @@ end
     Cˢ = closure.mixing_length.Cˢ
     ℓ★ = σ * stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
-    return ℓ★ + ℓʰ
+    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+
+    return min(grid.Lz, ℓ★ + ℓʰ)
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -155,7 +159,10 @@ end
     Cˢ = closure.mixing_length.Cˢ
     ℓ★ = σ * stable_mixing_lengthᶜᶜᶠ(i, j, k, grid, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
 
-    return ℓ★ + ℓʰ
+    ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
+    ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
+
+    return min(grid.Lz, ℓ★ + ℓʰ)
 end
 
 Base.show(io::IO, ML::MixingLength) =
