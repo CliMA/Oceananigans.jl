@@ -42,8 +42,8 @@ the free surface and a `NoPenetration` boundary condition for velocity
 @inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Periodic}, f::Function, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == grid.Nx, -f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(j == grid.Ny, -f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline δxᶜᵃᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyᵃᶜᵃ_bound(i, j, k, grid, ::Type{Bounded},  f::Function, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
 @inline div_xᶜᶜᶠ_bound(i, j, k, grid, TX, f, args...) = 
     1 / Azᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ_bound(i, j, k, grid, TX, Δy_qᶠᶜᶠ, f, args...) 
@@ -51,25 +51,23 @@ the free surface and a `NoPenetration` boundary condition for velocity
 @inline div_yᶜᶜᶠ_bound(i, j, k, grid, TY, f, args...) = 
     1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, f, args...) 
 
-using Oceananigans.ImmersedBoundaries: conditional_∂x_f, 
-                                       conditional_∂x_c, 
-                                       conditional_∂y_f, 
-                                       conditional_∂y_c, 
-                                       peripheral_node,
-                                       IBG, c, f
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, IBG, c, f
 
-# @inline conditional_value_fcf(i, j, k, grid, ibg, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, f), 0.0, f(i, j, k, grid, args...))
-# @inline conditional_value_cff(i, j, k, grid, ibg, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, f), 0.0, f(i, j, k, grid, args...))
+@inline conditional_value_fcf(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_value_cff(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
 
-# for Topo in [:Periodic, :Bounded]
-#     @eval begin
-#         @inline δxᶜᵃᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δxᶜᵃᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_fcf, ibg, f, args...)
-#         @inline δyᵃᶜᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δyᵃᶜᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_cff, ibg, f, args...)
+@inline conditional_∂x_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(immersed_peripheral_node(i, j, k, ibg, c, LY, LZ) | immersed_peripheral_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂y_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(immersed_peripheral_node(i, j, k, ibg, f, LY, LZ) | immersed_peripheral_node(i, j+1, k, ibg, f, LY, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
 
-#         @inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = conditional_∂x_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, f, args...)
-#         @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = conditional_∂y_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, f, args...)        
-#     end
-# end
+for Topo in [:Periodic, :Bounded]
+    @eval begin
+        @inline δxᶜᵃᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δxᶜᵃᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_fcf, ibg, f, args...)
+        @inline δyᵃᶜᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δyᵃᶜᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_cff, ibg, f, args...)
+
+        @inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, f, args...)
+        @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, f, args...)        
+    end
+end
 
 @inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
 @inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k] + δ * ηᵐ⁺¹[i, j, k]

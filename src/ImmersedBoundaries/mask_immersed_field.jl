@@ -21,11 +21,11 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_reduced_field_xy!(field,     args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(eltype(field.grid)); k) =
+mask_immersed_reduced_field_xy!(field, args...; kw...) = NoneEvent()
+mask_immersed_reduced_field_xy!(field, value=zero(eltype(field.grid)); k) =
     mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
 
-function mask_immersed_reduced_field_xy!(field::ZReducedField, grid::ImmersedBoundaryGrid, loc, value; k)
+function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k)
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
