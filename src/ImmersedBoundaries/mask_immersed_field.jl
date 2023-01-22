@@ -22,20 +22,20 @@ end
 end
 
 mask_immersed_reduced_field_xy!(field, args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(field, value=zero(eltype(field.grid)); k) =
-    mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+mask_immersed_reduced_field_xy!(field, value=zero(eltype(field.grid)); k, immersed_function = peripheral_node) =
+    mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k, immersed_function)
 
-function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k)
+function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k, immersed_function)
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
-                   _mask_immersed_reduced_field_xy!, field, loc, grid, value, k;
+                   _mask_immersed_reduced_field_xy!, field, loc, grid, value, k, immersed_function;
                    dependencies = device_event(arch))
 end
 
-@kernel function _mask_immersed_reduced_field_xy!(field, loc, grid, value, k)
+@kernel function _mask_immersed_reduced_field_xy!(field, loc, grid, value, k, immersed_function)
     i, j = @index(Global, NTuple)
-    @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
+    @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, immersed_function)
 end
 
 #####
@@ -48,8 +48,8 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
 ##### Masking for GridFittedBoundary
 #####
 
-@inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field)
-    return @inbounds ifelse(peripheral_node(i, j, k, grid, LX, LY, LZ),
+@inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field, immersed_function = peripheral_node)
+    return @inbounds ifelse(immersed_function(i, j, k, grid, LX, LY, LZ),
                             value,
                             field[i, j, k])
 end
