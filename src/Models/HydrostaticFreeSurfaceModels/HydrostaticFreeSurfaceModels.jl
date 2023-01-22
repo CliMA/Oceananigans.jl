@@ -5,11 +5,12 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
+using KernelAbstractions: @index, @kernel, @localmem, @groupsize, @synchronize, @uniform, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
+using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 

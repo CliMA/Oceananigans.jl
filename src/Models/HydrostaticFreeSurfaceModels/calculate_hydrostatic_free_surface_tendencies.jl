@@ -19,6 +19,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
+    calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -171,6 +172,32 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     return nothing
 end
 
+""" Store previous value of the source term and calculate current source term. """
+function calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
+
+    arch = model.architecture
+    grid = model.grid
+    Nx, Ny, Nz = N = size(grid)
+
+    barrier = device_event(model)
+     
+    workgroup = (min(6, Nx), min(6, Ny), min(6, Nz))
+    worksize  = N
+
+    advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
+    advection_event         = advection_contribution!(model.timestepper,
+                                                      grid,
+                                                      model.advection,
+                                                      model.velocities,
+                                                      model.tracers,
+                                                      halo_size(grid);
+                                                      dependencies = barrier)
+    
+    wait(device(arch), advection_event)
+
+    return nothing
+end
+
 #####
 ##### Tendency calculators for u, v
 #####
@@ -197,6 +224,107 @@ end
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+end
+
+using Oceananigans.Grids: halo_size
+
+@kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, halo) where FT
+    i,  j,  k  = @index(Global, NTuple)
+    is, js, ks = @index(Local,  NTuple)
+
+    N = @uniform @groupsize()[1]
+    M = @uniform @groupsize()[2]
+    O = @uniform @groupsize()[3]
+    
+    is = is + halo[1]
+    js = js + halo[2]
+    ks = ks + halo[3]
+
+    # @show is, js, ks, i, j, k, N, M, O
+
+    us = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
+    vs = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
+    ws = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
+    cs = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
+    
+    # @show size(us)
+
+    @inbounds us[is, js, ks] = velocities.u[i, j, k]
+    @inbounds vs[is, js, ks] = velocities.v[i, j, k]
+    @inbounds ws[is, js, ks] = velocities.w[i, j, k]
+
+    if is < 2*halo[1]
+
+        # @show is + N + halo[1] - 1
+
+        @inbounds us[is - halo[1], js, ks] = velocities.u[i - halo[1], j, k]
+        @inbounds vs[is - halo[1], js, ks] = velocities.v[i - halo[1], j, k]
+        @inbounds ws[is - halo[1], js, ks] = velocities.w[i - halo[1], j, k]
+        if i + N - 1 <= size(grid, 1) + halo[1]
+            @inbounds us[is + N - 1, js, ks]   = velocities.u[i + N - 1, j, k]
+            @inbounds vs[is + N - 1, js, ks]   = velocities.v[i + N - 1, j, k]
+            @inbounds ws[is + N - 1, js, ks]   = velocities.w[i + N - 1, j, k]
+        end
+    end
+
+    if js < 2*halo[2]
+        @inbounds us[is, js - halo[2], ks] = velocities.u[i, j - halo[2], k]
+        @inbounds vs[is, js - halo[2], ks] = velocities.v[i, j - halo[2], k]
+        @inbounds ws[is, js - halo[2], ks] = velocities.w[i, j - halo[2], k]
+        if j + M - 1 <= size(grid, 2) + halo[2]
+            @inbounds us[is, js + M - 1, ks]   = velocities.u[i, j + M - 1, k]
+            @inbounds vs[is, js + M - 1, ks]   = velocities.v[i, j + M - 1, k]
+            @inbounds ws[is, js + M - 1, ks]   = velocities.w[i, j + M - 1, k]
+        end
+    end
+    
+    if ks < 2*halo[3]
+        @inbounds us[is, js, ks - halo[3]] = velocities.u[i, j, k - halo[3]]
+        @inbounds vs[is, js, ks - halo[3]] = velocities.v[i, j, k - halo[3]]
+        @inbounds ws[is, js, ks - halo[3]] = velocities.w[i, j, k - halo[3]]
+        if k + O - 1 <= size(grid, 3) + halo[3]
+            @inbounds us[is, js, ks + O - 1]   = velocities.u[i, j, k + O - 1]
+            @inbounds vs[is, js, ks + O - 1]   = velocities.v[i, j, k + O - 1]
+            @inbounds ws[is, js, ks + O - 1]   = velocities.w[i, j, k + O - 1]
+        end
+    end
+
+    # @synchronize       
+
+    vels = (u = us, v = vs, w = ws)
+
+    # @show is, js, ks
+    @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(is, js, ks, grid, advection.momentum, vels)
+    @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(is, js, ks, grid, advection.momentum, vels)
+
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        @inbounds cs[is, js, ks] = tracers[tracer_name][i, j, k]
+    
+        if is < 2*halo[1]
+            @inbounds cs[is - halo[1], js, ks] = tracers[tracer_name][i - halo[1], j, k]
+            if i + N - 1 <= size(grid, 1) + halo[1]
+                @inbounds cs[is + N - 1, js, ks]   = tracers[tracer_name][i + N - 1, j, k]
+            end
+        end
+
+        if js < 2*halo[2]
+            @inbounds cs[is, js - halo[2], ks] = tracers[tracer_name][i, j - halo[2], k]
+            if j + M - 1 <= size(grid, 2) + halo[2]
+                @inbounds cs[is, js + M - 1, ks]   = tracers[tracer_name][i, j + M - 1, k]
+            end
+        end
+
+        if ks < 2*halo[3]
+            @inbounds cs[is, js, ks - halo[3]] = tracers[tracer_name][i, j, k - halo[3]]
+            if k + O - 1 <= size(grid, 3) + halo[3]
+                @inbounds cs[is, js, ks + O - 1]   = tracers[tracer_name][i, j, k + O - 1]
+            end
+        end
+
+        # @synchronize
+
+        @inbounds timestepper.Gⁿ[tracer_name][i, j, k] -= div_Uc(is, js, ks, grid, advection[tracer_name], vels, cs)
+    end
 end
 
 #####
