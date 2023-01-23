@@ -155,6 +155,7 @@ end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
+                                                               val_tracer_name,
                                                                advection,
                                                                closure,
                                                                e_immersed_bc,
