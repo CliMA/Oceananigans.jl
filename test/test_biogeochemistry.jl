@@ -106,7 +106,11 @@ function test_biogeochemistry!(arch, MinimalBiogeochemistryType, ModelType)
     advection_scheme = CenteredSecondOrder()
     growth_rate = 1/day
     mortality_rate = 0.3/day
-    biogeochemistry = MinimalBiogeochemistryType(growth_rate, mortality_rate, PAR, velocities, advection_scheme)
+    biogeochemistry = MinimalBiogeochemistryType(growth_rate, 
+                                                 mortality_rate, 
+                                                 PAR, 
+                                                 velocities, 
+                                                 advection_scheme)
 
     model = ModelType(; grid, biogeochemistry)
     set!(model, P = 1)

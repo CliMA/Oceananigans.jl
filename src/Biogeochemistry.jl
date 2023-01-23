@@ -92,19 +92,26 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
-@inline function has_biogeochemical_tracers(fields::NamedTuple, required_fields, grid)
+add_tracer(tracers::Tuple, name, grid) = tuple(tracers..., name)
+add_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple{(name)}((CenterField(grid), )))
 
-    for field_name in required_fields
-        if !(field_name in keys(fields))
-            fields = merge(fields, NamedTuple{(field_name, )}((CenterField(grid), )))
+@inline function has_biogeochemical_tracers(fields, required_fields, grid)
+    user_specified_tracers = [name in tracernames(fields) for name in required_fields]
+
+    if !all(user_specified_tracers) && any(user_specified_tracers)
+        throw(ArgumentError("The biogeochemical model you have selected requires $required_fields. 
+    You have specified some but not all of these as tracers so may be attempting to use them for a different purpose.
+    Please either specify all of the required fields, or none and allow them to be automatically added."))
+    elseif !any(user_specified_tracers)
+        for field_name in required_fields
+            fields = add_tracer(fields, field_name, grid)
         end
+    else
+        fields = fields
     end
 
     return fields
 end
-
-@inline has_biogeochemical_tracers(user_tracer_names::Tuple, required_names, grid) =
-    tuple(user_tracer_names..., required_names...)
 
 """
     validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
