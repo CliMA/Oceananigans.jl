@@ -113,8 +113,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 #### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 ####
 
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face(), with_halos=true)
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center(), with_halos=true)
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face())
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center())
 
 # Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
