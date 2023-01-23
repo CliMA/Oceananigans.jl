@@ -501,7 +501,7 @@ end
 
         @synchronize
 
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_x(i, j, k, grid, advection[n+1], (u = us, v = vs, w = nothing), cs) +
-                                      div_Uc_y(i, j, k, grid, advection[n+1], (u = us, v = vs, w = nothing), cs)
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_x(i, j, k, grid, advection[n+1], (u = us, v = vs), cs) +
+                                      div_Uc_y(i, j, k, grid, advection[n+1], (u = us, v = vs), cs)
     end
 end
