@@ -197,6 +197,7 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
 
     workgroup  = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
     worksize  = N
+    blocknum  = N ./ workgroup
 
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
     advection_event         = advection_contribution!(model.timestepper,
@@ -242,90 +243,124 @@ end
 
 using Oceananigans.Grids: halo_size
 
+struct SharedDisplacedArray{V, I, J, K} 
+    s_array :: V
+    i :: I
+    j :: J
+    k :: K
+end
+
+import Base: getindex, setindex!
+using Base: @propagate_inbounds
+
+@inline @propagate_inbounds Base.getindex(v::SharedDisplacedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
+@inline @propagate_inbounds Base.setindex!(v::SharedDisplacedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
+
 @kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, halo) where FT
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
+    ib, jb, kb = @index(Group,  NTuple)
 
     N = @uniform @groupsize()[1]
     M = @uniform @groupsize()[2]
     O = @uniform @groupsize()[3]
 
-    us = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
-    vs = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
-    ws = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
-    cs = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3]) 
+    ig = @localmem FT (1)
+    jg = @localmem FT (1)
+    kg = @localmem FT (1)
+    
+    if is == 1 && js == 1 && ks == 1
+        ig[1] = ib
+        jg[1] = jb
+        kg[1] = kb
+    end
+
+    us_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
+    vs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
+    ws_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
+    cs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
+
+    # if is == 1 && js == 1 && ks == 1
+    #     @show ib, jb, kb, N, M, O
+    #     @show - N*(ig[1]-1) + halo[1], - M*(jg[1]-1) + halo[2], - O*(kg[1]-1) + halo[3]
+    # end
 
     @synchronize
 
-    @inbounds us[is+halo[1], js+halo[2], ks+halo[3]] = velocities.u[i, j, k]
-    @inbounds vs[is+halo[1], js+halo[2], ks+halo[3]] = velocities.v[i, j, k]
-    @inbounds ws[is+halo[1], js+halo[2], ks+halo[3]] = velocities.w[i, j, k]
+    us = @uniform SharedDisplacedArray(us_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
+    vs = @uniform SharedDisplacedArray(vs_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
+    ws = @uniform SharedDisplacedArray(ws_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
+    cs = @uniform SharedDisplacedArray(cs_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
+
+    @inbounds us[i, j, k] = velocities.u[i, j, k]
+    @inbounds vs[i, j, k] = velocities.v[i, j, k]
+    @inbounds ws[i, j, k] = velocities.w[i, j, k]
 
     if is <= halo[1]
-        @inbounds us[is, js + halo[2], ks + halo[3]] = velocities.u[i - halo[1], j, k]
-        @inbounds vs[is, js + halo[2], ks + halo[3]] = velocities.v[i - halo[1], j, k]
-        @inbounds ws[is, js + halo[2], ks + halo[3]] = velocities.w[i - halo[1], j, k]
+        @inbounds us[i - halo[1], j, k] = velocities.u[i - halo[1], j, k]
+        @inbounds vs[i - halo[1], j, k] = velocities.v[i - halo[1], j, k]
+        @inbounds ws[i - halo[1], j, k] = velocities.w[i - halo[1], j, k]
     end
     if is >= N - halo[1] + 1
-        @inbounds us[is + 2*halo[1], js + halo[2], ks + halo[3]]   = velocities.u[i + halo[1], j, k]
-        @inbounds vs[is + 2*halo[1], js + halo[2], ks + halo[3]]   = velocities.v[i + halo[1], j, k]
-        @inbounds ws[is + 2*halo[1], js + halo[2], ks + halo[3]]   = velocities.w[i + halo[1], j, k]
+        @inbounds us[i + halo[1], j, k]   = velocities.u[i + halo[1], j, k]
+        @inbounds vs[i + halo[1], j, k]   = velocities.v[i + halo[1], j, k]
+        @inbounds ws[i + halo[1], j, k]   = velocities.w[i + halo[1], j, k]
     end
 
     if js <= halo[2]
-        @inbounds us[is + halo[1], js, ks + halo[3]] = velocities.u[i, j - halo[2], k]
-        @inbounds vs[is + halo[1], js, ks + halo[3]] = velocities.v[i, j - halo[2], k]
-        @inbounds ws[is + halo[1], js, ks + halo[3]] = velocities.w[i, j - halo[2], k]
+        @inbounds us[i, j - halo[2], k] = velocities.u[i, j - halo[2], k]
+        @inbounds vs[i, j - halo[2], k] = velocities.v[i, j - halo[2], k]
+        @inbounds ws[i, j - halo[2], k] = velocities.w[i, j - halo[2], k]
     end
     if js >= M - halo[2] + 1
-        @inbounds us[is + halo[1], js + 2*halo[2], ks + halo[3]] = velocities.u[i, j + halo[2], k]
-        @inbounds vs[is + halo[1], js + 2*halo[2], ks + halo[3]] = velocities.v[i, j + halo[2], k]
-        @inbounds ws[is + halo[1], js + 2*halo[2], ks + halo[3]] = velocities.w[i, j + halo[2], k]
+        @inbounds us[i, j + halo[2], k] = velocities.u[i, j + halo[2], k]
+        @inbounds vs[i, j + halo[2], k] = velocities.v[i, j + halo[2], k]
+        @inbounds ws[i, j + halo[2], k] = velocities.w[i, j + halo[2], k]
     end
     
     if ks <= halo[3]
-        @inbounds us[is + halo[1], js + halo[2], ks] = velocities.u[i, j, k - halo[3]]
-        @inbounds vs[is + halo[1], js + halo[2], ks] = velocities.v[i, j, k - halo[3]]
-        @inbounds ws[is + halo[1], js + halo[2], ks] = velocities.w[i, j, k - halo[3]]
+        @inbounds us[i, j, ks - halo[3]] = velocities.u[i, j, k - halo[3]]
+        @inbounds vs[i, j, ks - halo[3]] = velocities.v[i, j, k - halo[3]]
+        @inbounds ws[i, j, ks - halo[3]] = velocities.w[i, j, k - halo[3]]
     end
     if ks >= O - halo[3] + 1
-        @inbounds us[is + halo[1], js + halo[2], ks + 2*halo[3]] = velocities.u[i, j, k + halo[3]]
-        @inbounds vs[is + halo[1], js + halo[2], ks + 2*halo[3]] = velocities.v[i, j, k + halo[3]]
-        @inbounds ws[is + halo[1], js + halo[2], ks + 2*halo[3]] = velocities.w[i, j, k + halo[3]]
+        @inbounds us[i, j + halo[2], k + halo[3]] = velocities.u[i, j, k + halo[3]]
+        @inbounds vs[i, j + halo[2], k + halo[3]] = velocities.v[i, j, k + halo[3]]
+        @inbounds ws[i, j + halo[2], k + halo[3]] = velocities.w[i, j, k + halo[3]]
     end
 
     @synchronize  
 
-    @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws), is+halo[1], js+halo[2], ks+halo[3])
-    @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws), is+halo[1], js+halo[2], ks+halo[3])
+    @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
+    @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        @inbounds cs[is + halo[1], js + halo[2], ks + halo[3]] = tracers[tracer_name][i, j, k]
+        @inbounds cs[i, j, k] = tracers[tracer_name][i, j, k]
     
         if is <= halo[1]
-            @inbounds cs[is, js + halo[2], ks + halo[3]] = tracers[tracer_name][i-halo[1], j, k]
+            @inbounds cs[i - halo[1], j, k] = tracers[tracer_name][i - halo[1], j, k]
         end
         if is >= N - halo[1] + 1
-            @inbounds cs[is + 2halo[1], js + halo[2], ks + halo[3]] = tracers[tracer_name][i+halo[1], j, k]
+            @inbounds cs[i + halo[1], j, k] = tracers[tracer_name][i + halo[1], j, k]
         end
     
         if js <= halo[2]
-            @inbounds cs[is + halo[1], js, ks + halo[3]] = tracers[tracer_name][i, j-halo[2], k]
+            @inbounds cs[i, j - halo[2], k] = tracers[tracer_name][i, j - halo[2], k]
         end
         if js >= M - halo[2] + 1
-            @inbounds cs[is + halo[1], js + 2halo[2], ks + halo[3]] = tracers[tracer_name][i, j+halo[2], k]
+            @inbounds cs[i, j + halo[2], k] = tracers[tracer_name][i, j + halo[2], k]
         end
         
         if ks <= halo[3]
-            @inbounds cs[is + halo[1], js + halo[2], ks] = tracers[tracer_name][i, j, k-halo[3]]
+            @inbounds cs[i, j, k - halo[3]] = tracers[tracer_name][i, j, k - halo[3]]
         end
         if ks >= O - halo[3] + 1
-            @inbounds cs[is + halo[1], js + halo[2], ks + 2halo[3]] = tracers[tracer_name][i, j, k+halo[3]]
+            @inbounds cs[i, j, k + halo[3]] = tracers[tracer_name][i, j, k + halo[3]]
         end
     
         @synchronize
 
-        @inbounds timestepper.Gⁿ[tracer_name][i, j, k] -= div_Uc(i, j, k, grid, advection[tracer_name], (u = us, v = vs, w = ws), cs, is+halo[1], js+halo[2], ks+halo[3])
+        @inbounds timestepper.Gⁿ[tracer_name][i, j, k] -= div_Uc(i, j, k, grid, advection[tracer_name], (u = us, v = vs, w = ws), cs)
     end
 end
 
