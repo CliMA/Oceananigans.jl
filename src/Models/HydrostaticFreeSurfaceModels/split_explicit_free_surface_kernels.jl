@@ -6,8 +6,8 @@ using Oceananigans.AbstractOperations: Δz
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 
-const β = 0.281105
 const α = 1.5 + β
+const β = 0.281105
 const θ = - 0.5 - 2β
 
 const γ = 0.088
@@ -69,8 +69,8 @@ for Topo in [:Periodic, :Bounded]
     end
 end
 
-@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
-@inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k] + δ * ηᵐ⁺¹[i, j, k]
+@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       =                     α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
+@inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², Ũ, Ṽ, mass_flux_weight)
     i, j = @index(Global, NTuple)
