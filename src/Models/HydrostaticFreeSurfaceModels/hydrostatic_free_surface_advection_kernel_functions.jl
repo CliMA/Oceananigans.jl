@@ -3,8 +3,8 @@
 @kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid, advection, coriolis, velocities, tracers) 
     i,  j,  k  = @index(Global, NTuple)
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) - y_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) + x_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) + y_f_cross_U(i, j, k, grid, coriolis, velocities)
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
