@@ -50,12 +50,12 @@ for bias in (:symmetric, :left_biased, :right_biased)
             alt_interp = Symbol(:_, interp)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval $alt_interp(i, j, k, grid::AUG, scheme::LOADV, ψ, is, js, ks) = $interp(is, js, ks, grid, scheme, ψ)
+            @eval $alt_interp(i, j, k, grid::AUG, scheme::HOADV, ψ, is, js, ks) = $interp(is, js, ks, grid, scheme, ψ)
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
-                @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+                @eval $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, ψ, is, js, ks) = $interp(is, js, ks, grid, scheme, ψ)
             end
 
             outside_buffer = Symbol(:outside_, bias, :_buffer, loc)
@@ -63,10 +63,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ) =
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, ψ, is, js, ks) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+                               $interp(is, js, ks, grid, scheme, ψ),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ, is, js, ks))
 
                     @inline $alt_interp(i, j, k, grid::AUGX, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
@@ -75,10 +75,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ) =
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, ψ, is, js, ks) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+                               $alt_interp(is, js, ks, grid, scheme.buffer_scheme, ψ, is, js, ks))
 
                     @inline $alt_interp(i, j, k, grid::AUGY, scheme::WENO, ζ, VI::AbstractSmoothnessStencil, u, v) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
@@ -87,10 +87,10 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 end
             elseif ξ == :z
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ) =
+                    @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, ψ, is, js, ks) =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, ψ),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ))
+                               $interp(is, js, ks, grid, scheme, ψ),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, ψ, is, js, ks))
                 end
             end
         end

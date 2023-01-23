@@ -251,15 +251,15 @@ end
 ###### Conservative formulation of momentum advection
 ######
 
-@inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
-@inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
+@inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U, is, js, ks) = div_𝐯u(i, j, k, grid, scheme, U, U.u, is, js, ks)
+@inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U, is, js, ks) = div_𝐯v(i, j, k, grid, scheme, U, U.v, is, js, ks)
 
 ######
 ###### No advection
 ######
 
-@inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
-@inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U, is, js, ks) where FT = zero(FT)
+@inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U, is, js, ks) where FT = zero(FT)
 
 const U{N}  = UpwindBiased{N}
 const UX{N} = UpwindBiased{N, <:Any, <:Nothing} 

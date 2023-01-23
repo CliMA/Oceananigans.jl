@@ -20,25 +20,25 @@ using Oceananigans.Fields: ZeroField
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
 # Compiler hints
-@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, u, is, js, ks) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, v, is, js, ks) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, w, is, js, ks) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, advection, U, ::ZeroField, is, js, ks) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField, is, js, ks) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField, is, js, ks) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u, is, js, ks) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v, is, js, ks) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w, is, js, ks) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u, is, js, ks) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v, is, js, ks) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w, is, js, ks) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField, is, js, ks) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField, is, js, ks) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField, is, js, ks) = zero(grid)
 
 """
     div_𝐯u(i, j, k, grid, advection, U, u)
@@ -51,10 +51,10 @@ Calculate the advection of momentum in the ``x``-direction using the conservativ
 
 which ends up at the location `fcc`.
 """
-@inline function div_𝐯u(i, j, k, grid, advection, U, u)
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u))
+@inline function div_𝐯u(i, j, k, grid, advection, U, u, is, js, ks)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u, is, js, ks) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u, is, js, ks) +
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u, is, js, ks))
 end
 
 """
@@ -68,10 +68,10 @@ Calculate the advection of momentum in the ``y``-direction using the conservativ
 
 which ends up at the location `cfc`.
 """
-@inline function div_𝐯v(i, j, k, grid, advection, U, v)
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
-                                    δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v)    +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v))
+@inline function div_𝐯v(i, j, k, grid, advection, U, v, is, js, ks)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v, is, js, ks)  +
+                                    δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v, is, js, ks) +
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v, is, js, ks))
 end
 
 """
@@ -80,12 +80,11 @@ end
 Calculate the advection of momentum in the ``z``-direction using the conservative form, ``𝛁⋅(𝐯 w)``,
 
 ```
-1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
 ```
 which ends up at the location `ccf`.
 """
-@inline function div_𝐯w(i, j, k, grid, advection, U, w)
-    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
-                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
-                                    δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
+@inline function div_𝐯w(i, j, k, grid, advection, U, w, is, js, ks)
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w, is, js, ks) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w, is, js, ks) +
+                                    δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w, is, js, ks))
 end
