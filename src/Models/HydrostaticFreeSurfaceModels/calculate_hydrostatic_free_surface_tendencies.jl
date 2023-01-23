@@ -196,14 +196,17 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     workgroup = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
     worksize  = N
 
+    array_size = arch_array(arch, [halo_size(grid)...])
+    halo       = arch_array(arch, [min.(size(grid), halo_size(grid))...])
+
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
     advection_event         = advection_contribution!(model.timestepper.Gⁿ,
                                                       grid,
                                                       model.advection,
                                                       model.velocities,
                                                       model.tracers,
-                                                      halo_size(grid),
-                                                      min.(size(grid), halo_size(grid));
+                                                      array_size,
+                                                      halo;
                                                       dependencies = barrier)
     
     wait(device(arch), advection_event)
@@ -369,34 +372,36 @@ using Base: @propagate_inbounds
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
     @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        @inbounds cs[i, j, k] = tracers[tracer_name][i, j, k]
+    ntuple(Val(length(tracers))) do n
+        Base.@_inline_meta
+        tracer = tracers[n]
+        @inbounds cs[i, j, k] = tracer[i, j, k]
     
         # No corners needed for the tracer
         if is <= halo[1]
-            @inbounds cs[i - halo[1], j, k] = tracers[tracer_name][i - halo[1], j, k]
+            @inbounds cs[i - halo[1], j, k] = tracer[i - halo[1], j, k]
         end
         if is >= N - halo[1] + 1
-            @inbounds cs[i + halo[1], j, k] = tracers[tracer_name][i + halo[1], j, k]
+            @inbounds cs[i + halo[1], j, k] = tracer[i + halo[1], j, k]
         end
     
         if js <= halo[2]
-            @inbounds cs[i, j - halo[2], k] = tracers[tracer_name][i, j - halo[2], k]
+            @inbounds cs[i, j - halo[2], k] = tracer[i, j - halo[2], k]
         end
         if js >= M - halo[2] + 1
-            @inbounds cs[i, j + halo[2], k] = tracers[tracer_name][i, j + halo[2], k]
+            @inbounds cs[i, j + halo[2], k] = tracer[i, j + halo[2], k]
         end
         
         if ks <= halo[3]
-            @inbounds cs[i, j, k - halo[3]] = tracers[tracer_name][i, j, k - halo[3]]
+            @inbounds cs[i, j, k - halo[3]] = tracer[i, j, k - halo[3]]
         end
         if ks >= O - halo[3] + 1
-            @inbounds cs[i, j, k + halo[3]] = tracers[tracer_name][i, j, k + halo[3]]
+            @inbounds cs[i, j, k + halo[3]] = tracer[i, j, k + halo[3]]
         end
     
         @synchronize
 
-        @inbounds Gⁿ[tracer_name][i, j, k] -= div_Uc(i, j, k, grid, advection[tracer_name], (u = us, v = vs, w = ws), cs)
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], (u = us, v = vs, w = ws), cs)
     end
 end
 
