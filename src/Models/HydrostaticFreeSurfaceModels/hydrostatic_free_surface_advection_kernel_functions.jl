@@ -437,6 +437,42 @@ end
     vs = @uniform DisplacedXYSharedArray(vs_array, ig[1], jg[1])
     cs = @uniform DisplacedXYSharedArray(cs_array, ig[1], jg[1])
 
+    fill_horizontal_velocities_shared_memory!(i, j, k, us, vs, velocities, is, js, H1, H2, N, M, advection.momentum)
+
+    @synchronize
+
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_h(i, j, k, grid, advection.momentum, (u = us, v = vs))
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_h(i, j, k, grid, advection.momentum, (u = us, v = vs))
+
+    ntuple(Val(length(tracers))) do n
+        Base.@_inline_meta
+        tracer = tracers[n]
+        @inbounds cs[i, j, k] = tracer[i, j, k]
+
+        # No corners needed for the tracer
+        if is <= H1
+            @inbounds cs[i - H1, j, k] = tracer[i - H1, j, k]
+        end
+        if is >= N - H1 + 1
+            @inbounds cs[i + H1, j, k] = tracer[i + H1, j, k]
+        end
+
+        # No corners needed for the tracer
+        if js <= H2
+            @inbounds cs[i, j - H2, k] = tracer[i, j - H2, k]
+        end
+        if js >= M - H2 + 1
+            @inbounds cs[i, j + H2, k] = tracer[i, j + H2, k]
+        end
+
+        @synchronize
+
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_x(i, j, k, grid, advection[n+1], (u = us, v = vs), cs) +
+                                      div_Uc_y(i, j, k, grid, advection[n+1], (u = us, v = vs), cs)
+    end
+end
+
+@inline function fill_horizontal_velocities_shared_memory!(i, j, k, us, vs, velocities, is, js, H1, H2, N, M, advection)
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
 
@@ -471,36 +507,46 @@ end
             @inbounds vs[i + H1, j + H2, k] = velocities.v[i + H1, j + H2, k]
         end
     end
+end
 
-    @synchronize
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_h(i, j, k, grid, advection.momentum, (u = us, v = vs))
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_h(i, j, k, grid, advection.momentum, (u = us, v = vs))
+function fill_horizontal_velocities_shared_memory!(i, j, k, us, vs, velocities, is, js, H1, H2, N, M, ::VectorInvariant)
+    @inbounds us[i, j, k] = velocities.u[i, j, k]
+    @inbounds vs[i, j, k] = velocities.v[i, j, k]
 
-    ntuple(Val(length(tracers))) do n
-        Base.@_inline_meta
-        tracer = tracers[n]
-        @inbounds cs[i, j, k] = tracer[i, j, k]
-
-        # No corners needed for the tracer
-        if is <= H1
-            @inbounds cs[i - H1, j, k] = tracer[i - H1, j, k]
-        end
-        if is >= N - H1 + 1
-            @inbounds cs[i + H1, j, k] = tracer[i + H1, j, k]
-        end
-
-        # No corners needed for the tracer
+    if is <= H1
+        @inbounds us[i - H1, j, k] = velocities.u[i - H1, j, k]
+        @inbounds vs[i - H1, j, k] = velocities.v[i - H1, j, k]
+        # Fill the angles because of staggering!
         if js <= H2
-            @inbounds cs[i, j - H2, k] = tracer[i, j - H2, k]
+            @inbounds us[i - H1, j - H2, k] = velocities.u[i - H1, j - H2, k]
+            @inbounds vs[i - H1, j - H2, k] = velocities.v[i - H1, j - H2, k]
         end
         if js >= M - H2 + 1
-            @inbounds cs[i, j + H2, k] = tracer[i, j + H2, k]
+            @inbounds us[i - H1, j + H2, k] = velocities.u[i - H1, j + H2, k]
+            @inbounds vs[i - H1, j + H2, k] = velocities.v[i - H1, j + H2, k]
         end
+    end
+    if is >= N - H1 + 1
+        @inbounds us[i + H1, j, k] = velocities.u[i + H1, j, k]
+        @inbounds vs[i + H1, j, k] = velocities.v[i + H1, j, k]
+        # Fill the angles because of staggering!
+        if js <= H2
+            @inbounds us[i + H1, j - H2, k] = velocities.u[i + H1, j - H2, k]
+            @inbounds vs[i + H1, j - H2, k] = velocities.v[i + H1, j - H2, k]
+        end
+        if js >= M - H2 + 1
+            @inbounds us[i + H1, j + H2, k] = velocities.u[i + H1, j + H2, k]
+            @inbounds vs[i + H1, j + H2, k] = velocities.v[i + H1, j + H2, k]
+        end
+    end
 
-        @synchronize
-
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_x(i, j, k, grid, advection[n+1], (u = us, v = vs), cs) +
-                                      div_Uc_y(i, j, k, grid, advection[n+1], (u = us, v = vs), cs)
+    if js <= H2
+        @inbounds us[i, j - H2, k] = velocities.u[i, j - H2, k]
+        @inbounds vs[i, j - H2, k] = velocities.v[i, j - H2, k]
+    end
+    if js >= M - H2 + 1
+        @inbounds us[i, j + H2, k] = velocities.u[i, j + H2, k]
+        @inbounds vs[i, j + H2, k] = velocities.v[i, j + H2, k]
     end
 end
