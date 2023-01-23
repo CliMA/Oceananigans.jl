@@ -197,7 +197,7 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     worksize  = N
 
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
-    advection_event         = advection_contribution!(model.timestepper,
+    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
                                                       grid,
                                                       model.advection,
                                                       model.velocities,
@@ -257,7 +257,7 @@ using Base: @propagate_inbounds
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, array_size, halo) where FT
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, tracers, array_size, halo) where FT
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
     ib, jb, kb = @index(Group,  NTuple)
@@ -366,8 +366,8 @@ using Base: @propagate_inbounds
 
     @synchronize
 
-    @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-    @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds cs[i, j, k] = tracers[tracer_name][i, j, k]
@@ -396,7 +396,7 @@ using Base: @propagate_inbounds
     
         @synchronize
 
-        @inbounds timestepper.Gⁿ[tracer_name][i, j, k] -= div_Uc(i, j, k, grid, advection[tracer_name], (u = us, v = vs, w = ws), cs)
+        @inbounds Gⁿ[tracer_name][i, j, k] -= div_Uc(i, j, k, grid, advection[tracer_name], (u = us, v = vs, w = ws), cs)
     end
 end
 
