@@ -6,8 +6,8 @@ using Oceananigans.AbstractOperations: Δz
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 
-const α = 1.5 + β
 const β = 0.281105
+const α = 1.5 + β
 const θ = - 0.5 - 2β
 
 const γ = 0.088
