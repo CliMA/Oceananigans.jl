@@ -17,7 +17,7 @@ import Oceananigans.TurbulenceClosures:
                         calculate_nonlinear_viscosity!, 
                         viscosity,
                         with_tracers,
-                        calc_νᶜᶜᶜ,
+                        calc_nonlinear_νᶜᶜᶜ,
                         νᶜᶜᶜ
 
 struct ShallowWaterScalarDiffusivity{N, X} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
@@ -41,7 +41,7 @@ Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity) =
 # The diffusivity for the shallow water model is calculated as h*ν in order to have a viscous term in the form
 # h⁻¹ ∇ ⋅ (hν t) where t is the 2D stress tensor plus a trace => t = ∇u + (∇u)ᵀ - ξI⋅(∇⋅u)
 
-@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) = 
+@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::ShallowWaterScalarDiffusivity, clock, fields) = 
         fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 
 function calculate_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
