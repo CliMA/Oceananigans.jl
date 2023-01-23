@@ -253,7 +253,7 @@ end
 import Base: getindex, setindex!
 using Base: @propagate_inbounds
 
-@inline @propagate_inbounds  Base.getindex(v::DisplacedSharedArray, i, j, k)      = v.s_array[i + v.i, j + v.j, k + v.k]
+@inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
 
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
@@ -303,33 +303,7 @@ using Base: @propagate_inbounds
         @inbounds us[i + halo[1], j, k] = velocities.u[i + halo[1], j, k]
         @inbounds vs[i + halo[1], j, k] = velocities.v[i + halo[1], j, k]
         @inbounds ws[i + halo[1], j, k] = velocities.w[i + halo[1], j, k]
-    end
-
-    if js <= halo[2]
-        @inbounds us[i, j - halo[2], k] = velocities.u[i, j - halo[2], k]
-        @inbounds vs[i, j - halo[2], k] = velocities.v[i, j - halo[2], k]
-        @inbounds ws[i, j - halo[2], k] = velocities.w[i, j - halo[2], k]
-    end
-    if js >= M - halo[2] + 1
-        @inbounds us[i, j + halo[2], k] = velocities.u[i, j + halo[2], k]
-        @inbounds vs[i, j + halo[2], k] = velocities.v[i, j + halo[2], k]
-        @inbounds ws[i, j + halo[2], k] = velocities.w[i, j + halo[2], k]
-    end
-    
-    if ks <= halo[3]
-        @inbounds us[i, j, k - halo[3]] = velocities.u[i, j, k - halo[3]]
-        @inbounds vs[i, j, k - halo[3]] = velocities.v[i, j, k - halo[3]]
-        @inbounds ws[i, j, k - halo[3]] = velocities.w[i, j, k - halo[3]]
-    end
-    if ks >= O - halo[3] + 1
-        @inbounds us[i, j, k + halo[3]] = velocities.u[i, j, k + halo[3]]
-        @inbounds vs[i, j, k + halo[3]] = velocities.v[i, j, k + halo[3]]
-        @inbounds ws[i, j, k + halo[3]] = velocities.w[i, j, k + halo[3]]
-    end
-
-    # Fill the angles because of staggering!
-
-    if is >= N - halo[1] + 1
+        # Fill the angles because of staggering!
         if js <= halo[2]
             @inbounds us[i + halo[1], j - halo[2], k] = velocities.u[i + halo[1], j - halo[2], k]
         end
@@ -344,7 +318,16 @@ using Base: @propagate_inbounds
         end
     end
 
+    if js <= halo[2]
+        @inbounds us[i, j - halo[2], k] = velocities.u[i, j - halo[2], k]
+        @inbounds vs[i, j - halo[2], k] = velocities.v[i, j - halo[2], k]
+        @inbounds ws[i, j - halo[2], k] = velocities.w[i, j - halo[2], k]
+    end
     if js >= M - halo[2] + 1
+        @inbounds us[i, j + halo[2], k] = velocities.u[i, j + halo[2], k]
+        @inbounds vs[i, j + halo[2], k] = velocities.v[i, j + halo[2], k]
+        @inbounds ws[i, j + halo[2], k] = velocities.w[i, j + halo[2], k]
+        # Fill the angles because of staggering!
         if is <= halo[1]
             @inbounds vs[i - halo[1], j + halo[2], k] = velocities.v[i - halo[1], j + halo[2], k]
         end
@@ -358,8 +341,17 @@ using Base: @propagate_inbounds
             @inbounds vs[i, j + halo[2], k + halo[3]] = velocities.v[i, j + halo[2], k + halo[3]]
         end
     end
-
+    
     if ks <= halo[3]
+        @inbounds us[i, j, k - halo[3]] = velocities.u[i, j, k - halo[3]]
+        @inbounds vs[i, j, k - halo[3]] = velocities.v[i, j, k - halo[3]]
+        @inbounds ws[i, j, k - halo[3]] = velocities.w[i, j, k - halo[3]]
+    end
+    if ks >= O - halo[3] + 1
+        @inbounds us[i, j, k + halo[3]] = velocities.u[i, j, k + halo[3]]
+        @inbounds vs[i, j, k + halo[3]] = velocities.v[i, j, k + halo[3]]
+        @inbounds ws[i, j, k + halo[3]] = velocities.w[i, j, k + halo[3]]
+        # Fill the angles because of staggering!
         if is <= halo[1]
             @inbounds ws[i - halo[1], j, k + halo[3]] = velocities.w[i - halo[1], j, k + halo[3]]
         end
@@ -373,9 +365,8 @@ using Base: @propagate_inbounds
             @inbounds ws[i, j + halo[2], k + halo[3]] = velocities.w[i, j + halo[2], k + halo[3]]
         end
     end
-    
-    @synchronize
 
+    @synchronize
 
     @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
     @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
