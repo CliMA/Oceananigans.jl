@@ -115,13 +115,14 @@ function WENO(FT::DataType=Float64;
     if order < 3
         # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
         return UpwindBiased(order = 1)
-    else
-        N  = Int((order + 1) ÷ 2)
-
-        weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
     end
+
+    N  = Int((order + 1) ÷ 2)
+
+    weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
+    buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
+
+    advecting_velocity_scheme = Centered(FT; grid, order = 2)
 
     return WENO{N, FT, zweno}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
 end

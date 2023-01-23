@@ -56,6 +56,8 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
     return Centered{N, FT}(coefficients..., buffer_scheme)
 end
 
+@inline symmetric_buffer(::Centered{B}) where B = B
+
 Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
 
 Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =

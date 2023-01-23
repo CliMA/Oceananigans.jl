@@ -5,7 +5,9 @@ using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout, calc_tendency_index
 using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.Grids: halo_size
 
+using Oceananigans.Advection: symmetric_buffer
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
 
 """
@@ -57,7 +59,6 @@ function calculate_free_surface_tendency!(grid, model, dependencies)
     return Gη_event
 end
     
-
 """ Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
 
@@ -172,49 +173,6 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     return nothing
 end
 
-""" Calculate advection of prognostic quantities. """
-function calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
-
-    arch = model.architecture
-    grid = model.grid
-    Nx, Ny, Nz = N = size(grid)
-
-    barrier = device_event(model)
-    Ix, Iy, Iz = 2, 2, 2
-    for t in [2, 3, 4, 5, 6, 7, 8]
-        if mod(Nx, t) == 0
-            Ix = t
-        end
-        if mod(Ny, t) == 0 
-            Iy = t
-        end
-        if mod(Nz, t) == 0
-            Iz = t
-        end
-    end
-
-    workgroup = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
-    worksize  = N
-
-    halo       = arch_array(arch, [min.(size(grid), halo_size(grid))...])
-
-    advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
-    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-                                                      grid,
-                                                      model.advection,
-                                                      model.velocities,
-                                                      model.tracers,
-                                                      halo,
-                                                      Val(halo_size(grid)[1]),
-                                                      Val(halo_size(grid)[2]),
-                                                      Val(halo_size(grid)[3]);
-                                                      dependencies = barrier)
-    
-    wait(device(arch), advection_event)
-
-    return nothing
-end
-
 #####
 ##### Tendency calculators for u, v
 #####
@@ -241,170 +199,6 @@ end
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
-end
-
-using Oceananigans.Grids: halo_size
-
-struct DisplacedSharedArray{V, I, J, K} 
-    s_array :: V
-    i :: I
-    j :: J
-    k :: K
-end
-
-import Base: getindex, setindex!
-using Base: @propagate_inbounds
-
-@inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
-@inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
-
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
-
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
-                                                                tracers, halo, ::Val{N1}, ::Val{N2}, ::Val{N3}) where {FT, N1, N2, N3}
-    i,  j,  k  = @index(Global, NTuple)
-    is, js, ks = @index(Local,  NTuple)
-    ib, jb, kb = @index(Group,  NTuple)
-
-    N = @uniform @groupsize()[1]
-    M = @uniform @groupsize()[2]
-    O = @uniform @groupsize()[3]
-
-    ig = @localmem Int (1)
-    jg = @localmem Int (1)
-    kg = @localmem Int (1)
-    
-    if is == 1 && js == 1 && ks == 1
-        ig[1] = - N * (ib - 1) + N1
-        jg[1] = - M * (jb - 1) + N2
-        kg[1] = - O * (kb - 1) + N3
-    end
-
-    @synchronize
-
-    us_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    vs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    ws_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    cs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-
-    us = @uniform DisplacedSharedArray(us_array, ig[1], jg[1], kg[1])
-    vs = @uniform DisplacedSharedArray(vs_array, ig[1], jg[1], kg[1])
-    ws = @uniform DisplacedSharedArray(ws_array, ig[1], jg[1], kg[1])
-    cs = @uniform DisplacedSharedArray(cs_array, ig[1], jg[1], kg[1])
-
-    @inbounds us[i, j, k] = velocities.u[i, j, k]
-    @inbounds vs[i, j, k] = velocities.v[i, j, k]
-    @inbounds ws[i, j, k] = velocities.w[i, j, k]
-
-    if is <= halo[1]
-        @inbounds us[i - halo[1], j, k] = velocities.u[i - halo[1], j, k]
-        @inbounds vs[i - halo[1], j, k] = velocities.v[i - halo[1], j, k]
-        @inbounds ws[i - halo[1], j, k] = velocities.w[i - halo[1], j, k]
-    end
-    if is >= N - halo[1] + 1
-        @inbounds us[i + halo[1], j, k] = velocities.u[i + halo[1], j, k]
-        @inbounds vs[i + halo[1], j, k] = velocities.v[i + halo[1], j, k]
-        @inbounds ws[i + halo[1], j, k] = velocities.w[i + halo[1], j, k]
-        # Fill the angles because of staggering!
-        if js <= halo[2]
-            @inbounds us[i + halo[1], j - halo[2], k] = velocities.u[i + halo[1], j - halo[2], k]
-        end
-        if js >= M - halo[2] + 1
-            @inbounds us[i + halo[1], j + halo[2], k] = velocities.u[i + halo[1], j + halo[2], k]
-        end
-        if ks <= halo[3]
-            @inbounds us[i + halo[1], j, k - halo[3]] = velocities.u[i + halo[1], j, k - halo[3]]
-        end
-        if ks >= O - halo[3] + 1    
-            @inbounds us[i + halo[1], j, k + halo[3]] = velocities.u[i + halo[1], j, k + halo[3]]
-        end
-    end
-
-    if js <= halo[2]
-        @inbounds us[i, j - halo[2], k] = velocities.u[i, j - halo[2], k]
-        @inbounds vs[i, j - halo[2], k] = velocities.v[i, j - halo[2], k]
-        @inbounds ws[i, j - halo[2], k] = velocities.w[i, j - halo[2], k]
-    end
-    if js >= M - halo[2] + 1
-        @inbounds us[i, j + halo[2], k] = velocities.u[i, j + halo[2], k]
-        @inbounds vs[i, j + halo[2], k] = velocities.v[i, j + halo[2], k]
-        @inbounds ws[i, j + halo[2], k] = velocities.w[i, j + halo[2], k]
-        # Fill the angles because of staggering!
-        if is <= halo[1]
-            @inbounds vs[i - halo[1], j + halo[2], k] = velocities.v[i - halo[1], j + halo[2], k]
-        end
-        if is >= N - halo[1] + 1
-            @inbounds vs[i + halo[1], j + halo[2], k] = velocities.v[i + halo[1], j + halo[2], k]
-        end
-        if ks <= halo[3]
-            @inbounds vs[i, j + halo[2], k - halo[3]] = velocities.v[i, j - halo[2], k - halo[3]]
-        end
-        if ks >= O - halo[3] + 1
-            @inbounds vs[i, j + halo[2], k + halo[3]] = velocities.v[i, j + halo[2], k + halo[3]]
-        end
-    end
-    
-    if ks <= halo[3]
-        @inbounds us[i, j, k - halo[3]] = velocities.u[i, j, k - halo[3]]
-        @inbounds vs[i, j, k - halo[3]] = velocities.v[i, j, k - halo[3]]
-        @inbounds ws[i, j, k - halo[3]] = velocities.w[i, j, k - halo[3]]
-    end
-    if ks >= O - halo[3] + 1
-        @inbounds us[i, j, k + halo[3]] = velocities.u[i, j, k + halo[3]]
-        @inbounds vs[i, j, k + halo[3]] = velocities.v[i, j, k + halo[3]]
-        @inbounds ws[i, j, k + halo[3]] = velocities.w[i, j, k + halo[3]]
-        # Fill the angles because of staggering!
-        if is <= halo[1]
-            @inbounds ws[i - halo[1], j, k + halo[3]] = velocities.w[i - halo[1], j, k + halo[3]]
-        end
-        if is >= N - halo[1] + 1
-            @inbounds ws[i + halo[1], j, k + halo[3]] = velocities.w[i + halo[1], j, k + halo[3]]
-        end
-        if js <= halo[2]
-            @inbounds ws[i, j - halo[2], k + halo[3]] = velocities.w[i, j - halo[2], k + halo[3]]
-        end
-        if js >= M - halo[2] + 1
-            @inbounds ws[i, j + halo[2], k + halo[3]] = velocities.w[i, j + halo[2], k + halo[3]]
-        end
-    end
-
-    @synchronize
-
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-
-    ntuple(Val(length(tracers))) do n
-        Base.@_inline_meta
-        tracer = tracers[n]
-        @inbounds cs[i, j, k] = tracer[i, j, k]
-    
-        # No corners needed for the tracer
-        if is <= halo[1]
-            @inbounds cs[i - halo[1], j, k] = tracer[i - halo[1], j, k]
-        end
-        if is >= N - halo[1] + 1
-            @inbounds cs[i + halo[1], j, k] = tracer[i + halo[1], j, k]
-        end
-    
-        if js <= halo[2]
-            @inbounds cs[i, j - halo[2], k] = tracer[i, j - halo[2], k]
-        end
-        if js >= M - halo[2] + 1
-            @inbounds cs[i, j + halo[2], k] = tracer[i, j + halo[2], k]
-        end
-        
-        if ks <= halo[3]
-            @inbounds cs[i, j, k - halo[3]] = tracer[i, j, k - halo[3]]
-        end
-        if ks >= O - halo[3] + 1
-            @inbounds cs[i, j, k + halo[3]] = tracer[i, j, k + halo[3]]
-        end
-    
-        @synchronize
-
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], (u = us, v = vs, w = ws), cs)
-    end
 end
 
 #####
@@ -470,6 +264,53 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
     events = filter(e -> typeof(e) <: Event, events)
 
     wait(device(arch), MultiEvent(Tuple(events)))
+
+    return nothing
+end
+
+""" Calculate advection of prognostic quantities. """
+function calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
+
+    arch = model.architecture
+    grid = model.grid
+    Nx, Ny, Nz = N = size(grid)
+
+    barrier = device_event(model)
+    Ix = gcd(12,  Nx)
+    Iy = gcd(12,  Ny)
+    Iz = gcd(840, Nz)
+
+    workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
+    worksize  = N
+
+    halo = halo_size(grid)
+    disp = min.(size(grid), halo)
+
+    advection_contribution! = _calculate_hydrostatic_free_surface_XY_advection!(Architectures.device(arch), workgroup, worksize)
+    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+                                                      grid,
+                                                      model.advection,
+                                                      model.velocities,
+                                                      model.tracers,
+                                                      Val(disp[1]), Val(disp[2]),
+                                                      Val(halo[1]), Val(halo[2]);
+                                                      dependencies = barrier)
+    
+    wait(device(arch), advection_event)
+    
+    workgroup = (1, 1, min(Iz, Nz))
+    worksize  = N
+    
+    advection_contribution! = _calculate_hydrostatic_free_surface_Z_advection!(Architectures.device(arch), workgroup, worksize)
+    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+                                                      grid,
+                                                      model.advection,
+                                                      model.velocities,
+                                                      model.tracers, 
+                                                      Val(disp[3]), Val(halo[3]);
+                                                      dependencies = barrier)
+
+    wait(device(arch), advection_event)
 
     return nothing
 end
