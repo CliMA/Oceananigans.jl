@@ -218,14 +218,14 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(is, js, ks, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(is, js, ks, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(is, js, ks, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks)
+    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks)
+    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks)
 
     Sδ = scheme.divergence_stencil
     
     @inbounds û = u[is, js, ks]
-    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(is, js, ks, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks)
-    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(is, js, ks, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks)
+    δᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks)
+    δᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks)
 
     return upwind_biased_product(û, δᴸ, δᴿ) - upwind_biased_product(v̂, ζᴸ, ζᴿ)
 end
@@ -235,14 +235,14 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û  =  ℑyᵃᶠᵃ(is, js, ks, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(is, js, ks, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(is, js, ks, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks, grid)
+    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v, is, js, ks, grid)
 
     Sδ = scheme.divergence_stencil
 
     @inbounds v̂ = v[is, js, ks]
-    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(is, js, ks, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
-    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(is, js, ks, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v)
+    δᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks, grid)
+    δᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, div_xyᶜᶜᶜ, Sδ, u, v, is, js, ks, grid)
 
     return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ)
 end
