@@ -1,3 +1,18 @@
+# Before the Shared memory craze
+
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, coriolis, velocities, tracers) 
+    i,  j,  k  = @index(Global, NTuple)
+
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) - x_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) - y_f_cross_U(i, j, k, grid, coriolis, velocities)
+
+    ntuple(Val(length(tracers))) do n
+        Base.@_inline_meta
+        tracer = tracers[n]
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracer)
+    end
+end
+
 import Base: getindex, setindex!
 using Base: @propagate_inbounds
 
@@ -50,9 +65,9 @@ end
 @inline @propagate_inbounds Base.getindex(v::DisplacedZSharedArray, i, j, k)       = v.s_array[k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedZSharedArray, val, i, j, k) = setindex!(v.s_array, val, k + v.k)
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
-                                                                tracers, halo, ::Val{H1}, ::Val{H2}, ::Val{H3}, 
-                                                                ::Val{N1}, ::Val{N2}, ::Val{N3}) where {FT, H1, H2, H3, N1, N2, N3}
+@kernel function _calculate_hydrostatic_free_surface_shared_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
+                                                                       tracers, halo, ::Val{H1}, ::Val{H2}, ::Val{H3}, 
+                                                                       ::Val{N1}, ::Val{N2}, ::Val{N3}) where {FT, H1, H2, H3, N1, N2, N3}
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
     ib, jb, kb = @index(Group,  NTuple)

@@ -273,42 +273,52 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
 
     arch = model.architecture
     grid = model.grid
-    Nx, Ny, Nz = N = size(grid)
+    # Nx, Ny, Nz = N = size(grid)
 
-    barrier = device_event(model)
-    Ix = gcd(12,  Nx)
-    Iy = gcd(12,  Ny)
-    Iz = gcd(840, Nz)
+    advection_event = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection!,
+                              model.timestepper.Gⁿ,
+                              grid,
+                              model.advection,
+                              model.coriolis,
+                              model.velocities,
+                              model.tracers;
+                              dependencies = barrier)
 
-    workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
-    worksize  = N
 
-    halo = halo_size(grid)
-    disp = min.(size(grid), halo)
+    # barrier = device_event(model)
+    # Ix = gcd(12,  Nx)
+    # Iy = gcd(12,  Ny)
+    # Iz = gcd(840, Nz)
 
-    advection_contribution! = _calculate_hydrostatic_free_surface_XY_advection!(Architectures.device(arch), workgroup, worksize)
-    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-                                                      grid,
-                                                      model.advection,
-                                                      model.velocities,
-                                                      model.tracers,
-                                                      Val(disp[1]), Val(disp[2]),
-                                                      Val(halo[1]), Val(halo[2]);
-                                                      dependencies = barrier)
+    # workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
+    # worksize  = N
+
+    # halo = halo_size(grid)
+    # disp = min.(size(grid), halo)
+
+    # advection_contribution! = _calculate_hydrostatic_free_surface_XY_advection!(Architectures.device(arch), workgroup, worksize)
+    # advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+    #                                                   grid,
+    #                                                   model.advection,
+    #                                                   model.velocities,
+    #                                                   model.tracers,
+    #                                                   Val(disp[1]), Val(disp[2]),
+    #                                                   Val(halo[1]), Val(halo[2]);
+    #                                                   dependencies = barrier)
     
-    wait(device(arch), advection_event)
+    # wait(device(arch), advection_event)
     
-    workgroup = (1, 1, min(Iz, Nz))
-    worksize  = N
+    # workgroup = (1, 1, min(Iz, Nz))
+    # worksize  = N
     
-    advection_contribution! = _calculate_hydrostatic_free_surface_Z_advection!(Architectures.device(arch), workgroup, worksize)
-    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-                                                      grid,
-                                                      model.advection,
-                                                      model.velocities,
-                                                      model.tracers, 
-                                                      Val(disp[3]), Val(halo[3]);
-                                                      dependencies = barrier)
+    # advection_contribution! = _calculate_hydrostatic_free_surface_Z_advection!(Architectures.device(arch), workgroup, worksize)
+    # advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+    #                                                   grid,
+    #                                                   model.advection,
+    #                                                   model.velocities,
+    #                                                   model.tracers, 
+    #                                                   Val(disp[3]), Val(halo[3]);
+    #                                                   dependencies = barrier)
 
     wait(device(arch), advection_event)
 
