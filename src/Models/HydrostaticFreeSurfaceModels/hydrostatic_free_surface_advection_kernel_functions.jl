@@ -1,6 +1,6 @@
 # Before the Shared memory craze
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, coriolis, velocities, tracers) 
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid, advection, coriolis, velocities, tracers) 
     i,  j,  k  = @index(Global, NTuple)
 
     @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) - x_f_cross_U(i, j, k, grid, coriolis, velocities)
