@@ -286,10 +286,10 @@ using Base: @propagate_inbounds
     ws_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
     cs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
 
-    us = @uniform DisplacedSharedArray(us_array, ig[1], ig[2], ig[3])
-    vs = @uniform DisplacedSharedArray(vs_array, ig[1], ig[2], ig[3])
-    ws = @uniform DisplacedSharedArray(ws_array, ig[1], ig[2], ig[3])
-    cs = @uniform DisplacedSharedArray(cs_array, ig[1], ig[2], ig[3])
+    us = @uniform DisplacedSharedArray(us_array, ig[1], jg[1], kg[1])
+    vs = @uniform DisplacedSharedArray(vs_array, ig[1], jg[1], kg[1])
+    ws = @uniform DisplacedSharedArray(ws_array, ig[1], jg[1], kg[1])
+    cs = @uniform DisplacedSharedArray(cs_array, ig[1], jg[1], kg[1])
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
