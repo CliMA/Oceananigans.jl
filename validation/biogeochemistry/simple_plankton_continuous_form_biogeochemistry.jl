@@ -46,7 +46,7 @@ function SimplePlanktonGrowthDeath(FT=Float64; grid,
         advection_scheme = CenteredSecondOrder()
     end
 
-    u, v, w = maybe_constant_field.((0.0, 0.0, - sinking_velocity))
+    u, v, w = maybe_constant_field.((0, 0, - sinking_velocity))
     sinking_velocity = (; u, v, w)
     W = typeof(sinking_velocity)
 
