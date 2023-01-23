@@ -15,12 +15,12 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     grid = RectilinearGrid(arch,
         size = (80, 3, 1),
-        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
+        x = (0, Lh), y = (0, Lh), z = (-Lz, 0), halo = (4, 4, 4),
         topology = topology)
 
     bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     if multi_region
         if arch isa GPU
@@ -39,7 +39,9 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     model = HydrostaticFreeSurfaceModel(grid = mrg,
                                         coriolis = coriolis,
-                                        free_surface = free_surface)
+                                        free_surface = free_surface, 
+                                        tracer_advection = WENO(), 
+                                        momentum_advection = WENO())
 
     gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -57,7 +59,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
     ηⁱ(x, y, z) = 2 * ηᵍ(x)
-
+    
     set!(model, v = vᵍ)
     set!(model.free_surface.η, ηⁱ)
 
@@ -114,7 +116,7 @@ splitexplicit_free_surface = SplitExplicitFreeSurface(substeps = 20)
 explicit_free_surface      = ExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
-topology_types = [topology_types[2]]
+topology_types = [topology_types[1]]
 
 archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
 archs = [archs[1]]
