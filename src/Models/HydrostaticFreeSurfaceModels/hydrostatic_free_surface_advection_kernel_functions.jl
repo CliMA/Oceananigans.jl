@@ -367,7 +367,6 @@ end
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
-
     @inbounds ws[i, j, k] = velocities.w[i, j, k]
 
     @inbounds ws[i-1, j, k] = velocities.w[i-1, j, k]
