@@ -369,13 +369,13 @@ const CoF = Union{Face, Center}
 @inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 @inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::RectilinearGrid, XL::CoF) = xnodes(grid, XL)[i]
-@inline ynode(j, grid::RectilinearGrid, YL::CoF) = ynodes(grid, YL)[j]
-@inline znode(k, grid::RectilinearGrid, ZL::CoF) = znodes(grid, ZL)[k]
+@inline xnode(i, grid::RectilinearGrid, XL::CoF; kwargs...) = xnodes(grid, XL; kwargs...)[i]
+@inline ynode(j, grid::RectilinearGrid, YL::CoF; kwargs...) = ynodes(grid, YL; kwargs...)[j]
+@inline znode(k, grid::RectilinearGrid, ZL::CoF; kwargs...) = znodes(grid, ZL; kwargs...)[k]
 
-@inline xnode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = xnode(i, grid, XL)
-@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = ynode(j, grid, YL)
-@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = znode(k, grid, ZL)
+@inline xnode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = xnode(i, grid, XL; kwargs...)
+@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = ynode(j, grid, YL; kwargs...)
+@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = znode(k, grid, ZL; kwargs...)
 
 @inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
 @inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))

@@ -224,13 +224,13 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 
 # Fallback
-@inline xnode(i, j, k, grid, LX, LY, LZ) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid, LX, LY, LZ) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid, LX, LY, LZ) = znode(k, grid, LZ)
+@inline xnode(i, j, k, grid, LX, LY, LZ; kwargs...) = xnode(i, grid, LX; kwargs...)
+@inline ynode(i, j, k, grid, LX, LY, LZ; kwargs...) = ynode(j, grid, LY; kwargs...)
+@inline znode(i, j, k, grid, LX, LY, LZ; kwargs...) = znode(k, grid, LZ; kwargs...)
 
-@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
-                                           ynode(i, j, k, grid, LX, LY, LZ),
-                                           znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ; kwargs...) = (xnode(i, j, k, grid, LX, LY, LZ; kwargs...),
+                                           ynode(i, j, k, grid, LX, LY, LZ; kwargs...),
+                                           znode(i, j, k, grid, LX, LY, LZ; kwargs...))
 
 @inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
 @inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
