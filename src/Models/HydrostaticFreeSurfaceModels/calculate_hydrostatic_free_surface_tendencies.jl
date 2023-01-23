@@ -196,7 +196,6 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     workgroup = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
     worksize  = N
 
-    array_size = arch_array(arch, [halo_size(grid)...])
     halo       = arch_array(arch, [min.(size(grid), halo_size(grid))...])
 
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
@@ -206,7 +205,10 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                                                       model.velocities,
                                                       model.tracers,
                                                       array_size,
-                                                      halo;
+                                                      halo,
+                                                      Val(halo_size(grid)[1]),
+                                                      Val(halo_size(grid)[2]),
+                                                      Val(halo_size(grid)[3]);
                                                       dependencies = barrier)
     
     wait(device(arch), advection_event)
@@ -260,7 +262,8 @@ using Base: @propagate_inbounds
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, tracers, array_size, halo) where FT
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
+                                                                tracers, ::Val{N1}, ::Val{N2}, ::Val{N3}, halo) where {FT, N1, N2, N3}
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
     ib, jb, kb = @index(Group,  NTuple)
@@ -274,17 +277,17 @@ using Base: @propagate_inbounds
     kg = @localmem Int (1)
     
     if is == 1 && js == 1 && ks == 1
-        ig[1] = - N * (ib - 1) + array_size[1]
-        jg[1] = - M * (jb - 1) + array_size[2]
-        kg[1] = - O * (kb - 1) + array_size[3]
+        ig[1] = - N * (ib - 1) + N1
+        jg[1] = - M * (jb - 1) + N2
+        kg[1] = - O * (kb - 1) + N3
     end
 
     @synchronize
 
-    us_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
-    vs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
-    ws_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
-    cs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
+    us_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
+    vs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
+    ws_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
+    cs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
 
     us = @uniform DisplacedSharedArray(us_array, ig[1], jg[1], kg[1])
     vs = @uniform DisplacedSharedArray(vs_array, ig[1], jg[1], kg[1])
