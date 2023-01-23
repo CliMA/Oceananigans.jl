@@ -204,7 +204,6 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                                                       model.advection,
                                                       model.velocities,
                                                       model.tracers,
-                                                      array_size,
                                                       halo,
                                                       Val(halo_size(grid)[1]),
                                                       Val(halo_size(grid)[2]),
@@ -263,7 +262,7 @@ using Base: @propagate_inbounds
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
 
 @kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
-                                                                tracers, ::Val{N1}, ::Val{N2}, ::Val{N3}, halo) where {FT, N1, N2, N3}
+                                                                tracers, halo, ::Val{N1}, ::Val{N2}, ::Val{N3}) where {FT, N1, N2, N3}
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
     ib, jb, kb = @index(Group,  NTuple)
