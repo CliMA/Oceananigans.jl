@@ -92,8 +92,8 @@ struct NoBiogeochemistry <: AbstractBiogeochemistry end
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
-add_tracer(tracers::Tuple, name, grid) = tuple(tracers..., name)
-add_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple{(name)}((CenterField(grid), )))
+add_biogeochemical_tracer(tracers::Tuple, name, grid) = tuple(tracers..., name)
+add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple(name => CenterField(grid)))
 
 @inline function has_biogeochemical_tracers(fields, required_fields, grid)
     user_specified_tracers = [name in tracernames(fields) for name in required_fields]
@@ -104,7 +104,7 @@ add_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple{(name)}(
     Please either specify all of the required fields, or none and allow them to be automatically added."))
     elseif !any(user_specified_tracers)
         for field_name in required_fields
-            fields = add_tracer(fields, field_name, grid)
+            fields = add_biogeochemical_tracer(fields, field_name, grid)
         end
     else
         fields = fields
