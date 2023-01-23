@@ -268,6 +268,34 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
     return nothing
 end
 
+
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid, advection, coriolis, velocities, tracers) 
+    i,  j,  k  = @index(Global, NTuple)
+
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) + x_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) + y_f_cross_U(i, j, k, grid, coriolis, velocities)
+
+    ntuple(Val(length(tracers))) do n
+        Base.@_inline_meta
+        tracer = tracers[n]
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracer)
+    end
+end
+
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::ActiveCellsIBG, advection, coriolis, velocities, tracers) 
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, grid)
+
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) + x_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) + y_f_cross_U(i, j, k, grid, coriolis, velocities)
+
+    ntuple(Val(length(tracers))) do n
+        Base.@_inline_meta
+        tracer = tracers[n]
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracer)
+    end
+end
+
 """ Calculate advection of prognostic quantities. """
 function calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
 
@@ -276,6 +304,7 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     # Nx, Ny, Nz = N = size(grid)
 
     barrier = device_event(model)
+    only_active_cells = use_only_active_cells(grid)
 
     advection_event = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection!,
                               model.timestepper.Gⁿ,
@@ -284,7 +313,8 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                               model.coriolis,
                               model.velocities,
                               model.tracers;
-                              dependencies = barrier)
+                              dependencies = barrier,
+                              only_active_cells)
 
 
     # Ix = gcd(12,  Nx)
