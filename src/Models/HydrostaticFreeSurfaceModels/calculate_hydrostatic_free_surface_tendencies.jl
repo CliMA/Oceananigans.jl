@@ -205,6 +205,7 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                                                       model.advection,
                                                       model.velocities,
                                                       model.tracers,
+                                                      halo_size(grid),
                                                       min.(size(grid), halo_size(grid));
                                                       dependencies = barrier)
     
@@ -259,7 +260,7 @@ using Base: @propagate_inbounds
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
 @inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, halo) where FT
+@kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, array_size, halo) where FT
     i,  j,  k  = @index(Global, NTuple)
     is, js, ks = @index(Local,  NTuple)
     ib, jb, kb = @index(Group,  NTuple)
@@ -280,15 +281,15 @@ using Base: @propagate_inbounds
 
     @synchronize
 
-    us_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
-    vs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
-    ws_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
-    cs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
+    us_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
+    vs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
+    ws_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
+    cs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
 
-    us = @uniform DisplacedSharedArray(us_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
-    vs = @uniform DisplacedSharedArray(vs_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
-    ws = @uniform DisplacedSharedArray(ws_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
-    cs = @uniform DisplacedSharedArray(cs_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
+    us = @uniform DisplacedSharedArray(us_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
+    vs = @uniform DisplacedSharedArray(vs_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
+    ws = @uniform DisplacedSharedArray(ws_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
+    cs = @uniform DisplacedSharedArray(cs_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
