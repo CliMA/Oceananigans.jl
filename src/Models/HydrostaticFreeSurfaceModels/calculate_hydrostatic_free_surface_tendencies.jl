@@ -253,8 +253,11 @@ end
 import Base: getindex, setindex!
 using Base: @propagate_inbounds
 
-@inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
+@inline @propagate_inbounds  Base.getindex(v::DisplacedSharedArray, i, j, k)      = v.s_array[i + v.i, j + v.j, k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
+
+@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
+@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
 
 @kernel function _calculate_hydrostatic_free_surface_advection!(timestepper, grid::AbstractGrid{FT}, advection, velocities, tracers, halo) where FT
     i,  j,  k  = @index(Global, NTuple)
@@ -273,24 +276,19 @@ using Base: @propagate_inbounds
         ig[1] = ib
         jg[1] = jb
         kg[1] = kb
-
-        # @show ib, jb, kb, N, M, O, 
     end
 
     @synchronize
-
-    @show i, j, k, is, js, ks, is + halo[1], js + halo[2], ks + halo[3]
-    @show i + Int(- N*(ig[1] - 1) + halo[1]), j + Int(- M*(jg[1] - 1) + halo[2]), k + Int(- O*(kg[1] - 1) + halo[3])
 
     us_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
     vs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
     ws_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
     cs_array = @localmem FT (N+2*halo[1], M+2*halo[2], O+2*halo[3])
 
-    us = @uniform DisplacedSharedArray(us_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
-    vs = @uniform DisplacedSharedArray(vs_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
-    ws = @uniform DisplacedSharedArray(ws_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
-    cs = @uniform DisplacedSharedArray(cs_array, Int(- N*(ig[1] - 1) + halo[1]), Int(- M*(jg[1] - 1) + halo[2]), Int(- O*(kg[1] - 1) + halo[3]))
+    us = @uniform DisplacedSharedArray(us_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
+    vs = @uniform DisplacedSharedArray(vs_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
+    ws = @uniform DisplacedSharedArray(ws_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
+    cs = @uniform DisplacedSharedArray(cs_array, Int(- N * (ig[1] - 1) + halo[1]), Int(- M * (jg[1] - 1) + halo[2]), Int(- O * (kg[1] - 1) + halo[3]))
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
@@ -329,16 +327,55 @@ using Base: @propagate_inbounds
         @inbounds ws[i, j, k + halo[3]] = velocities.w[i, j, k + halo[3]]
     end
 
-    @synchronize  
+    # Fill the angles because of staggering!
 
-    # if is == 1 && js == 1 && ks == 1
-    #     for x in 1:N+2halo[1], y in halo[2]+1:M+halo[2], z in halo[3]+1:O+halo[3]
-    #         it = i + (x - 1) - halo[1]
-    #         jt = j + (y - 1) - halo[2]
-    #         kt = k + (z - 1) - halo[3]
-    #         @show x, y, z, vs[it, jt, kt], velocities.v[it, jt, kt]
-    #     end
-    # end
+    if is >= N - halo[1] + 1
+        if js <= halo[2]
+            @inbounds us[i + halo[1], j - halo[2], k] = velocities.u[i + halo[1], j - halo[2], k]
+        end
+        if js >= M - halo[2] + 1
+            @inbounds us[i + halo[1], j + halo[2], k] = velocities.u[i + halo[1], j + halo[2], k]
+        end
+        if ks <= halo[3]
+            @inbounds us[i + halo[1], j, k - halo[3]] = velocities.u[i + halo[1], j, k - halo[3]]
+        end
+        if ks >= O - halo[3] + 1    
+            @inbounds us[i + halo[1], j, k + halo[3]] = velocities.u[i + halo[1], j, k + halo[3]]
+        end
+    end
+
+    if js >= M - halo[2] + 1
+        if is <= halo[1]
+            @inbounds vs[i - halo[1], j + halo[2], k] = velocities.v[i - halo[1], j + halo[2], k]
+        end
+        if is >= N - halo[1] + 1
+            @inbounds vs[i + halo[1], j + halo[2], k] = velocities.v[i + halo[1], j + halo[2], k]
+        end
+        if ks <= halo[3]
+            @inbounds vs[i, j + halo[2], k - halo[3]] = velocities.v[i, j - halo[2], k - halo[3]]
+        end
+        if ks >= O - halo[3] + 1
+            @inbounds vs[i, j + halo[2], k + halo[3]] = velocities.v[i, j + halo[2], k + halo[3]]
+        end
+    end
+
+    if ks <= halo[3]
+        if is <= halo[1]
+            @inbounds ws[i - halo[1], j, k + halo[3]] = velocities.w[i - halo[1], j, k + halo[3]]
+        end
+        if is >= N - halo[1] + 1
+            @inbounds ws[i + halo[1], j, k + halo[3]] = velocities.w[i + halo[1], j, k + halo[3]]
+        end
+        if js <= halo[2]
+            @inbounds ws[i, j - halo[2], k + halo[3]] = velocities.w[i, j - halo[2], k + halo[3]]
+        end
+        if js >= M - halo[2] + 1
+            @inbounds ws[i, j + halo[2], k + halo[3]] = velocities.w[i, j + halo[2], k + halo[3]]
+        end
+    end
+    
+    @synchronize
+
 
     @inbounds timestepper.Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
     @inbounds timestepper.Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
