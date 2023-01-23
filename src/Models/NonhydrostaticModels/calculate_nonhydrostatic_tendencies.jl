@@ -1,6 +1,8 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layout, calc_tendency_index
+
+using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
 
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
@@ -41,7 +43,7 @@ function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model)
+function calculate_interior_tendency_contributions!(model; dependencies = device_event(model))
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -64,94 +66,55 @@ function calculate_interior_tendency_contributions!(model)
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    start_momentum_kernel_args = (grid,
+                                  advection,
+                                  coriolis,
+                                  stokes_drift,
+                                  closure)
 
-    calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
-    calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)
-    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
-    calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
+    end_momentum_kernel_args = (buoyancy,
+                                background_fields,
+                                velocities,
+                                tracers,
+                                auxiliary_fields,
+                                diffusivities)
 
-    barrier = Event(device(arch))
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
+    
+    only_active_cells = use_only_active_cells(grid)
 
+    Gu_event = launch!(arch, grid, :xyz, calculate_Gu!, 
+                       tendencies.u, u_kernel_args...;
+                       dependencies, only_active_cells)
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    u_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
+    Gv_event = launch!(arch, grid, :xyz, calculate_Gv!, 
+                       tendencies.v, v_kernel_args...;
+                       dependencies, only_active_cells)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    v_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    hydrostatic_pressure,
-                                    clock,
-                                    dependencies=barrier)
-
-    Gw_event = calculate_Gw_kernel!(tendencies.w,
-                                    grid,
-                                    advection,
-                                    coriolis,
-                                    stokes_drift,
-                                    closure,
-                                    w_immersed_bc, 
-                                    buoyancy,
-                                    background_fields,
-                                    velocities,
-                                    tracers,
-                                    auxiliary_fields,
-                                    diffusivities,
-                                    forcings,
-                                    clock,
-                                    dependencies=barrier)
+    Gw_event = launch!(arch, grid, :xyz, calculate_Gw!, 
+                       tendencies.w, w_kernel_args...;
+                       dependencies, only_active_cells)
 
     events = [Gu_event, Gv_event, Gw_event]
 
+    start_tracer_kernel_args = (advection, closure)
+    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
+    
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
         @inbounds tracer_name = keys(tracers)[tracer_index]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency,
-                                        grid,
-                                        Val(tracer_index),
-                                        Val(tracer_name),
-                                        advection,
-                                        closure,
-                                        c_immersed_bc,
-                                        buoyancy,
-                                        biogeochemistry,
-                                        background_fields,
-                                        velocities,
-                                        tracers,
-                                        auxiliary_fields,
-                                        diffusivities,
-                                        forcing,
-                                        clock,
-                                        dependencies=barrier)
+        Gc_event = launch!(arch, grid, :xyz, calculate_Gc!,
+                           c_tendency, grid, Val(tracer_index),
+                           start_tracer_kernel_args..., 
+                           c_immersed_bc,
+                           end_tracer_kernel_args...,
+                           forcing, clock;
+                           dependencies, only_active_cells)
 
         push!(events, Gc_event)
     end
@@ -171,16 +134,34 @@ end
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
+@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, grid)
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
+end
+
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_Gv!(Gv, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
+@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, grid)
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
+end
+
 """ Calculate the right-hand-side of the w-velocity equation. """
 @kernel function calculate_Gw!(Gw, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
+end
+
+@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, grid)
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
 #####
@@ -191,6 +172,12 @@ end
 @kernel function calculate_Gc!(Gc, args...)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
+end
+
+@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
+    idx = @index(Global, Linear)
+    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
 #####

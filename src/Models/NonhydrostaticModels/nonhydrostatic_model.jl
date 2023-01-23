@@ -52,26 +52,27 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(; grid,
-                                       clock = Clock{eltype(grid)}(0, 0, 1),
-                                   advection = CenteredSecondOrder(),
-                                    buoyancy = nothing,
-                                    coriolis = nothing,
-                                stokes_drift = nothing,
-                         forcing::NamedTuple = NamedTuple(),
-                                     closure = nothing,
-             boundary_conditions::NamedTuple = NamedTuple(),
-               background_fields::NamedTuple = NamedTuple(),
-               particles::ParticlesOrNothing = nothing,
-                biogeochemistry::AbstractBGC = NoBiogeochemistry(),
-                                     tracers = (),
-                                  velocities = nothing,
-                                   pressures = nothing,
-                          diffusivity_fields = nothing,
-                             pressure_solver = nothing,
-                           immersed_boundary = nothing,
-                            auxiliary_fields = NamedTuple(),
-                                 timestepper = :QuasiAdamsBashforth2,
+    NonhydrostaticModel(;     grid,
+                                  clock = Clock{eltype(grid)}(0, 0, 1),
+                              advection = CenteredSecondOrder(),
+                               buoyancy = nothing,
+                               coriolis = nothing,
+                           stokes_drift = nothing,
+                    forcing::NamedTuple = NamedTuple(),
+                                closure = nothing,
+        boundary_conditions::NamedTuple = NamedTuple(),
+                                tracers = (),
+                            timestepper = :QuasiAdamsBashforth2,
+          background_fields::NamedTuple = NamedTuple(),
+          particles::ParticlesOrNothing = nothing,
+           biogeochemistry::AbstractBGC = NoBiogeochemistry(),
+                             velocities = nothing,
+                              pressures = nothing,
+                     diffusivity_fields = nothing,
+                        pressure_solver = nothing,
+                      immersed_boundary = nothing,
+                       auxiliary_fields = NamedTuple(),
+ calculate_only_active_cells_tendencies = false
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -103,29 +104,31 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`. 
+  - `calculate_only_active_cells_tendencies`: In case of an immersed boundary grid, calculate the tendency only in active cells.
+                                   Default: `false`              
 """
-function NonhydrostaticModel(; grid,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = CenteredSecondOrder(),
-                           buoyancy = nothing,
-                           coriolis = nothing,
-                       stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-      background_fields::NamedTuple = NamedTuple(),
-      particles::ParticlesOrNothing = nothing,
-       biogeochemistry::AbstractBGC = NoBiogeochemistry(),
-                            tracers = (),
-                         velocities = nothing,
-                          pressures = nothing,
-                 diffusivity_fields = nothing,
-                    pressure_solver = nothing,
-                  immersed_boundary = nothing,
-                   auxiliary_fields = NamedTuple(),
-                        timestepper = :QuasiAdamsBashforth2,
-    )
+function NonhydrostaticModel(;    grid,
+                                 clock = Clock{eltype(grid)}(0, 0, 1),
+                             advection = CenteredSecondOrder(),
+                              buoyancy = nothing,
+                              coriolis = nothing,
+                          stokes_drift = nothing,
+                   forcing::NamedTuple = NamedTuple(),
+                               closure = nothing,
+       boundary_conditions::NamedTuple = NamedTuple(),
+                               tracers = (),
+                           timestepper = :QuasiAdamsBashforth2,
+         background_fields::NamedTuple = NamedTuple(),
+         particles::ParticlesOrNothing = nothing,
+          biogeochemistry::AbstractBGC = NoBiogeochemistry(),
+                            velocities = nothing,
+                             pressures = nothing,
+                    diffusivity_fields = nothing,
+                       pressure_solver = nothing,
+                     immersed_boundary = nothing,
+                      auxiliary_fields = NamedTuple(),
+calculate_only_active_cells_tendencies = false)
 
     arch = architecture(grid)
 
@@ -146,6 +149,12 @@ function NonhydrostaticModel(; grid,
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
+
+    # In case of an immersed boundary grid add a wet cell map to avoid calculating 
+    # the tendency in dry cells
+    if calculate_only_active_cells_tendencies
+        grid = maybe_add_active_cells_map(grid)
+    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -237,3 +246,7 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
+
+maybe_add_active_cells_map(grid) = grid
+maybe_add_active_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
+      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_active_cells_map = true)
