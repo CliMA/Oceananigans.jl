@@ -269,14 +269,14 @@ using Base: @propagate_inbounds
     M = @uniform @groupsize()[2]
     O = @uniform @groupsize()[3]
 
-    ig = @localmem FT (1)
-    jg = @localmem FT (1)
-    kg = @localmem FT (1)
+    ig = @localmem Int (1)
+    jg = @localmem Int (1)
+    kg = @localmem Int (1)
     
     if is == 1 && js == 1 && ks == 1
-        ig[1] = ib
-        jg[1] = jb
-        kg[1] = kb
+        ig[1] = - N * (ib - 1) + array_size[1]
+        jg[1] = - M * (jb - 1) + array_size[2]
+        kg[1] = - O * (kb - 1) + array_size[3]
     end
 
     @synchronize
@@ -286,10 +286,10 @@ using Base: @propagate_inbounds
     ws_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
     cs_array = @localmem FT (N+2*array_size[1], M+2*array_size[2], O+2*array_size[3])
 
-    us = @uniform DisplacedSharedArray(us_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
-    vs = @uniform DisplacedSharedArray(vs_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
-    ws = @uniform DisplacedSharedArray(ws_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
-    cs = @uniform DisplacedSharedArray(cs_array, Int(- N * (ig[1] - 1) + array_size[1]), Int(- M * (jg[1] - 1) + array_size[2]), Int(- O * (kg[1] - 1) + array_size[3]))
+    us = @uniform DisplacedSharedArray(us_array, ig[1], ig[2], ig[3])
+    vs = @uniform DisplacedSharedArray(vs_array, ig[1], ig[2], ig[3])
+    ws = @uniform DisplacedSharedArray(ws_array, ig[1], ig[2], ig[3])
+    cs = @uniform DisplacedSharedArray(cs_array, ig[1], ig[2], ig[3])
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
