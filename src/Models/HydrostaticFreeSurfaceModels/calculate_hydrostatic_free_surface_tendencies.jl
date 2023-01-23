@@ -275,6 +275,8 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     grid = model.grid
     # Nx, Ny, Nz = N = size(grid)
 
+    barrier = device_event(model)
+
     advection_event = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection!,
                               model.timestepper.Gⁿ,
                               grid,
@@ -285,7 +287,6 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                               dependencies = barrier)
 
 
-    # barrier = device_event(model)
     # Ix = gcd(12,  Nx)
     # Iy = gcd(12,  Ny)
     # Iz = gcd(840, Nz)
