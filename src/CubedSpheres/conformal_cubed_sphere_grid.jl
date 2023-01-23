@@ -186,42 +186,45 @@ end
 ##### Nodes for OrthogonalSphericalShellGrid
 #####
 
-@inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Face,   LZ) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Center, LZ) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Face,   LZ) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline λnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Center, LZ) = @inbounds grid.λᶜᶜᵃ[i, j]
+const OSSG = OrthogonalSphericalShellGrid
 
-@inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Face,   LZ) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Face,   LY::Center, LZ) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Face,   LZ) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline φnode(i, j, k, grid::OrthogonalSphericalShellGrid, LX::Center, LY::Center, LZ) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Face,   LY::Face,   LZ; kwargs...) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Face,   LY::Center, LZ; kwargs...) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Center, LY::Face,   LZ; kwargs...) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline λnode(i, j, k, grid::OSSG, LX::Center, LY::Center, LZ; kwargs...) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, LZ::Face, ) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, LZ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline φnode(i, j, k, grid::OSSG, LX::Face,   LY::Face,   LZ; kwargs...) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Face,   LY::Center, LZ; kwargs...) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Center, LY::Face,   LZ; kwargs...) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline φnode(i, j, k, grid::OSSG, LX::Center, LY::Center, LZ; kwargs...) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-λnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Face,   LY::Face,   LZ) where {TX, TY} =
-    view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Face  ; kwargs...) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Center; kwargs...) = @inbounds grid.zᵃᵃᶜ[k]
 
-λnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Face,   LY::Center, LZ) where {TX, TY} =
-    view(grid.λᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-λnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Center, LY::Face,   LZ) where {TX, TY} =
-    view(grid.λᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶠᶠᵃ : view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-λnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Center, LY::Center, LZ) where {TX, TY} =
-view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶠᶜᵃ : view(grid.λᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Face,   LY::Face,   LZ) where {TX, TY} =
-    view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Center, LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶜᶠᵃ : view(grid.λᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Face,   LY::Center, LZ) where {TX, TY} =
-    view(grid.φᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+λnodes(grid::OSSG{TX, TY}, LX::Center, LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.λᶜᶜᵃ : view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Center, LY::Face,   LZ) where {TX, TY} =
-    view(grid.φᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+φnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Face,   LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.φᶠᶠᵃ : view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
-φnodes(grid::OrthogonalSphericalShellGrid{TX, TY}, LX::Center, LY::Center, LZ) where {TX, TY} =
-    view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+φnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Center, LZ; with_halos=false) where {TX, TY} =  
+    with_halos ? grid.φᶠᶜᵃ : view(grid.φᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+φnodes(grid::OSSG{TX, TY}, LX::Center, LY::Face,   LZ; with_halos=false) where {TX, TY} =
+    with_halos ? grid.φᶜᶠᵃ : view(grid.φᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+φnodes(grid::OSSG{TX, TY}, LX::Center, LY::Center, LZ; with_halos=false) where {TX, TY} =
+    with_halos ? grid.φᶜᶜᵃ : view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
 #####
 ##### Grid utils
