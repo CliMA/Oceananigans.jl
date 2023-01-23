@@ -86,13 +86,13 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
-    z = znode(i, j, k+1, underlying_grid, c, c, f)
+    z = znode(i, j, k+1, underlying_grid, c, c, f, with_halos=true)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
-    z = znode(i, j, k, underlying_grid, c, c, c)
+    z = znode(i, j, k, underlying_grid, c, c, c, with_halos=true)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
@@ -113,8 +113,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 #### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 ####
 
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face())
-@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center())
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face(), with_halos=true)
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center(), with_halos=true)
 
 # Extend the upper and lower diagonal functions of the batched tridiagonal solver
 
@@ -148,7 +148,7 @@ end
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
-    x, y, z = node(i, j, k, underlying_grid, c, c, c)
+    x, y, z = node(i, j, k, underlying_grid, c, c, c, with_halos=true)
     return ib.mask(x, y, z)
 end
 
