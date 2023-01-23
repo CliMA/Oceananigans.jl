@@ -172,7 +172,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     return nothing
 end
 
-""" Store previous value of the source term and calculate current source term. """
+""" Calculate advection of prognostic quantities. """
 function calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
 
     arch = model.architecture
@@ -180,9 +180,7 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     Nx, Ny, Nz = N = size(grid)
 
     barrier = device_event(model)
-    Ix = 2
-    Iy = 2
-    Iz = 2
+    Ix, Iy, Iz = 2, 2, 2
     for t in [2, 3, 4, 5, 6, 7, 8]
         if mod(Nx, t) == 0
             Ix = t
@@ -195,9 +193,8 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
         end
     end
 
-    workgroup  = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
+    workgroup = (min(Ix, Nx),  min(Iy, Ny),  min(Iz, Nz))
     worksize  = N
-    blocknum  = N ./ workgroup
 
     advection_contribution! = _calculate_hydrostatic_free_surface_advection!(Architectures.device(arch), workgroup, worksize)
     advection_event         = advection_contribution!(model.timestepper,
