@@ -136,6 +136,20 @@ const VectorInvariantConserving = Union{VectorInvariantEnergyConserving, VectorI
     + vertical_advection_V(i, j, k, grid, scheme, U.w, U.v)
     + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
 
+@inline U_dot_∇u_h(i, j, k, grid, scheme::VectorInvariant, U) = (
+    + horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
+    + bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v))
+    
+@inline U_dot_∇v_h(i, j, k, grid, scheme::VectorInvariant, U) = (
+    + horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)
+    + bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v))
+    
+@inline U_dot_∇u_z(i, j, k, grid, scheme::VectorInvariant, U) = 
+    + vertical_advection_U(i, j, k, grid, scheme, U.w, U.u)
+    
+@inline U_dot_∇v_z(i, j, k, grid, scheme::VectorInvariant, U) = 
+    + vertical_advection_V(i, j, k, grid, scheme, U.w, U.v)
+
 #####
 ##### Kinetic energy gradient (always the same formulation)
 #####
@@ -254,12 +268,24 @@ end
 @inline U_dot_∇u(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, scheme, U, U.u)
 @inline U_dot_∇v(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, scheme, U, U.v)
 
+@inline U_dot_∇u_h(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u_x(i, j, k, grid, scheme, U, U.u) + div_𝐯u_y(i, j, k, grid, scheme, U, U.u)
+@inline U_dot_∇v_h(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v_x(i, j, k, grid, scheme, U, U.v) + div_𝐯v_y(i, j, k, grid, scheme, U, U.v)
+
+@inline U_dot_∇u_z(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯u_z(i, j, k, grid, scheme, U, U.u) 
+@inline U_dot_∇v_z(i, j, k, grid, scheme::AbstractAdvectionScheme, U) = div_𝐯v_z(i, j, k, grid, scheme, U, U.v) 
+
 ######
 ###### No advection
 ######
 
 @inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 @inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+
+@inline U_dot_∇u_h(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline U_dot_∇v_h(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+
+@inline U_dot_∇u_z(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline U_dot_∇v_z(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 
 const U{N}  = UpwindBiased{N}
 const UX{N} = UpwindBiased{N, <:Any, <:Nothing} 

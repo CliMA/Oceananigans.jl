@@ -40,6 +40,66 @@ const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 @inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 @inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
 
+@inline div_𝐯u_x(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_x(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_x(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_x(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_x(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_x(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+
+@inline div_𝐯u_x(i, j, k, grid, ::Nothing, U, u) = zero(grid)
+@inline div_𝐯v_x(i, j, k, grid, ::Nothing, U, v) = zero(grid)
+@inline div_𝐯w_x(i, j, k, grid, ::Nothing, U, w) = zero(grid)
+
+@inline div_𝐯u_x(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_x(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_x(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_x(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_x(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_x(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+
+@inline div_𝐯u_y(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_y(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_y(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_y(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_y(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_y(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+
+@inline div_𝐯u_y(i, j, k, grid, ::Nothing, U, u) = zero(grid)
+@inline div_𝐯v_y(i, j, k, grid, ::Nothing, U, v) = zero(grid)
+@inline div_𝐯w_y(i, j, k, grid, ::Nothing, U, w) = zero(grid)
+
+@inline div_𝐯u_y(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_y(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_y(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_y(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_y(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_y(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+
+@inline div_𝐯u_z(i, j, k, grid, advection, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_z(i, j, k, grid, advection, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_z(i, j, k, grid, advection, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_z(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_z(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_z(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+
+@inline div_𝐯u_z(i, j, k, grid, ::Nothing, U, u) = zero(grid)
+@inline div_𝐯v_z(i, j, k, grid, ::Nothing, U, v) = zero(grid)
+@inline div_𝐯w_z(i, j, k, grid, ::Nothing, U, w) = zero(grid)
+
+@inline div_𝐯u_z(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
+@inline div_𝐯v_z(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
+@inline div_𝐯w_z(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
+
+@inline div_𝐯u_z(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯v_z(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯w_z(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+
 """
     div_𝐯u(i, j, k, grid, advection, U, u)
 
@@ -56,6 +116,15 @@ which ends up at the location `fcc`.
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u))
 end
+
+@inline div_𝐯u_x(i, j, k, grid, advection, U, u) = 
+    1/Vᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u)
+
+@inline div_𝐯u_y(i, j, k, grid, advection, U, u) = 
+    1/Vᶠᶜᶜ(i, j, k, grid) * δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u)
+
+@inline div_𝐯u_z(i, j, k, grid, advection, U, u) = 
+    1/Vᶠᶜᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u)
 
 """
     div_𝐯v(i, j, k, grid, advection, U, v)
@@ -74,6 +143,15 @@ which ends up at the location `cfc`.
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v))
 end
 
+@inline div_𝐯v_x(i, j, k, grid, advection, U, v) = 
+    1/Vᶜᶠᶜ(i, j, k, grid) * δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v)
+
+@inline div_𝐯v_y(i, j, k, grid, advection, U, v) = 
+    1/Vᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v) 
+
+@inline div_𝐯v_z(i, j, k, grid, advection, U, v) = 
+    1/Vᶜᶠᶜ(i, j, k, grid) * δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v)
+
 """
     div_𝐯w(i, j, k, grid, advection, U, w)
 
@@ -89,3 +167,12 @@ which ends up at the location `ccf`.
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end
+
+@inline div_𝐯w_xy(i, j, k, grid, advection, U, w) = 
+    1/Vᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) 
+
+@inline div_𝐯w_y(i, j, k, grid, advection, U, w) = 
+    1/Vᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w)
+
+@inline div_𝐯w_z(i, j, k, grid, advection, U, w) = 
+    1/Vᶜᶜᶠ(i, j, k, grid) * δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w)
