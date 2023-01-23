@@ -383,6 +383,7 @@ using Base: @propagate_inbounds
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds cs[i, j, k] = tracers[tracer_name][i, j, k]
     
+        # No corners needed for the tracer
         if is <= halo[1]
             @inbounds cs[i - halo[1], j, k] = tracers[tracer_name][i - halo[1], j, k]
         end
