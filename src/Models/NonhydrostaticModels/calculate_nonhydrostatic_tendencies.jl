@@ -101,15 +101,15 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
-    
+
     for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index+3]
-        @inbounds forcing = forcings[tracer_index+3]
+        @inbounds c_tendency = tendencies[tracer_index + 3]
+        @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
         @inbounds tracer_name = keys(tracers)[tracer_index]
 
         Gc_event = launch!(arch, grid, :xyz, calculate_Gc!,
-                           c_tendency, grid, Val(tracer_index),
+                           c_tendency, grid, Val(tracer_index), Val(tracer_name),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
                            end_tracer_kernel_args...,
