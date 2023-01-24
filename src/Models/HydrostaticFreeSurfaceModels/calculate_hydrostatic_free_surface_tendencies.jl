@@ -21,8 +21,8 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
-    calculate_hydrostatic_free_surface_advection_tendency_contributions!(model)
-
+    calculate_hydrostatic_free_surface_shared_advection_tendency_contributions!(model)
+    
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
@@ -268,12 +268,11 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
     return nothing
 end
 
-
 @kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid, advection, coriolis, velocities, tracers) 
     i,  j,  k  = @index(Global, NTuple)
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) + x_f_cross_U(i, j, k, grid, coriolis, velocities)
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) + y_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities)
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities)
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
@@ -286,8 +285,8 @@ end
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) + x_f_cross_U(i, j, k, grid, coriolis, velocities)
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) + y_f_cross_U(i, j, k, grid, coriolis, velocities)
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) 
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) 
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
@@ -301,7 +300,6 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
 
     arch = model.architecture
     grid = model.grid
-    # Nx, Ny, Nz = N = size(grid)
 
     barrier = device_event(model)
     only_active_cells = use_only_active_cells(grid)
@@ -310,46 +308,10 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
                               model.timestepper.Gⁿ,
                               grid,
                               model.advection,
-                              model.coriolis,
                               model.velocities,
                               model.tracers;
                               dependencies = barrier,
                               only_active_cells)
-
-
-    # Ix = gcd(12,  Nx)
-    # Iy = gcd(12,  Ny)
-    # Iz = gcd(840, Nz)
-
-    # workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
-    # worksize  = N
-
-    # halo = halo_size(grid)
-    # disp = min.(size(grid), halo)
-
-    # advection_contribution! = _calculate_hydrostatic_free_surface_XY_advection!(Architectures.device(arch), workgroup, worksize)
-    # advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-    #                                                   grid,
-    #                                                   model.advection,
-    #                                                   model.velocities,
-    #                                                   model.tracers,
-    #                                                   Val(disp[1]), Val(disp[2]),
-    #                                                   Val(halo[1]), Val(halo[2]);
-    #                                                   dependencies = barrier)
-    
-    # wait(device(arch), advection_event)
-    
-    # workgroup = (1, 1, min(Iz, Nz))
-    # worksize  = N
-    
-    # advection_contribution! = _calculate_hydrostatic_free_surface_Z_advection!(Architectures.device(arch), workgroup, worksize)
-    # advection_event         = advection_contribution!(model.timestepper.Gⁿ,
-    #                                                   grid,
-    #                                                   model.advection,
-    #                                                   model.velocities,
-    #                                                   model.tracers, 
-    #                                                   Val(disp[3]), Val(halo[3]);
-    #                                                   dependencies = barrier)
 
     wait(device(arch), advection_event)
 

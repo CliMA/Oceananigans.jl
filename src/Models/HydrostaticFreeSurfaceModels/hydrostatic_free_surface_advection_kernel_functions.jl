@@ -1,4 +1,53 @@
 # Before the Shared memory craze
+
+""" Calculate advection of prognostic quantities. """
+function calculate_hydrostatic_free_surface_shared_advection_tendency_contributions!(model)
+
+    arch = model.architecture
+    grid = model.grid
+    Nx, Ny, Nz = N = size(grid)
+
+    barrier = device_event(model)
+
+    Ix = gcd(20,  Nx)
+    Iy = gcd(20,  Ny)
+    Iz = gcd(840, Nz)
+
+    workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
+    worksize  = N
+
+    halo = halo_size(grid)
+    disp = min.(size(grid), halo)
+
+    advection_contribution! = _calculate_hydrostatic_free_surface_XY_advection!(Architectures.device(arch), workgroup, worksize)
+    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+                                                      grid,
+                                                      model.advection,
+                                                      model.velocities,
+                                                      model.tracers,
+                                                      Val(disp[1]), Val(disp[2]),
+                                                      Val(halo[1]), Val(halo[2]);
+                                                      dependencies = barrier)
+    
+    wait(device(arch), advection_event)
+    
+    workgroup = (1, 1, min(Iz, Nz))
+    worksize  = N
+    
+    advection_contribution! = _calculate_hydrostatic_free_surface_Z_advection!(Architectures.device(arch), workgroup, worksize)
+    advection_event         = advection_contribution!(model.timestepper.Gⁿ,
+                                                      grid,
+                                                      model.advection,
+                                                      model.velocities,
+                                                      model.tracers, 
+                                                      Val(disp[3]), Val(halo[3]);
+                                                      dependencies = barrier)
+
+    wait(device(arch), advection_event)
+
+    return nothing
+end
+
 import Base: getindex, setindex!
 using Base: @propagate_inbounds
 
