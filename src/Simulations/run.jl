@@ -6,7 +6,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface_state!
+using Oceananigans.Models: initialize_model!
 
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
@@ -110,6 +110,7 @@ function time_step!(sim::Simulation)
 
     if !(sim.initialized) # execute initialization step
         initialize_simulation!(sim)
+        initialize_model!(sim.model)
 
         if sim.running # check that initialization didn't stop time-stepping
             if sim.verbose 
@@ -117,7 +118,6 @@ function time_step!(sim::Simulation)
                 start_time = time_ns()
             end
 
-            initialize_free_surface_state!(sim.model)
             Δt = aligned_time_step(sim, sim.Δt)
             time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimeStepCallsite)])
 

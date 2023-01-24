@@ -10,10 +10,12 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!
+using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Models: initialize_model!
 
 abstract type AbstractFreeSurface{E, G} end
 

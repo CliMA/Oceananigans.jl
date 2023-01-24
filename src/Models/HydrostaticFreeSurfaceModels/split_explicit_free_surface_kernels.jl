@@ -69,8 +69,8 @@ for Topo in [:Periodic, :Bounded]
     end
 end
 
-@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
-@inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k] + δ * ηᵐ⁺¹[i, j, k]
+@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       =                     α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
+@inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², Ũ, Ṽ, mass_flux_weight)
     i, j = @index(Global, NTuple)
@@ -216,12 +216,8 @@ Explicitly step forward η in substeps.
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
     
-initialize_free_surface_state!(model) = initialize_free_surface_state!(model.free_surface, model.grid, model.velocities)
-initialize_free_surface_state!(free_surface, grid, velocities) = nothing
-
-function initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, velocities) 
+initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, velocities) =
     barotropic_mode!(sefs.state.Ũ, sefs.state.Ṽ, grid, velocities.u, velocities.v)
-end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events)
 
