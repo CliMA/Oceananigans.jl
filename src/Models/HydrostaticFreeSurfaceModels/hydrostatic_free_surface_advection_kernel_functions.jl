@@ -64,25 +64,6 @@ end
 @inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
 
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray)      = lastindex(v.s_array)
-@inline @propagate_inbounds Base.lastindex(v::DisplacedSharedArray, dim) = lastindex(v.s_array, dim)
-
-struct DisplacedXSharedArray{V, I} 
-    s_array :: V
-    i :: I
-end
-
-@inline @propagate_inbounds Base.getindex(v::DisplacedXSharedArray, i, j, k)       = v.s_array[i + v.i]
-@inline @propagate_inbounds Base.setindex!(v::DisplacedXSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i)
-
-struct DisplacedYSharedArray{V, J} 
-    s_array :: V
-    j :: J
-end
-
-@inline @propagate_inbounds Base.getindex(v::DisplacedYSharedArray, i, j, k)       = v.s_array[j + v.j]
-@inline @propagate_inbounds Base.setindex!(v::DisplacedYSharedArray, val, i, j, k) = setindex!(v.s_array, val, j + v.j)
-
 struct DisplacedXYSharedArray{V, I, J} 
     s_array :: V
     i :: I
