@@ -63,8 +63,8 @@ grid = RectilinearGrid(CPU();
 
 fig = Figure(resolution=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
-lines!(ax, zspacings(grid, Center())[1:grid.Nz], znodes(grid, Center())[1:grid.Nz])
-scatter!(ax, zspacings(grid, Center())[1:Nz], znodes(grid, Center())[1:Nz])
+lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
 save("ocean_wind_mixing_convection_grid_spacing.svg", fig)
 nothing #hide

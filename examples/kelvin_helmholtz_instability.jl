@@ -44,8 +44,8 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 using CairoMakie
 
-zF = znodes(Face, grid)
-zC = znodes(Center, grid)
+zF = znodes(grid, Face())
+zC = znodes(grid, Center())
 
 Ri, h = B.parameters
 
