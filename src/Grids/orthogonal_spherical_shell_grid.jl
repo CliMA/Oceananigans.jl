@@ -695,15 +695,15 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ) = @inbounds grid.λᶜᶜᵃ[i, j]
+@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ; kwargs...) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ; kwargs...) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ; kwargs...) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ; kwargs...) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ; kwargs...) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ; kwargs...) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ; kwargs...) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ; kwargs...) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Face, ) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Face  ; kwargs...) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Center; kwargs...) = @inbounds grid.zᵃᵃᶜ[k]
