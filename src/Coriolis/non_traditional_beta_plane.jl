@@ -76,7 +76,7 @@ end
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds  two_Ωᶻ(coriolis, grid.yᵃᶠᵃ[k], grid.zᵃᵃᶜ[k]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+    @inbounds  two_Ωᶻ(coriolis, grid.yᵃᶠᵃ[j], grid.zᵃᵃᶜ[k]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     @inbounds -two_Ωʸ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶠ[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
