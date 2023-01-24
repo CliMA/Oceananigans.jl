@@ -156,6 +156,8 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
     dz = GridMetricOperation((Center, Center, Center), Δz, grid)
     sum!(Hᶜᶜ, dz)
 
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
+
     return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ)
 end
 

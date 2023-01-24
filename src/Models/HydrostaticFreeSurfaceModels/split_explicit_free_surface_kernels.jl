@@ -79,8 +79,8 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
-        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i, j, k_top, grid, TX, U★, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_yᶜᶜᶠ_bound(i, j, k_top, grid, TY, U★, V, Vᵐ⁻¹, Vᵐ⁻²))
+        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i, j, 1, grid, TX, U★, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                div_yᶜᶜᶠ_bound(i, j, 1, grid, TY, U★, V, Vᵐ⁻¹, Vᵐ⁻²))
         
         Ũ[i, j, 1] +=  mass_flux_weight * U★(i, j, 1, grid, U, Uᵐ⁻¹, Uᵐ⁻²)
         Ṽ[i, j, 1] +=  mass_flux_weight * U★(i, j, 1, grid, V, Vᵐ⁻¹, Vᵐ⁻²)
@@ -216,8 +216,13 @@ Explicitly step forward η in substeps.
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
     
-initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, velocities) =
+function initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_mode!(sefs.state.Ũ, sefs.state.Ṽ, grid, velocities.u, velocities.v)
+    fill_halo_regions!((sefs.state.Ũ, sefs.state.Ṽ))
+    masking_events_U = mask_immersed_reduced_field_xy!(sefs.state.Ũ, k = 1) 
+    masking_events_V = mask_immersed_reduced_field_xy!(sefs.state.Ṽ, k = 1) 
+    wait(device(architecture(grid)), MultiEvent((masking_events_U, masking_events_V)))
+end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events)
 
@@ -256,13 +261,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     set!(state.Uᵐ⁻², state.Ũ)
     set!(state.Vᵐ⁻², state.Ṽ)
 
-    set!(state.ηᵐ, η)
-    set!(state.ηᵐ, η)
-
+    set!(state.ηᵐ,   η)
     set!(state.ηᵐ⁻¹, η)
-    set!(state.ηᵐ⁻¹, η)
-
-    set!(state.ηᵐ⁻², η)
     set!(state.ηᵐ⁻², η)
 
     # reset free surface averages
