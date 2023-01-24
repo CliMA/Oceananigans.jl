@@ -70,6 +70,12 @@ calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothi
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
+# Interface for KE-based closures
+function shear_production end
+function buoyancy_flux end
+function dissipation end
+function hydrostatic_turbulent_kinetic_energy_tendency end
+
 #####
 ##### The magic
 #####
@@ -84,6 +90,7 @@ add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = 
 @inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Face(), i, j, k, grid)
 @inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(Center(), Center(), Face(), i, j, k, grid) - bottom(i, j, k, grid)
 @inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
+@inline opposite_wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = max(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
 
 include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
@@ -109,6 +116,7 @@ include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/mews_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
