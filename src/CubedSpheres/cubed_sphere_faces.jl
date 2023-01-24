@@ -50,6 +50,8 @@ const CubedSphereField{LX, LY, LZ} =
     Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
           Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
 
+const CubedSphereFunctionField{LX, LY, LZ} = FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
+
 const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
 
 const AbstractCubedSphereField{LX, LY, LZ} =
@@ -126,11 +128,11 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
           get_face(field.operand, face_index),
           nothing)
 
-@inline get_face(field::FunctionField, face_index) =
+@inline get_face(field::CubedSphereFunctionField, face_index) =
     FunctionField(location(field),
                   field.func,
                   get_face(field.grid, face_index))
- 
+
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
 function Base.fill!(csf::CubedSphereField, val)
