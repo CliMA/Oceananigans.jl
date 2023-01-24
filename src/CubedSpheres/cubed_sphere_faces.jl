@@ -34,11 +34,11 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 # Some dispatch foo to make a type union for CubedSphereFaceField...
 #
 # Conformal cubed sphere grid wrapped in ImmersedBoundaryGrid:
-const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
+const ImmersedOrthogonalSphericalShellGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:OrthogonalSphericalShellGrid} where {FT, TX, TY, TZ}
 
 # CubedSphereFaceField:
-const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ}
-const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ}
+const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:OrthogonalSphericalShellGrid} where {LX, LY, LZ}
+const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedOrthogonalSphericalShellGrid} where {LX, LY, LZ}
 
 const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
                                       ImmersedCubedSphereFaceField{LX, LY, LZ}} where {LX, LY, LZ}
