@@ -9,9 +9,9 @@ function calculate_hydrostatic_free_surface_shared_advection_tendency_contributi
 
     barrier = device_event(model)
 
-    Ix = gcd(20,  Nx)
-    Iy = gcd(20,  Ny)
-    Iz = gcd(840, Nz)
+    Ix = gcd(16,   Nx)
+    Iy = gcd(12,   Ny)
+    Iz = gcd(1680, Nz)
 
     workgroup = (min(Ix, Nx),  min(Iy, Ny),  1)
     worksize  = N
