@@ -73,9 +73,9 @@ function Checkpointer(model; schedule,
                                     :buoyancy, :closure, :timestepper, :particles])
 
     # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :timestepper, :particles)
+    # This list is created by required_properties
 
-    for rp in required_properties
+    for rp in required_properties(model)
         if rp ∉ properties
             @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
             push!(properties, rp)
@@ -97,39 +97,9 @@ function Checkpointer(model; schedule,
     return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
 end
 
-function Checkpointer(model::ShallowWaterModel; schedule,
-                      dir = ".",
-                      prefix = "checkpoint",
-                      overwrite_existing = false,
-                      verbose = false,
-                      cleanup = false,
-                      properties = [:architecture, :grid, :clock, :coriolis,
-                                     :closure, :timestepper])
+@inline required_properties(model) = (:grid, :architecture, :timestepper, :particles)
 
-    # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :timestepper)
-
-    for rp in required_properties
-        if rp ∉ properties
-            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
-            push!(properties, rp)
-        end
-    end
-
-    for p in properties
-        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
-        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
-
-        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
-            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
-            filter!(e -> e != p, properties)
-        end
-    end
-
-    mkpath(dir)
-
-    return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
-end
+@inline required_properties(model::ShallowWaterModel) = (:grid, :architecture, :timestepper)
 
 #####
 ##### Checkpointer utils
@@ -258,9 +228,7 @@ function set!(model, filepath::AbstractString)
 
         set_time_stepper!(model.timestepper, file, model_fields)
 
-        if !isnothing(model.particles)
-            copyto!(model.particles.properties, file["particles"])
-        end
+        set_particles!(model, file)
 
         checkpointed_clock = file["clock"]
 
@@ -272,35 +240,12 @@ function set!(model, filepath::AbstractString)
     return nothing
 end
 
-function set!(model::ShallowWaterModel, filepath::AbstractString)
+set_particles!(::ShallowWaterModel, file) = nothing
 
-    jldopen(filepath, "r") do file
+function set_particles!(model::Union{HydrostaticFreeSurfaceModel, NonhydrostaticModel}, file)
 
-        # Validate the grid
-        checkpointed_grid = file["grid"]
-
-        model.grid == checkpointed_grid ||
-             error("The grid associated with $filepath and model.grid are not the same!")
-
-        model_fields = prognostic_fields(model)
-
-        for name in propertynames(model_fields)
-            try
-                parent_data = file["$name/data"]
-                model_field = model_fields[name]
-                copyto!(model_field.data.parent, parent_data)
-            catch
-                @warn "Could not retore $name from checkpoint."
-            end
-        end
-
-        set_time_stepper!(model.timestepper, file, model_fields)
-
-        checkpointed_clock = file["clock"]
-
-        # Update model clock
-        model.clock.iteration = checkpointed_clock.iteration
-        model.clock.time = checkpointed_clock.time
+    if !isnothing(model.particles)
+            copyto!(model.particles.properties, file["particles"])
     end
 
     return nothing
