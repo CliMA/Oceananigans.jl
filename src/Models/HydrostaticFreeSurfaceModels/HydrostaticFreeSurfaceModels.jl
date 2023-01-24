@@ -26,9 +26,6 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface_state!(model.free_surface, model.grid, model.velocities)
-initialize_free_surface_state!(free_surface, grid, velocities) = nothing
-
 FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
