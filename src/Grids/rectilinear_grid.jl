@@ -378,10 +378,6 @@ const CellLocation = Union{Face, Center}
 @inline ynode(i, j, k, grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = ynode(j, grid, YL; kwargs...)
 @inline znode(i, j, k, grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = znode(k, grid, ZL; kwargs...)
 
-@inline xnodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = xnodes(grid, XL)
-@inline ynodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = ynodes(grid, YL)
-@inline znodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = znodes(grid, ZL)
-
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
 cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)

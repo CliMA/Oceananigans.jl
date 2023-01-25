@@ -79,9 +79,9 @@ interior(f::AbstractField) = f
 @propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 
-xnodes(ψ::AbstractField) = xnodes(ψ.grid, instantiated_location(ψ)...)
-ynodes(ψ::AbstractField) = ynodes(ψ.grid, instantiated_location(ψ)...)
-znodes(ψ::AbstractField) = znodes(ψ.grid, instantiated_location(ψ)...)
+xnodes(ψ::AbstractField; kwargs...) = xnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+ynodes(ψ::AbstractField; kwargs...) = ynodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+znodes(ψ::AbstractField; kwargs...) = znodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
 
