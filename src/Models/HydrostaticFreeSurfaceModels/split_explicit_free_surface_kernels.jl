@@ -173,12 +173,27 @@ function barotropic_mode!(U, V, grid, u, v)
     fill_halo_regions!((U, V))
 end
 
-function set_average_to_zero!(free_surface_state)
-    fill!(free_surface_state.η̅, 0.0)
-    fill!(free_surface_state.Ũ, 0.0)
-    fill!(free_surface_state.Ṽ, 0.0)
-    fill!(free_surface_state.U̅, 0.0)
-    fill!(free_surface_state.V̅, 0.0)
+function initialize_free_surface_state!(free_surface_state, η)
+    state = free_surface_state
+
+    set!(state.U, state.Ũ)
+    set!(state.V, state.Ṽ)
+    
+    set!(state.Uᵐ⁻¹, state.Ũ)
+    set!(state.Vᵐ⁻¹, state.Ṽ)
+
+    set!(state.Uᵐ⁻², state.Ũ)
+    set!(state.Vᵐ⁻², state.Ṽ)
+
+    set!(state.ηᵐ,   η)
+    set!(state.ηᵐ⁻¹, η)
+    set!(state.ηᵐ⁻², η)
+
+    fill!(state.η̅, 0.0)
+    fill!(state.Ũ, 0.0)
+    fill!(state.Ṽ, 0.0)
+    fill!(state.U̅, 0.0)
+    fill!(state.V̅, 0.0)
 end
 
 @kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
@@ -256,22 +271,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     wait(device(arch), MultiEvent(tuple(masking_events_U, masking_events_V, masking_events..., event_Gu, event_Gv)))
 
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
-     
-    set!(state.U, state.Ũ)
-    set!(state.V, state.Ṽ)
-    
-    set!(state.Uᵐ⁻¹, state.Ũ)
-    set!(state.Vᵐ⁻¹, state.Ṽ)
-
-    set!(state.Uᵐ⁻², state.Ũ)
-    set!(state.Vᵐ⁻², state.Ṽ)
-
-    set!(state.ηᵐ,   η)
-    set!(state.ηᵐ⁻¹, η)
-    set!(state.ηᵐ⁻², η)
 
     # reset free surface averages
-    set_average_to_zero!(state)
+    initialize_free_surface_state!(state, η)
 
     # Solve for the free surface at tⁿ⁺¹
 
