@@ -69,6 +69,7 @@ function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, a
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo, topo)
     FT   = eltype(grid)
+
     return RectilinearGrid(child_arch, FT; size = size, halo = halo, topology = topo, extent...)
 end
 
@@ -134,14 +135,26 @@ end
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 
 function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    new_grids = construct_regionally(with_halo, new_halo, mrg)
-    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
+
+    devices   = mrg.devices
+
+    # Construct a MRG on the CPU
+    cpu_mrg   = on_architecture(CPU(), mrg)
+    cpu_grids = construct_regionally(with_halo, new_halo, cpu_mrg)
+    new_grids = construct_regionally(on_specific_architecture, mrg.architecture, Iterate(devices), cpu_grids)
+
+    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, devices)
 end
 
 function on_architecture(::CPU, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(on_architecture, CPU(), mrg)
     devices   = Tuple(CPU() for i in 1:length(mrg))  
     return MultiRegionGrid{FT, TX, TY, TZ}(CPU(), mrg.partition, new_grids, devices)
+end
+
+function on_specific_architecture(arch, dev, grid)
+    switch_device!(dev)
+    return on_architecture(arch, grid)
 end
 
 Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
@@ -172,3 +185,10 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
 @inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
 @inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
+
+import Oceananigans.Models.NonhydrostaticModels: maybe_add_active_cells_map
+
+function maybe_add_active_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    new_grids = construct_regionally(maybe_add_active_cells_map, mrg)
+    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
+end
