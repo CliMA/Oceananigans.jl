@@ -82,15 +82,7 @@ const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, 
 regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
 """
-    LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
-                          size,
-                          longitude,
-                          latitude,
-                          z = nothing,
-                          radius = R_Earth,
-                          topology = nothing,
-                          precompute_metrics = true,
-                          halo = nothing)
+    $(SIGNATURES)
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.
