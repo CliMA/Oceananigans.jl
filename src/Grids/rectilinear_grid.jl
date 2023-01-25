@@ -361,7 +361,8 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.zᵃᵃᶜ))
 end
 
-const CoF = Union{Face, Center}
+const CellLocation = Union{Face, Center}
+
 @inline xnodes(grid::RectilinearGrid, XL::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
 @inline xnodes(grid::RectilinearGrid, XL::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
 @inline ynodes(grid::RectilinearGrid, YL::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
@@ -369,17 +370,17 @@ const CoF = Union{Face, Center}
 @inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 @inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::RectilinearGrid, XL::CoF; kwargs...) = xnodes(grid, XL; kwargs...)[i]
-@inline ynode(j, grid::RectilinearGrid, YL::CoF; kwargs...) = ynodes(grid, YL; kwargs...)[j]
-@inline znode(k, grid::RectilinearGrid, ZL::CoF; kwargs...) = znodes(grid, ZL; kwargs...)[k]
+@inline xnode(i, grid::RectilinearGrid, XL::CellLocation; kwargs...) = xnodes(grid, XL; kwargs...)[i]
+@inline ynode(j, grid::RectilinearGrid, YL::CellLocation; kwargs...) = ynodes(grid, YL; kwargs...)[j]
+@inline znode(k, grid::RectilinearGrid, ZL::CellLocation; kwargs...) = znodes(grid, ZL; kwargs...)[k]
 
-@inline xnode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = xnode(i, grid, XL; kwargs...)
-@inline ynode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = ynode(j, grid, YL; kwargs...)
-@inline znode(i, j, k, grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = znode(k, grid, ZL; kwargs...)
+@inline xnode(i, j, k, grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = xnode(i, grid, XL; kwargs...)
+@inline ynode(i, j, k, grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = ynode(j, grid, YL; kwargs...)
+@inline znode(i, j, k, grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = znode(k, grid, ZL; kwargs...)
 
-@inline xnodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xnode, grid, computed_dependencies=(; XL, YL, ZL))
-@inline ynodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(ynode, grid, computed_dependencies=(; XL, YL, ZL))
-@inline znodes(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(znode, grid, computed_dependencies=(; XL, YL, ZL))
+@inline xnodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = xnodes(grid, XL)
+@inline ynodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = ynodes(grid, YL)
+@inline znodes(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = znodes(grid, ZL)
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
@@ -432,24 +433,24 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 ##### Grid spacings
 #####
 
-@inline xspacing(i, j, k, grid::RectilinearGrid,     XL::Center, YL::CoF,    ZL::CoF)    = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline xspacing(i, j, k, grid::XRegRectilinearGrid, XL::Center, YL::CoF,    ZL::CoF)    = grid.Δxᶜᵃᵃ
-@inline xspacing(i, j, k, grid::RectilinearGrid,     XL::Face,   YL::CoF,    ZL::CoF)    = @inbounds grid.Δxᶠᵃᵃ[i]
-@inline xspacing(i, j, k, grid::XRegRectilinearGrid, XL::Face,   YL::CoF,    ZL::CoF)    = grid.Δxᶠᵃᵃ
+@inline xspacing(i, j, k, grid::RectilinearGrid,     XL::Center, YL::CellLocation,    ZL::CellLocation)    = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline xspacing(i, j, k, grid::XRegRectilinearGrid, XL::Center, YL::CellLocation,    ZL::CellLocation)    = grid.Δxᶜᵃᵃ
+@inline xspacing(i, j, k, grid::RectilinearGrid,     XL::Face,   YL::CellLocation,    ZL::CellLocation)    = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline xspacing(i, j, k, grid::XRegRectilinearGrid, XL::Face,   YL::CellLocation,    ZL::CellLocation)    = grid.Δxᶠᵃᵃ
 
-@inline yspacing(i, j, k, grid::RectilinearGrid,     XL::CoF,    YL::Center, ZL::CoF)    = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline yspacing(i, j, k, grid::YRegRectilinearGrid, XL::CoF,    YL::Center, ZL::CoF)    = grid.Δyᵃᶜᵃ
-@inline yspacing(i, j, k, grid::RectilinearGrid,     XL::CoF,    YL::Face,   ZL::CoF)    = @inbounds grid.Δyᵃᶠᵃ[j]
-@inline yspacing(i, j, k, grid::YRegRectilinearGrid, XL::CoF,    YL::Face,   ZL::CoF)    = grid.Δyᵃᶠᵃ
+@inline yspacing(i, j, k, grid::RectilinearGrid,     XL::CellLocation,    YL::Center, ZL::CellLocation)    = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline yspacing(i, j, k, grid::YRegRectilinearGrid, XL::CellLocation,    YL::Center, ZL::CellLocation)    = grid.Δyᵃᶜᵃ
+@inline yspacing(i, j, k, grid::RectilinearGrid,     XL::CellLocation,    YL::Face,   ZL::CellLocation)    = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline yspacing(i, j, k, grid::YRegRectilinearGrid, XL::CellLocation,    YL::Face,   ZL::CellLocation)    = grid.Δyᵃᶠᵃ
 
-@inline zspacing(i, j, k, grid::RectilinearGrid,     XL::CoF,    YL::CoF,    ZL::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, XL::CoF,    YL::CoF,    ZL::Center) = grid.Δzᵃᵃᶜ
-@inline zspacing(i, j, k, grid::RectilinearGrid,     XL::CoF,    YL::CoF,    ZL::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, XL::CoF,    YL::CoF,    ZL::Face)   = grid.Δzᵃᵃᶠ
+@inline zspacing(i, j, k, grid::RectilinearGrid,     XL::CellLocation,    YL::CellLocation,    ZL::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, XL::CellLocation,    YL::CellLocation,    ZL::Center) = grid.Δzᵃᵃᶜ
+@inline zspacing(i, j, k, grid::RectilinearGrid,     XL::CellLocation,    YL::CellLocation,    ZL::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, XL::CellLocation,    YL::CellLocation,    ZL::Face)   = grid.Δzᵃᵃᶠ
 
-@inline xspacings(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(xspacing, grid, computed_dependencies=(; XL, YL, ZL))
-@inline yspacings(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(yspacing, grid, computed_dependencies=(; XL, YL, ZL))
-@inline zspacings(grid::RectilinearGrid, XL::CoF, YL::CoF, ZL::CoF) = KernelFunctionOperation{typeof(XL), typeof(YL), typeof(ZL)}(zspacing, grid, computed_dependencies=(; XL, YL, ZL))
+@inline xspacings(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = xspacings(grid, XL)
+@inline yspacings(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = yspacings(grid, YL)
+@inline zspacings(grid::RectilinearGrid, XL::CellLocation, YL::CellLocation, ZL::CellLocation) = zspacings(grid, ZL)
 
 xspacings(grid::RectilinearGrid, ::Center) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
 xspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
