@@ -9,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum, length
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, FieldBoundaryBuffers, minimum, maximum, mean, location, set!
+import Oceananigans.Fields: AbstractField, FunctionField, Field, FieldBoundaryBuffers, minimum, maximum, mean, location, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -49,6 +49,8 @@ const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
 const CubedSphereField{LX, LY, LZ} =
     Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
           Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
+
+const CubedSphereFunctionField{LX, LY, LZ} = FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
 
 const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
 
@@ -125,7 +127,12 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
           field.indices,
           get_face(field.operand, face_index),
           nothing)
-    
+
+@inline get_face(field::CubedSphereFunctionField, face_index) =
+    FunctionField(location(field),
+                  field.func,
+                  get_face(field.grid, face_index))
+
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
 function Base.fill!(csf::CubedSphereField, val)
