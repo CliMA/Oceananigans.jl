@@ -64,14 +64,7 @@ regular_dimensions(::YZRegRectilinearGrid) = (2, 3)
 regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
 
 """
-    RectilinearGrid([architecture = CPU(), FT = Float64];
-                    size,
-                    x = nothing,
-                    y = nothing,
-                    z = nothing,
-                    halo = nothing,
-                    extent = nothing,
-                    topology = (Periodic, Periodic, Bounded))
+    $(SIGNATURES)
 
 Creates a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 
