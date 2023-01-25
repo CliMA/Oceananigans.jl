@@ -24,6 +24,8 @@ using Oceananigans.Architectures
 import Base: size, length, eltype, show
 import Oceananigans.Architectures: architecture
 
+using DocStringExtensions
+
 #####
 ##### Abstract types
 #####
@@ -36,7 +38,7 @@ A type describing the location at the center of a grid cell.
 struct Center end
 
 """
-	Face
+    Face
 
 A type describing the location at the face of a grid cell.
 """
