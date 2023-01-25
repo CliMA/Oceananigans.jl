@@ -190,7 +190,7 @@ end
 @inline averaging_fixed_function(τ) = 1.0
 
 function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_weighting_function = averaging_shape_function)
+                                 averaging_weighting_function = averaging_fixed_function)
     
     τ = range(0.6, 2, length = 1000)
 
