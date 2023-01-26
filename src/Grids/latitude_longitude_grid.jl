@@ -315,21 +315,22 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
+const CellLocation = Union{Face, Center}
 
-@inline xnodes(grid::LatitudeLongitudeGrid, XL::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
-@inline xnodes(grid::LatitudeLongitudeGrid, XL::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(typeof(XL), topology(grid, 1), grid.Nx))
-@inline ynodes(grid::LatitudeLongitudeGrid, YL::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
-@inline ynodes(grid::LatitudeLongitudeGrid, YL::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(typeof(YL), topology(grid, 2), grid.Ny))
-@inline znodes(grid::LatitudeLongitudeGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
-@inline znodes(grid::LatitudeLongitudeGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
+@inline xnodes(grid::LatitudeLongitudeGrid, LX::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline xnodes(grid::LatitudeLongitudeGrid, LX::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline ynodes(grid::LatitudeLongitudeGrid, LY::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::LatitudeLongitudeGrid, LY::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline znodes(grid::LatitudeLongitudeGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::LatitudeLongitudeGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::LatitudeLongitudeGrid, XL::CoF; kwargs...) = xnodes(grid, XL; kwargs...)[i]
-@inline ynode(j, grid::LatitudeLongitudeGrid, YL::CoF; kwargs...) = ynodes(grid, YL; kwargs...)[j]
-@inline znode(k, grid::LatitudeLongitudeGrid, ZL::CoF; kwargs...) = znodes(grid, ZL; kwargs...)[k]
+@inline xnode(i, grid::LatitudeLongitudeGrid, LX::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)[i]
+@inline ynode(j, grid::LatitudeLongitudeGrid, LY::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)[j]
+@inline znode(k, grid::LatitudeLongitudeGrid, LZ::CellLocation; kwargs...) = znodes(grid, LZ; kwargs...)[k]
 
-@inline xnode(i, j, k, grid::LatitudeLongitudeGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = xnode(i, grid, XL; kwargs...)
-@inline ynode(i, j, k, grid::LatitudeLongitudeGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = ynode(j, grid, YL; kwargs...)
-@inline znode(i, j, k, grid::LatitudeLongitudeGrid, XL::CoF, YL::CoF, ZL::CoF; kwargs...) = znode(k, grid, ZL; kwargs...)
+@inline xnode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnode(i, grid, LX; kwargs...)
+@inline ynode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynode(j, grid, LY; kwargs...)
+@inline znode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = znode(k, grid, LZ; kwargs...)
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)

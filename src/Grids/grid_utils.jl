@@ -249,21 +249,21 @@ ynodes(grid, ::Nothing; kwargs...) = 1:1
 znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
-    xnodes(grid, XL, YL, ZL, with_halos=false)
+    xnodes(grid, LX, LY, LZ, with_halos=false)
 
 See `znodes` for examples.
 """
-@inline xnodes(grid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = xnodes(grid, XL; kwargs...)
+@inline xnodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)
 
 """
-    ynodes(grid, XL, YL, ZL, with_halos=false)
+    ynodes(grid, LX, LY, LZ, with_halos=false)
 
 See `znodes` for examples.
 """
-@inline ynodes(grid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = ynodes(grid, YL; kwargs...)
+@inline ynodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)
 
 """
-    znodes(grid, XL, YL, ZL, with_halos=false)
+    znodes(grid, LX, LY, LZ, with_halos=false)
 
 ```jldoctest znodes
 julia> using Oceananigans
@@ -287,7 +287,7 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 -1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-@inline znodes(grid, XL::CellLocation, YL::CellLocation, ZL::CellLocation; kwargs...) = znodes(grid, ZL; kwargs...)
+@inline znodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = znodes(grid, LZ; kwargs...)
 
 
 """
