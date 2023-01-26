@@ -268,12 +268,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
 
-    masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
+    masking_events = [mask_immersed_field!(q) for q in model.velocities]
     push!(masking_events, mask_immersed_reduced_field_xy!(state.Ũ, k = 1))
     push!(masking_events, mask_immersed_reduced_field_xy!(state.Ṽ, k = 1))
     push!(masking_events, mask_immersed_field!(Gu⁻))
     push!(masking_events, mask_immersed_field!(Gv⁻))
-    wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
+    wait(device(arch), MultiEvent(tuple(masking_events...)))
 
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
 
