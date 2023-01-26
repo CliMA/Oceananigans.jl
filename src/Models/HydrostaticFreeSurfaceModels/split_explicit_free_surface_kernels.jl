@@ -54,7 +54,7 @@ the free surface and a `NoPenetration` boundary condition for velocity
 @inline div_yᶜᶜᶠ_bound(i, j, k, grid, TY, f, args...) = 
     1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, f, args...) 
 
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inative_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, IBG, c, f
 
 @inline conditional_value_fcf(i, j, k, grid, ibg, f::Function, args...) = ifelse(inactive_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
 @inline conditional_value_cff(i, j, k, grid, ibg, f::Function, args...) = ifelse(inactive_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
