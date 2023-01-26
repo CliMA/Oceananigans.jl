@@ -695,15 +695,40 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ; kwargs...) = @inbounds grid.λᶠᶠᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ; kwargs...) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ; kwargs...) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline xnode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ; kwargs...) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Face,   LZ; kwargs...) = @inbounds grid.φᶠᶠᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Face,   ::Center, LZ; kwargs...) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Face,   LZ; kwargs...) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline ynode(i, j, k, grid::OrthogonalSphericalShellGrid, ::Center, ::Center, LZ; kwargs...) = @inbounds grid.φᶜᶜᵃ[i, j]
+const CellLocation = Union{Face, Center}
+const OSSG = OrthogonalSphericalShellGrid
 
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Face  ; kwargs...) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(i, j, k, grid::OrthogonalSphericalShellGrid, LX, LY, ::Center; kwargs...) = @inbounds grid.zᵃᵃᶜ[k]
+@inline xnodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
+    view(grid.λᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
+    view(grid.λᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
+    view(grid.λᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
+    view(grid.λᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
+@inline ynodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
+    view(grid.φᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
+    view(grid.φᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
+    view(grid.φᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
+    view(grid.φᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
+@inline xnodes(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX, LY; kwargs...)
+@inline ynodes(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LX, LY; kwargs...)
+
+@inline znodes(grid::OSSG, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::OSSG, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+
+
+@inline xnode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xnodes(grid, LX, LY, with_halos=true)[i, j]
+@inline ynode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = ynodes(grid, LX, LY, with_halos=true)[i, j]
+@inline znode(k, grid::OSSG, LZ::CellLocation) = znodes(grid, LZ, with_halos=true)[k]
+
+@inline xnode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, j, grid, LX, LY)
+@inline ynode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(i, j, grid, LY, LY)
+@inline znode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
+
