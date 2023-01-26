@@ -724,11 +724,11 @@ const OSSG = OrthogonalSphericalShellGrid
 @inline znodes(grid::OSSG, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
 
-@inline xnode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xnodes(grid, LX, LY, with_halos=true)[i, j]
-@inline ynode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = ynodes(grid, LX, LY, with_halos=true)[i, j]
-@inline znode(k, grid::OSSG, LZ::CellLocation) = znodes(grid, LZ, with_halos=true)[k]
+@inline xnode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation; kwargs...) = xnodes(grid, LX, LY, with_halos=true)[i, j]
+@inline ynode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation; kwargs...) = ynodes(grid, LX, LY, with_halos=true)[i, j]
+@inline znode(k, grid::OSSG, LZ::CellLocation; kwargs...) = znodes(grid, LZ, with_halos=true)[k]
 
-@inline xnode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, j, grid, LX, LY)
-@inline ynode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(i, j, grid, LY, LY)
-@inline znode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
+@inline xnode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnode(i, j, grid, LX, LY)
+@inline ynode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynode(i, j, grid, LY, LY)
+@inline znode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = znode(k, grid, LZ)
 
