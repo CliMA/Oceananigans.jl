@@ -81,6 +81,11 @@ function regrid!(a, target_grid, source_grid, b)
         event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
         wait(device(arch), event)
         return a
+    elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
+        source_x_faces = xnodes(Face, source_grid)
+        event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
+        wait(device(arch), event)
+        return a
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -152,20 +157,67 @@ end
 
         # Add contribution from all full cells in the integration range
         @unroll for j_src = j₋_src:j₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δyᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Vᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
         yj₋_src = ynode(Center(), Face(), Center(), i_src, j₋_src,   k_src, source_grid)
         yj₊_src = ynode(Center(), Face(), Center(), i_src, j₊_src+1, k_src, source_grid)
 
-        # Add contribution to integral from fractional bottom part,
+        # Add contribution to integral from fractional left part,
         # if that region is a part of the grid.
-        @inbounds target_field[i, j, k] += source_field[i_src, max(1, j₋_src - 1), k_src] * (yj₋_src - y₋)
+        # We approximate the volume of the fractional part by linearly interpolating the cell volume.
+        j_left = max(1, j₋_src - 1)
+        ϵ_left = (yj₋_src - y₋) / Δyᶜᶜᶜ(i_src, j_left, k_src) 
+        @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * (yj₋_src - y₋) * ϵ_left * Vᶜᶜᶜ(i_src, j_left, k_src, source_grid)
 
-        # Add contribution to integral from fractional top part
-        @inbounds target_field[i, j, k] += source_field[i_src, min(source_grid.Ny, j₊_src), k_src] * (y₊ - yj₊_src)
+        # Similar to above, add contribution to integral from fractional right part.
+        j_right = min(source_grid.Ny, j₊_src)
+        ϵ_right = (y₊ - yj₊_src) / Δyᶜᶜᶜ(i_src, j_right, k_src) 
+        @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * ϵ_right * Vᶜᶜᶜ(i_src, j_right, k_src, source_grid)
 
-        @inbounds target_field[i, j, k] /= Δyᶜᶜᶜ(i, j, k, target_grid)
+        @inbounds target_field[i, j, k] /= Vᶜᶜᶜ(i, j, k, target_grid)
+    end
+end
+
+@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_y_faces)
+    j, k = @index(Global, NTuple)
+
+    Nx_target, Ny_target, Nz_target = size(target_grid)
+    Nx_source, Ny_source, Nz_source = size(source_grid)
+    j_src = ifelse(Ny_target == Ny_source, j, 1)
+    k_src = ifelse(Nz_target == Nz_source, k, 1)
+
+    @unroll for i = 1:target_grid.Nx
+        @inbounds target_field[i, j, k] = 0
+
+        x₋ = ynode(Face(), Center(), Center(), i,   j, k, target_grid)
+        x₊ = ynode(Face(), Center(), Center(), i+1, j, k, target_grid)
+
+        # Integrate source field from x₋ to x₊
+        i₋_src = searchsortedfirst(source_x_faces, x₋)
+        i₊_src = searchsortedfirst(source_x_faces, x₊) - 1
+
+        # Add contribution from all full cells in the integration range
+        @unroll for i_src = i₋_src:i₊_src
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Vᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+        end
+
+        xi₋_src = ynode(Face(), Center(), Center(), i₋_src,   j_src, k_src, source_grid)
+        xi₊_src = ynode(Face(), Center(), Center(), i₊_src+1, j_src, k_src, source_grid)
+
+        # Add contribution to integral from fractional left part,
+        # if that region is a part of the grid.
+        # We approximate the volume of the fractional part by linearly interpolating the cell volume.
+        i_left = max(1, i₋_src - 1)
+        ϵ_left = (xi₋_src - x₋) / Δxᶜᶜᶜ(i_left, j_src, k_src) 
+        @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * (xi₋_src - xi) * ϵ_left * Vᶜᶜᶜ(i_left, j_src, k_src, source_grid)
+
+        # Similar to above, add contribution to integral from fractional right part.
+        i_right = min(source_grid.Nx, i₊_src)
+        ϵ_right = (x₊ - xi₊_src) / Δxᶜᶜᶜ(i_right, j_src, k_src) 
+        @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * ϵ_right * Vᶜᶜᶜ(i_right, j_src, k_src, source_grid)
+
+        @inbounds target_field[i, j, k] /= Vᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 
