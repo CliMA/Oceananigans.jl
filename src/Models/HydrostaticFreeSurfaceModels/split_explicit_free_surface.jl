@@ -191,27 +191,11 @@ end
 
 function SplitExplicitSettings(; substeps = 200, 
                                  averaging_weighting_function = averaging_fixed_function)
-    
-    τ = range(0.6, 2, length = 1000)
 
-    idx = 1
-    for (i, t) in enumerate(τ)
-        if averaging_weighting_function(t) > 0 
-            idx = i 
-            break
-        end
-    end
-
-    idx2 = 1
-    for l in idx:1000
-        idx2 = l
-        averaging_weighting_function(τ[l]) <= 0 && break
-    end
-
-    τᶠ = range(0.0, τ[idx2-1], length = substeps+1)
+    τᶠ = range(0.0, 2.0, length = substeps-1)
     τᶜ = 0.5 * (τᶠ[2:end] + τᶠ[1:end-1])
 
-    averaging_weights   = averaging_weighting_function.(τᶜ) 
+    averaging_weights   = ones(substeps) ./ substeps #averaging_weighting_function.(τᶠ) 
     mass_flux_weights   = similar(averaging_weights)
 
     M = searchsortedfirst(τᶜ, 1.0) - 1
@@ -222,10 +206,12 @@ function SplitExplicitSettings(; substeps = 200,
         mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
     end
 
+    @show τᶜ[end] 
+
     mass_flux_weights ./= sum(mass_flux_weights)
 
     return SplitExplicitSettings(substeps,
-                                 τᶜ[2] - τᶜ[1],
+                                 τᶠ[2] - τᶠ[1], 
                                  averaging_weights,
                                  mass_flux_weights)
 end
