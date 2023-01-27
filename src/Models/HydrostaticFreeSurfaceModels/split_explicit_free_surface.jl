@@ -190,15 +190,20 @@ end
 @inline averaging_fixed_function(τ) = 1.0
 
 function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_weighting_function = averaging_fixed_function)
+                                 averaging_weighting_function = averaging_shape_function)
 
-    τᶠ = range(0.0, 2.0, length = substeps-1)
-    τᶜ = 0.5 * (τᶠ[2:end] + τᶠ[1:end-1])
+    τᶠ = range(0.0, 2.0, length = substeps+1)
 
-    averaging_weights   = ones(substeps) ./ substeps #averaging_weighting_function.(τᶠ) 
+    averaging_weights   = averaging_weighting_function.(τᶠ[2:end]) 
     mass_flux_weights   = similar(averaging_weights)
 
-    M = searchsortedfirst(τᶜ, 1.0) - 1
+    for i in substeps÷2:substeps
+        if averaging_weights[i] < 0
+            averaging_weights[i] = 0.0
+        end
+    end
+
+    M = searchsortedfirst(τᶠ, 1.0) - 1
 
     averaging_weights ./= sum(averaging_weights)
 
