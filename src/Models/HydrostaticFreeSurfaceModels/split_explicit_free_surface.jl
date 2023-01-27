@@ -206,8 +206,6 @@ function SplitExplicitSettings(; substeps = 200,
         mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
     end
 
-    @show τᶜ[end] 
-
     mass_flux_weights ./= sum(mass_flux_weights)
 
     return SplitExplicitSettings(substeps,
