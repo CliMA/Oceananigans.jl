@@ -160,6 +160,7 @@ end
                                                                closure,
                                                                e_immersed_bc,
                                                                buoyancy,
+                                                               biogeochemistry,
                                                                velocities,
                                                                free_surface,
                                                                tracers,
