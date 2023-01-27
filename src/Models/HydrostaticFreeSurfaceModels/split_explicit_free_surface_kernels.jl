@@ -75,7 +75,7 @@ for Topo in [:Periodic, :Bounded]
     end
 end
 
-@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       =                     α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
+@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
 @inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
@@ -88,16 +88,13 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
-        Uᵐ⁻²[i, j, 1] = Uᵐ⁻¹[i, j, 1] 
-        Uᵐ⁻¹[i, j, 1] =    U[i, j, 1] 
-        Vᵐ⁻²[i, j, 1] = Vᵐ⁻¹[i, j, 1] 
-        Vᵐ⁻¹[i, j, 1] =    V[i, j, 1] 
+        # ∂τ(U) = - ∇η + G
+        ηᵐ⁻²[i, j, k_top] = ηᵐ⁻¹[i, j, k_top]
+        ηᵐ⁻¹[i, j, k_top] =   ηᵐ[i, j, k_top]
+        ηᵐ[i, j, k_top]   =    η[i, j, k_top]
 
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_bound(i, j, k_top, grid, TX, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_bound(i, j, k_top, grid, TY, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
-
-        Ũ[i, j, 1] +=  mass_flux_weight * U★(i, j, 1, grid, U, Uᵐ⁻¹, Uᵐ⁻²)
-        Ṽ[i, j, 1] +=  mass_flux_weight * U★(i, j, 1, grid, V, Vᵐ⁻¹, Vᵐ⁻²)
+        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i, j, k_top, grid, TX, U★, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                div_yᶜᶜᶠ_bound(i, j, k_top, grid, TY, U★, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 end
 
@@ -111,14 +108,14 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
-        # ∂τ(U) = - ∇η + G
-        ηᵐ⁻²[i, j, k_top] = ηᵐ⁻¹[i, j, k_top]
-        ηᵐ⁻¹[i, j, k_top] =   ηᵐ[i, j, k_top]
-        ηᵐ[i, j, k_top]   =    η[i, j, k_top]
+        Uᵐ⁻²[i, j, 1] = Uᵐ⁻¹[i, j, 1] 
+        Uᵐ⁻¹[i, j, 1] =    U[i, j, 1] 
+        Vᵐ⁻²[i, j, 1] = Vᵐ⁻¹[i, j, 1] 
+        Vᵐ⁻¹[i, j, 1] =    V[i, j, 1] 
 
-        η[i, j, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i, j, k_top, grid, TX, U★, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_yᶜᶜᶠ_bound(i, j, k_top, grid, TY, U★, V, Vᵐ⁻¹, Vᵐ⁻²))
-        
+        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ[i, j] * ∂xᶠᶜᶠ_bound(i, j, k_top, grid, TX, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, 1])
+        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ[i, j] * ∂yᶜᶠᶠ_bound(i, j, k_top, grid, TY, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, 1])
+
         # ∂τ(η) = - ∇⋅U
         # time-averaging
         η̅[i, j, k_top] +=  averaging_weight * η[i, j, k_top]
@@ -264,8 +261,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
 
-    Gu⁻ = model.timestepper.Gⁿ.u
-    Gv⁻ = model.timestepper.Gⁿ.v
+    Gu⁻ = model.timestepper.G⁻.u
+    Gv⁻ = model.timestepper.G⁻.v
 
     Δτ = Δt * settings.Δτ  # we evolve for two times the Δt 
 
