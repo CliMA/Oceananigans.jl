@@ -86,13 +86,13 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
-    z = znode(i, j, k+1, underlying_grid, c, c, f, with_halos=true)
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
-    z = znode(i, j, k, underlying_grid, c, c, c, with_halos=true)
+    z = znode(i, j, k, underlying_grid, c, c, c)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
@@ -148,7 +148,7 @@ end
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
-    x, y, z = node(i, j, k, underlying_grid, c, c, c, with_halos=true)
+    x, y, z = node(i, j, k, underlying_grid, c, c, c)
     return ib.mask(x, y, z)
 end
 

@@ -224,21 +224,21 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 
 # Fallback
-@inline xnode(i, j, k, grid, LX, LY, LZ; kwargs...) = xnode(i, grid, LX; kwargs...)
-@inline ynode(i, j, k, grid, LX, LY, LZ; kwargs...) = ynode(j, grid, LY; kwargs...)
-@inline znode(i, j, k, grid, LX, LY, LZ; kwargs...) = znode(k, grid, LZ; kwargs...)
+@inline xnode(i, j, k, grid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid, LX, LY, LZ) = znode(k, grid, LZ)
 
-@inline node(i, j, k, grid, LX, LY, LZ; kwargs...) = (xnode(i, j, k, grid, LX, LY, LZ; kwargs...),
-                                                      ynode(i, j, k, grid, LX, LY, LZ; kwargs...),
-                                                      znode(i, j, k, grid, LX, LY, LZ; kwargs...))
+@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
+                                           ynode(i, j, k, grid, LX, LY, LZ),
+                                           znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ; kwargs...) = (ynode(i, j, k, grid, LX, LY, LZ; kwargs...), znode(i, j, k, grid, LX, LY, LZ; kwargs...))
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ; kwargs...) = (xnode(i, j, k, grid, LX, LY, LZ; kwargs...), znode(i, j, k, grid, LX, LY, LZ; kwargs...))
-@inline node(i, j, k, grid, LX, LY, LZ::Nothing; kwargs...) = (xnode(i, j, k, grid, LX, LY, LZ; kwargs...), ynode(i, j, k, grid, LX, LY, LZ; kwargs...))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing; kwargs...) = tuple(xnode(i, j, k, grid, LX, LY, LZ; kwargs...))
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing; kwargs...) = tuple(ynode(i, j, k, grid, LX, LY, LZ; kwargs...))
-@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ; kwargs...) = tuple(znode(i, j, k, grid, LX, LY, LZ; kwargs...))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
 @inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
 @inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])

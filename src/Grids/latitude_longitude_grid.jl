@@ -324,13 +324,13 @@ const CellLocation = Union{Face, Center}
 @inline znodes(grid::LatitudeLongitudeGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline znodes(grid::LatitudeLongitudeGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::LatitudeLongitudeGrid, LX::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)[i]
-@inline ynode(j, grid::LatitudeLongitudeGrid, LY::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)[j]
-@inline znode(k, grid::LatitudeLongitudeGrid, LZ::CellLocation; kwargs...) = znodes(grid, LZ; kwargs...)[k]
+@inline xnode(i, grid::LatitudeLongitudeGrid, LX::CellLocation) = xnodes(grid, LX; with_halos=true)[i]
+@inline ynode(j, grid::LatitudeLongitudeGrid, LY::CellLocation) = ynodes(grid, LY; with_halos=true)[j]
+@inline znode(k, grid::LatitudeLongitudeGrid, LZ::CellLocation) = znodes(grid, LZ; with_halos=true)[k]
 
-@inline xnode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnode(i, grid, LX; kwargs...)
-@inline ynode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynode(j, grid, LY; kwargs...)
-@inline znode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = znode(k, grid, LZ; kwargs...)
+@inline xnode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::LatitudeLongitudeGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)

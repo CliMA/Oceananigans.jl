@@ -325,14 +325,14 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, c, c, with_halos=true)..., clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, c, f, with_halos=true)..., clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, f, f, with_halos=true)..., clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, f, c, with_halos=true)..., clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, c, c)..., clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, c, f, f)..., clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, args...) where F<:Function = ν(node(i, j, k, grid, f, f, c)..., clock.time)
 
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, c, with_halos=true)..., clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, c, with_halos=true)..., clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, c, f, with_halos=true)..., clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, c)..., clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, c)..., clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, c, f)..., clock.time)
 
 # "DiscreteDiffusionFunction"
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clock, fields)

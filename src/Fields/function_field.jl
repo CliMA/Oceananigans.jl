@@ -61,7 +61,7 @@ indices(::FunctionField) = (:, :, :)
 @inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
 
 @inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
-    call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ(), with_halos=true)...)
+    call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
 
 @inline (f::FunctionField)(x...) = call_func(f.clock, f.parameters, f.func, x...)
 

@@ -370,13 +370,13 @@ const CellLocation = Union{Face, Center}
 @inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 @inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::RectilinearGrid, LX::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)[i]
-@inline ynode(j, grid::RectilinearGrid, LY::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)[j]
-@inline znode(k, grid::RectilinearGrid, ZL::CellLocation; kwargs...) = znodes(grid, ZL; kwargs...)[k]
+@inline xnode(i, grid::RectilinearGrid, LX::CellLocation) = xnodes(grid, LX; with_halos=true)[i]
+@inline ynode(j, grid::RectilinearGrid, LY::CellLocation) = ynodes(grid, LY; with_halos=true)[j]
+@inline znode(k, grid::RectilinearGrid, ZL::CellLocation) = znodes(grid, ZL; with_halos=true)[k]
 
-@inline xnode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation; kwargs...) = xnode(i, grid, LX; kwargs...)
-@inline ynode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation; kwargs...) = ynode(j, grid, LY; kwargs...)
-@inline znode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation; kwargs...) = znode(k, grid, ZL; kwargs...)
+@inline xnode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = znode(k, grid, ZL)
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
