@@ -207,15 +207,14 @@ function SplitExplicitSettings(; substeps = 200,
 
     τᶠ = range(0.0, 2.0, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
-    averaging_weights   = averaging_weighting_function.(τᶠ[2:end]) 
-    mass_flux_weights   = similar(averaging_weights)
 
-    for i in substeps÷2:substeps
-        if averaging_weights[i] < 0
-            averaging_weights[i] = 0.0
-        end
-    end
+    averaging_weights = averaging_weighting_function.(τᶠ[2:end]) 
+    idx = searchsortedlast(averaging_weights, 0.0, rev=true)
+    substeps = idx
 
+    averaging_weights = averaging_weights[1:idx]
+    mass_flux_weights = similar(averaging_weights)
+    
     M = searchsortedfirst(τᶠ, 1.0) - 1
 
     averaging_weights ./= sum(averaging_weights)
@@ -228,7 +227,9 @@ function SplitExplicitSettings(; substeps = 200,
 
     return SplitExplicitSettings(substeps,
                                  averaging_weights,
-                                 mass_flux_weights, Δτ, timestepper)
+                                 mass_flux_weights, 
+                                 Δτ, 
+                                 timestepper)
 end
 
 # Convenience Functions for grabbing free surface

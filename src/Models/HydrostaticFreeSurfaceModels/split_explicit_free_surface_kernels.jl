@@ -85,6 +85,7 @@ for Topo in [:Periodic, :Bounded]
         @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, η)        
     end
 end
+
 # AB3 step
 @inline U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k]   + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
 @inline η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k]   + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
@@ -92,6 +93,21 @@ end
 # Forward Backward Step
 @inline U★(i, j, k, grid, ::ForwardBackwardScheme, ϕ, args...) = ϕ[i, j, k] 
 @inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = η[i, j, k] 
+
+@inline advance_previous_velocity!(i, j, k, ::ForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²) = nothing
+
+@inline function advance_previous_velocity!(i, j, k, ::AdamsBashforth3Scheme, U, Uᵐ⁻¹, Uᵐ⁻²)
+    Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k] 
+    Uᵐ⁻¹[i, j, k] =    U[i, j, k] 
+end
+
+@inline advance_previous_free_surface!(i, j, k, ::ForwardBackwardScheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = nothing
+
+@inline function advance_previous_free_surface!(i, j, k, ::AdamsBashforth3Scheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+    ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
+    ηᵐ⁻¹[i, j, k] =   ηᵐ[i, j, k]
+      ηᵐ[i, j, k] =    η[i, j, k]
+end
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
                                                               η̅, U̅, V̅, averaging_weight, 
@@ -106,9 +122,7 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
-        ηᵐ⁻²[i′, j′, k_top] = ηᵐ⁻¹[i′, j′, k_top]
-        ηᵐ⁻¹[i′, j′, k_top] =   ηᵐ[i′, j′, k_top]
-          ηᵐ[i′, j′, k_top] =    η[i′, j′, k_top]
+        advance_previous_free_surface!(i′, j′, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
         # ∂τ(η) = - ∇ ⋅ U
         η[i′, j′, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i′, j′, k_top, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
@@ -129,10 +143,8 @@ end
     TX, TY, _ = topology(grid)
 
     @inbounds begin 
-        Uᵐ⁻²[i′, j′, 1] = Uᵐ⁻¹[i′, j′, 1] 
-        Uᵐ⁻¹[i′, j′, 1] =    U[i′, j′, 1] 
-        Vᵐ⁻²[i′, j′, 1] = Vᵐ⁻¹[i′, j′, 1] 
-        Vᵐ⁻¹[i′, j′, 1] =    V[i′, j′, 1] 
+        advance_previous_velocity!(i′, j′, 1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
+        advance_previous_velocity!(i′, j′, 1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
         U[i′, j′, 1] +=  Δτ * (- g * Hᶠᶜ[i′, j′] * ∂xᶠᶜᶠ_bound(i′, j′, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i′, j′, 1])
