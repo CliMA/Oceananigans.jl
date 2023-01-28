@@ -388,8 +388,8 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
     @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
 
-    @test all(isapprox.(zspacings(grid, Face()), grid.Δzᵃᵃᶠ))
-    @test all(isapprox.(zspacings(grid, Center()), grid.Δzᵃᵃᶜ))
+    @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
+    @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
 
     @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
 
