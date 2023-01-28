@@ -125,7 +125,7 @@ A struct containing auxiliary fields for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
+Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
     "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
     Gᵁ :: ℱ𝒞
     "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
@@ -136,6 +136,10 @@ Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
     Hᶜᶠ :: 𝒞ℱ
     "Depth at `(Center, Center)` (`ReducedField`)"
     Hᶜᶜ :: 𝒞𝒞
+    "kernel size for barotropic time stepping"
+    kernel_size :: 𝒦
+    "index offsets for halo calculations"
+    kernel_offsets :: 𝒪
 end
 
 function SplitExplicitAuxiliary(grid::AbstractGrid)
@@ -158,7 +162,10 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
 
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
-    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ)
+    kernel_size    = :xy
+    kernel_offsets = (0, 0)
+
+    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """
@@ -168,15 +175,15 @@ A struct containing settings for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-struct SplitExplicitSettings{𝒩, T, ℳ}
+struct SplitExplicitSettings{𝒩, ℳ, 𝒯}
     "substeps: (`Int`)"
     substeps :: 𝒩
-    "barotropic time step: (`Number`)" 
-    Δτ :: T 
     "averaging_weights : (`Vector`)"
     averaging_weights :: ℳ
     "mass_flux_weights : (`Vector`)"
     mass_flux_weights :: ℳ
+    "fractional step: (`Number`), the barotropic time step will be (Δτ ⋅ Δt)" 
+    Δτ :: 𝒯
 end
 
 # Weights that minimize dispersion error from http://falk.ucsd.edu/roms_class/shchepetkin04.pdf (p = 2, q = 4, r = 0.18927)
@@ -193,7 +200,7 @@ function SplitExplicitSettings(; substeps = 200,
                                  averaging_weighting_function = averaging_shape_function)
 
     τᶠ = range(0.0, 2.0, length = substeps+1)
-
+    Δτ = τᶠ[2] - τᶠ[1]
     averaging_weights   = averaging_weighting_function.(τᶠ[2:end]) 
     mass_flux_weights   = similar(averaging_weights)
 
@@ -214,9 +221,8 @@ function SplitExplicitSettings(; substeps = 200,
     mass_flux_weights ./= sum(mass_flux_weights)
 
     return SplitExplicitSettings(substeps,
-                                 τᶠ[2] - τᶠ[1], 
                                  averaging_weights,
-                                 mass_flux_weights)
+                                 mass_flux_weights, Δτ)
 end
 
 # Convenience Functions for grabbing free surface
