@@ -175,7 +175,7 @@ A struct containing settings for the split-explicit free surface.
 
 $(TYPEDFIELDS)
 """
-struct SplitExplicitSettings{𝒩, ℳ, 𝒯}
+struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     "substeps: (`Int`)"
     substeps :: 𝒩
     "averaging_weights : (`Vector`)"
@@ -184,7 +184,12 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯}
     mass_flux_weights :: ℳ
     "fractional step: (`Number`), the barotropic time step will be (Δτ ⋅ Δt)" 
     Δτ :: 𝒯
+    "time stepping scheme"
+    timestepper :: 𝒮
 end
+
+struct AdamsBashforth3Scheme end
+struct ForwardBackwardScheme end
 
 # Weights that minimize dispersion error from http://falk.ucsd.edu/roms_class/shchepetkin04.pdf (p = 2, q = 4, r = 0.18927)
 @inline function averaging_shape_function(τ; p = 2, q = 4, r = 0.18927) 
@@ -197,7 +202,8 @@ end
 @inline averaging_fixed_function(τ) = 1.0
 
 function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_weighting_function = averaging_shape_function)
+                                 averaging_weighting_function = averaging_shape_function,
+                                 timestepper = AdamsBashforth3Scheme())
 
     τᶠ = range(0.0, 2.0, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
@@ -222,7 +228,7 @@ function SplitExplicitSettings(; substeps = 200,
 
     return SplitExplicitSettings(substeps,
                                  averaging_weights,
-                                 mass_flux_weights, Δτ)
+                                 mass_flux_weights, Δτ, timestepper)
 end
 
 # Convenience Functions for grabbing free surface

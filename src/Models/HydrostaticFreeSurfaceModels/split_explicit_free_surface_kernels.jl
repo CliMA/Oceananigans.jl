@@ -64,8 +64,8 @@ using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
-@inline conditional_value_fcf(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
-@inline conditional_value_cff(i, j, k, grid, ibg, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_value_fcf(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_value_cff(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
 
 @inline conditional_∂x_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) | immersed_inactive_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_∂y_bound_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, f, LY, LZ) | immersed_inactive_node(i, j+1, k, ibg, f, LY, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
@@ -73,16 +73,30 @@ using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, 
 @inline δxᶜᵃᵃ_bound(i, j, k, ibg::IBG, T, f::Function, args...) = δxᶜᵃᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_fcf, ibg, f, args...)
 @inline δyᵃᶜᵃ_bound(i, j, k, ibg::IBG, T, f::Function, args...) = δyᵃᶜᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_cff, ibg, f, args...)
 
-@inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T, f::Function, args...) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, f, args...)
-@inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T, f::Function, args...) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, f, args...)        
+@inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T, η) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, η)
+@inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T, η) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, η)        
 
-@inline U★(i, j, k, grid, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k] + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
-@inline η★(i, j, k, grid, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k] + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
+for Topo in [:Periodic, :Bounded]
+    @eval begin
+        @inline δxᶜᵃᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δxᶜᵃᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_fcf, ibg, f, args...)
+        @inline δyᵃᶜᵃ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, f::Function, args...) = δyᵃᶜᵃ_bound(i, j, k, ibg.underlying_grid, T, conditional_value_cff, ibg, f, args...)
+
+        @inline ∂xᶠᶜᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_bound, T, η)
+        @inline ∂yᶜᶠᶠ_bound(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_bound, T, η)        
+    end
+end
+# AB3 step
+@inline U★(i, j, k, grid, ::AdamsBashforth3Scheme, ϕᵐ, ϕᵐ⁻¹, ϕᵐ⁻²)       = α * ϕᵐ[i, j, k]   + θ * ϕᵐ⁻¹[i, j, k] + β * ϕᵐ⁻²[i, j, k]
+@inline η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = δ * ηᵐ⁺¹[i, j, k] + μ * ηᵐ[i, j, k]   + γ * ηᵐ⁻¹[i, j, k] + ϵ * ηᵐ⁻²[i, j, k]
+
+# Forward Backward Step
+@inline U★(i, j, k, grid, ::ForwardBackwardScheme, ϕ, args...) = ϕ[i, j, k] 
+@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = η[i, j, k] 
 
 @kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
                                                               η̅, U̅, V̅, averaging_weight, 
                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                              offsets)
+                                                              timestepper, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -92,20 +106,20 @@ using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, 
     TX, TY, _ = topology(grid)
 
     @inbounds begin        
-        # ∂τ(U) = - ∇η + G
         ηᵐ⁻²[i′, j′, k_top] = ηᵐ⁻¹[i′, j′, k_top]
         ηᵐ⁻¹[i′, j′, k_top] =   ηᵐ[i′, j′, k_top]
           ηᵐ[i′, j′, k_top] =    η[i′, j′, k_top]
 
-        η[i′, j′, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i′, j′, k_top, grid, TX, U★, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                  div_yᶜᶜᶠ_bound(i′, j′, k_top, grid, TY, U★, V, Vᵐ⁻¹, Vᵐ⁻²))
+        # ∂τ(η) = - ∇ ⋅ U
+        η[i′, j′, k_top] -= Δτ * (div_xᶜᶜᶠ_bound(i′, j′, k_top, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                  div_yᶜᶜᶠ_bound(i′, j′, k_top, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 end
 
 @kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
                                                                η̅, U̅, V̅, averaging_weight, 
                                                                Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                               offsets)
+                                                               timestepper, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
@@ -120,10 +134,10 @@ end
         Vᵐ⁻²[i′, j′, 1] = Vᵐ⁻¹[i′, j′, 1] 
         Vᵐ⁻¹[i′, j′, 1] =    V[i′, j′, 1] 
 
-        U[i′, j′, 1] +=  Δτ * (- g * Hᶠᶜ[i′, j′] * ∂xᶠᶜᶠ_bound(i′, j′, k_top, grid, TX, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i′, j′, 1])
-        V[i′, j′, 1] +=  Δτ * (- g * Hᶜᶠ[i′, j′] * ∂yᶜᶠᶠ_bound(i′, j′, k_top, grid, TY, η★, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i′, j′, 1])
-
-        # ∂τ(η) = - ∇⋅U
+        # ∂τ(U) = - ∇η + G
+        U[i′, j′, 1] +=  Δτ * (- g * Hᶠᶜ[i′, j′] * ∂xᶠᶜᶠ_bound(i′, j′, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i′, j′, 1])
+        V[i′, j′, 1] +=  Δτ * (- g * Hᶜᶠ[i′, j′] * ∂yᶜᶠᶠ_bound(i′, j′, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i′, j′, 1])
+                          
         # time-averaging
         η̅[i′, j′, k_top] +=  averaging_weight * η[i′, j′, k_top]
         U̅[i′, j′, 1]     +=  averaging_weight * U[i′, j′, 1]
@@ -140,6 +154,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
     
+    timestepper      = settings.timestepper
     averaging_weight = settings.averaging_weights[substep_index]
     
     offsets     = auxiliary.kernel_offsets
@@ -147,7 +162,7 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
 
     args = (grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
             η̅, U̅, V̅, averaging_weight, 
-            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, offsets)
+            Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper, offsets)
 
     event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_1!, args...;
             dependencies=Event(device(arch)))
@@ -249,56 +264,6 @@ function initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, ve
     @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
 end
-
-function old_split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events)
-
-    grid = model.grid
-    arch = architecture(grid)
-
-    # we start the time integration of η from the average ηⁿ     
-    η         = free_surface.η
-    state     = free_surface.state
-    auxiliary = free_surface.auxiliary
-    settings  = free_surface.settings
-    g         = free_surface.gravitational_acceleration
-
-    Gu⁻ = model.timestepper.G⁻.u
-    Gv⁻ = model.timestepper.G⁻.v
-
-    Δτ = Δt * settings.Δτ  # we evolve for two times the Δt 
-
-    event_Gu = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu⁻, model.timestepper.Gⁿ.u, χ)
-    event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv⁻, model.timestepper.Gⁿ.v, χ)
-
-    # Wait for predictor velocity update step to complete and mask it if immersed boundary.
-    @apply_regionally prognostic_field_events = wait_velocity_event(arch,  prognostic_field_events)
-
-    masking_events = [mask_immersed_field!(q) for q in model.velocities]
-    push!(masking_events, mask_immersed_field!(Gu⁻))
-    push!(masking_events, mask_immersed_field!(Gv⁻))
-    wait(device(arch), MultiEvent(tuple(masking_events..., event_Gu, event_Gv)))
-
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu⁻, Gv⁻)
-
-    # reset free surface averages
-    initialize_free_surface_state!(state, η)
-
-    # Solve for the free surface at tⁿ⁺¹
-
-    for substep in 1:settings.substeps
-        split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
-    end
-        
-    # Reset eta for the next timestep
-    # this is the only way in which η̅ is used: as a smoother for the 
-    # substepped η field
-    set!(η, free_surface.state.η̅)
-
-    fill_halo_regions!(η)
-
-    return prognostic_field_events
-end
-
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
 
