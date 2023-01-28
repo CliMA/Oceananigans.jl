@@ -224,9 +224,9 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 
 # Fallback
-@inline xnode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
+@inline xnode(i, j, k, grid, LX::CellLocation, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid, LX, LY::CellLocation, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid, LX, LY, LZ::CellLocation) = znode(k, grid, LZ)
 
 @inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ),
                                                                                      ynode(i, j, k, grid, LX, LY, LZ),
