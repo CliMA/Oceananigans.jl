@@ -367,16 +367,12 @@ const CellLocation = Union{Face, Center}
 @inline xnodes(grid::RectilinearGrid, LX::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
 @inline ynodes(grid::RectilinearGrid, LY::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline ynodes(grid::RectilinearGrid, LY::Center; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline znodes(grid::RectilinearGrid, ZL::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
-@inline znodes(grid::RectilinearGrid, ZL::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(ZL), topology(grid, 3), grid.Nz))
+@inline znodes(grid::RectilinearGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::RectilinearGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
 @inline xnode(i, grid::RectilinearGrid, LX::CellLocation) = xnodes(grid, LX; with_halos=true)[i]
 @inline ynode(j, grid::RectilinearGrid, LY::CellLocation) = ynodes(grid, LY; with_halos=true)[j]
-@inline znode(k, grid::RectilinearGrid, ZL::CellLocation) = znodes(grid, ZL; with_halos=true)[k]
-
-@inline xnode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = znode(k, grid, ZL)
+@inline znode(k, grid::RectilinearGrid, LZ::CellLocation) = znodes(grid, LZ; with_halos=true)[k]
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
@@ -429,31 +425,33 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 ##### Grid spacings
 #####
 
-@inline xspacing(i, j, k, grid::RectilinearGrid,     LX::Center, LY::CellLocation,    ZL::CellLocation)    = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline xspacing(i, j, k, grid::XRegRectilinearGrid, LX::Center, LY::CellLocation,    ZL::CellLocation)    = grid.Δxᶜᵃᵃ
-@inline xspacing(i, j, k, grid::RectilinearGrid,     LX::Face,   LY::CellLocation,    ZL::CellLocation)    = @inbounds grid.Δxᶠᵃᵃ[i]
-@inline xspacing(i, j, k, grid::XRegRectilinearGrid, LX::Face,   LY::CellLocation,    ZL::CellLocation)    = grid.Δxᶠᵃᵃ
+@inline _xspacings(grid::RectilinearGrid,     LX::Center; with_halos=false) = with_halos ? grid.Δxᶜᵃᵃ : view(grid.Δxᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline _xspacings(grid::XRegRectilinearGrid, LX::Center; with_halos=false) = grid.Δxᶜᵃᵃ
+@inline _xspacings(grid::RectilinearGrid,     LX::Face;   with_halos=false) = with_halos ? grid.Δxᶠᵃᵃ : view(grid.Δxᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline _xspacings(grid::XRegRectilinearGrid, LX::Face;   with_halos=false) = grid.Δxᶠᵃᵃ
 
-@inline yspacing(i, j, k, grid::RectilinearGrid,     LX::CellLocation,    LY::Center, ZL::CellLocation)    = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline yspacing(i, j, k, grid::YRegRectilinearGrid, LX::CellLocation,    LY::Center, ZL::CellLocation)    = grid.Δyᵃᶜᵃ
-@inline yspacing(i, j, k, grid::RectilinearGrid,     LX::CellLocation,    LY::Face,   ZL::CellLocation)    = @inbounds grid.Δyᵃᶠᵃ[j]
-@inline yspacing(i, j, k, grid::YRegRectilinearGrid, LX::CellLocation,    LY::Face,   ZL::CellLocation)    = grid.Δyᵃᶠᵃ
+@inline _yspacings(grid::RectilinearGrid,     LY::Center; with_halos=false) = with_halos ? grid.Δyᵃᶜᵃ : view(grid.Δyᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline _yspacings(grid::YRegRectilinearGrid, LY::Center; with_halos=false) = grid.Δyᵃᶜᵃ
+@inline _yspacings(grid::RectilinearGrid,     LY::Face;   with_halos=false) = with_halos ? grid.Δyᵃᶠᵃ : view(grid.Δyᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline _yspacings(grid::YRegRectilinearGrid, LY::Face;   with_halos=false) = grid.Δyᵃᶠᵃ
 
-@inline zspacing(i, j, k, grid::RectilinearGrid,     LX::CellLocation,    LY::CellLocation,    ZL::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, LX::CellLocation,    LY::CellLocation,    ZL::Center) = grid.Δzᵃᵃᶜ
-@inline zspacing(i, j, k, grid::RectilinearGrid,     LX::CellLocation,    LY::CellLocation,    ZL::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline zspacing(i, j, k, grid::ZRegRectilinearGrid, LX::CellLocation,    LY::CellLocation,    ZL::Face)   = grid.Δzᵃᵃᶠ
+@inline _zspacings(grid::RectilinearGrid,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegRectilinearGrid, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline _zspacings(grid::RectilinearGrid,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegRectilinearGrid, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
-@inline xspacings(grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = xspacings(grid, LX)
-@inline yspacings(grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = yspacings(grid, LY)
-@inline zspacings(grid::RectilinearGrid, LX::CellLocation, LY::CellLocation, ZL::CellLocation) = zspacings(grid, ZL)
+xspacings(grid::RectilinearGrid, LX::CellLocation; kwargs...) = topology(grid)[1] == Flat ? Inf : _xspacings(grid, LX; kwargs...)
+yspacings(grid::RectilinearGrid, LY::CellLocation; kwargs...) = topology(grid)[2] == Flat ? Inf : _yspacings(grid, LY; kwargs...)
+zspacings(grid::RectilinearGrid, LZ::CellLocation; kwargs...) = topology(grid)[3] == Flat ? Inf : _zspacings(grid, LZ; kwargs...)
 
-xspacings(grid::RectilinearGrid, ::Center) = topology(grid)[1] == Flat ? Inf : grid.Δxᶜᵃᵃ
-xspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[1] == Flat ? Inf : grid.Δxᶠᵃᵃ
-yspacings(grid::RectilinearGrid, ::Center) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶜᵃ
-yspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[2] == Flat ? Inf : grid.Δyᵃᶠᵃ
-zspacings(grid::RectilinearGrid, ::Center) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶜ
-zspacings(grid::RectilinearGrid, ::Face  ) = topology(grid)[3] == Flat ? Inf : grid.Δzᵃᵃᶠ
+@inline xspacing(i, grid::RectilinearGrid,     LX::CellLocation) = xspacings(grid, LX, with_halos=true)[i]
+@inline xspacing(i, grid::XRegRectilinearGrid, LX::CellLocation) = xspacings(grid, LX, with_halos=true)
+
+@inline yspacing(j, grid::RectilinearGrid,     LY::CellLocation) = yspacings(grid, LY, with_halos=true)[j]
+@inline yspacing(j, grid::YRegRectilinearGrid, LY::CellLocation) = yspacings(grid, LY, with_halos=true)
+
+@inline zspacing(k, grid::RectilinearGrid,     LZ::CellLocation) = zspacings(grid, LZ, with_halos=true)[k]
+@inline zspacing(k, grid::ZRegRectilinearGrid, LZ::CellLocation) = zspacings(grid, LZ, with_halos=true)
 
 min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : min_number_or_array(grid.Δxᶜᵃᵃ)
 min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : min_number_or_array(grid.Δyᵃᶜᵃ)

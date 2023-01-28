@@ -224,21 +224,21 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 
 # Fallback
-@inline xnode(i, j, k, grid, LX, LY, LZ) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid, LX, LY, LZ) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid, LX, LY, LZ) = znode(k, grid, LZ)
+@inline xnode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
 
-@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
-                                           ynode(i, j, k, grid, LX, LY, LZ),
-                                           znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ),
+                                                                                     ynode(i, j, k, grid, LX, LY, LZ),
+                                                                                     znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::CellLocation, LZ::CellLocation) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::CellLocation, LY::Nothing, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::CellLocation, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::CellLocation, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ::CellLocation) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
 @inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
 @inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
@@ -344,6 +344,20 @@ function nodes(grid::AbstractGrid, loc::NTuple{3, CellLocation}; reshape=false, 
                 znodes(grid, loc[3]; kwargs...))
     end
 end
+
+
+#####
+##### << Spacings >>
+#####
+
+@inline xspacing(i, j, k, grid, LX, LY, LZ) = xspacing(i, grid, LX)
+@inline yspacing(i, j, k, grid, LX, LY, LZ) = yspacing(i, grid, LY)
+@inline zspacing(i, j, k, grid, LX, LY, LZ) = zspacing(i, grid, LZ)
+
+@inline xspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xspacings(grid, LX; kwargs...)
+@inline yspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LY; kwargs...)
+@inline yspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LZ; kwargs...)
+
 
 #####
 ##### Convenience functions
