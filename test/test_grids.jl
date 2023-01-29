@@ -825,6 +825,6 @@ end
                 @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
                 @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
             end
-        endz
+        end
     end
 end
