@@ -822,8 +822,7 @@ end
             grid = ConformalCubedSphereGrid(arch; z, face_size=(Nx, Ny, Nz), radius)
 
             for face in 1:6
-                # we test on ᶜᶜᵃ and ᶠᶠᵃ
-                # ᶠᶜᵃ and ᶜᶠᵃ are all zeros on grid_cs32
+                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
 
                 @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
                 @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
