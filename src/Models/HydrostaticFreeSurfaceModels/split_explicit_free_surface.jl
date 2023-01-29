@@ -203,7 +203,7 @@ end
 
 function SplitExplicitSettings(; substeps = 200, 
                                  averaging_weighting_function = averaging_shape_function,
-                                 timestepper = AdamsBashforth3Scheme())
+                                 timestepper = ForwardBackwardScheme())
 
     τᶠ = range(0.0, 2.0, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]

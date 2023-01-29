@@ -216,18 +216,18 @@ end
 function initialize_free_surface!(free_surface_state, η)
     state = free_surface_state
 
-    set!(state.U, state.U̅)
-    set!(state.V, state.V̅)
+    parent(state.U) .= parent(state.U̅)
+    parent(state.V) .= parent(state.V̅)
     
-    set!(state.Uᵐ⁻¹, state.U̅)
-    set!(state.Vᵐ⁻¹, state.V̅)
+    parent(state.Uᵐ⁻¹) .= parent(state.U̅)
+    parent(state.Vᵐ⁻¹) .= parent(state.V̅)
 
-    set!(state.Uᵐ⁻², state.U̅)
-    set!(state.Vᵐ⁻², state.V̅)
+    parent(state.Uᵐ⁻²) .= parent(state.U̅)
+    parent(state.Vᵐ⁻²) .= parent(state.V̅)
 
-    set!(state.ηᵐ,   η)
-    set!(state.ηᵐ⁻¹, η)
-    set!(state.ηᵐ⁻², η)
+    parent(state.ηᵐ)   .= parent(η)
+    parent(state.ηᵐ⁻¹) .= parent(η)
+    parent(state.ηᵐ⁻²) .= parent(η)
 
     fill!(state.η̅, 0.0)
     fill!(state.U̅, 0.0)
@@ -279,7 +279,7 @@ end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
 
-    grid = model.grid
+    grid = free_surface.η.grid
 
     # we start the time integration of η from the average ηⁿ     
     Gu  = model.timestepper.G⁻.u
@@ -289,11 +289,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     velocities = model.velocities
 
+    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅))
+    
     @apply_regionally velocities_update = setup_split_explicit!(free_surface.auxiliary, free_surface.state, free_surface.η, 
                                                                 grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities, velocities_update)
 
     fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
-    fill_halo_regions!((free_surface.state.U, free_surface.state.V))
+
     # Solve for the free surface at tⁿ⁺¹
     @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
     

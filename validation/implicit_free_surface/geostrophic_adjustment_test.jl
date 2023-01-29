@@ -20,7 +20,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+    # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     if multi_region
         if arch isa GPU
@@ -63,7 +63,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt = 10wave_propagation_time_scale, stop_iteration = 600)
+    simulation = Simulation(model, Δt = 0.2wave_propagation_time_scale, stop_iteration = 1000)
 
     return simulation
 end
@@ -89,9 +89,9 @@ function run_and_analyze(simulation)
     varr = Vector{Field}(undef, Int(simulation.stop_iteration))
     uarr = Vector{Field}(undef, Int(simulation.stop_iteration))
 
-    save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(sim.model.free_surface.η) : nothing
-    save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.v)   : nothing
-    save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.u)   : nothing
+    save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.free_surface.η)) : nothing
+    save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.velocities.v))   : nothing
+    save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(reconstruct_global_field(sim.model.velocities.u))   : nothing
 
     progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
@@ -110,7 +110,19 @@ end
 # fft_based_free_surface = ImplicitFreeSurface()
 pcg_free_surface           = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient);
 matrix_free_surface        = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver);
-splitexplicit_free_surface = SplitExplicitFreeSurface(substeps = 20)
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function, 
+                                                        averaging_cosine_function, 
+                                                        averaging_fixed_function, 
+                                                        ForwardBackwardScheme,
+                                                        AdamsBashforth3Scheme
+
+# @inline new_function(t) = averaging_shape_function(t; r = 0.15766, p = 2, q = 2)
+@inline new_function(t) =  t >= 1/2 && t <= 3/2 ? 1.0 : 0.0
+
+splitexplicit_free_surface = SplitExplicitFreeSurface(substeps = 10, 
+                                                      averaging_weighting_function = averaging_shape_function,
+                                                      timestepper = AdamsBashforth3Scheme())
 explicit_free_surface      = ExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
@@ -119,10 +131,10 @@ topology_types = [topology_types[2]]
 archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
 archs = [archs[1]]
 
-free_surfaces = [splitexplicit_free_surface, matrix_free_surface] #, explicit_free_surface] #, matrix_free_surface];
+free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface] #, matrix_free_surface];
 
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, multi_region, arch = arch) 
-              for (free_surface, multi_region) in zip(free_surfaces, (false, false, false)), 
+              for (free_surface, multi_region) in zip(free_surfaces, (true, false, false)), 
               topology_type in topology_types, 
               arch in archs];
 
@@ -151,19 +163,19 @@ mid = Int(floor(grid.Ny / 2))
 η0 = interior(data[1][1][1], :, mid, 1)
 η1 = @lift(interior(data[1][1][$iter], :, mid, 1))
 η2 = @lift(interior(data[2][1][$iter], :, mid, 1))
-# η3 = @lift(interior(data[3][1][$iter], :, mid, 1))
+η3 = @lift(interior(data[3][1][$iter], :, mid, 1))
 
 v01 = interior(data[1][2][1], :, mid, 1)
 v02 = interior(data[2][2][1], :, mid, 1)
 v1 = @lift(interior(data[1][2][$iter], :, mid, 1))
 v2 = @lift(interior(data[2][2][$iter], :, mid, 1))
-# v3 = @lift(interior(data[3][2][$iter], :, mid, 1))
+v3 = @lift(interior(data[3][2][$iter], :, mid, 1))
 
 u01 = interior(data[1][3][1], :, mid, 1)
 u02 = interior(data[2][3][1], :, mid, 1)
 u1 = @lift(interior(data[1][3][$iter], :, mid, 1))
 u2 = @lift(interior(data[2][3][$iter], :, mid, 1))
-# u3 = @lift(interior(data[3][3][$iter], :, mid, 1))
+u3 = @lift(interior(data[3][3][$iter], :, mid, 1))
 
 fig = Figure(resolution = (1400, 1000))
 options = (; ylabelsize = 22,
@@ -174,10 +186,10 @@ ax1 = Axis(fig[1, 1]; options..., ylabel = "η [m]")
 ηlines0 = scatter!(ax1, x, η0, color = :black)
 ηlines1 = lines!(ax1, x, η1, color = :red)
 ηlines2 = lines!(ax1, x, η2, color = :blue)
-# ηlines3 = lines!(ax1, x, η3, color = :orange)
+ηlines3 = lines!(ax1, x, η3, color = :orange)
 axislegend(ax1,
-    [ηlines0, ηlines1, ηlines2], #, ηlines3],
-    ["Initial Condition", "Split-Explicit", "Matrix"]) #, "Explicit"])
+    [ηlines0, ηlines1, ηlines2, ηlines3],
+    ["Initial Condition", "Split-Explicit", "Matrix", "Explicit"])
 ylims!(ax1, (-5e-4, 5e-3))
 xlims!(ax1, extrema(x))
 
@@ -186,10 +198,10 @@ vlines01 = scatter!(ax2, x, v01, color = :black)
 vlines02 = scatter!(ax2, x, v02, color = :grey)
 vlines1 = lines!(ax2, x, v1, color = :red)
 vlines2 = lines!(ax2, x, v2, color = :blue)
-# vlines3 = lines!(ax2, x, v2, color = :orange)
+vlines3 = lines!(ax2, x, v3, color = :orange)
 axislegend(ax2,
-    [vlines01, vlines02, vlines1, vlines2], #, vlines3],
-    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix"]) #, "Explicit"])
+    [vlines01, vlines02, vlines1, vlines2, vlines3],
+    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix", "Explicit"])
 ylims!(ax2, (-1e-1, 1e-1))
 
 ax2 = Axis(fig[1, 3]; options..., ylabel = "u [m/s]")
@@ -198,13 +210,13 @@ ulines01 = scatter!(ax2, xf, u01, color = :black)
 ulines02 = scatter!(ax2, xf, u02, color = :grey)
 ulines1 = lines!(ax2, xf, u1, color = :red)
 ulines2 = lines!(ax2, xf, u2, color = :blue)
-# ulines3 = lines!(ax2, xf, u3, color = :blue)
+ulines3 = lines!(ax2, xf, u3, color = :blue)
 axislegend(ax2,
-    [ulines01, ulines02, ulines1, ulines2], #, ulines3],
-    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix"]) #, "Explicit"])
+    [ulines01, ulines02, ulines1, ulines2, ulines3],
+    ["Initial Condition 1", "Initial Condition 2", "Split-Explicit", "Matrix", "Explicit"])
 ylims!(ax2, (-2e-4, 2e-4))
 
-GLMakie.record(fig, "free_surface_bounded.mp4", 1:600, framerate = 12) do i
+GLMakie.record(fig, "free_surface_bounded.mp4", 1:1000, framerate = 12) do i
     @info "Plotting iteration $i of 600..."
     iter[] = i
 end

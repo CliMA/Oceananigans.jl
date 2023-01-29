@@ -1,6 +1,8 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 
+using CUDA: ndevices, device!
+
 import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 
@@ -42,6 +44,13 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
     ρ = typeof(ranks)         
     C = typeof(local_connectivity)  
     γ = typeof(communicator)  
+
+    # Assign CUDA device if on GPUs
+    if child_architecture isa GPU
+        total_devices  = ndevices()
+        my_device_rank = mod(local_rank, total_devices)
+        device!(my_device_rank)
+    end
     
     return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
@@ -87,10 +96,13 @@ end
 RankConnectivity(; east, west, north, south, top, bottom) =
     RankConnectivity(east, west, north, south, top, bottom)
 
+# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
+# The "Bounded" topologies are `Bounded` and `LeftConnected`
+
 function increment_index(i, R, topo)
     R == 1 && return nothing
     if i+1 > R
-        if topo == Periodic
+        if topo == Periodic || topo == FullyConnected || topo == RightConnected
             return 1
         else
             return nothing
@@ -103,7 +115,7 @@ end
 function decrement_index(i, R, topo)
     R == 1 && return nothing
     if i-1 < 1
-        if topo == Periodic
+        if topo == Periodic || topo == FullyConnected || topo == RightConnected
             return R
         else
             return nothing

@@ -15,7 +15,7 @@ using Adapt
 using OffsetArrays
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate
+using Oceananigans.Utils: Reference, Iterate, getname
 
 using KernelAbstractions: Event, NoneEvent, @kernel, @index
 
@@ -33,8 +33,6 @@ import Oceananigans.Utils:
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 abstract type AbstractPartition end
-
-getname(type) = typeof(type).name.wrapper
 
 include("multi_region_utils.jl")
 include("x_partitions.jl")
