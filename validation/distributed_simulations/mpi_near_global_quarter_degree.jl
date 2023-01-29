@@ -4,6 +4,7 @@ using Printf
 using Oceananigans
 using Oceananigans.Units
 
+using Oceananigans.Distributed
 using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Architectures: arch_array
