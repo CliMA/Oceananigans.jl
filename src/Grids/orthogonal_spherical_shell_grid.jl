@@ -159,7 +159,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     ## Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
     Nξᶠ, Nξᶜ = length(ξᶠᵃᵃ), length(ξᶜᵃᵃ)
-    Nηᶠ, Nηᶜ = length(ξᶠᵃᵃ), length(ξᶜᵃᵃ)
+    Nηᶠ, Nηᶜ = length(ηᵃᶠᵃ), length(ηᵃᶜᵃ)
 
     Xᶜᶜᵃ = zeros(Nξᶜ, Nηᶜ)
     Xᶠᶜᵃ = zeros(Nξᶠ, Nηᶜ)
