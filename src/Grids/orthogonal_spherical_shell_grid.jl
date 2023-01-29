@@ -348,32 +348,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                                                    Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
-end
-
-"""placeholder; to be deleted"""
-function fill_halos_orthogonal_spherical_shell_grid!(A::OffsetArray, (ξ, η), (Hx, Hy))
-    Nx, Ny = length(ξ), length(η)
-
-    for i in 1:Hx
-        @inbounds @. A[ 1-i, :] = A[Nx-i, :]
-        @inbounds @. A[Nx+i, :] = A[ i-1, :]
-    end
-
-    for j in 1:Hy
-        @inbounds @. A[:,  1-j] = A[:, Ny-j]
-        @inbounds @. A[:, Ny+j] = A[:,  j-1]
-    end
-
-    if Hx==Hy
-        H = Hx
-        for d in 1:H
-            @inbounds A[ 1-d,  1-d] = A[Nx-d, Ny-d]
-            @inbounds A[Nx+d, Ny+d] = A[ d-1,  d-1]
-        end
-    end
-
-    return nothing
+                                                    Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                    radius)
 end
 
 function lat_lon_to_cartesian(lat, lon, radius)
@@ -385,7 +361,6 @@ end
 lat_lon_to_x(lat, lon, radius) = radius * cosd(lon) * cosd(lat)
 lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
 lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
-
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
