@@ -188,6 +188,38 @@ macro binary(ops...)
 end
 
 #####
+##### BinaryOperations with ZeroField
+#####
+
+import Base: +, -, *, /, ==
+using Oceananigans.Fields: ZeroField
+
+==(::ZeroField, ::ZeroField) = true
+
++(a::ZeroField, b::AbstractField) = b
++(a::AbstractField, b::ZeroField) = +(b, a)
++(a::ZeroField, b::Number) = b
++(a::Number, b::ZeroField) = +(b, a)
+
+-(a::ZeroField, b::AbstractField) = -b
+-(b::AbstractField, a::ZeroField) = b
+-(a::ZeroField, b::Number) = -b
+-(b::Number, a::ZeroField) = b
+
+*(a::ZeroField, b::AbstractField) = a
+*(b::AbstractField, a::ZeroField) = *(a, b)
+*(a::ZeroField, b::Number) = a
+*(b::Number, a::ZeroField) = *(a, b)
+
+/(a::ZeroField, b::AbstractField) = a
+/(b::AbstractField, a::ZeroField) = Inf
+/(a::ZeroField, b::Number) = a
+/(b::Number, a::ZeroField) = Inf
+
+^(a::ZeroField, b::Number) = a
+
+
+#####
 ##### Nested computations
 #####
 

@@ -115,6 +115,25 @@ for arch in archs
                     @test CUDA.@allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
                 end
             end
+
+            @test ZeroField() + u == u
+            @test u + ZeroField() == u
+            @test ZeroField() - u == -u
+            @test u - ZeroField() == u
+            @test ZeroField() * u == ZeroField()
+            @test u * ZeroField() == ZeroField()
+            @test ZeroField() / u == ZeroField()
+            @test u / ZeroField() == Inf
+
+            @test ZeroField() + 1 == 1
+            @test 1 + ZeroField() == 1
+            @test ZeroField() - 1 == -1
+            @test 1 - ZeroField() == 1
+            @test ZeroField() * 1 == ZeroField()
+            @test 1 * ZeroField() == ZeroField()
+            @test ZeroField() / 1 == ZeroField()
+            @test 1 / ZeroField() == Inf
+            @test ZeroField()^2   == ZeroField()
         end
 
         @testset "Multiary operations [$(typeof(arch))]" begin
