@@ -823,11 +823,15 @@ end
 
             for face in 1:6
                 # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
-
                 @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
                 @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
 
-                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .== -180] .= 180 # ±180 is the same longitude
+                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .≈ -180] .= 180
+
+                # and if poles are included, they have the same longitude
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ 90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ 90]
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90]
                 @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
                 @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
             end
