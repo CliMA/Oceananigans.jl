@@ -66,11 +66,11 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
-@inline function abs²_∇h_ζ(i, j, k, grid, U)
-    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, U.v)
-    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, U.u)
-    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, U.u)
-    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, U.v)
+@inline function abs²_∇h_ζ(i, j, k, grid, velocities)
+    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, velocities.v)
+    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, velocities.u)
+    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, velocities.u)
+    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, velocities.v)
 
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
@@ -86,9 +86,9 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz² + wyz²
 end
 
-@inline calc_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
-    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U)
-                                              + abs²_∇h_wz(i, j, k, grid, U.w))
+@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT =
+    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(   abs²_∇h_ζ(i, j, k, grid, velocities)
+                                                      + abs²_∇h_wz(i, j, k, grid, velocities.w))
 
 function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
     arch = model.architecture
