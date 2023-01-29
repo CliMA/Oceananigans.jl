@@ -39,7 +39,7 @@ assemble(c::Tuple, Nc, Nr, r, arch) = (c[2] - r * (c[2] - c[1]), c[2] - (r - Nr)
 partition a global array (2D of size Nx, Ny or 3D of size Nx, Ny, Nz) in local arrays.
 Usefull for boundary arrays, forcings and initial conditions
 """
-partition_global_array(arch, c_global::Function) = c_global 
+partition_global_array(arch, c_global::Function, N) = c_global 
 
 function partition_global_array(arch, c_global::AbstractArray, N) 
     c_global = arch_array(CPU(), c_global)
@@ -76,7 +76,7 @@ end
 reconstruct local arrays (2D of size nx, ny or 3D of size nx, ny, nz) in local arrays.
 Usefull for boundary arrays, forcings and initial conditions
 """
-reconstruct_global_array(arch, c_local::Function) = c_local
+reconstruct_global_array(arch, c_local::Function, N) = c_local
 
 function reconstruct_global_array(arch, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
