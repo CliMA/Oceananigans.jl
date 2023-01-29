@@ -806,5 +806,25 @@ end
             grid = OrthogonalSphericalShellGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
             @test grid isa OrthogonalSphericalShellGrid
         end
+
+        for arch in archs
+            z = (-1, 0)
+            Nx, Ny, Nz = 32, 32, 1
+
+            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz)
+            grid = ConformalCubedSphereGrid(arch; z, face_size=(32, 32, Nz), radius=grid_cs32.faces[1].radius)
+
+            for face in 1:6
+                # we test on ᶜᶜᵃ and ᶠᶠᵃ
+                # ᶠᶜᵃ and ᶜᶠᵃ are all zeros on grid_cs32
+
+                @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
+                @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
+
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ.==-180] .= 180 # ±180 is the same longitude
+                @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
+                @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
+            end
+        endz
     end
 end
