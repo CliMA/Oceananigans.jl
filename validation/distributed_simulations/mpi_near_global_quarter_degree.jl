@@ -83,7 +83,8 @@ end
 
 using Oceananigans.Distributed: partition_global_array
 
-bathymetry = partition_global_array(arch, file_bathymetry["bathymetry"], N)
+bathymetry = file_bathymetry["bathymetry"]
+bathymetry = partition_global_array(arch, bathymetry[:, :], N)
 
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
