@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!, indices
+using Oceananigans.Fields: ZeroField, compute_at!, indices
 using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -133,7 +133,6 @@ for arch in archs
             @test 1 * ZeroField() == ZeroField()
             @test ZeroField() / 1 == ZeroField()
             @test 1 / ZeroField() == Inf
-            @test ZeroField()^2   == ZeroField()
         end
 
         @testset "Multiary operations [$(typeof(arch))]" begin

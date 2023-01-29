@@ -216,8 +216,6 @@ using Oceananigans.Fields: ZeroField
 /(a::ZeroField, b::Number) = a
 /(b::Number, a::ZeroField) = Inf
 
-^(a::ZeroField, b::Number) = a
-
 
 #####
 ##### Nested computations
