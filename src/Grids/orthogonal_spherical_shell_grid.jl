@@ -228,6 +228,8 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     ## Grid metrics
 
+    # horizontal distances
+
     Δxᶜᶜᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Δxᶠᶜᵃ = OffsetArray(zeros(Nξᶠ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Δxᶜᶠᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶠ + 2Hy), -Hx, -Hy)
@@ -281,9 +283,9 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     [Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i,  j ], λᶠᶜᵃ[i,  j ]), (φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ])) for i in 1:Nξᶠ, j in 1    ]
 
     Nη !== Nηᶠ &&
-        [Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶠᶜᵃ[i,j-1], λᶠᶜᵃ[i, j-1])) for i in 1:Nξᶠ, j in Nηᶠ]
+        [Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1])) for i in 1:Nξᶠ, j in Nηᶠ]
 
-    ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ]
+    ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ ]
     ΔΣ = [Δσxᶜᶜᵃ, Δσxᶠᶜᵃ, Δσxᶜᶠᵃ, Δσxᶠᶠᵃ, Δσyᶜᶜᵃ, Δσyᶜᶠᵃ, Δσyᶠᶜᵃ, Δσyᶠᶠᵃ]
 
     for (Δs, Δσ) in zip(ΔS, ΔΣ)
