@@ -800,19 +800,26 @@ end
     @testset "Conformal cubed sphere face grid from file" begin
         @info "  Testing conformal cubed sphere face grid construction from file..."
 
+        Nz = 1
+        z = (-1, 0)
+
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6
-            grid = OrthogonalSphericalShellGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            grid = OrthogonalSphericalShellGrid(cs32_filepath; face, Nz, z)
             @test grid isa OrthogonalSphericalShellGrid
         end
 
         for arch in archs
-            z = (-1, 0)
-            Nx, Ny, Nz = 32, 32, 1
 
+            # read cs32 grid from file
             grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
-            grid = ConformalCubedSphereGrid(arch; z, face_size=(32, 32, Nz), radius=grid_cs32.faces[1].radius)
+
+            Nx, Ny, Nz = size(grid_cs32.faces[1])
+            radius = grid_cs32.faces[1].radius
+
+            # construct a ConformalCubedSphereGrid similar to cs32
+            grid = ConformalCubedSphereGrid(arch; z, face_size=(Nx, Ny, Nz), radius)
 
             for face in 1:6
                 # we test on ᶜᶜᵃ and ᶠᶠᵃ
@@ -821,7 +828,7 @@ end
                 @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
                 @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
 
-                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ.==-180] .= 180 # ±180 is the same longitude
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .== -180] .= 180 # ±180 is the same longitude
                 @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
                 @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
             end
