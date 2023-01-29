@@ -811,7 +811,7 @@ end
             z = (-1, 0)
             Nx, Ny, Nz = 32, 32, 1
 
-            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz)
+            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
             grid = ConformalCubedSphereGrid(arch; z, face_size=(32, 32, Nz), radius=grid_cs32.faces[1].radius)
 
             for face in 1:6
