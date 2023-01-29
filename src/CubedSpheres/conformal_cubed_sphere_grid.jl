@@ -128,22 +128,22 @@ function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, face_h
     size, halo = face_size, face_halo
 
     # +x face (face 1)
-    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2))
+    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2)*RotY(π/2))
 
     # +y face (face 2)
-    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2))
+    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π)*RotX(-π/2))
 
     # +z face (face 3)
-    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=nothing)
+    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π))
 
     # -x face (face 4)
-    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(-π/2))
+    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π)*RotY(-π/2))
 
     # -y face (face 5)
-    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(-π/2))
+    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2)*RotX(π/2))
 
     # -z face (face 6)
-    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π))
+    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π/2)*RotX(π))
 
     faces = (
         x⁺_face_grid,
