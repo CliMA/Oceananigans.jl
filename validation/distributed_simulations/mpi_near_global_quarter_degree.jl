@@ -39,6 +39,8 @@ Nx = 1440
 Ny = 600
 Nz = 48
 
+N = (Nx, Ny, Nz)
+
 const Nyears  = 1
 const Nmonths = 12 
 const thirty_days = 30days
@@ -108,11 +110,11 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-τˣ = partition_global_array(arch, - τˣ)
-τʸ = partition_global_array(arch, - τʸ)
+τˣ = partition_global_array(arch, - τˣ, N)
+τʸ = partition_global_array(arch, - τʸ, N)
 
-target_sea_surface_temperature = T★ = partition_global_array(arch, T★)
-target_sea_surface_salinity    = S★ = partition_global_array(arch, S★)
+target_sea_surface_temperature = T★ = partition_global_array(arch, T★, N)
+target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, N)
 
 #####
 ##### Physics and model setup
@@ -252,8 +254,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = partition_global_array(arch, file_init["T"])
-S_init = partition_global_array(arch, file_init["S"])
+T_init = partition_global_array(arch, file_init["T"], N)
+S_init = partition_global_array(arch, file_init["S"], N)
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
