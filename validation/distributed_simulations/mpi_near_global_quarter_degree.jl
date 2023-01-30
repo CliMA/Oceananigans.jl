@@ -11,7 +11,7 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: inactive_node, peripheral_node
-using CUDA: @allowscalar
+using CUDA: @allowscalar, device
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
@@ -29,6 +29,8 @@ Nranks = MPI.Comm_size(comm)
 
 topo = (Periodic, Bounded, Bounded)
 arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
+
+@show rank, CUDA.device()
 
 reference_density = 1029
 
