@@ -47,9 +47,9 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
-        total_devices  = ndevices()
-        my_device_rank = mod(local_rank, total_devices)
-        device!(my_device_rank)
+        local_comm  = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
+        device_rank = MPI.Comm_rank(local_comm)
+        device!(device_rank % ndevices())
     end
     
     return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)

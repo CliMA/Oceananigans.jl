@@ -179,10 +179,8 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
     event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_1!, args...;
             dependencies=Event(device(arch)))
 
-    wait(device(arch), event)
-
     event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_2!, args...;
-            dependencies=Event(device(arch)))
+            dependencies=event)
 
     wait(device(arch), event)
 end

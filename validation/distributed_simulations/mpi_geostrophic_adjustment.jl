@@ -23,7 +23,7 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Periodic, Periodic, Bounded)
-arch = MultiArch(CPU(); topology = topo, ranks=(Nranks, 1, 1))
+arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
 
 Lh = 100kilometers
 Lz = 400meters
@@ -48,8 +48,8 @@ gaussian(x, L) = exp(-x^2 / 2L^2)
 
 
 U = 0.1 # geostrophic velocity
-L = grid.Lx / 40 # gaussian width
-x₀ = grid.Lx / 4 # gaussian center
+L = Lh / 40 # gaussian width
+x₀ = Lh / 4 # gaussian center
 
 vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
 
