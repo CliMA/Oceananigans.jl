@@ -153,7 +153,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
-    masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
+    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic mode of tendency fields

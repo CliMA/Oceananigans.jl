@@ -6,9 +6,35 @@ using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(X) = X()
 
+#####
+##### Outer functions
+#####
+
+function mask_immersed_field!(field::Field, value=zero(field.grid); blocking=true)
+    if blocking
+        event = mask_immersed_field!(field, field.grid, location(field), value)
+        wait(device(architecture(field)), event)
+        return nothing
+    else
+        return mask_immersed_field!(field, field.grid, location(field), value)
+    end
+end
+
+function mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(field.grid); k, blocking)
+    if blocking
+        event = mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+        wait(device(architecture(field)), event)
+        return nothing
+    else
+        return mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+    end
+end
+
+#####
+##### Implementations
+#####
+
 mask_immersed_field!(field, grid, loc, value) = NoneEvent()
-mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
 
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
@@ -16,14 +42,13 @@ function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, val
     return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value; dependencies = device_event(arch))
 end
 
+
 @kernel function _mask_immersed_field!(field, loc, grid, value)
     i, j, k = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_reduced_field_xy!(field,     args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(eltype(field.grid)); k) =
-    mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+mask_immersed_reduced_field_xy!(field, args...; kw...) = NoneEvent()
 
 function mask_immersed_reduced_field_xy!(field::ZReducedField, grid::ImmersedBoundaryGrid, loc, value; k)
     arch = architecture(field)
@@ -43,6 +68,7 @@ end
 #####
 
 mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
+mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q; blocking=false) for q in U)
 
 #####
 ##### Masking for GridFittedBoundary
@@ -54,4 +80,3 @@ mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
                             field[i, j, k])
 end
 
-mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
