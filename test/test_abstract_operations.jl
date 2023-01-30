@@ -133,6 +133,16 @@ for arch in archs
             @test 1 * ZeroField() == ZeroField()
             @test ZeroField() / 1 == ZeroField()
             @test 1 / ZeroField() == ConstantField(Inf)
+
+            @test ConstantField(1) + u == 1 + u
+            @test ConstantField(1) - u == 1 - u
+            @test ConstantField(1) * u == 1 * u
+            @test u / ConstantField(1) == u / 1
+
+            @test ConstantField(1) + 1 == ConstantField(2)
+            @test ConstantField(1) - 1 == ConstantField(0)
+            @test ConstantField(1) * 2 == ConstantField(2)
+            @test ConstantField(1) / 2 == ConstantField(1/2)
         end
 
         @testset "Multiary operations [$(typeof(arch))]" begin

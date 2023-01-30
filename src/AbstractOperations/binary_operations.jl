@@ -125,6 +125,12 @@ function define_binary_operator(op)
 
         $op(a::AF, b::Number) = $op(location(a), a, b)
         $op(a::Number, b::AF) = $op(location(b), a, b)
+
+        $op(a::AF, b::ConstantField) = $op(location(a), a, b.constant)
+        $op(a::ConstantField, b::AF) = $op(location(b), a.constant, b)
+
+        $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
+        $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
     end
 end
 
@@ -195,10 +201,10 @@ import Base: +, -, *, /, ==
 using Oceananigans.Fields: ZeroField, ConstantField
 
 ==(::ZeroField, ::ZeroField) = true
-==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
 
 ==(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
 ==(cf::ConstantField, zf::ZeroField) = ==(zf, cf)
+==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
 
 +(a::ZeroField, b::AbstractField) = b
 +(a::AbstractField, b::ZeroField) = +(b, a)
