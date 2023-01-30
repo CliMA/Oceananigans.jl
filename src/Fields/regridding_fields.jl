@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
@@ -67,6 +67,15 @@ function we_can_regrid_in_y(a, target_grid, source_grid, b)
     return false
 end
 
+function we_can_regrid_in_x(a, target_grid, source_grid, b)
+    # Check that
+    #   1. source and target grid are in the same "class" and
+    #   2. source and target Field have same yz size
+    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+        size(a)[[2, 3]] === size(b)[[2, 3]] && return true
+
+    return false
+end
 
 function regrid!(a, target_grid, source_grid, b)
     arch = architecture(a)
@@ -118,22 +127,31 @@ end
         k₋_src = searchsortedfirst(source_z_faces, z₋)
         k₊_src = searchsortedfirst(source_z_faces, z₊) - 1
 
-        # Add contribution from all full cells in the integration range
-        @unroll for k_src = k₋_src:k₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+        if k₊_src <= k₋_src
+            # If the "last" face on the source grid is equal to or left
+            # of the "first" face on the source grid, the target cell
+            # lies entirely within the source cell j₊_src (ie, we are _refining_
+            # rather than coarse graining). In this case our job is easy:
+            # the target cell concentration is equal to the source concentration.
+            @inbounds target_field[i, j, k] = source_field[i_src, j_src, k₊_src]
+        else
+            # Add contribution from all full cells in the integration range
+            @unroll for k_src = k₋_src:k₊_src
+                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            end
+
+            zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
+            zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src+1, source_grid)
+
+            # Add contribution to integral from fractional bottom part,
+            # if that region is a part of the grid.
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, max(1, k₋_src - 1)] * (zk₋_src - z₋)
+
+            # Add contribution to integral from fractional top part
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, min(source_grid.Nz, k₊_src)] * (z₊ - zk₊_src)
+
+            @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
         end
-
-        zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
-        zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src+1, source_grid)
-
-        # Add contribution to integral from fractional bottom part,
-        # if that region is a part of the grid.
-        @inbounds target_field[i, j, k] += source_field[i_src, j_src, max(1, k₋_src - 1)] * (zk₋_src - z₋)
-
-        # Add contribution to integral from fractional top part
-        @inbounds target_field[i, j, k] += source_field[i_src, j_src, min(source_grid.Nz, k₊_src)] * (z₊ - zk₊_src)
-
-        @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 
@@ -155,31 +173,40 @@ end
         j₋_src = searchsortedfirst(source_y_faces, y₋)
         j₊_src = searchsortedfirst(source_y_faces, y₊) - 1
 
-        # Add contribution from all full cells in the integration range
-        @unroll for j_src = j₋_src:j₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Vᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+        if j₊_src <= j₋_src
+            # If the "last" face on the source grid is equal to or left
+            # of the "first" face on the source grid, the target cell
+            # lies entirely within the source cell j₊_src (ie, we are _refining_
+            # rather than coarse graining). In this case our job is easy:
+            # the target cell concentration is equal to the source concentration.
+            @inbounds target_field[i, j, k] = source_field[i_src, j₊_src, k_src]
+        else
+            # Add contribution from all full cells in the integration range
+            @unroll for j_src = j₋_src:j₊_src
+                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            end
+
+            yj₋_src = ynode(Center(), Face(), Center(), i_src, j₋_src,   k_src, source_grid)
+            yj₊_src = ynode(Center(), Face(), Center(), i_src, j₊_src+1, k_src, source_grid)
+
+            # Add contribution to integral from fractional left part,
+            # if that region is a part of the grid.
+            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
+            j_left = max(1, j₋_src - 1)
+            ϵ_left = (yj₋_src - y₋) / Δyᶜᶜᶜ(i_src, j_left, k_src, source_grid) 
+            @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * ϵ_left * Azᶜᶜᶜ(i_src, j_left, k_src, source_grid)
+
+            # Similar to above, add contribution to integral from fractional right part.
+            j_right = min(source_grid.Ny, j₊_src)
+            ϵ_right = (y₊ - yj₊_src) / Δyᶜᶜᶜ(i_src, j_right, k_src, source_grid) 
+            @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * ϵ_right * Azᶜᶜᶜ(i_src, j_right, k_src, source_grid)
+
+            @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
-
-        yj₋_src = ynode(Center(), Face(), Center(), i_src, j₋_src,   k_src, source_grid)
-        yj₊_src = ynode(Center(), Face(), Center(), i_src, j₊_src+1, k_src, source_grid)
-
-        # Add contribution to integral from fractional left part,
-        # if that region is a part of the grid.
-        # We approximate the volume of the fractional part by linearly interpolating the cell volume.
-        j_left = max(1, j₋_src - 1)
-        ϵ_left = (yj₋_src - y₋) / Δyᶜᶜᶜ(i_src, j_left, k_src) 
-        @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * (yj₋_src - y₋) * ϵ_left * Vᶜᶜᶜ(i_src, j_left, k_src, source_grid)
-
-        # Similar to above, add contribution to integral from fractional right part.
-        j_right = min(source_grid.Ny, j₊_src)
-        ϵ_right = (y₊ - yj₊_src) / Δyᶜᶜᶜ(i_src, j_right, k_src) 
-        @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * ϵ_right * Vᶜᶜᶜ(i_src, j_right, k_src, source_grid)
-
-        @inbounds target_field[i, j, k] /= Vᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 
-@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_y_faces)
+@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces)
     j, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -190,34 +217,53 @@ end
     @unroll for i = 1:target_grid.Nx
         @inbounds target_field[i, j, k] = 0
 
-        x₋ = ynode(Face(), Center(), Center(), i,   j, k, target_grid)
-        x₊ = ynode(Face(), Center(), Center(), i+1, j, k, target_grid)
-
         # Integrate source field from x₋ to x₊
+        x₋ = xnode(Face(), Center(), Center(), i,   j, k, target_grid)
+        x₊ = xnode(Face(), Center(), Center(), i+1, j, k, target_grid)
+
+        # The first face on the source grid that appears inside the target cell
         i₋_src = searchsortedfirst(source_x_faces, x₋)
+
+        # The last face on the source grid that appears inside the target cell
         i₊_src = searchsortedfirst(source_x_faces, x₊) - 1
 
-        # Add contribution from all full cells in the integration range
-        @unroll for i_src = i₋_src:i₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Vᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+        if i₊_src <= i₋_src
+            # If the "last" face on the source grid is equal to or left
+            # of the "first" face on the source grid, the target cell
+            # lies entirely within the source cell i₊_src (ie, we are _refining_
+            # rather than coarse graining). In this case our job is easy:
+            # the target cell concentration is equal to the source concentration.
+            @inbounds target_field[i, j, k] = source_field[i₊_src, j_src, k_src]
+        else
+            # Otherwise, our job is a little bit harder and we have to carefully, conservatively
+            # sum up all the contributions from the source field to the target cell.
+            
+            # First we add up all the contributions from all source cells that lie entirely within the target cell.
+            @unroll for i_src = i₋_src:i₊_src
+                @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+            end
+    
+            # Next, we add contributions from the "fractional" source cells on the right
+            # and left of the target cell.
+            xi₋_src = xnode(Face(), Center(), Center(), i₋_src,   j_src, k_src, source_grid)
+            xi₊_src = xnode(Face(), Center(), Center(), i₊_src+1, j_src, k_src, source_grid)
+    
+            # Add contribution to integral from fractional left part,
+            # if that region is a part of the grid.
+            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
+            i_left = max(1, i₋_src - 1)
+            ϵ_left = (xi₋_src - x₋) / Δxᶜᶜᶜ(i_left, j_src, k_src, target_grid) 
+            ϵ_left = max(zero(source_grid), ϵ_left)
+            @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * ϵ_left * Azᶜᶜᶜ(i_left, j_src, k_src, source_grid)
+    
+            # Similar to above, add contribution to integral from fractional right part.
+            i_right = min(source_grid.Nx, i₊_src)
+            ϵ_right = (x₊ - xi₊_src) / Δxᶜᶜᶜ(i_right, j_src, k_src, target_grid) 
+            ϵ_right = max(zero(source_grid), ϵ_right)
+            @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * ϵ_right * Azᶜᶜᶜ(i_right, j_src, k_src, source_grid)
+    
+            @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
-
-        xi₋_src = ynode(Face(), Center(), Center(), i₋_src,   j_src, k_src, source_grid)
-        xi₊_src = ynode(Face(), Center(), Center(), i₊_src+1, j_src, k_src, source_grid)
-
-        # Add contribution to integral from fractional left part,
-        # if that region is a part of the grid.
-        # We approximate the volume of the fractional part by linearly interpolating the cell volume.
-        i_left = max(1, i₋_src - 1)
-        ϵ_left = (xi₋_src - x₋) / Δxᶜᶜᶜ(i_left, j_src, k_src) 
-        @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * (xi₋_src - xi) * ϵ_left * Vᶜᶜᶜ(i_left, j_src, k_src, source_grid)
-
-        # Similar to above, add contribution to integral from fractional right part.
-        i_right = min(source_grid.Nx, i₊_src)
-        ϵ_right = (x₊ - xi₊_src) / Δxᶜᶜᶜ(i_right, j_src, k_src) 
-        @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * ϵ_right * Vᶜᶜᶜ(i_right, j_src, k_src, source_grid)
-
-        @inbounds target_field[i, j, k] /= Vᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 
