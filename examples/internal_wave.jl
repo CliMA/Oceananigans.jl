@@ -135,7 +135,7 @@ run!(simulation)
 # To animate a the propagating wavepacket we just simulated, we load CairoMakie
 # and make a Figure and an Axis for the animation,
 
-using GLMakie
+using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
 fig = Figure(resolution = (600, 600))
