@@ -230,7 +230,9 @@ function initialize_matrix(::CPU, template_field, linear_operator!, args...; bou
     A = spzeros(eltype(grid), Nx*Ny*Nz, Nx*Ny*Nz)
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
-    boundary_conditions === nothing && FieldBoundaryConditions(grid, loc, template_field.indices)
+    if boundary_conditions === nothing
+        boundary_conditions = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
 
     eᵢⱼₖ = Field(loc, grid; boundary_conditions)
     ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
@@ -255,7 +257,9 @@ function initialize_matrix(::GPU, template_field, linear_operator!, args...; bou
 
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
-    boundary_conditions === nothing && FieldBoundaryConditions(grid, loc, template_field.indices)
+    if boundary_conditions === nothing
+        boundary_conditions = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
 
     eᵢⱼₖ = Field(loc, grid; boundary_conditions)
     ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
