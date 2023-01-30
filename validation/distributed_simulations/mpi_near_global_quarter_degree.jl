@@ -85,6 +85,7 @@ using Oceananigans.Distributed: partition_global_array
 
 bathymetry = file_bathymetry["bathymetry"]
 bathymetry = partition_global_array(arch, bathymetry, N)
+bathymetry = arch_array(CPU(), bathymetry)
 
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
