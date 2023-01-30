@@ -76,12 +76,13 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
-    size_x   = fill_halo_size(c, fill_west_and_east_halo!, indices, bcs.west, loc, grid)
-    offset_x = fill_halo_offset(size, fill_west_and_east_halo!, indices)
-    size_y   = fill_halo_size(c, fill_south_and_north_halo!, indices, bcs.south, loc, grid)
-    offset_y = fill_halo_offset(size, fill_south_and_north_halo!, indices)
-    size_z   = fill_halo_size(c, fill_top_and_bottom_halo!, indices, bcs.bottom, loc, grid)
-    offset_z = fill_halo_offset(size, fill_top_and_bottom_halo!, indices)
+    size_x = fill_halo_size(c, fill_west_and_east_halo!,   indices, bcs.west,   loc, grid)
+    size_y = fill_halo_size(c, fill_south_and_north_halo!, indices, bcs.south,  loc, grid)
+    size_z = fill_halo_size(c, fill_top_and_bottom_halo!,  indices, bcs.bottom, loc, grid)
+
+    offset_x = fill_halo_offset(size_x, fill_west_and_east_halo!,   indices)
+    offset_y = fill_halo_offset(size_y, fill_south_and_north_halo!, indices)
+    offset_z = fill_halo_offset(size_z, fill_top_and_bottom_halo!,   indices)
 
     x_events_requests =   fill_west_and_east_halos!(c, bcs.west,   bcs.east,  size_x, offset_x, loc, arch, barrier, grid, args...; kwargs...)
     y_events_requests = fill_south_and_north_halos!(c, bcs.south,  bcs.north, size_y, offset_y, loc, arch, barrier, grid, args...; kwargs...)
