@@ -49,10 +49,10 @@ function partition_global_array(arch, c_global::AbstractArray, N)
     dims = length(size(c_global))
 
     if dims == 2 
-        nx, ny = n = Int.(N ./ R[1:2])
+        nx, ny = n = Int.(N[1:2] ./ R[1:2])
 
         c_local = zeros(eltype(c_global), nx, ny)
-    
+
         c_local .= c_global[1 + (ri-1) * nx : nx * ri, 
                             1 + (rj-1) * ny : ny * rj]
     
