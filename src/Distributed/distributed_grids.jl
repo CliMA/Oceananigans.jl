@@ -22,7 +22,8 @@ const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:D
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
-function RectilinearGrid(arch::MultiArch, FT = Float64;
+function RectilinearGrid(arch::MultiArch, 
+                         FT::DataType = Float64;
                          size,
                          x = nothing,
                          y = nothing,
@@ -72,8 +73,10 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
+using Oceananigans.Grids: R_Earth
+
 function LatitudeLongitudeGrid(arch::MultiArch,
-                               FT = Float64; 
+                               FT::DataType = Float64; 
                                precompute_metrics = false,
                                size,
                                latitude,
