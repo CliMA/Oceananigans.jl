@@ -4,6 +4,7 @@ using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elem
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.Grids: R_Earth
 
 using Oceananigans.ImmersedBoundaries
 
@@ -73,27 +74,26 @@ function RectilinearGrid(arch::MultiArch,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
-using Oceananigans.Grids: R_Earth
-
 function LatitudeLongitudeGrid(arch::MultiArch,
                                FT::DataType = Float64; 
                                precompute_metrics = false,
                                size,
                                latitude,
                                longitude,
-                               z,                      
+                               z,           
+                               topology = nothing,           
                                radius = R_Earth,
                                halo = (1, 1, 1))
 
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
-        validate_lat_lon_grid_args(latitude, longitude, size, halo)
-
+    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
+        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
+    
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
-    TX = insert_connected_topology(topo[1], Rx, ri)
-    TY = insert_connected_topology(topo[2], Ry, rj)
-    TZ = insert_connected_topology(topo[3], Rz, rk)
+    TX = insert_connected_topology(topology[1], Rx, ri)
+    TY = insert_connected_topology(topology[2], Ry, rj)
+    TZ = insert_connected_topology(topology[3], Rz, rk)
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
@@ -103,8 +103,8 @@ function LatitudeLongitudeGrid(arch::MultiArch,
 
     nλ, nφ, nz = local_size = Nλ÷Rx, Nφ÷Ry, Nz÷Rz
 
-    λl = partition(longitude, nx, Rx, ri)
-    φl = partition(latitude,  ny, Ry, rj)
+    λl = partition(longitude, nλ, Rx, ri)
+    φl = partition(latitude,  nφ, Ry, rj)
     zl = partition(z,         nz, Rz, rk)
 
     # Calculate all direction (which might be stretched)
@@ -114,10 +114,10 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, nφ, Hφ, φl, arch.child_architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, nz, Hz, zl, arch.child_architecture)
 
-    architecture = MultiArch(child_architecture(arch), grid = grid, ranks = arch.ranks, communicator = arch.communicator)
+    architecture = MultiArch(child_architecture(arch), topology = topology, ranks = arch.ranks, communicator = arch.communicator)
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
-                                                         Nλ, Nφ, Nz,
+                                                         nλ, nφ, nz,
                                                          Hλ, Hφ, Hz,
                                                          Lλ, Lφ, Lz,
                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,

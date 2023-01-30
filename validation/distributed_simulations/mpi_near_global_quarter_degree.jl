@@ -84,7 +84,7 @@ end
 using Oceananigans.Distributed: partition_global_array
 
 bathymetry = file_bathymetry["bathymetry"]
-bathymetry = partition_global_array(arch, bathymetry[:, :], N)
+bathymetry = partition_global_array(arch, bathymetry, N)
 
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
@@ -111,11 +111,11 @@ z_faces = file_z_faces["z_faces"][3:end]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-τˣ = partition_global_array(arch, - τˣ, N)
-τʸ = partition_global_array(arch, - τʸ, N)
+τˣ = partition_global_array(arch, - τˣ, (N[1:2]..., 12))
+τʸ = partition_global_array(arch, - τʸ, (N[1:2]..., 12))
 
-target_sea_surface_temperature = T★ = partition_global_array(arch, T★, N)
-target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, N)
+target_sea_surface_temperature = T★ = partition_global_array(arch, T★, (N[1:2]..., 12))
+target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, (N[1:2]..., 12))
 
 #####
 ##### Physics and model setup
@@ -124,7 +124,7 @@ target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, N)
 νz = 5e-3
 κz = 1e-4
 
-convective_adjustment  = RiBasedDiffusivity()
+convective_adjustment  = RiBasedVerticalDiffusivity()
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
      
 tracer_advection   = WENO(underlying_grid)
@@ -219,7 +219,6 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc, immersed = v_immersed_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
-
 
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Grids: min_Δx, min_Δy
