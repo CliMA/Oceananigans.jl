@@ -23,8 +23,8 @@ and `arch`itecture.
 """
 function assemble(c_local::AbstractVector, Nc, Nr, r, arch) 
     c_global = zeros(eltype(c_local), Nc*Nr+1)
-    c_global[1 + (r-1) * Nc : Nc * r] .= c[1:end-1]
-    r == Nr && (c_global[end] = c[end])
+    c_global[1 + (r-1) * Nc : Nc * r] .= c_local[1:end-1]
+    r == Nr && (c_global[end] = c_local[end])
 
     MPI.Allreduce!(c_global, +, arch.communicator)
 
