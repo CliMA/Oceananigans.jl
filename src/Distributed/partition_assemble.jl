@@ -48,7 +48,7 @@ function partition_global_array(arch, c_global::AbstractArray, N)
 
     dims = length(size(c_global))
 
-    if length(dims) == 2 
+    if dims == 2 
         nx, ny = n = Int.(N ./ R[1:2])
 
         c_local = zeros(eltype(c_global), nx, ny)
@@ -85,7 +85,7 @@ function reconstruct_global_array(arch, c_local::AbstractArray, n)
 
     dims = length(size(c_local))
 
-    if length(dims) == 2 
+    if dims == 2 
         nx, ny = n
         Nx, Ny = N = Int.(n .* R[1:2])
     
