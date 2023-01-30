@@ -4,7 +4,7 @@ using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elem
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth
+using Oceananigans.Grids: R_Earth, metrics_precomputed
 
 using Oceananigans.ImmersedBoundaries
 
@@ -76,7 +76,7 @@ end
 
 function LatitudeLongitudeGrid(arch::MultiArch,
                                FT::DataType = Float64; 
-                               precompute_metrics = false,
+                               precompute_metrics = true,
                                size,
                                latitude,
                                longitude,
@@ -206,6 +206,8 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, Nφ, Hφ, φG, child_arch)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, Nz, Hz, zG, child_arch)
 
+    precompute_metrics = metrics_precomputed(grid)
+
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(child_arch,
                                                          Nλ, Nφ, Nz,
                                                          Hλ, Hφ, Hz,
@@ -213,7 +215,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                          Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., radius)
+                                                         (nothing for i=1:10)..., grid.radius)
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
