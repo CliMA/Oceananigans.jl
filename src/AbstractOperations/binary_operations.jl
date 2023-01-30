@@ -192,19 +192,23 @@ end
 #####
 
 import Base: +, -, *, /, ==
-using Oceananigans.Fields: ZeroField
+using Oceananigans.Fields: ZeroField, ConstantField
 
 ==(::ZeroField, ::ZeroField) = true
+==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
+
+==(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
+==(cf::ConstantField, zf::ZeroField) = ==(zf, cf)
 
 +(a::ZeroField, b::AbstractField) = b
 +(a::AbstractField, b::ZeroField) = +(b, a)
-+(a::ZeroField, b::Number) = b
++(a::ZeroField, b::Number) = ConstantField(b)
 +(a::Number, b::ZeroField) = +(b, a)
 
 -(a::ZeroField, b::AbstractField) = -b
 -(b::AbstractField, a::ZeroField) = b
--(a::ZeroField, b::Number) = -b
--(b::Number, a::ZeroField) = b
+-(a::ZeroField, b::Number) = ConstantField(-b)
+-(b::Number, a::ZeroField) = ConstantField(b)
 
 *(a::ZeroField, b::AbstractField) = a
 *(b::AbstractField, a::ZeroField) = *(a, b)
@@ -212,9 +216,9 @@ using Oceananigans.Fields: ZeroField
 *(b::Number, a::ZeroField) = *(a, b)
 
 /(a::ZeroField, b::AbstractField) = a
-/(b::AbstractField, a::ZeroField) = Inf
+/(b::AbstractField, a::ZeroField) = ConstantField(Inf)
 /(a::ZeroField, b::Number) = a
-/(b::Number, a::ZeroField) = Inf
+/(b::Number, a::ZeroField) = ConstantField(Inf)
 
 
 #####
