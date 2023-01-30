@@ -135,7 +135,7 @@ run!(simulation)
 # To animate a the propagating wavepacket we just simulated, we load CairoMakie
 # and make a Figure and an Axis for the animation,
 
-using CairoMakie
+using GLMakie
 set_theme!(Theme(fontsize = 24))
 
 fig = Figure(resolution = (600, 600))
@@ -175,7 +175,7 @@ frames = 1:length(w_timeseries.times)
 
 @info "Animating a propagating internal wave..."
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
+record(fig, "internal_wave.mp4", frames, framerate=8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i
