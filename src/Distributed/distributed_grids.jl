@@ -173,7 +173,7 @@ end
 function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     arch = grid.architecture
-    i, j, k = arch.local_index
+    ri, rj, rk = arch.local_index
 
     Rx, Ry, Rz = R = arch.ranks
 
@@ -191,9 +191,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     φ = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    λG = assemble(λ, nλ, Rx, i, arch)
-    φG = assemble(φ, nφ, Ry, j, arch)
-    zG = assemble(z, nz, Rz, k, arch)
+    λG = assemble(λ, nλ, Rx, ri, arch)
+    φG = assemble(φ, nφ, Ry, rj, arch)
+    zG = assemble(z, nz, Rz, rk, arch)
 
     child_arch = child_architecture(arch)
 
