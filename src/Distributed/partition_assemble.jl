@@ -86,8 +86,8 @@ function reconstruct_global_array(arch, c_local::AbstractArray, n)
     dims = length(size(c_local))
 
     if dims == 2 
-        nx, ny = n
-        Nx, Ny = N = Int.(n .* R[1:2])
+        nx, ny = n[1:2]
+        Nx, Ny = N = Int.(n[1:2] .* R[1:2])
     
         c_global = zeros(eltype(c_local), Nx, Ny)
     
