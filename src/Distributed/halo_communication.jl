@@ -6,7 +6,11 @@ import Oceananigans.Fields: tupled_fill_halo_regions!
 using Oceananigans.BoundaryConditions:
     fill_west_and_east_halo!, 
     fill_south_and_north_halo!,
-    fill_bottom_and_top_halo!
+    fill_bottom_and_top_halo!,
+    fill_halo_size,
+    fill_halo_offset
+
+
 
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!,
@@ -72,10 +76,16 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch    = architecture(grid)
     barrier = Event(device(child_architecture(arch)))
 
-    offset = (0, 0)
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, :xz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, :xy, offset, loc, arch, barrier, grid, args...; kwargs...)
+    size_x   = fill_halo_size(c, fill_west_and_east_halo!, indices, bcs.west, loc, grid)
+    offset_x = fill_halo_offset(size, fill_west_and_east_halo!, indices)
+    size_y   = fill_halo_size(c, fill_south_and_north_halo!, indices, bcs.south, loc, grid)
+    offset_y = fill_halo_offset(size, fill_south_and_north_halo!, indices)
+    size_z   = fill_halo_size(c, fill_top_and_bottom_halo!, indices, bcs.bottom, loc, grid)
+    offset_z = fill_halo_offset(size, fill_top_and_bottom_halo!, indices)
+
+    x_events_requests =   fill_west_and_east_halos!(c, bcs.west,   bcs.east,  size_x, offset_x, loc, arch, barrier, grid, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south,  bcs.north, size_y, offset_y, loc, arch, barrier, grid, args...; kwargs...)
+    z_events_requests =  fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top,   size_z, offset_z, loc, arch, barrier, grid, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
