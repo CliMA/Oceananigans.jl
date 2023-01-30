@@ -222,13 +222,18 @@ end
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
-function initialize_matrix(::CPU, template_field, linear_operator!, args...)
+function initialize_matrix(::CPU, template_field, linear_operator!, args...; boundary_conditions=nothing)
+    loc = location(template_field)
     Nx, Ny, Nz = size(template_field)
-    A = spzeros(eltype(template_field.grid), Nx*Ny*Nz, Nx*Ny*Nz)
+    grid = template_field.grid
+
+    A = spzeros(eltype(grid), Nx*Ny*Nz, Nx*Ny*Nz)
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
-    eᵢⱼₖ = similar(template_field)
-    ∇²eᵢⱼₖ = similar(template_field)
+    boundary_conditions === nothing && FieldBoundaryConditions(grid, loc, template_field.indices)
+
+    eᵢⱼₖ = Field(loc, grid; boundary_conditions)
+    ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
 
     for k = 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ) .= 0
@@ -243,16 +248,19 @@ function initialize_matrix(::CPU, template_field, linear_operator!, args...)
     return A
 end
 
-function initialize_matrix(::GPU, template_field, linear_operator!, args...)
+function initialize_matrix(::GPU, template_field, linear_operator!, args...; boundary_conditions=nothing)
+    loc = location(template_field)
     Nx, Ny, Nz = size(template_field)
     FT = eltype(template_field.grid)
 
     make_column(f) = reshape(interior(f), Nx*Ny*Nz)
 
-    eᵢⱼₖ = similar(template_field)
-    ∇²eᵢⱼₖ = similar(template_field)
+    boundary_conditions === nothing && FieldBoundaryConditions(grid, loc, template_field.indices)
 
-    colptr = CuArray{Int}(undef, Nx*Ny*Nz+1)
+    eᵢⱼₖ = Field(loc, grid; boundary_conditions)
+    ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
+
+    colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
     rowval = CuArray{Int}(undef, 0)
     nzval  = CuArray{FT}(undef, 0)
 
