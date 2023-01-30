@@ -350,9 +350,9 @@ end
 ##### << Spacings >>
 #####
 
-@inline xspacing(i, j, k, grid, LX, LY, LZ) = xspacing(i, grid, LX)
-@inline yspacing(i, j, k, grid, LX, LY, LZ) = yspacing(i, grid, LY)
-@inline zspacing(i, j, k, grid, LX, LY, LZ) = zspacing(i, grid, LZ)
+@inline xspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xspacing(i, grid, LX)
+@inline yspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = yspacing(i, grid, LY)
+@inline zspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = zspacing(i, grid, LZ)
 
 @inline xspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xspacings(grid, LX; kwargs...)
 @inline yspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LY; kwargs...)

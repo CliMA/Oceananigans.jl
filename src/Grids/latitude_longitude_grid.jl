@@ -596,6 +596,17 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 ##### Grid spacings
 #####
 
+@inline _zspacings(grid::LatitudeLongitudeGrid, LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegLatLonGrid,        LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline _zspacings(grid::LatitudeLongitudeGrid, LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegLatLonGrid,        LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
+
+zspacings(grid::LatitudeLongitudeGrid, LZ::CellLocation; kwargs...) = topology(grid)[3] == Flat ? Inf : _zspacings(grid, LZ; kwargs...)
+
+@inline zspacing(k, grid::LatitudeLongitudeGrid, LZ::CellLocation) = zspacings(grid, LZ, with_halos=true)[k]
+@inline zspacing(k, grid::ZRegLatLonGrid,        LZ::CellLocation) = zspacings(grid, LZ, with_halos=true)
+
+
 function min_Δx(grid::LatitudeLongitudeGrid)
     if topology(grid)[1] == Flat
         return Inf
