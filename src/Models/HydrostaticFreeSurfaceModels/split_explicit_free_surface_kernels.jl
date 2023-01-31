@@ -185,10 +185,10 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
             η̅, U̅, V̅, averaging_weight, 
             Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ, timestepper, offsets)
 
-    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_1!, args...;
+    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!, args...;
             dependencies=Event(device(arch)))
 
-    event = launch!(arch, grid, kernel_size, split_explicit_free_surface_substep_kernel_2!, args...;
+    event = launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...;
             dependencies=event)
 
     wait(device(arch), event)
