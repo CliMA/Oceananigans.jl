@@ -245,6 +245,11 @@ function with_halo(new_halo, grid::DistributedGrid)
     return scatter_local_grids(architecture(grid), new_grid)
 end
 
+function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
+    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
+    return scatter_local_grids(architecture(grid), new_grid)
+end
+
 """ 
     scatter_grid_properties(global_grid)
 
