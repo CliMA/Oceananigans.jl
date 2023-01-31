@@ -1,14 +1,6 @@
-using Oceananigans.BoundaryConditions
+using Oceananigans.BoundaryConditions: HaloCommunicationBoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 import Oceananigans.BoundaryConditions: bc_str
-
-struct HaloCommunication <: AbstractBoundaryConditionClassification end
-
-const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
-
-bc_str(::HaloCommunicationBC) = "HaloCommunication"
-
-HaloCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(HaloCommunication, val; kwargs...)
 
 struct HaloCommunicationRanks{F, T}
     from :: F

@@ -82,18 +82,21 @@ const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const CBC  = BoundaryCondition{<:Communication}
+const HBC  = BoundaryCondition{<:HaloCommunication}
 
 # More readable BC constructors for the public API.
-    PeriodicBoundaryCondition()  = BoundaryCondition(Periodic,      nothing)
-      NoFluxBoundaryCondition()  = BoundaryCondition(Flux,          nothing)
-ImpenetrableBoundaryCondition()  = BoundaryCondition(Open,          nothing)
-CommunicationBoundaryCondition() = BoundaryCondition(Communication, nothing)
+         PeriodicBoundaryCondition() = BoundaryCondition(Periodic,          nothing)
+           NoFluxBoundaryCondition() = BoundaryCondition(Flux,              nothing)
+     ImpenetrableBoundaryCondition() = BoundaryCondition(Open,              nothing)
+    CommunicationBoundaryCondition() = BoundaryCondition(Communication,     nothing)
+HaloCommunicationBoundaryCondition() = BoundaryCondition(HaloCommunication, nothing)
 
-     FluxBoundaryCondition(val; kwargs...)     = BoundaryCondition(Flux, val; kwargs...)
-    ValueBoundaryCondition(val; kwargs...)     = BoundaryCondition(Value, val; kwargs...)
- GradientBoundaryCondition(val; kwargs...)     = BoundaryCondition(Gradient, val; kwargs...)
-     OpenBoundaryCondition(val; kwargs...)     = BoundaryCondition(Open, val; kwargs...)
-CommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Communication, val; kwargs...)
+             FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
+            ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
+         GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
+             OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
+    CommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Communication, val; kwargs...)
+HaloCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(HaloCommunication, val; kwargs...)
 
 # Support for various types of boundary conditions.
 #

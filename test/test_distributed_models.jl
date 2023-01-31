@@ -25,7 +25,7 @@ using MPI
 
 # to initialize MPI.
 
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!, HBC
 using Oceananigans.Distributed: MultiArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
 
 # Right now just testing with 4 ranks!
@@ -294,12 +294,12 @@ function test_triply_periodic_bc_injection_with_411_ranks()
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test fbcs.east isa HaloCommunicationBC
-        @test fbcs.west isa HaloCommunicationBC
-        @test !isa(fbcs.north, HaloCommunicationBC)
-        @test !isa(fbcs.south, HaloCommunicationBC)
-        @test !isa(fbcs.top, HaloCommunicationBC)
-        @test !isa(fbcs.bottom, HaloCommunicationBC)
+        @test fbcs.east isa HBC
+        @test fbcs.west isa HBC
+        @test !isa(fbcs.north, HBC)
+        @test !isa(fbcs.south, HBC)
+        @test !isa(fbcs.top, HBC)
+        @test !isa(fbcs.bottom, HBC)
     end
 end
 
@@ -311,12 +311,12 @@ function test_triply_periodic_bc_injection_with_141_ranks()
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test !isa(fbcs.east, HaloCommunicationBC)
-        @test !isa(fbcs.west, HaloCommunicationBC)
-        @test fbcs.north isa HaloCommunicationBC
-        @test fbcs.south isa HaloCommunicationBC
-        @test !isa(fbcs.top, HaloCommunicationBC)
-        @test !isa(fbcs.bottom, HaloCommunicationBC)
+        @test !isa(fbcs.east, HBC)
+        @test !isa(fbcs.west, HBC)
+        @test fbcs.north isa HBC
+        @test fbcs.south isa HBC
+        @test !isa(fbcs.top, HBC)
+        @test !isa(fbcs.bottom, HBC)
     end
 end
 
@@ -328,12 +328,12 @@ function test_triply_periodic_bc_injection_with_114_ranks()
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test !isa(fbcs.east, HaloCommunicationBC)
-        @test !isa(fbcs.west, HaloCommunicationBC)
-        @test !isa(fbcs.north, HaloCommunicationBC)
-        @test !isa(fbcs.south, HaloCommunicationBC)
-        @test fbcs.top isa HaloCommunicationBC
-        @test fbcs.bottom isa HaloCommunicationBC
+        @test !isa(fbcs.east, HBC)
+        @test !isa(fbcs.west, HBC)
+        @test !isa(fbcs.north, HBC)
+        @test !isa(fbcs.south, HBC)
+        @test fbcs.top isa HBC
+        @test fbcs.bottom isa HBC
     end
 end
 
@@ -345,12 +345,12 @@ function test_triply_periodic_bc_injection_with_221_ranks()
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test fbcs.east isa HaloCommunicationBC
-        @test fbcs.west isa HaloCommunicationBC
-        @test fbcs.north isa HaloCommunicationBC
-        @test fbcs.south isa HaloCommunicationBC
-        @test !isa(fbcs.top, HaloCommunicationBC)
-        @test !isa(fbcs.bottom, HaloCommunicationBC)
+        @test fbcs.east isa HBC
+        @test fbcs.west isa HBC
+        @test fbcs.north isa HBC
+        @test fbcs.south isa HBC
+        @test !isa(fbcs.top, HBC)
+        @test !isa(fbcs.bottom, HBC)
     end
 end
 

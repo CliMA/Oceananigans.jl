@@ -96,7 +96,13 @@ end
 
 const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
 const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
+const HBCT = Union{HBC, NTuple{<:Any, <:HBC}}
 
+fill_first(bc1::HBCT, bc2)       = false
+fill_first(bc1::PBCT, bc2::HBCT) = false
+fill_first(bc1::HBCT, bc2::PBCT) = true
+fill_first(bc1, bc2::HBCT)       = true
+fill_first(bc1::HBCT, bc2::HBCT) = true
 fill_first(bc1::PBCT, bc2)       = false
 fill_first(bc1::CBCT, bc2)       = false
 fill_first(bc1::PBCT, bc2::CBCT) = false

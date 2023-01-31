@@ -64,6 +64,13 @@ struct Open <: AbstractBoundaryConditionClassification end
 """
     struct Communication <: AbstractBoundaryConditionClassification
 
-A classification specifying a communicating boundary condition
+A classification specifying a shared memory communicating boundary condition
 """
 struct Communication <: AbstractBoundaryConditionClassification end
+
+"""
+    struct HaloCommunication <: AbstractBoundaryConditionClassification
+
+A classification specifying a distributed memory communicating boundary condition 
+"""
+struct HaloCommunication <: AbstractBoundaryConditionClassification end
