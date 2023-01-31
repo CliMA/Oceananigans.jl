@@ -35,7 +35,7 @@ const μ = 1.0 - δ - γ - ϵ
 #
 #   `δxᶜᵃᵃ_U` : Hardcodes NoPenetration or Periodic boundary conditions for the zonal barotropic velocity U in x direction 
 #   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for the meridional barotropic velocity V in y direction
-#
+
 # 
 @inline δxᶠᵃᵃ_η(i, j, k, grid, T, f::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, f, args...)
 @inline δyᵃᶠᵃ_η(i, j, k, grid, T, f::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, f, args...)
@@ -196,7 +196,6 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-
 @kernel function barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)	
 
