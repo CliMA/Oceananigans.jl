@@ -9,7 +9,9 @@ import Oceananigans.Architectures: architecture
 "Boolean denoting whether AMGX.jl can be loaded on machine."
 const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
 
-mutable struct MultigridSolver{A, G, L, T, F, R, M} 
+abstract type MultigridSolver{A, G, L, T, F} end
+
+mutable struct MultigridCPUSolver{A, G, L, T, F, R, M} <: MultigridSolver{A, G, L, T, F}
                   architecture :: A
                           grid :: G
                         matrix :: L
@@ -18,8 +20,20 @@ mutable struct MultigridSolver{A, G, L, T, F, R, M}
                        maxiter :: Int
                        x_array :: F
                        b_array :: F
-                    amg_solver :: R
+                 amg_algorithm :: R
                             ml :: M
+end
+
+mutable struct MultigridGPUSolver{A, G, L, T, F, S} <: MultigridSolver{A, G, L, T, F}
+                  architecture :: A
+                          grid :: G
+                        matrix :: L
+                        abstol :: T
+                        reltol :: T
+                       maxiter :: Int
+                       x_array :: F
+                       b_array :: F
+                   amgx_solver :: S
 end
 
 mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
@@ -30,10 +44,8 @@ mutable struct AMGXMultigridSolver{C, R, S, M, V, A}
                        device_x :: V
                        device_b :: V
                      csr_matrix :: A
-end
 
-const MultigridCPUSolver = MultigridSolver{CPU}
-const MultigridGPUSolver = MultigridSolver{GPU}
+end
 
 architecture(solver::MultigridSolver) = solver.architecture
     
@@ -75,8 +87,8 @@ Arguments
                     The iteration stops when `norm(A * x - b) < max(reltol * norm(b), abstol)`.
 
 * `amg_algorithm`: Algebraic Multigrid algorithm defining mapping between different grid spacings.
-                   Options are `:Classical` (default, using a RugeStuben algorithm) or `:Aggregation`
-                   (using a Smoothed and Unsmoothed Aggregation algorithm with V Cycle on `CPU` and `GPU`, respectively).
+                   Options are `RugeStubenAMG()` (default) or `SmoothedAggregationAMG()`.
+                   Note: This keyword is relevant *only* on the CPU.
 """
 function MultigridSolver(linear_operation!::Function,
                          args...;
@@ -84,7 +96,7 @@ function MultigridSolver(linear_operation!::Function,
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = :Classical,
+                         amg_algorithm = RugeStubenAMG(),
                          )
 
     arch = architecture(template_field)
@@ -101,7 +113,7 @@ function MultigridSolver(matrix;
                          maxiter = prod(size(template_field)),
                          reltol = sqrt(eps(eltype(template_field.grid))),
                          abstol = 0,
-                         amg_algorithm = :Classical,
+                         amg_algorithm = RugeStubenAMG(),
                          )
 
     arch = architecture(template_field)
@@ -130,26 +142,19 @@ function MultigridSolver_on_architecture(::CPU;
                                          x_array,
                                          b_array
                                          )
+    ml = create_multilevel(amg_algorithm, matrix)
 
-    if amg_algorithm == :Classical
-        algorithm = RugeStubenAMG()
-    else
-        algorithm = SmoothedAggregationAMG()
-    end
-
-    ml = create_multilevel(algorithm, matrix)
-
-    return MultigridSolver(CPU(),
-                          template_field.grid,
-                          matrix,
-                          abstol,
-                          reltol,
-                          maxiter,
-                          x_array,
-                          b_array,
-                          amg_algorithm,
-                          ml
-                          )
+    return MultigridCPUSolver(CPU(),
+                              template_field.grid,
+                              matrix,
+                              abstol,
+                              reltol,
+                              maxiter,
+                              x_array,
+                              b_array,
+                              amg_algorithm,
+                              ml
+                              )
 end
 
 function MultigridSolver_on_architecture(::GPU;
@@ -163,9 +168,9 @@ function MultigridSolver_on_architecture(::GPU;
                                          b_array
                                          )
 
-    amg_solver = AMGXMultigridSolver(matrix; maxiter, reltol, abstol)
+    amgx_solver = AMGXMultigridSolver(matrix, maxiter, reltol, abstol)
 
-    return MultigridSolver(GPU(),
+    return MultigridGPUSolver(GPU(),
                               template_field.grid,
                               matrix,
                               abstol,
@@ -173,36 +178,26 @@ function MultigridSolver_on_architecture(::GPU;
                               maxiter,
                               x_array,
                               b_array,
-                              amg_solver,
-                              nothing
+                              amgx_solver
                               )
 end
 
-function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Aggregation, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
+function AMGXMultigridSolver(matrix::CuSparseMatrixCSC, maxiter = 1, reltol = sqrt(eps(eltype(matrix))), abstol = 0)
     tolerance, convergence = reltol == 0 ? (abstol, "ABSOLUTE") : (reltol, "RELATIVE_INI_CORE")
-    algorithm = algorithm == :Classical ? "CLASSICAL" : "AGGREGATION"
     try
-        global config = AMGX.Config(Dict("monitor_residual"  => 1, 
-                                         "max_iters"         => maxiter, 
-                                         "store_res_history" => 1, 
-                                         "tolerance"         => tolerance, 
-                                         "convergence"       => convergence))
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
     catch e 
         @info "It appears you are using the multigrid solver on GPU. Have you called `initialize_AMGX()`?"
         AMGX.initialize()
         AMGX.initialize_plugins()
-        global config = AMGX.Config(Dict("monitor_residual"  => 1, 
-                                         "max_iters"         => maxiter, 
-                                         "store_res_history" => 1,
-                                         "tolerance"         => tolerance, 
-                                         "convergence"       => convergence))
+        global config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => maxiter, "store_res_history" => 1, "tolerance" => tolerance, "convergence" => convergence))
     end
-    resources     = AMGX.Resources(config)
-    solver        = AMGX.Solver(resources, AMGX.dDDI, config)
+    resources = AMGX.Resources(config)
+    solver = AMGX.Solver(resources, AMGX.dDDI, config)
     device_matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
-    device_b      = AMGX.AMGXVector(resources, AMGX.dDDI)
-    device_x      = AMGX.AMGXVector(resources, AMGX.dDDI)
-    csr_matrix    = CuSparseMatrixCSR(transpose(matrix))
+    device_b = AMGX.AMGXVector(resources, AMGX.dDDI)
+    device_x = AMGX.AMGXVector(resources, AMGX.dDDI)
+    csr_matrix = CuSparseMatrixCSR(transpose(matrix))
     
     @inline subtract_one(x) = x - oneunit(x)
     
@@ -224,7 +219,7 @@ function AMGXMultigridSolver(matrix::CuSparseMatrixCSC; algorithm = :Aggregation
                                )
 end
 
-@inline create_multilevel(::RugeStubenAMG, A)          = ruge_stuben(A)
+@inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
 
 function initialize_matrix(::CPU, template_field, linear_operator!, args...)
@@ -311,7 +306,7 @@ function solve!(x, solver::MultigridGPUSolver, b; kwargs...)
     solver.b_array .= reshape(interior(b), Nx * Ny * Nz)
     solver.x_array .= reshape(interior(x), Nx * Ny * Nz)
 
-    s = solver.amg_solver
+    s = solver.amgx_solver
     AMGX.upload!(s.device_b, solver.b_array)
     AMGX.upload!(s.device_x, solver.x_array)
     AMGX.solve!(s.device_x, s.solver, s.device_b)
@@ -354,6 +349,7 @@ end
 
 finalize_AMGX(::CPU) = nothing
 
+
 function finalize_solver!(s::AMGXMultigridSolver)
     @info "Finalizing the AMGX Multigrid solver on GPU"
     close(s.device_matrix)
@@ -366,7 +362,7 @@ function finalize_solver!(s::AMGXMultigridSolver)
     return nothing
 end
 
-finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amg_solver)
+finalize_solver!(solver::MultigridGPUSolver) = finalize_solver!(solver.amgx_solver)
 
 finalize_solver!(::MultigridCPUSolver) = nothing
 

@@ -156,7 +156,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CP
 
         unsafe_free!(constructors)
 
-        solver.ml = create_multilevel(solver.amg_solver, solver.matrix)
+        solver.ml = create_multilevel(solver.amg_algorithm, solver.matrix)
 
         implicit_free_surface_solver.previous_Δt = Δt
     end
@@ -178,13 +178,13 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GP
 
         unsafe_free!(constructors)
 
-        s = solver.amg_solver
-        solver.amg_solver.csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
+        s = solver.amgx_solver
+        solver.amgx_solver.csr_matrix = CuSparseMatrixCSR(transpose(solver.matrix))
         @inline subtract_one(x) = x - oneunit(x)
         AMGX.upload!(s.device_matrix, 
-                     map(subtract_one, solver.amg_solver.csr_matrix.rowPtr),
-                     map(subtract_one, solver.amg_solver.csr_matrix.colVal),
-                     solver.amg_solver.csr_matrix.nzVal
+                     map(subtract_one, solver.amgx_solver.csr_matrix.rowPtr),
+                     map(subtract_one, solver.amgx_solver.csr_matrix.colVal),
+                     solver.amgx_solver.csr_matrix.nzVal
                      )
         AMGX.setup!(s.solver, s.device_matrix)
 
