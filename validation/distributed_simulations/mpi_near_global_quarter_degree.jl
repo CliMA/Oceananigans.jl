@@ -116,11 +116,11 @@ bathymetry = bathymetry[1 + nx * rank : (rank + 1) * nx, :]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-τˣ = - τˣ[1 + nx * rank : (rank + 1) * nx, :, :]
-τʸ = - τʸ[1 + nx * rank : (rank + 1) * nx, :, :]
+τˣ = arch_array(child_arch, - τˣ[1 + nx * rank : (rank + 1) * nx, :, :])
+τʸ = arch_array(child_arch, - τʸ[1 + nx * rank : (rank + 1) * nx, :, :])
 
-target_sea_surface_temperature = T★ = T★[1 + nx * rank : (rank + 1) * nx, :, :]
-target_sea_surface_salinity    = S★ = S★[1 + nx * rank : (rank + 1) * nx, :, :]
+target_sea_surface_temperature = T★ = arch_array(child_arch, T★[1 + nx * rank : (rank + 1) * nx, :, :])
+target_sea_surface_salinity    = S★ = arch_array(child_arch, S★[1 + nx * rank : (rank + 1) * nx, :, :])
 
 #####
 ##### Physics and model setup
