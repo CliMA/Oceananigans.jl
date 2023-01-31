@@ -212,9 +212,11 @@ function computation_including_boundaries(arch)
     model = NonhydrostaticModel(grid=grid)
 
     u, v, w = model.velocities
-    @. u.data = 1 + rand()
-    @. v.data = 2 + rand()
-    @. w.data = 3 + rand()
+    CUDA.@allowscalar begin
+        @. u.data = 1 + rand()
+        @. v.data = 2 + rand()
+        @. w.data = 3 + rand()
+    end
 
     op = @at (Center, Face, Face) u * v * w
     @compute uvw = Field(op)
@@ -301,7 +303,7 @@ function computations_with_averaged_field_derivative(model)
 
     set!(model, T = (x, y, z) -> 3 * z)
 
-    return all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3])
+    return CUDA.@allowscalar all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3])
 end
 
 function computations_with_computed_fields(model)
@@ -320,7 +322,7 @@ function computations_with_computed_fields(model)
     tke = Field(tke_op)
     compute!(tke)
 
-    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+    return CUDA.@allowscalar all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
 end
 
 for arch in archs
@@ -406,8 +408,8 @@ for arch in archs
                 end
 
                 ϵ(x, y, z) = 2rand() - 1
-                u, v, w = model.velocities
                 set!(model, u=ϵ, v=ϵ)
+                u, v, w = model.velocities
                 ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 
                 ζ = Field(ζ_op) # identical to `VerticalVorticityField`
@@ -416,15 +418,15 @@ for arch in archs
 
                 ζxy = Field(ζ_op, indices=(:, :, 1))
                 compute!(ζxy)
-                @test ζxy == view(ζ, :, :, 1)
+                @test CUDA.@allowscalar ζxy == view(ζ, :, :, 1)
 
                 ζxz = Field(ζ_op, indices=(:, 1, :))
                 compute!(ζxz)
-                @test ζxz == view(ζ, :, 1, :)
+                @test CUDA.@allowscalar ζxz == view(ζ, :, 1, :)
 
                 ζyz = Field(ζ_op, indices=(1, :, :))
                 compute!(ζyz)
-                @test ζyz == view(ζ, 1, :, :)
+                @test CUDA.@allowscalar ζyz == view(ζ, 1, :, :)
             end
 
             @testset "Operations with Field and PressureField [$A, $G]" begin
@@ -436,7 +438,7 @@ for arch in archs
             end
 
             @testset "Horizontal averages of operations [$A, $G]" begin
-                @info "      Testing horizontal averges..."
+                @info "      Testing horizontal averages..."
                 @test horizontal_average_of_plus(model)
                 @test horizontal_average_of_minus(model)
                 @test horizontal_average_of_times(model)
@@ -446,12 +448,12 @@ for arch in archs
             end
 
             @testset "Zonal averages of operations [$A, $G]" begin
-                @info "      Testing zonal averges..."
+                @info "      Testing zonal averages..."
                 @test zonal_average_of_plus(model)
             end
 
             @testset "Volume averages of operations [$A, $G]" begin
-                @info "      Testing volume averges..."
+                @info "      Testing volume averages..."
                 @test volume_average_of_times(model)
             end
 
@@ -466,18 +468,18 @@ for arch in archs
                 Nx, Ny, Nz = size(model.grid)
 
                 # Periodic xy
-                @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
-                @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
+                @test CUDA.@allowscalar all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
+                @test CUDA.@allowscalar all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
                 
                 # Bounded z
-                @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
-                @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
+                @test CUDA.@allowscalar all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
+                @test CUDA.@allowscalar all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
 
                 @compute ST_face = Field(@at (Center, Center, Face) S * T)
 
                 # These are initially 0 and remain 0
-                @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
-                @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
+                @test CUDA.@allowscalar all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
+                @test CUDA.@allowscalar all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
             end
 
             @testset "Operations with Averaged Field [$A, $G]" begin
