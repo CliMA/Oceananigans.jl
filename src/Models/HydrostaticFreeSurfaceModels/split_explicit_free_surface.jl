@@ -10,7 +10,7 @@ import Oceananigans.TimeSteppers: reset!
 import Base.show
 
 """
-    struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ}
+    struct SplitExplicitFreeSurface
 
 The split-explicit free surface solver.
 
@@ -64,7 +64,7 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
 end
 
 """
-    struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
+    struct SplitExplicitState
 
 A struct containing the state fields for the split-explicit free surface.
 
@@ -122,7 +122,7 @@ function SplitExplicitState(grid::AbstractGrid)
 end
 
 """
-    SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
+    SplitExplicitAuxiliary
 
 A struct containing auxiliary fields for the split-explicit free surface.
 
@@ -176,7 +176,7 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
 end
 
 """
-    struct SplitExplicitSettings{𝒩, ℳ}
+    struct SplitExplicitSettings
 
 A struct containing settings for the split-explicit free surface.
 
@@ -219,7 +219,7 @@ end
                             averaging_weighting_function = averaging_shape_function,
                             timestepper = ForwardBackwardScheme())
 
-Struct containing the settings to the `SplitExplicitFreeSurface`. The keyword arguments can be provided
+constructor for `SpliExplicitSettings`. The keyword arguments can be provided
 directly to the `SplitExplicitFreeSurface` constructor
 
 Keyword Arguments
@@ -227,8 +227,8 @@ Keyword Arguments
 
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
               require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
-              of `averaging_weights` where `averaging_weights > 0`
-- `averaging_weighting_function`: function of `τ` used to average `U` and `η` within the barotropic advancement
+              of `averaging_weights` for which `averaging_weights > 0`
+- `averaging_weighting_function`: function of `τ` used to average `U` and `η` within the barotropic advancement.
                                   `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
                                   located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
 - `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`

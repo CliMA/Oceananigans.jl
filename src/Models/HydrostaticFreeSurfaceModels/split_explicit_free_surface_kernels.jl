@@ -80,9 +80,10 @@ const μ = 1.0 - δ - γ - ϵ
 @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcf, ibg, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cff, ibg, V★, args...)
 
-@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂x_bound_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η★, args...)
-@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂y_bound_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η★, args...)        
+@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂x_η_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η★, args...)
+@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂y_η_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η★, args...)        
 
+# Disambiguation
 for Topo in [:Periodic, :Bounded]
     @eval begin
         @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T::Type{$Topo}, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcf, ibg, U★, args...)
