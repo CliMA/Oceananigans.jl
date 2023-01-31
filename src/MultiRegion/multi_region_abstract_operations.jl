@@ -1,4 +1,4 @@
-using Oceananigans.AbstractOperations: UnaryOperation, BinaryOperation, MultiaryOperation
+using Oceananigans.AbstractOperations: UnaryOperation, BinaryOperation, MultiaryOperation, Derivative, KernelFunctionOperation
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionUnaryOperation{LX, LY, LZ, O, A, I, G, T} = UnaryOperation{LX, LY, LZ, O, A, I, <:MultiRegionGrid, T} where {LX, LY, LZ, O, A, I, T}
