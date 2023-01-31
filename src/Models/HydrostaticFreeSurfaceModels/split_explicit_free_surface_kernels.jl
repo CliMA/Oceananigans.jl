@@ -106,16 +106,16 @@ end
 @inline advance_previous_velocity!(i, j, k, ::ForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²) = nothing
 
 @inline function advance_previous_velocity!(i, j, k, ::AdamsBashforth3Scheme, U, Uᵐ⁻¹, Uᵐ⁻²)
-    Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k] 
-    Uᵐ⁻¹[i, j, k] =    U[i, j, k] 
+    @inbounds Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k] 
+    @inbounds Uᵐ⁻¹[i, j, k] =    U[i, j, k] 
 end
 
 @inline advance_previous_free_surface!(i, j, k, ::ForwardBackwardScheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = nothing
 
 @inline function advance_previous_free_surface!(i, j, k, ::AdamsBashforth3Scheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
-    ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
-    ηᵐ⁻¹[i, j, k] =   ηᵐ[i, j, k]
-      ηᵐ[i, j, k] =    η[i, j, k]
+    @inbounds ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
+    @inbounds ηᵐ⁻¹[i, j, k] =   ηᵐ[i, j, k]
+    @inbounds   ηᵐ[i, j, k] =    η[i, j, k]
 end
 
 @kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
