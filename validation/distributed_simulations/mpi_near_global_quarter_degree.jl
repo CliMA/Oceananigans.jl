@@ -9,9 +9,10 @@ using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Advection: VelocityStencil
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
+using Oceananigans.Coriolis: WetCellEnstrophyConservingScheme
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: inactive_node, peripheral_node
-using CUDA: @allowscalar, device
+using CUDA: @allowscalar
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
@@ -23,14 +24,14 @@ MPI.Init()
 ##### Grid
 #####
 
+child_arch = GPU()
+
 comm   = MPI.COMM_WORLD
 rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Periodic, Bounded, Bounded)
-arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
-
-@show rank, CUDA.device()
+arch = MultiArch(child_arch; topology = topo, ranks=(Nranks, 1, 1))
 
 reference_density = 1029
 
@@ -43,7 +44,7 @@ Nz = 48
 
 N = (Nx, Ny, Nz)
 
-const Nyears  = 1
+const Nyears  = 10
 const Nmonths = 12 
 const thirty_days = 30days
 
@@ -86,8 +87,6 @@ end
 using Oceananigans.Distributed: partition_global_array
 
 bathymetry = file_bathymetry["bathymetry"]
-bathymetry = partition_global_array(arch, bathymetry, N)
-bathymetry = arch_array(CPU(), bathymetry)
 
 τˣ = zeros(Nx, Ny, Nmonths)
 τʸ = zeros(Nx, Ny, Nmonths)
@@ -112,13 +111,16 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               z = z_faces,
                                               precompute_metrics = true)
 
+nx, ny, nz = size(underlying_grid)
+bathymetry = bathymetry[1 + nx * rank : (rank + 1) * nx, :]
+
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
-τˣ = partition_global_array(arch, - τˣ, (N[1:2]..., 12))
-τʸ = partition_global_array(arch, - τʸ, (N[1:2]..., 12))
+τˣ = - τˣ[1 + nx * rank : (rank + 1) * nx, :, :]
+τʸ = - τʸ[1 + nx * rank : (rank + 1) * nx, :, :]
 
-target_sea_surface_temperature = T★ = partition_global_array(arch, T★, (N[1:2]..., 12))
-target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, (N[1:2]..., 12))
+target_sea_surface_temperature = T★ = T★[1 + nx * rank : (rank + 1) * nx, :, :]
+target_sea_surface_salinity    = S★ = S★[1 + nx * rank : (rank + 1) * nx, :, :]
 
 #####
 ##### Physics and model setup
@@ -127,7 +129,7 @@ target_sea_surface_salinity    = S★ = partition_global_array(arch, S★, (N[1:
 νz = 5e-3
 κz = 1e-4
 
-convective_adjustment  = RiBasedVerticalDiffusivity()
+convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 0.2, convective_νz = 0.2)
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
      
 tracer_advection   = WENO(underlying_grid)
@@ -143,8 +145,8 @@ momentum_advection = VectorInvariant(vorticity_scheme  = WENO(),
 @inline next_time_index(time, tot_months)        = mod(unsafe_trunc(Int32, time / thirty_days) + 1, tot_months) + 1
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
-Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
-Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
+Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid)
 
 @inline function surface_wind_stress(i, j, grid, clock, fields, τ)
     time = clock.time
@@ -218,34 +220,33 @@ S_surface_relaxation_bc = FluxBoundaryCondition(surface_salinity_relaxation,
                                                 discrete_form = true,
                                                 parameters = (λ = Δz_top / 7days, S★ = target_sea_surface_salinity))
 
-u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc, immersed = u_immersed_bc)
-v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc, immersed = v_immersed_bc)
+u_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = u_immersed_bc, top = u_wind_stress_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc, immersed = v_immersed_bc, top = v_wind_stress_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
 using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Grids: min_Δx, min_Δy
 
-Δt = 10minutes  # probably we can go to 10min or 15min?
+Δt  = 10minutes  # probably we can go to 10min or 15min?
 CFL = 0.7
-
-wave_speed =  sqrt(g_Earth * grid.Lz)
+wave_speed = sqrt(g_Earth * grid.Lz)
 Δg         = 1 / sqrt(1 / min_Δx(grid)^2 + 1 / min_Δy(grid)^2)
-
 @show substeps = Int(ceil(2 * Δt / (CFL / wave_speed * Δg)))
 
 free_surface = SplitExplicitFreeSurface(; substeps)
-
-buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
+buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
+closure      = (vertical_diffusivity, convective_adjustment)
+coriolis     = HydrostaticSphericalCoriolis(scheme = WetCellEnstrophyConservingScheme())
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       free_surface,
                                       momentum_advection, tracer_advection,
-                                      coriolis = HydrostaticSphericalCoriolis(),
+                                      coriolis,
                                       buoyancy,
                                       tracers = (:T, :S),
-                                      closure = (vertical_diffusivity, convective_adjustment),
-                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs))
+                                      closure,
+                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs)) 
 
 #####
 ##### Initial condition:
@@ -257,8 +258,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = partition_global_array(arch, file_init["T"], N)
-S_init = partition_global_array(arch, file_init["S"], N)
+T_init = file_init["T"][1 + nx * rank : (rank + 1) * nx, :, :]
+S_init = file_init["S"][1 + nx * rank : (rank + 1) * nx, :, :]
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
@@ -270,9 +271,7 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 6minutes  # probably we can go to 10min or 15min?
-
-simulation = Simulation(model, Δt = Δt, stop_iteration = 1000) #stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_iteration = stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
@@ -282,11 +281,11 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     u = sim.model.velocities.u
-    η = sim.model.free_surface.η
+    T = sim.model.tracers.T
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|T|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u),
+                    sim.model.clock.iteration, maximum(abs, u), maximum(abs, T),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -294,7 +293,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 u, v, w = model.velocities
 T = model.tracers.T
@@ -319,6 +318,8 @@ save_interval = 5days
 @info "Running with Δt = $(prettytime(simulation.Δt))"
 
 run!(simulation, pickup = pickup_file)
+
+jldsave("variables$rank.jld2", u = u, v = v, w = w, T = T, S = S, η = η, free_surface = model.free_surface, timestepper = model.timestepper)
 
 @info """
     Simulation took $(prettytime(simulation.run_wall_time))
