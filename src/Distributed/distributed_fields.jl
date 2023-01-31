@@ -18,5 +18,5 @@ end
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 
-# To fix???
+# TODO: make sure the definition of architecture is consistent
 architecture(f::DistributedField) = child_architecture(architecture(f.grid))

@@ -74,6 +74,11 @@ function RectilinearGrid(arch::MultiArch,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
+"""
+    LatitudeLongitudeGrid(arch::MultiArch, FT=Float64; kw...)
+
+Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
+"""
 function LatitudeLongitudeGrid(arch::MultiArch,
                                FT::DataType = Float64; 
                                precompute_metrics = true,
@@ -128,6 +133,11 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
+"""
+    reconstruct_global_grid(grid::DistributedGrid)
+
+Return the global grid on `child_architecture(grid)`
+"""
 function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     arch = grid.architecture
@@ -230,21 +240,16 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     return ImmersedBoundaryGrid(global_ug, global_ib)
 end
 
-function with_halo(new_halo, grid::DistributedRectilinearGrid) 
+function with_halo(new_halo, grid::DistributedGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
     return scatter_local_grids(architecture(grid), new_grid)
 end
 
-function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid) 
-    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid)
-end
+""" 
+    scatter_grid_properties(global_grid)
 
-function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
-    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid)
-end
-
+returns individual `extent`, `topology`, `size` and `halo` of a `global_grid` 
+"""
 function scatter_grid_properties(global_grid)
     # Pull out face grid constructors
     x = cpu_face_constructor_x(global_grid)
@@ -278,6 +283,12 @@ function scatter_local_grids(arch::MultiArch, global_grid::ImmersedBoundaryGrid)
     return ImmersedBoundaryGrid(local_ug, local_ib)
 end
 
+""" 
+    insert_connected_topology(T, R, r)
+
+returns the local topology associated with the global topology `T`, the amount of ranks 
+in `T` direction (`R`) and the local rank index `r` 
+"""
 insert_connected_topology(T, R, r) = T
 
 insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1,  Bounded,
@@ -287,6 +298,13 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1,  Bounded,
 
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
+""" 
+    reconstruct_global_topology(T, R, r, comm)
+
+reconstructs the global topology associated with the local topologies `T`, the amount of ranks 
+in `T` direction (`R`) and the local rank index `r`. If all ranks hold a `FullyConnected` topology,
+the global topology is `Periodic`, otherwise it is `Bounded`
+"""
 function reconstruct_global_topology(T, R, r, comm)
     if R == 1
         return T
