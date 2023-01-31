@@ -149,9 +149,10 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    xG = assemble(x, nx, Rx, ri, arch)
-    yG = assemble(y, ny, Ry, rj, arch)
-    zG = assemble(z, nz, Rz, rk, arch)
+    ## This will not work with 2D parallelizations!!
+    xG = Rx == 1 ? x : assemble(x, nx, Rx, ri, arch)
+    yG = Ry == 1 ? y : assemble(y, ny, Ry, rj, arch)
+    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, arch)
 
     child_arch = child_architecture(arch)
 
@@ -191,9 +192,10 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     φ = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    λG = assemble(λ, nλ, Rx, ri, arch)
-    φG = assemble(φ, nφ, Ry, rj, arch)
-    zG = assemble(z, nz, Rz, rk, arch)
+    ## This will not work with 2D parallelizations!!
+    λG = Rx == 1 ? λ : assemble(λ, nλ, Rx, ri, arch)
+    φG = Ry == 1 ? φ : assemble(φ, nφ, Ry, rj, arch)
+    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, arch)
 
     child_arch = child_architecture(arch)
 

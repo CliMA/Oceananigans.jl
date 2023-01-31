@@ -4,18 +4,18 @@ using OffsetArrays: OffsetArray
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
 using Oceananigans.BoundaryConditions:
+    fill_halo_size,
+    fill_halo_offset,
+    permute_boundary_conditions,
+    PBCT
+
+import Oceananigans.BoundaryConditions: 
+    fill_halo_regions!, fill_first, fill_halo_event!,
+    fill_west_halo!, fill_east_halo!, fill_south_halo!,
+    fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
     fill_west_and_east_halo!, 
     fill_south_and_north_halo!,
-    fill_bottom_and_top_halo!,
-    fill_halo_size,
-    fill_halo_offset
-
-
-
-import Oceananigans.BoundaryConditions:
-    fill_halo_regions!,
-    fill_west_halo!, fill_east_halo!, fill_south_halo!,
-    fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+    fill_bottom_and_top_halo!
 
 #####
 ##### MPI tags for halo communication BCs
@@ -69,73 +69,61 @@ function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; 
     end
 end
 
-# REMEMBER! indices, kernel_size (:yz, :xz and :xy) and offset are not used in distributed halo filling because sliced fields are not supported yet
-# TODO: distributed halo filling does not support windowed fields at the moment
 # TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
-    arch    = architecture(grid)
-    barrier = Event(device(child_architecture(arch)))
-
-    size_x = fill_halo_size(c, fill_west_and_east_halo!,   indices, bcs.west,   loc, grid)
-    size_y = fill_halo_size(c, fill_south_and_north_halo!, indices, bcs.south,  loc, grid)
-    size_z = fill_halo_size(c, fill_bottom_and_top_halo!,  indices, bcs.bottom, loc, grid)
-
-    offset_x = fill_halo_offset(size_x, fill_west_and_east_halo!,   indices)
-    offset_y = fill_halo_offset(size_y, fill_south_and_north_halo!, indices)
-    offset_z = fill_halo_offset(size_z, fill_bottom_and_top_halo!,  indices)
-
-    x_events_requests =   fill_west_and_east_halos!(c, bcs.west,   bcs.east,  size_x, offset_x, loc, arch, barrier, grid, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south,  bcs.north, size_y, offset_y, loc, arch, barrier, grid, args...; kwargs...)
-    z_events_requests =  fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top,   size_z, offset_z, loc, arch, barrier, grid, args...; kwargs...)
-
-    events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
-
-    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
-    # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
-    length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
-
-    events = filter(e -> e isa Event, events_and_requests)
-    wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
+    arch       = architecture(grid)
+    halo_tuple = permute_boundary_conditions(bcs)
+    
+    for task = 1:3
+        barrier = device_event(child_architecture(arch))
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+    end
 
     return nothing
 end
 
-#####
-##### fill_west_and_east_halos!   }
-##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
-##### fill_bottom_and_top_halos!  }
-#####
+const HBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
 
-for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
-    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
+fill_first(bc1::HBCT, bc2)       = false
+fill_first(bc1::PBCT, bc2::HBCT) = false
+fill_first(bc1::HBCT, bc2::PBCT) = true
+fill_first(bc1, bc2::HBCT)       = true
+fill_first(bc1::HBCT, bc2::HBCT) = true
 
-    @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, size, offset, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
-            return [event]
-        end
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, barrier, grid::DistributedGrid, args...; kwargs...)
+    fill_halo!  = halo_tuple[1][task]
+    bc_left     = halo_tuple[2][task]
+    bc_right    = halo_tuple[3][task]
+
+    # Calculate size and offset of the fill_halo kernel
+    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
+    offset = fill_halo_offset(size, fill_halo!, indices)
+
+    event  = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    if event isa Event
+        wait(device(child_architecture(arch)), event)
+    else
+        length(event) > 0 && MPI.Waitall!([event...])
     end
+    return nothing
 end
 
 #####
-##### fill_west_and_east_halos!   }
-##### fill_south_and_north_halos! } for when both halos are communicative
-##### fill_bottom_and_top_halos!  }
+##### fill_west_and_east_halo!   }
+##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
+##### fill_bottom_and_top_halo!  }
 #####
 
-const CBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
-
 for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, :top], [1, 2, 3])
-    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    send_side_halo = Symbol("send_$(side)_halo")
+    fill_both_halo! = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
+    send_side_halo  = Symbol("send_$(side)_halo")
     send_opposite_side_halo = Symbol("send_$(opposite_side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, size, offset, loc, arch, 
-                                   barrier, grid, args...; kwargs...)
+        function $fill_both_halo!(c, bc_side::HBCT, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
+                                   barrier, grid::DistributedGrid, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
