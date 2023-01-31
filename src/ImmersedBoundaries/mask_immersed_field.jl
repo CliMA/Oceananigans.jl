@@ -6,24 +6,24 @@ using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(X) = X()
 
-mask_immersed_field!(field, grid, loc, value; immersed_function = peripheral_node) = NoneEvent()
-mask_immersed_field!(field::Field, value=zero(eltype(field.grid)); immersed_function = peripheral_node) =
-    mask_immersed_field!(field, field.grid, location(field), value; immersed_function)
+mask_immersed_field!(field, grid, loc, value) = NoneEvent()
+mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
+    mask_immersed_field!(field, field.grid, location(field), value)
 
 """
-    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value; immersed_function = peripheral_node)
+    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
 
-masks `field` defined on `grid` with a value `val` at locations where `immersed_function` evaluates to `true`
+masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
-function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value; immersed_function = peripheral_node)
+function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc = instantiate.(loc)
-    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value, immersed_function; dependencies = device_event(arch))
+    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value; dependencies = device_event(arch))
 end
 
 @kernel function _mask_immersed_field!(field, loc, grid, value)
     i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, immmersed_function)
+    @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
 mask_immersed_reduced_field_xy!(field, args...; kw...) = NoneEvent()
