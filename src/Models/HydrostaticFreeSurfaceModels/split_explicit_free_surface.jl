@@ -30,6 +30,12 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurfa
 end
 
 # use as a trait for dispatch purposes
+"""
+    SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) 
+
+Constructor for the `SplitExplicitFreeSurface`, for more information on the available `kwargs...`
+see `SplitExplicitSettings` 
+"""
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
                              gravitational_acceleration, SplitExplicitSettings(; kwargs...))
@@ -81,10 +87,8 @@ Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
     η̅    :: 𝒞𝒞
     "The time-filtered barotropic component of the zonal velocity. (`ReducedField`)"
     U̅    :: ℱ𝒞
-    Ũ    :: ℱ𝒞
     "The time-filtered barotropic component of the meridional velocity. (`ReducedField`)"
     V̅    :: 𝒞ℱ    
-    Ṽ    :: 𝒞ℱ
 end
 
 """
@@ -92,6 +96,8 @@ end
 
 Return the split-explicit state. Note that `η̅` is solely used for setting the `η`
 at the next substep iteration -- it essentially acts as a filter for `η`.
+Values at `ᵐ⁻¹` and `ᵐ⁻²` are previous stored time steps to allow using a higher order
+time stepping scheme (`AdamsBashforth3Scheme`)
 """
 function SplitExplicitState(grid::AbstractGrid)
     η̅ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
@@ -111,17 +117,18 @@ function SplitExplicitState(grid::AbstractGrid)
           
     U̅    = Field{Face, Center, Nothing}(grid)
     V̅    = Field{Center, Face, Nothing}(grid)
-              
-    Ũ    = Field{Face, Center, Nothing}(grid)
-    Ṽ    = Field{Center, Face, Nothing}(grid)
     
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, Ũ, V̅, Ṽ)
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
 
 """
     SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
 
 A struct containing auxiliary fields for the split-explicit free surface.
+
+The Barotropic time stepping will be launched on a grid `(kernel_size[1], kernel_size[2])`
+large (or `:xy` in case of a serial computation),  and start computing from 
+`(i - kernel_offsets[1], j - kernel_offsets[2])`
 
 $(TYPEDFIELDS)
 """
@@ -188,6 +195,12 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     timestepper :: 𝒮
 end
 
+"""
+    Possible barotropic time-stepping scheme. 
+
+- `AdamsBashforth3Scheme`: η = f(U, Uᵐ⁻¹, Uᵐ⁻²) then U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+- `ForwardBackwardScheme`: η = f(U)             then U = f(η)
+"""
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
@@ -201,6 +214,25 @@ end
 
 @inline averaging_fixed_function(τ) = 1.0
 
+"""
+    SplitExplicitSettings(; substeps = 200, 
+                            averaging_weighting_function = averaging_shape_function,
+                            timestepper = ForwardBackwardScheme())
+
+Struct containing the settings to the `SplitExplicitFreeSurface`. The keyword arguments can be provided
+directly to the `SplitExplicitFreeSurface` constructor
+
+Keyword Arguments
+=================
+
+- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
+              require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
+              of `averaging_weights` where `averaging_weights > 0`
+- `averaging_weighting_function`: function of `τ` used to average `U` and `η` within the barotropic advancement
+                                  `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
+                                  located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
+- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
+"""
 function SplitExplicitSettings(; substeps = 200, 
                                  averaging_weighting_function = averaging_shape_function,
                                  timestepper = ForwardBackwardScheme())
