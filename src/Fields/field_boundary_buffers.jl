@@ -55,10 +55,10 @@ function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     fill_west_send_buffer!(parent(c), buffer.west.send,  Hx, Nx)
-     fill_east_send_buffer!(parent(c), buffer.east.send,  Hx, Nx)
-    fill_north_send_buffer!(parent(c), buffer.north.send, Hy, Ny)
-    fill_south_send_buffer!(parent(c), buffer.south.send, Hy, Ny)
+     fill_west_send_buffer!(parent(c), buffers.west.send,  Hx, Nx)
+     fill_east_send_buffer!(parent(c), buffers.east.send,  Hx, Nx)
+    fill_north_send_buffer!(parent(c), buffers.north.send, Hy, Ny)
+    fill_south_send_buffer!(parent(c), buffers.south.send, Hy, Ny)
 end
 
 """
@@ -74,10 +74,10 @@ function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     fill_west_recv_buffer!(parent(c), buffer.west.recv,  Hx, Nx)
-     fill_east_recv_buffer!(parent(c), buffer.east.recv,  Hx, Nx)
-    fill_north_recv_buffer!(parent(c), buffer.north.recv, Hy, Ny)
-    fill_south_recv_buffer!(parent(c), buffer.south.recv, Hy, Ny)
+     fill_west_recv_buffer!(parent(c), buffers.west.recv,  Hx, Nx)
+     fill_east_recv_buffer!(parent(c), buffers.east.recv,  Hx, Nx)
+    fill_north_recv_buffer!(parent(c), buffers.north.recv, Hy, Ny)
+    fill_south_recv_buffer!(parent(c), buffers.south.recv, Hy, Ny)
 end
 
 fill_west_send_buffer!(c, ::Nothing, args...) = nothing
