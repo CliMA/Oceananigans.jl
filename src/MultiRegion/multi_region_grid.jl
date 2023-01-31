@@ -29,6 +29,26 @@ end
 
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
 
+"""
+    MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+
+Splits a `global_grid` into different regions handled by `devices`
+
+Positional Arguments
+====================
+
+- `global_grid`: the grid to be divided into regions
+
+Keyword Arguments
+=================
+
+- `partition`: the partitioning required. The implemented partitioning are `XPartition` 
+               (division along the x direction) and `YPartition` (division along the y direction)
+- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`, for 
+             `GPU` computation it is possible to specify the total number of `GPU`s or the specific
+             `GPU`s to allocate memory on. The number of devices does not have to match the number of
+             regions 
+"""
 function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
     if length(partition) == 1
@@ -60,6 +80,9 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
             Iterate(1:length(partition)))
 
     region_grids = construct_regionally(construct_grid, args...)
+    
+    ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
+    maybe_enable_peer_access!(devices)
 
     return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, region_grids, devices)
 end
@@ -98,6 +121,10 @@ function reconstruct_global_grid(mrg)
     return construct_grid(mrg.region_grids[1], architecture(mrg), topo, size, extent)
 end
 
+"""
+    reconstruct_global_grid(mrg)
+reconstructs the global grid associated with the `MultiRegionGrid` mrg
+"""
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
                                                      mrg.partition, 
@@ -117,8 +144,10 @@ getinterior(array::AbstractArray{T, 2}, grid) where T = array[1:grid.Nx, 1:grid.
 getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.Ny, 1:grid.Nz]
 getinterior(func::Function, grid) = func
 
-multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
-
+"""
+    multi_region_object_from_array(a::AbstractArray, grid)
+adapts an array `a` to be compatible with a `MultiRegion` grid or model
+"""
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
     arch = architecture(mrg)
@@ -126,6 +155,9 @@ function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
+
+# Fallback!
+multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture(grid), a)
 
 #### 
 #### Utilitites for MultiRegionGrid
@@ -171,7 +203,11 @@ function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
     return all(vals.regions)
 end
    
-# These are not used in the code, should we remove them?
+####
+#### Get property for `MultiRegionGrid` (gets the properties of region 1)
+#### In general getpropert should never be used as a MultiRegionGrid
+#### Should be used only in combination with an @apply_regionally
+####
 
 grids(mrg::MultiRegionGrid) = mrg.region_grids
 
@@ -179,11 +215,18 @@ getmultiproperty(mrg::MultiRegionGrid, x::Symbol) = construct_regionally(Base.ge
 
 const MRG = MultiRegionGrid
 
-@inline Base.getproperty(ibg::MRG, property::Symbol) = get_multi_property(ibg, Val(property))
-@inline get_multi_property(ibg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(ibg, :region_grids), 1), property)
-@inline get_multi_property(ibg::MRG, ::Val{:partition}) = getfield(ibg, :partition)
-@inline get_multi_property(ibg::MRG, ::Val{:region_grids}) = getfield(ibg, :region_grids)
-@inline get_multi_property(ibg::MRG, ::Val{:devices}) = getfield(ibg, :devices)
+@inline Base.getproperty(mrg::MRG, property::Symbol)                 = get_multi_property(mrg, Val(property))
+@inline get_multi_property(mrg::MRG, ::Val{property}) where property = getproperty(getindex(getfield(mrg, :region_grids), 1), property)
+@inline get_multi_property(mrg::MRG, ::Val{:architecture})           = getfield(mrg, :architecture)
+@inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
+@inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
+@inline get_multi_property(mrg::MRG, ::Val{:devices})                = getfield(mrg, :devices)
+
+@inline function get_multi_property(mrg::ImmersedMultiRegionGrid, ::Val{:underlying_grid})
+    global_grid = reconstruct_global_grid(mrg)
+    grid        = global_grid.underlying_grid
+    return MultiRegionGrid(grid, partition = mrg.partition, devices = mrg.devices, validate = false)
+end
 
 import Oceananigans.Models.NonhydrostaticModels: maybe_add_active_cells_map
 

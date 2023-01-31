@@ -61,6 +61,11 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 @inline reconstruct_global_field(f::AbstractField) = f
 
+"""
+    reconstruct_global_field(mrf)
+reconstructs the global field from a `MultiRegionField`. The global field 
+is always reconstructed on the `CPU`
+"""
 function reconstruct_global_field(mrf::MultiRegionField)
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
@@ -74,6 +79,9 @@ function reconstruct_global_field(mrf::MultiRegionField)
     return global_field
 end
 
+# Fallback!
+@inline reconstruct_global_field(f::AbstractField) = f
+
 function reconstruct_global_indices(indices, p::XPartition, N)
     idx1 = getregion(indices, 1)[1]
     idxl = getregion(indices, length(p))[1]
@@ -81,7 +89,7 @@ function reconstruct_global_indices(indices, p::XPartition, N)
     if idx1 == Colon() && idxl == Colon()
         idx_x = Colon()
     else
-        idx_x = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
+        idx_x = UnitRange(idx1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
     end
 
     idx_y = getregion(indices, 1)[2]
