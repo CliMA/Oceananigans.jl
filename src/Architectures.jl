@@ -18,6 +18,8 @@ using CUDAKernels: STREAM_GC_LOCK
 if CUDA.has_cuda_gpu()
     const device_number = CUDA.ndevices()
 
+    @show device_number
+
     const DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for i in 1:device_number)
     const DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for i in 1:device_number)
 
