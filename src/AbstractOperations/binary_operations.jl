@@ -207,24 +207,24 @@ using Oceananigans.Fields: ZeroField, ConstantField
 ==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
 
 +(a::ZeroField, b::AbstractField) = b
-+(a::AbstractField, b::ZeroField) = +(b, a)
++(a::AbstractField, b::ZeroField) = a
 +(a::ZeroField, b::Number) = ConstantField(b)
-+(a::Number, b::ZeroField) = +(b, a)
++(a::Number, b::ZeroField) = ConstantField(a)
 
 -(a::ZeroField, b::AbstractField) = -b
--(b::AbstractField, a::ZeroField) = b
+-(a::AbstractField, b::ZeroField) = a
 -(a::ZeroField, b::Number) = ConstantField(-b)
--(b::Number, a::ZeroField) = ConstantField(b)
+-(a::Number, b::ZeroField) = ConstantField(a)
 
 *(a::ZeroField, b::AbstractField) = a
-*(b::AbstractField, a::ZeroField) = *(a, b)
+*(a::AbstractField, b::ZeroField) = b
 *(a::ZeroField, b::Number) = a
-*(b::Number, a::ZeroField) = *(a, b)
+*(a::Number, b::ZeroField) = b
 
 /(a::ZeroField, b::AbstractField) = a
-/(b::AbstractField, a::ZeroField) = ConstantField(Inf)
+/(a::AbstractField, b::ZeroField) = ConstantField(Inf)
 /(a::ZeroField, b::Number) = a
-/(b::Number, a::ZeroField) = ConstantField(Inf)
+/(a::Number, b::ZeroField) = ConstantField(Inf)
 
 
 #####
