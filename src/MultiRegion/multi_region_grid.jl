@@ -1,6 +1,7 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
+import Oceananigans.Distributed: reconstruct_global_grid
 
 struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -122,8 +123,8 @@ function reconstruct_global_grid(mrg)
 end
 
 """
-    reconstruct_global_grid(mrg)
-reconstructs the global grid associated with the `MultiRegionGrid` mrg
+    reconstruct_global_grid(mrg::MultiRegionGrid)
+reconstructs the global grid associated with the `MultiRegionGrid` mrg on `architecture(mrg)`
 """
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 

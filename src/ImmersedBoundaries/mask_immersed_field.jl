@@ -6,9 +6,9 @@ using Oceananigans.Fields: location, ZReducedField, Field
 
 instantiate(X) = X()
 
-mask_immersed_field!(field, grid, loc, value) = NoneEvent()
+mask_immersed_field!(field, grid, loc, value; immersed_function = peripheral_node) = NoneEvent()
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid)); immersed_function = peripheral_node) =
-    mask_immersed_field!(field, field.grid, location(field), value; immersed_function = peripheral_node)
+    mask_immersed_field!(field, field.grid, location(field), value; immersed_function)
 
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value; immersed_function = peripheral_node)
