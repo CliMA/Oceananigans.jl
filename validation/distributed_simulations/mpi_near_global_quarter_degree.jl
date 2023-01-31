@@ -44,7 +44,7 @@ Nz = 48
 
 N = (Nx, Ny, Nz)
 
-const Nyears  = 10
+const Nyears  = 1
 const Nmonths = 12 
 const thirty_days = 30days
 
