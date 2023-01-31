@@ -85,6 +85,8 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
 
     field_size = N[1:2] .+ 2 .* H[1:2]
 
+    # If using `with_halo` in combination with a `MultiArch`, we need to make 
+    # sure that halos are filled correctly for the `ib.bottom_height`
     if any(size(ib.bottom_height) .!= field_size)
         bottom_field = Field{Center, Center, Nothing}(grid)
         cpu_array    = arch_array(CPU(), ib.bottom_height)[1:N[1], 1:N[2]] 

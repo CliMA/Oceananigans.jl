@@ -59,10 +59,7 @@ the free surface and a `NoPenetration` boundary condition for velocity
 @inline div_yᶜᶜᶠ_bound(i, j, k, grid, TY, f, args...) = 
     1 / Azᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ_bound(i, j, k, grid, TY, Δx_qᶜᶠᶠ, f, args...) 
 
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node, IBG, c, f
-
-@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
-                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node, inactive_node, IBG, c, f
 
 @inline conditional_value_fcf(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), f(i, j, k, grid, args...))
 @inline conditional_value_cff(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), f(i, j, k, grid, args...))
@@ -109,10 +106,10 @@ end
       ηᵐ[i, j, k] =    η[i, j, k]
 end
 
-@kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                              η̅, U̅, V̅, averaging_weight, 
-                                                              Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                              timestepper, offsets)
+@kernel function split_explicit_free_surface_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                                                               η̅, U̅, V̅, averaging_weight, 
+                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                               timestepper, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -130,10 +127,10 @@ end
     end
 end
 
-@kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
-                                                               η̅, U̅, V̅, averaging_weight, 
-                                                               Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-                                                               timestepper, offsets)
+@kernel function split_explicit_barotropic_velocity_evolution_kernel!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
+                                                                      η̅, U̅, V̅, averaging_weight, 
+                                                                      Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
+                                                                      timestepper, offsets)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
