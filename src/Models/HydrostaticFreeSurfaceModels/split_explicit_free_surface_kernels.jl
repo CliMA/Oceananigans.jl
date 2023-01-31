@@ -208,7 +208,7 @@ function barotropic_mode!(U, V, grid, u, v)
     wait(device(arch), event)
 end
 
-function initialize_free_surface!(free_surface_state, η)
+function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
 
     parent(state.U) .= parent(state.U̅)
@@ -267,7 +267,7 @@ Explicitly step forward η in substeps.
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, prognostic_field_events) =
     split_explicit_free_surface_step!(free_surface, model, Δt, χ, prognostic_field_events)
     
-function initialize_free_surface_state!(sefs::SplitExplicitFreeSurface, grid, velocities)
+function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
 end
@@ -327,7 +327,7 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     event_Gv = launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv, Gvⁿ, χ)
 
     # reset free surface averages
-    initialize_free_surface!(state, η)
+    initialize_free_surface_state!(state, η)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))

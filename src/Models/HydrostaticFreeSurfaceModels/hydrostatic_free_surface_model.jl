@@ -231,5 +231,5 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
     throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end
 
-initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface_state!(model.free_surface, model.grid, model.velocities)
-initialize_free_surface_state!(free_surface, grid, velocities) = nothing
+initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize_free_surface!(free_surface, grid, velocities) = nothing
