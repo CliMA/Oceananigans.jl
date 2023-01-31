@@ -59,8 +59,6 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       getregion(f.status, r),
                       getregion(f.boundary_buffers, r))
 
-@inline reconstruct_global_field(f::AbstractField) = f
-
 """
     reconstruct_global_field(mrf)
 reconstructs the global field from a `MultiRegionField`. The global field 
