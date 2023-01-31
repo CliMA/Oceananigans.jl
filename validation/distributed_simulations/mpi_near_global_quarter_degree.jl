@@ -281,11 +281,10 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     u = sim.model.velocities.u
-    T = sim.model.tracers.T
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|T|): %.2e ms⁻¹, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u), maximum(abs, T),
+                    sim.model.clock.iteration, maximum(abs, u), 
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
