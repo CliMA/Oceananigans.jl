@@ -23,7 +23,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally masking_actions!(model)
+    @apply_regionally masking_actions!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
@@ -40,11 +40,11 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 # Mask immersed fields
-function masking_actions!(model)
+function masking_actions!(model, grid)
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k = model.grid.Nz+1, immersed_function = inactive_node))
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k = grid.Nz+1, immersed_function = inactive_node))
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 end
 
