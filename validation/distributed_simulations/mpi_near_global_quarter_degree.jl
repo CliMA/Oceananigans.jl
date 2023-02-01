@@ -17,21 +17,12 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
-using MPI
-MPI.Init()
-
 #####
 ##### Grid
 #####
 
-child_arch = GPU()
-
-comm   = MPI.COMM_WORLD
-rank   = MPI.Comm_rank(comm)
-Nranks = MPI.Comm_size(comm)
-
 topo = (Periodic, Bounded, Bounded)
-arch = MultiArch(child_arch; topology = topo, ranks=(Nranks, 1, 1))
+arch = GPU() #MultiArch(child_arch; topology = topo, ranks=(Nranks, 1, 1))
 
 reference_density = 1029
 
@@ -115,6 +106,7 @@ nx, ny, nz = size(underlying_grid)
 bathymetry = bathymetry[1 + nx * rank : (rank + 1) * nx, :]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+mrg  = MultiRegionGrid(grid, partition = XPartition(4))
 
 τˣ = arch_array(child_arch, - τˣ[1 + nx * rank : (rank + 1) * nx, :, :])
 τʸ = arch_array(child_arch, - τʸ[1 + nx * rank : (rank + 1) * nx, :, :])
@@ -239,7 +231,7 @@ buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 closure      = (vertical_diffusivity, convective_adjustment)
 coriolis     = HydrostaticSphericalCoriolis(scheme = WetCellEnstrophyConservingScheme())
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(; mrg,
                                       free_surface,
                                       momentum_advection, tracer_advection,
                                       coriolis,
@@ -248,6 +240,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       closure,
                                       boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs)) 
 
+@show grid, model.free_surface.η.grid
 #####
 ##### Initial condition:
 #####
