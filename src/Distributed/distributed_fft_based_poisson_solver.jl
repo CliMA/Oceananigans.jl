@@ -1,5 +1,6 @@
 import PencilFFTs
 using PencilArrays: Permutation
+using FFTW
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture

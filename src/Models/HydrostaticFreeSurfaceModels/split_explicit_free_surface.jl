@@ -51,7 +51,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(; kwargs...))
+                                        settings = SplitExplicitSettings(; substeps = 200))
 
 η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 

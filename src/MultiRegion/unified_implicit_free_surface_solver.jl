@@ -81,7 +81,7 @@ function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition
                     rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
 		            dependencies = device_event(arch))
 
-    wait(device(arch), event)
+    wait(Oceananigans.Architectures.device(arch), event)
     return nothing
 end
 
@@ -119,7 +119,7 @@ function redistribute_lhs!(η, sol, arch, grid, region, partition)
     event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
 		            dependencies = device_event(arch))
 
-    wait(device(arch), event)
+    wait(Oceananigans.Architectures.device(arch), event)
 end
 
 # linearized right hand side
