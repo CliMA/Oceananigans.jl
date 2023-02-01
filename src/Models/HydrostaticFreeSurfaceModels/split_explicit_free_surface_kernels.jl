@@ -75,8 +75,8 @@ const μ = 1.0 - δ - γ - ϵ
 @inline conditional_U_fcc(i, j, k, grid, ibg::IBG, U★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), U★(i, j, k, grid, args...))
 @inline conditional_V_cfc(i, j, k, grid, ibg::IBG, V★::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), V★(i, j, k, grid, args...))
 
-@inline conditional_ηx_ccf(i, j, k, grid, ibg::IBG, η★::Function, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f), η★(i-1, j, k, grid, args...), η★(i, j, k, grid, args...))
-@inline conditional_ηy_ccf(i, j, k, grid, ibg::IBG, η★::Function, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f), η★(i, j-1, k, grid, args...), η★(i, j, k, grid, args...))
+@inline conditional_∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᶠᶜᶠ_η(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᶜᶠᶠ_η(i, j, k, ibg.underlying_grid, args...))
 
 @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcc,  ibg, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc,  ibg, V★, args...)
@@ -89,8 +89,8 @@ for Topo in [:Periodic, :Bounded]
         @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T::Type{$Topo}, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcc, ibg, U★, args...)
         @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T::Type{$Topo}, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc, ibg, V★, args...)
 
-        @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = ∂xᶠᶜᶠ_η(i, j, k, ibg.underlying_grid, T, conditional_ηx_ccf, ibg, η★, args...)
-        @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = ∂yᶜᶠᶠ_η(i, j, k, ibg.underlying_grid, T, conditional_ηy_ccf, ibg, η★, args...)        
+        @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂xᶠᶜᶠ_η(i, j, k, ibg, T, η★, args...)
+        @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)        
     end
 end
 

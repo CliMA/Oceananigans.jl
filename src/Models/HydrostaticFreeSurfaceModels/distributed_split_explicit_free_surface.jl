@@ -38,8 +38,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? Nx : Nx + 2Hx - 4
-    Ay = Ry == 1 ? Ny : Ny + 2Hy - 4
+    Ax = Rx == 1 ? Nx : Nx + 2Hx - 2
+    Ay = Ry == 1 ? Ny : Ny + 2Hy - 2
 
     return (Ax, Ay)
 end
@@ -49,8 +49,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? 0 : Hx - 2
-    Ay = Ry == 1 ? 0 : Hy - 2
+    Ax = Rx == 1 ? 0 : Hx - 1
+    Ay = Ry == 1 ? 0 : Hy - 1
 
     return (Ax, Ay)
 end
@@ -61,7 +61,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
 
         old_halos = halo_size(grid)
 
-        new_halos = partitioned_halos(old_halos, settings.substeps+2, grid)         
+        new_halos = partitioned_halos(old_halos, settings.substeps+1, grid)         
         new_grid  = with_halo(new_halos, grid)
     
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
