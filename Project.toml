@@ -39,10 +39,10 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
+AMGX = "0.1.3"
 Adapt = "3"
 AlgebraicMultigrid = "0.5"
-AMGX = "0.1.3"
-CUDA = "3.8, 3.9"
+CUDA = "3.8, 3.9, 4"
 CUDAKernels = "0.3.3, 0.4"
 Crayons = "4"
 CubedSphere = "0.1, 0.2"
