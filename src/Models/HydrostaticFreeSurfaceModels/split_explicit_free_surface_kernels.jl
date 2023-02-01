@@ -80,8 +80,8 @@ const μ = 1.0 - δ - γ - ϵ
 
 @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcc,  ibg, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc,  ibg, V★, args...)
-@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = ∂xᶠᶜᶠ_η(i, j, k, ibg.underlying_grid, T, conditional_ηx_ccf, ibg, η★, args...)
-@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = ∂yᶜᶠᶠ_η(i, j, k, ibg.underlying_grid, T, conditional_ηy_ccf, ibg, η★, args...)        
+@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂xᶠᶜᶠ_η(i, j, k, ibg, T, η★, args...)
+@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)        
 
 # Disambiguation
 for Topo in [:Periodic, :Bounded]
