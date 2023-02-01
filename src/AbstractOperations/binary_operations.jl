@@ -225,7 +225,7 @@ using Oceananigans.Fields: ZeroField, ConstantField
 /(a::ZeroField, b::AbstractField) = a
 /(a::AbstractField, b::ZeroField) = ConstantField(convert(eltype(a), Inf))
 /(a::ZeroField, b::Number) = a
-/(a::Number, b::ZeroField) = ConstantField(a/convert(eltype(a), 0))
+/(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
 
 
 #####
