@@ -66,7 +66,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 
     halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
 
-    @apply_regionally fill_send_buffers!(c, buffers, grid, arch)
+    @apply_regionally fill_send_buffers!(c, buffers, mrg, arch)
 
     for task = 1:3
         barrier = device_event(arch)
@@ -75,7 +75,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
                           args...; kwargs...)
     end
 
-    @apply_regionally fill_recv_buffers!(c, buffers, grid, arch)
+    @apply_regionally fill_recv_buffers!(c, buffers, mrg, arch)
 
     return nothing
 end
