@@ -187,7 +187,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_data.jld2
 ├── 3 outputs: (u, v, w)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -204,7 +204,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_averaged_data.jld2
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -261,7 +261,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
