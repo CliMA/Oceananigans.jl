@@ -5,8 +5,7 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, 
-                                       immersed_inactive_node, 
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node,  
                                        inactive_node, IBG, c, f
 
 const β = 0.281105
@@ -71,17 +70,20 @@ const μ = 1.0 - δ - γ - ϵ
 
 # Immersed Boundary Operators  
 
+@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
+                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+
 @inline conditional_U_fcf(i, j, k, grid, ibg::IBG, U★::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, f, c, f), zero(ibg), U★(i, j, k, grid, args...))
 @inline conditional_V_cff(i, j, k, grid, ibg::IBG, V★::Function, args...) = ifelse(immersed_peripheral_node(i, j, k, ibg, c, f, f), zero(ibg), V★(i, j, k, grid, args...))
 
-@inline conditional_∂x_η_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂x, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) | immersed_inactive_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
-@inline conditional_∂y_η_f(LY, LZ, i, j, k, ibg::IBG{FT}, ∂y, args...) where FT = ifelse(immersed_inactive_node(i, j, k, ibg, f, LY, LZ) | immersed_inactive_node(i, j+1, k, ibg, f, LY, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂x_η_f(LY, LZ, i, j, k, ibg::IBG, ∂x, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, c, LY, LZ) | immersed_inactive_node(i+1, j, k, ibg, c, LY, LZ), zero(ibg), ∂x(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂y_η_f(LX, LZ, i, j, k, ibg::IBG, ∂y, args...) = ifelse(immersed_inactive_node(i, j, k, ibg, LX, c, LZ) | immersed_inactive_node(i, j+1, k, ibg, LX, c, LZ), zero(ibg), ∂y(i, j, k, ibg.underlying_grid, args...))
 
 @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcf, ibg, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cff, ibg, V★, args...)
 
-@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂x_η_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η★, args...)
-@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂y_η_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η★, args...)        
+@inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T, η) = conditional_∂x_η_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η)
+@inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η) = conditional_∂y_η_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η)        
 
 # Disambiguation
 for Topo in [:Periodic, :Bounded]
@@ -89,8 +91,8 @@ for Topo in [:Periodic, :Bounded]
         @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T::Type{$Topo}, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcf, ibg, U★, args...)
         @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T::Type{$Topo}, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cff, ibg, V★, args...)
 
-        @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂x_η_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η★, args...)
-        @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂y_η_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η★, args...)        
+        @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂x_η_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ_η, T, η)
+        @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η) = conditional_∂y_η_f(c, f, i, j, k, ibg, ∂yᶜᶠᶠ_η, T, η)        
     end
 end
 
