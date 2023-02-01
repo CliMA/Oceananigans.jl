@@ -157,7 +157,7 @@ end
 ##### Sending halos
 #####
 
-for (side_idx, side) in enumerate(sides)
+for side in sides
     side_str = string(side)
     send_side_halo = Symbol("send_$(side)_halo")
     underlying_side_boundary = Symbol("underlying_$(side)_boundary")
@@ -175,7 +175,7 @@ for (side_idx, side) in enumerate(sides)
         end
 
         function $send_side_halo(c, grid, ::GPU, side_location, local_rank, rank_to_send_to, buffers)
-            send_buffer = buffers[$side_idx].send
+            send_buffer = buffers.$side.send
             
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
@@ -191,7 +191,7 @@ end
 ##### Receiving and filling halos (buffer is a view so it gets filled upon receive)
 #####
 
-for (side_idx, side) in enumerate(sides)
+for side in sides
     side_str = string(side)
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     underlying_side_halo = Symbol("underlying_$(side)_halo")
@@ -211,7 +211,7 @@ for (side_idx, side) in enumerate(sides)
 
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, ::GPU, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers[$side_idx].recv
+            recv_buffer = buffers.$side.recv
         
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
