@@ -33,10 +33,10 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 """
 @kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHS) * Δt
+    
+    @inbounds U.u[i, j, k] -= δxᶠᵃᵃ(i, j, k, grid, pNHS) / Δxᶠᶜᶜ(i, j, k, grid) * Δt
+    @inbounds U.v[i, j, k] -= δyᵃᶠᵃ(i, j, k, grid, pNHS) / Δyᶜᶠᶜ(i, j, k, grid) * Δt
+    @inbounds U.w[i, j, k] -= δzᵃᵃᶠ(i, j, k, grid, pNHS) / Δzᶜᶜᶠ(i, j, k, grid) * Δt
 end
 
 "Update the solution variables (velocities and tracers)."
