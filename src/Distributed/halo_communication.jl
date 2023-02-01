@@ -175,7 +175,7 @@ for (side_idx, side) in enumerate(sides)
         end
 
         function $send_side_halo(c, grid, ::GPU, side_location, local_rank, rank_to_send_to, buffers)
-            send_buffer = buffers[side_idx].send
+            send_buffer = buffers[$side_idx].send
             
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
@@ -211,7 +211,7 @@ for (side_idx, side) in enumerate(sides)
 
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, ::GPU, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers[side_idx].recv
+            recv_buffer = buffers[$side_idx].recv
         
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
