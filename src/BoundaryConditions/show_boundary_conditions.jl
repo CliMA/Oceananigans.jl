@@ -6,6 +6,7 @@ const DFBC = DefaultBoundaryCondition
 bc_str(::FBC)     = "Flux"
 bc_str(::PBC)     = "Periodic"
 bc_str(::CBC)     = "Communication"
+bc_str(::HBC)     = "HaloCommunication"
 bc_str(::OBC)     = "Open"
 bc_str(::VBC)     = "Value"
 bc_str(::GBC)     = "Gradient"
