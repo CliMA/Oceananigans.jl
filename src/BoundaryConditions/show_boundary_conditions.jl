@@ -2,6 +2,7 @@ import Base: show
 using Oceananigans.Utils: prettysummary
 
 const DFBC = DefaultBoundaryCondition
+const IBC = BoundaryCondition{Open, Nothing}
 
 bc_str(::FBC)     = "Flux"
 bc_str(::PBC)     = "Periodic"
@@ -11,6 +12,7 @@ bc_str(::VBC)     = "Value"
 bc_str(::GBC)     = "Gradient"
 bc_str(::ZFBC)    = "ZeroFlux"
 bc_str(::DFBC)    = "Default"
+bc_str(::IBC)     = "Impenetrable"
 bc_str(::Nothing) = "Nothing"
 
 #####
