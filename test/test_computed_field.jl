@@ -212,11 +212,9 @@ function computation_including_boundaries(arch)
     model = NonhydrostaticModel(grid=grid)
 
     u, v, w = model.velocities
-    CUDA.@allowscalar begin
-        @. u.data = 1 + rand()
-        @. v.data = 2 + rand()
-        @. w.data = 3 + rand()
-    end
+    interior(u) .= 1 + rand()
+    interior(v) .= 2 + rand()
+    interior(w) .= 3 + rand()
 
     op = @at (Center, Face, Face) u * v * w
     @compute uvw = Field(op)
@@ -283,7 +281,7 @@ function computations_with_averaged_fields(model)
     tke = Field(tke_op)
     compute!(tke)
 
-    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+    return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
 function computations_with_averaged_field_derivative(model)
@@ -303,7 +301,7 @@ function computations_with_averaged_field_derivative(model)
 
     set!(model, T = (x, y, z) -> 3 * z)
 
-    return CUDA.@allowscalar all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3])
+    return all(interior(shear, 2:3, 2:3, 2:3) .== interior(T, 2:3, 2:3, 2:3))
 end
 
 function computations_with_computed_fields(model)
@@ -322,7 +320,7 @@ function computations_with_computed_fields(model)
     tke = Field(tke_op)
     compute!(tke)
 
-    return CUDA.@allowscalar all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+    return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
 for arch in archs
@@ -418,15 +416,15 @@ for arch in archs
 
                 ζxy = Field(ζ_op, indices=(:, :, 1))
                 compute!(ζxy)
-                @test CUDA.@allowscalar ζxy == view(ζ, :, :, 1)
+                @test all(interior(ζxy, :, :, 1) .== interior(ζ, :, :, 1))
 
                 ζxz = Field(ζ_op, indices=(:, 1, :))
                 compute!(ζxz)
-                @test CUDA.@allowscalar ζxz == view(ζ, :, 1, :)
+                @test all(interior(ζxz, :, 1, :) .== interior(ζ, :, 1, :))
 
                 ζyz = Field(ζ_op, indices=(1, :, :))
                 compute!(ζyz)
-                @test CUDA.@allowscalar ζyz == view(ζ, 1, :, :)
+                @test all(interior(ζyz, 1, :, :) .== interior(ζ, 1, :, :))
             end
 
             @testset "Operations with Field and PressureField [$A, $G]" begin
