@@ -1,7 +1,7 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_event, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.Fields: reduced_dimensions, fill_send_buffers!, fill_recv_buffers!
 
 using Oceananigans.BoundaryConditions: 
             ContinuousBoundaryFunction, 

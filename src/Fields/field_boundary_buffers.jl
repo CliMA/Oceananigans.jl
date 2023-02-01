@@ -57,8 +57,8 @@ function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
 
      fill_west_send_buffer!(parent(c), buffers.west,  Hx, Nx)
      fill_east_send_buffer!(parent(c), buffers.east,  Hx, Nx)
-    fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
     fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
+    fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
 """
@@ -76,8 +76,8 @@ function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
 
      fill_west_recv_buffer!(parent(c), buffers.west,  Hx, Nx)
      fill_east_recv_buffer!(parent(c), buffers.east,  Hx, Nx)
-    fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
     fill_south_recv_buffer!(parent(c), buffers.south, Hy, Ny)
+    fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
 fill_west_send_buffer!(c, ::Nothing, args...) = nothing
@@ -90,12 +90,12 @@ fill_south_send_buffer!(c, ::Nothing, args...) = nothing
 fill_north_recv_buffer!(c, ::Nothing, args...) = nothing
 fill_south_recv_buffer!(c, ::Nothing, args...) = nothing
 
- fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[H+1:2H,  :, :]
- fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[N+1:N+H, :, :]
-fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, H+1:2H,  :]
-fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, N+1:N+H, :]
+ fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[1+H:2H,  :, :]
+ fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[1+N:N+H, :, :]
+fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+H:2H,  :]
+fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+N:N+H, :]
 
  fill_west_recv_buffer!(c, buff, H, N) = c[1:H,        :, :] .= buff.recv
- fill_east_recv_buffer!(c, buff, H, N) = c[N+H+1:N+2H, :, :] .= buff.recv
+ fill_east_recv_buffer!(c, buff, H, N) = c[1+N+H:N+2H, :, :] .= buff.recv
 fill_south_recv_buffer!(c, buff, H, N) = c[:, 1:H,        :] .= buff.recv
-fill_north_recv_buffer!(c, buff, H, N) = c[:, N+H+1:N+2H, :] .= buff.recv
+fill_north_recv_buffer!(c, buff, H, N) = c[:, 1+N+H:N+2H, :] .= buff.recv
