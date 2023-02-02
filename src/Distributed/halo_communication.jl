@@ -95,7 +95,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         barrier = device_event(child_arch)
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
     end
-
+    
+    barrier = device_event(child_arch)
     fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
     fill_recv_buffers!(c, buffers, grid, child_arch)    
