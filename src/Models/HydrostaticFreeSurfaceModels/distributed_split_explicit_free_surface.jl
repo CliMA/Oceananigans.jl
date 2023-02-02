@@ -48,6 +48,7 @@ end
    
 @inline function full_offsets(grid::DistributedGrid)
     Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
 
     Rx, Ry, _ = architecture(grid).ranks
 
