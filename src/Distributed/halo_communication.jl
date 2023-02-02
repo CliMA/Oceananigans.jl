@@ -118,8 +118,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, ba
         return nothing
     end
     
-    mpi_requests = events_and_requests |> Array{MPI.Request}
-    MPI.Waitall!(mpi_requests)
+    MPI.Waitall!(events_and_requests)
 
     return nothing
 end
@@ -154,7 +153,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             recv_req1 = $recv_and_fill_side_halo!(c, grid, child_arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, child_arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
 
-            return send_req1, send_req2, recv_req1, recv_req2
+            return [send_req1, send_req2, recv_req1, recv_req2]
         end
 
         function $fill_both_halo!(c, bc_side::HBCT, bc_opposite_side, size, offset, loc, arch::MultiArch, 
@@ -171,7 +170,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             
             wait(device(child_arch), event)    
 
-            return send_req1, recv_req1
+            return [send_req1, recv_req1]
         end
 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
@@ -188,7 +187,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             wait(device(child_arch), event)    
 
-            return send_req2, recv_req2
+            return [send_req2, recv_req2]
         end
     end
 end
