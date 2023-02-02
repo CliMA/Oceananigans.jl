@@ -113,8 +113,8 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, ba
 
     events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
     
-    if event isa Event
-        wait(device(child_architecture(arch)), event)    
+    if events_and_requests isa Event
+        wait(device(child_architecture(arch)), events_and_requests)    
         return nothing
     end
     
