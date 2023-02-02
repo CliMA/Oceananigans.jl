@@ -13,13 +13,13 @@ comm   = MPI.COMM_WORLD
 rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
-Rx = Nranks
+Rx = Ry = Int(sqrt(Nranks))
 
-topo = (Periodic, Periodic, Bounded)
-arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
+topo = (Periodic, Bounded, Bounded)
+arch = MultiArch(GPU(); topology = topo, ranks=(Rx, Ry, 1))
 
 grid = RectilinearGrid(arch,
-                       size = (Nranks * 2, 2, 1),
+                       size = (Rx * 2, Ry * 2, 1),
                        extent = (1, 1, 1),
                        topology = topo)
 
@@ -27,8 +27,8 @@ cf = CenterField(grid)
 xf = XFaceField(grid)
 yf = YFaceField(grid)
 
-n = size(grid, 1)
-h = halo_size(grid)[1]
+nx, ny = size(grid)[[1, 2]]
+hx, hy = halo_size(grid)[[1, 2]]
 
 fill!(cf, rank)
 fill!(xf, rank)
@@ -38,11 +38,7 @@ fill!(yf, rank)
 
 fill_halo_regions!((cf, xf, yf))
 
-@show rank, view(parent(cf), 1+n+h:n+2h, :, :)
-@show rank, view(parent(cf), 1:h, :, :)
-
-@show rank, view(parent(xf), 1+n+h:n+2h, :, :)
-@show rank, view(parent(xf), 1:h, :, :)
-
-@show rank, view(parent(yf), 1+n+h:n+2h, :, :)
-@show rank, view(parent(yf), 1:h, :, :)
+@show rank, view(parent(cf), 1+nx+hx:nx+2hx, :, :)
+@show rank, view(parent(cf), 1:hx, :, :)
+@show rank, view(parent(cf), :, 1+ny+hy:ny+2hy, :)
+@show rank, view(parent(cf), :, 1:hy, :)
