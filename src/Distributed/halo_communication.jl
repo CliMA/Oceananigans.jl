@@ -160,7 +160,6 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
         function $fill_both_halo!(c, bc_side::HBCT, bc_opposite_side, size, offset, loc, arch::MultiArch, 
             barrier, grid::DistributedGrid, buffers, args...; kwargs...)
 
-            @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
             event = fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
@@ -178,7 +177,6 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
                 barrier, grid::DistributedGrid, buffers, args...; kwargs...)
 
-            @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
             event = fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
