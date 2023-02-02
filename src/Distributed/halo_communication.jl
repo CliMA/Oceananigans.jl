@@ -162,7 +162,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             local_rank = bc_side.condition.from
 
-            event = fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
+            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
             child_arch = child_architecture(arch)
 
@@ -179,7 +179,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             local_rank = bc_opposite_side.condition.from
 
-            event = fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
+            event = $fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
             child_arch = child_architecture(arch)
 
