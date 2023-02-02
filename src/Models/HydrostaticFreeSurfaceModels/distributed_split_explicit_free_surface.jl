@@ -36,10 +36,12 @@ end
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
+    Tx, Ty, _ = topology(grid)
+
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? Nx : Nx + 2Hx - 2
-    Ay = Ry == 1 ? Ny : Ny + 2Hy - 2
+    Ax = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx + Hx - 1 : Nx + 2Hx - 2)
+    Ay = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny + Hy - 1 : Nx + 2Hy - 2)
 
     return (Ax, Ay)
 end
@@ -49,8 +51,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? 0 : Hx - 1
-    Ay = Ry == 1 ? 0 : Hy - 1
+    Ax = Rx == 1 || Tx == RightConnected ? 0 : Hx - 1
+    Ay = Ry == 1 || Ty == RightConnected ? 0 : Hy - 1
 
     return (Ax, Ay)
 end
@@ -76,7 +78,6 @@ end
 @inline function partitioned_halos(old_halos, step_halo, grid::DistributedGrid)
 
     Rx, Ry, _ = architecture(grid).ranks
-    Tx, Ty, _ = topology(grid)
 
     Ax = Rx == 1 ? old_halos[1] : step_halo
     Ay = Ry == 1 ? old_halos[2] : step_halo
