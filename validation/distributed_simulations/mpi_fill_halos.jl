@@ -13,17 +13,19 @@ comm   = MPI.COMM_WORLD
 rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
-Rx = sqrt(Nranks)
-Ry = sqrt(Nranks)
+Rx = Nranks
+Ry = 1
 
 topo = (Periodic, Bounded, Bounded)
 arch = MultiArch(GPU(); topology = topo, ranks=(Rx, Ry, 1))
 
-grid = RectilinearGrid(arch,
-                       size = (Rx * 2, Ry * 2, 1),
-                       extent = (1, 1, 1),
-                       halo = (1, 1, 1),
-                       topology = topo)
+grid = LatitudeLongitudeGrid(arch,
+                             size = (1, Ry * 1, 1),
+                             latitude = (0, 1),
+                             longitude = (0, 1),
+                             z = (0, 1),
+                             halo = (1, 1, 1),
+                             topology = topo)
 
 model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(; substeps = 10), 
                                     buoyancy = nothing, tracers = ())
@@ -34,21 +36,19 @@ U = model.free_surface.state.U̅
 nx, ny = size(η.grid)[[1, 2]]
 hx, hy = halo_size(η.grid)[[1, 2]]
 
-set!(η, rank)
-set!(U, rank)
+@show hx, hy, rank
 
-@show rank, arch.connectivity
+set!(η, 1)
+set!(U, 1)
 
 fill_halo_regions!((η, U))
 
-@show rank, view(parent(η), 1+nx+hx:nx+2hx, :, 1)
-@show rank, view(parent(η), 1:hx, :, 1)
-@show rank, view(parent(η), :, 1+ny+hy:ny+2hy, 1)
-@show rank, view(parent(η), :, 1:hy, 1)
+@show rank, η.data.parent[1+nx+hx:nx+2hx, :, 1]
+@show rank, η.data.parent[1:hx, :, 1]
+@show rank, η.data.parent[:, 1+ny+hy:ny+2hy, 1]
+@show rank, η.data.parent[:, 1:hy, 1]
 
-
-
-@show rank, view(parent(U), 1+nx+hx:nx+2hx, :, 1)
-@show rank, view(parent(U), 1:hx, :, 1)
-@show rank, view(parent(U), :, 1+ny+hy:ny+2hy, 1)
-@show rank, view(parent(U), :, 1:hy, 1)
+@show rank, U.data.parent[1+nx+hx:nx+2hx, :, 1]
+@show rank, U.data.parent[1:hx, :, 1]
+@show rank, U.data.parent[:, 1+ny+hy:ny+2hy, 1]
+@show rank, U.data.parent[:, 1:hy, 1]
