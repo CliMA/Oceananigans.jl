@@ -168,20 +168,8 @@ multi_region_object_from_array(a::AbstractArray, grid) = arch_array(architecture
 
 new_data(FT::DataType, mrg::MultiRegionGrid, args...) = construct_regionally(new_data, FT, mrg, args...)
 
-function with_halo(new_halo, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-
-    devices   = mrg.devices
-
-    # Construct a MRG on the CPU
-    cpu_mrg   = on_architecture(CPU(), mrg)
-    cpu_grids = construct_regionally(with_halo, new_halo, cpu_mrg)
-    new_grids = construct_regionally(on_specific_architecture, mrg.architecture, Iterate(devices), cpu_grids)
-
-    return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, devices)
-end
-
 # This is kind of annoying but it is necessary to have compatible MultiRegion and Distributed
-function with_halo(new_halo, mrg::ImmersedMultiRegionGrid) 
+function with_halo(new_halo, mrg::MultiRegionGrid) 
     devices   = mrg.devices
     partition = mrg.partition
     cpu_mrg   = on_architecture(CPU(), mrg)
