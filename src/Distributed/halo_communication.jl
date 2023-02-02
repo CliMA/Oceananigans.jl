@@ -122,6 +122,12 @@ end
 
 #####
 ##### fill_west_and_east_halo!   }
+##### fill_south_and_north_halo! } when only the left or the right boundary are communicating
+##### fill_bottom_and_top_halo!  }
+#####
+
+#####
+##### fill_west_and_east_halo!   }
 ##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
 ##### fill_bottom_and_top_halo!  }
 #####

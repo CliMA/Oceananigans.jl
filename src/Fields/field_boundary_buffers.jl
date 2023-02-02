@@ -25,22 +25,21 @@ function FieldBoundaryBuffers(grid, data, boundary_conditions)
     return FieldBoundaryBuffers(west, east, south, north)
 end
 
-create_buffer_x(arch, data, H, bc)    = nothing
-create_buffer_y(arch, data, H, bc)    = nothing
+create_buffer_x(arch, data, H, bc) = nothing
+create_buffer_y(arch, data, H, bc) = nothing
 
 const PassingBC = Union{CBC, HBC}
 
-create_buffer_x(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(H, size(parent(data), 2), size(parent(data), 3))), 
-                                               recv = arch_array(arch, zeros(H, size(parent(data), 2), size(parent(data), 3))))    
-create_buffer_y(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(size(parent(data), 1), H, size(parent(data), 3))), 
-                                               recv = arch_array(arch, zeros(size(parent(data), 1), H, size(parent(data), 3))))
+create_buffer_x(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
+                                               recv = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+create_buffer_y(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
+                                               recv = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 
                          Adapt.adapt(to, buff.east),    
                          Adapt.adapt(to, buff.north), 
                          Adapt.adapt(to, buff.south))
-
 
 """
     fill_send_buffers(c, buffers, arch)
