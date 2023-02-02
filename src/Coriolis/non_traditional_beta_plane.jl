@@ -9,7 +9,7 @@ vertical component of the rotation vector (see [`BetaPlane`](@ref)).
 This implementation is based off of section 5 of Dellar (2011). It conserve energy,
 angular momentum, and potential vorticity.
 
-Reference
+References
 ==========
 Dellar, P. (2011). Variations on a beta-plane: Derivation of non-traditional
     beta-plane equations from Hamilton's principle on a sphere. Journal of
@@ -69,17 +69,17 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
-    @inbounds (  two_Ωʸ(coriolis, ynode(Center, j, grid), znode(Center, k, grid)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-               - two_Ωᶻ(coriolis, ynode(Center, j, grid), znode(Center, k, grid)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+     (  two_Ωʸ(coriolis, ynode(Center, j, grid), znode(Center, k, grid)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w
+      - two_Ωᶻ(coriolis, ynode(Center, j, grid), znode(Center, k, grid)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds  two_Ωᶻ(coriolis,ynode(Face, j, grid), znode(Center, k, grid)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+    two_Ωᶻ(coriolis,ynode(Face, j, grid), znode(Center, k, grid)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds -two_Ωʸ(coriolis, ynode(Center, j, grid), znode(Face, k, grid)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+   -two_Ωʸ(coriolis, ynode(Center, j, grid), znode(Face, k, grid)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
     string("NonTraditionalBetaPlane{$FT}",
