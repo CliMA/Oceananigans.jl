@@ -92,13 +92,10 @@ const μ = 1.0 - δ - γ - ϵ
 @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)        
 
 # Disambiguation
-for Topo in [:Periodic, :Bounded]
+for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
     @eval begin
         @inline δxᶜᵃᵃ_U(i, j, k, ibg::IBG, T::Type{$Topo}, U★::Function, args...) = δxᶜᵃᵃ_U(i, j, k, ibg.underlying_grid, T, conditional_U_fcc, ibg, U★, args...)
         @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T::Type{$Topo}, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc, ibg, V★, args...)
-
-        @inline ∂xᶠᶜᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂xᶠᶜᶠ_η(i, j, k, ibg, T, η★, args...)
-        @inline ∂yᶜᶠᶠ_η(i, j, k, ibg::IBG, T::Type{$Topo}, η★::Function, args...) = conditional_∂yᶜᶠᶠ_η(i, j, k, ibg, T, η★, args...)        
     end
 end
 
