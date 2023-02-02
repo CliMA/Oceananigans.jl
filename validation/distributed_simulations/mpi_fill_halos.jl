@@ -17,10 +17,10 @@ Rx = Nranks
 Ry = 1
 
 topo = (Periodic, Bounded, Bounded)
-arch = MultiArch(GPU(); topology = topo, ranks=(Rx, Ry, 1))
+arch = MultiArch(CPU(); topology = topo, ranks=(Rx, Ry, 1))
 
 grid = LatitudeLongitudeGrid(arch,
-                             size = (1, Ry * 1, 1),
+                             size = (Rx * 20, Ry * 20, 1),
                              latitude = (0, 1),
                              longitude = (0, 1),
                              z = (0, 1),
@@ -33,13 +33,15 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurf
 η = model.free_surface.η
 U = model.free_surface.state.U̅
 
+time_step!(model, 1.0)
+time_step!(model, 1.0)
+time_step!(model, 1.0)
+
 nx, ny = size(η.grid)[[1, 2]]
 hx, hy = halo_size(η.grid)[[1, 2]]
 
-@show hx, hy, rank
-
-set!(η, 1)
-set!(U, 1)
+@show rank, interior(η, :, :, 1)
+@show rank, interior(U, :, :, 1)
 
 fill_halo_regions!((η, U))
 
