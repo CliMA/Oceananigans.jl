@@ -9,7 +9,7 @@ vertical component of the rotation vector (see [`BetaPlane`](@ref)).
 This implementation is based off of section 5 of Dellar (2011). It conserve energy,
 angular momentum, and potential vorticity.
 
-References
+Reference
 ==========
 Dellar, P. (2011). Variations on a beta-plane: Derivation of non-traditional
     beta-plane equations from Hamilton's principle on a sphere. Journal of
