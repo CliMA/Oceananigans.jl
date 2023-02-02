@@ -21,6 +21,7 @@ arch = MultiArch(GPU(); topology = topo, ranks=(Rx, Ry, 1))
 grid = RectilinearGrid(arch,
                        size = (Rx * 2, Ry * 2, 1),
                        extent = (1, 1, 1),
+                       halo = (1, 1, 1),
                        topology = topo)
 
 cf = CenterField(grid)
