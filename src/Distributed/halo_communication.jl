@@ -110,12 +110,20 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid
     hbc_right = filter(bc -> bc isa HBC, halo_tuple[3])
 
     if length(hbc_left) > 1 
+        child_arch = child_architecture(arch)
+        fill_recv_buffers!(c, buffers, grid, child_arch)    
+        fill_send_buffers!(c, buffers, grid, child_arch)
+
         idx = findfirst(bc -> bc isa HBC, halo_tuple[2])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
     end
 
     if length(hbc_right) > 1 
+        child_arch = child_architecture(arch)
+        fill_recv_buffers!(c, buffers, grid, child_arch)    
+        fill_send_buffers!(c, buffers, grid, child_arch)
+
         idx = findfirst(bc -> bc isa HBC, halo_tuple[3])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
