@@ -112,8 +112,13 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, ba
     offset = fill_halo_offset(size, fill_halo!, indices)
 
     events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-
-    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
+    
+    if event isa Event
+        wait(device(child_architecture(arch)), event)    
+        return nothing
+    end
+    
+    mpi_requests = events_and_requests |> Array{MPI.Request}
     MPI.Waitall!(mpi_requests)
 
     return nothing
