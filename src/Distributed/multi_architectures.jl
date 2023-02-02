@@ -59,6 +59,10 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
     y_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[2])
     z_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[3])
     
+    X = typeof(x_communicator)
+    Y = typeof(y_communicator)
+    Z = typeof(z_communicator)
+
     return MultiArch{A, R, I, ρ, C, γ, X, Y, Z}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, x_communicator, y_communicator, z_communicator)
 end
 
