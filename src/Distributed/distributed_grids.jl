@@ -104,6 +104,8 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
+    @show Nφ, Ry
+
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
     @assert isinteger(Nλ / Rx)
