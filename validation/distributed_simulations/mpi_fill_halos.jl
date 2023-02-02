@@ -13,7 +13,8 @@ comm   = MPI.COMM_WORLD
 rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
-Rx = Ry = Int(sqrt(Nranks))
+Rx = sqrt(Nranks)
+Ry = sqrt(Nranks)
 
 topo = (Periodic, Bounded, Bounded)
 arch = MultiArch(GPU(); topology = topo, ranks=(Rx, Ry, 1))
@@ -24,22 +25,30 @@ grid = RectilinearGrid(arch,
                        halo = (1, 1, 1),
                        topology = topo)
 
-cf = CenterField(grid)
-xf = XFaceField(grid)
-yf = YFaceField(grid)
+model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(; substeps = 10), 
+                                    buoyancy = nothing, tracers = ())
 
-nx, ny = size(grid)[[1, 2]]
-hx, hy = halo_size(grid)[[1, 2]]
+η = model.free_surface.η
+U = model.free_surface.state.U̅
 
-fill!(cf, rank)
-fill!(xf, rank)
-fill!(yf, rank)
+nx, ny = size(η.grid)[[1, 2]]
+hx, hy = halo_size(η.grid)[[1, 2]]
+
+set!(η, rank)
+set!(U, rank)
 
 @show rank, arch.connectivity
 
-fill_halo_regions!((cf, xf, yf))
+fill_halo_regions!((η, U))
 
-@show rank, view(parent(cf), 1+nx+hx:nx+2hx, :, 1)
-@show rank, view(parent(cf), 1:hx, :, 1)
-@show rank, view(parent(cf), :, 1+ny+hy:ny+2hy, 1)
-@show rank, view(parent(cf), :, 1:hy, 1)
+@show rank, view(parent(η), 1+nx+hx:nx+2hx, :, 1)
+@show rank, view(parent(η), 1:hx, :, 1)
+@show rank, view(parent(η), :, 1+ny+hy:ny+2hy, 1)
+@show rank, view(parent(η), :, 1:hy, 1)
+
+
+
+@show rank, view(parent(U), 1+nx+hx:nx+2hx, :, 1)
+@show rank, view(parent(U), 1:hx, :, 1)
+@show rank, view(parent(U), :, 1+ny+hy:ny+2hy, 1)
+@show rank, view(parent(U), :, 1:hy, 1)
