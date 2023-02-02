@@ -30,9 +30,9 @@ yf = YFaceField(grid)
 nx, ny = size(grid)[[1, 2]]
 hx, hy = halo_size(grid)[[1, 2]]
 
-set!(cf, rank)
-set!(xf, rank)
-set!(yf, rank)
+fill!(cf, rank)
+fill!(xf, rank)
+fill!(yf, rank)
 
 @show rank, arch.connectivity
 
