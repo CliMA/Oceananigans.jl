@@ -2,7 +2,7 @@ using MPI
 using Oceananigans
 using Oceananigans.Distributed
 using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: topology, architecture
+using Oceananigans.Grids: topology, architecture, halo_size
 using Oceananigans.Units: kilometers, meters
 using Printf
 using JLD2
@@ -27,6 +27,9 @@ cf = CenterField(grid)
 xf = XFaceField(grid)
 yf = YFaceField(grid)
 
+n = size(grid, 1)
+h = halo_size(grid)[1]
+
 fill!(cf, rank)
 fill!(xf, rank)
 fill!(yf, rank)
@@ -35,11 +38,11 @@ fill!(yf, rank)
 
 fill_halo_regions!((cf, xf, yf))
 
-@show rank, view(parent(cf), 1+N+H:N+2H, :, :)
-@show rank, view(parent(cf), 1:H, :, :)
+@show rank, view(parent(cf), 1+n+h:n+2h, :, :)
+@show rank, view(parent(cf), 1:h, :, :)
 
-@show rank, view(parent(xf), 1+N+H:N+2H, :, :)
-@show rank, view(parent(xf), 1:H, :, :)
+@show rank, view(parent(xf), 1+n+h:n+2h, :, :)
+@show rank, view(parent(xf), 1:h, :, :)
 
-@show rank, view(parent(yf), 1+N+H:N+2H, :, :)
-@show rank, view(parent(yf), 1:H, :, :)
+@show rank, view(parent(yf), 1+n+h:n+2h, :, :)
+@show rank, view(parent(yf), 1:h, :, :)
