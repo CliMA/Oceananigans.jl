@@ -35,11 +35,11 @@ fill!(yf, rank)
 
 fill_halo_regions!((cf, xf, yf))
 
-@show rank, view(cf.parent, 1+N+H:N+2H, :, :)
-@show rank, view(cf.parent, 1:H, :, :)
+@show rank, view(parent(cf), 1+N+H:N+2H, :, :)
+@show rank, view(parent(cf), 1:H, :, :)
 
-@show rank, view(xf.parent, 1+N+H:N+2H, :, :)
-@show rank, view(xf.parent, 1:H, :, :)
+@show rank, view(parent(xf), 1+N+H:N+2H, :, :)
+@show rank, view(parent(xf), 1:H, :, :)
 
-@show rank, view(yf.parent, 1+N+H:N+2H, :, :)
-@show rank, view(yf.parent, 1:H, :, :)
+@show rank, view(parent(yf), 1+N+H:N+2H, :, :)
+@show rank, view(parent(yf), 1:H, :, :)
