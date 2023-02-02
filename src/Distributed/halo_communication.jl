@@ -8,7 +8,7 @@ using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,
     permute_boundary_conditions,
-    PBCT, HBCT
+    PBCT, HBCT, HBC
 
 import Oceananigans.BoundaryConditions: 
     fill_halo_regions!, fill_first, fill_halo_event!,
@@ -84,7 +84,6 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-# TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
     arch       = architecture(grid)
     child_arch = child_architecture(arch)
@@ -97,9 +96,22 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
     end
 
+    fill_eventual_additional_halo!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+
     fill_recv_buffers!(c, buffers, grid, child_arch)    
 
     return nothing
+end
+
+# If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
+function fill_eventual_additional_halo!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    hbc_left  = filter(bc -> bc isa HBC, halo_tuple[2])
+    hbc_right = filter(bc -> bc isa HBC, halo_tuple[3])
+
+    if length(hbc_left) > 1 || length(hbc_right) > 1
+        idx = findfirst(bc -> bc isa HBC, halo_tuple[2])
+        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    end
 end
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, barrier, grid::DistributedGrid, args...; kwargs...)
