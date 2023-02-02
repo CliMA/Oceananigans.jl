@@ -464,6 +464,8 @@ function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, 
     workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
     curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), workgroup, worksize)
 
+    @show size(grid), length(Azᶜᶠ)
+
     event = curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ; dependencies=device_event(arch))
     wait(event)
 

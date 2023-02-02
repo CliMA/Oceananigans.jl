@@ -23,7 +23,7 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Periodic, Periodic, Bounded)
-arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
+arch = MultiArch(CPU(); topology = topo, ranks=(Nranks, 1, 1))
 
 Lh = 100kilometers
 Lz = 400meters
@@ -38,7 +38,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 coriolis = FPlane(f = 1e-4)
 
-free_surface = SplitExplicitFreeSurface(; substeps = 10)
+free_surface = SplitExplicitFreeSurface(; substeps = 1000)
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis = coriolis,
@@ -46,6 +46,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
+@show grid, model.free_surface.η.grid
 
 U = 0.1 # geostrophic velocity
 L = Lh / 40 # gaussian width
@@ -67,7 +68,7 @@ set!(model, η = ηⁱ)
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-simulation = Simulation(model, Δt = 2wave_propagation_time_scale, stop_iteration = 300)
+simulation = Simulation(model, Δt = 2wave_propagation_time_scale, stop_iteration = 1000)
 
 outputs = Dict()
 

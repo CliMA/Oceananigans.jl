@@ -16,13 +16,20 @@ using CUDA: @allowscalar
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
+using MPI
 
 #####
 ##### Grid
 #####
 
+MPI.Init()
+
+comm   = MPI.COMM_WORLD
+rank   = MPI.Comm_rank(comm)
+Nranks = MPI.Comm_size(comm)
+
 topo = (Periodic, Bounded, Bounded)
-arch = GPU() #MultiArch(child_arch; topology = topo, ranks=(Nranks, 1, 1))
+arch = MultiArch(CPU(); topology = topo, ranks=(1, Nranks, 1))
 
 reference_density = 1029
 
@@ -103,18 +110,15 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               precompute_metrics = true)
 
 nx, ny, nz = size(underlying_grid)
-bathymetry = arch_array(arch, bathymetry) #[1 + nx * rank : (rank + 1) * nx, :]
+bathymetry = bathymetry[:, 1 + ny * rank : (rank + 1) * ny, :]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
-mrg  = MultiRegionGrid(grid, partition = XPartition(4))
 
-using Oceananigans.MultiRegion: multi_region_object_from_array
+τˣ = - τˣ[:, 1 + ny * rank : (rank + 1) * ny, :]
+τʸ = - τʸ[:, 1 + ny * rank : (rank + 1) * ny, :]
 
-τˣ = multi_region_object_from_array(- τˣ, mrg)
-τʸ = multi_region_object_from_array(- τʸ, mrg)
-
-target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
-target_sea_surface_salinity    = S★ = multi_region_object_from_array(S★, mrg)
+target_sea_surface_temperature = T★ = T★[:, 1 + ny * rank : (rank + 1) * ny, :]
+target_sea_surface_salinity    = S★ = S★[:, 1 + ny * rank : (rank + 1) * ny, :]
 
 #####
 ##### Physics and model setup
@@ -233,7 +237,7 @@ buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 closure      = (vertical_diffusivity, convective_adjustment)
 coriolis     = HydrostaticSphericalCoriolis(scheme = WetCellEnstrophyConservingScheme())
 
-model = HydrostaticFreeSurfaceModel(; grid = mrg,
+model = HydrostaticFreeSurfaceModel(; grid,
                                       free_surface,
                                       momentum_advection, tracer_advection,
                                       coriolis,
@@ -253,8 +257,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = multi_region_object_from_array(file_init["T"], mrg)
-S_init = multi_region_object_from_array(file_init["S"], mrg)
+T_init = file_init["T"][:, 1 + ny * rank : (rank + 1) * ny, :]
+S_init = file_init["S"][:, 1 + ny * rank : (rank + 1) * ny, :]
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
@@ -266,7 +270,7 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_iteration = 5000)
 
 start_time = [time_ns()]
 
