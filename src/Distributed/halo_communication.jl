@@ -177,7 +177,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
         function $fill_both_halo!(c, bc_side, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
                 barrier, grid::DistributedGrid, buffers, args...; kwargs...)
 
-            local_rank = bc_side.condition.from
+            local_rank = bc_opposite_side.condition.from
 
             event = fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
