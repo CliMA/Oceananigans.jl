@@ -465,16 +465,6 @@ function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, 
     workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
     curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), workgroup, worksize)
 
-    if hasproperty(grid.architecture, :communicator)
-        @show size(grid), length(Azᶜᶠ)
-        
-        @show workgroup, worksize
-        @show grid.φᵃᶜᵃ.offsets[1], length(grid.φᵃᶜᵃ), length(grid.φᵃᶠᵃ)
-        
-        @show grid isa XRegLatLonGrid
-        MPI.Barrier(grid.architecture.communicator)
-    end
-
     event = curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ; dependencies=device_event(arch))
     wait(event)
 
@@ -505,8 +495,6 @@ end
 
     # Manually offset y-index
     j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
-
-    @show j′
 
     @inbounds begin
         Δxᶠᶜ[j′] = Δxᶠᶜᵃ(1, j′, 1, grid)
