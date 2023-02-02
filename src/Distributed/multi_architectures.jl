@@ -6,13 +6,16 @@ using CUDA: ndevices, device!
 import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 
-struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
+struct MultiArch{A, R, I, ρ, C, γ, X, Y, Z} <: AbstractMultiArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
                ranks :: ρ
         connectivity :: C
         communicator :: γ
+      x_communicator :: X
+      y_communicator :: Y
+      z_communicator :: Z
 end
 
 #####
@@ -51,8 +54,12 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
         device_rank = MPI.Comm_rank(local_comm)
         device!(device_rank % ndevices())
     end
+
+    x_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[1])
+    y_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[2])
+    z_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[3])
     
-    return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
+    return MultiArch{A, R, I, ρ, C, γ, X, Y, Z}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, x_communicator, y_communicator, z_communicator)
 end
 
 #####

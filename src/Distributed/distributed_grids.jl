@@ -96,6 +96,10 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
+    x_comm = arch.x_communicator
+    y_comm = arch.y_communicator
+    z_comm = arch.z_communicator
+    
     TX = insert_connected_topology(topology[1], Rx, ri)
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
@@ -151,18 +155,22 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, arch.communicator)
+    x_comm = arch.x_communicator
+    y_comm = arch.y_communicator
+    z_comm = arch.z_communicator
+
+    TX = reconstruct_global_topology(TX, Rx, ri, y_comm)
+    TY = reconstruct_global_topology(TY, Ry, rj, x_comm)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, z_comm)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 2D parallelizations!!
-    xG = Rx == 1 ? x : assemble(x, nx, Rx, ri, arch)
-    yG = Ry == 1 ? y : assemble(y, ny, Ry, rj, arch)
-    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, arch)
+    xG = Rx == 1 ? x : assemble(x, nx, Rx, ri, y_comm)
+    yG = Ry == 1 ? y : assemble(y, ny, Ry, rj, x_comm)
+    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, z_comm)
 
     child_arch = child_architecture(arch)
 
@@ -194,18 +202,22 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, arch.communicator)
+    x_comm = arch.x_communicator
+    y_comm = arch.y_communicator
+    z_comm = arch.z_communicator
+
+    TX = reconstruct_global_topology(TX, Rx, ri, y_comm)
+    TY = reconstruct_global_topology(TY, Ry, rj, x_comm)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, z_comm)
 
     λ = cpu_face_constructor_x(grid)
     φ = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 2D parallelizations!!
-    λG = Rx == 1 ? λ : assemble(λ, nλ, Rx, ri, arch)
-    φG = Ry == 1 ? φ : assemble(φ, nφ, Ry, rj, arch)
-    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, arch)
+    λG = Rx == 1 ? λ : assemble(λ, nλ, Rx, ri, y_comm)
+    φG = Ry == 1 ? φ : assemble(φ, nφ, Ry, rj, x_comm)
+    zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, z_comm)
 
     child_arch = child_architecture(arch)
 
@@ -296,7 +308,7 @@ in `T` direction (`R`) and the local rank index `r`
 """
 insert_connected_topology(T, R, r) = T
 
-insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1,  Bounded,
+insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
                                                    ifelse(r == 1, RightConnected,
                                                    ifelse(r == R, LeftConnected,
                                                    FullyConnected)))
