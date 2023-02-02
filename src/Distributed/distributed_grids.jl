@@ -104,8 +104,6 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     TY = insert_connected_topology(topology[2], Ry, rj)
     TZ = insert_connected_topology(topology[3], Rz, rk)
 
-    @show Nφ, Ry
-
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
     @assert isinteger(Nλ / Rx)
@@ -254,7 +252,15 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     return ImmersedBoundaryGrid(global_ug, global_ib)
 end
 
-function with_halo(new_halo, grid::DistributedGrid) 
+# We _HAVE_ to dispatch individually for all grid types because
+# `RectilinearGrid`, `LatitudeLongitudeGrid` and `ImmersedBoundaryGrid`
+# take precedence on `ImmersedBoundaryGrid` 
+function with_halo(new_halo, grid::DistributedRectilinearGrid) 
+    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
+    return scatter_local_grids(architecture(grid), new_grid)
+end
+
+function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
     return scatter_local_grids(architecture(grid), new_grid)
 end
