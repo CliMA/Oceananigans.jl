@@ -103,16 +103,18 @@ z_faces = file_z_faces["z_faces"][3:end]
                                               precompute_metrics = true)
 
 nx, ny, nz = size(underlying_grid)
-bathymetry = bathymetry[1 + nx * rank : (rank + 1) * nx, :]
+bathymetry = arch_array(arch, bathymetry) #[1 + nx * rank : (rank + 1) * nx, :]
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 mrg  = MultiRegionGrid(grid, partition = XPartition(4))
 
-τˣ = arch_array(child_arch, - τˣ[1 + nx * rank : (rank + 1) * nx, :, :])
-τʸ = arch_array(child_arch, - τʸ[1 + nx * rank : (rank + 1) * nx, :, :])
+using Oceananigans.MultiRegion: multi_region_object_from_array
 
-target_sea_surface_temperature = T★ = arch_array(child_arch, T★[1 + nx * rank : (rank + 1) * nx, :, :])
-target_sea_surface_salinity    = S★ = arch_array(child_arch, S★[1 + nx * rank : (rank + 1) * nx, :, :])
+τˣ = multi_region_object_from_array(- τˣ, mrg)
+τʸ = multi_region_object_from_array(- τʸ, mrg)
+
+target_sea_surface_temperature = T★ = multi_region_object_from_array(T★, mrg)
+target_sea_surface_salinity    = S★ = multi_region_object_from_array(S★, mrg)
 
 #####
 ##### Physics and model setup
@@ -231,7 +233,7 @@ buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 closure      = (vertical_diffusivity, convective_adjustment)
 coriolis     = HydrostaticSphericalCoriolis(scheme = WetCellEnstrophyConservingScheme())
 
-model = HydrostaticFreeSurfaceModel(; mrg,
+model = HydrostaticFreeSurfaceModel(; grid = mrg,
                                       free_surface,
                                       momentum_advection, tracer_advection,
                                       coriolis,
@@ -251,8 +253,8 @@ T = model.tracers.T
 S = model.tracers.S
 
 @info "Reading initial conditions"
-T_init = file_init["T"][1 + nx * rank : (rank + 1) * nx, :, :]
-S_init = file_init["S"][1 + nx * rank : (rank + 1) * nx, :, :]
+T_init = multi_region_object_from_array(file_init["T"], mrg)
+S_init = multi_region_object_from_array(file_init["S"], mrg)
 
 set!(model, T=T_init, S=S_init)
 fill_halo_regions!(T)
@@ -311,7 +313,7 @@ save_interval = 5days
 
 run!(simulation, pickup = pickup_file)
 
-jldsave("variables$rank.jld2", u = u, v = v, w = w, T = T, S = S, η = η, free_surface = model.free_surface, timestepper = model.timestepper)
+jldsave("variables.jld2", u = u, v = v, w = w, T = T, S = S, η = η, free_surface = model.free_surface, timestepper = model.timestepper)
 
 @info """
     Simulation took $(prettytime(simulation.run_wall_time))
