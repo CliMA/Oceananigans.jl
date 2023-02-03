@@ -230,17 +230,17 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     # Horizontal distances
 
     #=
-    The distanced Δx and Δy are computed via, e.g., Δx = Δσ * radius, where Δσ is
-    the central angle that corresponds to the end points of distance Δx.
+    Distances Δx and Δy are computed via, e.g., Δx = Δσ * radius, where Δσ is the
+    central angle that corresponds to the end points of distance Δx.
 
     For cells near the boundary of the OrthogonalSphericalShellGrid one of the points
-    defining, e.g., Δx might lie outside the grid! In those cases, we employ symmetry
-    arguments. For example, the central angle Δσᶠᶜᵃ[1, j] is
+    defining, e.g., Δx might lie outside the grid! For example, the central angle
+    Δσᶠᶜᵃ[1, j] is
 
         Δσᶠᶜᵃ[1, j] = central_angle((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]))
 
     Notice that point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
-    However, we can compute Δσᶠᶜᵃ[1, j] as
+    In those cases, we employ symmetry arguments and compute, e.g, Δσᶠᶜᵃ[1, j] via
 
         Δσᶠᶜᵃ[1, j] = 2 * central_angle_degrees((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶠᶜᵃ[1, j], λᶠᶜᵃ[1, j]))
     =#
@@ -319,16 +319,16 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Az = spherical_area_quadrilateral(a, b, c, d) * radius^2
 
     For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid some of the 
-    vertices lie outside the grid! In those cases, we employ symmetry arguments. For example,
-    the area Azᶠᶜᵃ[1, j] corressponds to a quadrilateral with vertices:
+    vertices lie outside the grid! For example, the area Azᶠᶜᵃ[1, j] corressponds to a
+    quadrilateral with vertices:
 
         a = (φᶜᶠᵃ[0,  j ], λᶜᶠᵃ[0,  j ])
         b = (φᶜᶠᵃ[1,  j ], λᶜᶠᵃ[1,  j ])
         c = (φᶜᶠᵃ[1, j+1], λᶜᶠᵃ[1, j+1])
         d = (φᶜᶠᵃ[0, j+1], λᶜᶠᵃ[0, j+1])
 
-    Notice that vertices a and d are outside the boundaries of the grid. However, we can
-    compute Azᶠᶜᵃ[1, j] as
+    Notice that vertices a and d are outside the boundaries of the grid. In those cases, we
+    employ symmetry arguments and, e.g., compute Azᶠᶜᵃ[1, j] as
 
         2 * spherical_area_quadrilateral(ã, b, c, d̃) * radius^2
 
