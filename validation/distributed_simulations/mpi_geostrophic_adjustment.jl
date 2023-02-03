@@ -22,8 +22,8 @@ comm   = MPI.COMM_WORLD
 rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
-topo = (Periodic, Periodic, Bounded)
-arch = MultiArch(CPU(); topology = topo, ranks=(Nranks, 1, 1))
+topo = (Bounded, Periodic, Bounded)
+arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
 
 Lh = 100kilometers
 Lz = 400meters
@@ -38,7 +38,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 coriolis = FPlane(f = 1e-4)
 
-free_surface = SplitExplicitFreeSurface(; substeps = 1000)
+free_surface = SplitExplicitFreeSurface(; substeps = 10)
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis = coriolis,
