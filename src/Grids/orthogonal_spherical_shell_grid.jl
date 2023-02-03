@@ -296,6 +296,26 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     # Area metrics
 
+    # The areas of the spherical quadrilaterals are computed by first finding the vertices
+    # a, b, c, d of the corresponding quadrilateral. Then the corresponding area is
+    #
+    #   spherical_area_quadrilateral(a, b, c, d) * radius^2
+    #
+    # For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid
+    # we employ symmetry arguments. For example, the area of Azᶠᶜᵃ[1, j] corresponds has
+    # vertices:
+    #
+    #   a = (φᶜᶠᵃ[0,  j ], λᶜᶠᵃ[0,  j ])
+    #   b = (φᶜᶠᵃ[1,  j ], λᶜᶠᵃ[1,  j ])
+    #   c = (φᶜᶠᵃ[1, j+1], λᶜᶠᵃ[1, j+1])
+    #   d = (φᶜᶠᵃ[0, j+1], λᶜᶠᵃ[0, j+1])
+    #
+    # Vertices a and d are outside the boundaries of the grid. Instead, we can compute Azᶠᶜᵃ[1, j] as
+    #
+    #   2 * spherical_area_quadrilateral(ã, b, c, d̃) * radius^2
+    #
+    # where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
+
     Azᶜᶜᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Azᶠᶜᵃ = OffsetArray(zeros(Nξᶠ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Azᶜᶠᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶠ + 2Hy), -Hx, -Hy)
@@ -325,20 +345,20 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
 
-    for j in 1:Nηᶜ, i in Nξᶠ
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
-
-        Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
-    end
-
     for j in 1:Nηᶜ, i in 1
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
         b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
         c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
         d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+
+        Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
+    end
+\
+    for j in 1:Nηᶜ, i in Nξᶠ
+        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
 
         Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
