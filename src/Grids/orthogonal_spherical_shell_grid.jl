@@ -285,13 +285,15 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Nη !== Nηᶠ &&
         [Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1])) for i in 1:Nξᶠ, j in Nηᶠ]
 
-    ΔS = [Δxᶜᶜᵃ,  Δxᶠᶜᵃ,  Δxᶜᶠᵃ,  Δxᶠᶠᵃ,  Δyᶜᶜᵃ,  Δyᶜᶠᵃ,  Δyᶠᶜᵃ,  Δyᶠᶠᵃ ]
-    ΔΣ = [Δσxᶜᶜᵃ, Δσxᶠᶜᵃ, Δσxᶜᶠᵃ, Δσxᶠᶠᵃ, Δσyᶜᶜᵃ, Δσyᶜᶠᵃ, Δσyᶠᶜᵃ, Δσyᶠᶠᵃ]
+    @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
+    @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
+    @. Δxᶜᶠᵃ = radius * deg2rad(Δσxᶜᶠᵃ)
+    @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
 
-    for (Δs, Δσ) in zip(ΔS, ΔΣ)
-        @. Δσ = deg2rad(Δσ)
-        @. Δs = radius * Δσ
-    end
+    @. Δyᶜᶜᵃ = radius * deg2rad(Δσyᶜᶜᵃ)
+    @. Δyᶠᶜᵃ = radius * deg2rad(Δσyᶠᶜᵃ)
+    @. Δyᶜᶠᵃ = radius * deg2rad(Δσyᶜᶠᵃ)
+    @. Δyᶠᶠᵃ = radius * deg2rad(Δσyᶠᶠᵃ)
 
     Azᶜᶜᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Azᶠᶜᵃ = OffsetArray(zeros(Nξᶠ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
@@ -318,10 +320,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     end
 
     for j in 1:Nηᶜ, i in 2:Nξᶠ
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶠᶠᵃ[i-1,  j ], 1)
-        b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶠᶠᵃ[i-1, j+1], 1)
+        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+        b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
+        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
+        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
 
         Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
