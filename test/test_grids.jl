@@ -795,6 +795,15 @@ end
         end
 
         @test grid isa OrthogonalSphericalShellGrid
+
+        for arch in archs
+            for FT in float_types
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(10, 10, 1), z=(0, 1), radius=234.3e4)
+
+                # sum of Azᶜᶜᵃ should be 1/6th of the area of the sphere
+                @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
+            end
+        end
     end
 
     @testset "Conformal cubed sphere face grid from file" begin
