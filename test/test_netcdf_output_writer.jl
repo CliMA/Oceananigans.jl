@@ -137,12 +137,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     @test eltype(ds3["time"]) == eltype(model.clock.time)
 
-    @test eltype(ds3["xC"]) == Float32
-    @test eltype(ds3["xF"]) == Float32
-    @test eltype(ds3["yC"]) == Float32
-    @test eltype(ds3["yF"]) == Float32
-    @test eltype(ds3["zC"]) == Float32
-    @test eltype(ds3["zF"]) == Float32
+    @test eltype(ds3["xC"]) == Float64
+    @test eltype(ds3["xF"]) == Float64
+    @test eltype(ds3["yC"]) == Float64
+    @test eltype(ds3["yF"]) == Float64
+    @test eltype(ds3["zC"]) == Float64
+    @test eltype(ds3["zF"]) == Float64
 
     @test length(ds3["xC"]) == Nx
     @test length(ds3["yC"]) == Ny
@@ -165,11 +165,11 @@ function test_thermal_bubble_netcdf_output(arch)
     @test ds3["zC"][end] == grid.zᵃᵃᶜ[Nz]
     @test ds3["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 
-    @test eltype(ds3["u"]) == Float32
-    @test eltype(ds3["v"]) == Float32
-    @test eltype(ds3["w"]) == Float32
-    @test eltype(ds3["T"]) == Float32
-    @test eltype(ds3["S"]) == Float32
+    @test eltype(ds3["u"]) == Float64
+    @test eltype(ds3["v"]) == Float64
+    @test eltype(ds3["w"]) == Float64
+    @test eltype(ds3["T"]) == Float64
+    @test eltype(ds3["S"]) == Float64
 
     u = ds3["u"][:, :, :, end]
     v = ds3["v"][:, :, :, end]
