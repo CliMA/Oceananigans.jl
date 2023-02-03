@@ -296,25 +296,28 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     # Area metrics
 
-    # The areas of the spherical quadrilaterals are computed by first finding the vertices
-    # a, b, c, d of the corresponding quadrilateral. Then the corresponding area is
-    #
-    #   spherical_area_quadrilateral(a, b, c, d) * radius^2
-    #
-    # For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid
-    # we employ symmetry arguments. For example, the area of Azᶠᶜᵃ[1, j] corresponds has
-    # vertices:
-    #
-    #   a = (φᶜᶠᵃ[0,  j ], λᶜᶠᵃ[0,  j ])
-    #   b = (φᶜᶠᵃ[1,  j ], λᶜᶠᵃ[1,  j ])
-    #   c = (φᶜᶠᵃ[1, j+1], λᶜᶠᵃ[1, j+1])
-    #   d = (φᶜᶠᵃ[0, j+1], λᶜᶠᵃ[0, j+1])
-    #
-    # Vertices a and d are outside the boundaries of the grid. Instead, we can compute Azᶠᶜᵃ[1, j] as
-    #
-    #   2 * spherical_area_quadrilateral(ã, b, c, d̃) * radius^2
-    #
-    # where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
+    #=
+    The areas Az correspond to spherical quadrilaterals. To compute areas Az first we
+    find the vertices a, b, c, d of the corresponding quadrilateral and then
+
+    Az = spherical_area_quadrilateral(a, b, c, d) * radius^2
+
+    For quadrilaterals near the boundary of the OrthogonalSphericalShellGrid some of the 
+    vertices lie outside the grid! In those cases, we employ symmetry arguments. For example,
+    the area Azᶠᶜᵃ[1, j] corressponds to a quadrilateral with vertices:
+
+    a = (φᶜᶠᵃ[0,  j ], λᶜᶠᵃ[0,  j ])
+    b = (φᶜᶠᵃ[1,  j ], λᶜᶠᵃ[1,  j ])
+    c = (φᶜᶠᵃ[1, j+1], λᶜᶠᵃ[1, j+1])
+    d = (φᶜᶠᵃ[0, j+1], λᶜᶠᵃ[0, j+1])
+
+    Notice that vertices a and d are outside the boundaries of the grid. However, we can
+    compute Azᶠᶜᵃ[1, j] as
+
+    2 * spherical_area_quadrilateral(ã, b, c, d̃) * radius^2
+
+    where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
+    =#
 
     Azᶜᶜᵃ = OffsetArray(zeros(Nξᶜ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
     Azᶠᶜᵃ = OffsetArray(zeros(Nξᶠ + 2Hx, Nηᶜ + 2Hy), -Hx, -Hy)
