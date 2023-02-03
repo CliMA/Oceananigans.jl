@@ -353,7 +353,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
         Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
-\
+
     for j in 1:Nηᶜ, i in Nξᶠ
         a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
         b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
