@@ -3,6 +3,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModel: averaging_fixed_function
+
 @testset "Split-Explicit Dynamics" begin
 
     for arch in archs
@@ -159,8 +161,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
         @testset "Complex Multi-Timestep " begin
             # Test 3: Testing analytic solution to 
-            # ∂ₜη + ∇⋅U⃗ = 0
-            # ∂ₜU⃗ + ∇η  = G⃗
+            # ∂ₜη + ∇⋅U̅ = 0
+            # ∂ₜU̅ + ∇η  = G̅
             kx = 2
             ky = 3
             ω = sqrt(kx^2 + ky^2)
@@ -195,7 +197,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gᵁ .= gu_c
             Gⱽ .= gv_c
 
-            settings = SplitExplicitSettings(substeps = Nt + 1)
+            settings = SplitExplicitSettings(substeps = Nt + 1, averaging_function = averaging_fixed_function)
             sefs = sefs(settings)
 
             for i in 1:Nt
