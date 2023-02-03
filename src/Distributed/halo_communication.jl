@@ -241,15 +241,15 @@ for side in sides
             return send_req
         end
 
-        function $send_side_halo(c, grid, ::GPU, side_location, local_rank, rank_to_send_to, buffers)
-            send_buffer = buffers.$side.send
-            send_tag = $side_send_tag(local_rank, rank_to_send_to)
+        # function $send_side_halo(c, grid, ::GPU, side_location, local_rank, rank_to_send_to, buffers)
+        #     send_buffer = buffers.$side.send
+        #     send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
-            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+        #     @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+        #     send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
 
-            return send_req
-        end
+        #     return send_req
+        # end
     end
 end
 
@@ -274,15 +274,15 @@ for side in sides
             return recv_req
         end
 
-        function $recv_and_fill_side_halo!(c, grid, ::GPU, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers.$side.recv
+        # function $recv_and_fill_side_halo!(c, grid, ::GPU, side_location, local_rank, rank_to_recv_from, buffers)
+        #     recv_buffer = buffers.$side.recv
         
-            recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
+        #     recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
-            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+        #     @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+        #     recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
-            return recv_req
-        end
+        #     return recv_req
+        # end
     end
 end
