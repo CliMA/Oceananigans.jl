@@ -121,8 +121,12 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, nλ, Hλ, λl, arch.child_architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, nz, Hz, zl, arch.child_architecture)
-    # The Latitudinal direction is _special_ so we disregard the topology when constructing the metrics:
-    # We always need an extra point to precompute the Y direction in case of only one halo!
+    # The Latitudinal direction is _special_ :
+    # Preconmpute metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a 
+    # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
+    # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
+    # But we need an extra point to precompute the Y direction in case of only one halo so we disregard the topology
+    # when constructing the metrics!
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded, nφ, Hφ, φl, arch.child_architecture)
 
     architecture = MultiArch(child_architecture(arch), topology = topology, ranks = arch.ranks, communicator = arch.communicator)
