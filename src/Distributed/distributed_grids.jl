@@ -173,7 +173,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    ## This will not work with 2D parallelizations!!
+    ## This will not work with 3D parallelizations!!
     xG = Rx == 1 ? x : assemble(x, nx, Rx, ri, y_comm)
     yG = Ry == 1 ? y : assemble(y, ny, Ry, rj, x_comm)
     zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, z_comm)
@@ -220,7 +220,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     φ = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    ## This will not work with 2D parallelizations!!
+    ## This will not work with 3D parallelizations!!
     λG = Rx == 1 ? λ : assemble(λ, nλ, Rx, ri, y_comm)
     φG = Ry == 1 ? φ : assemble(φ, nφ, Ry, rj, x_comm)
     zG = Rz == 1 ? z : assemble(z, nz, Rz, rk, z_comm)
