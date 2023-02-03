@@ -196,12 +196,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     @test eltype(ds2["time"]) == eltype(model.clock.time)
 
-    @test eltype(ds2["xC"]) == Float64
-    @test eltype(ds2["xF"]) == Float64
-    @test eltype(ds2["yC"]) == Float64
-    @test eltype(ds2["yF"]) == Float64
-    @test eltype(ds2["zC"]) == Float64
-    @test eltype(ds2["zF"]) == Float64
+    @test eltype(ds2["xC"]) == Float32
+    @test eltype(ds2["xF"]) == Float32
+    @test eltype(ds2["yC"]) == Float32
+    @test eltype(ds2["yF"]) == Float32
+    @test eltype(ds2["zC"]) == Float32
+    @test eltype(ds2["zF"]) == Float32
 
     @test length(ds2["xC"]) == length(i_slice)
     @test length(ds2["xF"]) == length(i_slice)
