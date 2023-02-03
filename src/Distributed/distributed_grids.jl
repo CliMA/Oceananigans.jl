@@ -120,8 +120,10 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX, nλ, Hλ, λl, arch.child_architecture)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY, nφ, Hφ, φl, arch.child_architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, nz, Hz, zl, arch.child_architecture)
+    # The Latitudinal direction is _special_ so we disregard the topology when constructing the metrics:
+    # We always need an extra point to precompute the Y direction in case of only one halo!
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded, nφ, Hφ, φl, arch.child_architecture)
 
     architecture = MultiArch(child_architecture(arch), topology = topology, ranks = arch.ranks, communicator = arch.communicator)
 
