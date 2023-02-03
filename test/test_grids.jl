@@ -798,7 +798,11 @@ end
 
         for arch in archs
             for FT in float_types
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(10, 8, 1), z=(0, 1), radius=234.3e4)
+                z = (0, 1)
+                radius = 234.3e4
+
+                Nx, Ny = 10, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
 
                 # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
                 @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
@@ -806,10 +810,18 @@ end
                 # the sum of the distance metrics Δxᶜᶜᵃ and Δyᶜᶜᵃ that correspond to great circles
                 # are 1/4-th of the circumference of the sphere's great circle
                 #
-                # (for even number of grid points, the central grid points fall on great circles)
+                # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
-                grid = OrthogonalSphericalShellGrid(arch, FT, size=(11, 9, 1), z=(0, 1), radius=234.3e4)
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 10, 9
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 11, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
                 @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
             end
         end
