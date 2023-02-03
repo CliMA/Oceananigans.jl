@@ -89,10 +89,10 @@ fill_south_send_buffer!(c, ::Nothing, args...) = nothing
 fill_north_recv_buffer!(c, ::Nothing, args...) = nothing
 fill_south_recv_buffer!(c, ::Nothing, args...) = nothing
 
- fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[1+H:2H,  :, :]
- fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[1+N:N+H, :, :]
-fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+H:2H,  :]
-fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+N:N+H, :]
+ fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[1+H:2H,  :, :]
+ fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[1+N:N+H, :, :]
+fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+H:2H,  :]
+fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+N:N+H, :]
 
  fill_west_recv_buffer!(c, buff, H, N) = c[1:H,        :, :] .= buff.recv
  fill_east_recv_buffer!(c, buff, H, N) = c[1+N+H:N+2H, :, :] .= buff.recv
