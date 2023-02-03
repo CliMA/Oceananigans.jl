@@ -273,9 +273,7 @@ for side in sides
 
             return recv_req
         end
-    end
 
-    @eval begin
         function $recv_and_fill_side_halo!(c, grid, ::GPU, side_location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = buffers.$side.recv
         
