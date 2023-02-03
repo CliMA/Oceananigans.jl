@@ -776,7 +776,7 @@ end
     end
 
     @testset "Conformal cubed sphere face grid" begin
-        @info "  Testing conformal cubed sphere face grid..."
+        @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
             test_cubed_sphere_face_array_size(Float64)
