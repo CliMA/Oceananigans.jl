@@ -454,7 +454,9 @@ References
 * Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
 """
 function spherical_area_triangle(a::Number, b::Number, c::Number)
-    cosa, cosb, cosc = cos.((a, b, c))
+    cosa = cos(a)
+    cosb = cos(b)
+    cosc = cos(c)
 
     tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
     tan½E /= 1 + cosa + cosb + cosc
