@@ -3,7 +3,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModel: averaging_fixed_function
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
 
 @testset "Split-Explicit Dynamics" begin
 
