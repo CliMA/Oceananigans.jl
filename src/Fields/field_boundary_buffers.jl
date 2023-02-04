@@ -2,7 +2,7 @@ using Oceananigans.BoundaryConditions: CBC, HBC
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: launch!
-using KernelAbstractions: MultiEvent
+using KernelAbstractions: MultiEvent, @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 struct FieldBoundaryBuffers{W, E, S, N}
@@ -123,14 +123,14 @@ end
 
 @kernel function _fill_south_send_buffer!(c, b, H, N)
     i, k = @index(Global, NTuple)
-    @unroll for i in 1:H
+    @unroll for j in 1:H
         b[i, j, k] = c[i, j+H, k]
     end
 end
 
 @kernel function _fill_north_send_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
+    i, k = @index(Global, NTuple)
+    @unroll for j in 1:H
         b[i, j, k] = c[i, j+N, k]
     end
 end
@@ -151,14 +151,14 @@ end
 
 @kernel function _fill_south_recv_buffer!(c, b, H, N)
     i, k = @index(Global, NTuple)
-    @unroll for i in 1:H
+    @unroll for j in 1:H
         c[i, j, k] = b[i, j, k]
     end
 end
 
 @kernel function _fill_north_recv_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
+    i, k = @index(Global, NTuple)
+    @unroll for j in 1:H
         c[i, j+N+H, k] = b[i, j, k]
     end
 end
