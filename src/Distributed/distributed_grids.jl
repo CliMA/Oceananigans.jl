@@ -63,7 +63,11 @@ function RectilinearGrid(arch::MultiArch,
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], nz, Hz, zl, child_architecture(arch))
 
-    architecture = MultiArch(child_architecture(arch), topology = topology, ranks = arch.ranks, communicator = arch.communicator)
+    architecture = MultiArch(child_architecture(arch), 
+                             topology = topology, 
+                             ranks = arch.ranks, 
+                             communicator = arch.communicator,
+                             use_buffers = using_buffered_communication(arch))
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        nx, ny, nz,
@@ -129,7 +133,11 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     # when constructing the metrics!
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded, nφ, Hφ, φl, arch.child_architecture)
 
-    architecture = MultiArch(child_architecture(arch), topology = topology, ranks = arch.ranks, communicator = arch.communicator)
+    architecture = MultiArch(child_architecture(arch); 
+                             topology = topology, 
+                             ranks = arch.ranks, 
+                             communicator = arch.communicator,
+                             use_buffers = using_buffered_communication(arch))
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
                                                          nλ, nφ, nz,

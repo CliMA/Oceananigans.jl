@@ -31,12 +31,25 @@ end
 create_buffer_x(arch, data, H, bc) = nothing
 create_buffer_y(arch, data, H, bc) = nothing
 
+using_buffered_communication(arch) = true
+
 const PassingBC = Union{CBC, HBC}
 
-create_buffer_x(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
-                                               recv = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
-create_buffer_y(arch, data, H, ::PassingBC) = (send = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
-                                               recv = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
+function create_buffer_x(arch, data, H, ::PassingBC) 
+    if !using_buffered_communication(arch)
+        return nothing
+    end
+    return (send = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
+            recv = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+end
+
+function create_buffer_y(arch, data, H, ::PassingBC)
+    if !using_buffered_communication(arch)
+        return nothing
+    end
+    return (send = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
+            recv = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
+end
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 
@@ -50,19 +63,15 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
 fills `buffers.send` from OffsetArray `c` preparing for message passing. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
-fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::CPU) = nothing
 
 function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, arch)
-    arch = architecture(grid)
-    H    = halo_size(grid)
-    N    = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
 
-     west_event =  fill_west_send_buffer!(parent(c), buffers.west,  H, N, arch, grid)
-     east_event =  fill_east_send_buffer!(parent(c), buffers.east,  H, N, arch, grid)
-    south_event = fill_south_send_buffer!(parent(c), buffers.south, H, N, arch, grid)
-    north_event = fill_north_send_buffer!(parent(c), buffers.north, H, N, arch, grid)
-
-    wait(device(arch), MultiEvent((west_event, east_event, south_event, north_event)))
+     fill_west_send_buffer!(parent(c), buffers.west,  Hx, Nx)
+     fill_east_send_buffer!(parent(c), buffers.east,  Hx, Nx)
+    fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
+    fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
 """
@@ -71,104 +80,33 @@ end
 fills OffsetArray `c` from `buffers.recv` after message passing occurred. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
-fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::CPU) = nothing
 
 function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, arch)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
 
-    arch = architecture(grid)
-    H    = halo_size(grid)
-    N    = size(grid)
-
-     west_event =  fill_west_recv_buffer!(parent(c), buffers.west,  H, N, arch, grid)
-     east_event =  fill_east_recv_buffer!(parent(c), buffers.east,  H, N, arch, grid)
-    south_event = fill_south_recv_buffer!(parent(c), buffers.south, H, N, arch, grid)
-    north_event = fill_north_recv_buffer!(parent(c), buffers.north, H, N, arch, grid)
-
-    wait(device(arch), MultiEvent((west_event, east_event, south_event, north_event)))
+     fill_west_recv_buffer!(parent(c), buffers.west,  Hx, Nx)
+     fill_east_recv_buffer!(parent(c), buffers.east,  Hx, Nx)
+    fill_south_recv_buffer!(parent(c), buffers.south, Hy, Ny)
+    fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
-fill_west_send_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_east_send_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_west_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_east_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_west_send_buffer!(c, ::Nothing, args...) = nothing
+fill_east_send_buffer!(c, ::Nothing, args...) = nothing
+fill_west_recv_buffer!(c, ::Nothing, args...) = nothing
+fill_east_recv_buffer!(c, ::Nothing, args...) = nothing
 
-fill_north_send_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_south_send_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_north_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
-fill_south_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_north_send_buffer!(c, ::Nothing, args...) = nothing
+fill_south_send_buffer!(c, ::Nothing, args...) = nothing
+fill_north_recv_buffer!(c, ::Nothing, args...) = nothing
+fill_south_recv_buffer!(c, ::Nothing, args...) = nothing
 
- fill_west_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_west_send_buffer!, c, b.send, H[1], N[1])
- fill_east_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_east_send_buffer!, c, b.send, H[1], N[1])
-fill_north_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[1, 3]], _fill_north_send_buffer!, c, b.send, H[2], N[2])
-fill_south_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[1, 3]], _fill_south_send_buffer!, c, b.send, H[2], N[2])
+ fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[1+H:2H,  :, :]
+ fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[1+N:N+H, :, :]
+fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+H:2H,  :]
+fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+N:N+H, :]
 
- fill_west_recv_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_west_recv_buffer!, c, b.recv, H[1], N[1])
- fill_east_recv_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_east_recv_buffer!, c, b.recv, H[1], N[1])
-fill_north_recv_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[1, 3]], _fill_north_recv_buffer!, c, b.recv, H[2], N[2])
-fill_south_recv_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[1, 3]], _fill_south_recv_buffer!, c, b.recv, H[2], N[2])
-
-@kernel function _fill_west_send_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
-        b[i, j, k] = c[i+H, j, k]
-    end
-end
-
-@kernel function _fill_east_send_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
-        b[i, j, k] = c[i+N, j, k]
-    end
-end
-
-@kernel function _fill_south_send_buffer!(c, b, H, N)
-    i, k = @index(Global, NTuple)
-    @unroll for j in 1:H
-        b[i, j, k] = c[i, j+H, k]
-    end
-end
-
-@kernel function _fill_north_send_buffer!(c, b, H, N)
-    i, k = @index(Global, NTuple)
-    @unroll for j in 1:H
-        b[i, j, k] = c[i, j+N, k]
-    end
-end
-
-@kernel function _fill_west_recv_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
-        c[i, j, k] = b[i, j, k]
-    end
-end
-
-@kernel function _fill_east_recv_buffer!(c, b, H, N)
-    j, k = @index(Global, NTuple)
-    @unroll for i in 1:H
-        c[i+N+H, j, k] = b[i, j, k]
-    end
-end
-
-@kernel function _fill_south_recv_buffer!(c, b, H, N)
-    i, k = @index(Global, NTuple)
-    @unroll for j in 1:H
-        c[i, j, k] = b[i, j, k]
-    end
-end
-
-@kernel function _fill_north_recv_buffer!(c, b, H, N)
-    i, k = @index(Global, NTuple)
-    @unroll for j in 1:H
-        c[i, j+N+H, k] = b[i, j, k]
-    end
-end
-
-#  fill_west_send_buffer!(c, buff, H, N) = buff.send .= c[1+H:2H,  :, :]
-#  fill_east_send_buffer!(c, buff, H, N) = buff.send .= c[1+N:N+H, :, :]
-# fill_south_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+H:2H,  :]
-# fill_north_send_buffer!(c, buff, H, N) = buff.send .= c[:, 1+N:N+H, :]
-
-#  fill_west_recv_buffer!(c, buff, H, N) = c[1:H,        :, :] .= buff.recv
-#  fill_east_recv_buffer!(c, buff, H, N) = c[1+N+H:N+2H, :, :] .= buff.recv
-# fill_south_recv_buffer!(c, buff, H, N) = c[:, 1:H,        :] .= buff.recv
-# fill_north_recv_buffer!(c, buff, H, N) = c[:, 1+N+H:N+2H, :] .= buff.recv
+ fill_west_recv_buffer!(c, buff, H, N) = c[1:H,        :, :] .= buff.recv
+ fill_east_recv_buffer!(c, buff, H, N) = c[1+N+H:N+2H, :, :] .= buff.recv
+fill_south_recv_buffer!(c, buff, H, N) = c[:, 1:H,        :] .= buff.recv
+fill_north_recv_buffer!(c, buff, H, N) = c[:, 1+N+H:N+2H, :] .= buff.recv

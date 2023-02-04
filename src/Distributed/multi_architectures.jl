@@ -5,8 +5,9 @@ using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
+import Oceananigans.Fields: using_buffered_communication
 
-struct MultiArch{A, R, I, ρ, C, γ, X, Y, Z} <: AbstractMultiArchitecture
+struct MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B} <: AbstractMultiArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -22,7 +23,12 @@ end
 ##### Constructors
 #####
 
-function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, Periodic), ranks, communicator = MPI.COMM_WORLD)
+function MultiArch(child_architecture = CPU(); 
+                   topology = (Periodic, Periodic, Periodic), 
+                   ranks, 
+                   communicator = MPI.COMM_WORLD,
+                   use_buffers = false)
+
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -62,9 +68,14 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
     X = typeof(x_communicator)
     Y = typeof(y_communicator)
     Z = typeof(z_communicator)
+    B = use_buffers
 
-    return MultiArch{A, R, I, ρ, C, γ, X, Y, Z}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, x_communicator, y_communicator, z_communicator)
+    return MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, x_communicator, y_communicator, z_communicator)
 end
+
+const ViewsMultiArch = MultiArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+
+using_buffered_communication(::MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B}) where {A, R, I, ρ, C, γ, X, Y, Z, B} = B
 
 #####
 ##### All the architectures
