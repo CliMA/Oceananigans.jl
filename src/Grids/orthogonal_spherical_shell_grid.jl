@@ -253,7 +253,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     #Δσxᶜᶜᵃ
 
-    for i in 1:Nξ  , j in 1:Nη
+    for i in 1:Nξ, j in 1:Nη
         Δσxᶜᶜᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i+1, j], λᶠᶜᵃ[i+1, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]))
     end
 
@@ -264,11 +264,13 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Δσxᶠᶜᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
     end
 
-    for j in 1:Nη, i in 1
+    for j in 1:Nη
+        i = 1
         Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j]))
     end
 
-    for j in 1:Nη, i in Nξ+1
+    for j in 1:Nη
+        i = Nξ+1
         Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
     end
 
@@ -286,11 +288,13 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Δσxᶠᶠᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
     end
 
-    for j in 1:Nη+1, i in 1
+    for j in 1:Nη+1
+        i = 1
         Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j]))
     end
 
-    for j in 1:Nη+1, i in Nξ+1
+    for j in 1:Nη+1
+        i = Nξ+1
         Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
     end
 
