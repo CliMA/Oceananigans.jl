@@ -232,14 +232,14 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     For cells near the boundary of the OrthogonalSphericalShellGrid one of the points
     defining, e.g., Δx might lie outside the grid! For example, the central angle
-    Δσᶠᶜᵃ[1, j] is
+    Δσxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
 
-        Δσᶠᶜᵃ[1, j] = central_angle((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]))
+        Δσxᶠᶜᵃ[1, j] = central_angle((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]))
 
     Notice that point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
-    In those cases, we employ symmetry arguments and compute, e.g, Δσᶠᶜᵃ[1, j] via
+    In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
 
-        Δσᶠᶜᵃ[1, j] = 2 * central_angle_degrees((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶠᶜᵃ[1, j], λᶠᶜᵃ[1, j]))
+        Δσxᶠᶜᵃ[1, j] = 2 * central_angle_degrees((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶠᶜᵃ[1, j], λᶠᶜᵃ[1, j]))
     =#
 
 
