@@ -99,7 +99,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     barrier = device_event(child_arch)
     fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
 
-    fill_recv_buffers!(c, buffers, grid, child_arch)    
+    # fill_recv_buffers!(c, buffers, grid, child_arch)    
 
     return nothing
 end
@@ -269,7 +269,8 @@ for side in sides
         end
 
         function $recv_and_fill_side_halo!(c, grid, arch, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers.$side.recv
+            recv_buffer = $underlying_side_halo(c, grid, side_location)
+            # recv_buffer = buffers.$side.recv
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
