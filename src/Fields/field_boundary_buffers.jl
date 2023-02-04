@@ -2,7 +2,7 @@ using Oceananigans.BoundaryConditions: CBC, HBC
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: launch!
-using KernelAbstractions: MultiEvent, @kernel, @index
+using KernelAbstractions: MultiEvent, NoneEvent, @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 struct FieldBoundaryBuffers{W, E, S, N}
@@ -87,15 +87,15 @@ function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
     wait(device(arch), MultiEvent((west_event, east_event, south_event, north_event)))
 end
 
-fill_west_send_buffer!(c, ::Nothing, args...) = nothing
-fill_east_send_buffer!(c, ::Nothing, args...) = nothing
-fill_west_recv_buffer!(c, ::Nothing, args...) = nothing
-fill_east_recv_buffer!(c, ::Nothing, args...) = nothing
+fill_west_send_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_east_send_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_west_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_east_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
 
-fill_north_send_buffer!(c, ::Nothing, args...) = nothing
-fill_south_send_buffer!(c, ::Nothing, args...) = nothing
-fill_north_recv_buffer!(c, ::Nothing, args...) = nothing
-fill_south_recv_buffer!(c, ::Nothing, args...) = nothing
+fill_north_send_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_south_send_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_north_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
+fill_south_recv_buffer!(c, ::Nothing, args...) = NoneEvent()
 
  fill_west_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_west_send_buffer!, c, b.send, H[1], N[1])
  fill_east_send_buffer!(c, b, H, N, arch, grid) = launch!(arch, grid, size(c)[[2, 3]],  _fill_east_send_buffer!, c, b.send, H[1], N[1])
