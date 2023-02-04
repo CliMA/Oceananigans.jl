@@ -776,7 +776,7 @@ end
     end
 
     @testset "Conformal cubed sphere face grid" begin
-        @info "  Testing conformal cubed sphere face grid..."
+        @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
             test_cubed_sphere_face_array_size(Float64)
@@ -795,16 +795,76 @@ end
         end
 
         @test grid isa OrthogonalSphericalShellGrid
+
+        for arch in archs
+            for FT in float_types
+                z = (0, 1)
+                radius = 234.3e4
+
+                Nx, Ny = 10, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+
+                # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
+                @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
+
+                # the sum of the distance metrics Δxᶜᶜᵃ and Δyᶜᶜᵃ that correspond to great circles
+                # are 1/4-th of the circumference of the sphere's great circle
+                #
+                # (for odd number of grid points, the central grid points fall on great circles)
+                Nx, Ny = 11, 9
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 10, 9
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 11, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+            end
+        end
     end
 
     @testset "Conformal cubed sphere face grid from file" begin
         @info "  Testing conformal cubed sphere face grid construction from file..."
 
+        Nz = 1
+        z = (-1, 0)
+
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6
-            grid = OrthogonalSphericalShellGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            grid = OrthogonalSphericalShellGrid(cs32_filepath; face, Nz, z)
             @test grid isa OrthogonalSphericalShellGrid
+        end
+
+        for arch in archs
+
+            # read cs32 grid from file
+            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
+
+            Nx, Ny, Nz = size(grid_cs32.faces[1])
+            radius = grid_cs32.faces[1].radius
+
+            # construct a ConformalCubedSphereGrid similar to cs32
+            grid = ConformalCubedSphereGrid(arch; z, face_size=(Nx, Ny, Nz), radius)
+
+            for face in 1:6
+                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
+                @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
+                @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
+
+                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .≈ -180] .= 180
+
+                # and if poles are included, they have the same longitude
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90]
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90]
+                @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
+                @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
+            end
         end
     end
 end

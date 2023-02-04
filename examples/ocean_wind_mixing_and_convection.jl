@@ -66,10 +66,8 @@ ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
 scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 
-save("ocean_wind_mixing_convection_grid_spacing.svg", fig)
-nothing #hide
-
-# ![](ocean_wind_mixing_convection_grid_spacing.svg)
+current_figure() # hide
+fig
 
 # ## Buoyancy that depends on temperature and salinity
 #

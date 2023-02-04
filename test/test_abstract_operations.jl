@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!, indices
+using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
 using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -115,6 +115,34 @@ for arch in archs
                     @test CUDA.@allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
                 end
             end
+
+            @test ZeroField() + u == u
+            @test u + ZeroField() == u
+            @test ZeroField() - u == -u
+            @test u - ZeroField() == u
+            @test ZeroField() * u == ZeroField()
+            @test u * ZeroField() == ZeroField()
+            @test ZeroField() / u == ZeroField()
+            @test u / ZeroField() == ConstantField(Inf)
+
+            @test ZeroField() + 1 == ConstantField(1)
+            @test 1 + ZeroField() == ConstantField(1)
+            @test ZeroField() - 1 == ConstantField(-1)
+            @test 1 - ZeroField() == ConstantField(1)
+            @test ZeroField() * 1 == ZeroField()
+            @test 1 * ZeroField() == ZeroField()
+            @test ZeroField() / 1 == ZeroField()
+            @test 1 / ZeroField() == ConstantField(Inf)
+
+            @test ConstantField(1) + u == 1 + u
+            @test ConstantField(1) - u == 1 - u
+            @test ConstantField(1) * u == 1 * u
+            @test u / ConstantField(1) == u / 1
+
+            @test ConstantField(1) + 1 == ConstantField(2)
+            @test ConstantField(1) - 1 == ConstantField(0)
+            @test ConstantField(1) * 2 == ConstantField(2)
+            @test ConstantField(1) / 2 == ConstantField(1/2)
         end
 
         @testset "Multiary operations [$(typeof(arch))]" begin
