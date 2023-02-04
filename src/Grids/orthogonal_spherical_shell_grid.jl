@@ -242,15 +242,6 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Δσᶠᶜᵃ[1, j] = 2 * central_angle_degrees((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶠᶜᵃ[1, j], λᶠᶜᵃ[1, j]))
     =#
 
-    Δxᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δxᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δxᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δxᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-
-    Δyᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δyᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δyᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δyᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
 
     # central angles
 
@@ -259,17 +250,59 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δσxᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
     Δσxᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
 
-    [Δσxᶜᶜᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i+1, j], λᶠᶜᵃ[i+1, j]), (φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j])) for i in 1:Nξ  , j in 1:Nη  ]
 
-    [Δσxᶠᶜᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[ i , j], λᶜᶜᵃ[ i , j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in 2:Nξ+1, j in 1:Nη  ]
-    [Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[ i , j], λᶜᶜᵃ[ i , j]), (φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j])) for i in 1     , j in 1:Nη  ]
-    [Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j])) for i in Nξ+1  , j in 1:Nη  ]
+    #Δσxᶜᶜᵃ
 
-    [Δσxᶜᶠᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i+1, j], λᶠᶠᵃ[i+1, j]), (φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j])) for i in 1:Nξ  , j in 1:Nη+1]
+    for i in 1:Nξ  , j in 1:Nη
+        Δσxᶜᶜᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i+1, j], λᶠᶜᵃ[i+1, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]))
+    end
 
-    [Δσxᶠᶠᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[ i , j], λᶜᶠᵃ[ i , j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j])) for i in 2:Nξ+1, j in 1:Nη+1]
-    [Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[ i , j], λᶜᶠᵃ[ i , j]), (φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j])) for i in 1     , j in 1:Nη+1]
-    [Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j])) for i in Nξ+1  , j in 1:Nη+1]
+
+    # Δσxᶠᶜᵃ
+
+    for j in 1:Nη, i in 2:Nξ+1
+        Δσxᶠᶜᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
+    end
+
+    for j in 1:Nη, i in 1
+        Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j]))
+    end
+
+    for j in 1:Nη, i in Nξ+1
+        Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
+    end
+
+
+    # Δσxᶜᶠᵃ
+
+    for j in 1:Nη+1, i in 1:Nξ
+        Δσxᶜᶠᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i+1, j], λᶠᶠᵃ[i+1, j]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))
+    end
+
+
+    # Δσxᶠᶠᵃ
+
+    for j in 1:Nη+1, i in 2:Nξ+1
+        Δσxᶠᶠᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
+    end
+
+    for j in 1:Nη+1, i in 1
+        Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j]))
+    end
+
+    for j in 1:Nη+1, i in Nξ+1
+        Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
+    end
+
+    Δxᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
+    Δxᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
+    Δxᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δxᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+
+    @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
+    @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
+    @. Δxᶜᶠᵃ = radius * deg2rad(Δσxᶜᶠᵃ)
+    @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
 
 
     Δσyᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
@@ -277,51 +310,65 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δσyᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
     Δσyᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
 
+
+    # Δσyᶜᶜᵃ
+
     for j in 1:Nη, i in 1:Nξ
-        Δσyᶜᶜᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j+1], λᶜᶠᵃ[i, j+1]), (φᶜᶠᵃ[i,  j ], λᶜᶠᵃ[i,  j ]))
+        Δσyᶜᶜᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j+1], λᶜᶠᵃ[i, j+1]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]))
     end
 
+
+    # Δσyᶜᶠᵃ
+
     for j in 1:Nη+1, i in 1:Nξ
-        Δσyᶜᶠᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i,  j ], λᶜᶜᵃ[i,  j ]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
+        Δσyᶜᶠᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
     end
 
     for i in 1:Nξ
         j = 1
-        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i,  j ], λᶜᶜᵃ[i,  j ]), (φᶜᶠᵃ[i,  j ], λᶜᶠᵃ[i,  j ]))
+        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶠᵃ[i,  j ], λᶜᶠᵃ[i,  j ]))
     end
 
     for i in 1:Nξ
         j = Nη+1
-        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i,  j ], λᶜᶠᵃ[i,  j ]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
+        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
     end
+
+
+    # Δσyᶠᶜᵃ
 
     for j in 1:Nη, i in 1:Nξ+1
-        Δσyᶠᶜᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i, j+1], λᶠᶠᵃ[i, j+1]), (φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ]))
+        Δσyᶠᶜᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i, j+1], λᶠᶠᵃ[i, j+1]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))
     end
 
+
+    # Δσyᶠᶠᵃ
+
     for j in 1:Nη+1, i in 1:Nξ+1
-        Δσyᶠᶠᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i,  j ], λᶠᶜᵃ[i,  j ]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
+        Δσyᶠᶠᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
     end
 
     for i in 1:Nξ+1
         j = 1
-        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i,  j ], λᶠᶜᵃ[i,  j ]), (φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ]))
+        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ]))
     end
     
     for i in 1:Nξ+1
         j = Nη+1  
-        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
+        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
     end
 
-    @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
-    @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
-    @. Δxᶜᶠᵃ = radius * deg2rad(Δσxᶜᶠᵃ)
-    @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
+
+    Δyᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
+    Δyᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
+    Δyᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δyᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
 
     @. Δyᶜᶜᵃ = radius * deg2rad(Δσyᶜᶜᵃ)
     @. Δyᶠᶜᵃ = radius * deg2rad(Δσyᶠᶜᵃ)
     @. Δyᶜᶠᵃ = radius * deg2rad(Δσyᶜᶠᵃ)
     @. Δyᶠᶠᵃ = radius * deg2rad(Δσyᶠᶠᵃ)
+
 
     # Area metrics
 
