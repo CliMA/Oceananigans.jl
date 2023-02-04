@@ -237,10 +237,6 @@ for side in sides
 
         function $send_side_halo(c, grid, arch, side_location, local_rank, rank_to_send_to, buffers)
             send_buffer = buffers.$side.send
-            send_buffer2 = Array($underlying_side_boundary(c, grid, side_location))
-
-            @show local_rank, all(send_buffer2 .== send_buffer)
-
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
