@@ -8,7 +8,7 @@ export AbstractRectilinearGrid, RectilinearGrid
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 export on_architecture
@@ -131,14 +131,14 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 isrectilinear(grid) = false
 
 include("grid_utils.jl")
-include("zeros.jl")
+include("zeros_and_ones.jl")
 include("new_data.jl")
 include("inactive_node.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
-include("conformal_cubed_sphere_face_grid.jl")
+include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

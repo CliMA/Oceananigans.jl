@@ -17,8 +17,6 @@ using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
-using Oceananigans: @ifhasnetcdf, hasnetcdf
-
 using OffsetArrays
 
 import Oceananigans: write_output!
@@ -31,7 +29,7 @@ include("fetch_output.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_output_writer.jl")
-@ifhasnetcdf include("netcdf_output_writer.jl")
+include("netcdf_output_writer.jl")
 include("checkpointer.jl")
 
 end # module

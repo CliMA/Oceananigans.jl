@@ -57,6 +57,7 @@ function define_binary_operator(op)
 
         local location = Oceananigans.Fields.location
         local FunctionField = Oceananigans.Fields.FunctionField
+        local ConstantField = Oceananigans.Fields.ConstantField
         local AF = AbstractField
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
@@ -125,6 +126,12 @@ function define_binary_operator(op)
 
         $op(a::AF, b::Number) = $op(location(a), a, b)
         $op(a::Number, b::AF) = $op(location(b), a, b)
+
+        $op(a::AF, b::ConstantField) = $op(location(a), a, b.constant)
+        $op(a::ConstantField, b::AF) = $op(location(b), a.constant, b)
+
+        $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
+        $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
     end
 end
 
@@ -186,6 +193,40 @@ macro binary(ops...)
 
     return expr
 end
+
+#####
+##### BinaryOperations with ZeroField
+#####
+
+import Base: +, -, *, /, ==
+using Oceananigans.Fields: ZeroField, ConstantField
+
+==(::ZeroField, ::ZeroField) = true
+
+==(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
+==(cf::ConstantField, zf::ZeroField) = 0 == cf.constant
+==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
+
++(a::ZeroField, b::AbstractField) = b
++(a::AbstractField, b::ZeroField) = a
++(a::ZeroField, b::Number) = ConstantField(b)
++(a::Number, b::ZeroField) = ConstantField(a)
+
+-(a::ZeroField, b::AbstractField) = -b
+-(a::AbstractField, b::ZeroField) = a
+-(a::ZeroField, b::Number) = ConstantField(-b)
+-(a::Number, b::ZeroField) = ConstantField(a)
+
+*(a::ZeroField, b::AbstractField) = a
+*(a::AbstractField, b::ZeroField) = b
+*(a::ZeroField, b::Number) = a
+*(a::Number, b::ZeroField) = b
+
+/(a::ZeroField, b::AbstractField) = a
+/(a::AbstractField, b::ZeroField) = ConstantField(convert(eltype(a), Inf))
+/(a::ZeroField, b::Number) = a
+/(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
+
 
 #####
 ##### Nested computations
