@@ -88,9 +88,6 @@ version = "3.13.1"
 [[deps.CUDAKernels]]
 deps = ["Adapt", "CUDA", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
 git-tree-sha1 = "28ca96867490b0d8f86cf1af47a95ad435ac5045"
-repo-rev = "vc/always_inline_cuda"
-repo-subdir = "lib/CUDAKernels"
-repo-url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.4.6"
 
