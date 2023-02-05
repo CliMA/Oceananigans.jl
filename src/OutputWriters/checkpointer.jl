@@ -29,7 +29,7 @@ Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedul
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
 To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
-that the checkpoint file is the current working directory. See [`run!`](@ref) for more details.
+that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
 
 Note that extra model `properties` can be safely specified, but removing crucial properties
 such as `:velocities` will make restoring from the checkpoint impossible.
