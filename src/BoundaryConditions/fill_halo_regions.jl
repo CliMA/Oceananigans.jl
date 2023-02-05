@@ -27,7 +27,12 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
         @inline $extract_bc(bc::Tuple) = $extract_bc.(bc)
     end
 end
-
+# For inhomogeneous BC we extract the _last_ one 
+# example 
+# `bc.west <: HBC`
+# `bc.east <: PBC`
+# `extract_west_or_east_bc(bc) == bc.west`
+    
   extract_west_or_east_bc(bc) = sort([bc.west,   bc.east],  lt=fill_first)[2]
 extract_south_or_north_bc(bc) = sort([bc.south,  bc.north], lt=fill_first)[2]
  extract_bottom_or_top_bc(bc) = sort([bc.bottom, bc.top],   lt=fill_first)[2]
@@ -75,8 +80,6 @@ function permute_boundary_conditions(boundary_conditions)
         fill_bottom_and_top_halo!,
     ]
 
-    # For inhomogeneous BC (`Communication` & `Flux`), we 
-    # extract the _last_ one (`Communication` for example)
     boundary_conditions_array = [
         extract_west_or_east_bc(boundary_conditions),
         extract_south_or_north_bc(boundary_conditions),
