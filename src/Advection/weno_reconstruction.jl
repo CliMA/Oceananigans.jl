@@ -58,7 +58,7 @@ Keyword arguments
 Examples
 ========
 ```jldoctest
-julia> using Oceananigans;
+julia> using Oceananigans
 
 julia> WENO()
 WENO reconstruction order 5
@@ -75,7 +75,7 @@ WENO reconstruction order 5
 ```
 
 ```jldoctest
-julia> using Oceananigans;
+julia> using Oceananigans
 
 julia> Nx, Nz = 16, 10;
 
