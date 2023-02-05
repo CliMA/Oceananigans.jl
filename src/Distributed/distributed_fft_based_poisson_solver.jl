@@ -61,10 +61,10 @@ If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with ``x`` and ``y`` sw
 
 1. `first(storage)` is initialized with layout ``(z, x, y)``.
 2. Transform along ``z``.
-3  Transpose + communicate to storage[2] in layout ``(x, z, y)``,
+3  Transpose + communicate to `storage[2]` in layout ``(x, z, y)``,
    which is distributed into `(Rx, Ry)` processes in ``(z, y)``.
 4. Transform along ``x``.
-5. Transpose + communicate to last(storage) in layout ``(y, x, z)``,
+5. Transpose + communicate to `last(storage)` in layout ``(y, x, z)``,
    which is distributed into `(Rx, Ry)` processes in ``(x, z)``.
 6. Transform in ``y``.
 
