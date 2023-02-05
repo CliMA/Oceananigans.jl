@@ -267,7 +267,7 @@ for side in sides
     get_side_recv_buffer = Symbol("get_$(side)_recv_buffer")
 
     @eval begin
-        function $recv_and_fill_side_halo!(c, grid, ::ViewsMultiArch, side_location, local_rank, rank_to_recv_from, buffers)
+        function $recv_and_fill_side_halo!(c, grid, arch, side_location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, side_location, buffers, arch)
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
