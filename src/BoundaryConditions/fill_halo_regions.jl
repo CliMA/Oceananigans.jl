@@ -28,6 +28,14 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
     end
 end
 
+  extract_west_or_east_bc(bc) = sort([bc.west,   bc.east],  lt=fill_first)[2]
+extract_south_or_north_bc(bc) = sort([bc.south,  bc.north], lt=fill_first)[2]
+ extract_bottom_or_top_bc(bc) = sort([bc.bottom, bc.top],   lt=fill_first)[2]
+
+  extract_west_or_east_bc(bc::Tuple) =   extract_west_or_east_bc.(bc)
+extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
+ extract_bottom_or_top_bc(bc::Tuple) =  extract_bottom_or_top_bc.(bc)
+ 
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
@@ -67,6 +75,14 @@ function permute_boundary_conditions(boundary_conditions)
         fill_bottom_and_top_halo!,
     ]
 
+    # For inhomogeneous BC (`Communication` & `Flux`), we 
+    # extract the _last_ one (`Communication` for example)
+    boundary_conditions_array = [
+        extract_west_or_east_bc(boundary_conditions),
+        extract_south_or_north_bc(boundary_conditions),
+        extract_bottom_or_top_bc(boundary_conditions)
+    ]
+
     boundary_conditions_array_left = [
         extract_west_bc(boundary_conditions),
         extract_south_bc(boundary_conditions),
@@ -79,7 +95,7 @@ function permute_boundary_conditions(boundary_conditions)
         extract_top_bc(boundary_conditions),
     ]
 
-    perm = sortperm(boundary_conditions_array_left, lt=fill_first)
+    perm = sortperm(boundary_conditions_array, lt=fill_first)
     fill_halos! = fill_halos![perm]
     boundary_conditions_array_left  = boundary_conditions_array_left[perm]
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
