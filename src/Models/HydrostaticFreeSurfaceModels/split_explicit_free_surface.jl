@@ -106,17 +106,17 @@ function SplitExplicitState(grid::AbstractGrid)
     ηᵐ⁻¹ = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     ηᵐ⁻² = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
           
-    U    = Field{Face, Center, Nothing}(grid)
-    V    = Field{Center, Face, Nothing}(grid)
+    U    = Field((Face, Center, Nothing), grid)
+    V    = Field((Center, Face, Nothing), grid)
 
-    Uᵐ⁻¹ = Field{Face, Center, Nothing}(grid)
-    Vᵐ⁻¹ = Field{Center, Face, Nothing}(grid)
+    Uᵐ⁻¹ = Field((Face, Center, Nothing), grid)
+    Vᵐ⁻¹ = Field((Center, Face, Nothing), grid)
           
-    Uᵐ⁻² = Field{Face, Center, Nothing}(grid)
-    Vᵐ⁻² = Field{Center, Face, Nothing}(grid)
+    Uᵐ⁻² = Field((Face, Center, Nothing), grid)
+    Vᵐ⁻² = Field((Center, Face, Nothing), grid)
           
-    U̅    = Field{Face, Center, Nothing}(grid)
-    V̅    = Field{Center, Face, Nothing}(grid)
+    U̅    = Field((Face, Center, Nothing), grid)
+    V̅    = Field((Center, Face, Nothing), grid)
     
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
