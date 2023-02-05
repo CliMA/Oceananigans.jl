@@ -44,7 +44,7 @@ function masking_actions!(model, grid)
     η = displacement(model.free_surface)
     masking_events = Any[mask_immersed_field!(field)
                          for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
-    push!(masking_events, mask_immersed_reduced_field_xy!(η, k = grid.Nz+1, immersed_function = inactive_node))
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k = size(grid, 3) + 1, immersed_function = inactive_node))
     wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 end
 
