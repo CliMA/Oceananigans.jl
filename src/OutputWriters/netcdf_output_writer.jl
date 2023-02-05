@@ -271,8 +271,8 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+h(model) = model.clock.time .* (sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
+                               .*  cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
