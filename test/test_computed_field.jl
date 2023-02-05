@@ -466,18 +466,18 @@ for arch in archs
                 Nx, Ny, Nz = size(model.grid)
 
                 # Periodic xy
-                @test CUDA.@allowscalar all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
-                @test CUDA.@allowscalar all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
+                @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
+                @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
                 
                 # Bounded z
-                @test CUDA.@allowscalar all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
-                @test CUDA.@allowscalar all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
+                @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
+                @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
 
                 @compute ST_face = Field(@at (Center, Center, Face) S * T)
 
                 # These are initially 0 and remain 0
-                @test CUDA.@allowscalar all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
-                @test CUDA.@allowscalar all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
+                @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
+                @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
             end
 
             @testset "Operations with Averaged Field [$A, $G]" begin
