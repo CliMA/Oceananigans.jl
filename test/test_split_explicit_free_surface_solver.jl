@@ -15,7 +15,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0), halo=(1, 1, 1))
 
-        sefs = SplitExplicitFreeSurface(grid, averaging_function = averaging_fixed_function)
+        settings = SplitExplicitSettings(; averaging_function = averaging_fixed_function)
+        sefs = SplitExplicitFreeSurface(grid; settings)
 
         sefs.η .= 0.0
 
