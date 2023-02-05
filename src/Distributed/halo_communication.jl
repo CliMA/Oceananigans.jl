@@ -237,20 +237,11 @@ for side in sides
     send_side_halo = Symbol("send_$(side)_halo")
     underlying_side_boundary = Symbol("underlying_$(side)_boundary")
     side_send_tag = Symbol("$(side)_send_tag")
+    get_side_send_buffer = Symbol("get_$(side)_send_buffer")
 
     @eval begin
-        function $send_side_halo(c, grid, ::ViewsMultiArch, side_location, local_rank, rank_to_send_to, buffers)
-            send_buffer = $underlying_side_boundary(c, grid, side_location)
-            send_tag = $side_send_tag(local_rank, rank_to_send_to)
-
-            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
-
-            return send_req
-        end
-
         function $send_side_halo(c, grid, arch, side_location, local_rank, rank_to_send_to, buffers)
-            send_buffer = buffers.$side.send
+            send_buffer = $get_side_send_buffer(c, grid, side_location, buffers, arch)
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
@@ -258,6 +249,9 @@ for side in sides
 
             return send_req
         end
+
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsMultiArch) = $underlying_side_boundary(c, grid, side_location)
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.send     
     end
 end
 
@@ -270,10 +264,11 @@ for side in sides
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     underlying_side_halo = Symbol("underlying_$(side)_halo")
     side_recv_tag = Symbol("$(side)_recv_tag")
+    get_side_recv_buffer = Symbol("get_$(side)_recv_buffer")
 
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, ::ViewsMultiArch, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = $underlying_side_halo(c, grid, side_location)
+            recv_buffer = $get_side_recv_buffer(c, grid, side_location, buffers, arch)
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
@@ -282,14 +277,7 @@ for side in sides
             return recv_req
         end
 
-        function $recv_and_fill_side_halo!(c, grid, arch, side_location, local_rank, rank_to_recv_from, buffers)
-            recv_buffer = buffers.$side.recv
-            recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
-
-            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
-
-            return recv_req
-        end
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsMultiArch) = $underlying_side_halo(c, grid, side_location)
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.recv
     end
 end
