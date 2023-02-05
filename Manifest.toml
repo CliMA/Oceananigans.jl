@@ -2,13 +2,13 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "5edf9559e060cdb56e1590b51ab8a95991b3e7af"
+project_hash = "96eebad427fe7f986c00777f7738aa636a9e621d"
 
 [[deps.AMGX]]
 deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
-git-tree-sha1 = "c1686ca92a2ceb2031fbfe0860a86f4c71bd1ac8"
+git-tree-sha1 = "5f2e38391ea8788c69e3dc2aa297b4bef98c2ac8"
 uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
-version = "0.1.3"
+version = "0.1.4"
 
 [[deps.AMGX_jll]]
 deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -87,9 +87,9 @@ version = "3.13.1"
 
 [[deps.CUDAKernels]]
 deps = ["Adapt", "CUDA", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "28ca96867490b0d8f86cf1af47a95ad435ac5045"
+git-tree-sha1 = "1680366a69e9c95744ef23a239e6cfe61cf2e1ca"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-version = "0.4.6"
+version = "0.4.7"
 
 [[deps.CUDA_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
