@@ -11,8 +11,8 @@ pyplot()
 # Benchmark function
 
 function benchmark_shallow_water_model(Arch, FT, N)
-    grid = RectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3))
-    model = ShallowWaterModel(architecture=Arch(), grid=grid, gravitational_acceleration=1.0)
+    grid = RectilinearGrid(Arch(), FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3))
+    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1.0)
     set!(model, h=1)
 
     time_step!(model, 1) # warmup
