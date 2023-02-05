@@ -78,6 +78,7 @@ Usefull for boundary arrays, forcings and initial conditions
 """
 reconstruct_global_array(arch, c_local::Function, N) = c_local
 
+# TODO: This does not work for 2D parallelizations!!!
 function reconstruct_global_array(arch, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
     Rx, Ry, Rz = R = arch.ranks
@@ -93,7 +94,7 @@ function reconstruct_global_array(arch, c_local::AbstractArray, n)
     
         c_global[1 + (ri-1) * nx : nx * ri, 
                  1 + (rj-1) * ny : ny * rj] .= c_local[1:nx, 1:ny]
-
+        
         MPI.Allreduce!(c_global, +, arch.communicator)
         
         return arch_array(child_architecture(arch), c_global)

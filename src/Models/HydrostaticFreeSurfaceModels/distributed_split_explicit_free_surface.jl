@@ -6,12 +6,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliary(grid::DistributedGrid)
     
-    Gᵁ = Field{Face,   Center, Nothing}(grid)
-    Gⱽ = Field{Center, Face,   Nothing}(grid)
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
     
-    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
-    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
-    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+    Hᶜᶜ = Field((Center, Center, Nothing), grid)
     
     vertical_height!(Hᶠᶜ, (Face, Center, Center))
     vertical_height!(Hᶜᶠ, (Center, Face, Center))

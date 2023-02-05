@@ -5,12 +5,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExpli
 
 function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     
-    Gᵁ = Field{Face,   Center, Nothing}(grid)
-    Gⱽ = Field{Center, Face,   Nothing}(grid)
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
     
-    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
-    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
-    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+    Hᶜᶜ = Field((Center, Center, Nothing), grid)
     
     @apply_regionally vertical_height!(Hᶠᶜ, (Face, Center, Center))
     @apply_regionally vertical_height!(Hᶜᶠ, (Center, Face, Center))
