@@ -1,5 +1,5 @@
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Advection: WENO
+using Oceananigans.Advection: WENO, VectorInvariant
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: PrescribedVelocityFields
@@ -29,6 +29,9 @@ Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
+         :SplitExplicitAuxiliary,
+         :SplitExplicitState,
+         :SplitExplicitFreeSurface,
          :PrescribedVelocityFields)
 
 for T in Types
@@ -48,12 +51,25 @@ validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegion
 @inline isregional(mrm::MultiRegionModel)        = true
 @inline devices(mrm::MultiRegionModel)           = devices(mrm.grid)
 @inline getdevice(mrm::MultiRegionModel, d)      = getdevice(mrm.grid, d)
-@inline switch_region!(mrm::MultiRegionModel, d) = switch_region!(mrm.grid, d)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
       construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
+
+@inline  getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
+                VectorInvariant{N, FT}(_getregion(t.vorticity_scheme, r), 
+                                       _getregion(t.divergence_scheme, r),
+                                       t.vorticity_stencil, 
+                                       t.divergence_stencil, 
+                                       _getregion(t.vertical_scheme, r))
+
+@inline _getregion(t::VectorInvariant{N, FT}, r) where {N, FT} = 
+                VectorInvariant{N, FT}(getregion(t.vorticity_scheme, r), 
+                                       getregion(t.divergence_scheme, r), 
+                                       t.vorticity_stencil, 
+                                       t.divergence_stencil, 
+                                       getregion(t.vertical_scheme, r))
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)

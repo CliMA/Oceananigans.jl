@@ -5,7 +5,7 @@ const RGX  = XRegRectilinearGrid
 const RGY  = YRegRectilinearGrid
 const RGZ  = ZRegRectilinearGrid
 
-const CCSG = ConformalCubedSphereFaceGrid
+const OSSG = OrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegLatLonGrid
@@ -66,8 +66,8 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = @inbounds grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = @inbounds grid.Δzᵃᵃᶜ
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::CCSG) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::CCSG) = grid.Δz
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = grid.Δz
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = grid.Δz
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -151,18 +151,18 @@ end
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
 
 #####
-#####  ConformalCubedSphereFaceGrid
+#####  OrthogonalSphericalShellGrid
 #####
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
-@inline Δxᶠᶜᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
-@inline Δxᶜᶠᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
-@inline Δxᶠᶠᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δyᶜᶜᵃ[i, j]
-@inline Δyᶠᶜᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
-@inline Δyᶜᶠᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
-@inline Δyᶠᶠᵃ(i, j, k, grid::CCSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
+@inline Δyᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶜᵃ[i, j]
+@inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
+@inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
 #####
 #####
@@ -197,7 +197,7 @@ end
 
 
 ####
-#### Special 2D z Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
+#### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
@@ -214,7 +214,7 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
     z_area_2D = Symbol(:Az, LX, LY, :ᵃ)
 
     @eval begin
-        @inline $z_area_2D(i, j, k, grid::CCSG) = @inbounds grid.$z_area_2D[i, j]
+        @inline $z_area_2D(i, j, k, grid::OSSG) = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLG)  = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLGX) = @inbounds grid.$z_area_2D[j]
     end

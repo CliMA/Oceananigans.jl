@@ -21,7 +21,7 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Immersed boundaries
@@ -138,33 +138,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-
-# TODO: find a way to check whether the libraries for AMGX and NETCDF 
-# (libamgxsh and libnetcdf, respectively) are installed on the machine
-"Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx   = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
-
-"Boolean denoting whether NCDatasets.jl can be loaded on machine."
-const hasnetcdf = @static (Sys.islinux() && Sys.ARCH == :x86_64) ? true : false
-
-"""
-    @ifhasamgx expr
-
-Evaluate `expr` only if `hasamgx == true`.
-"""
-macro ifhasamgx(expr)
-    hasamgx ? :($(esc(expr))) : :(nothing) 
-end
-
-"""
-    @ifnetcdf expr
-
-Evaluate `expr` only if `hasnetcdf == true`.
-"""
-macro ifhasnetcdf(expr)
-    hasnetcdf ? :($(esc(expr))) : :(nothing) 
-end
-
+    
 #####
 ##### Abstract types
 #####
@@ -224,7 +198,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -234,6 +207,7 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

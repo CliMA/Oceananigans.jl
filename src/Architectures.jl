@@ -13,11 +13,14 @@ using OffsetArrays
 # Adapt CUDAKernels to multiple devices by splitting stream pool
 import CUDAKernels: next_stream
 
-if CUDA.has_cuda_gpu()     
 using CUDAKernels: STREAM_GC_LOCK
 
-    DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
-    DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:length(CUDA.devices()))
+if CUDA.has_cuda_gpu()
+    const device_number = CUDA.ndevices()
+
+    const DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for i in 1:device_number)
+    const DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for i in 1:device_number)
+
     const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
 
     function next_stream()

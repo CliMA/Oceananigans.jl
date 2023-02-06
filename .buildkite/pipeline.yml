@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.8.2"
+  JULIA_VERSION: "1.8.5"
   JULIA_MINOR_VERSION: "1.8"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
@@ -21,6 +21,9 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
+
+      # Set up the mpiexecjl command
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
@@ -477,10 +480,10 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### Distributed/MPI
+##### Distributed/MPI 
 #####
 
-  - label: "🐉 cpu distributed tests"
+  - label: "🐉 cpu distributed unit tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed"
@@ -493,6 +496,33 @@ steps:
       queue: Oceananigans
       architecture: CPU
     depends_on: "init_cpu"
+
+  - label: "🦾 cpu distributed sovers tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "distributed_solvers"
+      CUDA_VISIBLE_DEVICES: "-1"
+      PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    commands:
+      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+
+  - label: "🐲 gpu distributed unit tests"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "distributed"
+      PATH: "$PATH:$SVERDRUP_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      JULIA_BINDIR: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin"
+    commands:
+      - "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
 
 #####
 ##### Regression

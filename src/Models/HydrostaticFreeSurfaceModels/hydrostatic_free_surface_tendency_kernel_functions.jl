@@ -7,9 +7,9 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation
+using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
 
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
+import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west 

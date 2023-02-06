@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barotropic_split_explicit_corrector!, set_average_to_zero!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barotropic_split_explicit_corrector!, initialize_free_surface_state!
 
 @testset "Barotropic Kernels" begin
 
@@ -34,7 +34,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             # set equal to something else
             η̅ .= U̅ .= V̅ .= 1.0
             # now set equal to zero
-            set_average_to_zero!(sefs.state)
+            initialize_free_surface_state!(sefs.state, sefs.η)
             # don't forget the ghost points
             fill_halo_regions!(η̅)
             fill_halo_regions!(U̅)

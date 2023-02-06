@@ -29,8 +29,8 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 infer_transform(::Periodic) = PencilFFTs.Transforms.FFT!()
-infer_transform(::Bounded) = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
-infer_transform(::Flat) = PencilFFTs.Transforms.NoTransform!()
+infer_transform(::Bounded)  = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
+infer_transform(::Flat)     = PencilFFTs.Transforms.NoTransform!()
 
 """
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
@@ -414,3 +414,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δzᶜᶜᶜ(i, j, k, grid)
 end
+

@@ -103,7 +103,7 @@ v = vh / h
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field{Face, Face, Nothing}(model.grid)
+ωⁱ = Field((Face, Face, Nothing), model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity
@@ -193,7 +193,7 @@ hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
 title = @lift @sprintf("t = %.1f", times[$n])
-fig[1, 1:4] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # Finally, we record a movie.
 

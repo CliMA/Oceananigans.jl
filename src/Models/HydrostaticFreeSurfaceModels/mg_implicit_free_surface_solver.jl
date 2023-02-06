@@ -10,7 +10,7 @@ using Oceananigans.Solvers: constructors, arch_sparse_matrix, update_diag!, unpa
 using Oceananigans.Utils: prettysummary
 using SparseArrays: _insert!
 using CUDA.CUSPARSE: CuSparseMatrixCSR
-@ifhasamgx using AMGX
+using AMGX
 
 import Oceananigans.Solvers: solve!, finalize_solver!
 import Oceananigans.Architectures: architecture
@@ -66,8 +66,8 @@ function MGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(with_halo((3, 3, 1), grid))
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(with_halo((3, 3, 1), grid))
+    ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), with_halo((3, 3, 1), grid))
+    ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), with_halo((3, 3, 1), grid))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -165,7 +165,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CP
     return nothing
 end
 
-@ifhasamgx function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
+function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements

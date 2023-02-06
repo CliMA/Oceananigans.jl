@@ -1,9 +1,27 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
+using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
+                           fill_south_and_north_send_buffers!, 
+                           fill_west_send_buffers!,
+                           fill_east_send_buffers!,
+                           fill_south_send_buffers!,
+                           fill_north_send_buffers!,
+                           fill_recv_buffers!, 
+                           reduced_dimensions, 
+                           instantiated_location
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
 using Oceananigans.BoundaryConditions:
+    fill_halo_size,
+    fill_halo_offset,
+    permute_boundary_conditions,
+    PBCT, HBCT, HBC
+
+import Oceananigans.BoundaryConditions: 
+    fill_halo_regions!, fill_first, fill_halo_event!,
+    fill_west_halo!, fill_east_halo!, fill_south_halo!,
+    fill_north_halo!, fill_bottom_halo!, fill_top_halo!,
     fill_west_and_east_halo!, 
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
@@ -46,16 +64,16 @@ for side in sides
     @eval begin
         function $send_tag_fn_name(local_rank, rank_to_send_to)
             from_digits = string(local_rank, pad=RANK_DIGITS)
-            to_digits = string(rank_to_send_to, pad=RANK_DIGITS)
-            side_digit = string(side_id[Symbol($side_str)])
-            return parse(Int, from_digits * to_digits * side_digit)
+            to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
+            side_digit  = string(side_id[Symbol($side_str)])
+            return parse(Int, side_digit * from_digits * to_digits)
         end
 
         function $recv_tag_fn_name(local_rank, rank_to_recv_from)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
-            to_digits = string(local_rank, pad=RANK_DIGITS)
-            side_digit = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, from_digits * to_digits * side_digit)
+            to_digits   = string(local_rank, pad=RANK_DIGITS)
+            side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
+            return parse(Int, side_digit * from_digits * to_digits)
         end
     end
 end
@@ -70,46 +88,80 @@ function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; 
     end
 end
 
-# REMEMBER! indices, kernel_size (:yz, :xz and :xy) and offset are not used in distributed halo filling because sliced fields are not supported yet
-# TODO: distributed halo filling does not support windowed fields at the moment
-# TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
-    arch    = architecture(grid)
-    barrier = Event(device(child_architecture(arch)))
+function fill_halo_regions!(field::DistributedField, args...; kwargs...)
+    reduced_dims = reduced_dimensions(field)
 
-    offset = (0, 0)
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, :xz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, :xy, offset, loc, arch, barrier, grid, args...; kwargs...)
+    return fill_halo_regions!(field.data,
+                              field.boundary_conditions,
+                              field.indices,
+                              instantiated_location(field),
+                              field.grid,
+                              field.boundary_buffers,
+                              args...;
+                              reduced_dimensions = reduced_dims,
+                              kwargs...)
+end
 
-    events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
+    arch       = architecture(grid)
+    child_arch = child_architecture(arch)
+    halo_tuple = permute_boundary_conditions(bcs)
+    
+    for task = 1:3
+        barrier = device_event(child_arch)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    end
+    
+    barrier = device_event(child_arch)
 
-    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
-    # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
-    length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
-
-    events = filter(e -> e isa Event, events_and_requests)
-    wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
+    fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    fill_recv_buffers!(c, buffers, grid)    
 
     return nothing
 end
 
-#####
-##### fill_west_and_east_halos!   }
-##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
-##### fill_bottom_and_top_halos!  }
-#####
+# If more than one direction is communicating we need to repeat one fill halo to fill the freaking corners!
+function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+    hbc_left  = filter(bc -> bc isa HBC, halo_tuple[2])
+    hbc_right = filter(bc -> bc isa HBC, halo_tuple[3])
 
-for (side, opposite_side) in zip((:west, :south, :bottom), (:east, :north, :top))
-    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
+    # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
+    if length(hbc_left) > 1 
+        fill_recv_buffers!(c, buffers, grid)    
 
-    @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, size, offset, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
-            return [event]
-        end
+        idx = findfirst(bc -> bc isa HBC, halo_tuple[2])
+        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+        return nothing
     end
+
+    if length(hbc_right) > 1 
+        fill_recv_buffers!(c, buffers, grid)    
+
+        idx = findfirst(bc -> bc isa HBC, halo_tuple[3])
+        fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
+        return nothing
+    end
+end
+
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, barrier, grid::DistributedGrid, args...; kwargs...)
+    fill_halo!  = halo_tuple[1][task]
+    bc_left     = halo_tuple[2][task]
+    bc_right    = halo_tuple[3][task]
+
+    # Calculate size and offset of the fill_halo kernel
+    size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
+    offset = fill_halo_offset(size, fill_halo!, indices)
+
+    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    
+    if events_and_requests isa Event
+        wait(device(child_architecture(arch)), events_and_requests)    
+        return nothing
+    end
+    
+    MPI.Waitall!(events_and_requests)
+
+    return nothing
 end
 
 for side in (:west, :south, :bottom, :east, :north, :top)
@@ -118,34 +170,75 @@ for side in (:west, :south, :bottom, :east, :north, :top)
 end
 
 #####
-##### fill_west_and_east_halos!   }
-##### fill_south_and_north_halos! } for when both halos are communicative
-##### fill_bottom_and_top_halos!  }
+##### fill_west_and_east_halo!   }
+##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
+##### fill_bottom_and_top_halo!  }
 #####
 
-const CBCT = Union{HaloCommunicationBC, NTuple{<:Any, <:HaloCommunicationBC}}
-
 for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, :top], [1, 2, 3])
-    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
-    send_side_halo = Symbol("send_$(side)_halo")
-    send_opposite_side_halo = Symbol("send_$(opposite_side)_halo")
+    fill_both_halo! = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
+    fill_side_halo! = Symbol("fill_$(side)_halo!")
+    send_side_halo  = Symbol("send_$(side)_halo")
+    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
+    send_opposite_side_halo  = Symbol("send_$(opposite_side)_halo")
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
+    fill_all_send_buffers! = Symbol("fill_$(side)_and_$(opposite_side)_send_buffers!")
+    fill_side_send_buffers! = Symbol("fill_$(side)_send_buffers!")
+    fill_opposite_side_send_buffers! = Symbol("fill_$(opposite_side)_send_buffers!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, size, offset, loc, arch, 
-                                   barrier, grid, args...; kwargs...)
+        function $fill_both_halo!(c, bc_side::HBCT, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
+                                   barrier, grid::DistributedGrid, buffers, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
-            send_req1 = $send_side_halo(c, grid, loc[$dir], local_rank, bc_side.condition.to)
-            send_req2 = $send_opposite_side_halo(c, grid, loc[$dir], local_rank, bc_opposite_side.condition.to)
+            $fill_all_send_buffers!(c, buffers, grid)
 
-            recv_req1 = $recv_and_fill_side_halo!(c, grid, loc[$dir], local_rank, bc_side.condition.to)
-            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, loc[$dir], local_rank, bc_opposite_side.condition.to)
+            send_req1 = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
 
-            return send_req1, send_req2, recv_req1, recv_req2
+            recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+
+            return [send_req1, send_req2, recv_req1, recv_req2]
+        end
+
+        function $fill_both_halo!(c, bc_side::HBCT, bc_opposite_side, size, offset, loc, arch::MultiArch, 
+            barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+
+            child_arch = child_architecture(arch)
+            local_rank = bc_side.condition.from
+
+            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
+
+            $fill_side_send_buffers!(c, buffers, grid)
+
+            send_req = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            
+            wait(device(child_arch), event)    
+
+            return [send_req, recv_req]
+        end
+
+        function $fill_both_halo!(c, bc_side, bc_opposite_side::HBCT, size, offset, loc, arch::MultiArch, 
+                barrier, grid::DistributedGrid, buffers, args...; kwargs...)
+
+            child_arch = child_architecture(arch)
+            local_rank = bc_opposite_side.condition.from
+
+            event = $fill_side_halo!(c, bc_side, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
+
+            $fill_opposite_side_send_buffers!(c, buffers, grid)
+
+            send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+
+            wait(device(child_arch), event)    
+
+            return [send_req, recv_req]
         end
     end
 end
@@ -159,17 +252,21 @@ for side in sides
     send_side_halo = Symbol("send_$(side)_halo")
     underlying_side_boundary = Symbol("underlying_$(side)_boundary")
     side_send_tag = Symbol("$(side)_send_tag")
+    get_side_send_buffer = Symbol("get_$(side)_send_buffer")
 
     @eval begin
-        function $send_side_halo(c, grid, side_location, local_rank, rank_to_send_to)
-            send_buffer = $underlying_side_boundary(c, grid, side_location)
+        function $send_side_halo(c, grid, arch, side_location, local_rank, rank_to_send_to, buffers)
+            send_buffer = $get_side_send_buffer(c, grid, side_location, buffers, arch)
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
             return send_req
         end
+
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsMultiArch) = $underlying_side_boundary(c, grid, side_location)
+        @inline $get_side_send_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.send     
     end
 end
 
@@ -182,16 +279,20 @@ for side in sides
     recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
     underlying_side_halo = Symbol("underlying_$(side)_halo")
     side_recv_tag = Symbol("$(side)_recv_tag")
+    get_side_recv_buffer = Symbol("get_$(side)_recv_buffer")
 
     @eval begin
-        function $recv_and_fill_side_halo!(c, grid, side_location, local_rank, rank_to_recv_from)
-            recv_buffer = $underlying_side_halo(c, grid, side_location)
+        function $recv_and_fill_side_halo!(c, grid, arch, side_location, local_rank, rank_to_recv_from, buffers)
+            recv_buffer = $get_side_recv_buffer(c, grid, side_location, buffers, arch)
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             return recv_req
         end
+
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsMultiArch) = $underlying_side_halo(c, grid, side_location)
+        @inline $get_side_recv_buffer(c, grid, side_location, buffers, arch)             = buffers.$side.recv
     end
 end

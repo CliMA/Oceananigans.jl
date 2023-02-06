@@ -306,7 +306,7 @@ sinking = AdvectiveForcing(UpwindBiasedFifthOrder(), w=w_sediment)
 AdvectiveForcing with the UpwindBiased scheme:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
-└── w: ConstantField(-0.00352102)
+└── w: ConstantField(-0.003521024784182679)
 ```
 
 The first argument to `AdvectiveForcing` is the advection scheme (here `UpwindBiasedFifthOrder()`).

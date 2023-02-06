@@ -1,10 +1,13 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 
+using CUDA: ndevices, device!
+
 import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
+import Oceananigans.Fields: using_buffered_communication
 
-struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
+struct MultiArch{A, R, I, ρ, C, γ, B} <: AbstractMultiArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -17,8 +20,55 @@ end
 ##### Constructors
 #####
 
-function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, Periodic), ranks, communicator = MPI.COMM_WORLD)
-    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiArch.")
+"""
+    MultiArch(child_architecture = CPU(); 
+              topology = (Periodic, Periodic, Periodic), 
+              ranks, 
+              use_buffers = false,
+              devices = nothing, 
+              communicator = MPI.COMM_WORLD)
+
+Constructor for a distributed architecture that uses MPI for communications
+
+
+Positional arguments
+=================
+
+- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
+                        Default: `child_architecture = CPU()`.
+
+Keyword arguments
+=================
+
+- `topology`: the topology we want the grid to have. It is used to establish connectivity.
+              Default: `topology = (Periodic, Periodic, Periodic)`.
+
+- `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
+                      `y` and `z` direction. NOTE: support for distributed z direction is 
+                      limited, so `Rz = 1` is strongly suggested.
+
+- `use_buffers`: if `true`, buffered halo communication is implemented. If `false`, halos will be 
+                 exchanged through views. Buffered communication is not necessary in case of `CPU`
+                 execution, but it is necessary for `GPU` execution without CUDA-aware MPI
+
+- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
+             local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
+             If `nothing`, the devices will be assigned automatically based on the available resources
+
+- `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
+                  if not for testing or developing. Change at your own risk!
+"""
+function MultiArch(child_architecture = CPU(); 
+                   topology = (Periodic, Periodic, Periodic), 
+                   ranks,
+                   use_buffers = false,
+                   devices = nothing, 
+                   communicator = MPI.COMM_WORLD)
+
+    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
+
+    (use_buffers && child_architecture isa CPU) && 
+            @warn "Using buffers on CPU architectures is not required (but useful for testing)"
 
     validate_tupled_argument(ranks, Int, "ranks")
 
@@ -42,9 +92,22 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
     ρ = typeof(ranks)         
     C = typeof(local_connectivity)  
     γ = typeof(communicator)  
-    
-    return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
+
+    # Assign CUDA device if on GPUs
+    if child_architecture isa GPU
+        local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
+        node_rank  = MPI.Comm_rank(local_comm)
+        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank]) 
+    end
+
+    B = use_buffers
+
+    return MultiArch{A, R, I, ρ, C, γ, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
+
+const ViewsMultiArch = MultiArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+
+using_buffered_communication(::MultiArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
 
 #####
 ##### All the architectures
@@ -87,10 +150,13 @@ end
 RankConnectivity(; east, west, north, south, top, bottom) =
     RankConnectivity(east, west, north, south, top, bottom)
 
+# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
+# The "Bounded" topologies are `Bounded` and `LeftConnected`
+
 function increment_index(i, R, topo)
     R == 1 && return nothing
     if i+1 > R
-        if topo == Periodic
+        if topo == Periodic || topo == FullyConnected || topo == RightConnected
             return 1
         else
             return nothing
@@ -103,7 +169,7 @@ end
 function decrement_index(i, R, topo)
     R == 1 && return nothing
     if i-1 < 1
-        if topo == Periodic
+        if topo == Periodic || topo == FullyConnected || topo == RightConnected
             return R
         else
             return nothing

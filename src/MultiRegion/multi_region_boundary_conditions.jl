@@ -87,14 +87,14 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::CBC, right_bc, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
-            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
+            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, neighbors, buffers, args...; kwargs...)
             return NoneEvent()
         end   
-        function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::CBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
-            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, args...; kwargs...)
+            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, neighbors, buffers, args...; kwargs...)
             return NoneEvent()
         end   
     end
@@ -110,7 +110,7 @@ function fill_west_and_east_halo!(c, westbc::CBC, eastbc::CBC, kernel_size, offs
     westdst = buffers[westbc.condition.rank].west.recv
     eastdst = buffers[eastbc.condition.rank].east.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(w))
     westsrc = buffers[westbc.condition.from_rank].east.send
@@ -140,14 +140,14 @@ function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, 
     southdst = buffers[southbc.condition.rank].south.recv
     northdst = buffers[northbc.condition.rank].north.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(s))
-    southsrc = buffers[westbc.condition.from_rank].south.send
+    southsrc = buffers[southbc.condition.from_rank].south.send
     southsrc .= view(parent(s), :, N+1:N+H, :)
     
     switch_device!(getdevice(n))
-    northsrc = buffers[eastbc.condition.from_rank].north.send
+    northsrc = buffers[northbc.condition.from_rank].north.send
     northsrc .= view(parent(n), :, H+1:2H, :)
 
     switch_device!(getdevice(c))    
@@ -171,7 +171,7 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
@@ -194,7 +194,7 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid, 
     e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
@@ -217,7 +217,7 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     s = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].south.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(s))
     src = buffers[bc.condition.from_rank].north.send
@@ -240,7 +240,7 @@ function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, dep, grid,
     n = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].north.recv
 
-    wait(device(arch), dep)
+    wait(Oceananigans.Architectures.device(arch), dep)
 
     switch_device!(getdevice(n))
     src = buffers[bc.condition.from_rank].south.send

@@ -5,7 +5,7 @@
 """
     divᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-Calculates the divergence ``∇·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
+Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 
 ```julia
 1/V * [δxᶜᵃᵃ(Ax * u) + δxᵃᶜᵃ(Ay * v) + δzᵃᵃᶜ(Az * w)]

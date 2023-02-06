@@ -110,7 +110,7 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     Nξ = length(ξ)
     N⁺¹ = N + 1
     if Nξ < N⁺¹
-        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $N!"))
+        throw(ArgumentError("length($dir) = $Nξ has too few interfaces for the dimension size $(N)!"))
     elseif Nξ > N⁺¹
         msg = "length($dir) = $Nξ is greater than $N+1, where $N was passed to `size`.\n" *
               "$dir cell interfaces will be constructed from $dir[1:$N⁺¹]."
@@ -196,7 +196,7 @@ validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
-    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $I"))
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
 end
 
