@@ -7,7 +7,7 @@ import Oceananigans.Architectures: device, device_event, arch_array, array_type,
 import Oceananigans.Grids: zeros
 import Oceananigans.Fields: using_buffered_communication
 
-struct MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B} <: AbstractMultiArchitecture
+struct MultiArch{A, R, I, ρ, C, γ, B} <: AbstractMultiArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
