@@ -137,7 +137,7 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = nothing,
                                    with_halos = false,
                             global_attributes = Dict(),
@@ -178,7 +178,7 @@ Keyword arguments
                 you might need to set `with_halos = true`.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float32}`.
+                Default: `Array{Float64}`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -224,7 +224,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -237,7 +237,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -252,7 +252,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
@@ -296,12 +296,12 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 """
 function NetCDFOutputWriter(model, outputs; filename, schedule,
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
                             global_attributes = Dict(),
