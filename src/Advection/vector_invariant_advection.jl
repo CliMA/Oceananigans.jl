@@ -55,7 +55,7 @@ Keyword arguments
 Examples
 ========
 ```jldoctest
-julia> using Oceananigans;
+julia> using Oceananigans
 
 julia> VectorInvariant()
 Vector Invariant reconstruction, maximum order 1 
@@ -68,7 +68,7 @@ Vector Invariant reconstruction, maximum order 1
 
 ```
 ```jldoctest
-julia> using Oceananigans;
+julia> using Oceananigans
 
 julia> VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(order = 3))
 Vector Invariant reconstruction, maximum order 5 

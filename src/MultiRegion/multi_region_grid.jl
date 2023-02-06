@@ -95,6 +95,7 @@ function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, a
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo, topo)
     FT   = eltype(grid)
+
     return RectilinearGrid(child_arch, FT; size = size, halo = halo, topology = topo, extent...)
 end
 
