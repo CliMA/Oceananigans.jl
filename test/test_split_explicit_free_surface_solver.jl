@@ -88,11 +88,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             Gᵁ .= 0.0
             Gⱽ .= 0.0
 
-            for i in 1:Nt-1
+            for i in 1:Nt
                 split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ, i)
             end
             # + correction for exact time
-            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ_end, Nt)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ_end, 1)
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
