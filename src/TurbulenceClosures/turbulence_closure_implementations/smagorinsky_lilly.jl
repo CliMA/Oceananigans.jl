@@ -106,6 +106,11 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 end
 
 
+@inline function calc_nonlinear_κᶜᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, tracer, ::Val{tracer_index}, νₑ) where {tracer_index}
+    return νₑ[i,j,k] / closure.Pr[tracer_index]
+end
+
+
 function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
     arch = model.architecture
@@ -114,12 +119,22 @@ function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly,
     velocities = model.velocities
     tracers = model.tracers
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_nonlinear_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
-                    dependencies = device_event(arch))
+    workgroup, worksize = work_layout(grid, :xyz)
+    viscosity_kernel! = calculate_nonlinear_viscosity!(device(arch), workgroup, worksize)
+    diffusivity_kernel! = calculate_nonlinear_tracer_diffusivity!(device(arch), workgroup, worksize)
 
-    wait(device(arch), event)
+    barrier = device_event(arch)
+    viscosity_event = viscosity_kernel!(diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers, dependencies=barrier)
+
+    events = [viscosity_event]
+
+    for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
+        @inbounds tracer = tracers[tracer_index]
+        event = diffusivity_kernel!(κₑ, grid, closure, tracer, Val(tracer_index), diffusivity_fields.νₑ, dependencies=barrier)
+        push!(events, event)
+    end
+
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -204,18 +219,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
-
-    # Use AbstractOperations to write eddy diffusivities in terms of
-    # eddy viscosity
-    κₑ_ops = []
-
-    for i = 1:length(tracer_names)
-        Pr = closure.Pr[i]
-        κₑ_op = νₑ / Pr
-        push!(κₑ_ops, κₑ_op)
-    end
-
-    κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
+    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.νₑ) for c in tracer_names)
 
     return (; νₑ, κₑ)
 end
