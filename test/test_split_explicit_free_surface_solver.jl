@@ -72,6 +72,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             Nt = floor(Int, T / Δτ)
             Δτ_end = T - Nt * Δτ
 
+            settings = SplitExplicitSettings(; substeps = Nt, averaging_function = averaging_fixed_function)
+
             # set!(η, f(x,y))
             η₀(x, y, z) = sin(x)
             set!(η, η₀)
@@ -86,11 +88,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             Gᵁ .= 0.0
             Gⱽ .= 0.0
 
-            for i in 1:Nt
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
+            for i in 1:Nt-1
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ, i)
             end
             # + correction for exact time
-            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, i)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ_end, Nt)
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
