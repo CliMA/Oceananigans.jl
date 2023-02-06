@@ -14,9 +14,6 @@ struct MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B} <: AbstractMultiArchitecture
                ranks :: ρ
         connectivity :: C
         communicator :: γ
-      x_communicator :: X
-      y_communicator :: Y
-      z_communicator :: Z
 end
 
 #####
@@ -103,21 +100,14 @@ function MultiArch(child_architecture = CPU();
         isnothing(devices) ? device!(devices[node_rank]) : device!(node_rank % ndevices())
     end
 
-    x_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[1])
-    y_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[2])
-    z_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[3])
-    
-    X = typeof(x_communicator)
-    Y = typeof(y_communicator)
-    Z = typeof(z_communicator)
     B = use_buffers
 
-    return MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, x_communicator, y_communicator, z_communicator)
+    return MultiArch{A, R, I, ρ, C, γ, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
-const ViewsMultiArch = MultiArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+const ViewsMultiArch = MultiArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
 
-using_buffered_communication(::MultiArch{A, R, I, ρ, C, γ, X, Y, Z, B}) where {A, R, I, ρ, C, γ, X, Y, Z, B} = B
+using_buffered_communication(::MultiArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
 
 #####
 ##### All the architectures

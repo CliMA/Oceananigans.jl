@@ -4,6 +4,8 @@ using PencilArrays: Permutation
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
+using FFTW 
+
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
     plan :: P
     global_grid :: F
@@ -18,8 +20,8 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 
 infer_transform(grid, d) = infer_transform(topology(grid, d)())
 infer_transform(::Periodic) = PencilFFTs.Transforms.FFT!()
-infer_transform(::Bounded) = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
-infer_transform(::Flat) = PencilFFTs.Transforms.NoTransform!()
+infer_transform(::Bounded)  = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
+infer_transform(::Flat)     = PencilFFTs.Transforms.NoTransform!()
 
 """
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
