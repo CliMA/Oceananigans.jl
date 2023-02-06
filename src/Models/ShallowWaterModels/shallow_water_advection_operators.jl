@@ -63,7 +63,7 @@ using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 """
     div_Uh(i, j, k, grid, advection, solution, formulation)
 
-Calculates the divergence of the mass flux into a cell,
+Calculate the divergence of the mass flux into a cell,
 
 ```
 1/Az * [δxᶜᵃᵃ(Δy * uh) + δyᵃᶜᵃ(Δx * vh)]
@@ -93,7 +93,7 @@ end
     div_Uc(i, j, k, grid, advection, solution, c, formulation)
 
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
-a velocity field ``𝐔 = (u, v)``, ``∇·(𝐔c)``,
+a velocity field ``𝐔 = (u, v)``, ``𝛁·(𝐔c)``,
 
 ```
 1/Az * [δxᶜᵃᵃ(Δy * uh * ℑxᶠᵃᵃ(c) / h) + δyᵃᶜᵃ(Δx * vh * ℑyᵃᶠᵃ(c) / h)]
@@ -126,11 +126,11 @@ end
 """
     c_div_U(i, j, k, grid, solution, c, formulation)
 
-Calculates the product of the tracer concentration ``c`` with 
+Calculate the product of the tracer concentration ``c`` with 
 the horizontal divergence of the velocity field ``𝐔 = (u, v)``, ``c ∇·𝐔``,
 
 ```
-1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h]
+c * 1/Az * [δxᶜᵃᵃ(Δy * uh / h) + δyᵃᶜᵃ(Δx * vh / h)]
 ```
 
 which ends up at the location `ccc`.
