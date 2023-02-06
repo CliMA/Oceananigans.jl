@@ -505,7 +505,6 @@ end
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-<<<<<<< HEAD
 
         test_topologies = [(Periodic, Periodic, Periodic),
                            (Periodic, Periodic, Bounded),
