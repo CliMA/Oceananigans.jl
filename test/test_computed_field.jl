@@ -307,7 +307,6 @@ function computations_with_computed_fields(model)
     return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
-archs = [GPU()]
 for arch in archs
     A = typeof(arch)
     @testset "Computed Fields [$A]" begin
