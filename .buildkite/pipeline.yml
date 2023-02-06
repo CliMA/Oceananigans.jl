@@ -483,7 +483,7 @@ steps:
 ##### Distributed/MPI (CPU)
 #####
 
-  - label: "🐉 cpu distributed tests"
+  - label: "🐉 cpu distributed unit tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed"
@@ -497,12 +497,30 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
+#####
+##### Distributed/MPI solvers (CPU)
+#####
+
+  - label: "🦾 cpu distributed sovers tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "distributed_solvers"
+      CUDA_VISIBLE_DEVICES: "-1"
+      PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    commands:
+      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+
 
 #####
-##### Distributed/MPI (GPU)
+##### Distributed/MPI (GPU) unit tests
 #####
 
-  - label: "🐲 gpu distributed tests"
+  - label: "🐲 gpu distributed unit tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed"
