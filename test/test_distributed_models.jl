@@ -21,7 +21,7 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-#MPI.Init()
+# MPI.Init()
 
 # to initialize MPI.
 
@@ -431,7 +431,7 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch
     return nothing
 end
 
-function test_triply_periodic_halo_communication_with_221_ranks(halo)
+function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     use_buffers = child_arch isa GPU ? true : false
     arch = MultiArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))

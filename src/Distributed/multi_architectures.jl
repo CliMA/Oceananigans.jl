@@ -23,12 +23,50 @@ end
 ##### Constructors
 #####
 
+"""
+    MultiArch(child_architecture = CPU(); 
+              topology = (Periodic, Periodic, Periodic), 
+              ranks, 
+              use_buffers = false,
+              devices = nothing, 
+              communicator = MPI.COMM_WORLD)
+
+Constructor for a distributed architecture that uses MPI for communications
+
+
+Positional arguments
+=================
+
+- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
+                        Default: `child_architecture = CPU()`.
+
+Keyword arguments
+=================
+
+- `topology`: the topology we want the grid to have. It is used for establishing connectivity.
+              Default: `topology = (Periodic, Periodic, Periodic)`.
+
+- `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
+                      `y` and `z` direction. NOTE: support for distributed z direction is 
+                      limited, so `Rz = 1` is suggested.
+
+- `use_buffers`: if `true`, buffered halo communication is implemented. If `false`, halos will be 
+                 exchanged through views. Buffered communication is not necessary in case of `CPU`
+                 execution, but it is necessary for `GPU` execution without CUDA-aware MPI
+
+- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
+             local node rank (make sure to run `--ntasks-per-node` <= `--gres=gpu`). If `nothing`, the 
+             devices will be assigned automatically
+
+- `communicator`: the MPI communicator. This Keyword argument should be changed only for development or testing.
+                  Change at your own risk!
+"""
 function MultiArch(child_architecture = CPU(); 
                    topology = (Periodic, Periodic, Periodic), 
-                   ranks, 
-                   communicator = MPI.COMM_WORLD,
+                   ranks,
                    use_buffers = false,
-                   devices = nothing)
+                   devices = nothing, 
+                   communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
