@@ -124,6 +124,10 @@ function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly,
     return nothing
 end
 
+@inline κᶠᶜᶜ(i, j, k, grid, closure::SmagorinskyLilly, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / closure.Pr[id]
+@inline κᶜᶠᶜ(i, j, k, grid, closure::SmagorinskyLilly, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / closure.Pr[id]
+@inline κᶜᶜᶠ(i, j, k, grid, closure::SmagorinskyLilly, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / closure.Pr[id]
+
 #####
 ##### Double dot product of strain on cell edges (currently unused)
 #####
