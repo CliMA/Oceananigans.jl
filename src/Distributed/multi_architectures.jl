@@ -32,6 +32,9 @@ function MultiArch(child_architecture = CPU();
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
+    (use_buffers && child_architecture isa CPU) && 
+            @warn "Using buffers on CPU architectures is not required"
+
     validate_tupled_argument(ranks, Int, "ranks")
 
     Rx, Ry, Rz = ranks
