@@ -27,7 +27,8 @@ function MultiArch(child_architecture = CPU();
                    topology = (Periodic, Periodic, Periodic), 
                    ranks, 
                    communicator = MPI.COMM_WORLD,
-                   use_buffers = false)
+                   use_buffers = false,
+                   devices = nothing)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
@@ -55,10 +56,12 @@ function MultiArch(child_architecture = CPU();
     γ = typeof(communicator)  
 
     # Assign CUDA device if on GPUs
-    if child_architecture isa GPU
+    if (child_architecture isa GPU) && isnothing!(devices)
         local_comm  = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         device_rank = MPI.Comm_rank(local_comm)
         device!(device_rank % ndevices())
+    else
+        device!(devices[local_rank])
     end
 
     x_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[1])

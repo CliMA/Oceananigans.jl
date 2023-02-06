@@ -358,9 +358,10 @@ end
 ##### Halo communication
 #####
 
-function test_triply_periodic_halo_communication_with_411_ranks(halo)
+function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(4, 1, 1))
+    use_buffers = child_arch isa GPU ? true : false
+    arch = MultiArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -368,23 +369,24 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=true) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=true) .== arch.connectivity.west)
 
         @test all(interior(field) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=true) .== arch.local_rank)
 end
 
 
     return nothing
 end
 
-function test_triply_periodic_halo_communication_with_141_ranks(halo)
+function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
-    arch  = MultiArch(ranks=(1, 4, 1))
+    use_buffers = child_arch isa GPU ? true : false
+    arch = MultiArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
     grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -392,22 +394,23 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field)
 
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=true) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=true) .== arch.connectivity.south)
 
         @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=true) .== arch.local_rank)
     end
 
     return nothing
 end
 
-function test_triply_periodic_halo_communication_with_114_ranks(halo)
+function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(1, 1, 4))
+    use_buffers = child_arch isa GPU ? true : false
+    arch = MultiArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -415,14 +418,14 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field)
 
-        @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
-        @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
+        @test all(top_halo(field, include_corners=true) .== arch.connectivity.top)
+        @test all(bottom_halo(field, include_corners=true) .== arch.connectivity.bottom)
 
         @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=true) .== arch.local_rank)
     end
 
     return nothing
@@ -430,7 +433,8 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(2, 2, 1))
+    use_buffers = child_arch isa GPU ? true : false
+    arch = MultiArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -438,14 +442,14 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=true) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=true) .== arch.connectivity.west)
+        @test all(north_halo(field, include_corners=true) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=true) .== arch.connectivity.south)
 
         @test all(interior(field) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=true) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=true) .== arch.local_rank)
     end
 
     return nothing
@@ -461,13 +465,13 @@ end
 
     # We don't support distributing _anything_ in the vertical,
     # so these tests are commented out below (and maybe should be removed
-    # in the future).
+    # in the future). 
 
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
         test_triply_periodic_rank_connectivity_with_141_ranks()
-        test_triply_periodic_rank_connectivity_with_114_ranks()
+        # test_triply_periodic_rank_connectivity_with_114_ranks()
         test_triply_periodic_rank_connectivity_with_221_ranks()
     end
 
@@ -489,47 +493,56 @@ end
 
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
-        for H in 1:3
-            test_triply_periodic_halo_communication_with_411_ranks((H, H, H))
-            test_triply_periodic_halo_communication_with_141_ranks((H, H, H))
-            # test_triply_periodic_halo_communication_with_114_ranks((H, H, H))
-            test_triply_periodic_halo_communication_with_221_ranks((H, H, H))
+        for child_arch in archs
+            for H in 1:3
+                test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
+                test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
+                # test_triply_periodic_halo_communication_with_114_ranks((H, H, H), child_arch)
+                test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
+            end
         end
     end
 
+    # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-        for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
-            @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
-            topo = (Periodic, Periodic, Periodic)
-            arch = MultiArch(; ranks)
-            grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid)
+        if CPU() ∈ archs 
+            for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
+                @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
+                topo = (Periodic, Periodic, Periodic)
+                arch = MultiArch(; ranks)
+                grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid)
 
-            time_step!(model, 1)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 1
+                time_step!(model, 1)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 1
 
-            simulation = Simulation(model, Δt=1, stop_iteration=2)
-            run!(simulation)
-            @test model isa NonhydrostaticModel
-            @test model.clock.time ≈ 2
+                simulation = Simulation(model, Δt=1, stop_iteration=2)
+                run!(simulation)
+                @test model isa NonhydrostaticModel
+                @test model.clock.time ≈ 2
+            end
         end
     end
 
     @testset "Time stepping ShallowWaterModel" begin
-        topo = (Periodic, Periodic, Flat)
-        arch = MultiArch(ranks=(1, 4, 1), topology = topo)
-        grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
-        model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
+        for child_arch in archs
+            topo = (Periodic, Periodic, Flat)
+            use_buffers = child_arch isa GPU ? true : false
+            arch = MultiArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))
+            grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
+            model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 
-        set!(model, h=1)
-        time_step!(model, 1)
-        @test model isa ShallowWaterModel
-        @test model.clock.time ≈ 1
+            set!(model, h=1)
+            time_step!(model, 1)
+            @test model isa ShallowWaterModel
+            @test model.clock.time ≈ 1
 
-        simulation = Simulation(model, Δt=1, stop_iteration=2)
-        run!(simulation)
-        @test model isa ShallowWaterModel
-        @test model.clock.time ≈ 2
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa ShallowWaterModel
+            @test model.clock.time ≈ 2
+        end
     end
 end
+
