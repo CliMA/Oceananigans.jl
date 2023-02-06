@@ -94,10 +94,10 @@ function MultiArch(child_architecture = CPU();
     γ = typeof(communicator)  
 
     # Assign CUDA device if on GPUs
-    if (child_architecture isa GPU) 
+    if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        isnothing(devices) ? device!(devices[node_rank]) : device!(node_rank % ndevices())
+        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank]) 
     end
 
     B = use_buffers
