@@ -16,7 +16,7 @@ struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensi
 end
 
 @inline viscosity(::SmagorinskyLilly, K) = K.νₑ
-@inline diffusivity(::SmagorinskyLilly, K, ::Val{id}) where id = K.κₑ[id]
+@inline diffusivity(::SmagorinskyLilly, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 """
     SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1)
@@ -209,18 +209,6 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
-    # Use AbstractOperations to write eddy diffusivities in terms of
-    # eddy viscosity
-    κₑ_ops = []
-
-    for i = 1:length(tracer_names)
-        Pr = closure.Pr[i]
-        κₑ_op = νₑ / Pr
-        push!(κₑ_ops, κₑ_op)
-    end
-
-    κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
-
-    return (; νₑ, κₑ)
+    return (; νₑ)
 end
 
