@@ -21,7 +21,7 @@ using MPI
 #
 # When running the tests this way, uncomment the following line
 
-# MPI.Init()
+MPI.Init()
 
 # to initialize MPI.
 

@@ -43,23 +43,23 @@ Positional arguments
 Keyword arguments
 =================
 
-- `topology`: the topology we want the grid to have. It is used for establishing connectivity.
+- `topology`: the topology we want the grid to have. It is used to establish connectivity.
               Default: `topology = (Periodic, Periodic, Periodic)`.
 
 - `ranks` (required): A 3-tuple `(Rx, Ry, Rz)` specifying the total processors in the `x`, 
                       `y` and `z` direction. NOTE: support for distributed z direction is 
-                      limited, so `Rz = 1` is suggested.
+                      limited, so `Rz = 1` is strongly suggested.
 
 - `use_buffers`: if `true`, buffered halo communication is implemented. If `false`, halos will be 
                  exchanged through views. Buffered communication is not necessary in case of `CPU`
                  execution, but it is necessary for `GPU` execution without CUDA-aware MPI
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
-             local node rank (make sure to run `--ntasks-per-node` <= `--gres=gpu`). If `nothing`, the 
-             devices will be assigned automatically
+             local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
+             If `nothing`, the devices will be assigned automatically based on the available resources
 
-- `communicator`: the MPI communicator. This Keyword argument should be changed only for development or testing.
-                  Change at your own risk!
+- `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
+                  if not for testing or developing. Change at your own risk!
 """
 function MultiArch(child_architecture = CPU(); 
                    topology = (Periodic, Periodic, Periodic), 
@@ -98,9 +98,9 @@ function MultiArch(child_architecture = CPU();
 
     # Assign CUDA device if on GPUs
     if (child_architecture isa GPU) 
-        local_comm  = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
-        device_rank = MPI.Comm_rank(local_comm)
-        isnothing!(devices) ? device!(device_rank % ndevices()) : device!(devices[device_rank])
+        local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
+        node_rank  = MPI.Comm_rank(local_comm)
+        isnothing!(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank])
     end
 
     x_communicator = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_index[1])
