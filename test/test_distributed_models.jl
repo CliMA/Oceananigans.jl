@@ -360,24 +360,25 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    use_buffers = child_arch isa GPU ? true : false
-    arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    for use_buffers in (true , false)
+        arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
+        grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
+        model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model))
-        interior(field) .= arch.local_rank
-        fill_halo_regions!(field)
+        for field in merge(fields(model))
+            interior(field) .= arch.local_rank
+            fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+            @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+            @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-end
+            @test all(interior(field) .== arch.local_rank)
+            @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        end
+    end
 
 
     return nothing
@@ -385,47 +386,48 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
-    use_buffers = child_arch isa GPU ? true : false
-    arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
-    grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    for use_buffers in (true , false)
+        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+        grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
+        model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
-        interior(field) .= arch.local_rank
-        fill_halo_regions!(field)
+        for field in merge(fields(model), model.pressures)
+            interior(field) .= arch.local_rank
+            fill_halo_regions!(field)
 
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+            @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+            @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(interior(field) .== arch.local_rank)
+            @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        end
     end
-
     return nothing
 end
 
 function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    use_buffers = child_arch isa GPU ? true : false
-    arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    for use_buffers in (true , false)
+        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
+        model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model))
-        interior(field) .= arch.local_rank
-        fill_halo_regions!(field)
+        for field in merge(fields(model))
+            interior(field) .= arch.local_rank
+            fill_halo_regions!(field)
 
-        @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
-        @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
+            @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
+            @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(interior(field) .== arch.local_rank)
+            @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+        end
     end
 
     return nothing
@@ -433,23 +435,24 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
-    use_buffers = child_arch isa GPU ? true : false
-    arch = DistributedArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    for use_buffers in (true , false)
+        arch = DistributedArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
+        grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+        model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model))
-        interior(field) .= arch.local_rank
-        fill_halo_regions!(field)
+        for field in merge(fields(model))
+            interior(field) .= arch.local_rank
+            fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+            @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+            @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+            @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+            @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test all(interior(field) .== arch.local_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(interior(field) .== arch.local_rank)
+            @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+            @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
+        end
     end
 
     return nothing

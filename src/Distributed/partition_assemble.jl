@@ -75,15 +75,15 @@ function partition_global_array(arch, c_global::AbstractArray, N)
 end
 
 """
-    reconstruct_global_array(arch, c_global, (nx, ny, nz))
+    construct_global_array(arch, c_local, (nx, ny, nz))
 
-reconstruct local arrays (2D of size nx, ny or 3D of size nx, ny, nz) in local arrays.
+construct global array from local arrays (2D of size nx, ny or 3D of size nx, ny, nz).
 Usefull for boundary arrays, forcings and initial conditions
 """
-reconstruct_global_array(arch, c_local::Function, N) = c_local
+construct_global_array(arch, c_local::Function, N) = c_local
 
 # TODO: This does not work for 2D parallelizations!!!
-function reconstruct_global_array(arch, c_local::AbstractArray, n) 
+function construct_global_array(arch, c_local::AbstractArray, n) 
     c_local = arch_array(CPU(), c_local)
     Rx, Ry, Rz = R = arch.ranks
     ri, rj, rk = r = arch.local_index
