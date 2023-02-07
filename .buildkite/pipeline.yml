@@ -515,6 +515,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed"
+      CUDA_VISIBLE_DEVICES: "0"
       PATH: "$PATH:$SVERDRUP_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
       JULIA_BINDIR: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin"
     commands:
