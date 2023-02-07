@@ -2,8 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
-using KernelAbstractions: @index
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
