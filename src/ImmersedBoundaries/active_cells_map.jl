@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Grids: AbstractGrid
 
-import Oceananigans.Utils: active_cells_work_layout, calc_tendency_index
+import Oceananigans.Utils: active_cells_work_layout
 
 using KernelAbstractions: @kernel, @index
 
