@@ -27,7 +27,7 @@ infer_transform(::Flat) = PencilFFTs.Transforms.NoTransform!()
 Return a FFT-based solver for the Poisson equation,
 
 ```math
-∇²x = b
+∇²φ = b
 ```
 
 for `MultiArch`itectures.
@@ -37,15 +37,15 @@ Supported configurations
 
 We support two "modes":
 
-    1. Vertical pencil decompositions: two-dimensional decompositions in (x, y)
-       for three dimensional problems that satisfy either `Nz > Rx` or `Nz > Ry`.
+  1. Vertical pencil decompositions: two-dimensional decompositions in ``(x, y)``
+     for three dimensional problems that satisfy either `Nz > Rx` or `Nz > Ry`.
 
-    2. One-dimensional decompositions in either x or y.
+  2. One-dimensional decompositions in either ``x`` or ``y``.
 
 Above, `Nz = size(global_grid, 3)` and `Rx, Ry, Rz = architecture(local_grid).ranks`.
 
-Other configurations that are decomposed in (x, y) but have too few `Nz`,
-or any configuration decomposed in z, are not supported.
+Other configurations that are decomposed in ``(x, y)`` but have too few `Nz`,
+or any configuration decomposed in ``z``, are _not_ supported.
 
 Algorithm for two-dimensional decompositions
 ============================================
@@ -55,23 +55,23 @@ there are three forward transforms, three backward transforms,
 and four transpositions requiring MPI communication. In the schematic below, the first
 dimension is always the local dimension. In our implementation of the PencilFFTs algorithm,
 we require _either_ `Nz >= Rx`, _or_ `Nz >= Ry`, where `Nz` is the number of vertical cells,
-`Rx` is the number of ranks in x, and `Ry` is the number of ranks in `y`.
+`Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
 Below, we outline the algorithm for the case `Nz >= Rx`.
-If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with x and y swapped:
+If `Nz < Rx`, but `Nz > Ry`, a similar algorithm applies with ``x`` and ``y`` swapped:
 
-1. `first(storage)` is initialized with layout (z, x, y).
-2. Transform along z.
-3  Transpose + communicate to storage[2] in layout (x, z, y),
-   which is distributed into `(Rx, Ry)` processes in (z, y).
-4. Transform along x.
-5. Transpose + communicate to last(storage) in layout (y, x, z),
-   which is distributed into `(Rx, Ry)` processes in (x, z).
-6. Transform in y.
+1. `first(storage)` is initialized with layout ``(z, x, y)``.
+2. Transform along ``z``.
+3  Transpose + communicate to `storage[2]` in layout ``(x, z, y)``,
+   which is distributed into `(Rx, Ry)` processes in ``(z, y)``.
+4. Transform along ``x``.
+5. Transpose + communicate to `last(storage)` in layout ``(y, x, z)``,
+   which is distributed into `(Rx, Ry)` processes in ``(x, z)``.
+6. Transform in ``y``.
 
 At this point the three in-place forward transforms are complete, and we
 solve the Poisson equation by updating `last(storage)`.
 Then the process is reversed to obtain `first(storage)` in physical
-space and with the layout (z, x, y).
+space and with the layout ``(z, x, y)``.
 
 Restrictions
 ============
@@ -90,7 +90,7 @@ For one-dimensional decompositions, we place the decomposed direction _last_.
 If the number of ranks is `Rh = max(Rx, Ry)`, this algorithm requires that 
 _both_ `Nx > Rh` _and_ `Ny > Rh`. The resulting flow of transposes and transforms
 is similar to the two-dimensional case. It remains somewhat of a mystery why this
-succeeds (ie, why the last transform is correctly decomposed).
+succeeds (i.e., why the last transform is correctly decomposed).
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -130,7 +130,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
         Rx > 1 && Ry > 1 &&
             throw(ArgumentError("DistributedFFTBasedPoissonSolver requires either " *
-                                "i) Nz > Rx, ii) Nz > Ry, iii) Rx = 1 _or_ iv) Ry = 1."))
+                                "(i) Nz > Rx, (ii) Nz > Ry, (iii) Rx = 1, _or_ (iv) Ry = 1."))
 
         if Rx == 1 # x-local, y-distributed
             permuted_size = (gNz, gNx, gNy)
@@ -207,4 +207,3 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds ϕ[i, j, k] = real(ϕc[k, j, i])
 end
-

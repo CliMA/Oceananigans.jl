@@ -428,7 +428,7 @@ ax_KE = Axis(fig[3, :];
              limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
              xlabel = "time")
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
 b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
@@ -487,7 +487,7 @@ ax_KE = Axis(fig[3, :];
              limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
              xlabel = "time")
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 hm_Ω = heatmap!(ax_Ω, xω, zω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_Ω)

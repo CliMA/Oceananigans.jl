@@ -3,6 +3,8 @@ import Oceananigans.TimeSteppers: calculate_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout, calc_tendency_index
 
+using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
+
 """
     calculate_tendencies!(model::NonhydrostaticModel)
 
@@ -71,16 +73,13 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
                                 velocities,
                                 tracers,
                                 auxiliary_fields,
-                                diffusivities,
-                                forcings,
-                                hydrostatic_pressure,
-                                clock)
+                                diffusivities)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
-    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args...)
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., forcings, hydrostatic_pressure, clock)
+    w_kernel_args = tuple(start_momentum_kernel_args..., w_immersed_bc, end_momentum_kernel_args..., forcings, clock)
     
-    only_active_cells = true
+    only_active_cells = use_only_active_cells(grid)
 
     Gu_event = launch!(arch, grid, :xyz, calculate_Gu!, 
                        tendencies.u, u_kernel_args...;
@@ -97,8 +96,7 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     events = [Gu_event, Gv_event, Gw_event]
 
     start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities,
-                                forcing, clock)
+    end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
     
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
@@ -109,7 +107,8 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
                            c_tendency, grid, Val(tracer_index),
                            start_tracer_kernel_args..., 
                            c_immersed_bc,
-                           end_tracer_kernel_args...;
+                           end_tracer_kernel_args...,
+                           forcing, clock;
                            dependencies, only_active_cells)
 
         push!(events, Gc_event)
@@ -130,9 +129,9 @@ end
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gu!(Gu, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -142,9 +141,9 @@ end
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gv!(Gv, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -154,9 +153,9 @@ end
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gw!(Gw, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = calc_tendency_index(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -170,7 +169,7 @@ end
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
 end
 
-@kernel function calculate_Gc!(Gc, grid::ImmersedBoundaryGrid, args...)
+@kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)

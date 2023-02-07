@@ -16,7 +16,7 @@ using Oceananigans
 using Oceananigans.Units
 
 # ## Grid
-#
+
 # We use a three-dimensional channel that is periodic in the `x` direction:
 
 Lx = 1000kilometers # east-west extent [m]
@@ -33,26 +33,6 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = (-Lz, 0),
                        topology = (Periodic, Bounded, Bounded))
 
-# ## Turbulence closures
-
-# We prescribe the values of vertical viscocity and diffusivity according to the ratio
-# of the vertical and lateral grid spacing.
-
-Δx, Δz = Lx/Nx, Lz/Nz
-𝒜 = Δz/Δx # Grid cell aspect ratio.
-
-κh = 0.1    # [m² s⁻¹] horizontal diffusivity
-νh = 0.1    # [m² s⁻¹] horizontal viscosity
-κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
-νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
-
-horizontal_diffusive_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-
-vertical_diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization();
-                                                       ν = νz, κ = κz)
-nothing #hide
-
-
 # ## Model
 
 # We built a `HydrostaticFreeSurfaceModel` with an `ImplicitFreeSurface` solver.
@@ -62,10 +42,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                     coriolis = BetaPlane(latitude = -45),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
-                                    closure = (vertical_diffusive_closure, horizontal_diffusive_closure),
                                     momentum_advection = WENO(),
-                                    tracer_advection = WENO(),
-                                    free_surface = ImplicitFreeSurface())
+                                    tracer_advection = WENO())
 
 # We want to initialize our model with a baroclinically unstable front plus some small-amplitude
 # noise.
@@ -116,9 +94,8 @@ fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
 
 Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
 
-save("initial_buoyancy.svg", fig); nothing # hide
-
-# ![](initial_buoyancy.svg)
+current_figure() # hide
+fig
 
 # Now let's built a `Simulation`.
 
@@ -127,7 +104,7 @@ stop_time = 40days
 
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
-# We add a `TimeStepWizard` callback to adapt the siulation's time-step,
+# We add a `TimeStepWizard` callback to adapt the simulation's time-step,
 
 wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
 
@@ -160,12 +137,11 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 # ## Diagnostics/Output
 
 # Add some diagnostics. Here, we save the buoyancy, ``b``, at the edges of our domain as well as
-# the zonal (``x``) averages of buoyancy and zonal velocity ``u``.
+# the zonal (``x``) average of buoyancy.
 
 u, v, w = model.velocities
 
 B = Field(Average(b, dims=1))
-U = Field(Average(u, dims=1))
 
 filename = "baroclinic_adjustment"
 save_fields_interval = 0.5day
@@ -183,12 +159,14 @@ for side in keys(slicers)
     simulation.output_writers[side] = JLD2OutputWriter(model, (; b);
                                                        filename = filename * "_$(side)_slice",
                                                        schedule = TimeInterval(save_fields_interval),
+                                                       overwrite_existing = true,
                                                        indices)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B,);
+                                                     filename = filename * "_zonal_average",
                                                      schedule = TimeInterval(save_fields_interval),
-                                                     filename = filename * "_zonal_average")
+                                                     overwrite_existing = true)
 
 # Now let's run!
 
@@ -298,7 +276,7 @@ times = avg_b_timeseries.times
 
 title = @lift "Buoyancy at t = " * string(round(times[$n] / day, digits=1)) * " days"
 
-fig[1, 1:2] = Label(fig, title; textsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
+fig[1, 1:2] = Label(fig, title; fontsize = 24, tellwidth = false, padding = (0, 0, -120, 0))
 
 frames = 1:length(times)
 
