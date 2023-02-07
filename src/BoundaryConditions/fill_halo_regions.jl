@@ -37,8 +37,9 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     arch = architecture(grid)
 
     halo_tuple  = permute_boundary_conditions(boundary_conditions)
-    halo_events = [device_event(arch)]
-
+    halo_events = []
+    
+    push!(halo_events, device_event(arch))
     for task = 1:3
         event = fill_halo_event!(task, halo_tuple, c, indices, loc, arch, halo_events[task], grid, args...; kwargs...)
         push!(halo_events, event)
