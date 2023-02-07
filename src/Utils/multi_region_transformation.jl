@@ -159,7 +159,7 @@ end
     sync_all_devices!(devs)
 
     if Nreturns == 1
-        return MultiRegionObject(Tuple(res), devs)
+        return MultiRegionObject(Tuple(regional_return_values), devs)
     else
         return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(devs)), devs) for i in 1:Nreturns)
     end
