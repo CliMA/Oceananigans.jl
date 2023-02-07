@@ -66,7 +66,7 @@ function divergence_free_poisson_solution(local_grid)
     R   = random_divergent_source_term(local_grid)
     
     global_grid = reconstruct_global_grid(local_grid)
-    solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+    solver = DistributedFFTBasedPoissonSolver(local_grid)
 
     # Solve it
     solver_rhs = solver.unpermuted_right_hand_side
