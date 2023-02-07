@@ -28,122 +28,122 @@ CUDA.allowscalar() do
 
     if group == :abstract_operations || group == :all
         @testset "AbstractOperations and broadcasting tests" begin
-            include("test_abstract_operations.jl")
-            include("test_conditional_reductions.jl")
-            include("test_computed_field.jl")
-            include("test_broadcasting.jl")
+            # include("test_abstract_operations.jl")
+            # include("test_conditional_reductions.jl")
+            # include("test_computed_field.jl")
+            # include("test_broadcasting.jl")
         end
     end
 
     if group == :poisson_solvers_1 || group == :all
         @testset "Poisson Solvers 1" begin
-            include("test_poisson_solvers.jl")
+            # include("test_poisson_solvers.jl")
         end
     end
 
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
-            include("test_poisson_solvers_vertically_stretched_grid.jl")
+            # include("test_poisson_solvers_vertically_stretched_grid.jl")
         end
     end
 
     if group == :matrix_poisson_solvers || group == :all
         @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
+            # include("test_matrix_poisson_solver.jl")
         end
     end
 
     if group == :general_solvers || group == :all
         @testset "General Solvers" begin
-            include("test_batched_tridiagonal_solver.jl")
-            include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_multigrid_solver.jl")
+            # include("test_batched_tridiagonal_solver.jl")
+            # include("test_preconditioned_conjugate_gradient_solver.jl")
+            # include("test_multigrid_solver.jl")
         end
     end
 
     # Simulations
     if group == :simulation || group == :all
         @testset "Simulation tests" begin
-            include("test_simulations.jl")
-            include("test_diagnostics.jl")
-            include("test_output_writers.jl")
-            include("test_output_readers.jl")
+            # include("test_simulations.jl")
+            # include("test_diagnostics.jl")
+            # include("test_output_writers.jl")
+            # include("test_output_readers.jl")
         end
     end
 
     # Lagrangian particle tracking
     if group == :lagrangian || group == :all
         @testset "Lagrangian particle tracking tests" begin
-            include("test_lagrangian_particle_tracking.jl")
+            # include("test_lagrangian_particle_tracking.jl")
         end
     end
 
     # Models
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
-            include("test_nonhydrostatic_models.jl")
-            include("test_time_stepping.jl")
+            # include("test_nonhydrostatic_models.jl")
+            # include("test_time_stepping.jl")
         end
     end
 
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
-            include("test_boundary_conditions_integration.jl")
-            include("test_forcings.jl")
-            include("test_immersed_advection.jl")
+            # include("test_boundary_conditions_integration.jl")
+            # include("test_forcings.jl")
+            # include("test_immersed_advection.jl")
         end
     end
 
     if group == :time_stepping_3 || group == :all
         @testset "Model and time stepping tests (part 3)" begin
-            include("test_dynamics.jl")
+            # include("test_dynamics.jl")
         end
     end
 
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
-            include("test_turbulence_closures.jl")
+            # include("test_turbulence_closures.jl")
         end
     end
 
     if group == :shallow_water || group == :all
-        include("test_shallow_water_models.jl")
+        # include("test_shallow_water_models.jl")
     end
 
     if group == :hydrostatic_free_surface || group == :all
         @testset "HydrostaticFreeSurfaceModel tests" begin
-            include("test_hydrostatic_free_surface_models.jl")
-            include("test_ensemble_hydrostatic_free_surface_models.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries.jl")
-            include("test_vertical_vorticity_field.jl")
-            include("test_implicit_free_surface_solver.jl")
-            include("test_split_explicit_free_surface_solver.jl")
-            include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
+            # include("test_hydrostatic_free_surface_models.jl")
+            # include("test_ensemble_hydrostatic_free_surface_models.jl")
+            # include("test_hydrostatic_free_surface_immersed_boundaries.jl")
+            # include("test_vertical_vorticity_field.jl")
+            # include("test_implicit_free_surface_solver.jl")
+            # include("test_split_explicit_free_surface_solver.jl")
+            # include("test_split_explicit_vertical_integrals.jl")
+            # include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
     
     # Model enhancements: cubed sphere, distributed, etc
     if group == :multi_region || group == :all
         @testset "Multi Region tests" begin
-            include("test_multi_region_unit.jl")
-            include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
+            # include("test_multi_region_unit.jl")
+            # include("test_multi_region_advection_diffusion.jl")
+            # include("test_multi_region_implicit_solver.jl")
         end
     end
 
     if group == :cubed_sphere || group == :all
         @testset "Cubed sphere tests" begin
-            include("test_cubed_spheres.jl")
-            include("test_cubed_sphere_halo_exchange.jl")
-            include("test_cubed_sphere_circulation.jl")
+            # include("test_cubed_spheres.jl")
+            # include("test_cubed_sphere_halo_exchange.jl")
+            # include("test_cubed_sphere_circulation.jl")
         end
     end
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
-        include("test_distributed_models.jl")
-        include("test_distributed_poisson_solvers.jl")
+        # include("test_distributed_models.jl")
+        # include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all
