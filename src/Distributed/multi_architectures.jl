@@ -97,7 +97,7 @@ function MultiArch(child_architecture = CPU();
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank]) 
+        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
     end
 
     B = use_buffers
