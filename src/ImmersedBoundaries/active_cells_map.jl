@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, active_cell
 
 import Oceananigans.Utils: active_cells_work_layout
 
@@ -11,7 +11,7 @@ const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <
 @inline use_only_active_cells(grid::ActiveCellsIBG) = true
 
 @inline active_cells_work_layout(size, grid::ActiveCellsIBG) = min(length(grid.active_cells_map), 256), length(grid.active_cells_map)
-@inline calc_tendency_index(idx, grid::ActiveCellsIBG)            = Int.(grid.active_cells_map[idx])
+@inline active_linear_index_to_ntuple(idx, grid::ActiveCellsIBG) = map(Int, grid.active_cells_map[idx])
 
 function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map = false) where {TX, TY, TZ} 
 
@@ -26,10 +26,8 @@ function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map =
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, map)
 end
 
-active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
-
 function compute_active_cells(grid, ib)
-    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(active_cell, grid; computed_dependencies = (ib, ))
+    is_immersed_operation = KernelFunctionOperation{Center, Center, Center}(active_cell, grid)
     active_cells_field = Field{Center, Center, Center}(grid, Bool)
     set!(active_cells_field, is_immersed_operation)
     return active_cells_field
