@@ -139,19 +139,7 @@ end
 ##### Tuple fill_halo! kernels
 #####
 
-if VERSION < v"1.7.0"
-    macro constprop(setting)
-    end
-else
-    macro constprop(setting)
-        if isa(setting, QuoteNode)
-            setting = setting.value
-        end
-        setting === :aggressive && return Expr(:meta, :aggressive_constprop)
-        setting === :none && return Expr(:meta, :no_constprop)
-        throw(ArgumentError("@constprop $setting not supported"))
-    end
-end
+import Oceananigans.Utils: @constprop
 
 @kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args...)
     j, k = @index(Global, NTuple)
