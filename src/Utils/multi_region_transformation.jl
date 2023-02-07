@@ -1,6 +1,7 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+
 import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
@@ -111,10 +112,10 @@ Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_obj
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
-@inline function apply_regionally!(local_func!, args...; kwargs...)
+@inline function apply_regionally!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return local_func!(args...; kwargs...)
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
     if isnothing(multi_region_args) 
         devs = devices(multi_region_kwargs)
@@ -124,22 +125,22 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
    
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        local_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
     sync_all_devices!(devs)
 end 
 
-@inline construct_regionally(local_func::Base.Callable, args...; kwargs...) =
-    construct_regionally(1, local_func, args...; kwargs...)
+@inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
+    construct_regionally(1, regional_func, args...; kwargs...)
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
-@inline function construct_regionally(Nreturns::Int, local_func::Base.Callable, args...; kwargs...)
+@inline function construct_regionally(Nreturns::Int, regional_func::Base.Callable, args...; kwargs...)
     # First, we deduce whether any of `args` or `kwargs` are multi-regional.
     # If no regional objects are found, we call the function as usual
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing :   args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return local_func(args...; kwargs...)
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
     if isnothing(multi_region_args) 
         devs = devices(multi_region_kwargs)
@@ -147,17 +148,21 @@ end
         devs = devices(multi_region_args)
     end
 
+    # Evaluate regional_func on the device of that region and collect
+    # return values
     regional_return_values = Vector(undef, length(devs))
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        regional_return_values[r] = local_func((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
+        regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
+                                                  (getregion(kwarg, r) for kwarg in kwargs)...)
     end
     sync_all_devices!(devs)
 
     if Nreturns == 1
         return MultiRegionObject(Tuple(regional_return_values), devs)
     else
-        return MultiRegionObject(Tuple(regional_return_values), devs)
+        # multiple returns
+        # return MultiRegionObject(Tuple(regional_return_values), devs)
     end
 end
 
