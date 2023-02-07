@@ -17,13 +17,13 @@ function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map =
 
     # Create the cells map on the CPU, then switch it to the GPU
     if calculate_active_cells_map 
-        active_cells_map    = create_cells_map(grid, ib)
-        active_cells_map    = arch_array(architecture(grid), active_cells_map)
+        map = active_cells_map(grid, ib)
+        map = arch_array(architecture(grid), map)
     else
         active_cells_map = nothing
     end
 
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, active_cells_map)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, map)
 end
 
 active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
@@ -39,7 +39,7 @@ const MAXUInt8  = 2^8  - 1
 const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
-function create_cells_map(grid, ib)
+function active_cells_map(grid, ib)
     active_cells_field = compute_active_cells(grid, ib)
     full_indices       = arch_array(CPU(), findall(interior(active_cells_field)))
     
