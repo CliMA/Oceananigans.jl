@@ -159,10 +159,9 @@ end
     sync_all_devices!(devs)
 
     if Nreturns == 1
-        return MultiRegionObject(Tuple(regional_return_values), devs)
+        return MultiRegionObject(Tuple(res), devs)
     else
-        # multiple returns
-        # return MultiRegionObject(Tuple(regional_return_values), devs)
+        return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(devs)), devs) for i in 1:Nreturns)
     end
 end
 
@@ -198,11 +197,15 @@ macro apply_regionally(expr)
         end
     elseif expr.head == :(=)
         ret = expr.args[1]
+        Nret = 1
+        if expr.args[1] isa Expr 
+            Nret = length(expr.args[1].args)
+        end
         exp = expr.args[2]
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote
-            $ret = construct_regionally($func, $(args...))
+            $ret = construct_regionally($Nret, $func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -218,11 +221,15 @@ macro apply_regionally(expr)
                 end
             elseif arg isa Expr && arg.head == :(=)
                 ret = arg.args[1]
+                Nret = 1
+                if arg.args[1] isa Expr 
+                    Nret = length(arg.args[1].args)
+                end        
                 exp = arg.args[2]
                 func = exp.args[1]
                 args = exp.args[2:end]
                 new_expr.args[idx] = quote
-                    $ret = construct_regionally($func, $(args...))
+                    $ret = construct_regionally($Nret, $func, $(args...))
                 end
             end
         end
