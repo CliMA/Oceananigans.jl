@@ -10,41 +10,6 @@ using CUDAKernels
 using Adapt
 using OffsetArrays
 
-# Adapt CUDAKernels to multiple devices by splitting stream pool
-import CUDAKernels: next_stream
-
-if CUDA.has_cuda_gpu()     
-    using CUDAKernels: STREAM_GC_LOCK
-
-    DEVICE_FREE_STREAMS = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
-    DEVICE_STREAMS      = Tuple(CUDA.CuStream[] for dev in 1:CUDA.ndevices())
-    const DEVICE_STREAM_GC_THRESHOLD = Ref{Int}(16)
-
-    function next_stream()
-        lock(STREAM_GC_LOCK) do
-            handle = CUDA.device().handle + 1
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
-            end
-
-            if length(DEVICE_STREAMS[handle]) > DEVICE_STREAM_GC_THRESHOLD[]
-                for stream in DEVICE_STREAMS[handle]
-                    if CUDA.isdone(stream)
-                        push!(DEVICE_FREE_STREAMS[handle], stream)
-                    end
-                end
-            end
-
-            if !isempty(DEVICE_FREE_STREAMS[handle])
-                return pop!(DEVICE_FREE_STREAMS[handle])
-            end
-            stream = CUDA.CuStream(flags = CUDA.STREAM_NON_BLOCKING)
-            push!(DEVICE_STREAMS[handle], stream)
-            return stream
-        end
-    end
-end
-
 """
     AbstractArchitecture
 
@@ -79,7 +44,7 @@ struct GPU <: AbstractArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDAKernels.CUDADevice()
+device(::GPU) = CUDAKernels.CUDADevice(;always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
