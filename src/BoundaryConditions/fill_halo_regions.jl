@@ -139,10 +139,13 @@ end
 ##### Tuple fill_halo! kernels
 #####
 
+import Oceananigans.Utils: @constprop
+
 @kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, offset, loc, grid, args...)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
+        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
             _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], args...)
             _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], args...)
@@ -154,6 +157,7 @@ end
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
+        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
             _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], args...)
             _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], args...)
@@ -165,6 +169,7 @@ end
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
+        @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
             _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
                _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
