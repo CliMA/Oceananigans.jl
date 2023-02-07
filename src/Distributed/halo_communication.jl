@@ -105,7 +105,6 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     barrier = device_event(child_arch)
 
     fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
-    fill_recv_buffers!(c, buffers, grid)    
 
     return nothing
 end
@@ -117,23 +116,23 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, barrier, grid
 
     # 2D/3D Parallelization when `length(hbc_left) > 1 || length(hbc_right) > 1`
     if length(hbc_left) > 1 
-        fill_recv_buffers!(c, buffers, grid)    
-
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[2])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
     end
 
     if length(hbc_right) > 1 
-        fill_recv_buffers!(c, buffers, grid)    
-
         idx = findfirst(bc -> bc isa DCBC, halo_tuple[3])
         fill_halo_event!(idx, halo_tuple, c, indices, loc, arch, barrier, grid, buffers, args...; kwargs...)
         return nothing
     end
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, barrier, grid::DistributedGrid, args...; kwargs...)
+@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
+@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
+@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
+
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, barrier, grid::DistributedGrid, buffers, args...; kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
@@ -142,7 +141,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, buffers, args...; kwargs...)
     
     if events_and_requests isa Event
         wait(device(child_architecture(arch)), events_and_requests)    
@@ -150,6 +149,9 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     end
     
     MPI.Waitall!(events_and_requests)
+
+    buffer_side = mpi_communication_side(Val(fill_halo!))
+    fill_recv_buffers!(c, buffers, grid, Val(buffer_side))    
 
     return nothing
 end

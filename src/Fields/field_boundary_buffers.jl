@@ -107,6 +107,24 @@ function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     _fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
+function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+     _fill_west_recv_buffer!(parent(c), buffers.west, Hx, Nx)
+     _fill_east_recv_buffer!(parent(c), buffers.east, Hx, Nx)
+end
+
+function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+    _fill_south_recv_buffer!(parent(c), buffers.south, Hy, Ny)
+    _fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
+end
+
+fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
+
  _fill_west_send_buffer!(c, ::Nothing, args...) = nothing
  _fill_east_send_buffer!(c, ::Nothing, args...) = nothing
 _fill_north_send_buffer!(c, ::Nothing, args...) = nothing
