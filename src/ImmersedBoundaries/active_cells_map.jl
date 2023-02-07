@@ -20,7 +20,7 @@ function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map =
         map = active_cells_map(grid, ib)
         map = arch_array(architecture(grid), map)
     else
-        active_cells_map = nothing
+        map = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, map)
