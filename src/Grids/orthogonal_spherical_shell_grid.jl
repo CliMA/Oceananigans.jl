@@ -417,7 +417,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     # for interior points compute Az as the area of the corresponding spherical quadrilateral  
 
-    for j in 1:Nηᶜ, i in 1:Nξᶜ
+    for j in 1:Nη, i in 1:Nξ
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
         b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
         c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
