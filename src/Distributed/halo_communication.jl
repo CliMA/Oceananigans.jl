@@ -164,11 +164,6 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::MultiArch, ba
     return nothing
 end
 
-for side in (:west, :south, :bottom, :east, :north, :top)
-    fill_one_halo! = Symbol("_fill_$(side)_halo!")
-    @eval @inline $fill_one_halo!(c, i, j, grid, ::HaloCommunicationBC, args...) = nothing
-end
-
 #####
 ##### fill_west_and_east_halo!   }
 ##### fill_south_and_north_halo! } for when both halos are communicative (Single communicating halos are to be implemented)
