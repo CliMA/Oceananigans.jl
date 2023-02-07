@@ -497,7 +497,7 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  - label: "🦾 cpu distributed sovers tests"
+  - label: "🦾 cpu distributed solvers tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "distributed_solvers"
