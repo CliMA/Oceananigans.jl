@@ -5,18 +5,39 @@ import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
-### 
-### Multi Region Object
-###
+##### 
+##### Multi Region Object
+#####
 
 struct MultiRegionObject{R, D}
-    regions :: R
+    regional_objects :: R
     devices :: D
+
+    function MultiRegionObject(regional_objects...; devices=tuple(CPU() for _ in regional_objects))
+        R = typeof(regional_objects)
+        D = typeof(devices)
+        return new{R, D}(regional_objects, devices)
+    end
+
+    function MultiRegionObject(regional_objects::Tuple, devices::Tuple)
+        R = typeof(regional_objects)
+        D = typeof(devices)
+        return new{R, D}(regional_objects, devices)
+    end
 end
 
-###
-### Convenience structs 
-###
+"""
+    MultiRegionObject(regional_objects::Tuple; devices)
+
+Return a MultiRegionObject
+"""
+MultiRegionObject(regional_objects::Tuple; devices=tuple(CPU() for _ in regional_objects)) =
+    MultiRegionObject(regional_objects, devices)
+
+
+#####
+##### Convenience structs 
+#####
 
 struct Reference{R}
     ref :: R
@@ -26,9 +47,9 @@ struct Iterate{I}
     iter :: I
 end
 
-###
-### Multi region functions
-###
+#####
+##### Multi region functions
+#####
 
 @inline getdevice(a, i)                     = nothing
 @inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
@@ -48,13 +69,13 @@ end
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
 @inline getregion(iter::Iterate, i)         = iter.iter[i]
-@inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regions[i], i)
+@inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regional_objects[i], i)
 @inline getregion(p::Pair, i)               = p.first => _getregion(p.second, i)
 
 @inline _getregion(a, i) = a
 @inline _getregion(ref::Reference, i)        = ref.ref
 @inline _getregion(iter::Iterate, i)         = iter.iter[i]
-@inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regions[i], i)
+@inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regional_objects[i], i)
 @inline _getregion(p::Pair, i)               = p.first => getregion(p.second, i)
 
 ## The implementation of `getregion` for a Tuple forces the compiler to infer the size of the Tuple
@@ -86,8 +107,8 @@ end
 
 @inline devices(mo::MultiRegionObject) = mo.devices
 
-Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regions, i, args...)
-Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
+Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
+Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(local_func!, args...; kwargs...)
@@ -109,8 +130,11 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
     sync_all_devices!(devs)
 end 
 
+@inline construct_regionally(local_func::Base.Callable, args...; kwargs...) =
+    construct_regionally(1, local_func, args...; kwargs...)
+
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
-@inline function construct_regionally(local_func, args...; kwargs...)
+@inline function construct_regionally(Nreturns::Int, local_func::Base.Callable, args...; kwargs...)
     # First, we deduce whether any of `args` or `kwargs` are multi-regional.
     # If no regional objects are found, we call the function as usual
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing :   args[findfirst(isregional, args)]
@@ -130,7 +154,11 @@ end
     end
     sync_all_devices!(devs)
 
-    return MultiRegionObject(Tuple(regional_return_values), devs)
+    if Nreturns == 1
+        return MultiRegionObject(Tuple(regional_return_values), devs)
+    else
+        return MultiRegionObject(Tuple(regional_return_values), devs)
+    end
 end
 
 @inline sync_all_devices!(grid::AbstractGrid)    = nothing
