@@ -15,7 +15,10 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::Field, v) = u .= v # fallback
+function set!(u::Field, v)
+    u .= v # fallback
+    return u
+end
 
 function set!(u::Field, f::Function)
     if architecture(u) isa GPU
