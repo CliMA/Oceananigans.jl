@@ -7,6 +7,7 @@ using OffsetArrays: IdOffsetRange
 #####
 ##### Convenience functions
 #####
+
 const BoundedTopology = Union{Bounded, LeftConnected}
 
 Base.length(::Type{Face}, topo, N) = N
