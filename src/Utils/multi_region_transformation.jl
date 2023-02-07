@@ -90,45 +90,47 @@ Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regions, i, 
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
-@inline function apply_regionally!(func!, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
+@inline function apply_regionally!(local_func!, args...; kwargs...)
+    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
+    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return local_func!(args...; kwargs...)
 
-    if isnothing(mra) 
-        devs = devices(mrk)
+    if isnothing(multi_region_args) 
+        devs = devices(multi_region_kwargs)
     else
-        devs = devices(mra)
+        devs = devices(multi_region_args)
     end
    
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        local_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
     sync_all_devices!(devs)
 end 
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
-@inline function construct_regionally(constructor, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return constructor(args...; kwargs...)
+@inline function construct_regionally(local_func, args...; kwargs...)
+    # First, we deduce whether any of `args` or `kwargs` are multi-regional.
+    # If no regional objects are found, we call the function as usual
+    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing :   args[findfirst(isregional, args)]
+    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return local_func(args...; kwargs...)
 
-    if isnothing(mra) 
-        devs = devices(mrk)
+    if isnothing(multi_region_args) 
+        devs = devices(multi_region_kwargs)
     else
-        devs = devices(mra)
+        devs = devices(multi_region_args)
     end
 
-    res = Vector(undef, length(devs))
+    regional_return_values = Vector(undef, length(devs))
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
+        regional_return_values[r] = local_func((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
     end
     sync_all_devices!(devs)
 
-    return MultiRegionObject(Tuple(res), devs)
+    return MultiRegionObject(Tuple(regional_return_values), devs)
 end
 
 @inline sync_all_devices!(grid::AbstractGrid)    = nothing
