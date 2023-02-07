@@ -11,7 +11,7 @@ end
 DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 
 default_prognostic_bc(::Grids.Periodic, loc,      default)  = PeriodicBoundaryCondition()
-default_prognostic_bc(::FullyConnected, loc,      default)  = CommunicationBoundaryCondition()
+default_prognostic_bc(::FullyConnected, loc,      default)  = MultiRegionCommunicationBoundaryCondition()
 default_prognostic_bc(::Flat,           loc,      default)  = nothing
 default_prognostic_bc(::Bounded,        ::Center, default)  = default.boundary_condition
 default_prognostic_bc(::LeftConnected,  ::Center, default)  = default.boundary_condition

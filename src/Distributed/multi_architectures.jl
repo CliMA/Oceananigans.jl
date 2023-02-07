@@ -7,7 +7,7 @@ import Oceananigans.Architectures: device, device_event, arch_array, array_type,
 import Oceananigans.Grids: zeros
 import Oceananigans.Fields: using_buffered_communication
 
-struct MultiArch{A, R, I, ρ, C, γ, B} <: AbstractMultiArchitecture
+struct DistributedArch{A, R, I, ρ, C, γ, B} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -21,7 +21,7 @@ end
 #####
 
 """
-    MultiArch(child_architecture = CPU(); 
+    DistributedArch(child_architecture = CPU(); 
               topology = (Periodic, Periodic, Periodic), 
               ranks, 
               use_buffers = false,
@@ -58,7 +58,7 @@ Keyword arguments
 - `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
                   if not for testing or developing. Change at your own risk!
 """
-function MultiArch(child_architecture = CPU(); 
+function DistributedArch(child_architecture = CPU(); 
                    topology = (Periodic, Periodic, Periodic), 
                    ranks,
                    use_buffers = false,
@@ -102,23 +102,23 @@ function MultiArch(child_architecture = CPU();
 
     B = use_buffers
 
-    return MultiArch{A, R, I, ρ, C, γ, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
+    return DistributedArch{A, R, I, ρ, C, γ, B}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
-const ViewsMultiArch = MultiArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+const ViewsDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
 
-using_buffered_communication(::MultiArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
+using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
 
 #####
 ##### All the architectures
 #####
 
-child_architecture(arch::MultiArch)            = arch.child_architecture
-device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
-device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
-arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
-zeros(FT, arch::MultiArch, N...)               = zeros(FT, child_architecture(arch), N...) 
-array_type(arch::MultiArch)                    = array_type(child_architecture(arch))
+child_architecture(arch::DistributedArch) = arch.child_architecture
+device(arch::DistributedArch)             = device(child_architecture(arch))
+device_event(arch::DistributedArch)       = device_event(child_architecture(arch))
+arch_array(arch::DistributedArch, A)      = arch_array(child_architecture(arch), A)
+zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...) 
+array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -206,7 +206,7 @@ end
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::MultiArch)
+function Base.show(io::IO, arch::DistributedArch)
     c = arch.connectivity
     print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
               "└── child architecture: $(typeof(child_architecture(arch))) \n", 

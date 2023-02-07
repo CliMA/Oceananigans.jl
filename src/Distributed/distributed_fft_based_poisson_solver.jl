@@ -1,10 +1,11 @@
 import PencilFFTs
 using PencilArrays: Permutation
 
+import FFTW 
+
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
 
-using FFTW 
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
     plan :: P
@@ -32,7 +33,7 @@ Return a FFT-based solver for the Poisson equation,
 ∇²φ = b
 ```
 
-for `MultiArch`itectures.
+for `DistributedArch`itectures.
 
 Supported configurations
 ========================
@@ -79,7 +80,7 @@ Restrictions
 ============
 
 The algorithm for two-dimensional decompositions requires that `Nz = size(global_grid, 3)` is larger
-than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `MultiArch`.
+than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `DistributedArch`.
 If `Nz` does not satisfy this condition, we can only support a one-dimensional decomposition.
 
 Algorithm for one-dimensional decompositions

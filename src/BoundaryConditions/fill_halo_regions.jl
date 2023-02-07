@@ -29,7 +29,7 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
 end
 # For inhomogeneous BC we extract the _last_ one 
 # example 
-# `bc.west <: HBC`
+# `bc.west <: DCBC`
 # `bc.east <: PBC`
 # `extract_west_or_east_bc(bc) == bc.west`
     
@@ -113,9 +113,9 @@ end
 ##### Halo filling order
 #####
 
-const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
-const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
-const HBCT = Union{HBC, NTuple{<:Any, <:HBC}}
+const PBCT  = Union{PBC, NTuple{<:Any, <:PBC}}
+const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
+const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
 # Distributed halos have to be filled for last in case of 
 # buffered communication. Hence, we always fill them last
@@ -123,25 +123,25 @@ const HBCT = Union{HBC, NTuple{<:Any, <:HBC}}
 # Order of halo filling
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
 # 2) Periodic (PBCT)
-# 3) Shared Communication (CBCT)
-# 4) Distributed Communication (HBCT)
+# 3) Shared Communication (MCBCT)
+# 4) Distributed Communication (DCBCT)
 
-fill_first(bc1::HBCT, bc2)       = false
-fill_first(bc1::PBCT, bc2::HBCT) = true
-fill_first(bc1::HBCT, bc2::PBCT) = false
-fill_first(bc1::CBCT, bc2::HBCT) = true
-fill_first(bc1::HBCT, bc2::CBCT) = false
-fill_first(bc1, bc2::HBCT)       = true
-fill_first(bc1::HBCT, bc2::HBCT) = true
-fill_first(bc1::PBCT, bc2)       = false
-fill_first(bc1::CBCT, bc2)       = false
-fill_first(bc1::PBCT, bc2::CBCT) = true
-fill_first(bc1::CBCT, bc2::PBCT) = false
-fill_first(bc1, bc2::PBCT)       = true
-fill_first(bc1, bc2::CBCT)       = true
-fill_first(bc1::PBCT, bc2::PBCT) = true
-fill_first(bc1::CBCT, bc2::CBCT) = true
-fill_first(bc1, bc2)             = true
+fill_first(bc1::DCBCT, bc2)        = false
+fill_first(bc1::PBCT,  bc2::DCBCT) = true
+fill_first(bc1::DCBCT, bc2::PBCT)  = false
+fill_first(bc1::MCBCT, bc2::DCBCT) = true
+fill_first(bc1::DCBCT, bc2::MCBCT) = false
+fill_first(bc1, bc2::DCBCT)        = true
+fill_first(bc1::DCBCT, bc2::DCBCT) = true
+fill_first(bc1::PBCT,  bc2)        = false
+fill_first(bc1::MCBCT, bc2)        = false
+fill_first(bc1::PBCT,  bc2::MCBCT) = true
+fill_first(bc1::MCBCT, bc2::PBCT)  = false
+fill_first(bc1, bc2::PBCT)         = true
+fill_first(bc1, bc2::MCBCT)        = true
+fill_first(bc1::PBCT,  bc2::PBCT)  = true
+fill_first(bc1::MCBCT, bc2::MCBCT) = true
+fill_first(bc1, bc2)               = true
 
 #####
 ##### General fill_halo! kernels

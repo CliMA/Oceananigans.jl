@@ -23,7 +23,9 @@ rank   = MPI.Comm_rank(comm)
 Nranks = MPI.Comm_size(comm)
 
 topo = (Bounded, Periodic, Bounded)
-arch = MultiArch(GPU(); topology = topo, ranks=(Nranks, 1, 1))
+arch = DistributedArch(CPU(); topology = topo, 
+                 ranks=(Nranks, 1, 1),
+                 use_buffers = true)
 
 Lh = 100kilometers
 Lz = 400meters
@@ -33,7 +35,7 @@ grid = RectilinearGrid(arch,
                        x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
                        topology = topo)
 
-bottom(x, y) = x > 80kilometers && x < 90kilometers ? 0.0 : -500meters
+bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100.0 : -500meters
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
 coriolis = FPlane(f = 1e-4)
@@ -45,8 +47,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       free_surface = free_surface)
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
-
-@show grid, model.free_surface.η.grid
 
 U = 0.1 # geostrophic velocity
 L = Lh / 40 # gaussian width
@@ -74,13 +74,13 @@ outputs = Dict()
 
 indices = (:, :, 1)
 
-ηarr = Vector{Field}(undef, Int(simulation.stop_iteration))
-varr = Vector{Field}(undef, Int(simulation.stop_iteration))
-uarr = Vector{Field}(undef, Int(simulation.stop_iteration))
+ηarr = Vector{Field}(undef, Int(simulation.stop_iteration) + 1)
+varr = Vector{Field}(undef, Int(simulation.stop_iteration) + 1)
+uarr = Vector{Field}(undef, Int(simulation.stop_iteration) + 1)
 
-save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(sim.model.free_surface.η) : nothing
-save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.v)   : nothing
-save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.u)   : nothing
+save_η(sim) = ηarr[sim.model.clock.iteration + 1] = deepcopy(sim.model.free_surface.η) 
+save_v(sim) = varr[sim.model.clock.iteration + 1] = deepcopy(sim.model.velocities.v)   
+save_u(sim) = uarr[sim.model.clock.iteration + 1] = deepcopy(sim.model.velocities.u)   
 
 function progress_message(sim) 
     @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",

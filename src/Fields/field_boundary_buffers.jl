@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: CBC, HBC
+using Oceananigans.BoundaryConditions: MCBC, DCBC
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: launch!
@@ -33,7 +33,7 @@ create_buffer_y(arch, data, H, bc) = nothing
 
 using_buffered_communication(arch) = true
 
-const PassingBC = Union{CBC, HBC}
+const PassingBC = Union{MCBC, DCBC}
 
 function create_buffer_x(arch, data, H, ::PassingBC) 
     if !using_buffered_communication(arch)

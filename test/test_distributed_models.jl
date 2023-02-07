@@ -25,8 +25,8 @@ MPI.Init()
 
 # to initialize MPI.
 
-using Oceananigans.BoundaryConditions: fill_halo_regions!, HBC
-using Oceananigans.Distributed: MultiArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
+using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
+using Oceananigans.Distributed: DistributedArch, index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
 
 # Right now just testing with 4 ranks!
 comm = MPI.COMM_WORLD
@@ -39,7 +39,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 function test_triply_periodic_rank_connectivity_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(4, 1, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -75,7 +75,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(1, 4, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(1, 4, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -117,7 +117,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(1, 1, 4), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -162,7 +162,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -210,7 +210,7 @@ end
 
 function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(4, 1, 1), topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -228,7 +228,7 @@ end
 
 function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(1, 4, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(1, 4, 1), topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -246,7 +246,7 @@ end
 
 function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(1, 1, 4), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -264,7 +264,7 @@ end
 
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
+    arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     
     i, j, k = arch.local_index
@@ -288,69 +288,69 @@ end
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(4, 1, 1), topology=topo)
+    arch = DistributedArch(ranks=(4, 1, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test fbcs.east isa HBC
-        @test fbcs.west isa HBC
-        @test !isa(fbcs.north, HBC)
-        @test !isa(fbcs.south, HBC)
-        @test !isa(fbcs.top, HBC)
-        @test !isa(fbcs.bottom, HBC)
+        @test fbcs.east isa DCBC
+        @test fbcs.west isa DCBC
+        @test !isa(fbcs.north, DCBC)
+        @test !isa(fbcs.south, DCBC)
+        @test !isa(fbcs.top, DCBC)
+        @test !isa(fbcs.bottom, DCBC)
     end
 end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(1, 4, 1))
+    arch = DistributedArch(ranks=(1, 4, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test !isa(fbcs.east, HBC)
-        @test !isa(fbcs.west, HBC)
-        @test fbcs.north isa HBC
-        @test fbcs.south isa HBC
-        @test !isa(fbcs.top, HBC)
-        @test !isa(fbcs.bottom, HBC)
+        @test !isa(fbcs.east, DCBC)
+        @test !isa(fbcs.west, DCBC)
+        @test fbcs.north isa DCBC
+        @test fbcs.south isa DCBC
+        @test !isa(fbcs.top, DCBC)
+        @test !isa(fbcs.bottom, DCBC)
     end
 end
 
 function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(1, 1, 4))
+    arch = DistributedArch(ranks=(1, 1, 4))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test !isa(fbcs.east, HBC)
-        @test !isa(fbcs.west, HBC)
-        @test !isa(fbcs.north, HBC)
-        @test !isa(fbcs.south, HBC)
-        @test fbcs.top isa HBC
-        @test fbcs.bottom isa HBC
+        @test !isa(fbcs.east, DCBC)
+        @test !isa(fbcs.west, DCBC)
+        @test !isa(fbcs.north, DCBC)
+        @test !isa(fbcs.south, DCBC)
+        @test fbcs.top isa DCBC
+        @test fbcs.bottom isa DCBC
     end
 end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(2, 2, 1))
+    arch = DistributedArch(ranks=(2, 2, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
-        @test fbcs.east isa HBC
-        @test fbcs.west isa HBC
-        @test fbcs.north isa HBC
-        @test fbcs.south isa HBC
-        @test !isa(fbcs.top, HBC)
-        @test !isa(fbcs.bottom, HBC)
+        @test fbcs.east isa DCBC
+        @test fbcs.west isa DCBC
+        @test fbcs.north isa DCBC
+        @test fbcs.south isa DCBC
+        @test !isa(fbcs.top, DCBC)
+        @test !isa(fbcs.bottom, DCBC)
     end
 end
 
@@ -361,7 +361,7 @@ end
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     use_buffers = child_arch isa GPU ? true : false
-    arch = MultiArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
+    arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -386,7 +386,7 @@ end
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
     use_buffers = child_arch isa GPU ? true : false
-    arch = MultiArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+    arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
     grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -410,7 +410,7 @@ end
 function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     use_buffers = child_arch isa GPU ? true : false
-    arch = MultiArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+    arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -434,7 +434,7 @@ end
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     use_buffers = child_arch isa GPU ? true : false
-    arch = MultiArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
+    arch = DistributedArch(child_arch; ranks=(2, 2, 1), use_buffers, devices = (0, 0, 0, 0))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
@@ -509,7 +509,7 @@ end
             for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
                 topo = (Periodic, Periodic, Periodic)
-                arch = MultiArch(; ranks)
+                arch = DistributedArch(; ranks)
                 grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
                 model = NonhydrostaticModel(; grid)
 
@@ -529,7 +529,7 @@ end
         for child_arch in archs
             topo = (Periodic, Periodic, Flat)
             use_buffers = child_arch isa GPU ? true : false
-            arch = MultiArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))
+            arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))
             grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 

@@ -10,20 +10,20 @@ using Oceananigans.ImmersedBoundaries
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
-const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:MultiArch}
+const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:DistributedArch}
 const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
-    RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:MultiArch} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
+    RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:DistributedArch} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:MultiArch} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:DistributedArch} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, <:MultiArch} where {FT, TX, TY, TZ, I, M}
+const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:DistributedGrid, I, M, <:DistributedArch} where {FT, TX, TY, TZ, I, M}
 
 """
-    RectilinearGrid(arch::MultiArch, FT=Float64; kw...)
+    RectilinearGrid(arch::DistributedArch, FT=Float64; kw...)
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
-function RectilinearGrid(arch::MultiArch, 
+function RectilinearGrid(arch::DistributedArch, 
                          FT::DataType = Float64;
                          size,
                          x = nothing,
@@ -63,7 +63,7 @@ function RectilinearGrid(arch::MultiArch,
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, Hy, yl, child_architecture(arch))
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], nz, Hz, zl, child_architecture(arch))
 
-    architecture = MultiArch(child_architecture(arch), 
+    architecture = DistributedArch(child_architecture(arch), 
                              topology = topology, 
                              ranks = arch.ranks, 
                              communicator = arch.communicator,
@@ -79,11 +79,11 @@ function RectilinearGrid(arch::MultiArch,
 end
 
 """
-    LatitudeLongitudeGrid(arch::MultiArch, FT=Float64; kw...)
+    LatitudeLongitudeGrid(arch::DistributedArch, FT=Float64; kw...)
 
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
-function LatitudeLongitudeGrid(arch::MultiArch,
+function LatitudeLongitudeGrid(arch::DistributedArch,
                                FT::DataType = Float64; 
                                precompute_metrics = true,
                                size,
@@ -129,7 +129,7 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     # when constructing the metrics!
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded, nφ, Hφ, φl, arch.child_architecture)
 
-    architecture = MultiArch(child_architecture(arch); 
+    architecture = DistributedArch(child_architecture(arch); 
                              topology = topology, 
                              ranks = arch.ranks, 
                              communicator = arch.communicator,
@@ -290,17 +290,17 @@ function scatter_grid_properties(global_grid)
     return x, y, z, topo, sz, halo
 end
 
-function scatter_local_grids(arch::MultiArch, global_grid::RectilinearGrid)
+function scatter_local_grids(arch::DistributedArch, global_grid::RectilinearGrid)
     x, y, z, topo, sz, halo = scatter_grid_properties(global_grid)
     return RectilinearGrid(arch, eltype(global_grid); size=sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
-function scatter_local_grids(arch::MultiArch, global_grid::LatitudeLongitudeGrid)
+function scatter_local_grids(arch::DistributedArch, global_grid::LatitudeLongitudeGrid)
     x, y, z, topo, sz, halo = scatter_grid_properties(global_grid)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=sz, longitude=x, latitude=y, z=z, halo=halo, topology=topo)
 end
 
-function scatter_local_grids(arch::MultiArch, global_grid::ImmersedBoundaryGrid)
+function scatter_local_grids(arch::DistributedArch, global_grid::ImmersedBoundaryGrid)
     ib   = global_grid.immersed_boundary
     ug   = global_grid.underlying_grid
 
