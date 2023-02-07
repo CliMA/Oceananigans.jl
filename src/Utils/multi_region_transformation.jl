@@ -13,7 +13,7 @@ struct MultiRegionObject{R, D}
     regional_objects :: R
     devices :: D
 
-    function MultiRegionObject(regional_objects...; devices=tuple(CPU() for _ in regional_objects))
+    function MultiRegionObject(regional_objects...; devices=Tuple(CPU() for _ in regional_objects))
         R = typeof(regional_objects)
         D = typeof(devices)
         return new{R, D}(regional_objects, devices)
@@ -31,7 +31,7 @@ end
 
 Return a MultiRegionObject
 """
-MultiRegionObject(regional_objects::Tuple; devices=tuple(CPU() for _ in regional_objects)) =
+MultiRegionObject(regional_objects::Tuple; devices=Tuple(CPU() for _ in regional_objects)) =
     MultiRegionObject(regional_objects, devices)
 
 
