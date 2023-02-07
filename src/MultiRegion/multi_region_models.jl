@@ -70,10 +70,10 @@ WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg,
 
 function accurate_cell_advection_timescale(grid::MultiRegionGrid, velocities)
     Δt = construct_regionally(accurate_cell_advection_timescale, grid, velocities)
-    return minimum(Δt.regions)
+    return minimum(Δt.regional_objects)
 end
 
 function new_time_step(old_Δt, wizard, model::MultiRegionModel)
     Δt = construct_regionally(new_time_step, old_Δt, wizard, model)
-    return minimum(Δt.regions)
+    return minimum(Δt.regional_objects)
 end
