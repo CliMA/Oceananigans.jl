@@ -8,11 +8,6 @@ for closure in closures
     end
 end
 
-function closure_instantiation(closurename)
-    closure = getproperty(TurbulenceClosures, closurename)()
-    return true
-end
-
 function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
     closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
     return closure.ν == ν && closure.κ.T == κ
@@ -193,13 +188,14 @@ end
 
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
-        for closure in closures
-            @test closure_instantiation(closure)
+        for closurename in closures
+            closure = getproperty(TurbulenceClosures, closurename)()
+            @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
             grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid, closure, tracers=:c)
-            @test diffusivity(closure, model.diffusivity_fields, Val(:c)) isa Union{Number, Field}
-            @test viscosity(closure, model.diffusivity_fields) isa Union{Number, Field}
+            model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
+            @test diffusivity(model.closure, model.diffusivity_fields, Val(:c)) isa Union{Number, Field, AbstractOperations.AbstractOperation}
+            @test viscosity(model.closure, model.diffusivity_fields) isa Union{Number, Field}
         end
     end
 
