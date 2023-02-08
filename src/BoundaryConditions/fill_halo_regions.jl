@@ -113,7 +113,7 @@ end
 ##### Halo filling order
 #####
 
-const PBCT  = Union{PBC, NTuple{<:Any, <:PBC}}
+const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
 const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
 const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
