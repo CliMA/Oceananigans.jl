@@ -25,48 +25,22 @@ using Statistics
 using JLD2
 using Printf
 
-using Oceananigans.Distributed
-
-Nx = 120
-Ny = 120
-
-using MPI
-MPI.Init()
-
-comm   = MPI.COMM_WORLD
-rank   = MPI.Comm_rank(comm)
-Nranks = MPI.Comm_size(comm)
-
-topo = (Periodic, Bounded, Bounded)
-arch = MultiArch(CPU(); topology = topo, ranks=(Nranks, 1, 1))
+Nx = 60
+Ny = 60
 
 # A spherical domain
-underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                         longitude = (-30, 30),
                                         latitude = (15, 75),
-                                        z = (-4000, 0),
-                                        halo = (2, 2, 2),
-                                        topology = topo)
+                                        z = (-4000, 0))
 
+## bathymetry = zeros(Nx, Ny) .- 4000
+## view(bathymetry, 31:34, 43:47) .= 0
+## bathymetry = arch_array(arch, bathymetry)
+## grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry) )
+grid = underlying_grid
 
-nx, ny, nz = size(underlying_grid)
-bathymetry = zeros(nx, ny) .- 4000
-view(bathymetry, 10:15, 43:47) .= 0
-
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry) )
-
-using Oceananigans.BuoyancyModels: g_Earth
-using Oceananigans.Grids: min_Δx, min_Δy
-
-Δt         = 1200 
-CFL        = 0.7
-wave_speed = sqrt(g_Earth * grid.Lz)
-Δg         = 1 / sqrt(1 / min_Δx(grid)^2 + 1 / min_Δy(grid)^2)
-@show substeps = Int(ceil(2 * Δt / (CFL / wave_speed * Δg)))
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AdamsBashforth3Scheme
-
-free_surface = SplitExplicitFreeSurface(; substeps)
+free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 # free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme())
@@ -111,11 +85,18 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     closure = constant_horizontal_diffusivity,
+                                    #closure = variable_horizontal_diffusivity,
                                     tracers = nothing,
                                     buoyancy = nothing)
 
-simulation = Simulation(model; Δt, stop_iteration = 10000)
-            
+g = model.free_surface.gravitational_acceleration
+
+gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
+
+# Time-scale for gravity wave propagation across the smallest grid cell
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλᶜᵃᵃ),
+                                  grid.radius * deg2rad(grid.Δφᵃᶜᵃ)) / gravity_wave_speed
+
 mutable struct Progress
     interval_start_time :: Float64
 end
@@ -134,30 +115,27 @@ function (p::Progress)(sim)
     return nothing
 end
 
+simulation = Simulation(model,
+                        Δt = 3600,
+                        stop_time = 1years)
+
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
-indices = (:, :, 1)
+output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-ηarr = Vector{Field}(undef, Int(simulation.stop_iteration))
-varr = Vector{Field}(undef, Int(simulation.stop_iteration))
-uarr = Vector{Field}(undef, Int(simulation.stop_iteration))
+output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
-save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(sim.model.free_surface.η) : nothing
-save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.v)   : nothing
-save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.u)   : nothing
-
-simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
-simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
-simulation.callbacks[:save_u]   = Callback(save_u, IterationInterval(1))
+simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
+                                                      schedule = TimeInterval(10day),
+                                                      filename = output_prefix,
+                                                      overwrite_existing = true)
 
 run!(simulation)
-
-jldsave("variables_rank$(rank).jld2", varr = varr, ηarr = ηarr, uarr = uarr)
 
 #####
 ##### Animation!
 #####
 
-# include("visualize_barotropic_gyre.jl")
+include("visualize_barotropic_gyre.jl")
 
 # visualize_barotropic_gyre(simulation.output_writers[:fields])
