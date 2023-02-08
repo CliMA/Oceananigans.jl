@@ -54,9 +54,9 @@ end
 #### Use other methods if a more accurate interpolation is required
 ####
 
-@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid))
-@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid))
-@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(Center, grid))
+@inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid)) - 1
+@inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid)) - 1
+@inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(Center, grid)) - 1
 
 @inline fractional_x_index(x::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[1], grid.Nx), x, xnodes(Face, grid)) - 1
 @inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(Face, grid)) - 1
