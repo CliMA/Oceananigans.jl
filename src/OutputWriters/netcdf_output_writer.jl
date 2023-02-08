@@ -437,7 +437,7 @@ function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons..., time_index] = data
+    ds[name][colons..., time_index:time_index] = data
     return nothing
 end
 
