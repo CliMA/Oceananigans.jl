@@ -268,8 +268,8 @@ end
 free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 
 # extend 
-@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
-@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
+@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
+@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
 
 # convenience functor
 function (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings)
@@ -285,6 +285,8 @@ function reset!(sefs::SplitExplicitFreeSurface)
         var = getproperty(sefs.state, name)
         fill!(var, 0.0)
     end
+    fill!(sefs.auxiliary.Gᵁ, 0.0)
+    fill!(sefs.auxiliary.Gⱽ, 0.0)
 end
 
 # Adapt
