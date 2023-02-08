@@ -49,17 +49,11 @@ function run_bickley_jet(;
 
     @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 
-    ηarr = Vector{Field}(undef, Int(simulation.stop_iteration))
-    varr = Vector{Field}(undef, Int(simulation.stop_iteration))
-    uarr = Vector{Field}(undef, Int(simulation.stop_iteration))
-    
-    save_η(sim) = sim.model.clock.iteration > 0 ? ηarr[sim.model.clock.iteration] = deepcopy(sim.model.free_surface.η) : nothing
-    save_v(sim) = sim.model.clock.iteration > 0 ? varr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.v)   : nothing
-    save_u(sim) = sim.model.clock.iteration > 0 ? uarr[sim.model.clock.iteration] = deepcopy(sim.model.velocities.u)   : nothing
-    
-    simulation.callbacks[:save_η]   = Callback(save_η, IterationInterval(1))
-    simulation.callbacks[:save_v]   = Callback(save_v, IterationInterval(1))
-    simulation.callbacks[:save_u]   = Callback(save_u, IterationInterval(1))
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, outputs,
+                                schedule = TimeInterval(output_time_interval),
+                                filename = output_name,
+                                overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
@@ -70,8 +64,6 @@ function run_bickley_jet(;
     elapsed = 1e-9 * (time_ns() - start_time)
     @info "... the bickley jet simulation took " * prettytime(elapsed)
 
-    jldsave("variables_rank$(rank).jld2", varr = varr, ηarr = ηarr, uarr = uarr)
-    
     return output_name
 end
     
@@ -117,9 +109,10 @@ advection_schemes = [WENO(vector_invariant=VelocityStencil()),
                      WENO(),
                      VectorInvariant()]
 
+
 for Nx in [128]
     for advection in advection_schemes
-        experiment_name = run_bickley_jet(arch=CPU(), momentum_advection=advection, Nh=Nx)
+        experiment_name = run_bickley_jet(arch=GPU(), momentum_advection=advection, Nh=Nx)
         visualize_bickley_jet(experiment_name)
     end
 end
