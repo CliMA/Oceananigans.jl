@@ -195,6 +195,11 @@ end
         @info "  Testing closure instantiation..."
         for closure in closures
             @test closure_instantiation(closure)
+
+            grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+            model = NonhydrostaticModel(; grid, closure, tracers=:c)
+            @test diffusivity(closure, model.diffusivity_fields, Val(:c)) isa Union{Number, Field}
+            @test viscosity(closure, model.diffusivity_fields) isa Union{Number, Field}
         end
     end
 
