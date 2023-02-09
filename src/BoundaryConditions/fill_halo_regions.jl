@@ -71,7 +71,9 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    return fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    event = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+    return NoneEvent()
 end
 
 function permute_boundary_conditions(boundary_conditions)
