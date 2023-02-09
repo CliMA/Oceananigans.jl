@@ -22,7 +22,7 @@ function SplitExplicitAuxiliary(grid::DistributedGrid)
 
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
-    kernel_offsets = full_offsets(grid)
+    kernel_offsets = augmented_kernel_offsets(grid)
     
     return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
@@ -46,7 +46,7 @@ end
     return (Ax, Ay)
 end
    
-@inline function full_offsets(grid::DistributedGrid)
+@inline function augmented_kernel_offsets(grid::DistributedGrid)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
 
@@ -64,7 +64,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
 
         old_halos = halo_size(grid)
 
-        new_halos = partitioned_halos(old_halos, settings.substeps+1, grid)         
+        new_halos = split_explicit_halos(old_halos, settings.substeps+1, grid)         
         new_grid  = with_halo(new_halos, grid)
     
         η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
@@ -76,7 +76,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
                                         free_surface.settings)
 end
 
-@inline function partitioned_halos(old_halos, step_halo, grid::DistributedGrid)
+@inline function split_explicit_halos(old_halos, step_halo, grid::DistributedGrid)
 
     Rx, Ry, _ = architecture(grid).ranks
 
