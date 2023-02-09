@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
-using CUDA
+using CUDA: device_synchronize
 import Oceananigans.Utils: sync_device!
 using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
                            fill_south_and_north_send_buffers!, 
@@ -28,7 +28,7 @@ import Oceananigans.BoundaryConditions:
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
 
-@inline sync_device!(::GPU) = CUDA.device_synchronize()
+@inline sync_device!(::GPU) = device_synchronize()
 
 #####
 ##### MPI tags for halo communication BCs
