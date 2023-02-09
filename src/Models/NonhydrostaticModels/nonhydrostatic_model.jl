@@ -67,8 +67,7 @@ end
                      diffusivity_fields = nothing,
                         pressure_solver = nothing,
                       immersed_boundary = nothing,
-                       auxiliary_fields = NamedTuple(),
- calculate_only_active_cells_tendencies = false
+                       auxiliary_fields = NamedTuple()
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -99,9 +98,7 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`. 
-  - `calculate_only_active_cells_tendencies`: In case of an immersed boundary grid, calculate the tendency only in active cells.
-                                   Default: `false`              
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
@@ -121,8 +118,7 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple(),
-calculate_only_active_cells_tendencies = false
+                      auxiliary_fields = NamedTuple()
     )
 
     arch = architecture(grid)
@@ -143,12 +139,6 @@ calculate_only_active_cells_tendencies = false
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
-
-    # In case of an immersed boundary grid add a wet cell map to avoid calculating 
-    # the tendency in dry cells
-    if calculate_only_active_cells_tendencies
-        grid = maybe_add_active_cells_map(grid)
-    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:

@@ -22,11 +22,11 @@ end
 
 """
     DistributedArch(child_architecture = CPU(); 
-              topology = (Periodic, Periodic, Periodic), 
-              ranks, 
-              use_buffers = false,
-              devices = nothing, 
-              communicator = MPI.COMM_WORLD)
+                    topology = (Periodic, Periodic, Periodic), 
+                    ranks, 
+                    use_buffers = false,
+                    devices = nothing, 
+                    communicator = MPI.COMM_WORLD)
 
 Constructor for a distributed architecture that uses MPI for communications
 

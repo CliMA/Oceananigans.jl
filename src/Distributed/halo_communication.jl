@@ -1,5 +1,7 @@
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
+using CUDA
+import Oceananigans.Utils: sync_device!
 using Oceananigans.Fields: fill_west_and_east_send_buffers!, 
                            fill_south_and_north_send_buffers!, 
                            fill_west_send_buffers!,
@@ -25,6 +27,8 @@ import Oceananigans.BoundaryConditions:
     fill_west_and_east_halo!, 
     fill_south_and_north_halo!,
     fill_bottom_and_top_halo!
+
+@inline sync_device!(::GPU) = CUDA.device_synchronize()
 
 #####
 ##### MPI tags for halo communication BCs
@@ -148,7 +152,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
         return nothing
     end
     
-    MPI.Waitall!(events_and_requests)
+    MPI.Waitall(events_and_requests)
 
     buffer_side = mpi_communication_side(Val(fill_halo!))
     fill_recv_buffers!(c, buffers, grid, Val(buffer_side))    
@@ -181,13 +185,16 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
+            # This has to be synchronized!!
             $fill_all_send_buffers!(c, buffers, grid)
 
-            send_req1 = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
-            send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            sync_device!(child_architecture(arch))
 
             recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+
+            send_req1 = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
@@ -204,8 +211,10 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             
             $fill_side_send_buffers!(c, buffers, grid)
 
-            send_req = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            sync_device!(child_arch)
+
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            send_req = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
             
             return [send_req, recv_req]
         end
@@ -222,8 +231,10 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             $fill_opposite_side_send_buffers!(c, buffers, grid)
 
-            send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            sync_device!(child_arch)
+
             recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req, recv_req]
         end

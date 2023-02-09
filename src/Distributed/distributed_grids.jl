@@ -64,10 +64,10 @@ function RectilinearGrid(arch::DistributedArch,
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], nz, Hz, zl, child_architecture(arch))
 
     architecture = DistributedArch(child_architecture(arch), 
-                             topology = topology, 
-                             ranks = arch.ranks, 
-                             communicator = arch.communicator,
-                             use_buffers = using_buffered_communication(arch))
+                                   topology = topology, 
+                                   ranks = arch.ranks, 
+                                   communicator = arch.communicator,
+                                   use_buffers = using_buffered_communication(arch))
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        nx, ny, nz,
@@ -130,10 +130,10 @@ function LatitudeLongitudeGrid(arch::DistributedArch,
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded, nφ, Hφ, φl, arch.child_architecture)
 
     architecture = DistributedArch(child_architecture(arch); 
-                             topology = topology, 
-                             ranks = arch.ranks, 
-                             communicator = arch.communicator,
-                             use_buffers = using_buffered_communication(arch))
+                                   topology = topology, 
+                                   ranks = arch.ranks, 
+                                   communicator = arch.communicator,
+                                   use_buffers = using_buffered_communication(arch))
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
                                                          nλ, nφ, nz,
