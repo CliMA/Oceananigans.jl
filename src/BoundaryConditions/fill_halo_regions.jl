@@ -73,6 +73,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
 
     event = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
     wait(device(arch), event)
+    wait(event)
     return NoneEvent()
 end
 
