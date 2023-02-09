@@ -194,8 +194,14 @@ end
 
             grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
-            @test diffusivity(model.closure, model.diffusivity_fields, Val(:c)) isa Union{Number, Field, AbstractOperations.AbstractOperation}
-            @test viscosity(model.closure, model.diffusivity_fields) isa Union{Number, Field}
+            c = model.tracers.c
+            u = model.velocities.u
+            κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
+            κ_dx_c = κ * ∂x(c)
+            ν = viscosity(model.closure, model.diffusivity_fields)
+            ν_dx_u = ν * ∂x(c)
+            @test ν_dx_u[1, 1, 1] == 0.0
+            @test κ_dx_c[1, 1, 1] == 0.0
         end
     end
 
