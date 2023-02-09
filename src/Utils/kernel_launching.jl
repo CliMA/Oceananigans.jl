@@ -2,8 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
-using KernelAbstractions: @index
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
@@ -65,13 +63,13 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 
 
     if only_active_cells
-        workgroup, worksize = only_active_cells_in_worksize(worksize, grid) 
+        workgroup, worksize = active_cells_work_layout(worksize, grid) 
     end
 
     return workgroup, worksize
 end
 
-only_active_cells_in_worksize(size, grid) = heuristic_workgroup(size...), size
+active_cells_work_layout(size, grid) = heuristic_workgroup(size...), size
 
 """
     launch!(arch, grid, layout, kernel!, args...; dependencies=nothing, kwargs...)
@@ -111,4 +109,3 @@ end
 @inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
     launch!(arch, grid, workspec, args...; kwargs...)
 
-@inline calc_tendency_index(idx, i, j, k, args...) = i, j, k

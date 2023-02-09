@@ -3,10 +3,10 @@ import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: work_layout, calc_tendency_index
+using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
-using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
 """
     calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -203,7 +203,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -215,7 +215,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -231,7 +231,7 @@ end
 
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
 end
 

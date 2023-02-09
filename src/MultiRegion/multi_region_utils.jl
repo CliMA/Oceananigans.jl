@@ -1,6 +1,6 @@
 import Oceananigans.Fields: flatten_tuple
 
-flatten_tuple(mro::MultiRegionObject) = flatten_tuple(mro.regions)
+flatten_tuple(mro::MultiRegionObject) = flatten_tuple(mro.regional_objects)
 
 validate_devices(partition, ::CPU, devices) = nothing
 validate_devices(p, ::CPU, ::Nothing) = nothing

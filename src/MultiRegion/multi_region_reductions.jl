@@ -18,15 +18,15 @@ for reduction in reductions
     @eval begin
         function $(reduction)(f::Function, c::MultiRegionField; kwargs...)
             mr = construct_regionally($(reduction), f, c; kwargs...)
-            if mr.regions isa NTuple{<:Any, <:Number}
-                return $(reduction)([r for r in mr.regions]) 
+            if mr.regional_objects isa NTuple{<:Any, <:Number}
+                return $(reduction)([r for r in mr.regional_objects]) 
             else
-                FT   = eltype(first(mr.regions))
-                loc  = location(first(mr.regions))
+                FT   = eltype(first(mr.regional_objects))
+                loc  = location(first(mr.regional_objects))
                 validate_reduction_location!(loc, c.grid.partition)
-                mrg  = MultiRegionGrid{FT, loc[1], loc[2], loc[3]}(architecture(c), c.grid.partition, MultiRegionObject(collect_grid(mr.regions), devices(mr)), devices(mr))
-                data = MultiRegionObject(collect_data(mr.regions), devices(mr))
-                bcs  = MultiRegionObject(collect_bcs(mr.regions),  devices(mr))
+                mrg  = MultiRegionGrid{FT, loc[1], loc[2], loc[3]}(architecture(c), c.grid.partition, MultiRegionObject(collect_grid(mr.regional_objects), devices(mr)), devices(mr))
+                data = MultiRegionObject(collect_data(mr.regional_objects), devices(mr))
+                bcs  = MultiRegionObject(collect_bcs(mr.regional_objects),  devices(mr))
                 return Field{loc[1], loc[2], loc[3]}(mrg, data, bcs, c.operand, c.status) 
             end
         end
@@ -46,5 +46,5 @@ collect_grid(f::NTuple{N, <:Field}) where N = Tuple(f[i].grid for i in 1:N)
 const MRD = Union{MultiRegionField, MultiRegionObject}
 
 # make it more efficient?
-Statistics.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regions])
+Statistics.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regional_objects])
 Statistics.norm(f::MRD) = sqrt(dot(f, f))
