@@ -59,19 +59,22 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
 #     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
-# This results in too large parameter space required on the GPU for too many regions!! (we are passing the whole buffers and regions)
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
     arch = architecture(mrg)
 
-    halo_tuple = construct_regionally(permute_boundary_conditions, bcs)
+    halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)
 
-    for task = 1:3
-        barrier = device_event(arch)
-        apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, indices, loc, arch, barrier, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), 
-                          args...; kwargs...)
-    end
+    neighbors = Reference(c.regional_objects)
+    buff      = Reference(buffers.regional_objects)
+    
+    @apply_regionally event1 = fill_halo_event!(1, halo_tuple c, indices, loc, arch, device_event(arch), mrg, neighbors, buff, args...; kwargs...)
+    @apply_regionally event2 = fill_halo_event!(2, halo_tuple c, indices, loc, arch, event2,             mrg, neighbors, buff, args...; kwargs...)
+    @apply_regionally event3 = fill_halo_event!(3, halo_tuple c, indices, loc, arch, event3,             mrg, neighbors, buff, args...; kwargs...)
+
+    @apply_regionally multi_event = MultiEvent((event1, event2, event3))
+
+    @apply_regionally wait(device(arch), multi_event)
 
     return nothing
 end

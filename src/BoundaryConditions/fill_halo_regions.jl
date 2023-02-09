@@ -49,13 +49,16 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     arch = architecture(grid)
 
-    halo_tuple = permute_boundary_conditions(boundary_conditions)
-   
+    halo_tuple  = permute_boundary_conditions(boundary_conditions)
+    halo_events = []
+    push!(halo_events, device_event(arch))
+
     for task = 1:3
-        barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+        halo_event = fill_halo_event!(task, halo_tuple, c, indices, loc, arch, halo_events[task], grid, args...; kwargs...)
+        push!(halo_events, halo_event)
     end
 
+    wait(device(arch), MultiEvent(tuple(halo_events...)))
     return nothing
 end
 
@@ -68,8 +71,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    event  = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-    wait(device(arch), event)
+    return fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
 end
 
 function permute_boundary_conditions(boundary_conditions)
