@@ -152,11 +152,6 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
         return nothing
     end
     
-    # TODO: remove this GC call! This GC is here because kernel allocations
-    # pile up and a humongous GC is called randomly blocking execution for 
-    # all processors and reducing scaling
-
-    GC.gc()
     MPI.Waitall(events_and_requests)
 
     buffer_side = mpi_communication_side(Val(fill_halo!))
