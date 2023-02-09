@@ -230,7 +230,3 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
-
-maybe_add_active_cells_map(grid) = grid
-maybe_add_active_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
-      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_active_cells_map = true)
