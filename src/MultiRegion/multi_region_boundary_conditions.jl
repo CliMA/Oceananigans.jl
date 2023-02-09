@@ -75,7 +75,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 
     multi_event = construct_regionally(MultiEvent, (event1, event2, event3))
 
-    @apply_regionally wait(device(arch), multi_event)
+    @apply_regionally wait(Oceananigans.Architectures.device(arch), multi_event)
 
     return nothing
 end
