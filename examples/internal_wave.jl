@@ -175,7 +175,7 @@ frames = 1:length(w_timeseries.times)
 
 @info "Animating a propagating internal wave..."
 
-record(fig, filename * ".mp4", frames, framerate=8) do i
+record(fig, "internal_wave.mp4", frames, framerate=8) do i
     msg = string("Plotting frame ", i, " of ", frames[end])
     print(msg * " \r")
     n[] = i

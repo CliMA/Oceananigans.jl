@@ -8,10 +8,10 @@ using Oceananigans.BuoyancyModels: BuoyancyField
 
 function compute_derivative(model, ∂)
     T, S = model.tracers
-    S.data.parent .= π
+    parent(S) .= π
     @compute ∂S = Field(∂(S))
     result = Array(interior(∂S))
-    return all(result .≈ zero(eltype(model.grid)))
+    return all(result .≈ zero(model.grid))
 end
 
 function compute_unary(unary, model)
@@ -27,7 +27,7 @@ function compute_plus(model)
     T, S = model.tracers
     @compute ST = Field(S + T, data=model.pressures.pHY′.data)
     result = Array(interior(ST))
-    return all(result .≈ eltype(model.grid)(π+42))
+    return all(result .≈ eltype(model.grid)(π + 42))
 end
 
 function compute_many_plus(model)
@@ -36,7 +36,7 @@ function compute_many_plus(model)
     u, v, w = model.velocities
     @compute uTS = Field(@at((Center, Center, Center), u + T + S))
     result = Array(interior(uTS))
-    return all(result .≈ eltype(model.grid)(2+π+42))
+    return all(result .≈ eltype(model.grid)(2 + π + 42))
 end
 
 function compute_minus(model)
@@ -44,7 +44,7 @@ function compute_minus(model)
     T, S = model.tracers
     @compute ST = Field(S - T, data=model.pressures.pHY′.data)
     result = Array(interior(ST))
-    return all(result .≈ eltype(model.grid)(π-42))
+    return all(result .≈ eltype(model.grid)(π - 42))
 end
 
 function compute_times(model)
@@ -52,7 +52,7 @@ function compute_times(model)
     T, S = model.tracers
     @compute ST = Field(S * T, data=model.pressures.pHY′.data)
     result = Array(interior(ST))
-    return all(result .≈ eltype(model.grid)(π*42))
+    return all(result .≈ eltype(model.grid)(π * 42))
 end
 
 function compute_kinetic_energy(model)
@@ -63,9 +63,8 @@ function compute_kinetic_energy(model)
 
     kinetic_energy_operation = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
     @compute kinetic_energy = Field(kinetic_energy_operation, data=model.pressures.pHY′.data)
-    result = Array(interior(kinetic_energy))[2:3, 2:3, 2:3]
 
-    return all(result .≈ 7)
+    return all(interior(kinetic_energy, 2:3, 2:3, 2:3) .≈ 7)
 end
 
 function horizontal_average_of_plus(model)
@@ -82,10 +81,9 @@ function horizontal_average_of_plus(model)
 
     zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) + 42 * zC
+    computed_profile = Array(interior(ST, 1, 1, :))
 
-    result = Array(interior(ST))[:]
-
-    return all(result .≈ correct_profile)
+    return all(computed_profile .≈ correct_profile)
 end
 
 function zonal_average_of_plus(model)
@@ -101,10 +99,9 @@ function zonal_average_of_plus(model)
     yC = ynodes_reshaped(model.grid, Center())
     zC = znodes_reshaped(model.grid, Center())
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
+    computed_slice = Array(interior(ST, 1, :, :))
 
-    result = Array(interior(ST))
-
-    return all(result[1, :, :] .≈ correct_slice[1, :, :])
+    return all(computed_slice .≈ view(correct_slice, 1, :, :))
 end
 
 function volume_average_of_times(model)
@@ -116,17 +113,16 @@ function volume_average_of_times(model)
     T, S = model.tracers
 
     @compute ST = Field(Average(S * T, dims=(1, 2, 3)))
+    result = CUDA.@allowscalar ST[1, 1, 1]
 
-    result = Array(interior(ST))
-
-    return all(result[1, 1, 1] .≈ 0.5)
+    return result ≈ 0.5
 end
 
 function horizontal_average_of_minus(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = sin(π*z)
-    T₀(x, y, z) = 42*z
+    S₀(x, y, z) = sin(π * z)
+    T₀(x, y, z) = 42 * z
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
@@ -134,10 +130,9 @@ function horizontal_average_of_minus(model)
 
     zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) - 42 * zC
+    computed_profile = Array(interior(ST, 1, 1, 1:Nz))
 
-    result = Array(interior(ST))
-
-    return all(result[1, 1, 1:Nz] .≈ correct_profile)
+    return all(computed_profile .≈ correct_profile)
 end
 
 function horizontal_average_of_times(model)
@@ -152,10 +147,9 @@ function horizontal_average_of_times(model)
 
     zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) * 42 * zC
+    computed_profile = Array(interior(ST, 1, 1, 1:Nz))
 
-    result = Array(interior(ST))
-
-    return all(result[1, 1, 1:Nz] .≈ correct_profile)
+    return all(computed_profile .≈ correct_profile)
 end
 
 function multiplication_and_derivative_ccf(model)
@@ -172,11 +166,10 @@ function multiplication_and_derivative_ccf(model)
 
     zF = znodes(model.grid, Face())
     correct_profile = @. 42 * sin(π * zF)
+    computed_profile = Array(interior(wT, 1, 1, 1:Nz))
 
-    result = Array(interior(wT))
-
-    # Omit both halos and boundary points
-    return all(result[1, 1, 2:Nz] .≈ correct_profile[2:Nz])
+    # Omit boundaries
+    return all(computed_profile[2:Nz] .≈ correct_profile[2:Nz])
 end
 
 const C = Center
@@ -209,12 +202,12 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(; grid)
 
     u, v, w = model.velocities
-    @. u.data = 1 + rand()
-    @. v.data = 2 + rand()
-    @. w.data = 3 + rand()
+    parent(u) .= 1 + rand()
+    parent(v) .= 2 + rand()
+    parent(w) .= 3 + rand()
 
     op = @at (Center, Face, Face) u * v * w
     @compute uvw = Field(op)
@@ -236,15 +229,6 @@ function operations_with_averaged_field(model)
     compute!(wUV)
     return true
 end
-
-#=
-function pressure_field(model)
-    p = PressureField(model)
-    u, v, w = model.velocities
-    @compute up = Field(u * p)
-    return true
-end
-=#
 
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -281,7 +265,7 @@ function computations_with_averaged_fields(model)
     tke = Field(tke_op)
     compute!(tke)
 
-    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+    return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
 function computations_with_averaged_field_derivative(model)
@@ -301,7 +285,7 @@ function computations_with_averaged_field_derivative(model)
 
     set!(model, T = (x, y, z) -> 3 * z)
 
-    return all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3])
+    return all(interior(shear, 2:3, 2:3, 2:3) .== interior(T, 2:3, 2:3, 2:3))
 end
 
 function computations_with_computed_fields(model)
@@ -320,7 +304,7 @@ function computations_with_computed_fields(model)
     tke = Field(tke_op)
     compute!(tke)
 
-    return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
+    return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
 for arch in archs
@@ -406,8 +390,8 @@ for arch in archs
                 end
 
                 ϵ(x, y, z) = 2rand() - 1
-                u, v, w = model.velocities
                 set!(model, u=ϵ, v=ϵ)
+                u, v, w = model.velocities
                 ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 
                 ζ = Field(ζ_op) # identical to `VerticalVorticityField`
@@ -416,27 +400,24 @@ for arch in archs
 
                 ζxy = Field(ζ_op, indices=(:, :, 1))
                 compute!(ζxy)
-                @test ζxy == view(ζ, :, :, 1)
+                @test all(interior(ζxy, :, :, 1) .== interior(ζ, :, :, 1))
 
                 ζxz = Field(ζ_op, indices=(:, 1, :))
                 compute!(ζxz)
-                @test ζxz == view(ζ, :, 1, :)
+                @test all(interior(ζxz, :, 1, :) .== interior(ζ, :, 1, :))
 
                 ζyz = Field(ζ_op, indices=(1, :, :))
                 compute!(ζyz)
-                @test ζyz == view(ζ, 1, :, :)
+                @test all(interior(ζyz, 1, :, :) .== interior(ζ, 1, :, :))
             end
 
-            @testset "Operations with Field and PressureField [$A, $G]" begin
-                @info "      Testing operations with Field..."
+            @testset "Operations with computed Fields [$A, $G]" begin
+                @info "      Testing operations with computed Fields..."
                 @test operations_with_computed_field(model)
-
-                # @info "      Testing PressureField..."
-                # @test pressure_field(model)
             end
 
             @testset "Horizontal averages of operations [$A, $G]" begin
-                @info "      Testing horizontal averges..."
+                @info "      Testing horizontal averages..."
                 @test horizontal_average_of_plus(model)
                 @test horizontal_average_of_minus(model)
                 @test horizontal_average_of_times(model)
@@ -446,12 +427,12 @@ for arch in archs
             end
 
             @testset "Zonal averages of operations [$A, $G]" begin
-                @info "      Testing zonal averges..."
+                @info "      Testing zonal averages..."
                 @test zonal_average_of_plus(model)
             end
 
             @testset "Volume averages of operations [$A, $G]" begin
-                @info "      Testing volume averges..."
+                @info "      Testing volume averages..."
                 @test volume_average_of_times(model)
             end
 
@@ -464,20 +445,24 @@ for arch in archs
                 @compute ST = Field(S + T, data=model.pressures.pHY′.data)
 
                 Nx, Ny, Nz = size(model.grid)
+                Hx, Hy, Hz = halo_size(model.grid)
 
                 # Periodic xy
-                @test all(ST.data[0, 1:Ny, 1:Nz]  .== ST.data[Nx+1, 1:Ny, 1:Nz])
-                @test all(ST.data[1:Nx, 0, 1:Nz]  .== ST.data[1:Nx, Ny+1, 1:Nz])
+                ii = 1+Hx:Nx+Hx
+                jj = 1+Hy:Ny+Hy
+                kk = 1+Hz:Nz+Hz
+                @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
+                @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
                 
                 # Bounded z
-                @test all(ST.data[1:Nx, 1:Ny, 0]  .== ST.data[1:Nx, 1:Ny, 1])
-                @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
+                @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
+                @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
 
                 @compute ST_face = Field(@at (Center, Center, Face) S * T)
 
                 # These are initially 0 and remain 0
-                @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
-                @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
+                @test all(view(parent(ST_face), ii, jj, Hz) .== 0)
+                @test all(view(parent(ST_face), ii, jj, Nz+2+Hz) .== 0)
             end
 
             @testset "Operations with Averaged Field [$A, $G]" begin

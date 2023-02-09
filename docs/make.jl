@@ -3,8 +3,10 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using CairoMakie # to avoid capturing precompilation output by Literate
 using Glob
+
+using CairoMakie # to avoid capturing precompilation output by Literate
+CairoMakie.activate!(type = "svg")
 
 using Oceananigans
 using Oceananigans.Operators

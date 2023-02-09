@@ -137,7 +137,7 @@ There are three primary boundary condition classifications:
 In addition to these primary boundary conditions, `ImpenetrableBoundaryCondition` applies to velocity
 components in wall-normal directions.
 
-!!! warn `ImpenetrableBoundaryCondition`
+!!! warn "`ImpenetrableBoundaryCondition`"
     `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
     As a result, `ImpenetrableBoundaryCondition` is only used for _additional_ velocity components
     that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].

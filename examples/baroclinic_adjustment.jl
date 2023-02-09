@@ -94,9 +94,8 @@ fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
 
 Colorbar(fig[1, 2], hm, label = "[m s⁻²]")
 
-save("initial_buoyancy.svg", fig); nothing # hide
-
-# ![](initial_buoyancy.svg)
+current_figure() # hide
+fig
 
 # Now let's built a `Simulation`.
 

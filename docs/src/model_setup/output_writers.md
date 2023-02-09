@@ -30,7 +30,7 @@ Other important keyword arguments are
   portion of model data is saved to disk.
 
 * `array_type` for specifying the type of the array that holds outputted field data. The default is
-  `Array{Float32}`, or arrays of single-precision floating point numbers.
+  `Array{Float64}`, or arrays of single-precision floating point numbers.
 
 Once an `OutputWriter` is created, it can be used to write output by adding it the
 ordered dictionary `simulation.output_writers`. prior to calling `run!(simulation)`.
@@ -70,7 +70,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -83,7 +83,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./another_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -98,7 +98,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./another_averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
@@ -141,7 +141,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: ./some_things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
@@ -188,7 +188,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_data.jld2
 ├── 3 outputs: (u, v, w)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -205,7 +205,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_more_averaged_data.jld2
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -262,7 +262,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(4 years):
 ├── filepath: ./even_more_averaged_velocity_data.jld2
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 year, stride=2, interval=4 years)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
