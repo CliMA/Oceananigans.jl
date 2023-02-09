@@ -151,7 +151,8 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
         wait(device(child_architecture(arch)), events_and_requests)    
         return nothing
     end
-    
+
+    GC.gc() # TODO remove this GC call!
     MPI.Waitall(events_and_requests)
 
     buffer_side = mpi_communication_side(Val(fill_halo!))
