@@ -6,7 +6,7 @@ project_hash = "0cdf622045fd02ec8eed7a1cf68cf7b3abda3372"
 
 [[deps.AMGX]]
 deps = ["AMGX_jll", "CEnum", "CUDA", "JSON", "Libdl", "SparseArrays"]
-git-tree-sha1 = "61d4adc6c35e4626048fe7c353ddd27843ee6f75"
+git-tree-sha1 = "e837274ddd2c98d197a5079de76c52bd86c89b1b"
 repo-rev = "vc/2.3"
 repo-url = "https://github.com/JuliaGPU/AMGX.jl.git"
 uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
