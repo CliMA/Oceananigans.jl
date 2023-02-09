@@ -233,8 +233,6 @@ const MRG = MultiRegionGrid
     return MultiRegionGrid(grid, partition = mrg.partition, devices = mrg.devices, validate = false)
 end
 
-import Oceananigans.Models.NonhydrostaticModels: maybe_add_active_cells_map
-
 function maybe_add_active_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(maybe_add_active_cells_map, mrg)
     return MultiRegionGrid{FT, TX, TY, TZ}(mrg.architecture, mrg.partition, new_grids, mrg.devices)
