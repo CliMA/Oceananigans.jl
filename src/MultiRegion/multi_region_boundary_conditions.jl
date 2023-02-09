@@ -68,9 +68,9 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     neighbors = Reference(c.regional_objects)
     buff      = Reference(buffers.regional_objects)
     
-    @apply_regionally event1 = fill_halo_event!(1, halo_tuple c, indices, loc, arch, device_event(arch), mrg, neighbors, buff, args...; kwargs...)
-    @apply_regionally event2 = fill_halo_event!(2, halo_tuple c, indices, loc, arch, event2,             mrg, neighbors, buff, args...; kwargs...)
-    @apply_regionally event3 = fill_halo_event!(3, halo_tuple c, indices, loc, arch, event3,             mrg, neighbors, buff, args...; kwargs...)
+    @apply_regionally event1 = fill_halo_event!(1, halo_tuple, c, indices, loc, arch, device_event(arch), mrg, neighbors, buff, args...; kwargs...)
+    @apply_regionally event2 = fill_halo_event!(2, halo_tuple, c, indices, loc, arch, event2,             mrg, neighbors, buff, args...; kwargs...)
+    @apply_regionally event3 = fill_halo_event!(3, halo_tuple, c, indices, loc, arch, event3,             mrg, neighbors, buff, args...; kwargs...)
 
     @apply_regionally multi_event = MultiEvent((event1, event2, event3))
 
