@@ -55,8 +55,8 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     # Fill halo in the three permuted directions (1, 2 and 3), making sure dependencies are fulfilled
     event1 = fill_halo_event!(1, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
-    event2 = fill_halo_event!(2, halo_tuple, c, indices, loc, arch, event1,  grid, args...; kwargs...)
-    event3 = fill_halo_event!(3, halo_tuple, c, indices, loc, arch, event2,  grid, args...; kwargs...)
+    event2 = fill_halo_event!(2, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+    event3 = fill_halo_event!(3, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
 
     wait(device(arch), MultiEvent((barrier, event1, event2, event3)))
     return nothing
@@ -71,7 +71,10 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    return fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    event =  fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
+    wait(device(arch), event)
+
+    return NoneEvent()
 end
 
 function permute_boundary_conditions(boundary_conditions)
