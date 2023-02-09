@@ -58,7 +58,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     event2 = fill_halo_event!(2, halo_tuple, c, indices, loc, arch, event1,  grid, args...; kwargs...)
     event3 = fill_halo_event!(3, halo_tuple, c, indices, loc, arch, event1,  grid, args...; kwargs...)
 
-    wait(device(arch), MultiEvent((barrier, event1, event2, event3)))
+    # wait(device(arch), MultiEvent((barrier, event1, event2, event3)))
     return nothing
 end
 
@@ -73,7 +73,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
 
     event = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
     wait(device(arch), event)
-    wait(event)
+    # wait(event)
     return NoneEvent()
 end
 
