@@ -44,21 +44,21 @@ extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
-"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
+"Fill halo regions in ``x``, ``y``, and ``z``  for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
 
     halo_tuple  = permute_boundary_conditions(boundary_conditions)
-    halo_events = []
-    push!(halo_events, device_event(arch))
 
-    for task = 1:3
-        halo_event = fill_halo_event!(task, halo_tuple, c, indices, loc, arch, halo_events[task], grid, args...; kwargs...)
-        push!(halo_events, halo_event)
-    end
+    barrier    = device_event(arch)
 
-    wait(device(arch), MultiEvent(tuple(halo_events...)))
+    # Fill halo in the three permuted directions, making sure dependencies are fulfilled
+    event1 = fill_halo_event!(1, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+    event2 = fill_halo_event!(2, halo_tuple, c, indices, loc, arch, event1,  grid, args...; kwargs...)
+    event3 = fill_halo_event!(3, halo_tuple, c, indices, loc, arch, event1,  grid, args...; kwargs...)
+
+    wait(device(arch), MultiEvent((barrier, event1, event2, event3)))
     return nothing
 end
 

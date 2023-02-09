@@ -69,11 +69,13 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     neighbors = Reference(c.regional_objects)
     buff      = Reference(buffers.regional_objects)
     
-    event1 = construct_regionally(fill_halo_event!, 1, halo_tuple, c, indices, loc, arch, device_event(arch), mrg, neighbors, buff, args...; kwargs...)
-    event2 = construct_regionally(fill_halo_event!, 2, halo_tuple, c, indices, loc, arch, event1,             mrg, neighbors, buff, args...; kwargs...)
-    event3 = construct_regionally(fill_halo_event!, 3, halo_tuple, c, indices, loc, arch, event2,             mrg, neighbors, buff, args...; kwargs...)
+    barrier = construct_regionally(device_event, arch)
 
-    multi_event = construct_regionally(MultiEvent, (event1, event2, event3))
+    event1 = construct_regionally(fill_halo_event!, 1, halo_tuple, c, indices, loc, arch, barrier, mrg, neighbors, buff, args...; kwargs...)
+    event2 = construct_regionally(fill_halo_event!, 2, halo_tuple, c, indices, loc, arch, event1,  mrg, neighbors, buff, args...; kwargs...)
+    event3 = construct_regionally(fill_halo_event!, 3, halo_tuple, c, indices, loc, arch, event2,  mrg, neighbors, buff, args...; kwargs...)
+
+    multi_event = construct_regionally(MultiEvent, (barrier, event1, event2, event3))
 
     @apply_regionally wait(Oceananigans.Architectures.device(arch), multi_event)
 
