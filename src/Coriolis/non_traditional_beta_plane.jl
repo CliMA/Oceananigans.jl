@@ -67,6 +67,8 @@ end
 @inline two_Ωʸ(P, y, z) = P.fy * (1 -  z/P.R) + P.γ * y
 @inline two_Ωᶻ(P, y, z) = P.fz * (1 + 2z/P.R) + P.β * y
 
+using Oceananigans.Grids: ynode, znode
+
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
      (  two_Ωʸ(coriolis, ynode(Center, j, grid), znode(Center, k, grid)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
