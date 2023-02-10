@@ -1,7 +1,8 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacings, yspacings, zspacings
+using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacings, yspacings, zspacings, 
+                          xnode, ynode, znode, xspacing, yspacing, zspacing
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -161,7 +162,7 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     return nothing
 end
 
-function test_xnode_ynode_znode_are_correct(FT)
+function test_regular_rectilinear_xnode_ynode_znode_and_spacings_are_correct(FT)
     N = 3
     grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                   topology=(Periodic, Periodic, Bounded))
@@ -185,6 +186,18 @@ function test_xnode_ynode_znode_are_correct(FT)
     @test xspacings(grid, Face()) ≈ FT(π/N)
     @test yspacings(grid, Face()) ≈ FT(π/N)
     @test zspacings(grid, Face()) ≈ FT(π/N)
+
+    @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
+    @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
+    @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+
+    @test xspacing(1, grid, Face()) ≈ FT(π/N)
+    @test yspacing(1, grid, Face()) ≈ FT(π/N)
+    @test zspacing(1, grid, Face()) ≈ FT(π/N)
+
+    @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) == xspacing(1, grid, Face())
+    @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) == yspacing(1, grid, Face())
+    @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) == zspacing(1, grid, Face())
 
     return nothing
 end
@@ -390,6 +403,8 @@ function test_correct_tanh_grid_spacings(FT, Nz)
 
     @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
     @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
+    @test zspacing(2, grid, Face()) == grid.Δzᵃᵃᶠ[2]
+    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == zspacing(2, grid, Face())
 
     @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
 
@@ -659,7 +674,7 @@ end
                 test_regular_rectilinear_ranges_have_correct_length(FT)
                 test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
                 test_regular_rectilinear_grid_properties_are_same_type(FT)
-                test_xnode_ynode_znode_are_correct(FT)
+                test_regular_rectilinear_xnode_ynode_znode_and_spacings_are_correct(FT)
             end
         end
 

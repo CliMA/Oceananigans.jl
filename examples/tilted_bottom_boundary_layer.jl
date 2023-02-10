@@ -59,11 +59,11 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(zspacings(grid, Center())[1:grid.Nz], znodes(grid, Center()),
+lines(zspacings(grid, Center()), znodes(grid, Center()),
       axis = (ylabel = "Depth (m)",
               xlabel = "Vertical spacing (m)"))
 
-scatter!(zspacings(grid, Center())[1:grid.Nz], znodes(grid, Center()))
+scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 
