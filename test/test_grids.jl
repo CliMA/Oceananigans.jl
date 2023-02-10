@@ -338,6 +338,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     S = 3
     zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / N - 1)) / tanh(S)
 
+    # a grid with regular x-spacing, quadratic y-spacing, and tanh-like z-spacing
     grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=collect(0:N), y=collect(0:N).^2, z=zᵃᵃᶠ)
 
     @test all(grid.Δxᶜᵃᵃ .== 1)
