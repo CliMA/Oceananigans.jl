@@ -293,25 +293,25 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 
 
 """
-    xnodes_reshaped(loc, grid; kwargs...)
+    reshaped_xnodes(loc, grid; kwargs...)
 """
-function xnodes_reshaped(grid, loc::CellLocation; kwargs...)
+function reshaped_xnodes(grid, loc::CellLocation; kwargs...)
     x = xnodes(grid, loc; kwargs...)
     return Base.reshape(x, length(x), 1, 1)
 end
 
 """
-    ynodes_reshaped(loc, grid; kwargs...)
+    reshaped_ynodes(loc, grid; kwargs...)
 """
-function ynodes_reshaped(grid, loc::CellLocation; kwargs...)
+function reshaped_ynodes(grid, loc::CellLocation; kwargs...)
     y = ynodes(grid, loc; kwargs...)
     return Base.reshape(y, 1, length(y), 1)
 end
 
 """
-    znodes_reshaped(loc, grid; kwargs...)
+    reshaped_znodes(loc, grid; kwargs...)
 """
-function znodes_reshaped(grid, loc::CellLocation; kwargs...)
+function reshaped_znodes(grid, loc::CellLocation; kwargs...)
     z = znodes(grid, loc; kwargs...)
     return Base.reshape(z, 1, 1, length(z))
 end

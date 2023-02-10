@@ -260,7 +260,7 @@ provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Grids: xnodes_reshaped, ynodes_reshaped
+using Oceananigans.Grids: reshaped_xnodes, reshaped_ynodes
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
@@ -272,8 +272,8 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes_reshaped(grid, Center())[:, :, 1])
-                            .*     cos.(ynodes_reshaped(grid, Face())[:, :, 1])) # xy slice output
+h(model) = model.clock.time .* (   sin.(reshaped_xnodes(grid, Center())[:, :, 1])
+                            .*     cos.(reshaped_ynodes(grid, Face())[:, :, 1])) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
