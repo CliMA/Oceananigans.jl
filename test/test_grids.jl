@@ -347,7 +347,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
      yᵃᶠᵃ(j) = (j-1)^2
      yᵃᶜᵃ(j) = (j^2 + (j-1)^2) / 2
     Δyᵃᶠᵃ(j) = yᵃᶜᵃ(j) - yᵃᶜᵃ(j-1)
-    Δyᵃᶜᵃ(j) = j^2 - (j-1)^2
+    Δyᵃᶜᵃ(j) = yᵃᶠᵃ(j+1) - yᵃᶠᵃ(j)
 
     @test all(isapprox.(  grid.yᵃᶠᵃ[1:N+1],  yᵃᶠᵃ.(1:N+1) ))
     @test all(isapprox.(  grid.yᵃᶜᵃ[1:N],    yᵃᶜᵃ.(1:N)   ))
