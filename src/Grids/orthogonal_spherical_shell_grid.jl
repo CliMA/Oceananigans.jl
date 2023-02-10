@@ -846,23 +846,23 @@ const OSSG = OrthogonalSphericalShellGrid
 ##### Grid spacings
 #####
 
-@inline xspacings(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
-    view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
-    view(grid.Δxᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xspacings(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
-    view(grid.Δxᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline xspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
     view(grid.Δxᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::OSSG, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
+    view(grid.Δxᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
+    view(grid.Δxᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xspacings(grid::OSSG, LX::Face,   LY::Face;   with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
+    view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-@inline yspacings(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.Δyᶠᶠᵃ :
-    view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
-    view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
-    view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline yspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δyᶜᶜᵃ :
     view(grid.Δyᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::OSSG, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
+    view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
+    view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::OSSG, LX::Face,   LY::Face;   with_halos=false) = with_halos ? grid.Δyᶠᶠᵃ :
+    view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
 zspacings(grid::OrthogonalSphericalShellGrid) = grid.Δz
 zspacings(grid::OrthogonalSphericalShellGrid, LZ::CellLocation; with_halos=false) = zspacings(grid)
