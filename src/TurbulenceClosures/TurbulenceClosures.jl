@@ -24,6 +24,8 @@ export
     DiffusivityFields,
     calculate_diffusivities!,
 
+    viscosity, diffusivity,
+
     ∇_dot_qᶜ,
     ∂ⱼ_τ₁ⱼ,
     ∂ⱼ_τ₂ⱼ,
