@@ -369,6 +369,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     # the user-supplied zᵃᵃᶠ
     @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
 
+    return nothing
 end
 
 #####
