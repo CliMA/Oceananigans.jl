@@ -334,53 +334,40 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     return nothing
 end
 
-function test_correct_constant_grid_spacings(FT, Nz)
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz))
+function test_rectilinear_grid_correct_spacings(FT, N)
+    S = 3
+    zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / N - 1)) / tanh(S)
 
-    @test all(grid.Δzᵃᵃᶜ .== 1)
-    @test all(grid.Δzᵃᵃᶠ .== 1)
+    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=collect(0:N), y=collect(0:N).^2, z=zᵃᵃᶠ)
 
-    return nothing
-end
+    @test all(grid.Δxᶜᵃᵃ .== 1)
+    @test all(grid.Δxᶠᵃᵃ .== 1)
 
-function test_correct_quadratic_grid_spacings(FT, Nz)
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+     yᵃᶠᵃ(j) = (j-1)^2
+     yᵃᶜᵃ(j) = (j^2 + (j-1)^2) / 2
+    Δyᵃᶠᵃ(j) = yᵃᶜᵃ(j) - yᵃᶜᵃ(j-1)
+    Δyᵃᶜᵃ(j) = j^2 - (j-1)^2
 
-     zᵃᵃᶠ(k) = (k-1)^2
-     zᵃᵃᶜ(k) = (k^2 + (k-1)^2) / 2
-    Δzᵃᵃᶠ(k) = k^2 - (k-1)^2
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k) - zᵃᵃᶜ(k-1)
-
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+    @test all(isapprox.(  grid.yᵃᶠᵃ[1:N+1],  yᵃᶠᵃ.(1:N+1) ))
+    @test all(isapprox.(  grid.yᵃᶜᵃ[1:N],    yᵃᶜᵃ.(1:N)   ))
+    @test all(isapprox.( grid.Δyᵃᶜᵃ[1:N],   Δyᵃᶜᵃ.(1:N)   ))
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
+    @test all(isapprox.( grid.Δyᵃᶠᵃ[2:N], Δyᵃᶠᵃ.(2:N) ))
 
-    return nothing
-end
+     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k)   + zᵃᵃᶠ(k+1)) / 2
+    Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
+    Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-function test_correct_tanh_grid_spacings(FT, Nz)
-    S = 3  # Stretching factor
-    zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
-
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
-
-     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k) + zᵃᵃᶠ(k+1)) / 2
-    Δzᵃᵃᶠ(k) = zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
-
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
 
-   return nothing
 end
 
 #####
@@ -708,10 +695,8 @@ end
 
             @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
-                for Nz in [16, 17]
-                    test_correct_constant_grid_spacings(FT, Nz)
-                    test_correct_quadratic_grid_spacings(FT, Nz)
-                    test_correct_tanh_grid_spacings(FT, Nz)
+                for N in [16, 17]
+                    test_rectilinear_grid_correct_spacings(FT, N)
                 end
             end
 
