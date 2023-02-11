@@ -518,7 +518,7 @@ function test_netcdf_spatial_average(arch)
     set!(model, c=1)
 
     Δt = 1/64 # Nice floating-point number
-    simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=10)
 
     ∫c_dx = Field(Average(model.tracers.c, dims=(1)))
     ∫∫c_dxdy = Field(Average(model.tracers.c, dims=(1, 2)))
@@ -530,7 +530,7 @@ function test_netcdf_spatial_average(arch)
                                                               array_type = Array{Float64},
                                                               verbose = true,
                                                               filename = volume_avg_nc_filepath,
-                                                              schedule = TimeInterval(10Δt))
+                                                              schedule = IterationInterval(2))
     run!(simulation)
 
     ds = NCDataset(volume_avg_nc_filepath)
