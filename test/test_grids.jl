@@ -519,8 +519,8 @@ end
 
 function test_basic_lat_lon_general_grid(FT)
 
-    (Nλ, Nφ, Nz) = size = (24, 16, 16)
-    (Hλ, Hφ, Hz) = halo = ( 1,  1,  1)
+    (Nλ, Nφ, Nz) = grid_size = (24, 16, 16)
+    (Hλ, Hφ, Hz) = halo      = ( 1,  1,  1)
 
     lat = (-80,   80)
     lon = (-180, 180)
@@ -531,7 +531,7 @@ function test_basic_lat_lon_general_grid(FT)
 
     (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁
     
-    grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+    grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
     @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
 
@@ -552,7 +552,7 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacings(grid_reg, Face(),   Center(), Face()) == zspacings(grid_reg, Face())
 
     @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == xspacing(2, grid_reg, Center(), Center())
-    @test yspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == yspacing(2, grid_reg, Center(), Center())
+    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == yspacing(2, grid_reg, Center(), Face())
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == zspacing(3, grid_reg, Center())
 
     @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
@@ -564,12 +564,12 @@ function test_basic_lat_lon_general_grid(FT)
     @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
 
     Δλ = grid_reg.Δλᶠᵃᵃ
-    λₛ = (-grid.Lx/2):Δλ:(grid.Lx/2)
+    λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
 
     Δz = grid_reg.Δzᵃᵃᶜ
     zₛ = -Lz:Δz:0
 
-    grid_str = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
+    grid_str = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
 
     @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -602,10 +602,10 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacings(grid_str, Center(), with_halos=true) == grid_str.Δzᵃᵃᶜ
     @test zspacings(grid_str, Face(),   with_halos=true) == grid_str.Δzᵃᵃᶠ
 
-    @test xspacings(grid_str, Center(), Center()) == grid_str.Δxᶜᶜᵃ[1:grid_str.Nx, 1:grid_str.Ny+1]
+    @test xspacings(grid_str, Center(), Center()) == grid_str.Δxᶜᶜᵃ[1:grid_str.Nx, 1:grid_str.Ny]
     @test xspacings(grid_str, Center(), Face())   == grid_str.Δxᶜᶠᵃ[1:grid_str.Nx, 1:grid_str.Ny+1]
     @test zspacings(grid_str, Center()) == grid_str.Δzᵃᵃᶜ[1:grid_str.Nz]
-    @test zspacings(grid_str, Face())   == grid_str.Δzᵃᵃᶠ[1:grid_str.Nz]
+    @test zspacings(grid_str, Face())   == grid_str.Δzᵃᵃᶠ[1:grid_str.Nz+1]
 
     @test zspacings(grid_str, Face(), Face(),   Center()) == zspacings(grid_str, Center())
     @test zspacings(grid_str, Face(),   Center(), Face()) == zspacings(grid_str, Face())
