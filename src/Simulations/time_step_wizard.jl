@@ -30,12 +30,12 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                    cell_advection_timescale = cell_advection_timescale,
                    cell_diffusion_timescale = infinite_diffusion_timescale)
 
-Callback for adapting simulation time-steps `Δt` to maintain the advective
-Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
-`max_Δt`, `min_Δt`, and satisfying `max_change` and `min_change` criteria
-so `Δt` is not adapted "too quickly".
+Callback for adapting simulation to maintain the advective Courant-Freidrichs-Lewy (CFL)
+number to `cfl`, the `diffusive_cfl`, while also maintaining `max_Δt`, `min_Δt`, and
+satisfying `max_change` and `min_change` criteria so that the simulation's timestep
+`simulation.Δt` is not adapted "too quickly".
 
-For more information on the `cfl` number, see its [wikipedia entry]
+For more information on the CFL number, see its [wikipedia entry]
 (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 
 Example
@@ -51,8 +51,10 @@ julia> wizard = TimeStepWizard(cfl=0.2)
 julia> simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
 ```
 
-Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be updated every 4 iterations.
-Note that the name `:wizard` is unimportant.
+Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be updated every
+4 iterations.
+
+(Note that the name `:wizard` is unimportant.)
 """
 function TimeStepWizard(FT=Float64;
                         cfl = 0.2,
