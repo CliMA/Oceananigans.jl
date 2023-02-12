@@ -396,7 +396,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test zspacing(2, grid, Face()) == grid.Δzᵃᵃᶠ[2]
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == zspacing(2, grid, Face())
 
-    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:Nz])
+    @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
