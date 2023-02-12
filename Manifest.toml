@@ -11,10 +11,10 @@ uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
 version = "0.1.4"
 
 [[deps.AMGX_jll]]
-deps = ["Artifacts", "CUDA_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "c846a105d1bfabc86f6302d747cc48acbc7bb489"
+deps = ["Artifacts", "CUDA_Runtime_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
+git-tree-sha1 = "9a9e64c4d2acee7b89286985eaa7489ac3e97328"
 uuid = "656d14af-56e4-5275-8e68-4e861d7b5043"
-version = "2.1.0+0"
+version = "2.3.0+1"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -91,11 +91,17 @@ git-tree-sha1 = "1680366a69e9c95744ef23a239e6cfe61cf2e1ca"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.4.7"
 
-[[deps.CUDA_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "108e3ee33d8614b96c2ea43a621b0e8396d8a273"
-uuid = "e9e359dc-d701-5aa8-82ae-09bbf812ea83"
-version = "10.0.130+3"
+[[deps.CUDA_Driver_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
+git-tree-sha1 = "ac201f51188823fef7f949add01a405d8ea44cc0"
+uuid = "4ee394cb-3365-5eb0-8335-949819d2adfc"
+version = "0.3.0+1"
+
+[[deps.CUDA_Runtime_jll]]
+deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
+git-tree-sha1 = "b70a73f752d149d5aa757e5fb8fb3a455d87936b"
+uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+version = "0.3.1+0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -312,9 +318,9 @@ version = "0.8.6"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "b8ae281340f0d3e973aae7b96fb7502b0119b376"
+git-tree-sha1 = "df115c31f5c163697eede495918d8e85045c8f04"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "4.15.0"
+version = "4.16.0"
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
@@ -471,9 +477,9 @@ version = "4.1.3+3"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "f6e9dba33f9f2c44e08a020b0caf6903be540004"
+git-tree-sha1 = "9ff31d101d987eb9d66bd8b176ac7c277beccd09"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "1.1.19+0"
+version = "1.1.20+0"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -488,9 +494,9 @@ version = "1.4.1"
 
 [[deps.Parsers]]
 deps = ["Dates", "SnoopPrecompile"]
-git-tree-sha1 = "151d91d63d8d6c1a5789ecb7de51547e00480f1b"
+git-tree-sha1 = "946b56b2135c6c10bbb93efad8a78b699b6383ab"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.5.4"
+version = "2.5.6"
 
 [[deps.PencilArrays]]
 deps = ["Adapt", "ArrayInterface", "JSON3", "LinearAlgebra", "MPI", "OffsetArrays", "Random", "Reexport", "Requires", "StaticArrays", "StaticPermutations", "Strided", "TimerOutputs", "VersionParsing"]
@@ -619,9 +625,9 @@ version = "0.8.3"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "StaticArraysCore", "Statistics"]
-git-tree-sha1 = "6954a456979f23d05085727adb17c4551c19ecd1"
+git-tree-sha1 = "cee507162ecbb677450f20058ca83bd559b6b752"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.5.12"
+version = "1.5.14"
 
 [[deps.StaticArraysCore]]
 git-tree-sha1 = "6b7ba252635a5eff6a0b0664a41ee140a1c9e72a"
