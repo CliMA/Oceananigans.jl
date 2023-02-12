@@ -652,7 +652,7 @@ end
 ##### Conformal cubed sphere face grid
 #####
 
-function test_cubed_sphere_face_array_size(FT)
+function test_cubed_sphere_face_array_sizes_and_spacings(FT)
     grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -676,6 +676,19 @@ function test_cubed_sphere_face_array_size(FT)
     @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
     @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
     @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test xspacings(grid, Center(), Center(), Face(), with_halos=true) == xspacings(grid, Center(), Center(), with_halos=true) == grid.Δxᶜᶜᵃ
+    @test xspacings(grid, Center(), Face(),   Face(), with_halos=true) == xspacings(grid, Center(), Face(),   with_halos=true) == grid.Δxᶜᶠᵃ
+    @test xspacings(grid, Face(),   Center(), Face())                  == xspacings(grid, Face(),   Center())                  == grid.Δxᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
+    @test xspacings(grid, Face(),   Face(),   Face())                  == xspacings(grid, Face(),   Face())                    == grid.Δxᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+
+    @test yspacings(grid, Center(), Center(), Face(), with_halos=true) == yspacings(grid, Center(), Center(), with_halos=true) == grid.Δyᶜᶜᵃ
+    @test yspacings(grid, Center(), Face(),   Face(), with_halos=true) == yspacings(grid, Center(), Face(),   with_halos=true) == grid.Δyᶜᶠᵃ
+    @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
+    @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+
+    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == zspacings(grid) == grid.Δz
+    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == zspacings(grid) == grid.Δz
 
     return nothing
 end
@@ -848,7 +861,7 @@ end
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
-            test_cubed_sphere_face_array_size(Float64)
+            test_cubed_sphere_face_array_sizes_and_spacings(Float64)
         end
 
         # Testing show function
