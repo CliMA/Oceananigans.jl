@@ -4,12 +4,12 @@ using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 
 """
-    struct WetCellEnstrophyConservingScheme
+    struct ActiveCellEnstrophyConservingScheme
 
-A parameter object for an enstrophy-conserving Coriolis scheme that excludes dry edges (indices for which `peripheral_node == true`)
-from the velocity interpolation.
+A parameter object for an enstrophy-conserving Coriolis scheme that excludes dry (land) edges
+(indices for which `peripheral_node == true`) from the velocity interpolation.
 """
-struct WetCellEnstrophyConservingScheme end
+struct ActiveCellEnstrophyConservingScheme end
 
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
