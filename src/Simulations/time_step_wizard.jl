@@ -20,7 +20,15 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                               ", min_Δt=",        prettysummary(wizard.min_Δt), ")")
 
 """
-    TimeStepWizard(cfl=0.2, diffusive_cfl=Inf, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
+    TimeStepWizard([FT=Float64;]
+                   cfl = 0.2,
+                   diffusive_cfl = Inf,
+                   max_change = 1.1,
+                   min_change = 0.5,
+                   max_Δt = Inf,
+                   min_Δt = 0.0,
+                   cell_advection_timescale = cell_advection_timescale,
+                   cell_diffusion_timescale = infinite_diffusion_timescale)
 
 Callback for adapting simulation time-steps `Δt` to maintain the advective
 Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
@@ -46,14 +54,15 @@ julia> simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
 Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be updated every 4 iterations.
 Note that the name `:wizard` is unimportant.
 """
-function TimeStepWizard(FT=Float64; cfl = 0.2,
-                                    diffusive_cfl = Inf,
-                                    max_change = 1.1,
-                                    min_change = 0.5,
-                                    max_Δt = Inf,
-                                    min_Δt = 0.0,
-                                    cell_advection_timescale = cell_advection_timescale,
-                                    cell_diffusion_timescale = infinite_diffusion_timescale)
+function TimeStepWizard(FT=Float64;
+                        cfl = 0.2,
+                        diffusive_cfl = Inf,
+                        max_change = 1.1,
+                        min_change = 0.5,
+                        max_Δt = Inf,
+                        min_Δt = 0.0,
+                        cell_advection_timescale = cell_advection_timescale,
+                        cell_diffusion_timescale = infinite_diffusion_timescale)
 
     # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
     if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
