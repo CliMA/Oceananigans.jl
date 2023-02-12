@@ -390,8 +390,8 @@ for arch in archs
                 end
 
                 ϵ(x, y, z) = 2rand() - 1
-                u, v, w = model.velocities
                 set!(model, u=ϵ, v=ϵ)
+                u, v, w = model.velocities
                 ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 
                 ζ = Field(ζ_op) # identical to `VerticalVorticityField`
@@ -400,15 +400,15 @@ for arch in archs
 
                 ζxy = Field(ζ_op, indices=(:, :, 1))
                 compute!(ζxy)
-                @test ζxy == view(ζ, :, :, 1)
+                @test all(interior(ζxy, :, :, 1) .== interior(ζ, :, :, 1))
 
                 ζxz = Field(ζ_op, indices=(:, 1, :))
                 compute!(ζxz)
-                @test ζxz == view(ζ, :, 1, :)
+                @test all(interior(ζxz, :, 1, :) .== interior(ζ, :, 1, :))
 
                 ζyz = Field(ζ_op, indices=(1, :, :))
                 compute!(ζyz)
-                @test ζyz == view(ζ, 1, :, :)
+                @test all(interior(ζyz, 1, :, :) .== interior(ζ, 1, :, :))
             end
 
             @testset "Operations with computed Fields [$A, $G]" begin
@@ -417,7 +417,7 @@ for arch in archs
             end
 
             @testset "Horizontal averages of operations [$A, $G]" begin
-                @info "      Testing horizontal averges..."
+                @info "      Testing horizontal averages..."
                 @test horizontal_average_of_plus(model)
                 @test horizontal_average_of_minus(model)
                 @test horizontal_average_of_times(model)
@@ -427,12 +427,12 @@ for arch in archs
             end
 
             @testset "Zonal averages of operations [$A, $G]" begin
-                @info "      Testing zonal averges..."
+                @info "      Testing zonal averages..."
                 @test zonal_average_of_plus(model)
             end
 
             @testset "Volume averages of operations [$A, $G]" begin
-                @info "      Testing volume averges..."
+                @info "      Testing volume averages..."
                 @test volume_average_of_times(model)
             end
 

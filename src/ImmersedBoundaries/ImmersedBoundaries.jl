@@ -241,7 +241,6 @@ all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
 @inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
 
-
 function on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)
     immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
