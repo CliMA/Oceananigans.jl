@@ -1,5 +1,5 @@
-using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid
 using Oceananigans.Grids: XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+using Oceananigans.Operators: XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.Grids: xnodes, ynodes, znodes, topology
 
 # GPU-compatile middle point calculation
@@ -62,20 +62,33 @@ end
 @inline fractional_y_index(y::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[2], grid.Ny), y, ynodes(Face, grid)) - 1
 @inline fractional_z_index(z::FT, ::Face, grid) where FT = fractional_index(length(Face, topology(grid)[3], grid.Nz), z, znodes(Face, grid)) - 1
 
-@inline fractional_x_index(x::FT, ::Face,   grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
-@inline fractional_x_index(x::FT, ::Center, grid::XRegRectilinearGrid) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)
-@inline fractional_y_index(y::FT, ::Face,   grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ)
-@inline fractional_y_index(y::FT, ::Center, grid::YRegRectilinearGrid) where FT = @inbounds FT((y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ)
+const NotFlatTopologies = Union{Periodic, Bounded}
+
+const XRegNotFlat = RectilinearGrid{<:Any, <:NotFlatTopologies, <:Any, <:Any, <:Number}
+const YRegNotFlat = RectilinearGrid{<:Any, <:Any, <:NotFlatTopologies, <:Any, <:Any, <:Number}
+const ZRegNotFlat = RectilinearGrid{<:Any, <:Any, <:Any, <:NotFlatTopologies, <:Any, <:Any, <:Number}
+
+@inline fractional_x_index(x::FT, ::Face,   grid::XRegNotFlat) where FT = @inbounds FT((x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ)
+@inline fractional_x_index(x::FT, ::Center, grid::XRegNotFlat) where FT = @inbounds FT((x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ)
+@inline fractional_y_index(y::FT, ::Face,   grid::YRegNotFlat) where FT = @inbounds FT((y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ)
+@inline fractional_y_index(y::FT, ::Center, grid::YRegNotFlat) where FT = @inbounds FT((y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ)
 
 @inline fractional_x_index(λ::FT, ::Face,   grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶠᵃᵃ[1]) / grid.Δλᶠᵃᵃ)
 @inline fractional_x_index(λ::FT, ::Center, grid::XRegLatLonGrid) where FT = @inbounds FT((λ - grid.λᶜᵃᵃ[1]) / grid.Δλᶜᵃᵃ)
 @inline fractional_y_index(φ::FT, ::Face,   grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶠᵃ[1]) / grid.Δφᵃᶠᵃ)
 @inline fractional_y_index(φ::FT, ::Center, grid::YRegLatLonGrid) where FT = @inbounds FT((φ - grid.φᵃᶜᵃ[1]) / grid.Δφᵃᶜᵃ)
 
-const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
+const ZReg = Union{ZRegNotFlat, ZRegLatLonGrid}
 
 @inline fractional_z_index(z, ::Face,   grid::ZReg) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
 @inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
+
+@inline fractional_x_index(x, ::Center, grid::XFlatGrid) = zero(grid)
+@inline fractional_x_index(x, ::Face, grid::XFlatGrid) = zero(grid)
+@inline fractional_y_index(y, ::Center, grid::YFlatGrid) = zero(grid)
+@inline fractional_y_index(y, ::Face, grid::YFlatGrid) = zero(grid)
+@inline fractional_z_index(z, ::Center, grid::ZFlatGrid) = zero(grid)
+@inline fractional_z_index(z, ::Face, grid::ZFlatGrid) = zero(grid)
 
 """
     fractional_indices(x, y, z, loc, grid)
