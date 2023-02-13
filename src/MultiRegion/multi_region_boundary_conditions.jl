@@ -63,18 +63,17 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
     arch  = architecture(mrg)
-    march = MultiRegionObject(Tuple(arch for i in 1:length(mrg.partition)), mrg.devices)
-
     halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)
 
     neighbors = Reference(c.regional_objects)
     buff      = Reference(buffers.regional_objects)
-    
-    barrier = construct_regionally(device_event, march)
 
-    apply_regionally!(fill_halo_event!, 1, halo_tuple, c, indices, loc, arch, barrier, mrg, neighbors, buff, args...; kwargs...)
-    apply_regionally!(fill_halo_event!, 2, halo_tuple, c, indices, loc, arch, event1,  mrg, neighbors, buff, args...; kwargs...)
-    apply_regionally!(fill_halo_event!, 3, halo_tuple, c, indices, loc, arch, event2,  mrg, neighbors, buff, args...; kwargs...)
+    for task = 1:3
+        barrier = device_event(arch)
+        apply_regionally!(fill_halo_event!, task, halo_tuple, 
+                          c, indices, loc, arch, barrier, mrg, neighbors, buff, 
+                          args...; kwargs...)
+    end
 
     return nothing
 end
