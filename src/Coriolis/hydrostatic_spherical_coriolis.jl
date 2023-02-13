@@ -57,7 +57,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
 
 const CoriolisWetCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetCellEnstrophyConservingScheme}
 
-@inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
+@inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1 - f(i, j, k, grid, args...)
 
 @inline function mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
     neighbouring_wet_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
