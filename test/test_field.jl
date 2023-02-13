@@ -109,7 +109,7 @@ function run_field_interpolation_tests(grid)
     f(x, y, z) = exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z
 
     # Maximum expected rounding error is the unit in last place of the maximum value
-    # of f over the domain of the grid.
+    # of f over the domain of the grid. 
     ε_max = f.(nodes((Face, Face, Face), grid, reshape=true)...) |> maximum |> eps
 
     set!(u, f)
@@ -358,7 +358,7 @@ end
             grids = [reg_grid, irreg_grid]
 
             for grid in grids
-                run_field_interpolation_tests(FT, arch, grid)
+                run_field_interpolation_tests(grid)
             end
         end
     end
