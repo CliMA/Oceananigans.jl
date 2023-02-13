@@ -12,9 +12,7 @@ If `callbacks` are provided (in an array), they are called in the end.
 function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
-
-    wait(device(model.architecture), MultiEvent(masking_events))
+    foreach(mask_immersed_field!, model.solution)
 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
@@ -27,8 +25,11 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
 
     compute_velocities!(model.velocities, formulation(model))
 
-    [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
-
+    foreach(callbacks) do callback
+        if isa(callback.callsite, UpdateStateCallsite
+            callback(model)
+        end
+    end
     return nothing
 end
 

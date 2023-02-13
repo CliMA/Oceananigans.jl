@@ -152,18 +152,12 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 end
 
 function wait_velocity_event(arch, prognostic_field_events)
-    velocity_events = prognostic_field_events[1]
-
-    # Wait for predictor velocity update step to complete.
-    wait(device(arch), MultiEvent(velocity_events))
-
-    return MultiEvent(prognostic_field_events[2])
+    return nothing
 end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
-    masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
-    wait(device(arch), MultiEvent(masking_events))
+    foreach(mask_immersed_field!, velocities)
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)

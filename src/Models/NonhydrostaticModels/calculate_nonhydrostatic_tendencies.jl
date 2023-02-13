@@ -40,7 +40,7 @@ function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and calculate current source term. """
-function calculate_interior_tendency_contributions!(model; dependencies = device_event(model))
+function calculate_interior_tendency_contributions!(model)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -81,19 +81,17 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
     
     only_active_cells = use_only_active_cells(grid)
 
-    Gu_event = launch!(arch, grid, :xyz, calculate_Gu!, 
-                       tendencies.u, u_kernel_args...;
-                       dependencies, only_active_cells)
+    launch!(arch, grid, :xyz, calculate_Gu!, 
+            tendencies.u, u_kernel_args...;
+            only_active_cells)
 
-    Gv_event = launch!(arch, grid, :xyz, calculate_Gv!, 
-                       tendencies.v, v_kernel_args...;
-                       dependencies, only_active_cells)
+    launch!(arch, grid, :xyz, calculate_Gv!, 
+            tendencies.v, v_kernel_args...;
+            only_active_cells)
 
-    Gw_event = launch!(arch, grid, :xyz, calculate_Gw!, 
-                       tendencies.w, w_kernel_args...;
-                       dependencies, only_active_cells)
-
-    events = [Gu_event, Gv_event, Gw_event]
+    launch!(arch, grid, :xyz, calculate_Gw!, 
+            tendencies.w, w_kernel_args...;
+            only_active_cells)
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, background_fields, velocities, tracers, auxiliary_fields, diffusivities)
@@ -103,18 +101,15 @@ function calculate_interior_tendency_contributions!(model; dependencies = device
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
 
-        Gc_event = launch!(arch, grid, :xyz, calculate_Gc!,
-                           c_tendency, grid, Val(tracer_index),
-                           start_tracer_kernel_args..., 
-                           c_immersed_bc,
-                           end_tracer_kernel_args...,
-                           forcing, clock;
-                           dependencies, only_active_cells)
+        launch!(arch, grid, :xyz, calculate_Gc!,
+                c_tendency, grid, Val(tracer_index),
+                start_tracer_kernel_args..., 
+                c_immersed_bc,
+                end_tracer_kernel_args...,
+                forcing, clock;
+                only_active_cells)
 
-        push!(events, Gc_event)
     end
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -181,16 +176,11 @@ end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
-
-    barrier = device_event(arch)
-
     fields = merge(velocities, tracers)
 
-    x_events = Tuple(apply_x_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    y_events = Tuple(apply_y_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
-    z_events = Tuple(apply_z_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
+    foreach(i->apply_x_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields), 1:length(fields))
+    foreach(i->apply_y_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields), 1:length(fields))
+    foreach(i->apply_z_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields), 1:length(fields))
                          
-    wait(device(arch), MultiEvent(tuple(x_events..., y_events..., z_events...)))
-
     return nothing
 end

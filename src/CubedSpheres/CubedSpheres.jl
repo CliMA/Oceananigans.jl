@@ -188,11 +188,10 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
     compute_at!(comp.operand, time)
 
     arch = architecture(comp)
-    events = Tuple(launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
-                   for c in faces(comp))
-
-    wait(device(arch), MultiEvent(events))
-
+    foreach(faces(comp)) do c
+        launch!(arch, c.grid, size(c), _compute!, c.data, c.operand, c.indices)
+    end
+    
     fill_halo_regions!(comp)
 
     return comp

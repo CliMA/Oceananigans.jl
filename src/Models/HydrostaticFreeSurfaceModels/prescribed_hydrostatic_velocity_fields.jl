@@ -75,8 +75,8 @@ end
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 
-ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
-ab2_step_free_surface!(::Nothing, model, Δt, χ, prognostic_field_events) = MultiEvent(flatten_tuple(prognostic_field_events))
+ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
+ab2_step_free_surface!(::Nothing, model, Δt, χ, prognostic_field_events) = nothing 
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing

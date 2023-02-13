@@ -8,8 +8,6 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(model.architecture))
-
     substep_solution_kernel! = rk3_substep_solution!(device(model.architecture), workgroup, worksize)
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
@@ -17,22 +15,17 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
     solution_event = substep_solution_kernel!(model.solution,
                                               Δt, γⁿ, ζⁿ,
                                               model.timestepper.Gⁿ,
-                                              model.timestepper.G⁻;
-                                              dependencies=barrier)
+                                              model.timestepper.G⁻)
 
-    events = [solution_event]
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
         @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
         @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
 
-        tracer_event = substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻, dependencies=barrier)
-
-        push!(events, tracer_event)
+        substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end

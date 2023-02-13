@@ -73,8 +73,7 @@ end
 
 function compute_field!(comp)
     arch = architecture(comp)
-    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
-    wait(device(arch), event)
+    launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
 end
 
 """Compute an `operand` and store in `data`."""

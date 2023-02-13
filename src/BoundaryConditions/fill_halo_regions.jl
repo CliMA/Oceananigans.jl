@@ -1,6 +1,5 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils
-using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -39,14 +38,13 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     halo_tuple = permute_boundary_conditions(boundary_conditions)
    
     for task = 1:3
-        barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
@@ -55,8 +53,8 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    event  = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-    wait(device(arch), event)
+    fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, args...; kwargs...)
+    return
 end
 
 function permute_boundary_conditions(boundary_conditions)

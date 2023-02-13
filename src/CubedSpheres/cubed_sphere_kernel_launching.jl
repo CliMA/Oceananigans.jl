@@ -1,5 +1,3 @@
-using KernelAbstractions: Event, MultiEvent
-
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: device
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
@@ -34,17 +32,10 @@ function get_face(op::KernelFunctionOperation, face_index)
 end
 
 function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
-    events = []
-
     for (face_index, face_grid) in enumerate(grid.faces)
         face_args = Tuple(get_face(arg, face_index) for arg in args)
-        event = launch!(arch, face_grid, dims, kernel!, face_args...; kwargs...)
-        push!(events, event)
+        launch!(arch, face_grid, dims, kernel!, face_args...; kwargs...)
     end
-
-    events = filter(e -> e isa Event, events)
-
-    return MultiEvent(Tuple(events))
 end
 
 @inline launch!(arch, grid::ConformalCubedSphereGrid, ::Val{dims}, args...; kwargs...) where dims =

@@ -12,25 +12,14 @@ end
 
 """ Store previous source terms before updating them. """
 function store_tendencies!(model)
-
-    barrier = device_event(model.architecture)
-
     model_fields = prognostic_fields(model)
 
-    events = []
-
     for field_name in keys(model_fields)
-
-        field_event = launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
-                              model.timestepper.G⁻[field_name],
-                              model.grid,
-                              model.timestepper.Gⁿ[field_name],
-                              dependencies = barrier)
-
-        push!(events, field_event)
+        launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
+                model.timestepper.G⁻[field_name],
+                model.grid,
+                model.timestepper.Gⁿ[field_name])
     end
-
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end

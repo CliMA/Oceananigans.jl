@@ -4,7 +4,7 @@ export NonhydrostaticModel
 
 using DocStringExtensions
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!

@@ -62,13 +62,7 @@ function explicit_ab2_step_free_surface!(free_surface, model, Δt, χ, prognosti
     
     free_surface_event = launch!(model.architecture, model.grid, :xy,
                                 _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
-                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3),
-                                dependencies = device_event(model.architecture))
-    
-    return MultiEvent(tuple(prognostic_field_events[1]..., prognostic_field_events[2]..., free_surface_event))
-    
-    # wait(device(model.architecture), free_surface_event)
-    # return nothing
+                                model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 end
 
 #####

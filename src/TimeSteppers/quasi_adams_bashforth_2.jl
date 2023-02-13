@@ -120,16 +120,12 @@ function ab2_step!(model, Δt, χ)
     barrier = device_event(arch)
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
     model_fields = prognostic_fields(model)
-    events = []
 
     for (i, field) in enumerate(model_fields)
 
-        field_event = step_field_kernel!(field, Δt, χ,
-                                         model.timestepper.Gⁿ[i],
-                                         model.timestepper.G⁻[i],
-                                         dependencies = device_event(arch))
-
-        push!(events, field_event)
+        step_field_kernel!(field, Δt, χ,
+                           model.timestepper.Gⁿ[i],
+                           model.timestepper.G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -140,11 +136,8 @@ function ab2_step!(model, Δt, χ)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
-                       Δt,
-                       dependencies = field_event)
+                       Δt)
     end
-
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end

@@ -143,9 +143,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     arch = model.architecture
     grid = model.grid
 
-    barrier = device_event(model)
-
-    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
+    calculate_hydrostatic_momentum_tendencies!(model, model.velocities)
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
@@ -162,31 +160,27 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                                                                                          model.closure,
                                                                                          model.diffusivity_fields)
 
-        Gc_event = launch!(arch, grid, :xyz,
-                           calculate_hydrostatic_free_surface_Gc!,
-                           c_tendency,
-                           c_kernel_function,
-                           grid,
-                           Val(tracer_index),
-                           c_advection,
-                           closure,
-                           c_immersed_bc,
-                           model.buoyancy,
-                           model.velocities,
-                           model.free_surface,
-                           model.tracers,
-                           top_tracer_bcs,
-                           diffusivity_fields,
-                           model.auxiliary_fields,
-                           c_forcing,
-                           model.clock;
-                           dependencies = barrier, 
-                           only_active_cells)
-
-        push!(events, Gc_event)
+        launch!(arch, grid, :xyz,
+                calculate_hydrostatic_free_surface_Gc!,
+                c_tendency,
+                c_kernel_function,
+                grid,
+                Val(tracer_index),
+                c_advection,
+                closure,
+                c_immersed_bc,
+                model.buoyancy,
+                model.velocities,
+                model.free_surface,
+                model.tracers,
+                top_tracer_bcs,
+                diffusivity_fields,
+                model.auxiliary_fields,
+                c_forcing,
+                model.clock;
+                only_active_cells)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end
@@ -261,27 +255,18 @@ end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
-
-    barrier = device_event(arch)
-
-    events = []
-
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args...)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, args...)
+    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch,  args...)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, args...)
+        apply_flux_bcs!(Gⁿ[i], tracers[i], arch, args...)
     end
-
-    events = filter(e -> typeof(e) <: Event, events)
-
-    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end

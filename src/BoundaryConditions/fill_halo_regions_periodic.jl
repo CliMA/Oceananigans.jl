@@ -15,22 +15,22 @@ end
 
 @inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
 
-function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, dep, grid, args...; kw...)
+function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
-    event = launch!(arch, grid, yz_size, fill_periodic_west_and_east_halo!, c_parent, offset, grid.Hx, grid.Nx; dependencies=dep, kw...)
-    return event
+    launch!(arch, grid, yz_size, fill_periodic_west_and_east_halo!, c_parent, offset, grid.Hx, grid.Nx; kw...)
+    return
 end
 
-function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, dep, grid, args...; kw...)
+function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xz_size, offset = parent_size_and_offset(c, 1, 3, size, offset)
-    event = launch!(arch, grid, xz_size, fill_periodic_south_and_north_halo!, c_parent, offset, grid.Hy, grid.Ny; dependencies=dep, kw...)
-    return event
+    launch!(arch, grid, xz_size, fill_periodic_south_and_north_halo!, c_parent, offset, grid.Hy, grid.Ny;  kw...)
+    return
 end
 
-function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, dep, grid, args...; kw...)
+function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xy_size, offset = parent_size_and_offset(c, 1, 2, size, offset)
-    event = launch!(arch, grid, xy_size, fill_periodic_bottom_and_top_halo!, c_parent, offset, grid.Hz, grid.Nz; dependencies=dep, kw...)
-    return event
+    launch!(arch, grid, xy_size, fill_periodic_bottom_and_top_halo!, c_parent, offset, grid.Hz, grid.Nz; kw...)
+    return
 end
 
 #####

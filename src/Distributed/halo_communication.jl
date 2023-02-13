@@ -1,4 +1,4 @@
-using KernelAbstractions: @kernel, @index, Event, MultiEvent
+using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
@@ -83,8 +83,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
     length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
 
-    events = filter(e -> e isa Event, events_and_requests)
-    wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
+    # events = filter(e -> e isa Event, events_and_requests)
+    # # wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
     return nothing
 end
