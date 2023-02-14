@@ -78,22 +78,22 @@ end
 
 function reconstruct_size(mrg, p::YPartition)
     Nx = mrg.region_grids[1].Nx
-    Ny = sum([grid.Ny for grid in mrg.region_grids.regions]) 
+    Ny = sum([grid.Ny for grid in mrg.region_grids.regional_objects]) 
     Nz = mrg.region_grids[1].Nz
     return (Nx, Ny, Nz)
 end
 
 function reconstruct_extent(mrg, p::YPartition)
     switch_device!(mrg.devices[1])
-    x = cpu_face_constructor_x(mrg.region_grids.regions[1])
-    z = cpu_face_constructor_z(mrg.region_grids.regions[1])
+    x = cpu_face_constructor_x(mrg.region_grids.regional_objects[1])
+    z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
-    if cpu_face_constructor_y(mrg.region_grids.regions[1]) isa Tuple
-        y = (cpu_face_constructor_y(mrg.region_grids.regions[1])[1], 
-             cpu_face_constructor_y(mrg.region_grids.regions[length(p)])[end])
+    if cpu_face_constructor_y(mrg.region_grids.regional_objects[1]) isa Tuple
+        y = (cpu_face_constructor_y(mrg.region_grids.regional_objects[1])[1], 
+             cpu_face_constructor_y(mrg.region_grids.regional_objects[length(p)])[end])
     else
-        y = [cpu_face_constructor_y(mrg.region_grids.regions[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regions[2:end])
+        y = [cpu_face_constructor_y(mrg.region_grids.regional_objects[1])...]
+        for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
             switch_device!(mrg.devices[idx])
             y = [y..., cpu_face_constructor_y(grid)[2:end]...]
         end
@@ -102,10 +102,10 @@ function reconstruct_extent(mrg, p::YPartition)
 end
 
 function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualYPartition, arch) where {T, N}
-    local_size = size(first(ma.regions))
+    local_size = size(first(ma.regional_objects))
     global_Ny  = local_size[2] * length(p)
     idxs = default_indices(length(local_size))
-    arr_out = zeros(eltype(first(ma.regions)), local_size[1], global_Ny, local_size[3:end]...)
+    arr_out = zeros(eltype(first(ma.regional_objects)), local_size[1], global_Ny, local_size[3:end]...)
     n = local_size[2]
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)

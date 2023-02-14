@@ -504,10 +504,53 @@ function test_netcdf_function_output(arch)
     return nothing
 end
 
+function test_netcdf_spatial_average(arch)
+    topo = (Periodic, Periodic, Periodic)
+    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
+
+    model = NonhydrostaticModel(grid = grid,
+                                timestepper = :RungeKutta3,
+                                tracers = (:c,), 
+                                coriolis = nothing, 
+                                buoyancy = nothing, 
+                                closure = nothing)
+    set!(model, c=1)
+
+    Δt = 1/64 # Nice floating-point number
+    simulation = Simulation(model, Δt=Δt, stop_iteration=10)
+
+    ∫c_dx = Field(Average(model.tracers.c, dims=(1)))
+    ∫∫c_dxdy = Field(Average(model.tracers.c, dims=(1, 2)))
+    ∫∫∫c_dxdydz = Field(Average(model.tracers.c, dims=(1, 2, 3)))
+
+    volume_avg_nc_filepath = "volume_averaged_field_test.nc"
+
+    simulation.output_writers[:averages] = NetCDFOutputWriter(model, (; ∫c_dx, ∫∫c_dxdy, ∫∫∫c_dxdydz),
+                                                              array_type = Array{Float64},
+                                                              verbose = true,
+                                                              filename = volume_avg_nc_filepath,
+                                                              schedule = IterationInterval(2))
+    run!(simulation)
+
+    ds = NCDataset(volume_avg_nc_filepath)
+
+    for (n, t) in enumerate(ds["time"])
+        @test all(ds["∫c_dx"][:,:, n] .≈ 1)
+        @test all(ds["∫∫c_dxdy"][:, n] .≈ 1)
+        @test all(ds["∫∫∫c_dxdydz"][n] .≈ 1)
+    end
+
+    close(ds)
+
+    return nothing
+end
+
+
 function test_netcdf_time_averaging(arch)
     topo = (Periodic, Periodic, Periodic)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
 
     λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
     λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
@@ -795,6 +838,7 @@ for arch in archs
         test_thermal_bubble_netcdf_output_with_halos(arch)
         test_netcdf_function_output(arch)
         test_netcdf_output_alignment(arch)
+        test_netcdf_spatial_average(arch)
         test_netcdf_time_averaging(arch)
         test_netcdf_vertically_stretched_grid_output(arch)
         test_netcdf_regular_lat_lon_grid_output(arch)
