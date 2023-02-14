@@ -1,4 +1,3 @@
-using KernelAbstractions: NoneEvent
 using CUDA: @allowscalar
 
 using Oceananigans.Grids: Flat, Bounded
@@ -36,7 +35,7 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
+calculate_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
 
 # Fast state update and halo filling
 

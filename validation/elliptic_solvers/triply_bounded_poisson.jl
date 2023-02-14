@@ -15,7 +15,7 @@ using BenchmarkTools,
       IterativeSolvers,
       GLMakie
 
-using KernelAbstractions: @kernel, @index, Event
+using KernelAbstractions: @kernel, @index
 using Statistics: mean
 
 import Oceananigans.Solvers: precondition!
@@ -71,8 +71,7 @@ end
 function compute_∇²!(∇²φ, φ, arch, grid)
     fill_halo_regions!(φ)
     child_arch = child_architecture(arch)
-    event = launch!(child_arch, grid, :xyz, ∇²!, ∇²φ, grid, φ, dependencies=Event(device(child_arch)))
-    wait(device(child_arch), event)
+    launch!(child_arch, grid, :xyz, ∇²!, ∇²φ, grid, φ)
     fill_halo_regions!(∇²φ)
 
     return nothing

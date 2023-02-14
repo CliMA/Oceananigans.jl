@@ -1,8 +1,6 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Architectures: AbstractArchitecture
 
-using KernelAbstractions: NoneEvent
-
 import Oceananigans.BoundaryConditions:
     apply_x_bcs!,
     apply_y_bcs!,
@@ -15,9 +13,9 @@ import Oceananigans.BoundaryConditions:
     apply_z_bottom_bc!
 
 # Bunch o' shortcuts for halo communication bcs
-apply_x_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = NoneEvent()
-apply_y_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = NoneEvent()
-apply_z_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = nothing
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = nothing
+apply_z_bcs!(Gc, ::AbstractGrid, c, ::HaloCommunicationBC, ::HaloCommunicationBC, ::AbstractArchitecture, args...) = nothing
 
 @inline apply_x_east_bc!(  Gc, loc, ::HaloCommunicationBC, args...) = nothing
 @inline apply_x_west_bc!(  Gc, loc, ::HaloCommunicationBC, args...) = nothing

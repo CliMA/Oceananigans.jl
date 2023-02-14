@@ -12,10 +12,10 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
     substep_tracer_kernel! = rk3_substep_tracer!(device(model.architecture), workgroup, worksize)
 
 
-    solution_event = substep_solution_kernel!(model.solution,
-                                              Δt, γⁿ, ζⁿ,
-                                              model.timestepper.Gⁿ,
-                                              model.timestepper.G⁻)
+    substep_solution_kernel!(model.solution,
+                             Δt, γⁿ, ζⁿ,
+                             model.timestepper.Gⁿ,
+                             model.timestepper.G⁻)
 
 
     for i in 1:length(model.tracers)

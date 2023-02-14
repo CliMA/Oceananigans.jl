@@ -1,6 +1,5 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Architectures: device_event
 
 using Oceananigans.Utils: launch!
 

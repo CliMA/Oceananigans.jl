@@ -85,9 +85,6 @@ function permute_boundary_conditions(boundary_conditions)
     return (fill_halos!, boundary_conditions_array_left, boundary_conditions_array_right)
 end
 
-@inline validate_event(::Nothing) = NoneEvent()
-@inline validate_event(event)     = event
-
 #####
 ##### Halo filling order
 #####

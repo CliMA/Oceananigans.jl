@@ -1,7 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
-using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
@@ -38,27 +37,26 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-function calculate_free_surface_tendency!(grid, model, dependencies)
+function calculate_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
-    Gη_event = launch!(arch, grid, :xy,
-                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-                       grid,
-                       model.velocities,
-                       model.free_surface,
-                       model.tracers,
-                       model.auxiliary_fields,
-                       model.forcing,
-                       model.clock;
-                       dependencies = dependencies)
+    launch!(arch, grid, :xy,
+            calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+            grid,
+            model.velocities,
+            model.free_surface,
+            model.tracers,
+            model.auxiliary_fields,
+            model.forcing,
+            model.clock)
 
-    return Gη_event
+    return nothing
 end
     
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
+function calculate_hydrostatic_momentum_tendencies!(model, velocities)
 
     grid = model.grid
     arch = architecture(grid)
@@ -86,19 +84,17 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     
     only_active_cells = use_only_active_cells(grid)
 
-    Gu_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
-                       dependencies = dependencies, only_active_cells)
+    launch!(arch, grid, :xyz,
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
+            only_active_cells)
 
-    Gv_event = launch!(arch, grid, :xyz,
-                       calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
-                       dependencies = dependencies, only_active_cells)
+    launch!(arch, grid, :xyz,
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
+            only_active_cells)
 
-    Gη_event = calculate_free_surface_tendency!(grid, model, dependencies)
+    calculate_free_surface_tendency!(grid, model)
 
-    events = [Gu_event, Gv_event, Gη_event]
-
-    return events
+    return nothing
 end
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
@@ -243,12 +239,10 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
-    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
-    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
-    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
-
-    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+function apply_flux_bcs!(Gcⁿ, c, arch, barrier, args...)
+    apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
+    apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
+    apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
 
     return nothing
 end

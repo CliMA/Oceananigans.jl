@@ -17,26 +17,23 @@ pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = n
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
-                                      dependencies = device_event(model.architecture))
+function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
 
-    event = launch!(model.architecture, model.grid, :xyz,
-                    _barotropic_pressure_correction,
-                    model.velocities,
-                    model.grid,
-                    Δt,
-                    model.free_surface.gravitational_acceleration,
-                    model.free_surface.η,
-                    dependencies = dependencies)
-
-    wait(device(model.architecture), event)
+    launch!(model.architecture, model.grid, :xyz,
+            _barotropic_pressure_correction,
+            model.velocities,
+            model.grid,
+            Δt,
+            model.free_surface.gravitational_acceleration,
+            model.free_surface.η,
+            dependencies = dependencies)
 
     return nothing
 end
 
-calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = NoneEvent()
+calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = nothing
 
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
+function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt)
     u, v, _ = model.velocities
     grid = model.grid 
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)

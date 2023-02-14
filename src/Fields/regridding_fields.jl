@@ -73,13 +73,11 @@ function regrid!(a, target_grid, source_grid, b)
 
     if we_can_regrid_in_z(a, target_grid, source_grid, b)
         source_z_faces = znodes(Face, source_grid)
-        event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
-        wait(device(arch), event)
+        launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
         return a
     elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
         source_y_faces = ynodes(Face, source_grid)
-        event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
-        wait(device(arch), event)
+        launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
         return a
     else
         msg = """Regridding

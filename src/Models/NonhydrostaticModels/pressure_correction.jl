@@ -41,15 +41,12 @@ end
 "Update the solution variables (velocities and tracers)."
 function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
 
-    event = launch!(model.architecture, model.grid, :xyz,
-                    _pressure_correct_velocities!,
-                    model.velocities,
-                    model.grid,
-                    Δt,
-                    model.pressures.pNHS,
-                    dependencies = device_event(model.architecture)) 
-
-    wait(device(model.architecture), event)
-
+    launch!(model.architecture, model.grid, :xyz,
+            _pressure_correct_velocities!,
+            model.velocities,
+            model.grid,
+            Δt,
+            model.pressures.pNHS)
+    
     return nothing
 end

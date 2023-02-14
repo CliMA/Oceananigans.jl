@@ -149,9 +149,8 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
     # Advect particles
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-
-    advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(model.velocities))
+    advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt, datatuple(model.velocities))
+    
     return nothing
 end
 

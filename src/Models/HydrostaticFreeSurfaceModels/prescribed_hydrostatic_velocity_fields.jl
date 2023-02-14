@@ -76,7 +76,7 @@ end
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
-ab2_step_free_surface!(::Nothing, model, Δt, χ, prognostic_field_events) = nothing 
+ab2_step_free_surface!(::Nothing, model, Δt, χ) = nothing 
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
@@ -90,7 +90,7 @@ FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFiel
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
 
-apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
+apply_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),

@@ -87,11 +87,8 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfISSD, model)
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    event = launch!(arch, grid, :xyz,
-                    compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
 
     return nothing
 end

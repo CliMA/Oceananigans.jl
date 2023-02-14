@@ -43,7 +43,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
 
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
-    velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
+    mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
 
     update_state!(model)
 

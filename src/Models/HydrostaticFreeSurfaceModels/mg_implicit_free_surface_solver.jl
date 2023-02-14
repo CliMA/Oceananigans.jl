@@ -121,11 +121,8 @@ function Az_∇h²ᶜᶜᶜ_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_A
     arch = architecture(L_ηⁿ⁺¹)
     fill_halo_regions!(ηⁿ⁺¹)
 
-    event = launch!(arch, grid, :xy, _Az_∇h²ᶜᶜᶜ_linear_operation!,
-                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _Az_∇h²ᶜᶜᶜ_linear_operation!,
+                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
 
     return nothing
 end
@@ -201,11 +198,9 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::MG
     arch = architecture(solver)
     grid = solver.grid
 
-    event = launch!(arch, grid, :xy,
-                    implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, Δt, ∫ᶻQ, η,
-                    dependencies = device_event(arch))
+    launch!(arch, grid, :xy,
+            implicit_free_surface_right_hand_side!,
+            rhs, grid, g, Δt, ∫ᶻQ, η)
     
-    wait(device(arch), event)
     return nothing
 end

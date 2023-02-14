@@ -114,12 +114,9 @@ function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly,
     velocities = model.velocities
     tracers = model.tracers
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_nonlinear_viscosity!,
-                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            calculate_nonlinear_viscosity!,
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end

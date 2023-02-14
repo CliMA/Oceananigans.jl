@@ -29,7 +29,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
-implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####

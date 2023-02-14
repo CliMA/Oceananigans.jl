@@ -1,6 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.Architectures: device_event
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
@@ -117,7 +116,6 @@ function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     arch = model.architecture
-    barrier = device_event(arch)
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
     model_fields = prognostic_fields(model)
 

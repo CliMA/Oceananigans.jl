@@ -1,10 +1,9 @@
-using KernelAbstractions: @index, @kernel, NoneEvent
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.TimeSteppers:  store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Architectures: device_event
 
 using Oceananigans.Utils: launch!
 
@@ -16,18 +15,15 @@ import Oceananigans.TimeSteppers: store_tendencies!
     @inbounds Gη⁻[i, j, grid.Nz+1] = Gη⁰[i, j, grid.Nz+1]
 end
 
-store_free_surface_tendency!(free_surface, model, barrier) = NoneEvent()
+store_free_surface_tendency!(free_surface, model, barrier) = nothing
 
-function store_free_surface_tendency!(::ExplicitFreeSurface, model, barrier)
+function store_free_surface_tendency!(::ExplicitFreeSurface, model)
 
-    event = launch!(model.architecture, model.grid, :xy,
-                    _store_free_surface_tendency!,
-                    model.timestepper.G⁻.η,
-                    model.grid,
-                    model.timestepper.Gⁿ.η,
-                    dependencies = barrier)
-
-    return event
+    launch!(model.architecture, model.grid, :xy,
+            _store_free_surface_tendency!,
+            model.timestepper.G⁻.η,
+            model.grid,
+            model.timestepper.Gⁿ.η)
 end
 
 """ Store previous source terms before updating them. """

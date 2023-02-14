@@ -7,7 +7,7 @@ using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Operators
 
-using Oceananigans.Architectures: device, device_event
+using Oceananigans.Architectures: device
 using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: FluxBoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
@@ -125,18 +125,15 @@ function calculate_diffusivities!(diffusivities, closure::MEWS, model)
     buoyancy = model.buoyancy
     velocities = model.velocities
 
-    event = launch!(arch, grid, :xyz,
-                    compute_mews_diffusivities!,
-                    diffusivities,
-                    grid,
-                    closure,
-                    velocities,
-                    tracers,
-                    buoyancy,
-                    coriolis,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz,
+            compute_mews_diffusivities!,
+            diffusivities,
+            grid,
+            closure,
+            velocities,
+            tracers,
+            buoyancy,
+            coriolis)
 
     return nothing
 end

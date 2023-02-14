@@ -34,10 +34,8 @@ function random_divergent_source_term(grid)
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
-    event = launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R,
-                    dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
+    
     return R, U
 end
 
@@ -63,19 +61,15 @@ function random_divergence_free_source_term(grid)
     fill_halo_regions!(Rv, nothing, nothing)
     fill_halo_regions!(Rw, nothing, nothing)
 
-    event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
-                    dependencies=Event(device(arch)))
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid)
 
     fill_halo_regions!(Rw, nothing, nothing)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
-    event = launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R,
-                    dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
+    launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R)
+    
     return R
 end
 
