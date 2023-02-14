@@ -1,4 +1,4 @@
-using KernelAbstractions: @index, @kernel, Event
+using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
@@ -45,22 +45,15 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
 
     fill_halo_regions!(η)
 
-    event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
-            grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-            dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
+            grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
 
     # U, V has been updated thus need to refill halo
     fill_halo_regions!(U)
     fill_halo_regions!(V)
 
-    event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
-            grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight,
-            dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
-            
+    launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
+            grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight)
 end
 
 # Barotropic Model Kernels
@@ -113,11 +106,8 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
-    event = launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
-        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
-        dependencies = Event(device(arch)))
-
-    wait(device(arch), event)
+    launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
+        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
 end
 
 @inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) * Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) * G⁻
@@ -173,5 +163,5 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     fill_halo_regions!(η)
 
-    return NoneEvent()
+    return nothing
 end

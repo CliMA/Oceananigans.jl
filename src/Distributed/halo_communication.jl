@@ -70,7 +70,6 @@ end
 # TODO: combination of communicating and other boundary conditions in one direction are not implemented yet!
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, args...; kwargs...)
     arch    = architecture(grid)
-    barrier = Event(device(child_architecture(arch)))
 
     offset = (0, 0)
     x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, barrier, grid, args...; kwargs...)
@@ -82,9 +81,6 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
     # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
     length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
-
-    # events = filter(e -> e isa Event, events_and_requests)
-    # # wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
     return nothing
 end

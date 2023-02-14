@@ -89,6 +89,11 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
 
         summarize_regression_test(test_fields, truth_fields)
 
+        diff = Bool.(1.0 .- (test_fields.v .≈ truth_fields.v))
+        jldsave("difference_$(formulation).jld2", test_v = test_fields.v, truth_v = truth_fields.v, diff = diff)
+
+        @show findall(diff)
+
         @test all(test_fields.u .≈ truth_fields.u)
         @test all(test_fields.v .≈ truth_fields.v)
         @test all(test_fields.h .≈ truth_fields.h)

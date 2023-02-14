@@ -26,7 +26,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
     compute_velocities!(model.velocities, formulation(model))
 
     foreach(callbacks) do callback
-        if isa(callback.callsite, UpdateStateCallsite
+        if isa(callback.callsite, UpdateStateCallsite)
             callback(model)
         end
     end
