@@ -57,7 +57,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 
 # this can be used once we don't need to fill Value, Flux and Gradient anymore!
 # fill_halo_regions!(c::MultiRegionObject, bcs, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) = 
-#     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regions), Reference(buffers.regions), args...; kwargs...)
+#     apply_regionally!(fill_halo_regions!, c, bcs, loc, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), args...; kwargs...)
 
 # This results in too large parameter space required on the GPU for too many regions!! (we are passing the whole buffers and regions)
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
@@ -69,7 +69,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
     for task = 1:3
         barrier = device_event(arch)
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, indices, loc, arch, barrier, mrg, Reference(c.regions), Reference(buffers.regions), 
+                          c, indices, loc, arch, barrier, mrg, Reference(c.regional_objects), Reference(buffers.regional_objects), 
                           args...; kwargs...)
     end
 

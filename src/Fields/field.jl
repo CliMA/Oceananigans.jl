@@ -8,6 +8,7 @@ using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
+import Base: ==
 
 #####
 ##### The bees knees
@@ -398,6 +399,10 @@ length_indices(N, i::UnitRange) = length(i)
 
 total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
 Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
+
+==(f::Field, a) = interior(f) == a
+==(a, f::Field) = a == interior(f)
+==(a::Field, b::Field) = interior(a) == interior(b)
 
 #####
 ##### Interface for field computations
