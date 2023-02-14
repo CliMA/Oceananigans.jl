@@ -25,13 +25,12 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
             model.grid,
             Δt,
             model.free_surface.gravitational_acceleration,
-            model.free_surface.η,
-            dependencies = dependencies)
+            model.free_surface.η)
 
     return nothing
 end
 
-calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM, dependencies) = nothing
+calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM) = nothing
 
 function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt)
     u, v, _ = model.velocities

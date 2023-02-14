@@ -172,14 +172,14 @@ end
     end
 end
 
-fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
+fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_west_and_east_halo!, c, west_bc, east_bc, offset, loc, grid, args...; kwargs...)
 
-fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
+fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_south_and_north_halo!, c, south_bc, north_bc, offset, loc, grid, args...; kwargs...)
 
-fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, dep, grid, args...; kwargs...) =
-    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, args...; dependencies=dep, kwargs...)
+fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...) =
+    launch!(arch, grid, size, _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, offset, loc, grid, args...; kwargs...)
 
 #####
 ##### Calculate kernel size and offset for Windowed and Sliced Fields
