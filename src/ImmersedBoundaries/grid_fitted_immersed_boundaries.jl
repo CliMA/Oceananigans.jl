@@ -8,7 +8,7 @@ using Printf
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal,
-                                        bottom
+                                        z_bottom
 
 import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
                                         immersed_∂ⱼ_τ₂ⱼ,
@@ -97,7 +97,7 @@ end
     return z <= h
 end
 
-@inline bottom(i, j, k, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
+@inline z_bottom(i, j, k, ibg::GFIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(arch_array(arch, ib.bottom_height))
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height))     

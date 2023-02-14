@@ -39,7 +39,6 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
-
 struct CATKEVerticalDiffusivity{TD, CL, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE

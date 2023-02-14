@@ -102,7 +102,7 @@ end
 
 """Piecewise linear function between 0 (when x < c) and 1 (when x - c > w)."""
 @inline step(x, c, w) = max(zero(x), min(one(x), (x - c) / w))
-@inline scale(Ri, σ⁻, σ⁺, c, w)    = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+@inline scale(Ri, σ⁻, σ⁺, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
 @inline function stable_mixing_scaleᶜᶜᶠ(i, j, k, grid, C⁻, C⁺, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
@@ -122,7 +122,8 @@ end
 
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
-    return min(grid.Lz, ℓ★)
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(H, ℓ★)
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -142,7 +143,8 @@ end
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
-    return min(grid.Lz, ℓ★ + ℓʰ)
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(H, ℓ★ + ℓʰ)
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -162,7 +164,8 @@ end
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
-    return min(grid.Lz, ℓ★ + ℓʰ)
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    return min(H, ℓ★ + ℓʰ)
 end
 
 Base.show(io::IO, ML::MixingLength) =
