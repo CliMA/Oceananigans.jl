@@ -144,8 +144,8 @@ calculate_only_active_cells_tendencies = false
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
 
-    # In case of an immersed boundary grid add a wet cell map to avoid calculating 
-    # the tendency in dry cells
+    # In case of an immersed boundary grid add an active cell map to avoid calculating 
+    # the tendency in inactive cells
     if calculate_only_active_cells_tendencies
         grid = maybe_add_active_cells_map(grid)
     end
