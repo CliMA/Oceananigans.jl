@@ -16,7 +16,7 @@ struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensi
 end
 
 @inline viscosity(::SmagorinskyLilly, K) = K.νₑ
-@inline diffusivity(::SmagorinskyLilly, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
+@inline diffusivity(closure::SmagorinskyLilly, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 """
     SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization, [FT=Float64;] C=0.16, Pr=1)

@@ -1,6 +1,7 @@
 using Adapt
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
+using Oceananigans.Utils: getname
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
@@ -67,21 +68,37 @@ Return a grid with `GridFittedBottom` immersed boundary.
 Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
+    bottom_field = Field((Center, Center, Nothing), grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
 
-    # TODO: maybe clean this up
-    IB = typeof(ib).name.wrapper
-    new_ib = IB(offset_bottom_array)
+    new_ib = getname(ib)(offset_bottom_array)
 
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
-    # TODO: check size
+    N = size(grid)
+    H = halo_size(grid)
+
+    field_size = N[1:2] .+ 2 .* H[1:2]
+
+    # If using `with_halo` in combination with a `DistributedArch`, we need to make 
+    # sure that halos are filled correctly for the `ib.bottom_height`
+    if any(size(ib.bottom_height) .!= field_size)
+        bottom_field = Field((Center, Center, Nothing), grid)
+        cpu_array    = arch_array(CPU(), ib.bottom_height)[1:N[1], 1:N[2]] 
+        set!(bottom_field, cpu_array)
+        fill_halo_regions!(bottom_field)
+        offset_bottom_array = dropdims(bottom_field.data, dims=3)
+    
+        new_ib = getname(ib)(offset_bottom_array)
+    
+        return ImmersedBoundaryGrid(grid, new_ib)
+    end
+
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 

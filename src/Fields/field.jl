@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, CBC
+using Oceananigans.BoundaryConditions: OBC, MCBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
@@ -46,9 +46,9 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                        # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, CBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing                         # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing, MCBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                 # its nothing or nothing
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 

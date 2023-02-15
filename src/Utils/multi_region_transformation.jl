@@ -175,8 +175,12 @@ end
     end 
 end
 
-@inline sync_device!(::CuDevice) = CUDA.device_synchronize()
+@inline sync_device!(::CuDevice) = CUDA.synchronize()
 @inline sync_device!(dev)        = nothing
+
+
+# TODO: The macro errors when there is a return and the function has (args...) in the 
+# signature (example using a macro on `multi_region_buodary_conditions:L74)
 
 """
     @apply_regionally expr

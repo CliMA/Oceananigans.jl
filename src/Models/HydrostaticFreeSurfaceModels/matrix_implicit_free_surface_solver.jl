@@ -112,11 +112,11 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     Nx, Ny = grid.Nx, grid.Ny
 
-    C     = zeros(Nx, Ny, 1)
+    C     = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     Ax    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
     Ay    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Az    = zeros(Nx, Ny, 1)
+    Az    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ

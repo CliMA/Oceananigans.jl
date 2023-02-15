@@ -26,11 +26,24 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
         @inline $extract_bc(bc::Tuple) = $extract_bc.(bc)
     end
 end
+# For inhomogeneous BC we extract the _last_ one 
+# example 
+# `bc.west <: DCBC`
+# `bc.east <: PBC`
+# `extract_west_or_east_bc(bc) == bc.west`
+    
+  extract_west_or_east_bc(bc) = sort([bc.west,   bc.east],  lt=fill_first)[2]
+extract_south_or_north_bc(bc) = sort([bc.south,  bc.north], lt=fill_first)[2]
+ extract_bottom_or_top_bc(bc) = sort([bc.bottom, bc.top],   lt=fill_first)[2]
 
+  extract_west_or_east_bc(bc::Tuple) =   extract_west_or_east_bc.(bc)
+extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
+ extract_bottom_or_top_bc(bc::Tuple) =  extract_bottom_or_top_bc.(bc)
+ 
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
-"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
+"Fill halo regions in ``x``, ``y``, and ``z``  for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
@@ -65,6 +78,12 @@ function permute_boundary_conditions(boundary_conditions)
         fill_bottom_and_top_halo!,
     ]
 
+    boundary_conditions_array = [
+        extract_west_or_east_bc(boundary_conditions),
+        extract_south_or_north_bc(boundary_conditions),
+        extract_bottom_or_top_bc(boundary_conditions)
+    ]
+
     boundary_conditions_array_left = [
         extract_west_bc(boundary_conditions),
         extract_south_bc(boundary_conditions),
@@ -77,7 +96,7 @@ function permute_boundary_conditions(boundary_conditions)
         extract_top_bc(boundary_conditions),
     ]
 
-    perm = sortperm(boundary_conditions_array_left, lt=fill_first)
+    perm = sortperm(boundary_conditions_array, lt=fill_first)
     fill_halos! = fill_halos![perm]
     boundary_conditions_array_left  = boundary_conditions_array_left[perm]
     boundary_conditions_array_right = boundary_conditions_array_right[perm]
@@ -89,18 +108,35 @@ end
 ##### Halo filling order
 #####
 
-const PBCT = Union{PBC, NTuple{<:Any, <:PBC}}
-const CBCT = Union{CBC, NTuple{<:Any, <:CBC}}
+const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
+const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
+const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 
-fill_first(bc1::PBCT, bc2)       = false
-fill_first(bc1::CBCT, bc2)       = false
-fill_first(bc1::PBCT, bc2::CBCT) = false
-fill_first(bc1::CBCT, bc2::PBCT) = true
-fill_first(bc1, bc2::PBCT)       = true
-fill_first(bc1, bc2::CBCT)       = true
-fill_first(bc1::PBCT, bc2::PBCT) = true
-fill_first(bc1::CBCT, bc2::CBCT) = true
-fill_first(bc1, bc2)             = true
+# Distributed halos have to be filled for last in case of 
+# buffered communication. Hence, we always fill them last
+
+# Order of halo filling
+# 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
+# 2) Periodic (PBCT)
+# 3) Shared Communication (MCBCT)
+# 4) Distributed Communication (DCBCT)
+
+fill_first(bc1::DCBCT, bc2)        = false
+fill_first(bc1::PBCT,  bc2::DCBCT) = true
+fill_first(bc1::DCBCT, bc2::PBCT)  = false
+fill_first(bc1::MCBCT, bc2::DCBCT) = true
+fill_first(bc1::DCBCT, bc2::MCBCT) = false
+fill_first(bc1, bc2::DCBCT)        = true
+fill_first(bc1::DCBCT, bc2::DCBCT) = true
+fill_first(bc1::PBCT,  bc2)        = false
+fill_first(bc1::MCBCT, bc2)        = false
+fill_first(bc1::PBCT,  bc2::MCBCT) = true
+fill_first(bc1::MCBCT, bc2::PBCT)  = false
+fill_first(bc1, bc2::PBCT)         = true
+fill_first(bc1, bc2::MCBCT)        = true
+fill_first(bc1::PBCT,  bc2::PBCT)  = true
+fill_first(bc1::MCBCT, bc2::MCBCT) = true
+fill_first(bc1, bc2)               = true
 
 #####
 ##### General fill_halo! kernels

@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!, inactive_node
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -22,7 +22,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally masking_actions!(model)
+    @apply_regionally masking_actions!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
@@ -39,7 +39,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 # Mask immersed fields
-function masking_actions!(model)
+function masking_actions!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
@@ -48,13 +48,12 @@ function masking_actions!(model)
             mask_immersed_field!(field)
         end
     end
-    mask_immersed_reduced_field_xy!(η, k=size(model.grid, 3))
+    mask_immersed_reduced_field_xy!(η, k = size(grid, 3) + 1, immersed_function = inactive_node)
 end
 
 function compute_w_diffusivities_pressure!(model) 
     compute_w_from_continuity!(model)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
-
     return nothing
 end

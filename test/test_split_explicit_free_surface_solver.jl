@@ -3,6 +3,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
+
 @testset "Split-Explicit Dynamics" begin
 
     for arch in archs
@@ -13,7 +15,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0), halo=(1, 1, 1))
 
-        sefs = SplitExplicitFreeSurface(grid)
+        settings = SplitExplicitSettings(; averaging_function = averaging_fixed_function)
+        sefs = SplitExplicitFreeSurface(grid; settings)
 
         sefs.η .= 0.0
 
@@ -69,6 +72,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Nt = floor(Int, T / Δτ)
             Δτ_end = T - Nt * Δτ
 
+            settings = SplitExplicitSettings(; substeps = Nt, averaging_function = averaging_fixed_function)
+
             # set!(η, f(x,y))
             η₀(x, y, z) = sin(x)
             set!(η, η₀)
@@ -84,10 +89,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gⱽ .= 0.0
 
             for i in 1:Nt
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ, i)
             end
             # + correction for exact time
-            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, 1)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ_end, 1)
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
@@ -134,7 +139,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             settings = sefs.settings
 
             for i in 1:settings.substeps
-                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
             end
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
@@ -159,8 +164,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
         @testset "Complex Multi-Timestep " begin
             # Test 3: Testing analytic solution to 
-            # ∂ₜη + ∇⋅U⃗ = 0
-            # ∂ₜU⃗ + ∇η  = G⃗
+            # ∂ₜη + ∇⋅U̅ = 0
+            # ∂ₜU̅ + ∇η  = G̅
             kx = 2
             ky = 3
             ω = sqrt(kx^2 + ky^2)
@@ -195,13 +200,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gᵁ .= gu_c
             Gⱽ .= gv_c
 
-            # overwrite weights
-            tmp = ones(Nt + 1) ./ Nt # since taking Nt+1 timesteps
-            tmp[end] = Δτ_end / T # since last timestep is different
-            velocity_weights = Tuple(tmp)
-            free_surface_weights = Tuple(tmp) # since taking Nt+1 timesteps
-
-            settings = SplitExplicitSettings(Nt + 1, velocity_weights, free_surface_weights)
+            settings = SplitExplicitSettings(substeps = Nt + 1, averaging_function = averaging_fixed_function)
             sefs = sefs(settings)
 
             for i in 1:Nt

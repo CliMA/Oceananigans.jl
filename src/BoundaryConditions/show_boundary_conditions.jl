@@ -6,13 +6,14 @@ const IBC = BoundaryCondition{Open, Nothing} # ImpenetrableBoundaryCondition
 
 bc_str(::FBC)     = "Flux"
 bc_str(::PBC)     = "Periodic"
-bc_str(::CBC)     = "Communication"
 bc_str(::OBC)     = "Open"
 bc_str(::VBC)     = "Value"
 bc_str(::GBC)     = "Gradient"
 bc_str(::ZFBC)    = "ZeroFlux"
 bc_str(::IBC)     = "Impenetrable"
 bc_str(::DFBC)    = "Default"
+bc_str(::MCBC)    = "MultiRegionCommunication"
+bc_str(::DCBC)    = "DistributedCommunication"
 bc_str(::Nothing) = "Nothing"
 
 #####
