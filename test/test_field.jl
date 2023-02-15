@@ -110,9 +110,7 @@ function run_field_interpolation_tests(grid)
 
     # Maximum expected rounding error is the unit in last place of the maximum value
     # of f over the domain of the grid. 
-    CUDA.@allowscalar begin
-        ε_max = f.(nodes((Face, Face, Face), grid, reshape=true)...) |> maximum |> eps
-    end
+    ε_max = CUDA.@allowscalar f.(nodes((Face, Face, Face), grid, reshape=true)...) |> maximum |> eps
 
     set!(u, f)
     set!(v, f)
