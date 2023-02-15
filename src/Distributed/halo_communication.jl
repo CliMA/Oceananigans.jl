@@ -72,9 +72,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     arch    = architecture(grid)
 
     offset = (0, 0)
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, :xz, offset, loc, arch, barrier, grid, args...; kwargs...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, :xy, offset, loc, arch, barrier, grid, args...; kwargs...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, :yz, offset, loc, arch, grid, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, :xz, offset, loc, arch, grid, args...; kwargs...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, :xy, offset, loc, arch, grid, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
@@ -96,8 +96,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     fill_both_halo!  = Symbol("fill_$(side)_and_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, size, offset, loc, arch, barrier, grid, args...; kwargs...)
-                event = $fill_both_halo!(c, bc_side, bc_opposite_side, size, offset, loc, child_architecture(arch), barrier, grid, args...; kwargs...)
+        function $fill_both_halos!(c, bc_side, bc_opposite_side, size, offset, loc, arch, grid, args...; kwargs...)
+                event = $fill_both_halo!(c, bc_side, bc_opposite_side, size, offset, loc, child_architecture(arch), grid, args...; kwargs...)
             return [event]
         end
     end
@@ -120,7 +120,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
     @eval begin
         function $fill_both_halos!(c, bc_side::CBCT, bc_opposite_side::CBCT, size, offset, loc, arch, 
-                                   barrier, grid, args...; kwargs...)
+                                   grid, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from

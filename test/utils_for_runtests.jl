@@ -69,6 +69,7 @@ end
 
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ)
+    child_arch = child_architecture(arch)
     launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     fill_halo_regions!(∇²ϕ)
     return nothing

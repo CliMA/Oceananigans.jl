@@ -239,10 +239,10 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
-    apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
+function apply_flux_bcs!(Gcⁿ, c, arch, args...)
+    apply_x_bcs!(Gcⁿ, c, arch, args...)
+    apply_y_bcs!(Gcⁿ, c, arch, args...)
+    apply_z_bcs!(Gcⁿ, c, arch, args...)
 
     return nothing
 end

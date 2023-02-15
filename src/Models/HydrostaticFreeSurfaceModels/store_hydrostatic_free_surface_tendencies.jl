@@ -15,7 +15,7 @@ import Oceananigans.TimeSteppers: store_tendencies!
     @inbounds Gη⁻[i, j, grid.Nz+1] = Gη⁰[i, j, grid.Nz+1]
 end
 
-store_free_surface_tendency!(free_surface, model, barrier) = nothing
+store_free_surface_tendency!(free_surface, model) = nothing
 
 function store_free_surface_tendency!(::ExplicitFreeSurface, model)
 
