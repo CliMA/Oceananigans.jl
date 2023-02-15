@@ -93,10 +93,10 @@ end
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, args...)
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, c::AbstractCubedSphereField, arch, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
-        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch,
+        apply_flux_bcs!(Gcⁿ_face, get_face(c, face_index), arch,
                         Tuple(get_face(a, face_index) for a in args)...)
     end
 

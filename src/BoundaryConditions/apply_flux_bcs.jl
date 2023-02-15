@@ -9,8 +9,8 @@ using Oceananigans.Grids: AbstractGrid
 #####
 
 # Unpack
-apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west, c.boundary_conditions.east, args...)
-apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south, c.boundary_conditions.north, args...)
+apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west,   c.boundary_conditions.east, args...)
+apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south,  c.boundary_conditions.north, args...)
 apply_z_bcs!(Gc, c, args...) = apply_z_bcs!(Gc, Gc.grid, c, c.boundary_conditions.bottom, c.boundary_conditions.top, args...)
 
 # Shortcuts for...
