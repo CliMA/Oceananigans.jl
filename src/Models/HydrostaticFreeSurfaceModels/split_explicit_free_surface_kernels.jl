@@ -140,7 +140,9 @@ end
     @inbounds begin        
         advance_previous_free_surface!(i′, j′, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
-        # ∂τ(η) = - ∇ ⋅ U
+        # ∂τ(η) = - ∇ ⋅ U. 
+        # `k_top - 1` is used here to allow `immersed_peripheral_node` to be true 
+        # NOTE: `immersed_peripheral_node` is _always_ false on `Nz+1` `Face`s because `peripheral_node` is always true
         η[i′, j′, k_top] -= Δτ * (div_xᶜᶜᶠ_U(i′, j′, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
                                   div_yᶜᶜᶠ_V(i′, j′, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
