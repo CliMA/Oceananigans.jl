@@ -301,8 +301,8 @@ function scatter_local_grids(arch::DistributedArch, global_grid::LatitudeLongitu
 end
 
 function scatter_local_grids(arch::DistributedArch, global_grid::ImmersedBoundaryGrid)
-    ib   = global_grid.immersed_boundary
-    ug   = global_grid.underlying_grid
+    ib = global_grid.immersed_boundary
+    ug = global_grid.underlying_grid
 
     local_ug = scatter_local_grids(arch, ug)
     local_ib = getname(ib)(partition_global_array(arch, ib.bottom_height, size(global_grid)))
