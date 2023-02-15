@@ -62,4 +62,20 @@ field = CenterField(grid)
 
 field_panel_1 = getregion(field, 1)
 
+julia> field = CenterField(grid)
+dse^R 
+10×10×1 Field{Center, Center, Center} on MultiRegionGrid on CPU
+├── grid: MultiRegionGrid{Float64, FullyConnected, FullyConnected, Bounded} with CubedSpherePartition{Int64, Int64} on OrthogonalSphericalShellGrid
+├── boundary conditions: MultiRegionObject{NTuple{6, FieldBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}}}, NTuple{6, CPU}}
+└── data: MultiRegionObject{NTuple{6, OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}}, NTuple{6, CPU}}
+    └── max=0.0, min=0.0, mean=0.0
+
+julia> regions = Iterate(Tuple(i for i in 1:24))
+    Iterate{NTuple{24, Int64}}((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24))
+    
+julia> set!(field, regions)
+
+julia> fill_halo_regions!(field)
+
+
 """
