@@ -55,7 +55,7 @@ MultiRegionGrid{Float64, Bounded, Bounded, Flat} partitioned on CPU():
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 """
-function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+function MultiRegionGrid(global_grid::AbstractGrid; partition = XPartition(2), devices = nothing)
 
     if length(partition) == 1
         return global_grid
