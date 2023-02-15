@@ -8,7 +8,7 @@ using Oceananigans.Fields: fill_west_and_east_send_buffers!,
                            fill_east_send_buffers!,
                            fill_south_send_buffers!,
                            fill_north_send_buffers!,
-                           fill_recv_buffers!, 
+                           recv_from_buffers!, 
                            reduced_dimensions, 
                            instantiated_location
 
@@ -155,7 +155,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     MPI.Waitall(events_and_requests)
 
     buffer_side = mpi_communication_side(Val(fill_halo!))
-    fill_recv_buffers!(c, buffers, grid, Val(buffer_side))    
+    recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
 
     return nothing
 end

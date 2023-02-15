@@ -92,55 +92,55 @@ fill_north_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) =
     _fill_north_send_buffer!(parent(c), buffers.north, halo_size(grid)[2], size(grid)[2])
 
 """
-    fill_recv_buffers(c, buffers, arch)
+    recv_from_buffers(c, buffers, arch)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
-function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _fill_west_recv_buffer!(parent(c), buffers.west,  Hx, Nx)
-     _fill_east_recv_buffer!(parent(c), buffers.east,  Hx, Nx)
-    _fill_south_recv_buffer!(parent(c), buffers.south, Hy, Ny)
-    _fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
+     _recv_from_west_buffer!(parent(c), buffers.west,  Hx, Nx)
+     _recv_from_east_buffer!(parent(c), buffers.east,  Hx, Nx)
+    _recv_from_south_buffer!(parent(c), buffers.south, Hy, Ny)
+    _recv_from_north_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
-function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
+function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _fill_west_recv_buffer!(parent(c), buffers.west, Hx, Nx)
-     _fill_east_recv_buffer!(parent(c), buffers.east, Hx, Nx)
+     _recv_from_west_buffer!(parent(c), buffers.west, Hx, Nx)
+     _recv_from_east_buffer!(parent(c), buffers.east, Hx, Nx)
 end
 
-function fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
+function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    _fill_south_recv_buffer!(parent(c), buffers.south, Hy, Ny)
-    _fill_north_recv_buffer!(parent(c), buffers.north, Hy, Ny)
+    _recv_from_south_buffer!(parent(c), buffers.south, Hy, Ny)
+    _recv_from_north_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
-fill_recv_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
+recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
 
  _fill_west_send_buffer!(c, ::Nothing, args...) = nothing
  _fill_east_send_buffer!(c, ::Nothing, args...) = nothing
 _fill_north_send_buffer!(c, ::Nothing, args...) = nothing
 _fill_south_send_buffer!(c, ::Nothing, args...) = nothing
 
- _fill_west_recv_buffer!(c, ::Nothing, args...) = nothing
- _fill_east_recv_buffer!(c, ::Nothing, args...) = nothing
-_fill_north_recv_buffer!(c, ::Nothing, args...) = nothing
-_fill_south_recv_buffer!(c, ::Nothing, args...) = nothing
+ _recv_from_west_buffer!(c, ::Nothing, args...) = nothing
+ _recv_from_east_buffer!(c, ::Nothing, args...) = nothing
+_recv_from_north_buffer!(c, ::Nothing, args...) = nothing
+_recv_from_south_buffer!(c, ::Nothing, args...) = nothing
 
  _fill_west_send_buffer!(c, buff, H, N) = buff.send .= view(c, 1+H:2H,  :, :)
  _fill_east_send_buffer!(c, buff, H, N) = buff.send .= view(c, 1+N:N+H, :, :)
 _fill_south_send_buffer!(c, buff, H, N) = buff.send .= view(c, :, 1+H:2H,  :)
 _fill_north_send_buffer!(c, buff, H, N) = buff.send .= view(c, :, 1+N:N+H, :)
 
- _fill_west_recv_buffer!(c, buff, H, N) = view(c, 1:H,        :, :) .= buff.recv
- _fill_east_recv_buffer!(c, buff, H, N) = view(c, 1+N+H:N+2H, :, :) .= buff.recv
-_fill_south_recv_buffer!(c, buff, H, N) = view(c, :, 1:H,        :) .= buff.recv
-_fill_north_recv_buffer!(c, buff, H, N) = view(c, :, 1+N+H:N+2H, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff, H, N) = view(c, 1:H,        :, :) .= buff.recv
+ _recv_from_east_buffer!(c, buff, H, N) = view(c, 1+N+H:N+2H, :, :) .= buff.recv
+_recv_from_south_buffer!(c, buff, H, N) = view(c, :, 1:H,        :) .= buff.recv
+_recv_from_north_buffer!(c, buff, H, N) = view(c, :, 1+N+H:N+2H, :) .= buff.recv
