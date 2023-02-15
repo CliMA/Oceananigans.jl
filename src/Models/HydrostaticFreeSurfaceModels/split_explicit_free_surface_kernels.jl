@@ -8,6 +8,7 @@ using Oceananigans.Operators
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node,
                                        inactive_node, IBG, c, f
 
+# constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
 const α = 1.5 + β
 const θ = - 0.5 - 2β
