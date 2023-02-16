@@ -103,23 +103,14 @@ end
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
-    # @inbounds ws[i, j, k] = velocities.w[i, j, k]
-    # Fill these because of staggering
-    # @inbounds ws[i-1, j, k] = velocities.w[i-1, j, k]
-    # @inbounds ws[i, j-1, k] = velocities.w[i, j-1, k]
     
     if ks <= H3
         @inbounds us[i, j, k - H3] = velocities.u[i, j, k - H3]
         @inbounds vs[i, j, k - H3] = velocities.v[i, j, k - H3]
-        # @inbounds ws[i, j, k - H3] = velocities.w[i, j, k - H3]
     end
     if ks >= O - H3 + 1
         @inbounds us[i, j, k + H3] = velocities.u[i, j, k + H3]
         @inbounds vs[i, j, k + H3] = velocities.v[i, j, k + H3]
-        # @inbounds ws[i, j, k + H3] = velocities.w[i, j, k + H3]
-        # Fill the angles because of staggering!
-        # @inbounds ws[i-1, j, k + H3] = velocities.w[i-1, j, k + H3]
-        # @inbounds ws[i, j-1, k + H3] = velocities.w[i, j-1, k + H3]
     end
 
     @synchronize
