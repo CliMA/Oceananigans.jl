@@ -54,16 +54,6 @@ using Base: @propagate_inbounds
 using Oceananigans.Advection: U_dot_∇u_h, U_dot_∇u_z, U_dot_∇v_h, U_dot_∇v_z
 using Oceananigans.Advection: div_Uc_x, div_Uc_y, div_Uc_z
 
-struct DisplacedSharedArray{V, I, J, K} 
-    s_array :: V
-    i :: I
-    j :: J
-    k :: K
-end
-
-@inline @propagate_inbounds Base.getindex(v::DisplacedSharedArray, i, j, k)       = v.s_array[i + v.i, j + v.j, k + v.k]
-@inline @propagate_inbounds Base.setindex!(v::DisplacedSharedArray, val, i, j, k) = setindex!(v.s_array, val, i + v.i, j + v.j, k + v.k)
-
 struct DisplacedXYSharedArray{V, I, J} 
     s_array :: V
     i :: I
