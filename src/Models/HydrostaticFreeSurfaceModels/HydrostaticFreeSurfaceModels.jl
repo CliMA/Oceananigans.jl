@@ -62,7 +62,7 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
 @inline fields(model::HydrostaticFreeSurfaceModel) = 
-        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields, biogeochemical_auxiliary_fieilds(model.biogeochemistry))
+        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields, biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)

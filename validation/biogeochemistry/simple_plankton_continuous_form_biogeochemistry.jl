@@ -13,7 +13,7 @@ import Oceananigans.Biogeochemistry:
        required_biogeochemical_auxiliary_fields,
        biogeochemical_drift_velocity,
        biogeochemical_advection_scheme,
-       biogeochemical_auxiliary_fieilds,
+       biogeochemical_auxiliary_fields,
        update_biogeochemical_state!
 
 struct SimplePlanktonGrowthDeath{FT, W, SP, A, P} <: AbstractContinuousFormBiogeochemistry

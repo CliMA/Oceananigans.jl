@@ -11,7 +11,7 @@ import Oceananigans.Biogeochemistry:
        required_biogeochemical_auxiliary_fields,
        biogeochemical_drift_velocity,
        biogeochemical_advection_scheme,
-       biogeochemical_auxiliary_fieilds,
+       biogeochemical_auxiliary_fields,
        update_biogeochemical_state!
 
 import Adapt: adapt_structure
@@ -75,7 +75,7 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 
 @inline          required_biogeochemical_tracers(::MB) = tuple(:P)
 @inline required_biogeochemical_auxiliary_fields(::MB) = tuple(:PAR)
-@inline      biogeochemical_auxiliary_fieilds(bgc::MB) = (; PAR = bgc.PAR)
+@inline      biogeochemical_auxiliary_fields(bgc::MB) = (; PAR = bgc.PAR)
 @inline   biogeochemical_drift_velocity(bgc::MB, ::Val{:P}) = bgc.sinking_velocity
 @inline biogeochemical_advection_scheme(bgc::MB, ::Val{:P}) = bgc.advection_scheme
 
