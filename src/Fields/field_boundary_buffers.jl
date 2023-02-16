@@ -2,7 +2,7 @@ using Oceananigans.BoundaryConditions: MCBC, DCBC
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Grids: halo_size
 using Oceananigans.Utils: launch!
-using KernelAbstractions: MultiEvent, NoneEvent, @kernel, @index
+using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 struct FieldBoundaryBuffers{W, E, S, N}
