@@ -81,153 +81,6 @@ end
 @inline @propagate_inbounds Base.getindex(v::DisplacedZSharedArray, i, j, k)       = v.s_array[k + v.k]
 @inline @propagate_inbounds Base.setindex!(v::DisplacedZSharedArray, val, i, j, k) = setindex!(v.s_array, val, k + v.k)
 
-@kernel function _calculate_hydrostatic_free_surface_shared_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
-                                                                       tracers, halo, ::Val{H1}, ::Val{H2}, ::Val{H3}, 
-                                                                       ::Val{N1}, ::Val{N2}, ::Val{N3}) where {FT, H1, H2, H3, N1, N2, N3}
-    i,  j,  k  = @index(Global, NTuple)
-    is, js, ks = @index(Local,  NTuple)
-    ib, jb, kb = @index(Group,  NTuple)
-
-    N = @uniform @groupsize()[1]
-    M = @uniform @groupsize()[2]
-    O = @uniform @groupsize()[3]
-
-    ig = @localmem Int (1)
-    jg = @localmem Int (1)
-    kg = @localmem Int (1)
-    
-    if is == 1 && js == 1 && ks == 1
-        ig[1] = - N * (ib - 1) + N1
-        jg[1] = - M * (jb - 1) + N2
-        kg[1] = - O * (kb - 1) + N3
-    end
-
-    @synchronize
-
-    us_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    vs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    ws_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-    cs_array = @localmem FT (N+2*N1, M+2*N2, O+2*N3)
-
-    us = @uniform DisplacedSharedArray(us_array, ig[1], jg[1], kg[1])
-    vs = @uniform DisplacedSharedArray(vs_array, ig[1], jg[1], kg[1])
-    ws = @uniform DisplacedSharedArray(ws_array, ig[1], jg[1], kg[1])
-    cs = @uniform DisplacedSharedArray(cs_array, ig[1], jg[1], kg[1])
-
-    @inbounds us[i, j, k] = velocities.u[i, j, k]
-    @inbounds vs[i, j, k] = velocities.v[i, j, k]
-    @inbounds ws[i, j, k] = velocities.w[i, j, k]
-
-    if is <= H1
-        @inbounds us[i - H1, j, k] = velocities.u[i - H1, j, k]
-        @inbounds vs[i - H1, j, k] = velocities.v[i - H1, j, k]
-        @inbounds ws[i - H1, j, k] = velocities.w[i - H1, j, k]
-    end
-    if is >= N - H1 + 1
-        @inbounds us[i + H1, j, k] = velocities.u[i + H1, j, k]
-        @inbounds vs[i + H1, j, k] = velocities.v[i + H1, j, k]
-        @inbounds ws[i + H1, j, k] = velocities.w[i + H1, j, k]
-        # Fill the angles because of staggering!
-        if js <= H2
-            @inbounds us[i + H1, j - H2, k] = velocities.u[i + H1, j - H2, k]
-        end
-        if js >= M - H2 + 1
-            @inbounds us[i + H1, j + H2, k] = velocities.u[i + H1, j + H2, k]
-        end
-        if ks <= H3
-            @inbounds us[i + H1, j, k - H3] = velocities.u[i + H1, j, k - H3]
-        end
-        if ks >= O - H3 + 1    
-            @inbounds us[i + H1, j, k + H3] = velocities.u[i + H1, j, k + H3]
-        end
-    end
-
-    if js <= H2
-        @inbounds us[i, j - H2, k] = velocities.u[i, j - H2, k]
-        @inbounds vs[i, j - H2, k] = velocities.v[i, j - H2, k]
-        @inbounds ws[i, j - H2, k] = velocities.w[i, j - H2, k]
-    end
-    if js >= M - H2 + 1
-        @inbounds us[i, j + H2, k] = velocities.u[i, j + H2, k]
-        @inbounds vs[i, j + H2, k] = velocities.v[i, j + H2, k]
-        @inbounds ws[i, j + H2, k] = velocities.w[i, j + H2, k]
-        # Fill the angles because of staggering!
-        if is <= H1
-            @inbounds vs[i - H1, j + H2, k] = velocities.v[i - H1, j + H2, k]
-        end
-        if is >= N - H1 + 1
-            @inbounds vs[i + H1, j + H2, k] = velocities.v[i + H1, j + H2, k]
-        end
-        if ks <= H3
-            @inbounds vs[i, j + H2, k - H3] = velocities.v[i, j - H2, k - H3]
-        end
-        if ks >= O - H3 + 1
-            @inbounds vs[i, j + H2, k + H3] = velocities.v[i, j + H2, k + H3]
-        end
-    end
-    
-    if ks <= H3
-        @inbounds us[i, j, k - H3] = velocities.u[i, j, k - H3]
-        @inbounds vs[i, j, k - H3] = velocities.v[i, j, k - H3]
-        @inbounds ws[i, j, k - H3] = velocities.w[i, j, k - H3]
-    end
-    if ks >= O - H3 + 1
-        @inbounds us[i, j, k + H3] = velocities.u[i, j, k + H3]
-        @inbounds vs[i, j, k + H3] = velocities.v[i, j, k + H3]
-        @inbounds ws[i, j, k + H3] = velocities.w[i, j, k + H3]
-        # Fill the angles because of staggering!
-        if is <= H1
-            @inbounds ws[i - H1, j, k + H3] = velocities.w[i - H1, j, k + H3]
-        end
-        if is >= N - H1 + 1
-            @inbounds ws[i + H1, j, k + H3] = velocities.w[i + H1, j, k + H3]
-        end
-        if js <= H2
-            @inbounds ws[i, j - H2, k + H3] = velocities.w[i, j - H2, k + H3]
-        end
-        if js >= M - H2 + 1
-            @inbounds ws[i, j + H2, k + H3] = velocities.w[i, j + H2, k + H3]
-        end
-    end
-
-    @synchronize
-
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-
-    ntuple(Val(length(tracers))) do n
-        Base.@_inline_meta
-        tracer = tracers[n]
-        @inbounds cs[i, j, k] = tracer[i, j, k]
-    
-        # No corners needed for the tracer
-        if is <= H1
-            @inbounds cs[i - H1, j, k] = tracer[i - H1, j, k]
-        end
-        if is >= N - H1 + 1
-            @inbounds cs[i + H1, j, k] = tracer[i + H1, j, k]
-        end
-    
-        if js <= H2
-            @inbounds cs[i, j - H2, k] = tracer[i, j - H2, k]
-        end
-        if js >= M - H2 + 1
-            @inbounds cs[i, j + H2, k] = tracer[i, j + H2, k]
-        end
-        
-        if ks <= H3
-            @inbounds cs[i, j, k - H3] = tracer[i, j, k - H3]
-        end
-        if ks >= O - H3 + 1
-            @inbounds cs[i, j, k + H3] = tracer[i, j, k + H3]
-        end
-    
-        @synchronize
-
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], (u = us, v = vs, w = ws), cs)
-    end
-end
-
 @kernel function _calculate_hydrostatic_free_surface_Z_advection!(Gⁿ, grid::AbstractGrid{FT}, advection, velocities, 
                                                                   tracers, ::Val{H3}, ::Val{N3}) where {FT, H3, N3}
     i,  j,  k  = @index(Global, NTuple)
@@ -248,13 +101,11 @@ end
 
     @synchronize
 
-    ws_array = @localmem FT (2, 2, O+2*N3)
+    # ws_array = @localmem FT (2, 2, O+2*N3)
     
     us_array = @localmem FT (O+2*N3)
     vs_array = @localmem FT (O+2*N3)
     cs_array = @localmem FT (O+2*N3)
-
-    ws = @uniform DisplacedSharedArray(ws_array, il[1], jl[1], kg[1])
     
     us = @uniform DisplacedZSharedArray(us_array, kg[1])
     vs = @uniform DisplacedZSharedArray(vs_array, kg[1])
@@ -262,29 +113,29 @@ end
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
-    @inbounds ws[i, j, k] = velocities.w[i, j, k]
+    # @inbounds ws[i, j, k] = velocities.w[i, j, k]
     # Fill these because of staggering
-    @inbounds ws[i-1, j, k] = velocities.w[i-1, j, k]
-    @inbounds ws[i, j-1, k] = velocities.w[i, j-1, k]
+    # @inbounds ws[i-1, j, k] = velocities.w[i-1, j, k]
+    # @inbounds ws[i, j-1, k] = velocities.w[i, j-1, k]
     
     if ks <= H3
         @inbounds us[i, j, k - H3] = velocities.u[i, j, k - H3]
         @inbounds vs[i, j, k - H3] = velocities.v[i, j, k - H3]
-        @inbounds ws[i, j, k - H3] = velocities.w[i, j, k - H3]
+        # @inbounds ws[i, j, k - H3] = velocities.w[i, j, k - H3]
     end
     if ks >= O - H3 + 1
         @inbounds us[i, j, k + H3] = velocities.u[i, j, k + H3]
         @inbounds vs[i, j, k + H3] = velocities.v[i, j, k + H3]
-        @inbounds ws[i, j, k + H3] = velocities.w[i, j, k + H3]
+        # @inbounds ws[i, j, k + H3] = velocities.w[i, j, k + H3]
         # Fill the angles because of staggering!
-        @inbounds ws[i-1, j, k + H3] = velocities.w[i-1, j, k + H3]
-        @inbounds ws[i, j-1, k + H3] = velocities.w[i, j-1, k + H3]
+        # @inbounds ws[i-1, j, k + H3] = velocities.w[i-1, j, k + H3]
+        # @inbounds ws[i, j-1, k + H3] = velocities.w[i, j-1, k + H3]
     end
 
     @synchronize
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_z(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_z(i, j, k, grid, advection.momentum, (u = us, v = vs, w = ws))
+    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u_z(i, j, k, grid, advection.momentum, (u = us, v = vs, w = velocities.w))
+    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v_z(i, j, k, grid, advection.momentum, (u = us, v = vs, w = velocities.w))
 
     ntuple(Val(length(tracers))) do n
         Base.@_inline_meta
@@ -301,7 +152,7 @@ end
 
         @synchronize
 
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_z(i, j, k, grid, advection[n+1], (u = us, v = vs, w = ws), cs)
+        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc_z(i, j, k, grid, advection[n+1], (u = us, v = vs, w = velocities.w), cs)
     end
 end
 
