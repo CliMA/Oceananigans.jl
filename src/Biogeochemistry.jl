@@ -33,16 +33,32 @@ update_biogeochemical_state!(bgc, model) = nothing
 @inline biogeochemical_advection_scheme(bgc, val_tracer_name) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
-#####
-##### Default (discrete form) biogeochemical source
-#####
+"""
+AbstractBiogeochemistry.
 
+Abstract type for biogeochemical models. To define a biogeochemcial relaionship
+the following functions must have methods defined where `BiogeochemicalModel`
+is a subtype of `AbstractBioeochemistry`:
+ - `(bgc::BiogeochemicalModel)(i, j, k, grid, ::Val{:TRACER_NAME}, clock, fields)` which 
+    returns the biogeochemical reaction for for each tracer
+ - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
+    required tracer names
+ - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
+    a tuple of required auxiliary fields
+ - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
+    of the models auxiliary fields (e.g. `(PAR = bgc.light_attenuation.PAR_field, )`)
+ - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:TRACER_NAME})` which 
+    returns a velocity fields (i.e. a `NamedTuple` of fields with keys `u`, `v` & `w`)
+    for each tracer
+ - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:TRACER_NAME})` which
+    returns an advection scheme for each tracer.
+"""
 abstract type AbstractBiogeochemistry end
 
 @inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
     U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
     scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
-    src = biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+    src = bgc(i, j, k, grid, val_tracer_name, clock, fields)
     c = @inbounds fields[tracer_name]
         
     return src - div_Uc(i, j, k, grid, scheme, U_drift, c)
@@ -53,11 +69,26 @@ end
 
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
 
-#####
-##### Continuous form biogeochemical source
-#####
- 
-"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
+"""
+AbstractContinuousFormBiogeochemistry.
+
+Abstract type for biogeochemical models with continuous form biogeochemical reaction 
+functions. To define a biogeochemcial relaionship the following functions must have methods 
+defined where `BiogeochemicalModel` is a subtype of `AbstractContinuousFormBiogeochemistry`:
+ - `(bgc::BiogeochemicalModel)(::Val{:TRACER_NAME}, x, y, z, t, BGC_TRACERS..., BGC_AUXILIARY_FIELDS...)` 
+    which returns the biogeochemical reaction for for each tracer
+ - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
+    required tracer names
+ - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
+    a tuple of required auxiliary fields
+ - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
+    of the models auxiliary fields (e.g. `(PAR = bgc.light_attenuation.PAR_field, )`)
+ - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:TRACER_NAME})` which 
+    returns a velocity fields (i.e. a `NamedTuple` of fields with keys `u`, `v` & `w`)
+    for each tracer
+ - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:TRACER_NAME})` which
+    returns an advection scheme for each tracer.
+"""
 abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry end
 
 @inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{1}) =
@@ -70,6 +101,7 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
 @inline extract_biogeochemical_fields(i, j, k, grid, fields, names::NTuple{N}) where N =
     @inbounds ntuple(n -> fields[names[n]][i, j, k], Val(N))
 
+"""Return the biogeochemical forcing for `val_tracer_name` when model is called."""
 @inline function biogeochemical_transition(i, j, k, grid, bgc::AbstractContinuousFormBiogeochemistry,
                                            val_tracer_name, clock, fields)
 
