@@ -64,9 +64,6 @@ abstract type AbstractBiogeochemistry end
     return src - div_Uc(i, j, k, grid, scheme, U_drift, c)
 end
 
-@inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
-    bgc(i, j, k, grid, val_tracer_name, clock, fields)
-
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
 
 """
