@@ -171,6 +171,9 @@ contains biogeochemical auxiliary fields (e.g. PAR).
 end
 
 required_biogeochemical_tracers(::Nothing) = ()
-required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
+required_biogeochemical_auxiliary_fields(::Nothing) = ()
+
+required_biogeochemical_tracers(::AbstractBiogeochemistry) = ()
+required_biogeochemical_auxiliary_fields(::AbstractBiogeochemistry) = ()
 
 end # module
