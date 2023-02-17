@@ -23,7 +23,7 @@ import CUDA  # To avoid name conflicts
 instantiate(x) = x
 instantiate(X::DataType) = X()
 
-getname(type) = typeof(type).name.wrapper
+getnamewrapper(type) = typeof(type).name.wrapper
 
 #####
 ##### Include utils

@@ -29,7 +29,7 @@ end
 
 @inline function vertical_height!(height, location)
     dz = GridMetricOperation(location, Δz, height.grid)
-    sum!(height, dz)
+    return sum!(height, dz)
 end
 
 @inline function augmented_kernel_size(grid::DistributedGrid)

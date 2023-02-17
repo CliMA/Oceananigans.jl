@@ -1,5 +1,5 @@
 using MPI
-using Oceananigans.Utils: getname
+using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
@@ -250,7 +250,7 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     arch      = grid.architecture
     local_ib  = grid.immersed_boundary    
     global_ug = reconstruct_global_grid(grid.underlying_grid)
-    global_ib = getname(local_ib)(construct_global_array(arch, local_ib.bottom_height, size(grid)))
+    global_ib = getnamewrapper(local_ib)(construct_global_array(arch, local_ib.bottom_height, size(grid)))
     return ImmersedBoundaryGrid(global_ug, global_ib)
 end
 
@@ -305,7 +305,7 @@ function scatter_local_grids(arch::DistributedArch, global_grid::ImmersedBoundar
     ug   = global_grid.underlying_grid
 
     local_ug = scatter_local_grids(arch, ug)
-    local_ib = getname(ib)(partition_global_array(arch, ib.bottom_height, size(global_grid)))
+    local_ib = getnamewrapper(ib)(partition_global_array(arch, ib.bottom_height, size(global_grid)))
     
     return ImmersedBoundaryGrid(local_ug, local_ib)
 end
