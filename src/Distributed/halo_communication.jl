@@ -137,9 +137,9 @@ end
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, barrier, grid::DistributedGrid, buffers, args...; kwargs...)
-    fill_halo!  = halo_tuple[1][task]
-    bc_left     = halo_tuple[2][task]
-    bc_right    = halo_tuple[3][task]
+    fill_halo! = halo_tuple[1][task]
+    bc_left    = halo_tuple[2][task]
+    bc_right   = halo_tuple[3][task]
 
     # Calculate size and offset of the fill_halo kernel
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)

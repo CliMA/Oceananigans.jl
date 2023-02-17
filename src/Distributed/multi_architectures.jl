@@ -70,6 +70,9 @@ function DistributedArch(child_architecture = CPU();
     (use_buffers && child_architecture isa CPU) && 
             @warn "Using buffers on CPU architectures is not required (but useful for testing)"
 
+    (!use_buffers && child_architecture isa GPU) && 
+            @warn "On GPU architectures not using buffers will lead to a substantial slowdown https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-support"
+
     validate_tupled_argument(ranks, Int, "ranks")
 
     Rx, Ry, Rz = ranks

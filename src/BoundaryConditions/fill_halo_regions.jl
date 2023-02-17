@@ -123,6 +123,9 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 # Distributed halos have to be filled for last in case of 
 # buffered communication. Hence, we always fill them last
 
+# The reasoning for filling Periodic after Flux, Value, Gradient 
+# Periodic fills also corners while Flux, Value, Gradient do not
+
 # Order of halo filling
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
 # 2) Periodic (PBCT)
