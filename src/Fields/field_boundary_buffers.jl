@@ -111,8 +111,8 @@ function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid,
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _recv_from_west_buffer!(parent(c), buffers.west, Hx, Nx)
-     _recv_from_east_buffer!(parent(c), buffers.east, Hx, Nx)
+    _recv_from_west_buffer!(parent(c), buffers.west, Hx, Nx)
+    _recv_from_east_buffer!(parent(c), buffers.east, Hx, Nx)
 end
 
 function recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
