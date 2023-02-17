@@ -75,8 +75,8 @@ function fill_south_and_north_send_buffers!(c::OffsetArray, buffers::FieldBounda
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-     _fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
-     _fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
+    _fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
+    _fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
 end
 
 fill_west_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid) = 
