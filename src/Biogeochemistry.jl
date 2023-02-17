@@ -2,14 +2,9 @@ module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Advection: div_Uc, CenteredSecondOrder
-using Oceananigans.Utils: tupleit
-using Oceananigans.Fields: Field
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Utils: launch!
-using KernelAbstractions: @kernel
 
-import Oceananigans.Fields: location, CenterField
-import Oceananigans.Forcings: regularize_forcing, maybe_constant_field
+import Oceananigans.Fields: CenterField
 
 #####
 ##### Generic fallbacks for biogeochemistry
