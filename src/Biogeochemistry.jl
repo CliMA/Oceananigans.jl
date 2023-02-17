@@ -57,6 +57,8 @@ is a subtype of `AbstractBioeochemistry`:
 """
 abstract type AbstractBiogeochemistry end
 
+@inline biogeochemistry_rhs(i, j, k, grid, ::Nothing, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name = zero(grid)
+
 @inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
     U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
     scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
@@ -73,6 +75,8 @@ end
 @inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
     bgc(i, j, k, grid, val_tracer_name, clock, fields)
 
+
+# Required for when a model is defined but not for all tracers
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
 
 """
@@ -170,10 +174,9 @@ contains biogeochemical auxiliary fields (e.g. PAR).
     return tracers, auxiliary_fields 
 end
 
-required_biogeochemical_tracers(::Nothing) = ()
-required_biogeochemical_auxiliary_fields(::Nothing) = ()
+const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
-required_biogeochemical_tracers(::AbstractBiogeochemistry) = ()
-required_biogeochemical_auxiliary_fields(::AbstractBiogeochemistry) = ()
+required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()
+required_biogeochemical_auxiliary_fields(::AbstractBGCOrNothing) = ()
 
 end # module
