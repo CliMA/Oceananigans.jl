@@ -127,8 +127,6 @@ end
 
 @inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(x)
 
-struct NoBiogeochemistry <: AbstractBiogeochemistry end
-
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
@@ -172,7 +170,7 @@ contains biogeochemical auxiliary fields (e.g. PAR).
     return tracers, auxiliary_fields 
 end
 
-required_biogeochemical_tracers(::NoBiogeochemistry) = ()
+required_biogeochemical_tracers(::Nothing) = ()
 required_biogeochemical_auxiliary_fields(bgc::AbstractBiogeochemistry) = ()
 
 end # module
