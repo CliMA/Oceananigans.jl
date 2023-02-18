@@ -247,7 +247,7 @@ function SplitExplicitSettings(; substeps = 200,
     averaging_weights = averaging_weights[1:idx]
     mass_flux_weights = similar(averaging_weights)
     
-    M = searchsortedfirst(τᶠ, 1.0) - 1
+    M = searchsortedfirst(τᶠ, 1) - 1
 
     averaging_weights ./= sum(averaging_weights)
 
