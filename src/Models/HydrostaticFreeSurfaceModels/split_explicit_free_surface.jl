@@ -285,8 +285,8 @@ function reset!(sefs::SplitExplicitFreeSurface)
         var = getproperty(sefs.state, name)
         fill!(var, 0.0)
     end
-    fill!(sefs.auxiliary.Gᵁ, 0.0)
-    fill!(sefs.auxiliary.Gⱽ, 0.0)
+    fill!(sefs.auxiliary.Gᵁ, 0)
+    fill!(sefs.auxiliary.Gⱽ, 0)
 end
 
 # Adapt
