@@ -86,7 +86,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             U̅ .= 0.0
             V̅ .= 0.0
             Gᵁ .= 0.0
-            Gⱽ .= 0.0
+            Gⱽ .= 0
 
             for i in 1:Nt
                 split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, settings, arch, grid, g, Δτ, i)
