@@ -18,7 +18,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
         settings = SplitExplicitSettings(; barotropic_averaging_kernel = averaging_fixed_function)
         sefs = SplitExplicitFreeSurface(grid; settings)
 
-        sefs.η .= 0.0
+        sefs.η .= 0
 
         @testset " One timestep test " begin
             state = sefs.state
