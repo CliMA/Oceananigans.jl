@@ -34,18 +34,18 @@ end
     SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) 
 
 Constructor for the `SplitExplicitFreeSurface`, for more information on the available `kwargs...`
-see `SplitExplicitSettings` 
+see [`SplitExplicitSettings`](@ref).
 
 Keyword Arguments
 =================
 
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
-              require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
-              of `averaging_weights` for which `averaging_weights > 0`
+- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. Note, not all averaging functions
+              require to substep until `2Δt`. The number of substeps will be reduced automatically to the last
+              index of `averaging_weights` for which `averaging_weights > 0`.
 - `barotropic_averaging_kernel`: function of `τ` used to average `U` and `η` within the barotropic advancement.
                                  `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
-                                 located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
-- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
+                                 located at `τ = 1`. This function should be centered at `τ = 1` (i.e., ∑(aₘ m /M) = 1).
+- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
