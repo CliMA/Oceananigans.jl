@@ -98,8 +98,8 @@ displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
 
 include("barotropic_pressure_correction.jl")
-include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("hydrostatic_free_surface_advection_kernel_functions.jl")
+include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("calculate_hydrostatic_free_surface_tendencies.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
