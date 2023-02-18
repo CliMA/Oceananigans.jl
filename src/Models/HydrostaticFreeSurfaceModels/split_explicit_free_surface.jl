@@ -237,7 +237,7 @@ function SplitExplicitSettings(; substeps = 200,
                                  barotropic_averaging_kernel = averaging_shape_function,
                                  timestepper = ForwardBackwardScheme())
 
-    τᶠ = range(0.0, 2.0, length = substeps+1)
+    τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = barotropic_averaging_kernel.(τᶠ[2:end]) 
@@ -285,8 +285,8 @@ function reset!(sefs::SplitExplicitFreeSurface)
         var = getproperty(sefs.state, name)
         fill!(var, 0.0)
     end
-    fill!(sefs.auxiliary.Gᵁ, 0.0)
-    fill!(sefs.auxiliary.Gⱽ, 0.0)
+    fill!(sefs.auxiliary.Gᵁ, 0)
+    fill!(sefs.auxiliary.Gⱽ, 0)
 end
 
 # Adapt
