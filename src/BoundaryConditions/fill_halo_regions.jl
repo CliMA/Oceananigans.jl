@@ -44,7 +44,7 @@ extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
-"Fill halo regions in ``x``, ``y``, and ``z``  for a given field's data."
+"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
