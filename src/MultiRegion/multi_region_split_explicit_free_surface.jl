@@ -12,10 +12,10 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
     Hᶜᶜ = Field((Center, Center, Nothing), grid)
     
-    @apply_regionally vertical_height!(Hᶠᶜ, (Face, Center, Center))
-    @apply_regionally vertical_height!(Hᶜᶠ, (Center, Face, Center))
+    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    @apply_regionally vertical_height!(Hᶜᶜ, (Center, Center, Center))
+    @apply_regionally calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
        
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
@@ -26,7 +26,7 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
-@inline function vertical_height!(height, location)
+@inline function calculate_column_height!(height, location)
     dz = GridMetricOperation(location, Δz, height.grid)
     sum!(height, dz)
 end

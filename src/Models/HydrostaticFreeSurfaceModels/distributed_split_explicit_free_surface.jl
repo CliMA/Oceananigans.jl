@@ -13,10 +13,10 @@ function SplitExplicitAuxiliary(grid::DistributedGrid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
     Hᶜᶜ = Field((Center, Center, Nothing), grid)
     
-    vertical_height!(Hᶠᶜ, (Face, Center, Center))
-    vertical_height!(Hᶜᶠ, (Center, Face, Center))
+    calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    vertical_height!(Hᶜᶜ, (Center, Center, Center))
+    calculate_column_height!(Hᶜᶜ, (Center, Center, Center))
        
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ))
 
@@ -27,7 +27,8 @@ function SplitExplicitAuxiliary(grid::DistributedGrid)
     return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
-@inline function vertical_height!(height, location)
+"""Integrate z at locations `location` and set! `height`` with the result"""
+@inline function calculate_column_height!(height, location)
     dz = GridMetricOperation(location, Δz, height.grid)
     return sum!(height, dz)
 end
