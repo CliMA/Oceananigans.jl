@@ -62,8 +62,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 """
     reconstruct_global_field(mrf)
 
-this function reconstructs the global field from a `MultiRegionField`. The global field 
-is always reconstructed on the `CPU`
+Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))

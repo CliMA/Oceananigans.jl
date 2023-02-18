@@ -215,7 +215,7 @@ end
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
-# Weights that minimize dispersion error from http://falk.ucsd.edu/roms_class/shchepetkin04.pdf (p = 2, q = 4, r = 0.18927)
+# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ; p = 2, q = 4, r = 0.18927) 
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1) 
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
@@ -241,13 +241,13 @@ function SplitExplicitSettings(; substeps = 200,
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = barotropic_averaging_kernel.(τᶠ[2:end]) 
-    idx = searchsortedlast(averaging_weights, 0.0, rev=true)
+    idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
     averaging_weights = averaging_weights[1:idx]
     mass_flux_weights = similar(averaging_weights)
     
-    M = searchsortedfirst(τᶠ, 1.0) - 1
+    M = searchsortedfirst(τᶠ, 1) - 1
 
     averaging_weights ./= sum(averaging_weights)
 
