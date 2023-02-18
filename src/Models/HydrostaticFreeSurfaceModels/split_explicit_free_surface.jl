@@ -241,7 +241,7 @@ function SplitExplicitSettings(; substeps = 200,
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = barotropic_averaging_kernel.(τᶠ[2:end]) 
-    idx = searchsortedlast(averaging_weights, 0.0, rev=true)
+    idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
     averaging_weights = averaging_weights[1:idx]
