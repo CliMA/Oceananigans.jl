@@ -207,11 +207,12 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
 end
 
 """
-    Possible barotropic time-stepping scheme. 
+Possible barotropic time-stepping schemes. 
 
-- `AdamsBashforth3Scheme`: η = f(U, Uᵐ⁻¹, Uᵐ⁻²) then U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
-- `ForwardBackwardScheme`: η = f(U)             then U = f(η)
+- `AdamsBashforth3Scheme`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+- `ForwardBackwardScheme`: `η = f(U)`             then `U = f(η)`
 """
+
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
