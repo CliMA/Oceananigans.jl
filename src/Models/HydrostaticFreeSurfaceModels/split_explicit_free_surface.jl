@@ -139,20 +139,20 @@ A struct containing auxiliary fields for the split-explicit free surface.
 
 The Barotropic time stepping will be launched on a grid `(kernel_size[1], kernel_size[2])`
 large (or `:xy` in case of a serial computation),  and start computing from 
-`(i - kernel_offsets[1], j - kernel_offsets[2])`
+`(i - kernel_offsets[1], j - kernel_offsets[2])`.
 
 $(TYPEDFIELDS)
 """
 Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
-    "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
+    "Vertically integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
-    "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
+    "Vertically integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField`)"
+    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
     Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField`)"
+    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
     Hᶜᶠ :: 𝒞ℱ
-    "Depth at `(Center, Center)` (`ReducedField`)"
+    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
     Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
     kernel_size :: 𝒦
@@ -200,7 +200,7 @@ struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
     averaging_weights :: ℳ
     "mass_flux_weights : (`Vector`)"
     mass_flux_weights :: ℳ
-    "fractional step: (`Number`), the barotropic time step will be (Δτ ⋅ Δt)" 
+    "fractional step: (`Number`), the barotropic time step is `Δτ ⋅ Δt`" 
     Δτ :: 𝒯
     "time stepping scheme"
     timestepper :: 𝒮
@@ -230,8 +230,8 @@ end
                             barotropic_averaging_kernel = averaging_shape_function,
                             timestepper = ForwardBackwardScheme())
 
-constructor for `SplitExplicitSettings`. For a description of the keyword
-arguments, see the `SplitExplicitFreeSurface` constructor
+Return `SplitExplicitSettings`. For a description of the keyword arguments, see
+the [`SplitExplicitFreeSurface`](@ref).
 """
 function SplitExplicitSettings(; substeps = 200, 
                                  barotropic_averaging_kernel = averaging_shape_function,
