@@ -221,9 +221,9 @@ struct ForwardBackwardScheme end
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
-@inline averaging_cosine_function(τ) = τ >= 0.5 && τ <= 1.5 ? 1 + cos(2π * (τ - 1)) : 0.0
+@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? FT(1 + cos(2π * (τ - 1))) : zero(FT)
 
-@inline averaging_fixed_function(τ) = 1.0
+@inline constant_averaging_kernel(τ) = 1
 
 """
     SplitExplicitSettings(; substeps = 200, 
