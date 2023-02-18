@@ -42,8 +42,8 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
 
 # Convention
  index_left(i, ::Center) = i
- index_left(i, ::Face)   = i - 1
-index_right(i, ::Center) = i + 1
+ index_left(i, ::Face)   = i -0x1
+index_right(i, ::Center) = i +0x1
 index_right(i, ::Face)   = i
 
 @inline Base.div(i, j, k, grid::AbstractGrid, loc, q_west, q_east, q_south, q_north, q_bottom, q_top) =

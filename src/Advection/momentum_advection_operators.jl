@@ -168,9 +168,6 @@ which ends up at the location `ccf`.
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end
 
-@inline div_𝐯w_xy(i, j, k, grid, advection, U, w) = 
-    1/Vᶜᶜᶠ(i, j, k, grid) * δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) 
-
 @inline div_𝐯w_y(i, j, k, grid, advection, U, w) = 
     1/Vᶜᶜᶠ(i, j, k, grid) * δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w)
 

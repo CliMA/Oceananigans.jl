@@ -117,7 +117,7 @@ function WENO(FT::DataType=Float64;
         return UpwindBiased(order = 1)
     end
 
-    N  = Int((order + 1) ÷ 2)
+    N  = Int((order +0x1) ÷ 2)
 
     weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
     buffer_scheme   = WENO(FT; grid, order = order - 2, zweno, bounds)
@@ -161,10 +161,10 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, WF, PP}) where {N, FT,
                      Adapt.adapt(to, scheme.buffer_scheme),
                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-# Retrieve precomputed coefficients (+2 for julia's 1 based indices)
-@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+2][i] 
+# Retrieve precomputed coefficients (+0x2 for julia's 1 based indices)
+@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+0x2][i] 
+@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[r+0x2][i] 
+@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[r+0x2][i] 
+@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+0x2][i] 
+@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+0x2][i] 
+@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+0x2][i] 

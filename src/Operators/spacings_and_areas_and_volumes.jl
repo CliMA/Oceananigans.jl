@@ -200,14 +200,14 @@ end
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+0x1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-0x1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-0x1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+0x1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+0x1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-0x1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-0x1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+0x1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
     

@@ -4,40 +4,40 @@ using Oceananigans.Grids: Flat
 ##### Base interpolation operators without grid
 #####
 
-@inline ℑxᶜᵃᵃ(i, j, k, u) = @inbounds (u[i,   j, k] + u[i+1, j, k]) / 2
-@inline ℑxᶠᵃᵃ(i, j, k, c) = @inbounds (c[i-1, j, k] + c[i,   j, k]) / 2
+@inline ℑxᶜᵃᵃ(i, j, k, u) = @inbounds (u[i,     j, k] + u[i+0x1, j, k]) / 2
+@inline ℑxᶠᵃᵃ(i, j, k, c) = @inbounds (c[i-0x1, j, k] + c[i,     j, k]) / 2
 
-@inline ℑyᵃᶜᵃ(i, j, k, v) = @inbounds (v[i, j,   k] + v[i,  j+1, k]) / 2
-@inline ℑyᵃᶠᵃ(i, j, k, c) = @inbounds (c[i, j-1, k] + c[i,  j,   k]) / 2
+@inline ℑyᵃᶜᵃ(i, j, k, v) = @inbounds (v[i, j,     k] + v[i,  j+0x1, k]) / 2
+@inline ℑyᵃᶠᵃ(i, j, k, c) = @inbounds (c[i, j-0x1, k] + c[i,  j,     k]) / 2
 
-@inline ℑzᵃᵃᶜ(i, j, k, w) = @inbounds (w[i, j,   k] + w[i, j, k+1]) / 2
-@inline ℑzᵃᵃᶠ(i, j, k, c) = @inbounds (c[i, j, k-1] + c[i, j,   k]) / 2
+@inline ℑzᵃᵃᶜ(i, j, k, w) = @inbounds (w[i, j,     k] + w[i, j, k+0x1]) / 2
+@inline ℑzᵃᵃᶠ(i, j, k, c) = @inbounds (c[i, j, k-0x1] + c[i, j,     k]) / 2
 
 #####
 ##### Base interpolation operators
 #####
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, u) where FT = @inbounds FT(0.5) * (u[i,   j, k] + u[i+1, j, k])
-@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i-1, j, k] + c[i,   j, k])
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, u) where FT = @inbounds FT(0.5) * (u[i,   j, k] + u[i+0x1, j, k])
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i-0x1, j, k] + c[i,     j, k])
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, v) where FT = @inbounds FT(0.5) * (v[i, j,   k] + v[i,  j+1, k])
-@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j-1, k] + c[i,  j,   k])
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, v) where FT = @inbounds FT(0.5) * (v[i, j,     k] + v[i,  j+0x1, k])
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j-0x1, k] + c[i,  j,     k])
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, w) where FT = @inbounds FT(0.5) * (w[i, j,   k] + w[i, j, k+1])
-@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j,   k])
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, w) where FT = @inbounds FT(0.5) * (w[i, j,     k] + w[i, j, k+0x1])
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c) where FT = @inbounds FT(0.5) * (c[i, j, k-0x1] + c[i, j,     k])
 
 #####
 ##### Interpolation operators acting on functions
 #####
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i,   j, k, grid, args...) + f(i+1, j, k, grid, args...))
-@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i-1, j, k, grid, args...) + f(i,   j, k, grid, args...))
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i,     j, k, grid, args...) + f(i+0x1, j, k, grid, args...))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i-0x1, j, k, grid, args...) + f(i,     j, k, grid, args...))
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,   k, grid, args...) + f(i, j+1, k, grid, args...))
-@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-1, k, grid, args...) + f(i, j,   k, grid, args...))
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j,     k, grid, args...) + f(i, j+0x1, k, grid, args...))
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j-0x1, k, grid, args...) + f(i, j,     k, grid, args...))
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,   grid, args...) + f(i, j, k+1, grid, args...))
-@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-1, grid, args...) + f(i, j, k,   grid, args...))
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k,     grid, args...) + f(i, j, k+0x1, grid, args...))
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * (f(i, j, k-0x1, grid, args...) + f(i, j, k,     grid, args...))
 
 #####
 ##### Convenience operators for "interpolating constants"
@@ -86,9 +86,9 @@ using Oceananigans.Grids: Flat
 ##### Leftover
 #####
 
-@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i-1, j, k] + c[i, j, k])
-@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j-1, k] + c[i, j, k])
-@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j, k-1] + c[i, j, k])
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i-0x1, j, k] + c[i, j, k])
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j-0x1, k] + c[i, j, k])
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT}, c, args...) where FT = @inbounds FT(0.5) * (c[i, j, k-0x1] + c[i, j, k])
 
 #####
 ##### Support for Flat Earths

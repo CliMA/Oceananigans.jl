@@ -29,8 +29,8 @@ end
 
     cᵢⱼ  = c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
+    c₊ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i+0x1, j, k, grid, advection, c)
+    c₊ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i+0x1, j, k, grid, advection, c)
     c₋ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
     c₋ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
 
@@ -42,7 +42,7 @@ end
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u[i+1, j, k], c₊ᴸ, c₊ᴿ) - 
+    return Axᶠᶜᶜ(i+0x1, j, k, grid) * upwind_biased_product(u[i+0x1, j, k], c₊ᴸ, c₊ᴿ) - 
            Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u[i,   j, k], c₋ᴸ, c₋ᴿ)
 end
 
@@ -53,8 +53,8 @@ end
 
     cᵢⱼ  = c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
+    c₊ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j+0x1, k, grid, advection, c)
+    c₊ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j+0x1, k, grid, advection, c)
     c₋ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
     c₋ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
 
@@ -66,7 +66,7 @@ end
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v[i, j+1, k], c₊ᴸ, c₊ᴿ) - 
+    return Ayᶜᶠᶜ(i, j+0x1, k, grid) * upwind_biased_product(v[i, j+0x1, k], c₊ᴸ, c₊ᴿ) - 
            Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v[i, j,   k], c₋ᴸ, c₋ᴿ)
 end
 
@@ -77,8 +77,8 @@ end
 
     cᵢⱼ  = c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
+    c₊ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+0x1, grid, advection, c)
+    c₊ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+0x1, grid, advection, c)
     c₋ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
     c₋ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
 
@@ -90,6 +90,6 @@ end
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
     c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
 
-    return Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w[i, j, k+1], c₊ᴸ, c₊ᴿ) - 
+    return Azᶜᶜᶠ(i, j, k+0x1, grid) * upwind_biased_product(w[i, j, k+0x1], c₊ᴸ, c₊ᴿ) - 
            Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w[i, j, k],   c₋ᴸ, c₋ᴿ)
 end

@@ -4,9 +4,9 @@
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
 @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
 
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+0x1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+0x1, k, grid, scheme, ψ, j, Center, args...)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+0x1, grid, scheme, ψ, k, Center, args...)
 
 @inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
 @inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
@@ -16,25 +16,25 @@
 @inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
 @inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
 
-@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i+0x1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j+0x1, k, grid, scheme, ψ, j, Center, args...)
+@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k+0x1, grid, scheme, ψ, k, Center, args...)
 
-@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i+0x1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j+0x1, k, grid, scheme, ψ, j, Center, args...)
+@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k+0x1, grid, scheme, ψ, k, Center, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end
 struct Primitive end
 
-num_prod(i, m, l, r, xr, xi, shift, op, order, args...)            = prod(xr[i+shift] - xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
-num_prod(i, m, l, r, xr, xi, shift, op, order, ::FirstDerivative)  = 2*xr[i+shift] - sum(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
+num_prod(i, m, l, r, xr, xi, shift, op, order, args...)            = prod(xr[i+shift] - xi[op(i, r-q+0x1)]  for q=0:order if (q != m && q != l))
+num_prod(i, m, l, r, xr, xi, shift, op, order, ::FirstDerivative)  = 2*xr[i+shift] - sum(xi[op(i, r-q+0x1)] for q=0:order if (q != m && q != l))
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 
 @inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive) 
-    s = sum(xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
-    p = prod(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
+    s = sum(xi[op(i, r-q+0x1)]  for q=0:order if (q != m && q != l))
+    p = prod(xi[op(i, r-q+0x1)] for q=0:order if (q != m && q != l))
 
     return xr[i+shift]^3 / 3 - s * xr[i+shift]^2 / 2 + p * xr[i+shift]
 end
@@ -57,10 +57,10 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
 @inline function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
     coeffs = zeros(order)
     for j in 0:order-1
-        for m in j+1:order
+        for m in j+0x1:order
             numerator   = sum(num_prod(i, m, l, r, xr, xi, shift, op, order, der) for l=0:order if l != m)
-            denominator = prod(xi[op(i, r-m+1)] - xi[op(i, r-l+1)] for l=0:order if l != m)
-            coeffs[j+1] += numerator / denominator * (xi[op(i, r-j)] - xi[op(i, r-j+1)])
+            denominator = prod(xi[op(i, r-m+0x1)] - xi[op(i, r-l+0x1)] for l=0:order if l != m)
+            coeffs[j+0x1] += numerator / denominator * (xi[op(i, r-j)] - xi[op(i, r-j+0x1)])
         end
     end
 
@@ -132,10 +132,10 @@ julia> calc_reconstruction_stencil(1, :symm, :x)
 :(coeff2_symm[2] * ψ[i + -1, j, k] + coeff2_symm[1] * ψ[i + 0, j, k])
 
 julia> calc_reconstruction_stencil(2, :symm, :x)
-:(coeff4_symm[4] * ψ[i + -2, j, k] + coeff4_symm[3] * ψ[i + -1, j, k] + coeff4_symm[2] * ψ[i + 0, j, k] + coeff4_symm[1] * ψ[i + 1, j, k])
+:(coeff4_symm[4] * ψ[i + -2, j, k] + coeff4_symm[3] * ψ[i + -1, j, k] + coeff4_symm[2] * ψ[i + 0, j, k] + coeff4_symm[1] * ψ[i +0x1, j, k])
 
 julia> calc_reconstruction_stencil(3, :left, :x)
-:(coeff5_left[5] * ψ[i + -3, j, k] + coeff5_left[4] * ψ[i + -2, j, k] + coeff5_left[3] * ψ[i + -1, j, k] + coeff5_left[2] * ψ[i + 0, j, k] + coeff5_left[1] * ψ[i + 1, j, k])
+:(coeff5_left[5] * ψ[i + -3, j, k] + coeff5_left[4] * ψ[i + -2, j, k] + coeff5_left[3] * ψ[i + -1, j, k] + coeff5_left[2] * ψ[i + 0, j, k] + coeff5_left[1] * ψ[i +0x1, j, k])
 ```
 """
 @inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
@@ -146,24 +146,24 @@ julia> calc_reconstruction_stencil(3, :left, :x)
     end
     rng = 1:N
     if shift == :right
-        rng = rng .+ 1
+        rng = rng .+0x1
     end
     stencil_full = Vector(undef, N)
     coeff = Symbol(:coeff, order, :_, shift)
     for (idx, n) in enumerate(rng)
-        c = n - buffer - 1
+        c = Int8(n - buffer - 1)
         if func
             stencil_full[idx] = dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ(i + $c, j, k, grid, args...)) :
+                                :($coeff[$(order - idx +0x1)] * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ(i, j + $c, k, grid, args...)) :
-                                :($coeff[$(order - idx + 1)] * ψ(i, j, k + $c, grid, args...))
+                                :($coeff[$(order - idx +0x1)] * ψ(i, j + $c, k, grid, args...)) :
+                                :($coeff[$(order - idx +0x1)] * ψ(i, j, k + $c, grid, args...))
         else
             stencil_full[idx] =  dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ[i + $c, j, k]) :
+                                :($coeff[$(order - idx +0x1)] * ψ[i + $c, j, k]) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ[i, j + $c, k]) :
-                                :($coeff[$(order - idx + 1)] * ψ[i, j, k + $c])
+                                :($coeff[$(order - idx +0x1)] * ψ[i, j + $c, k]) :
+                                :($coeff[$(order - idx +0x1)] * ψ[i, j, k + $c])
         end
     end
     return Expr(:call, :+, stencil_full...)
@@ -181,12 +181,12 @@ end
     end
     rng = 1:N
     if shift == :right
-        rng = rng .+ 1
+        rng = rng .+0x1
     end
     stencil_full = Vector(undef, N)
     coeff = Symbol(:coeff, order, :_, shift)
     for (idx, n) in enumerate(rng)
-        c = n - buffer - 1
+        c = Int8(n - buffer - 1)
         if func
             stencil_full[idx] = dir == :x ? 
                                 :(ψ(i + $c, j, k, grid, args...)) :
@@ -221,7 +221,7 @@ end
 
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
-        new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
+        new_grid   = with_halo((Hx+0x1, Hy+0x1, Hz+0x1), grid)
 
         for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
             @eval $(Symbol(:coeff_ , rect_metric)) = calc_reconstruction_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir, Val($method); order = $order)
@@ -242,7 +242,7 @@ end
 # Stretched reconstruction coefficients for `Centered` schemes
 @inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
     cpu_coord = arch_array(CPU(), coord)
-    r = ((order + 1) ÷ 2) - 1
+    r = ((order +0x1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     return s
 end
@@ -250,8 +250,8 @@ end
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
 @inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
     cpu_coord = arch_array(CPU(), coord)
-    rleft  = ((order + 1) ÷ 2) - 2
-    rright = ((order + 1) ÷ 2) - 1
+    rleft  = ((order +0x1) ÷ 2) - 2
+    rright = ((order +0x1) ÷ 2) - 1
     s = []
     for r in [rleft, rright]
         push!(s, create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order))
@@ -274,7 +274,7 @@ end
 @inline function create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
     stencil = NTuple{order, FT}[]
     @inbounds begin
-        for i = 0:N+1
+        for i = 0:N+0x1
             push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
         end
     end

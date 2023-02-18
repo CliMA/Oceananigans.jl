@@ -12,19 +12,19 @@
 @inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
     # South-west corner
     if i == 1 && j == 1
-        return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+        return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-0x1, k, grid, u)
 
     # South-east corner
-    elseif i == grid.Nx+1 && j == 1
-        return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+    elseif i == grid.Nx+0x1 && j == 1
+        return - Δy_qᶜᶠᶜ(i-0x1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-0x1, k, grid, u)
 
     # North-west corner
-    elseif i == 1 && j == grid.Ny+1
-        return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+    elseif i == 1 && j == grid.Ny+0x1
+        return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-0x1, k, grid, u)
 
     # North-east corner
-    elseif i == grid.Nx+1 && j == grid.Ny+1
-        return - Δy_qᶜᶠᶜ(i-1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
+    elseif i == grid.Nx+0x1 && j == grid.Ny+0x1
+        return - Δy_qᶜᶠᶜ(i-0x1, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-0x1, k, grid, u)
 
     # Not a corner
     else

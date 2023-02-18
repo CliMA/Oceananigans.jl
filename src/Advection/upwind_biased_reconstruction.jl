@@ -45,7 +45,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
-    N  = Int((order + 1) ÷ 2)
+    N  = Int((order +0x1) ÷ 2)
 
     if N > 1
         coefficients     = Tuple(nothing for i in 1:6)

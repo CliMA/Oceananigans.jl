@@ -21,7 +21,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
-    calculate_hydrostatic_free_surface_shared_advection_tendency_contributions!(model)
+    # calculate_hydrostatic_free_surface_shared_advection_tendency_contributions!(model)
     
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -288,30 +288,47 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch
     return nothing
 end
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid, advection, coriolis, velocities, tracers) 
-    i,  j,  k  = @index(Global, NTuple)
+# @kernel function _calculate_hydrostatic_free_surface_advection_u!(G, grid, advection, velocities) 
+#     i,  j,  k  = @index(Global, NTuple)
+#     @inbounds G[i, j, k] -= U_dot_∇u(i, j, k, grid, advection, velocities)
+# end
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities)
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities)
+# @kernel function _calculate_hydrostatic_free_surface_advection_v!(G, grid, advection, velocities) 
+#     i,  j,  k  = @index(Global, NTuple)
+#     @inbounds G[i, j, k] -= U_dot_∇v(i, j, k, grid, advection, velocities)
+# end
 
-    ntuple(Val(length(tracers))) do n
-        Base.@_inline_meta
-        tracer = tracers[n]
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracer)
+# @kernel function _calculate_hydrostatic_free_surface_advection_c!(G, grid, advection, velocities, tracer) 
+#     i,  j,  k  = @index(Global, NTuple)
+#     @inbounds G[i, j, k] -= div_Uc(i, j, k, grid, advection, velocities, tracer)
+# end
+
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::ActiveCellsIBG, advection, velocities, tracers)
+    i, j, k = @index(Global, NTuple)
+        
+    @inbounds begin
+        Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) 
+        Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) 
+
+        ntuple(Val(length(tracers))) do n
+            Base.@_inline_meta
+            @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracers[n])
+        end
     end
 end
 
-@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::ActiveCellsIBG, advection, coriolis, velocities, tracers) 
+@kernel function _calculate_hydrostatic_free_surface_advection!(Gⁿ, grid::ActiveCellsIBG, advection, velocities, tracers)
     idx = @index(Global, Linear)
     i, j, k = calc_tendency_index(idx, grid)
+    
+    @inbounds begin
+        Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) 
+        Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) 
 
-    @inbounds Gⁿ.u[i, j, k] -= U_dot_∇u(i, j, k, grid, advection.momentum, velocities) 
-    @inbounds Gⁿ.v[i, j, k] -= U_dot_∇v(i, j, k, grid, advection.momentum, velocities) 
-
-    ntuple(Val(length(tracers))) do n
-        Base.@_inline_meta
-        tracer = tracers[n]
-        @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracer)
+        ntuple(Val(length(tracers))) do n
+            Base.@_inline_meta
+            @inbounds Gⁿ[n+3][i, j, k] -= div_Uc(i, j, k, grid, advection[n+1], velocities, tracers[n])
+        end
     end
 end
 
@@ -324,16 +341,38 @@ function calculate_hydrostatic_free_surface_advection_tendency_contributions!(mo
     barrier = device_event(model)
     only_active_cells = use_only_active_cells(grid)
 
-    advection_event = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection!,
-                              model.timestepper.Gⁿ,
-                              grid,
-                              model.advection,
-                              model.velocities,
-                              model.tracers;
-                              dependencies = barrier,
-                              only_active_cells)
+    advection_event_u = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection_u!,
+                                model.timestepper.Gⁿ.u,
+                                grid,
+                                model.advection.momentum,
+                                model.velocities;
+                                dependencies = barrier,
+                                only_active_cells)
 
-    wait(device(arch), advection_event)
+    advection_event_v = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection_v!,
+                                model.timestepper.Gⁿ.v,
+                                grid,
+                                model.advection.momentum,
+                                model.velocities;
+                                dependencies = barrier,
+                                only_active_cells)
+
+    events = [advection_event_u, advection_event_v]
+        
+    for (idx, tracer) in enumerate(model.tracers)
+
+        event = launch!(arch, grid, :xyz, _calculate_hydrostatic_free_surface_advection_c!,
+                        model.timestepper.Gⁿ[idx+3],
+                        grid,
+                        model.advection[idx+1],
+                        model.velocities,
+                        tracer;
+                        dependencies = barrier,
+                        only_active_cells)
+
+        push!(events, event)
+    end
+    wait(device(arch), MultiEvent(tuple(events...)))
 
     return nothing
 end

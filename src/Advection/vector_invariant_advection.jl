@@ -110,7 +110,7 @@ validate_divergence_and_vertical_scheme(divergence_scheme, ::EnergyConservingSch
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
-required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
+required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N +0x1
 
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT}) where {N, FT} =
         VectorInvariant{N, FT}(Adapt.adapt(to, scheme.vorticity_scheme), 

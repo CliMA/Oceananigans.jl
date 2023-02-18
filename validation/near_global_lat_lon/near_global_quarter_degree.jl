@@ -1,3 +1,11 @@
+import Pkg 
+Pkg.instantiate()
+Pkg.add("JLD2")
+Pkg.add("DataDeps")
+Pkg.add("Cassette")
+Pkg.add("KernelAbstractions")
+Pkg.activate("/home/ssilvest/stable_oceananigans/testOceananigans.jl/")
+Pkg.instantiate()
 using Statistics
 using JLD2
 using Printf
@@ -10,7 +18,7 @@ using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries: inactive_node, peripheral_node
-using CUDA: @allowscalar
+# using CUDA: @allowscalar
 using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
@@ -28,6 +36,8 @@ end
 #####
 ##### Grid
 #####
+using CUDA
+CUDA.device!(3)
 
 arch = GPU()
 reference_density = 1029
@@ -122,7 +132,7 @@ target_sea_surface_salinity    = S★ = arch_array(arch, S★)
 νz = 5e-3
 κz = 1e-4
 
-convective_adjustment  = RiBasedDiffusivity()
+convective_adjustment  = RiBasedVerticalDiffusivity()
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
      
 tracer_advection   = WENO(underlying_grid)
@@ -138,8 +148,8 @@ momentum_advection = VectorInvariant(vorticity_scheme  = WENO(),
 @inline next_time_index(time, tot_months)        = mod(unsafe_trunc(Int32, time / thirty_days) + 1, tot_months) + 1
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
-Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
-Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
+Δz_top    = 5 #@allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
+Δz_bottom = 5 #@allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
 
 @inline function surface_wind_stress(i, j, grid, clock, fields, τ)
     time = clock.time
@@ -218,7 +228,7 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 S_bcs = FieldBoundaryConditions(top = S_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+free_surface = ExplicitFreeSurface() #ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
@@ -229,7 +239,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       buoyancy,
                                       tracers = (:T, :S),
                                       closure = (vertical_diffusivity, convective_adjustment),
-                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs))
+                                      boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs, S=S_bcs),
+                                      calculate_only_active_cells_tendencies = true)
 
 #####
 ##### Initial condition:
@@ -254,9 +265,9 @@ fill_halo_regions!(S)
 ##### Simulation setup
 #####
 
-Δt = 6minutes  # probably we can go to 10min or 15min?
+Δt = 1 #6minutes  # probably we can go to 10min or 15min?
 
-simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+simulation = Simulation(model, Δt = Δt, stop_iteration = 8) #stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
@@ -302,7 +313,9 @@ save_interval = 5days
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
 
-run!(simulation, pickup = pickup_file)
+CUDA.@profile begin
+    run!(simulation, pickup = pickup_file)
+end
 
 @info """
     Simulation took $(prettytime(simulation.run_wall_time))

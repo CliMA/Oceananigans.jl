@@ -64,8 +64,8 @@ for buffer in [2, 3, 4, 5, 6]
             @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
-            @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,     dir, i, loc)
-            @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
+            @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,       dir, i, loc)
+            @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $(stencil-0x1), dir, i, loc)
         end
     
         # left biased and right biased reconstruction value for each stencil
@@ -112,11 +112,11 @@ end
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_smoothness_sum(buffer)
     elem = Vector(undef, buffer)
-    c_idx = 1
-    for stencil = 1:buffer - 1
+    c_idx = 0x1
+    for stencil = Int32.(1:buffer - 1)
         stencil_sum   = Expr(:call, :+, (:(@inbounds C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
         elem[stencil] = :(@inbounds ψ[$stencil] * $stencil_sum)
-        c_idx += buffer - stencil + 1
+        c_idx += buffer - stencil + 0x1
     end
 
     elem[buffer] = :(@inbounds ψ[$buffer] * ψ[$buffer] * C[$c_idx])
@@ -141,7 +141,7 @@ end
 # Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5*(βᵤ[i] + βᵥ[i]) for i in 1:buffer]
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
-    for stencil = 1:buffer
+    for stencil = Int32.(1:buffer)
         elem[stencil] = :(@inbounds 0.5*(β₁[$stencil] + β₂[$stencil]))
     end
 
@@ -151,8 +151,8 @@ end
 # left and right biased_β calculation for scheme and stencil = 0:buffer - 1
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(@inbounds func(ψ[$stencil], scheme, Val($(stencil-1))))
+    for stencil = (1:buffer)
+        elem[stencil] = :(@inbounds func(ψ[Int32($stencil)], scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
@@ -161,7 +161,7 @@ end
 # ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
-    for stencil = 1:buffer
+    for stencil = (1:buffer)
         elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
     end
 
@@ -171,7 +171,7 @@ end
 # JSWENO α weights dᵣ / (βᵣ + ε)²
 @inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
-    for stencil = 1:buffer
+    for stencil = (1:buffer)
         elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
     end
 
@@ -188,10 +188,10 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] -   β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] -   β[3])
 @inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] +   β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
@@ -278,7 +278,7 @@ julia> calc_weno_stencil(2, :right, :x)
         stencil_point = Vector(undef, buffer)
         rngstencil = rng[stencil:stencil+buffer-1]
         for (idx, n) in enumerate(rngstencil)
-            c = n - buffer - 1
+            c = Int32(n - buffer - 0x1)
             if func 
                 stencil_point[idx] =  dir == :x ? 
                                     :(@inbounds ψ(i + $c, j, k, args...)) :
@@ -293,7 +293,7 @@ julia> calc_weno_stencil(2, :right, :x)
                                     :(@inbounds ψ[i, j, k + $c])
             end                
         end
-        stencil_full[buffer - stencil + 1] = :($(stencil_point...), )
+        stencil_full[buffer - stencil + 0x1] = :($(stencil_point...), )
     end
     return :($(stencil_full...),)
 end
@@ -328,8 +328,8 @@ using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+    for stencil = (1:buffer)
+        elem[stencil] = :(@inbounds w[UInt8($stencil)] * func(scheme, Val($(stencil-1)), ψ[UInt8($stencil)], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
