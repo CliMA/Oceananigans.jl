@@ -84,7 +84,6 @@ end
 
     @inbounds us[i, j, k] = velocities.u[i, j, k]
     @inbounds vs[i, j, k] = velocities.v[i, j, k]
-
     if ks <= H3
         @inbounds us[i, j, k - H3] = velocities.u[i, j, k - H3]
         @inbounds vs[i, j, k - H3] = velocities.v[i, j, k - H3]
