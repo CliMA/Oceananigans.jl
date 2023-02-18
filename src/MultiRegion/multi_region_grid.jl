@@ -45,7 +45,7 @@ Keyword Arguments
 
 - `partition`: the partitioning required. The implemented partitioning are `XPartition` 
                (division along the x direction) and `YPartition` (division along the y direction)
-- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`, for 
+- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`. For 
              `GPU` computation it is possible to specify the total number of `GPU`s or the specific
              `GPU`s to allocate memory on. The number of devices does not have to match the number of
              regions 

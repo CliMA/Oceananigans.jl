@@ -35,6 +35,17 @@ end
 
 Constructor for the `SplitExplicitFreeSurface`, for more information on the available `kwargs...`
 see `SplitExplicitSettings` 
+
+Keyword Arguments
+=================
+
+- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
+              require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
+              of `averaging_weights` for which `averaging_weights > 0`
+- `averaging_function`: function of `τ` used to average `U` and `η` within the barotropic advancement.
+                        `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
+                        located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
+- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
@@ -219,19 +230,8 @@ end
                             averaging_function = averaging_shape_function,
                             timestepper = ForwardBackwardScheme())
 
-constructor for `SpliExplicitSettings`. The keyword arguments can be provided
-directly to the `SplitExplicitFreeSurface` constructor
-
-Keyword Arguments
-=================
-
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
-              require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
-              of `averaging_weights` for which `averaging_weights > 0`
-- `averaging_function`: function of `τ` used to average `U` and `η` within the barotropic advancement.
-                        `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
-                        located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
-- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
+constructor for `SplitExplicitSettings`. For a description of the keyword
+arguments, see the `SplitExplicitFreeSurface` constructor
 """
 function SplitExplicitSettings(; substeps = 200, 
                                  averaging_function = averaging_shape_function,
