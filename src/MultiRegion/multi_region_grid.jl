@@ -33,7 +33,7 @@ const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegion
 """
     MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
-Splits a `global_grid` into different regions handled by `devices`
+Split a `global_grid` into different regions handled by `devices`.
 
 Positional Arguments
 ====================
