@@ -42,9 +42,9 @@ Keyword Arguments
 - `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
               require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
               of `averaging_weights` for which `averaging_weights > 0`
-- `averaging_function`: function of `τ` used to average `U` and `η` within the barotropic advancement.
-                        `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
-                        located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
+- `barotropic_averaging_kernel`: function of `τ` used to average `U` and `η` within the barotropic advancement.
+                                 `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
+                                 located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
 - `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
@@ -227,20 +227,20 @@ end
 
 """
     SplitExplicitSettings(; substeps = 200, 
-                            averaging_function = averaging_shape_function,
+                            barotropic_averaging_kernel = averaging_shape_function,
                             timestepper = ForwardBackwardScheme())
 
 constructor for `SplitExplicitSettings`. For a description of the keyword
 arguments, see the `SplitExplicitFreeSurface` constructor
 """
 function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_function = averaging_shape_function,
+                                 barotropic_averaging_kernel = averaging_shape_function,
                                  timestepper = ForwardBackwardScheme())
 
     τᶠ = range(0.0, 2.0, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = averaging_function.(τᶠ[2:end]) 
+    averaging_weights = barotropic_averaging_kernel.(τᶠ[2:end]) 
     idx = searchsortedlast(averaging_weights, 0.0, rev=true)
     substeps = idx
 

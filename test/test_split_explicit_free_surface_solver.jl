@@ -15,7 +15,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0), halo=(1, 1, 1))
 
-        settings = SplitExplicitSettings(; averaging_function = averaging_fixed_function)
+        settings = SplitExplicitSettings(; barotropic_averaging_kernel = averaging_fixed_function)
         sefs = SplitExplicitFreeSurface(grid; settings)
 
         sefs.η .= 0.0
@@ -72,7 +72,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             Nt = floor(Int, T / Δτ)
             Δτ_end = T - Nt * Δτ
 
-            settings = SplitExplicitSettings(; substeps = Nt, averaging_function = averaging_fixed_function)
+            settings = SplitExplicitSettings(; substeps = Nt, barotropic_averaging_kernel = averaging_fixed_function)
 
             # set!(η, f(x,y))
             η₀(x, y, z) = sin(x)
@@ -200,7 +200,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_fixed_function
             Gᵁ .= gu_c
             Gⱽ .= gv_c
 
-            settings = SplitExplicitSettings(substeps = Nt + 1, averaging_function = averaging_fixed_function)
+            settings = SplitExplicitSettings(substeps = Nt + 1, barotropic_averaging_kernel = averaging_fixed_function)
             sefs = sefs(settings)
 
             for i in 1:Nt
