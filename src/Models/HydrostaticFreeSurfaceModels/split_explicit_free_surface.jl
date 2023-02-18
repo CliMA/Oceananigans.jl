@@ -194,15 +194,15 @@ A struct containing settings for the split-explicit free surface.
 $(TYPEDFIELDS)
 """
 struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
-    "substeps: (`Int`)"
+    "`substeps`: (`Int`)"
     substeps :: 𝒩
-    "averaging_weights : (`Vector`)"
+    "`averaging_weights`: (`Vector`)"
     averaging_weights :: ℳ
-    "mass_flux_weights : (`Vector`)"
+    "`mass_flux_weights`: (`Vector`)"
     mass_flux_weights :: ℳ
     "fractional step: (`Number`), the barotropic time step is `Δτ ⋅ Δt`" 
     Δτ :: 𝒯
-    "time stepping scheme"
+    "time-stepping scheme"
     timestepper :: 𝒮
 end
 
