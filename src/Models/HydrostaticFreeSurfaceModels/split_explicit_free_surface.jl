@@ -1,10 +1,13 @@
-using Oceananigans, Adapt, Base
+using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
-using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-using KernelAbstractions: @index, @kernel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitSettings
+
 using Adapt
+using Base
+using KernelAbstractions: @index, @kernel
 
 import Oceananigans.TimeSteppers: reset!
 import Base.show
