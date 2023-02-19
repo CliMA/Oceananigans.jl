@@ -144,7 +144,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
 
     events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
     
-    if events_and_requests isa nothing
+    if isnothing(events_and_requests)
         return nothing
     end
     
