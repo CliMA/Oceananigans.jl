@@ -51,7 +51,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     halo_tuple  = permute_boundary_conditions(boundary_conditions)
 
-    # Fill halo in the three permuted directions (1, 2 and 3), making sure dependencies are fulfilled
+    # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task in 1:3
         barrier = device_event(arch)
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
@@ -61,7 +61,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 end
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
-    fill_halo!  = halo_tuple[1][task] 
+    fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
 
@@ -254,9 +254,12 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 @inline whole_halo(::Colon,       loc) = true
 
 # Calculate kernel size
-@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
 
 # Remember that Periodic BCs also fill halo points!
 @inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = @inbounds size(c)[[2, 3]]
