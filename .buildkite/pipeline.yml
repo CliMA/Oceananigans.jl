@@ -480,7 +480,7 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### Distributed/MPI 
+##### Distributed/MPI
 #####
 
   - label: "🐉 cpu distributed unit tests"
