@@ -65,7 +65,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(; substeps = 200))
+                                        settings = SplitExplicitSettings(eltype(grid); substeps = 200))
 
 η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
@@ -230,21 +230,23 @@ end
 @inline constant_averaging_kernel(τ) = 1
 
 """
-    SplitExplicitSettings(; substeps = 200, 
-                            barotropic_averaging_kernel = averaging_shape_function,
-                            timestepper = ForwardBackwardScheme())
+    SplitExplicitSettings([FT=Float64;]
+                          substeps = 200, 
+                          barotropic_averaging_kernel = averaging_shape_function,
+                          timestepper = ForwardBackwardScheme())
 
 Return `SplitExplicitSettings`. For a description of the keyword arguments, see
 the [`SplitExplicitFreeSurface`](@ref).
 """
-function SplitExplicitSettings(; substeps = 200, 
-                                 barotropic_averaging_kernel = averaging_shape_function,
-                                 timestepper = ForwardBackwardScheme())
+function SplitExplicitSettings(FT::DataType=Float64;
+                               substeps = 200, 
+                               barotropic_averaging_kernel = averaging_shape_function,
+                               timestepper = ForwardBackwardScheme())
 
     τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = barotropic_averaging_kernel.(τᶠ[2:end]) 
+    averaging_weights = FT.(barotropic_averaging_kernel.(τᶠ[2:end]))
     idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
