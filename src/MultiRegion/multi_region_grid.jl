@@ -9,12 +9,10 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
     region_grids :: G
     devices :: D
 
-    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
-                                             region_grids::G,
-                                             devices::D) where {FT, TX, TY, TZ, P, G, D, A}
-
-        return new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
-    end
+    MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
+                                    region_grids::G,
+                                    devices::D) where {FT, TX, TY, TZ, P, G, D, A} =
+        new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
 end
 
 @inline isregional(mrg::MultiRegionGrid)        = true
@@ -127,7 +125,8 @@ end
 
 """
     reconstruct_global_grid(mrg::MultiRegionGrid)
-reconstructs the global grid associated with the `MultiRegionGrid` mrg on `architecture(mrg)`
+
+Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
@@ -150,7 +149,8 @@ getinterior(func::Function, grid) = func
 
 """
     multi_region_object_from_array(a::AbstractArray, grid)
-adapts an array `a` to be compatible with a `MultiRegion` grid or model
+
+Adapt an array `a` to be compatible with a `MultiRegion` grid.
 """
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
