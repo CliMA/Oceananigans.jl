@@ -256,7 +256,7 @@ end
 
 # We _HAVE_ to dispatch individually for all grid types because
 # `RectilinearGrid`, `LatitudeLongitudeGrid` and `ImmersedBoundaryGrid`
-# take precedence on `ImmersedBoundaryGrid` 
+# take precedence on `DistributedGrid` 
 function with_halo(new_halo, grid::DistributedRectilinearGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
     return scatter_local_grids(architecture(grid), new_grid)

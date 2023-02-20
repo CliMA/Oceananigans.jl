@@ -4,6 +4,8 @@ using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+import Base
+
 #####
 ##### General halo filling functions
 #####
@@ -27,15 +29,18 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
         @inline $extract_bc(bc::Tuple) = $extract_bc.(bc)
     end
 end
+
 # For inhomogeneous BC we extract the _last_ one 
 # example 
 # `bc.west <: DCBC`
 # `bc.east <: PBC`
 # `extract_west_or_east_bc(bc) == bc.west`
-    
-  extract_west_or_east_bc(bc) = sort([bc.west,   bc.east],  lt=fill_first)[2]
-extract_south_or_north_bc(bc) = sort([bc.south,  bc.north], lt=fill_first)[2]
- extract_bottom_or_top_bc(bc) = sort([bc.bottom, bc.top],   lt=fill_first)[2]
+# NOTE that `isless` follows order of execution, 
+# so `max(bcs...)` returns the last BC to execute
+
+  extract_west_or_east_bc(bc) = max(bc.west,   bc.east)
+extract_south_or_north_bc(bc) = max(bc.south,  bc.north)
+ extract_bottom_or_top_bc(bc) = max(bc.bottom, bc.top)
 
   extract_west_or_east_bc(bc::Tuple) =   extract_west_or_east_bc.(bc)
 extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
@@ -131,6 +136,11 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 # 2) Periodic (PBCT)
 # 3) Shared Communication (MCBCT)
 # 4) Distributed Communication (DCBCT)
+
+# We define "greater than" `>` and "lower than", for boundary conditions
+# following the rules outlined in `fill_first`
+# i.e. if `bc1 > bc2` then `bc2` precedes `bc1` in filling order
+@inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true
