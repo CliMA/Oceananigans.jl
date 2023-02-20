@@ -48,29 +48,15 @@ end
                                                               forcings,
                                                               clock)
  
-    u, v, w = velocities
-    h = UInt8(boundary_buffer(advection))
-
-    u_priv = @private Float64 (h+0x1, h+0x1, h+0x1)
-    v_priv = @private Float64 (h+0x1, h+0x1, h+0x1)
-
-    u_priv .= u[i-h:i+h+0x1, j-h:i+h+0x1, k-h:k+h+0x1]
-    v_priv .= v[i-h:i+h+0x1, j-h:i+h+0x1, k-h:k+h+0x1]
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     
-    u_vel = @private DisplacedArray(u_priv, -i+h+0x1, -j+h+0x1, -k+h+0x1)
-    v_vel = @private DisplacedArray(v_priv, -i+h+0x1, -j+h+0x1, -k+h+0x1)
-
-    reg_vel = (u = u_vel, v = v_vel, w = w)
-
-    model_fields = merge(hydrostatic_fields(reg_vel, free_surface, tracers), auxiliary_fields)
-    
-    return ( - U_dot_∇u(i, j, k, grid, advection, reg_vel)
+    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
-             - x_f_cross_U(i, j, k, grid, coriolis, reg_vel)
+             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(reg_vel, free_surface, tracers)))
+             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
