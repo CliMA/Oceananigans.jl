@@ -1,4 +1,5 @@
 using MPI
+using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
@@ -295,7 +296,7 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
     mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
 
     # Check that the size of a bottom field are 
-    # consistent with the size of the field
+    # consistent with the size of the grid
     if any(size(ib.mask) .!= mask_size)
         @warn "Resizing the mask to match the grids' halos"
         mask = compute_mask(grid, ib)
@@ -313,7 +314,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
 
     # Check that the size of a bottom field are 
-    # consistent with the size of the field
+    # consistent with the size of the grid
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
         bottom_field = Field((Center, Center, Nothing), grid)
