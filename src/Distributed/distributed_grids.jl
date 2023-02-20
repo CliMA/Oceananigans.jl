@@ -271,15 +271,41 @@ function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     global_immmersed_grid = reconstruct_global_grid(grid)
     immersed_boundary     = global_immmersed_grid.immersed_boundary
     underlying_grid       = with_halo(new_halo, global_immmersed_grid)
-    immersed_boundary     = resize_immersed_boundary!(immersed_boundary, underlying_grid)
+    immersed_boundary     = resize_immersed_boundary(immersed_boundary, underlying_grid)
     new_grid              = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
-
     return scatter_local_grids(architecture(grid), new_grid)
 end
 
-resize_immersed_boundary!(ib::AbstractGridFittedBottom{<:Function}, grid) = ib
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask
 
-function resize_immersed_boundary!(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+"""
+    function resize_immersed_boundary!(ib, grid)
+
+If the immersed condition is an `OffsetArray`, resize it to match the 
+data size associated with the `grid`
+"""
+resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
+resize_immersed_boundary(ib::GridFittedBoundary, grid)       = ib
+
+function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Nz = halo_size(grid)
+
+    mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the field
+    if any(size(ib.mask) .!= mask_size)
+        @warn "Resizing the mask to match the grids' halos"
+        mask = compute_mask(grid, ib)
+        return getnamewrapper(ib)(mask)
+    end
+    
+    return ib
+end
+
+function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
 
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)

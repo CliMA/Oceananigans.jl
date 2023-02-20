@@ -185,7 +185,6 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
-    
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
