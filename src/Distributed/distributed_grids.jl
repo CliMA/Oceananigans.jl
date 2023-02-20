@@ -8,6 +8,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 using Oceananigans.Grids: R_Earth, metrics_precomputed
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask
 
+using Oceananigans.Fields
 using Oceananigans.ImmersedBoundaries
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
