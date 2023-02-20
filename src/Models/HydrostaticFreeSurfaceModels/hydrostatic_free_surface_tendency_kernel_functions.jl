@@ -5,9 +5,9 @@ using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
-
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, boundary_buffer
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
+using KernelAbstractions: @private
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -24,6 +24,15 @@ The tendency for ``u`` is called ``G_u`` and defined via
 where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
+struct DisplacedArray{V, I, J, K} 
+    s_array :: V
+    i :: I
+    j :: J
+    k :: K
+end
+
+@inline @propagate_inbounds Base.getindex(v::DisplacedXYSharedArray, i, j, k) = @inbounds v.s_array[i + v.i, j + v.j, k + v.k]
+
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
                                                               advection,
                                                               coriolis,
@@ -39,15 +48,29 @@ implicitly during time-stepping.
                                                               forcings,
                                                               clock)
  
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    u, v, w = velocities
+    h = UInt8(boundary_buffer(advection))
 
-    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
+    u_priv = @private Float64 (h+0x1, h+0x1, h+0x1)
+    v_priv = @private Float64 (h+0x1, h+0x1, h+0x1)
+
+    u_priv .= u[i-h:i+h+0x1, j-h:i+h+0x1, k-h:k+h+0x1]
+    v_priv .= v[i-h:i+h+0x1, j-h:i+h+0x1, k-h:k+h+0x1]
+    
+    u_vel = @private DisplacedArray(u_priv, -i+h+0x1, -j+h+0x1, -k+h+0x1)
+    v_vel = @private DisplacedArray(v_priv, -i+h+0x1, -j+h+0x1, -k+h+0x1)
+
+    reg_vel = (u = u_vel, v = v_vel, w = w)
+
+    model_fields = merge(hydrostatic_fields(reg_vel, free_surface, tracers), auxiliary_fields)
+    
+    return ( - U_dot_∇u(i, j, k, grid, advection, reg_vel)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
-             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
+             - x_f_cross_U(i, j, k, grid, coriolis, reg_vel)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(reg_vel, free_surface, tracers)))
 end
 
 """

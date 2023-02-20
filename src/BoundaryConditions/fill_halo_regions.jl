@@ -142,9 +142,8 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 # i.e. if `bc1 > bc2` then `bc2` precedes `bc1` in filling order
 @inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
 
-# fallback for `Nothing` and `Missing` BC.
+# fallback for `Nothing` BC.
 @inline Base.isless(::Nothing, ::Nothing) = true
-@inline Base.isless(::Missing, ::Missing) = true
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true
