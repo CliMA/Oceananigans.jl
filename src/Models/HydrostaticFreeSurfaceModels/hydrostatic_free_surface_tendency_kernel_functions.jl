@@ -24,15 +24,6 @@ The tendency for ``u`` is called ``G_u`` and defined via
 where `p_n` is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
-struct DisplacedArray{V, I, J, K} 
-    s_array :: V
-    i :: I
-    j :: J
-    k :: K
-end
-
-@inline @propagate_inbounds Base.getindex(v::DisplacedXYSharedArray, i, j, k) = @inbounds v.s_array[i + v.i, j + v.j, k + v.k]
-
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
                                                               advection,
                                                               coriolis,
@@ -49,7 +40,7 @@ end
                                                               clock)
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
-    
+
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
