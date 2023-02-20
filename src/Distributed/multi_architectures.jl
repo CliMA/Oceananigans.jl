@@ -59,11 +59,11 @@ Keyword arguments
                   if not for testing or developing. Change at your own risk!
 """
 function DistributedArch(child_architecture = CPU(); 
-                   topology = (Periodic, Periodic, Periodic), 
-                   ranks,
-                   use_buffers = false,
-                   devices = nothing, 
-                   communicator = MPI.COMM_WORLD)
+                         topology = (Periodic, Periodic, Periodic),
+                         ranks,
+                         use_buffers = false,
+                         devices = nothing, 
+                         communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
@@ -120,7 +120,7 @@ child_architecture(arch::DistributedArch) = arch.child_architecture
 device(arch::DistributedArch)             = device(child_architecture(arch))
 device_event(arch::DistributedArch)       = device_event(child_architecture(arch))
 arch_array(arch::DistributedArch, A)      = arch_array(child_architecture(arch), A)
-zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...) 
+zeros(FT, arch::DistributedArch, N...)    = zeros(FT, child_architecture(arch), N...)
 array_type(arch::DistributedArch)         = array_type(child_architecture(arch))
 
 #####
@@ -212,7 +212,7 @@ end
 function Base.show(io::IO, arch::DistributedArch)
     c = arch.connectivity
     print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
-              "└── child architecture: $(typeof(child_architecture(arch))) \n", 
+              "└── child architecture: $(typeof(child_architecture(arch))) \n",
               "└── connectivity:",
               isnothing(c.east) ? "" : " east=$(c.east)",
               isnothing(c.west) ? "" : " west=$(c.west)",
