@@ -143,7 +143,11 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 @inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
 
 # fallback for `Nothing` BC.
-@inline Base.isless(::Nothing, ::Nothing) = true
+@inline Base.isless(::Nothing,           ::Nothing) = true
+@inline Base.isless(::BoundaryCondition, ::Nothing) = false
+@inline Base.isless(::Nothing, ::BoundaryCondition) = true
+@inline Base.isless(::BoundaryCondition, ::Missing) = false
+@inline Base.isless(::Missing, ::BoundaryCondition) = true
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true
