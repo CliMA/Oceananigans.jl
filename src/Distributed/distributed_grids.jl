@@ -271,7 +271,7 @@ end
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     global_immmersed_grid = reconstruct_global_grid(grid)
     immersed_boundary     = global_immmersed_grid.immersed_boundary
-    underlying_grid       = with_halo(new_halo, global_immmersed_grid)
+    underlying_grid       = with_halo(new_halo, global_immmersed_grid.underlying_grid)
     immersed_boundary     = resize_immersed_boundary(immersed_boundary, underlying_grid)
     new_grid              = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     return scatter_local_grids(architecture(grid), new_grid)
@@ -282,8 +282,8 @@ using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBound
 """
     function resize_immersed_boundary!(ib, grid)
 
-If the immersed condition is an `OffsetArray`, resize it to match the 
-data size associated with the `grid`
+If the immersed condition is an `OffsetArray`, resize it to match 
+the total size of `grid`
 """
 resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
 resize_immersed_boundary(ib::GridFittedBoundary, grid)       = ib
