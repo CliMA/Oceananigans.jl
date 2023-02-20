@@ -89,11 +89,11 @@ function validate_ib_size(grid, ib)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+    bottom_height_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
 
     # Check that the size of a bottom field are 
     # consistent with the size of the field
-    any(size(ib.bottom_height) .!= bottom_heigth_size) && 
+    any(size(ib.bottom_height) .!= bottom_height_size) && 
         throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
 end
 

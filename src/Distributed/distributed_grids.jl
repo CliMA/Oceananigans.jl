@@ -6,6 +6,7 @@ using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 using Oceananigans.Grids: R_Earth, metrics_precomputed
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask
 
 using Oceananigans.ImmersedBoundaries
 
@@ -271,13 +272,12 @@ end
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     global_immmersed_grid = reconstruct_global_grid(grid)
     immersed_boundary     = global_immmersed_grid.immersed_boundary
-    underlying_grid       = with_halo(new_halo, global_immmersed_grid.underlying_grid)
-    immersed_boundary     = resize_immersed_boundary(immersed_boundary, underlying_grid)
-    new_grid              = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+    underlying_grid       = global_immmersed_grid.underlying_grid
+    new_underlying_grid   = with_halo(new_halo, underlying_grid)
+    new_immersed_boundary = resize_immersed_boundary(immersed_boundary, new_underlying_grid)
+    new_grid              = ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary)
     return scatter_local_grids(architecture(grid), new_grid)
 end
-
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, compute_mask
 
 """
     function resize_immersed_boundary!(ib, grid)
