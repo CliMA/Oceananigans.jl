@@ -2,9 +2,9 @@ using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Distributed: DistributedGrid
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliary
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
 
-function SplitExplicitAuxiliary(grid::DistributedGrid)
+function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
@@ -24,7 +24,7 @@ function SplitExplicitAuxiliary(grid::DistributedGrid)
     kernel_size    = augmented_kernel_size(grid)
     kernel_offsets = augmented_kernel_offsets(grid)
     
-    return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """Integrate z at locations `location` and set! `height`` with the result"""
@@ -72,7 +72,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::D
 
         return SplitExplicitFreeSurface(η,
                                         SplitExplicitState(new_grid),
-                                        SplitExplicitAuxiliary(new_grid),
+                                        SplitExplicitAuxiliaryFields(new_grid),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)
 end

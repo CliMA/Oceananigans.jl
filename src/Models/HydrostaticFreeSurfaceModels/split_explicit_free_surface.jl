@@ -59,7 +59,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
-                                    SplitExplicitAuxiliary(grid),
+                                    SplitExplicitAuxiliaryFields(grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)
 end
@@ -71,7 +71,7 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
 
     return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid),
-                                    SplitExplicitAuxiliary(grid),
+                                    SplitExplicitAuxiliaryFields(grid),
                                     gravitational_acceleration,
                                     settings
                                     )
@@ -136,7 +136,7 @@ function SplitExplicitState(grid::AbstractGrid)
 end
 
 """
-    SplitExplicitAuxiliary
+    SplitExplicitAuxiliaryFields
 
 A struct containing auxiliary fields for the split-explicit free surface.
 
@@ -146,7 +146,7 @@ large (or `:xy` in case of a serial computation),  and start computing from
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
     "Vertically integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -163,7 +163,7 @@ Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪
     kernel_offsets :: 𝒪
 end
 
-function SplitExplicitAuxiliary(grid::AbstractGrid)
+function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
@@ -186,7 +186,7 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
     kernel_size    = :xy
     kernel_offsets = (0, 0)
 
-    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """

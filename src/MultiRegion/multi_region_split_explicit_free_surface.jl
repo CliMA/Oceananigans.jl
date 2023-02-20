@@ -1,9 +1,9 @@
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliary
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
 
-function SplitExplicitAuxiliary(grid::MultiRegionGrid)
+function SplitExplicitAuxiliaryFields(grid::MultiRegionGrid)
     
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
@@ -23,7 +23,7 @@ function SplitExplicitAuxiliary(grid::MultiRegionGrid)
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
     @apply_regionally kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
     
-    return SplitExplicitAuxiliary(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 @inline function calculate_column_height!(height, location)
@@ -51,7 +51,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::M
 
         return SplitExplicitFreeSurface(η,
                                         SplitExplicitState(new_grid),
-                                        SplitExplicitAuxiliary(new_grid),
+                                        SplitExplicitAuxiliaryFields(new_grid),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)
 end

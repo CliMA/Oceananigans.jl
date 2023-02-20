@@ -81,27 +81,20 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
-    N = size(grid)
-    H = halo_size(grid)
+    validate_ib_size(grid, ib)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
 
-    field_size = N[1:2] .+ 2 .* H[1:2]
+function validate_ib_size(grid, ib)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
 
     # Check that the size of a bottom field are 
     # consistent with the size of the field
-    if any(size(ib.bottom_height) .!= field_size)
-        @warn "Resizing the bottom field to match the grids' halos"
-        bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_array    = arch_array(CPU(), ib.bottom_height)[1:N[1], 1:N[2]] 
-        set!(bottom_field, cpu_array)
-        fill_halo_regions!(bottom_field)
-        offset_bottom_array = dropdims(bottom_field.data, dims=3)
-    
-        new_ib = getnamewrapper(ib)(offset_bottom_array)
-    
-        return ImmersedBoundaryGrid(grid, new_ib)
-    end
-
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+    any(size(ib.bottom_height) .!= bottom_heigth_size) && 
+        throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})

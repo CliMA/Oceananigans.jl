@@ -268,8 +268,38 @@ function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
 end
 
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
-    new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
+    global_immmersed_grid = reconstruct_global_grid(grid)
+    immersed_boundary     = global_immmersed_grid.immersed_boundary
+    underlying_grid       = with_halo(new_halo, global_immmersed_grid)
+    immersed_boundary     = resize_immersed_boundary!(immersed_boundary, underlying_grid)
+    new_grid              = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+
     return scatter_local_grids(architecture(grid), new_grid)
+end
+
+resize_immersed_boundary!(ib::AbstractGridFittedBottom{<:Function}, grid) = ib
+
+function resize_immersed_boundary!(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the field
+    if any(size(ib.bottom_height) .!= bottom_heigth_size)
+        @warn "Resizing the bottom field to match the grids' halos"
+        bottom_field = Field((Center, Center, Nothing), grid)
+        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
+        set!(bottom_field, cpu_bottom)
+        fill_halo_regions!(bottom_field)
+        offset_bottom_array = dropdims(bottom_field.data, dims=3)
+
+        return getnamewrapper(ib)(offset_bottom_array)
+    end
+    
+    return ib
 end
 
 """ 

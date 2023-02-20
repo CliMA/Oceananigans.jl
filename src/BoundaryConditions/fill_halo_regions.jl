@@ -26,7 +26,7 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
     extract_bc = Symbol(:extract_, dir, :_bc)
     @eval begin
         @inline $extract_bc(bc) = bc.$dir
-        @inline $extract_bc(bc::Tuple) = $extract_bc.(bc)
+        @inline $extract_bc(bc::Tuple) = map($extract_bc, bc)
     end
 end
 
@@ -42,9 +42,9 @@ end
 extract_south_or_north_bc(bc) = max(bc.south,  bc.north)
  extract_bottom_or_top_bc(bc) = max(bc.bottom, bc.top)
 
-  extract_west_or_east_bc(bc::Tuple) =   extract_west_or_east_bc.(bc)
-extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
- extract_bottom_or_top_bc(bc::Tuple) =  extract_bottom_or_top_bc.(bc)
+  extract_west_or_east_bc(bc::Tuple) =   map(extract_west_or_east_bc, bc)
+extract_south_or_north_bc(bc::Tuple) = map(extract_south_or_north_bc, bc)
+ extract_bottom_or_top_bc(bc::Tuple) =  map(extract_bottom_or_top_bc, bc)
  
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
@@ -141,6 +141,10 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 # following the rules outlined in `fill_first`
 # i.e. if `bc1 > bc2` then `bc2` precedes `bc1` in filling order
 @inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
+
+# fallback for `Nothing` and `Missing` BC.
+@inline Base.isless(::Nothing, ::Nothing) = true
+@inline Base.isless(::Missing, ::Missing) = true
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true
