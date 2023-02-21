@@ -319,7 +319,7 @@ using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 @inline function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1), Val(D)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1)), Val(D), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
