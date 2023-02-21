@@ -89,10 +89,11 @@ end
 function validate_ib_size(grid, ib)
     bottom_height_size = total_size((Center, Center, Nothing), grid)[1:2]
 
-    # Check that the size of a bottom field are 
-    # consistent with the size of the field
+    # Why do we use `any` here? Is this a bug?
     any(size(ib.bottom_height) .!= bottom_height_size) && 
         throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
+
+    return nothing
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
