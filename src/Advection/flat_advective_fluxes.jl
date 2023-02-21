@@ -27,8 +27,8 @@ for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :y�
     biased_interp_function    = Symbol(:biased_interpolate_, dir)
     symmetric_interp_function = Symbol(:symmetric_interpolate_, dir)
     @eval begin
-        $biased_interp_function(i, j, k, grid::$Grid, dir, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
-        $biased_interp_function(i, j, k, grid::$Grid, dir, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+        $biased_interp_function(i, j, k, grid::$Grid, scheme, side, ψ, args...)           = @inbounds ψ[i, j, k]
+        $biased_interp_function(i, j, k, grid::$Grid, scheme, side, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
 
         $symmetric_interp_function(i, j, k, grid::$Grid, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
         $symmetric_interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
