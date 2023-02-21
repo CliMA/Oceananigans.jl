@@ -28,7 +28,7 @@ Nranks = MPI.Comm_size(comm)
 Nx = Ny = 256
 Lx = Ly = 2π
 topology = (Periodic, Periodic, Flat)
-arch = MultiArch(CPU(); topology, ranks=(1, Nranks, 1))
+arch = DistributedArch(CPU(); topology, ranks=(1, Nranks, 1))
 grid = RectilinearGrid(arch; topology, size=(Nx, Ny), halo=(3, 3), x=(0, 2π), y=(0, 2π))
 
 @info "Built $Nranks grids:"
