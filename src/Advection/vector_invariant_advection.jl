@@ -269,11 +269,18 @@ const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 # To adapt passing smoothness stencils to upwind biased schemes (not weno) 
 for buffer in 1:6
     @eval begin
-        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
-        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UX{$buffer}, ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
-        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
-        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UY{$buffer}, ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
-        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::U{$buffer},  ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
-        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UZ{$buffer}, ::Val{D}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(D), f, idx, loc, args...)
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UX{$buffer}, ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UY{$buffer}, ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::U{$buffer},  ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UZ{$buffer}, ::Val{:left}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(:left), f, idx, loc, args...)
+
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UX{$buffer}, ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::U{$buffer},  ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UY{$buffer}, ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::U{$buffer},  ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UZ{$buffer}, ::Val{:right}, f::Function, idx, loc, VI::AbstractSmoothnessStencil, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(:right), f, idx, loc, args...)
     end
 end
