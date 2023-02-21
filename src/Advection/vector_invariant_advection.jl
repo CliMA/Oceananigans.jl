@@ -199,7 +199,7 @@ const UpwindFullVectorInvariant      = VectorInvariant{<:Any, <:Any, <:AbstractU
     dir = upwinding_direction(v̂)
     ζᴿ  = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.vorticity_scheme, dir, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
+    return - v̂ * ζᴿ
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindVorticityVectorInvariant, u, v) 
@@ -210,7 +210,7 @@ end
     dir = upwinding_direction(û)
     ζᴿ  = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.vorticity_scheme, dir, ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return + upwind_biased_product(û, ζᴸ, ζᴿ)
+    return û * ζᴿ
 end
 
 @inline function horizontal_advection_U(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v)
@@ -227,7 +227,7 @@ end
     dir = upwinding_direction(û)
     δᴿ  = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.divergence_scheme, dir, div_xyᶜᶜᶜ, Sδ, u, v)
 
-    return upwind_biased_product(û, δᴸ, δᴿ) - upwind_biased_product(v̂, ζᴸ, ζᴿ)
+    return û * δᴿ - v̂ * ζᴿ
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::UpwindFullVectorInvariant, u, v) 
@@ -244,7 +244,7 @@ end
     dir = upwinding_direction(v̂)
     δᴿ  = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.divergence_scheme, dir, div_xyᶜᶜᶜ, Sδ, u, v)
 
-    return upwind_biased_product(û, ζᴸ, ζᴿ) + upwind_biased_product(v̂, δᴸ, δᴿ)
+    return û * ζᴿ + v̂ * δᴿ
 end
 
 ######

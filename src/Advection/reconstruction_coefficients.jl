@@ -8,13 +8,13 @@
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(D), ψ, i, Face, args...)
-@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(D), ψ, j, Face, args...)
-@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(D), ψ, k, Face, args...)
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, side, ψ, i, Face, args...)
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, side, ψ, j, Face, args...)
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, side, ψ, k, Face, args...)
 
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, Val(D), ψ, i, Center, args...)
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, Val(D), ψ, j, Center, args...)
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, Val(D), ψ, k, Center, args...)
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, side, ψ, i, Center, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, side, ψ, j, Center, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, side, ψ, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, side, ψ, k, Center, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end

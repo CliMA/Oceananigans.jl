@@ -195,7 +195,7 @@ for buffer in [1, 2, 3, 4, 5, 6]
                           $(calc_inactive_stencil(buffer,   :right, :x, :ᶜ; xside = :ᶜ)...), 
                           $(calc_inactive_stencil(buffer,   :right, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
 
-        @inline near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::Val{:tight}) = 
+        @inline near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::Val{:right}) = 
             @inbounds (|)($(calc_inactive_stencil(buffer+1, :right, :y, :ᶜ; xside = :ᶜ)...), 
                           $(calc_inactive_stencil(buffer,   :right, :y, :ᶜ; yside = :ᶜ)...), 
                           $(calc_inactive_stencil(buffer,   :right, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
@@ -254,7 +254,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
             using Oceananigans.Advection: $interp
 
             # Fallback for low order interpolation
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, ::Val{D}, args...) where D = $interp(i, j, k, ibg, scheme, Val(D), args...)
 
             # Conditional high-order interpolation in Bounded directions
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ::Val{D}, args...) where D =

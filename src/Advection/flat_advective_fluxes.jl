@@ -23,16 +23,19 @@ end
 
 Grids = [:XFlatGrid, :YFlatGrid, :ZFlatGrid, :XFlatGrid, :YFlatGrid, :ZFlatGrid]
 
-for side in (:left_biased, :right_biased, :symmetric)
-    for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
-        interp_function = Symbol(side, :_interpolate_, dir)
-        @eval begin
-            $interp_function(i, j, k, grid::$Grid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
-            $interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-        end
-    end
+for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
+    biased_interp_function    = Symbol(:biased_interpolate_, dir)
+    symmetric_interp_function = Symbol(:symmetric_interpolate_, dir)
+    @eval begin
+        $biased_interp_function(i, j, k, grid::$Grid, dir, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
+        $biased_interp_function(i, j, k, grid::$Grid, dir, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+
+        $symmetric_interp_function(i, j, k, grid::$Grid, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
+        $symmetric_interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+     end
 end
 
+# Disambiguation
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
 @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds c[i, j, k]
