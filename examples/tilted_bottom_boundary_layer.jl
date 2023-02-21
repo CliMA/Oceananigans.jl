@@ -129,10 +129,7 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
-model = NonhydrostaticModel(; grid,
-                            buoyancy = buoyancy,
-                            closure = closure,
-                            coriolis = coriolis,
+model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             tracers = :b,
