@@ -75,3 +75,5 @@ archs = test_architectures()
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
+
+group = :shallowwater_regression
