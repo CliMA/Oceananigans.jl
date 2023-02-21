@@ -127,7 +127,6 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
 # and a constant viscosity and diffusivity. Here we use a smallish value of ``10^{-4} m² s⁻¹``.
 
-ν = 1e-4 # m² s⁻¹, small-ish
 closure = ScalarDiffusivity(ν=ν, κ=ν)
 
 model = NonhydrostaticModel(; grid,
