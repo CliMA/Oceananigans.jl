@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.BoundaryConditions: OBC, CBC
+using Oceananigans.BoundaryConditions: OBC, MCBC
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 
 using Adapt
@@ -8,6 +8,7 @@ using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
+import Base: ==
 
 #####
 ##### The bees knees
@@ -46,9 +47,9 @@ function validate_field_data(loc, data, grid, indices)
     return nothing
 end
 
-validate_boundary_condition_location(bc, ::Center, side) = nothing                        # anything goes for centers
-validate_boundary_condition_location(::Union{OBC, Nothing, CBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                # its nothing or nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing                         # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing, MCBC}, ::Face, side) = nothing  # only open, connected or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing                 # its nothing or nothing
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
@@ -398,6 +399,10 @@ length_indices(N, i::UnitRange) = length(i)
 
 total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
 Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
+
+==(f::Field, a) = interior(f) == a
+==(a, f::Field) = a == interior(f)
+==(a::Field, b::Field) = interior(a) == interior(b)
 
 #####
 ##### Interface for field computations

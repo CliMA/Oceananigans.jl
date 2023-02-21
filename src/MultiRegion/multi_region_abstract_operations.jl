@@ -8,10 +8,10 @@ const MultiRegionDerivative{LX, LY, LZ, D, A, IN, AD, G, T} = Derivative{LX, LY,
 const MultiRegionKernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} = KernelFunctionOperation{LX, LY, LZ, P, <:MultiRegionGrid, T, K, D} where {LX, LY, LZ, P, T, K, D}
 
 const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation, 
-                                            MultiRegionUnaryOperation,
-                                         MultiRegionMultiaryOperation,
-                                                MultiRegionDerivative,
-                                   MultiRegionKernelFunctionOperation}
+                                           MultiRegionUnaryOperation,
+                                           MultiRegionMultiaryOperation,
+                                           MultiRegionDerivative,
+                                           MultiRegionKernelFunctionOperation}
 # Utils
 Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 

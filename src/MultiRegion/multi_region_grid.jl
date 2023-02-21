@@ -9,12 +9,10 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
     region_grids :: G
     devices :: D
 
-    function MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
-                                             region_grids::G,
-                                             devices::D) where {FT, TX, TY, TZ, P, G, D, A}
-
-        return new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
-    end
+    MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
+                                    region_grids::G,
+                                    devices::D) where {FT, TX, TY, TZ, P, G, D, A} =
+        new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
 end
 
 @inline isregional(mrg::MultiRegionGrid)        = true
@@ -33,7 +31,7 @@ const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegion
 """
     MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
 
-Splits a `global_grid` into different regions handled by `devices`
+Split a `global_grid` into different regions handled by `devices`.
 
 Positional Arguments
 ====================
@@ -45,7 +43,7 @@ Keyword Arguments
 
 - `partition`: the partitioning required. The implemented partitioning are `XPartition` 
                (division along the x direction) and `YPartition` (division along the y direction)
-- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`, for 
+- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`. For 
              `GPU` computation it is possible to specify the total number of `GPU`s or the specific
              `GPU`s to allocate memory on. The number of devices does not have to match the number of
              regions 
@@ -115,7 +113,7 @@ function construct_grid(ibg::ImmersedBoundaryGrid, child_arch, topo, local_size,
 end
 
 partition_immersed_boundary(b, args...) = 
-    getname(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
+    getnamewrapper(b)(partition_global_array(getproperty(b, propertynames(b)[1]), args...))
 
 function reconstruct_global_grid(mrg)
     size    = reconstruct_size(mrg, mrg.partition)
@@ -127,7 +125,8 @@ end
 
 """
     reconstruct_global_grid(mrg::MultiRegionGrid)
-reconstructs the global grid associated with the `MultiRegionGrid` mrg on `architecture(mrg)`
+
+Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     underlying_mrg = MultiRegionGrid{FT, TX, TY, TZ}(architecture(mrg), 
@@ -140,7 +139,7 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}) w
     local_boundary  = construct_regionally(getproperty, cpu_mrg, :immersed_boundary)
     local_array     = construct_regionally(getproperty, local_boundary, propertynames(local_boundary[1])[1])
     local_array     = construct_regionally(getinterior, local_array, mrg)
-    global_boundary = getname(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, architecture(mrg)))
+    global_boundary = getnamewrapper(local_boundary[1])(reconstruct_global_array(local_array, mrg.partition, architecture(mrg)))
     return on_architecture(architecture(mrg), ImmersedBoundaryGrid(global_grid, global_boundary))
 end
 
@@ -150,7 +149,8 @@ getinterior(func::Function, grid) = func
 
 """
     multi_region_object_from_array(a::AbstractArray, grid)
-adapts an array `a` to be compatible with a `MultiRegion` grid or model
+
+Adapt an array `a` to be compatible with a `MultiRegion` grid.
 """
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
@@ -205,7 +205,7 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
     #check if grids are of the same type
     vals = construct_regionally(Base.:(==), mrg1, mrg2)
-    return all(vals.regions)
+    return all(vals.regional_objects)
 end
    
 ####
@@ -232,8 +232,6 @@ const MRG = MultiRegionGrid
     grid        = global_grid.underlying_grid
     return MultiRegionGrid(grid, partition = mrg.partition, devices = mrg.devices, validate = false)
 end
-
-import Oceananigans.Models.NonhydrostaticModels: maybe_add_active_cells_map
 
 function maybe_add_active_cells_map(mrg::MRG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     new_grids = construct_regionally(maybe_add_active_cells_map, mrg)

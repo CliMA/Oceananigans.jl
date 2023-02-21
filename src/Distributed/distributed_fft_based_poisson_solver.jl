@@ -109,7 +109,7 @@ Restrictions
 ============
 
 The algorithm for two-dimensional decompositions requires that `Nz = size(global_grid, 3)` is larger
-than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `MultiArch`.
+than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `DistributedArch`.
 If `Nz` does not satisfy this condition, we can only support a one-dimensional decomposition.
 
 Algorithm for one-dimensional decompositions

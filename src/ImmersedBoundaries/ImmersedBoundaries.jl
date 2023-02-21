@@ -222,7 +222,7 @@ As well as
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
-                                                                  !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
   
 
 #####
@@ -251,7 +251,6 @@ all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
 @inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
-
 
 function on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)

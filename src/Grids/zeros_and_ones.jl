@@ -1,5 +1,5 @@
 using CUDA
-using Oceananigans.Architectures: CPU, GPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: CPU, GPU, AbstractArchitecture
 
 import Base: zeros
 

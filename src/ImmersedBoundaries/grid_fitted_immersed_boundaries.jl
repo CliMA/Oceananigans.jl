@@ -1,7 +1,7 @@
 using Adapt
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
-using Oceananigans.Utils: getname
+using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
@@ -73,33 +73,28 @@ function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
 
-    new_ib = getname(ib)(offset_bottom_array)
+    # TODO: maybe clean this up
+    new_ib = getnamewrapper(ib)(offset_bottom_array)
 
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
-    N = size(grid)
-    H = halo_size(grid)
-
-    field_size = N[1:2] .+ 2 .* H[1:2]
-
-    # If using `with_halo` in combination with a `MultiArch`, we need to make 
-    # sure that halos are filled correctly for the `ib.bottom_height`
-    if any(size(ib.bottom_height) .!= field_size)
-        bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_array    = arch_array(CPU(), ib.bottom_height)[1:N[1], 1:N[2]] 
-        set!(bottom_field, cpu_array)
-        fill_halo_regions!(bottom_field)
-        offset_bottom_array = dropdims(bottom_field.data, dims=3)
-    
-        new_ib = getname(ib)(offset_bottom_array)
-    
-        return ImmersedBoundaryGrid(grid, new_ib)
-    end
-
+    validate_ib_size(grid, ib)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
+
+function validate_ib_size(grid, ib)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    bottom_height_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+
+    # Check that the size of a bottom field are 
+    # consistent with the size of the field
+    any(size(ib.bottom_height) .!= bottom_height_size) && 
+        throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
@@ -190,7 +185,6 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
-    
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 

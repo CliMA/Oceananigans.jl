@@ -7,7 +7,7 @@ using Oceananigans.Solvers
 
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
-using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 using DocStringExtensions
@@ -16,12 +16,12 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans: fields, prognostic_fields
 
-PressureSolver(::CPU,             grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(::GPU,             grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
-PressureSolver(::CPU,             grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(::GPU,             grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(::MultiArch, local_grid::RegRectilinearGrid)  = DistributedFFTBasedPoissonSolver(local_grid)
-PressureSolver(::MultiArch, local_grid::HRegRectilinearGrid) = DistributedFFTBasedPoissonSolver(local_grid)
+PressureSolver(::CPU,                   grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::GPU,                   grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(::CPU,                   grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::GPU,                   grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+PressureSolver(::DistributedArch, local_grid::RegRectilinearGrid)  = DistributedFFTBasedPoissonSolver(local_grid)
+PressureSolver(::DistributedArch, local_grid::HRegRectilinearGrid) = DistributedFFTBasedPoissonSolver(local_grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)

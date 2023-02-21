@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: HaloCommunicationBoundaryCondition, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 import Oceananigans.BoundaryConditions: bc_str
 
@@ -26,12 +26,12 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     top_comm_ranks    = HaloCommunicationRanks(from=local_rank, to=rank_top)
     bottom_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_bottom)
 
-    east_comm_bc   = HaloCommunicationBoundaryCondition(east_comm_ranks)
-    west_comm_bc   = HaloCommunicationBoundaryCondition(west_comm_ranks)
-    north_comm_bc  = HaloCommunicationBoundaryCondition(north_comm_ranks)
-    south_comm_bc  = HaloCommunicationBoundaryCondition(south_comm_ranks)
-    top_comm_bc    = HaloCommunicationBoundaryCondition(top_comm_ranks)
-    bottom_comm_bc = HaloCommunicationBoundaryCondition(bottom_comm_ranks)
+    east_comm_bc   = DistributedCommunicationBoundaryCondition(east_comm_ranks)
+    west_comm_bc   = DistributedCommunicationBoundaryCondition(west_comm_ranks)
+    north_comm_bc  = DistributedCommunicationBoundaryCondition(north_comm_ranks)
+    south_comm_bc  = DistributedCommunicationBoundaryCondition(south_comm_ranks)
+    top_comm_bc    = DistributedCommunicationBoundaryCondition(top_comm_ranks)
+    bottom_comm_bc = DistributedCommunicationBoundaryCondition(bottom_comm_ranks)
 
     west     = isnothing(rank_west)   ? field_bcs.west   : west_comm_bc
     east     = isnothing(rank_east)   ? field_bcs.east   : east_comm_bc

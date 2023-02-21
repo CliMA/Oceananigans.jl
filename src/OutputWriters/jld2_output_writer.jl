@@ -31,7 +31,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                               dir = ".",
                           indices = (:, :, :),
                        with_halos = false,
-                       array_type = Array{Float32},
+                       array_type = Array{Float64},
                      max_filesize = Inf,
                overwrite_existing = false,
                              init = noinit,
@@ -76,7 +76,7 @@ Keyword arguments
                        you might need to set `with_halos = true`.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float32}`.
+                Default: `Array{Float64}`.
 
 ## File management
 
@@ -136,7 +136,7 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_data.jld2
 ├── 3 outputs: (u, v, w)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -153,7 +153,7 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float32}
+├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
@@ -162,7 +162,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
                             with_halos = false,
-                            array_type = Array{Float32},
+                            array_type = Array{Float64},
                           max_filesize = Inf,
                     overwrite_existing = false,
                                   init = noinit,

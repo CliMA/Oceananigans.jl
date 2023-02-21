@@ -55,8 +55,10 @@ function random_divergent_source_term(grid)
     return R
 end
 
-function divergence_free_poisson_solution(local_grid)
-    arch = architecture(local_grid) 
+function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
+    topo = (Periodic, Periodic, Periodic)
+    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
+    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
