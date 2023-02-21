@@ -7,8 +7,7 @@
 
 const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
 
-@inline upwind_biased_product(ũ, ψᴸ, ψᴿ) = ((ũ + abs(ũ)) * ψᴸ + (ũ - abs(ũ)) * ψᴿ) / 2
-@inline upwinding_direction(ũ)           = ifelse(ũ > 0, Val(:left), Val(:right))
+@inline upwinding_direction(ũ) = ifelse(ũ > 0, Val(:left), Val(:right))
 
 #####
 ##### Momentum advection operators
