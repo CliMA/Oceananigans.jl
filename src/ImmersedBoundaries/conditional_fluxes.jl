@@ -254,28 +254,16 @@ for (d, ξ) in enumerate((:x, :y, :z))
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, ::Val{:right}, args...) = $interp(i, j, k, ibg, scheme, Val(:right), args...)
 
             # Conditional high-order interpolation in Bounded directions
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ::Val{:left}, args...) =
-                ifelse($near_boundary(i, j, k, ibg, scheme, Val(:left)),
-                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(:left), args...),
-                        $interp(i, j, k, ibg, scheme, Val(:left), args...))
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ::Val{D}, args...) where D =
+                ifelse($near_boundary(i, j, k, ibg, scheme, Val(DataType)),
+                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(D), args...),
+                        $interp(i, j, k, ibg, scheme, Val(D), args...))
             
             # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{:left}, ζ, VI::AbstractSmoothnessStencil, u, v) =
-                ifelse($near_boundary(i, j, k, ibg, scheme, Val(:left)),
-                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(:left), ζ, VI, u, v),
-                        $interp(i, j, k, ibg, scheme, Val(:left), ζ, VI, u, v))
-
-            # Conditional high-order interpolation in Bounded directions
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ::Val{:right}, args...) =
-                ifelse($near_boundary(i, j, k, ibg, scheme, Val(:right)),
-                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(:right), args...),
-                        $interp(i, j, k, ibg, scheme, Val(:right), args...))
-        
-            # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
-            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{:right}, ζ, VI::AbstractSmoothnessStencil, u, v) =
-                ifelse($near_boundary(i, j, k, ibg, scheme, Val(:right)),
-                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(:right), ζ, VI, u, v),
-                        $interp(i, j, k, ibg, scheme, Val(:right), ζ, VI, u, v))
+            @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{D}, ζ, VI::AbstractSmoothnessStencil, u, v) where D =
+                ifelse($near_boundary(i, j, k, ibg, scheme, Val(D)),
+                        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(D), ζ, VI, u, v),
+                        $interp(i, j, k, ibg, scheme, Val(D), ζ, VI, u, v))
         end    
     end
 end
@@ -288,15 +276,9 @@ for (d, dir) in zip((:x, :y), (:xᶜᵃᵃ, :yᵃᶜᵃ))
 
     @eval begin
         # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-        @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{:left}, ζ, ::VelocityStencil, u, v) =
-            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme, Val(:left)),
-                $alt_interp(i, j, k, ibg, scheme, Val(:left), ζ, DefaultStencil(), u, v),
-                $interp(i, j, k, ibg, scheme, Val(:left), ζ, VelocityStencil(), u, v))
-
-                        # Conditional Interpolation for VelocityStencil WENO vector invariant scheme
-        @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{:right}, ζ, ::VelocityStencil, u, v) =
-            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme, Val(:right)),
-                $alt_interp(i, j, k, ibg, scheme, Val(:right), ζ, DefaultStencil(), u, v),
-                $interp(i, j, k, ibg, scheme, Val(:right), ζ, VelocityStencil(), u, v))
+        @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{D}, ζ, ::VelocityStencil, u, v) where D =
+            ifelse($near_horizontal_boundary(i, j, k, ibg, scheme, Val(D)),
+                $alt_interp(i, j, k, ibg, scheme, Val(D), ζ, DefaultStencil(), u, v),
+                $interp(i, j, k, ibg, scheme, Val(D), ζ, VelocityStencil(), u, v))
     end
 end
