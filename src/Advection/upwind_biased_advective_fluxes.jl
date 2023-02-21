@@ -2,7 +2,7 @@
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
 ##### See topologically_conditional_interpolation.jl for an explanation of the underscore-prepended
-##### functions _symmetric_interpolate_*, _biased_interpolate_*, and _biased_interpolate_*.
+##### functions _symmetric_interpolate_* and _biased_interpolate_*
 #####
 
 const UpwindScheme = AbstractUpwindBiasedAdvectionScheme

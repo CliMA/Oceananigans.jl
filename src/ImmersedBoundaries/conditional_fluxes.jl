@@ -264,7 +264,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
             
             # Conditional high-order interpolation for Vector Invariant WENO in Bounded directions
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ::Val{D}, ζ, VI::AbstractSmoothnessStencil, u, v) where D =
-                ifelse($near_boundary(i, j, k, ibg, schem, Val(D)),
+                ifelse($near_boundary(i, j, k, ibg, scheme, Val(D)),
                         $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(D), ζ, VI, u, v),
                         $interp(i, j, k, ibg, scheme, Val(D), ζ, VI, u, v))
         end    
