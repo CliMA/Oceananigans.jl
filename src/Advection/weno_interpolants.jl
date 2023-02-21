@@ -60,18 +60,18 @@ for buffer in [2, 3, 4, 5, 6]
             @inline Cr(scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds Cl(scheme, Val($(buffer-stencil-1)))
 
             # uniform coefficients are independent on direction and location
-            @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
-            @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
+            @inline coeff_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Val{:left},  ::Type{Nothing}, args...) where {FT} = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
+            @inline coeff_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Val{:right}, ::Type{Nothing}, args...) where {FT} = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
-            @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,     dir, i, loc)
-            @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
+            @inline coeff_p(scheme::WENO{$buffer}, ::Val{$stencil}, ::Val{:left},  T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,   dir, i, loc)
+            @inline coeff_p(scheme::WENO{$buffer}, ::Val{$stencil}, ::Val{:right}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil-1, dir, i, loc)
         end
     
         # left biased and right biased reconstruction value for each stencil
         @eval begin
-            @inline  left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
-            @inline right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
+            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ::Val{:left},  ψ, T, dir, i, loc) = @inbounds sum(coeff_p(scheme, Val($stencil), Val(:left),  T, dir, i, loc) .* ψ)
+            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ::Val{:right}, ψ, T, dir, i, loc) = @inbounds sum(coeff_p(scheme, Val($stencil), Val(:right), T, dir, i, loc) .* ψ)
         end
     end
 end
@@ -133,8 +133,7 @@ end
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6], stencil in [0, 1, 2, 3, 4, 5]
     @eval begin
-        @inline  left_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
-        @inline right_biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
+        @inline biased_β(ψ, scheme::WENO{$buffer}, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, coeff_β(scheme, Val($stencil)))
     end
 end
 
@@ -194,52 +193,46 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
+@inline side_coeff(::Val{:left})  = Cl
+@inline side_coeff(::Val{:right}) = Cr
+
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
-for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
-    biased_weno_weights = Symbol(side, :_biased_weno_weights)
-    biased_β = Symbol(side, :_biased_β)
-    
-    tangential_stencil_u = Symbol(:tangential_, side, :_stencil_u)
-    tangential_stencil_v = Symbol(:tangential_, side, :_stencil_v)
+@inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, ::Val{D}, args...) where {N, FT, D}
+    @inbounds begin
+        β     = beta_loop(scheme, ψ, biased_β)
+        coeff = side_coeff(Val(D))
 
-    biased_stencil_z = Symbol(side, :_stencil_z)
-    
-    @eval begin
-        @inline function $biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
-            @inbounds begin
-                β = beta_loop(scheme, ψ, $biased_β)
-                    
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
-                return α ./ sum(α)
-            end
+        if scheme isa ZWENO
+            τ = global_smoothness_indicator(Val(N), β)
+            α = zweno_alpha_loop(scheme, β, τ, coeff, FT)
+        else
+            α = js_alpha_loop(scheme, β, coeff, FT)
         end
+        return α ./ sum(α)
+    end
+end
 
-        @inline function $biased_weno_weights(ijk, scheme::WENO{N, FT}, dir, ::VelocityStencil, u, v) where {N, FT}
-            @inbounds begin
-                i, j, k = ijk
-            
-                uₛ = $tangential_stencil_u(i, j, k, scheme, dir, u)
-                vₛ = $tangential_stencil_v(i, j, k, scheme, dir, v)
-            
-                βᵤ = beta_loop(scheme, uₛ, $biased_β)
-                βᵥ = beta_loop(scheme, vₛ, $biased_β)
+@inline function biased_weno_weights(ijk, scheme::WENO{N, FT}, ::Val{D}, dir, ::VelocityStencil, u, v) where {N, FT, D}
+    @inbounds begin
+        i, j, k = ijk
+    
+        uₛ = tangential_stencil_u(i, j, k, scheme, Val(D), dir, u)
+        vₛ = tangential_stencil_v(i, j, k, scheme, Val(D), dir, v)
+        
+        βᵤ = beta_loop(scheme, uₛ, biased_β)
+        βᵥ = beta_loop(scheme, vₛ, biased_β)
 
-                β  = beta_sum(scheme, βᵤ, βᵥ)
+        β  = beta_sum(scheme, βᵤ, βᵥ)
 
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
-                return α ./ sum(α)
-            end
+        coeff = side_coeff(Val(D))
+
+        if scheme isa ZWENO
+            τ = global_smoothness_indicator(Val(N), β)
+            α = zweno_alpha_loop(scheme, β, τ, coeff, FT)
+        else
+            α = js_alpha_loop(scheme, β, coeff, FT)
         end
+        return α ./ sum(α)
     end
 end
 
@@ -300,13 +293,15 @@ end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for side in (:left, :right), dir in (:x, :y, :z)
-    stencil = Symbol(side, :_stencil_, dir)
+for dir in (:x, :y, :z)
+    stencil = Symbol(:stencil_, dir)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, side, dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, side, dir,  true))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::Val{:left},  ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :left,  dir, false))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::Val{:left},  ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :left,  dir,  true))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::Val{:right}, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :right, dir, false))
+            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::Val{:right}, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :right, dir,  true))
         end
     end
 end
@@ -315,21 +310,16 @@ end
 # Parallel to the interpolation direction! (same as left/right stencil)
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds left_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds left_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds left_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_left_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds left_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{1}, u) = @inbounds right_stencil_x(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_u(i, j, k, scheme, ::Val{2}, u) = @inbounds right_stencil_y(i, j, k, scheme, ℑyᵃᶠᵃ, u)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{1}, v) = @inbounds right_stencil_x(i, j, k, scheme, ℑxᶠᵃᵃ, v)
-@inline tangential_right_stencil_v(i, j, k, scheme, ::Val{2}, v) = @inbounds right_stencil_y(i, j, k, scheme, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, scheme, ::Val{D}, ::Val{1}, u) where D = @inbounds stencil_x(i, j, k, scheme, Val(D), ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, scheme, ::Val{D}, ::Val{2}, u) where D = @inbounds stencil_y(i, j, k, scheme, Val(D), ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, scheme, ::Val{D}, ::Val{1}, v) where D = @inbounds stencil_x(i, j, k, scheme, Val(D), ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, scheme, ::Val{D}, ::Val{2}, v) where D = @inbounds stencil_y(i, j, k, scheme, Val(D), ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1), Val(D)), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
@@ -338,49 +328,45 @@ end
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline stencil_sum(scheme::WENO{$buffer}, ψ, w, func, cT, val, idx, loc) = @inbounds $(metaprogrammed_stencil_sum(buffer))
+        @inline stencil_sum(scheme::WENO{$buffer}, ψ, w, func, ::Val{D}, cT, val, idx, loc) where D = @inbounds $(metaprogrammed_stencil_sum(buffer))
     end
 end
 
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
-    for side in (:left, :right)
-        interpolate_func = Symbol(:inner_, side, :_biased_interpolate_, interp)
-        stencil          = Symbol(side, :_stencil_, dir)
-        weno_weights     = Symbol(side, :_biased_weno_weights)
-        biased_p         = Symbol(side, :_biased_p)
+    interpolate_func = Symbol(:inner_biased_interpolate_, interp)
+    stencil          = Symbol(:stencil_, dir)
         
-        @eval begin
-            @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENO{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
-                @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                    w = $weno_weights(ψₜ, scheme, Val($val), Nothing, args...)
-                    return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
-                end
+    @eval begin
+        @inline function $interpolate_func(i, j, k, grid, 
+                                           scheme::WENO{N, FT, XT, YT, ZT}, ::Val{D},
+                                           ψ, idx, loc, args...) where {N, FT, XT, YT, ZT, D}
+            @inbounds begin
+                ψₜ = $stencil(i, j, k, scheme, Val(D), ψ, grid, args...)
+                w = biased_weno_weights(ψₜ, scheme, Val(D), Val($val), Nothing, args...)
+                return stencil_sum(scheme, ψₜ, w, biased_p, Val(D), $cT, $val, idx, loc)
             end
+        end
 
-            @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENO{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
+        @inline function $interpolate_func(i, j, k, grid, 
+                                            scheme::WENO{N, FT, XT, YT, ZT}, ::Val{D},
+                                            ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT, D}
 
-                @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                    w = $weno_weights(ψₜ, scheme, Val($val), VI, args...)
-                    return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
-                end
+            @inbounds begin
+                ψₜ = $stencil(i, j, k, scheme, Val(D), ψ, grid, args...)
+                w = biased_weno_weights(ψₜ, scheme, Val(D), Val($val), VI, args...)
+                return stencil_sum(scheme, ψₜ, w, biased_p, Val(D), $cT, $val, idx, loc)
             end
+        end
 
-            @inline function $interpolate_func(i, j, k, grid, 
-                                               scheme::WENO{N, FT, XT, YT, ZT}, 
-                                               ψ, idx, loc, VI::VelocityStencil, args...) where {N, FT, XT, YT, ZT}
+        @inline function $interpolate_func(i, j, k, grid, 
+                                            scheme::WENO{N, FT, XT, YT, ZT}, ::Val{D}, 
+                                            ψ, idx, loc, VI::VelocityStencil, args...) where {N, FT, XT, YT, ZT, D}
 
-                @inbounds begin
-                    ψₜ = $stencil(i, j, k, scheme, ψ, grid, args...)
-                    w = $weno_weights((i, j, k), scheme, Val($val), VI, args...)
-                    return stencil_sum(scheme, ψₜ, w, $biased_p, $cT, $val, idx, loc)
-                end
+            @inbounds begin
+                ψₜ = $stencil(i, j, k, scheme, Val(D), ψ, grid, args...)
+                w = biased_weno_weights((i, j, k), scheme, Val(D), Val($val), VI, args...)
+                return stencil_sum(scheme, ψₜ, w, biased_p, Val(D), $cT, $val, idx, loc)
             end
         end
     end

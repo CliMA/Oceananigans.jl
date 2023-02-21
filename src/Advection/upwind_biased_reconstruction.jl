@@ -98,49 +98,50 @@ UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, 
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, w) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w)
 
 # uniform upwind biased reconstruction
-for side in (:left, :right)
-    stencil_x = Symbol(:inner_, side, :_biased_interpolate_xᶠᵃᵃ)
-    stencil_y = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
-    stencil_z = Symbol(:inner_, side, :_biased_interpolate_zᵃᵃᶠ)
-
-    for buffer in [1, 2, 3, 4, 5, 6]
-        @eval begin
-            @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x, false))
-            @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x,  true))
-        
-            @inline $stencil_y(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :y, false))
-            @inline $stencil_y(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :y,  true))
-        
-            @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z, false))
-            @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z,  true))
+for buffer in [1, 2, 3, 4, 5, 6]
+    @eval begin
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::Val{:left},  ψ, idx, loc, args...)           where {FT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :x, false))
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::Val{:left},  ψ::Function, idx, loc, args...) where {FT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :x,  true))
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::Val{:right}, ψ, idx, loc, args...)           where {FT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :x, false))
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::Val{:right}, ψ::Function, idx, loc, args...) where {FT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :x,  true))    
     
-        end
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::Val{:left},  ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :y, false))
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::Val{:left},  ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :y,  true))
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::Val{:right}, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :y, false))
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::Val{:right}, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :y,  true))
+        
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::Val{:left},  ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :z, false))
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::Val{:left},  ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :left,  :z,  true))
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::Val{:right}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :z, false))
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::Val{:right}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :z,  true))
     end
 end
 
 # stretched upwind biased reconstruction
-for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
-    stencil = Symbol(:inner_, side, :_biased_interpolate_, dir)
+for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
+    stencil = Symbol(:inner_biased_interpolate_, dir)
 
     for buffer in [1, 2, 3, 4, 5, 6]
         @eval begin
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ::Val{:left},  ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, :left,  ξ, false)) .* retrieve_coeff(scheme, Val(:left),  Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ::Val{:left},  ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, :left,  ξ,  true)) .* retrieve_coeff(scheme, Val(:left),  Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ::Val{:right}, ψ, idx, loc, args...)           = @inbounds sum($(reconstruction_stencil(buffer, :right, ξ, false)) .* retrieve_coeff(scheme, Val(:right), Val($val), idx, loc))
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer}, ::Val{:right}, ψ::Function, idx, loc, args...) = @inbounds sum($(reconstruction_stencil(buffer, :right, ξ,  true)) .* retrieve_coeff(scheme, Val(:right), Val($val), idx, loc))
         end
     end
 end
 
-# Retrieve precomputed coefficients 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[1][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[1][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[1][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[1][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[1][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{1}, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[1][i] 
+# Retrieve precomputed coefficients
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[1][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[1][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[1][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[1][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[1][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:left}, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[1][i] 
 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[2][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[2][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[2][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[2][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[2][i] 
-@inline retrieve_coeff(scheme::UpwindBiased, ::Val{2}, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[2][i] 
+@inline retrieve_coeff(scheme::UpwindBiased, ::Val{:right}, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[2][i] 

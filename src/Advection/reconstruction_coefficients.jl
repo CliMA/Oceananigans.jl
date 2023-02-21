@@ -8,21 +8,13 @@
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(D), ψ, i, Face, args...)
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(D), ψ, j, Face, args...)
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(D), ψ, k, Face, args...)
 
-@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
-
-@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
-
-@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, Val(D), ψ, i, Center, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, Val(D), ψ, j, Center, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ::Val{D}, ψ, args...) where D = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, Val(D), ψ, k, Center, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end
@@ -96,13 +88,12 @@ for buffer in [1, 2, 3, 4, 5, 6]
     order_symm = 2buffer
 
     coeff_symm  = Symbol(:coeff, order_symm, :_symm)
-    coeff_left  = Symbol(:coeff, order_bias, :_left)
-    coeff_right = Symbol(:coeff, order_bias, :_right)
+    coeff_bias  = Symbol(:coeff, order_bias, :_bias)
     @eval begin
-        const $coeff_symm  = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
+        const $coeff_symm(::Val{D}) where D = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
         if $order_bias > 1
-            const $coeff_left  = stencil_coefficients(50, $(buffer - 2), collect(1:100), collect(1:100); order = $order_bias)
-            const $coeff_right = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_bias)
+            const $coeff_bias(::Val{:left})  = stencil_coefficients(50, $(buffer - 2), collect(1:100), collect(1:100); order = $order_bias)
+            const $coeff_bias(::Val{:right}) = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_bias)
         end
     end
 end
@@ -149,25 +140,28 @@ julia> calc_reconstruction_stencil(3, :left, :x)
         rng = rng .+ 1
     end
     stencil_full = Vector(undef, N)
-    coeff = Symbol(:coeff, order, :_, shift)
+    coeff = Symbol(:coeff, order, :_, biased_or_symm(Val(shift)))
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
         if func
             stencil_full[idx] = dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ(i + $c, j, k, grid, args...)) :
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ(i, j + $c, k, grid, args...)) :
-                                :($coeff[$(order - idx + 1)] * ψ(i, j, k + $c, grid, args...))
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ(i, j + $c, k, grid, args...)) :
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ(i, j, k + $c, grid, args...))
         else
             stencil_full[idx] =  dir == :x ? 
-                                :($coeff[$(order - idx + 1)] * ψ[i + $c, j, k]) :
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ[i + $c, j, k]) :
                                 dir == :y ?
-                                :($coeff[$(order - idx + 1)] * ψ[i, j + $c, k]) :
-                                :($coeff[$(order - idx + 1)] * ψ[i, j, k + $c])
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ[i, j + $c, k]) :
+                                :($coeff(Val(shift))[$(order - idx + 1)] * ψ[i, j, k + $c])
         end
     end
     return Expr(:call, :+, stencil_full...)
 end
+
+biased_or_symm(::Val{D})     where D = :bias
+biased_or_symm(::Val{:symm}) where D = :symm
 
 #####
 ##### Shenanigans for stretched directions
