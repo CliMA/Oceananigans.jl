@@ -89,8 +89,7 @@ end
 function validate_ib_size(grid, ib)
     bottom_height_size = total_size((Center, Center, Nothing), grid)[1:2]
 
-    # Why do we use `any` here? Is this a bug?
-    any(size(ib.bottom_height) .!= bottom_height_size) && 
+    size(ib.bottom_height) != bottom_height_size &&
         throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
 
     return nothing
