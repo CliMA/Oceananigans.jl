@@ -142,16 +142,13 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     size   = fill_halo_size(c, fill_halo!, indices, bc_left, loc, grid)
     offset = fill_halo_offset(size, fill_halo!, indices)
 
-    events_and_requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-    
-    if isnothing(events_and_requests)
+    requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
+
+    if isnothing(requests)
         return nothing
     end
-    
-    MPI.Waitall(events_and_requests)
 
-    buffer_side = mpi_communication_side(Val(fill_halo!))
-    recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
+    push!(arch.mpi_requests, requests...)
 
     return nothing
 end

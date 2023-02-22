@@ -25,7 +25,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally masking_actions!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
@@ -35,7 +34,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
-    return nothing
+    return [requestsv..., requestsw..., requestsd..., requestsp...]
 end
 
 # Mask immersed fields
