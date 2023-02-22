@@ -5,6 +5,9 @@ using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsit
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
+import Oceananigans.Distributed: complete_communication_and_compute_boundary, recompute_boundary_tendencies
+using Oceananigans.Distributed: tendency_kernel_size, tendency_kernel_offsets
+
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
 """
@@ -37,7 +40,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-complete_communication_and_compute_boundary(model, grid) = nothing
+@inline complete_communication_and_compute_boundary(model, grid) = nothing
 
 function calculate_free_surface_tendency!(grid, model)
 
@@ -87,11 +90,11 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     only_active_cells = use_only_active_cells(grid)
 
     launch!(arch, grid, :xyz,
-            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, u_kernel_args...;
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, (0, 0, 0), u_kernel_args...;
             only_active_cells)
 
     launch!(arch, grid, :xyz,
-            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, v_kernel_args...;
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, (0, 0, 0), v_kernel_args...;
             only_active_cells)
 
     calculate_free_surface_tendency!(grid, model)
@@ -161,6 +164,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         launch!(arch, grid, :xyz,
                 calculate_hydrostatic_free_surface_Gc!,
                 c_tendency,
+                (0, 0, 0),
                 c_kernel_function,
                 grid,
                 Val(tracer_index),
@@ -188,24 +192,26 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, offs, grid, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    i′, j′, k′ = (i, j, k) .+ offs
+    @inbounds Gu[i′, j′, k′] = hydrostatic_free_surface_u_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, args...)
+@kernel function calculate_hydrostatic_free_surface_Gu!(Gu, offs, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, offs, grid, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    i′, j′, k′ = (i, j, k) .+ offs
+    @inbounds Gv[i′, j′, k′] = hydrostatic_free_surface_v_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, args...)
+@kernel function calculate_hydrostatic_free_surface_Gv!(Gv, offs, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
@@ -216,12 +222,13 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, offs, tendency_kernel_function, grid, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
+    i′, j′, k′ = (i, j, k) .+ offs
+    @inbounds Gc[i′, j′, k′] = tendency_kernel_function(i′, j′, k′, grid, args...)
 end
 
-@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid::ActiveCellsIBG, args...)
+@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, offs, tendency_kernel_function, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
@@ -265,4 +272,93 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velo
     end
 
     return nothing
+end
+
+function recompute_boundary_tendencies(model)
+    grid = model.grid
+    arch = architecture(grid)
+
+    Nx, Ny, Nz = size(grid)
+    size_x = (Hx, Ny, Nz)
+    size_y = (Nx, Hy, Nz-2Hz)
+    size_z = (Nx-2Hx, Ny-2Hy, Hz)
+
+    offsetᴸx = (0,  0,  0)
+    offsetᴸy = (0,  0,  Hz)
+    offsetᴸz = (Hx, Hy, 0)
+    offsetᴿx = (Nx-Hx, 0,      0)
+    offsetᴿy = (0,     Ny-Hy, Hz)
+    offsetᴿz = (Hx,    Hy,    Nz-Hz)
+
+    sizes   = (size_x, size_y, size_z, size_x, size_y, size_z)
+    offsets = (offsetᴸx, offsetᴸy, offsetᴸz, offsetᴿx, offsetᴿy, offsetᴿz)
+
+    u_immersed_bc = immersed_boundary_condition(model.velocities.u)
+    v_immersed_bc = immersed_boundary_condition(model.velocities.v)
+
+    start_momentum_kernel_args = (grid,
+                                  model.advection.momentum,
+                                  model.coriolis,
+                                  model.closure)
+
+    end_momentum_kernel_args = (model.velocities,
+                                model.free_surface,
+                                model.tracers,
+                                model.buoyancy,
+                                model.diffusivity_fields,
+                                model.pressure.pHY′,
+                                model.auxiliary_fields,
+                                model.forcing,
+                                model.clock)
+
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
+    
+    only_active_cells = use_only_active_cells(grid)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+        launch!(arch, grid, kernel_size,
+                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args...;
+                only_active_cells)
+    
+        launch!(arch, grid, kernel_size,
+                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...;
+                only_active_cells)
+    end
+
+    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
+
+    only_active_cells = use_only_active_cells(grid)
+
+    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+        @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
+        @inbounds c_advection = model.advection[tracer_name]
+        @inbounds c_forcing = model.forcing[tracer_name]
+        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+
+        c_kernel_function, closure, diffusivity_fields = tracer_tendency_kernel_function(model,
+                                                                                         Val(tracer_name),
+                                                                                         model.closure,
+                                                                                         model.diffusivity_fields)
+
+        args = (c_kernel_function,
+                grid,
+                Val(tracer_index),
+                c_advection,
+                closure,
+                c_immersed_bc,
+                model.buoyancy,
+                model.velocities,
+                model.free_surface,
+                model.tracers,
+                top_tracer_bcs,
+                diffusivity_fields,
+                model.auxiliary_fields,
+                c_forcing,
+                model.clock)
+
+        for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+            launch!(arch, grid, kernel_size, calculate_hydrostatic_free_surface_Gc!, c_tendency, kernel_offsets, args...)
+        end
+    end
 end
