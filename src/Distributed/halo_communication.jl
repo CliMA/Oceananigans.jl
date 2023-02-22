@@ -59,7 +59,7 @@ for side in sides
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
         function $send_tag_fn_name(arch, local_rank, rank_to_send_to)
-            field_id    = string(arch.mpi_tag, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit  = string(side_id[Symbol($side_str)])
@@ -67,7 +67,7 @@ for side in sides
         end
 
         function $recv_tag_fn_name(arch, local_rank, rank_to_recv_from)
-            field_id    = string(arch.mpi_tag, pad=ID_DIGITS)
+            field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
@@ -109,7 +109,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
 
     # fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
-    arch.mpi_tag += 1
+    arch.mpi_tag[1] += 1
 
     return nothing
 end
@@ -133,7 +133,11 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers
     end
 end
 
-function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; kwargs...)
+@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
+@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
+@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
+
+function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; async = true, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
     bc_right    = halo_tuple[3][task]
@@ -148,7 +152,14 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
         return nothing
     end
 
-    push!(arch.mpi_requests, requests...)
+    if async
+        push!(arch.mpi_requests, requests...)
+        return nothing
+    end
+
+    MPI.Waitall(requests)
+    buffer_side = mpi_communication_side(Val(fill_halo!))
+    recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
 
     return nothing
 end

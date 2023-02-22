@@ -104,9 +104,10 @@ function DistributedArch(child_architecture = CPU();
     mpi_requests = MPI.Request[]
 
     B = use_buffers
-    M = typoef(mpi_requests)
+    M = typeof(mpi_requests)
+    T = typeof([0])
 
-    return DistributedArch{A, R, I, ρ, C, γ, B, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, 0)
+    return DistributedArch{A, R, I, ρ, C, γ, B, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, [0])
 end
 
 const ViewsDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}

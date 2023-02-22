@@ -34,7 +34,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
-    return [requestsv..., requestsw..., requestsd..., requestsp...]
+    return nothing
 end
 
 # Mask immersed fields

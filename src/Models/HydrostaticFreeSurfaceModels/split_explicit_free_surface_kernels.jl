@@ -287,12 +287,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     velocities = model.velocities
 
-    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅))
+    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅); async = true)
     
     @apply_regionally setup_split_explicit!(free_surface.auxiliary, free_surface.state, 
                                             free_surface.η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities)
 
-    fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
+    fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ); async = true)
 
     # Solve for the free surface at tⁿ⁺¹
     @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
@@ -302,7 +302,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # substepped η field
     @apply_regionally set!(free_surface.η, free_surface.state.η̅)
 
-    fill_halo_regions!(free_surface.η)
+    fill_halo_regions!(free_surface.η; async = true)
 
     return nothing
 end
