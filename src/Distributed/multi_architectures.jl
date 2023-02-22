@@ -6,7 +6,7 @@ import Oceananigans.Architectures: device, arch_array, array_type, child_archite
 import Oceananigans.Grids: zeros
 import Oceananigans.Fields: using_buffered_communication
 
-struct DistributedArch{A, R, I, ρ, C, γ, B, M} <: AbstractArchitecture
+struct DistributedArch{A, R, I, ρ, C, γ, B, M, T} <: AbstractArchitecture
   child_architecture :: A
           local_rank :: R
          local_index :: I
@@ -14,6 +14,7 @@ struct DistributedArch{A, R, I, ρ, C, γ, B, M} <: AbstractArchitecture
         connectivity :: C
         communicator :: γ
         mpi_requests :: M
+             mpi_tag :: T
 end
 
 #####
@@ -105,7 +106,7 @@ function DistributedArch(child_architecture = CPU();
     B = use_buffers
     M = typoef(mpi_requests)
 
-    return DistributedArch{A, R, I, ρ, C, γ, B, M}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests)
+    return DistributedArch{A, R, I, ρ, C, γ, B, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, 0)
 end
 
 const ViewsDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}

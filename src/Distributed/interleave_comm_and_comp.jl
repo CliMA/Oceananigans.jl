@@ -4,6 +4,7 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
 
     MPI.Waitall(arch.mpi_requests)
     empty!(arch.mpi_requests)
+    arch.mpi_tag = 0
 
     for side in (:west_and_east, :south_and_north, :bottom_and_top)
         for field in prognostic_fields(model)

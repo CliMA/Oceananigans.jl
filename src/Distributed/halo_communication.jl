@@ -45,29 +45,33 @@ opposite_side = Dict(
 
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
-#   digit 1: the side
-#   digits 2-4: the "from" rank
-#   digits 5-7: the "to" rank
+#   digit 1-2: an identifier for the field that is reset each timestep
+#   digit 3: the side
+#   digits 4-6: the "from" rank
+#   digits 7-9: the "to" rank
 
 RANK_DIGITS = 3
+ID_DIGITS = 2
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(local_rank, rank_to_send_to)
+        function $send_tag_fn_name(arch, local_rank, rank_to_send_to)
+            field_id    = string(arch.mpi_tag, pad=ID_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit  = string(side_id[Symbol($side_str)])
-            return parse(Int, side_digit * from_digits * to_digits)
+            return parse(Int, field_id * side_digit * from_digits * to_digits)
         end
 
-        function $recv_tag_fn_name(local_rank, rank_to_recv_from)
+        function $recv_tag_fn_name(arch, local_rank, rank_to_recv_from)
+            field_id    = string(arch.mpi_tag, pad=ID_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, side_digit * from_digits * to_digits)
+            return parse(Int, field_id * side_digit * from_digits * to_digits)
         end
     end
 end
@@ -98,14 +102,14 @@ end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
     arch       = architecture(grid)
-    child_arch = child_architecture(arch)
     halo_tuple = permute_boundary_conditions(bcs)
     
     for task = 1:3
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
-    fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    # fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
+    arch.mpi_tag += 1
 
     return nothing
 end
@@ -128,10 +132,6 @@ function fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers
         return nothing
     end
 end
-
-@inline mpi_communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
-@inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
-@inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; kwargs...)
     fill_halo!  = halo_tuple[1][task]
@@ -242,7 +242,7 @@ for side in sides
     @eval begin
         function $send_side_halo(c, grid, arch, side_location, local_rank, rank_to_send_to, buffers)
             send_buffer = $get_side_send_buffer(c, grid, side_location, buffers, arch)
-            send_tag = $side_send_tag(local_rank, rank_to_send_to)
+            send_tag = $side_send_tag(arch, local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
@@ -269,7 +269,7 @@ for side in sides
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, arch, side_location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, side_location, buffers, arch)
-            recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
+            recv_tag = $side_recv_tag(arch, local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
