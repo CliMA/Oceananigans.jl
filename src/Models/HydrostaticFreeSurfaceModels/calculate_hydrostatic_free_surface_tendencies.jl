@@ -4,6 +4,7 @@ import Oceananigans: tracer_tendency_kernel_function
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.Grids: halo_size
 
 import Oceananigans.Distributed: complete_communication_and_compute_boundary, recompute_boundary_tendencies
 
@@ -278,6 +279,8 @@ function recompute_boundary_tendencies(model)
     arch = architecture(grid)
 
     Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
     size_x = (Hx, Ny, Nz)
     size_y = (Nx, Hy, Nz-2Hz)
     size_z = (Nx-2Hx, Ny-2Hy, Hz)

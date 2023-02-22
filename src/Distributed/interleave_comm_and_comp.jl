@@ -1,3 +1,5 @@
+using Oceananigans: prognostic_fields
+
 function complete_communication_and_compute_boundary(model, grid::DistributedGrid)
 
     arch = architecture(grid)
