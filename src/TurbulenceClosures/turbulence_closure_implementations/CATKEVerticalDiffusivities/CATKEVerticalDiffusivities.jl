@@ -39,22 +39,26 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_y,
     diffusive_flux_z
 
-struct CATKEVerticalDiffusivity{TD, CL, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
+struct CATKEVerticalDiffusivity{TD, CL, FT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
+    maximum_diffusivity :: FT
 end
 
-function CATKEVerticalDiffusivity{TD}(mixing_length :: CL,
-                                      turbulent_kinetic_energy_equation :: TKE) where {TD, CL, TKE}
+function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
+                                      turbulent_kinetic_energy_equation::TKE,
+                                      maximum_diffusivity::FT) where {TD, CL, TKE, FT}
 
-    return CATKEVerticalDiffusivity{TD, CL, TKE}(mixing_length,
-                                                 turbulent_kinetic_energy_equation)
+    return CATKEVerticalDiffusivity{TD, CL, FT, TKE}(mixing_length,
+                                                     turbulent_kinetic_energy_equation,
+                                                     maximum_diffusivity)
 end
 
 """
     CATKEVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;
                              mixing_length = MixingLength{FT}(),
                              turbulent_kinetic_energy_equation = TurbulentKineticEnergyEquation{FT}(),
+                             maximum_diffusivity = Inf,
                              warning = true)
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
@@ -99,6 +103,7 @@ favorite_mixing_length(FT) = MixingLength(
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(), FT=Float64;
                                   mixing_length = favorite_mixing_length(FT),
                                   turbulent_kinetic_energy_equation = favorite_turbulent_kinetic_energy_equation(FT),
+                                  maximum_diffusivity = Inf,
                                   warning = true) where TD
 
     if warning
@@ -112,7 +117,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
     mixing_length = convert_eltype(FT, mixing_length)
     turbulent_kinetic_energy_equation = convert_eltype(FT, turbulent_kinetic_energy_equation)
 
-    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation)
+    return CATKEVerticalDiffusivity{TD}(mixing_length, turbulent_kinetic_energy_equation, FT(maximum_diffusivity))
 end
 
 function with_tracers(tracer_names, closure::FlavorOfCATKE)
@@ -212,10 +217,12 @@ end
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
+    max_K = closure_ij.maximum_diffusivity
+
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...)
+        diffusivities.Kᵘ[i, j, k] = max(max_K, Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᶜ[i, j, k] = max(max_K, Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᵉ[i, j, k] = max(max_K, Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.

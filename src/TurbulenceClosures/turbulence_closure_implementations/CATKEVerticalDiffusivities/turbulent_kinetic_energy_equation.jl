@@ -78,7 +78,8 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
 
     # Dissipation length
-    ℓᴰ = min(grid.Lz, ℓ★ + ℓʰ)
+    H = total_depthᶜᶜᵃ(i, j, grid)
+    ℓᴰ = min(H, ℓ★ + ℓʰ)
 
     eᵢ = @inbounds e[i, j, k]
     
