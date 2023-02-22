@@ -160,9 +160,12 @@ for side in (:ᶜ, :ᶠ)
     near_z_boundary = Symbol(:near_z_immersed_boundary_biased, side)
 
     @eval begin
-        @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{D}) where D = false
-        @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{D}) where D = false
-        @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{D}) where D = false
+        @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:left})  = false
+        @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:left})  = false
+        @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:left})  = false
+        @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:right}) = false
+        @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:right}) = false
+        @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}, ::Val{:right}) = false
     end
 
     for buffer in [1, 2, 3, 4, 5, 6]
@@ -255,7 +258,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
             # Conditional high-order interpolation in Bounded directions
             @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, ::Val{D}, args...) where D =
-                ifelse($near_boundary(i, j, k, ibg, scheme, Val(DataType)),
+                ifelse($near_boundary(i, j, k, ibg, scheme, Val(D)),
                         $alt_interp(i, j, k, ibg, scheme.buffer_scheme, Val(D), args...),
                         $interp(i, j, k, ibg, scheme, Val(D), args...))
             
