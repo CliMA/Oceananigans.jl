@@ -6,7 +6,6 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 
 import Oceananigans.Distributed: complete_communication_and_compute_boundary, recompute_boundary_tendencies
-using Oceananigans.Distributed: tendency_kernel_size, tendency_kernel_offsets
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
