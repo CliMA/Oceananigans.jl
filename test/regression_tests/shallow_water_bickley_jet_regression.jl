@@ -57,6 +57,7 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
         outputs   = (; u, v, h)
         simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                               dir = directory,
+                                                              array_type = Array{Float32},
                                                               schedule = IterationInterval(stop_iteration),
                                                               filename = output_filename,
                                                               overwrite_existing = true)
