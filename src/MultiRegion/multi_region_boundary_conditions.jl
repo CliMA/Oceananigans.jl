@@ -69,7 +69,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 
     for task = 1:3
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, indices, loc, arch, barrier, mrg, neighbors, buff, 
+                          c, indices, loc, arch, mrg, neighbors, buff, 
                           args...; kwargs...)
     end
 
