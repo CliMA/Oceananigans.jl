@@ -127,7 +127,7 @@ end
         k₋_src = searchsortedfirst(source_z_faces, z₋)
         k₊_src = searchsortedfirst(source_z_faces, z₊) - 1
 
-        if k₊_src <= k₋_src
+        if false #k₊_src <= k₋_src
             # If the "last" face on the source grid is equal to or left
             # of the "first" face on the source grid, the target cell
             # lies entirely within the source cell j₊_src (ie, we are _refining_
