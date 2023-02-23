@@ -7,6 +7,9 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # What shall we do with w, p and κ???
     recompute_auxiliaries!(model, grid, arch)
+    
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
 
     size_x = (Hx, Ny, Nz)
     size_y = (Nx, Hy, Nz)
@@ -84,14 +87,14 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
 end
 
 function recompute_auxiliaries!(model, grid, arch)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
 
-    size_x = (Hx+1, Ny)
-    size_y = (Nx, Hy+1)
+    size_x = (Hx, Ny)
+    size_y = (Nx, Hy)
 
-    offsetᴸx = (-Hx,  0)
-    offsetᴸy = (0,  -Hy)
+    offsetᴸx = (-Hx+1,  0)
+    offsetᴸy = (0,  -Hy+1)
     offsetᴿx = (Nx-1, 0)
     offsetᴿy = (0, Ny-1)
 
@@ -115,7 +118,7 @@ function recompute_auxiliaries!(model, grid, arch)
 
 
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        update_hydrostatic_pressure!(model.pressures.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
     end
 
     size_x = (1, Ny, Nz)
@@ -130,6 +133,6 @@ function recompute_auxiliaries!(model, grid, arch)
     offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
 
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        calculate_diffusivities!(model; kernel_size, kernel_offsets)
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
     end
 end
