@@ -5,8 +5,8 @@ using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, Conser
 Lx, Ly, Lz = 2π, 20, 10
 Nx, Ny = 128, 128
 
-advection(formulation::ConservativeFormulation) = WENO()
-advection(formulation::VectorInvariantFormulation) = WENO(vector_invariant=VelocityStencil())
+advection(formulation::ConservativeFormulation)    = WENO()
+advection(formulation::VectorInvariantFormulation) = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = nothing, vertical_scheme = EnergyConservingScheme())
 
 function run_shallow_water_regression(arch, formulation; regenerate_data = false)
 
