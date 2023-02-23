@@ -1,24 +1,25 @@
 using Oceananigans
-using Oceananigans.Advection: VelocityStencil, EnergyConservingScheme
-using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation, shallow_water_velocities
+using Oceananigans.Advection: VelocityStencil
+using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation
 
 Lx, Ly, Lz = 2π, 20, 10
 Nx, Ny = 128, 128
 
-advection(formulation::ConservativeFormulation)    = WENO()
-advection(formulation::VectorInvariantFormulation) = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = nothing, vertical_scheme = EnergyConservingScheme())
+advection(formulation::ConservativeFormulation) = WENO()
+advection(formulation::VectorInvariantFormulation) = WENO(vector_invariant=VelocityStencil())
 
 function run_shallow_water_regression(arch, formulation; regenerate_data = false)
+
     grid = RectilinearGrid(arch, size = (Nx, Ny),
-                        x = (0, Lx), y = (-Ly/2, Ly/2),
-                        topology = (Periodic, Bounded, Flat))
+                           x = (0, Lx), y = (-Ly/2, Ly/2),
+                           topology = (Periodic, Bounded, Flat))
 
     gravitational_acceleration = 1
     coriolis = FPlane(f=1)
 
     model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration, formulation,
-                            timestepper = :RungeKutta3,
-                            momentum_advection = advection(formulation))
+                              timestepper = :RungeKutta3,
+                              momentum_advection = advection(formulation))
 
     U = 1 # Maximum jet velocity
     f = coriolis.f
@@ -26,11 +27,11 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
     Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
 
     h̄(x, y, z) = Lz - Δη * tanh(y)
-    ū(x, y, z) = U * sech(y)^2
+    ū(x, y, z) = U * sech(y)^2
 
     small_amplitude = 1e-4
     
-    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * cos(8π * x / Lx)
+    uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * cos(8π * x / Lx)
     uhⁱ(x, y, z) = uⁱ(x, y, z) * h̄(x, y, z)
 
     if formulation isa VectorInvariantFormulation
@@ -40,7 +41,7 @@ function run_shallow_water_regression(arch, formulation; regenerate_data = false
     end
 
     stop_iteration = 20
-    Δt = 1e-2
+    Δt = 5e-3
 
     simulation = Simulation(model; stop_iteration, Δt)
     
