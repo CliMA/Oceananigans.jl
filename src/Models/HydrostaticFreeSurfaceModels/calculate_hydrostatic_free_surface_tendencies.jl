@@ -6,7 +6,7 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
 
-import Oceananigans.Distributed: complete_communication_and_compute_boundary, recompute_boundary_tendencies
+import Oceananigans.Distributed: complete_communication_and_compute_boundary
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
@@ -40,7 +40,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-@inline complete_communication_and_compute_boundary(model, grid) = nothing
+complete_communication_and_compute_boundary(model, grid, arch) = nothing
 
 function calculate_free_surface_tendency!(grid, model)
 
@@ -194,7 +194,9 @@ end
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gu!(Gu, offs, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = (i, j, k) .+ offs
+    i′ = i + offs[1] 
+    j′ = j + offs[2] 
+    k′ = k + offs[3]
     @inbounds Gu[i′, j′, k′] = hydrostatic_free_surface_u_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
@@ -207,7 +209,9 @@ end
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function calculate_hydrostatic_free_surface_Gv!(Gv, offs, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = (i, j, k) .+ offs
+    i′ = i + offs[1] 
+    j′ = j + offs[2] 
+    k′ = k + offs[3]
     @inbounds Gv[i′, j′, k′] = hydrostatic_free_surface_v_velocity_tendency(i′, j′, k′, grid, args...)
 end
 
@@ -224,7 +228,9 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function calculate_hydrostatic_free_surface_Gc!(Gc, offs, tendency_kernel_function, grid, args...)
     i, j, k = @index(Global, NTuple)
-    i′, j′, k′ = (i, j, k) .+ offs
+    i′ = i + offs[1] 
+    j′ = j + offs[2] 
+    k′ = k + offs[3]
     @inbounds Gc[i′, j′, k′] = tendency_kernel_function(i′, j′, k′, grid, args...)
 end
 

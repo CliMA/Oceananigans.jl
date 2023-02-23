@@ -1,13 +1,12 @@
-# We assume here that top/bottom BC are always synched (no partitioning in z)
+import Oceananigans.Distributed: recompute_boundary_tendencies!
 
-function recompute_boundary_tendencies(model)
+# We assume here that top/bottom BC are always synched (no partitioning in z)
+function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
     # What shall we do with w, p and κ???
-
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    recompute_auxiliaries!(model, grid, arch)
 
     size_x = (Hx, Ny, Nz)
     size_y = (Nx, Hy, Nz)
@@ -81,5 +80,56 @@ function recompute_boundary_tendencies(model)
         for (kernel_size, kernel_offsets) in zip(sizes, offsets)
             launch!(arch, grid, kernel_size, calculate_hydrostatic_free_surface_Gc!, c_tendency, kernel_offsets, args...)
         end
+    end
+end
+
+function recompute_auxiliaries!(model, grid, arch)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    size_x = (Hx+1, Ny)
+    size_y = (Nx, Hy+1)
+
+    offsetᴸx = (-Hx,  0)
+    offsetᴸy = (0,  -Hy)
+    offsetᴿx = (Nx-1, 0)
+    offsetᴿy = (0, Ny-1)
+
+    sizes   = (size_x,     size_y,   size_x,   size_y)
+    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+        compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
+    end
+
+    size_x = (1, Ny)
+    size_y = (Nx, 1)
+
+    offsetᴸx = (-1,  0)
+    offsetᴸy = (0,  -1)
+    offsetᴿx = (Nx,  0)
+    offsetᴿy = (0,  Ny)
+
+    sizes   = (size_x,     size_y,   size_x,   size_y)
+    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
+
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+        update_hydrostatic_pressure!(model.pressures.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
+    end
+
+    size_x = (1, Ny, Nz)
+    size_y = (Nx, 1, Nz)
+
+    offsetᴸx = (-1,  0, 0)
+    offsetᴸy = (0,  -1, 0)
+    offsetᴿx = (Nx,  0, 0)
+    offsetᴿy = (0,  Ny, 0)
+
+    sizes   = (size_x,     size_y,   size_x,   size_y)
+    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+        calculate_diffusivities!(model; kernel_size, kernel_offsets)
     end
 end

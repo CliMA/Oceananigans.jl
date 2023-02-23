@@ -111,7 +111,9 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κ, ν)
 end
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
+@inline kappa_kernel_size(grid) = size(grid) .+ 2
+
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = kappa_kernel_size(grid), kernel_offsets = (-0x1, -0x1, -0x1))
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -120,9 +122,10 @@ function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, kernel_size,
             compute_ri_based_diffusivities!,
             diffusivities,
+            kernel_offsets,
             grid,
             closure,
             velocities,
@@ -162,10 +165,14 @@ end
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
     ℑzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
-@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
+@kernel function compute_ri_based_diffusivities!(diffusivities, offs, grid, closure::FlavorOfRBVD,
                                                  velocities, tracers, buoyancy, tracer_bcs, clock)
 
-    i, j, k, = @index(Global, NTuple)
+    i′, j′, k′ = @index(Global, NTuple)
+
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
+    k = k′ + offs[3]
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)

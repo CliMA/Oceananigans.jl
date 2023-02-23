@@ -13,10 +13,10 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     end
 
     # HERE we have to put fill_eventual_halo_corners
-    recompute_boundary_tendencies(model)
+    recompute_boundary_tendencies!(model)
 
     return nothing
 end
 
 complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::SynchedDistributedArch) = nothing
-recompute_boundary_tendencies() = nothing
+recompute_boundary_tendencies!() = nothing
