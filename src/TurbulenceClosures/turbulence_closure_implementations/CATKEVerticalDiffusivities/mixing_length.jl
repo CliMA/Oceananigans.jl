@@ -1,4 +1,4 @@
-using ..TurbulenceClosures: wall_vertical_distanceᶜᶜᶠ
+using ..TurbulenceClosures: wall_vertical_distanceᶜᶜᶠ, total_depthᶜᶜᵃ
 
 """
     struct MixingLength{FT}
