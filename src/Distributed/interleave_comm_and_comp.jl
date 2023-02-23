@@ -8,10 +8,10 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     empty!(arch.mpi_requests)
     arch.mpi_tag[1] = 0
 
-    for field in merge(model.velocities, model.tracers)
-        recv_from_buffers!(field.data, field.boundary_buffers, grid)
+    for field in prognostic_fields(model)
+        recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
     end
-    
+
     # HERE we have to put fill_eventual_halo_corners
     recompute_boundary_tendencies(model)
 

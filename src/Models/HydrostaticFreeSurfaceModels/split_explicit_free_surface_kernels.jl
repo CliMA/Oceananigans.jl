@@ -302,7 +302,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # substepped η field
     @apply_regionally set!(free_surface.η, free_surface.state.η̅)
 
-    fill_halo_regions!(free_surface.η)
+    fill_halo_regions!(free_surface.η; async = true)
 
     return nothing
 end
