@@ -148,15 +148,19 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
 
     requests = fill_halo!(c, bc_left, bc_right, size, offset, loc, arch, grid, buffers, args...; kwargs...)
 
+    # if `isnothing(requests)`, `fill_halo!` did not involve MPI 
     if isnothing(requests)
         return nothing
     end
 
+    # Overlapping communication and computation, store requests in a `MPI.Request`
+    # pool to be waited upon after tendency calculation
     if async && !(arch isa SynchedDistributedArch)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
 
+    # Syncronous MPI fill_halo_event!
     MPI.Waitall(requests)
     buffer_side = mpi_communication_side(Val(fill_halo!))
     recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
