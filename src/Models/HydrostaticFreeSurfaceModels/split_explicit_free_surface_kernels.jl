@@ -193,6 +193,8 @@ function split_explicit_free_surface_substep!(η, state, auxiliary, settings, ar
 
     launch!(arch, grid, kernel_size, split_explicit_free_surface_evolution_kernel!, args...)
     launch!(arch, grid, kernel_size, split_explicit_barotropic_velocity_evolution_kernel!, args...)
+
+    return nothing
 end
 
 # Barotropic Model Kernels
@@ -257,6 +259,8 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
         u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+
+    return nothing
 end
 
 @kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ)
@@ -279,20 +283,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     grid = free_surface.η.grid
 
-    # we start the time integration of η from the average ηⁿ     
-    Gu  = model.timestepper.G⁻.u
-    Gv  = model.timestepper.G⁻.v
-    Guⁿ = model.timestepper.Gⁿ.u
-    Gvⁿ = model.timestepper.Gⁿ.v
+    # Wait for previous set up
+    wait_free_surface_communication!(free_surface)
 
-    velocities = model.velocities
-
-    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅))
-    
-    @apply_regionally setup_split_explicit!(free_surface.auxiliary, free_surface.state, 
-                                            free_surface.η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities)
-
-    fill_halo_regions!((free_surface.auxiliary.Gᵁ, free_surface.auxiliary.Gⱽ))
+    # reset free surface averages
+    @apply_regionally initialize_free_surface_state!(free_surface.state, free_surface.η)
 
     # Solve for the free surface at tⁿ⁺¹
     @apply_regionally iterate_split_explicit!(free_surface, grid, Δt)
@@ -301,8 +296,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field
     @apply_regionally set!(free_surface.η, free_surface.state.η̅)
-
-    fill_halo_regions!(free_surface.η; async = true)
 
     return nothing
 end
@@ -321,19 +314,44 @@ function iterate_split_explicit!(free_surface, grid, Δt)
     for substep in 1:settings.substeps
         split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
+
+    return nothing
 end
 
-function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ, χ, velocities)
+# Setting up the tendencies and the communicating the barotopic velocity components
+# This function is called after `calculate_tendency` and before `ab2_step!`
+function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
+
+    grid = free_surface.η.grid
+    
+    # we start the time integration of η from the average ηⁿ     
+    Gu  = model.timestepper.G⁻.u
+    Gv  = model.timestepper.G⁻.v
+    Guⁿ = model.timestepper.Gⁿ.u
+    Gvⁿ = model.timestepper.Gⁿ.v
+    
+    auxiliary = free_surface.auxiliary
+
+    @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
+
+    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅); async = true)
+    fill_halo_regions!((auxiliary.Gᵁ, auxiliary.Gⱽ); async = true)
+
+    return nothing
+end
+
+function setup_split_explicit_tendency!(auxiliary, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
     arch = architecture(grid)
 
     launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu, Guⁿ, χ)
     launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv, Gvⁿ, χ)
+    
+    mask_immersed_field!(Gu)
+    mask_immersed_field!(Gv)
 
-    # reset free surface averages
-    initialize_free_surface_state!(state, η)
-
-    # Compute barotropic mode of tendency fields
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
 
     return nothing
 end
+
+wait_free_surface_communication!(free_surface) = nothing
