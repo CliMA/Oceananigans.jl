@@ -10,12 +10,12 @@ function recompute_boundary_tendencies(model)
     Hx, Hy, Hz = halo_size(grid)
 
     size_x = (Hx, Ny, Nz)
-    size_y = (Nx, Hy, Nz-2Hz)
+    size_y = (Nx, Hy, Nz)
 
     offsetᴸx = (0,  0,  0)
-    offsetᴸy = (0,  0,  Hz)
-    offsetᴿx = (Nx-Hx, 0,      0)
-    offsetᴿy = (0,     Ny-Hy, Hz)
+    offsetᴸy = (0,  0,  0)
+    offsetᴿx = (Nx-Hx, 0,     0)
+    offsetᴿy = (0,     Ny-Hy, 0)
 
     sizes   = (size_x,     size_y,   size_x,   size_y)
     offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
