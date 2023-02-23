@@ -64,7 +64,7 @@ function DistributedArch(child_architecture = CPU();
                    ranks,
                    use_buffers = false,
                    devices = nothing, 
-                   interleave_communication = true,
+                   enable_overlapped_computation = true,
                    communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
@@ -102,7 +102,7 @@ function DistributedArch(child_architecture = CPU();
         isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
     end
 
-    mpi_requests = interleave_communication ? MPI.Request[] : nothing
+    mpi_requests = enable_overlapped_computation ? MPI.Request[] : nothing
 
     B = use_buffers
     M = typeof(mpi_requests)

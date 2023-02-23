@@ -5,9 +5,9 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    # What shall we do with w, p and κ???
+    # We need new values for `w`, `p` and `κ`
     recompute_auxiliaries!(model, grid, arch)
-    
+
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -49,6 +49,11 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     
         launch!(arch, grid, kernel_size,
                 calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...)
+        
+        launch!(arch, grid, kernel_size[1:2],
+                calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, kernel_offsets[1:2],
+                grid, model.velocities, model.free_surface, model.tracers, model.auxiliary_fields, model.forcing,
+                model.clock)
     end
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)

@@ -48,6 +48,7 @@ function calculate_free_surface_tendency!(grid, model)
 
     launch!(arch, grid, :xy,
             calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+            (0, 0),
             grid,
             model.velocities,
             model.free_surface,
@@ -245,9 +246,11 @@ end
 #####
 
 """ Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gη!(Gη, offs, grid, args...)
     i, j = @index(Global, NTuple)
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+    i′ = i + offs[1]
+    j′ = j + offs[2]
+    @inbounds Gη[i′, j′, grid.Nz+1] = free_surface_tendency(i′, j′, grid, args...)
 end
 
 #####
