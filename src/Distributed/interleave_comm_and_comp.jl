@@ -2,6 +2,8 @@ using Oceananigans: prognostic_fields
 
 function complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch)
 
+    # We iterate over the fields because we have to clear _ALL_ architectures
+    # and split explicit variables live on a different grid
     for field in prognostic_fields(model)
         arch = architecture(field.grid)
 
