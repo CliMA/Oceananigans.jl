@@ -50,7 +50,7 @@ opposite_side = Dict(
 #   digits 4-6: the "from" rank
 #   digits 7-9: the "to" rank
 
-RANK_DIGITS = 3
+RANK_DIGITS = 2
 ID_DIGITS = 3
 
 for side in sides
