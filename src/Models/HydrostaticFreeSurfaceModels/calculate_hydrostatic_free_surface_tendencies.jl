@@ -21,7 +21,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
-    complete_communication_and_compute_boundary(model, model.grid)
+    complete_communication_and_compute_boundary(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain

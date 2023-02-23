@@ -18,7 +18,7 @@ function recompute_boundary_tendencies(model)
     offsetᴿy = (0,     Ny-Hy, Hz)
     offsetᴿz = (Hx,    Hy,    Nz-Hz)
 
-    sizes   = (size_x, size_y, size_z, size_x, size_y, size_z)
+    sizes   = (size_x,     size_y,   size_z,   size_x,   size_y,   size_z)
     offsets = (offsetᴸx, offsetᴸy, offsetᴸz, offsetᴿx, offsetᴿy, offsetᴿz)
 
     u_immersed_bc = immersed_boundary_condition(model.velocities.u)
@@ -42,21 +42,15 @@ function recompute_boundary_tendencies(model)
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
     
-    only_active_cells = use_only_active_cells(grid)
-
     for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args...;
-                only_active_cells)
+                calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args...)
     
         launch!(arch, grid, kernel_size,
-                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...;
-                only_active_cells)
+                calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...)
     end
 
     top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-
-    only_active_cells = use_only_active_cells(grid)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]

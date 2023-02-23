@@ -152,7 +152,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
         return nothing
     end
 
-    if async
+    if async && !(arch isa SynchedDistributedArch)
         push!(arch.mpi_requests, requests...)
         return nothing
     end

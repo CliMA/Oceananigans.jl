@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
 
-function complete_communication_and_compute_boundary(model, grid::DistributedGrid)
+function complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch)
 
     arch = architecture(grid)
 
@@ -18,4 +18,5 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     return nothing
 end
 
+complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::SynchedDistributedArch) = nothing
 recompute_boundary_tendencies() = nothing

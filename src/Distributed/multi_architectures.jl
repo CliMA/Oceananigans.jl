@@ -64,6 +64,7 @@ function DistributedArch(child_architecture = CPU();
                    ranks,
                    use_buffers = false,
                    devices = nothing, 
+                   interleave_communication = true,
                    communicator = MPI.COMM_WORLD)
 
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
@@ -101,7 +102,7 @@ function DistributedArch(child_architecture = CPU();
         isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
     end
 
-    mpi_requests = MPI.Request[]
+    mpi_requests = interleave_communication ? MPI.Request[] : nothing
 
     B = use_buffers
     M = typeof(mpi_requests)
@@ -110,7 +111,8 @@ function DistributedArch(child_architecture = CPU();
     return DistributedArch{A, R, I, ρ, C, γ, B, M, T}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator, mpi_requests, [0])
 end
 
-const ViewsDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+const ViewsDistributedArch   = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
+const SynchedDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 
 using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
 
