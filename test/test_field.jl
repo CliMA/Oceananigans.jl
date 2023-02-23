@@ -407,8 +407,8 @@ end
             super_fine_column_regular_c   = CenterField(super_fine_column_regular_grid)
             super_fine_from_reduction_regular_c = CenterField(super_fine_column_regular_grid)
 
-            # we initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
-            # grids, and check whether we get the anticipated results
+            # We initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
+            # grids, and check whether we get the anticipated results.
             c₁ = 1
             c₂ = 3
 
