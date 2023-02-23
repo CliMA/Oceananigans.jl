@@ -28,10 +28,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
-    fill_halo_regions!(model.velocities.w, model.clock, fields(model); async = true)
-    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model); async = true)
-    fill_halo_regions!(model.pressure.pHY′; async = true)
-
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     return nothing
