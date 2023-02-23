@@ -16,6 +16,7 @@ CUDA.allowscalar() do
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
+            include("test_regrid.jl")
             include("test_field_reductions.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")

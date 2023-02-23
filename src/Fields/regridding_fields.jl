@@ -77,24 +77,43 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     return false
 end
 
+function regrid_in_z!(a, target_grid, source_grid, b)
+    arch = architecture(a)
+    source_z_faces = znodes(Face, source_grid)
+    event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
+    wait(device(arch), event)
+    return a
+end
+
+function regrid_in_y!(a, target_grid, source_grid, b)
+    arch = architecture(a)
+    source_y_faces = ynodes(Face, source_grid)
+    event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
+    wait(device(arch), event)
+    return a
+end
+
+function regrid_in_x!(a, target_grid, source_grid, b)
+    arch = architecture(a)
+    source_x_faces = xnodes(Face, source_grid)
+    event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
+    wait(device(arch), event)
+    return a
+end
+
+regrid_in_x!(a, b) = regrid_in_x!(a, a.grid, b.grid, b)
+regrid_in_y!(a, b) = regrid_in_y!(a, a.grid, b.grid, b)
+regrid_in_z!(a, b) = regrid_in_z!(a, a.grid, b.grid, b)
+
 function regrid!(a, target_grid, source_grid, b)
     arch = architecture(a)
 
     if we_can_regrid_in_z(a, target_grid, source_grid, b)
-        source_z_faces = znodes(Face, source_grid)
-        event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
-        wait(device(arch), event)
-        return a
+        return regrid_in_z!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
-        source_y_faces = ynodes(Face, source_grid)
-        event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
-        wait(device(arch), event)
-        return a
+        return regrid_in_y!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
-        source_x_faces = xnodes(Face, source_grid)
-        event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
-        wait(device(arch), event)
-        return a
+        return regrid_in_x!(a, target_grid, source_grid, b)
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -151,7 +170,7 @@ end
 
             # Add contribution to integral from fractional right part of the source field, if that
             # region is part of the grid.
-            if k₋_src < source_grid.Nz+1
+            if k₊_src < source_grid.Nz+1
                 @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
             end
 
@@ -204,7 +223,7 @@ end
             end
 
             # Similar to above, add contribution to integral from fractional right part.
-            if j₋_src < source_grid.Ny+1
+            if j₊_src < source_grid.Ny+1
                 j_right = j₊_src
                 ϵ_right = (y₊ - yj₊_src) / Δyᶜᶜᶜ(i_src, j_right, k_src, source_grid) 
                 @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * ϵ_right * Azᶜᶜᶜ(i_src, j_right, k_src, source_grid)
@@ -236,7 +255,7 @@ end
         # The last face on the source grid that appears inside the target cell
         i₊_src = searchsortedfirst(source_x_faces, x₊) - 1
 
-        if i₊_src <= i₋_src
+        if i₊_src < i₋_src
             # If the "last" face on the source grid is equal to or left
             # of the "first" face on the source grid, the target cell
             # lies entirely within the source cell i₊_src (ie, we are _refining_
@@ -262,16 +281,14 @@ end
             # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if i₋_src > 1
                 i_left = i₋_src - 1
-                ϵ_left = (xi₋_src - x₋) / Δxᶜᶜᶜ(i_left, j_src, k_src, target_grid) 
-                ϵ_left = max(zero(source_grid), ϵ_left)
+                ϵ_left = (xi₋_src - x₋) / Δxᶜᶜᶜ(i_left, j_src, k_src, source_grid) 
                 @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * ϵ_left * Azᶜᶜᶜ(i_left, j_src, k_src, source_grid)
             end
     
             # Similar to above, add contribution to integral from fractional right part.
-            if i₋_src < source_grid.Nx+1
+            if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
-                ϵ_right = (x₊ - xi₊_src) / Δxᶜᶜᶜ(i_right, j_src, k_src, target_grid) 
-                ϵ_right = max(zero(source_grid), ϵ_right)
+                ϵ_right = (x₊ - xi₊_src) / Δxᶜᶜᶜ(i_right, j_src, k_src, source_grid) 
                 @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * ϵ_right * Azᶜᶜᶜ(i_right, j_src, k_src, source_grid)
             end
     
