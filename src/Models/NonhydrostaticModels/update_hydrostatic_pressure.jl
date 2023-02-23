@@ -30,8 +30,8 @@ const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 # extend p kernel to compute also the boundaries
 @inline p_kernel_size(grid) = size(grid)[[1, 2]] .+ 2
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-0x1, -0x1)) =
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-1, -1)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; kernel_size, kernel_offsets)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-0x1, -0x1)) =  
+update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-1, -1)) =  
         launch!(arch, grid, kernel_size, _update_hydrostatic_pressure!, pHY′, kernel_offsets, grid, buoyancy, tracers)

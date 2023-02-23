@@ -113,7 +113,7 @@ end
 
 @inline kappa_kernel_size(grid) = size(grid) .+ 2
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = kappa_kernel_size(model.grid), kernel_offsets = (-0x1, -0x1, -0x1))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = kappa_kernel_size(model.grid), kernel_offsets = (-1, -1, -1))
     arch = model.architecture
     grid = model.grid
     clock = model.clock

@@ -12,7 +12,7 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
-compute_w_from_continuity!(velocities, arch, grid; kernel_size = w_kernel_size(grid), kernel_offsets = (-0x1, -0x1)) = 
+compute_w_from_continuity!(velocities, arch, grid; kernel_size = w_kernel_size(grid), kernel_offsets = (-1, -1)) = 
     launch!(arch, grid, kernel_size, _compute_w_from_continuity!, velocities, kernel_offsets, grid)
 
 # extend w kernel to compute also the boundaries
