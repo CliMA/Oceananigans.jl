@@ -1,3 +1,5 @@
+# We assume here that top/bottom BC are always synched (no partitioning in z)
+
 function recompute_boundary_tendencies(model)
     grid = model.grid
     arch = architecture(grid)
@@ -9,17 +11,14 @@ function recompute_boundary_tendencies(model)
 
     size_x = (Hx, Ny, Nz)
     size_y = (Nx, Hy, Nz-2Hz)
-    size_z = (Nx-2Hx, Ny-2Hy, Hz)
 
     offsetᴸx = (0,  0,  0)
     offsetᴸy = (0,  0,  Hz)
-    offsetᴸz = (Hx, Hy, 0)
     offsetᴿx = (Nx-Hx, 0,      0)
     offsetᴿy = (0,     Ny-Hy, Hz)
-    offsetᴿz = (Hx,    Hy,    Nz-Hz)
 
-    sizes   = (size_x,     size_y,   size_z,   size_x,   size_y,   size_z)
-    offsets = (offsetᴸx, offsetᴸy, offsetᴸz, offsetᴿx, offsetᴿy, offsetᴿz)
+    sizes   = (size_x,     size_y,   size_x,   size_y)
+    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
 
     u_immersed_bc = immersed_boundary_condition(model.velocities.u)
     v_immersed_bc = immersed_boundary_condition(model.velocities.v)
