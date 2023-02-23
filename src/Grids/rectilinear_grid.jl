@@ -247,7 +247,7 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
-                         FT = Float64;
+                         FT::DataType = Float64;
                          size,
                          x = nothing,
                          y = nothing,
