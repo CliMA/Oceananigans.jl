@@ -11,16 +11,16 @@ import Oceananigans.Fields: CenterField
 #####
 
 """
-Update tendencies.
+    update_tendencies!(bgc, model)
 
-Called at the end of calculate_tendencies!
+Called at the end of calculate_tendencies! 
 """
 update_tendencies!(bgc, model) = nothing
 
 """
-Update tracer tendencies.
+    update_biogeochemical_state!(bgc, model)
 
-Called at the end of calculate_tendencies!
+Called at the end of update_state!
 """
 update_biogeochemical_state!(bgc, model) = nothing
 
@@ -29,7 +29,7 @@ update_biogeochemical_state!(bgc, model) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
-AbstractBiogeochemistry.
+    AbstractBiogeochemistry
 
 Abstract type for biogeochemical models. To define a biogeochemcial relaionship
 the following functions must have methods defined where `BiogeochemicalModel`
@@ -75,7 +75,7 @@ end
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
 
 """
-AbstractContinuousFormBiogeochemistry.
+    AbstractContinuousFormBiogeochemistry
 
 Abstract type for biogeochemical models with continuous form biogeochemical reaction 
 functions. To define a biogeochemcial relaionship the following functions must have methods 
