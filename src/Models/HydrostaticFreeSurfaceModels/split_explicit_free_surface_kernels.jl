@@ -330,12 +330,14 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
     
+    state     = free_surface.state
     auxiliary = free_surface.auxiliary
 
     @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
 
-    fill_halo_regions!((free_surface.state.U̅, free_surface.state.V̅); async = true)
-    fill_halo_regions!((auxiliary.Gᵁ, auxiliary.Gⱽ); async = true)
+    fields_to_fill = (state.U̅, state.V̅, auxiliary.Gᵁ, auxiliary.Gⱽ)
+
+    fill_halo_regions!(fields_to_fill; async = true)
 
     return nothing
 end
