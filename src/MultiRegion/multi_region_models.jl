@@ -29,6 +29,9 @@ Types = (:HydrostaticFreeSurfaceModel,
          :ImplicitFreeSurface,
          :ExplicitFreeSurface,
          :QuasiAdamsBashforth2TimeStepper,
+         :SplitExplicitAuxiliaryFields,
+         :SplitExplicitState,
+         :SplitExplicitFreeSurface,
          :PrescribedVelocityFields)
 
 for T in Types

@@ -13,10 +13,10 @@ const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <
 @inline active_cells_work_layout(size, grid::ActiveCellsIBG) = min(length(grid.active_cells_map), 256), length(grid.active_cells_map)
 @inline active_linear_index_to_ntuple(idx, grid::ActiveCellsIBG) = Base.map(Int, grid.active_cells_map[idx])
 
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; calculate_active_cells_map = false) where {TX, TY, TZ} 
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; active_cells_map = false) where {TX, TY, TZ} 
 
     # Create the cells map on the CPU, then switch it to the GPU
-    if calculate_active_cells_map 
+    if active_cells_map 
         map = active_cells_map(grid, ib)
         map = arch_array(architecture(grid), map)
     else

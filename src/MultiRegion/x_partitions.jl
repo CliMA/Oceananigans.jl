@@ -1,5 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: CBC, PBC
+using Oceananigans.BoundaryConditions: MCBC, PBC
 
 struct XPartition{N} <: AbstractPartition
     div :: N
@@ -154,22 +154,22 @@ inject_north_boundary(region, p::XPartition, bc) = bc
 
 function inject_west_boundary(region, p::XPartition, global_bc) 
     if region == 1
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition(Connectivity(region, length(p))) : 
+        typeof(global_bc) <: Union{MCBC, PBC} ?  
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, length(p))) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition(Connectivity(region, region - 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region - 1))
     end
     return bc
 end
 
 function inject_east_boundary(region, p::XPartition, global_bc) 
     if region == length(p)
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition(Connectivity(region, 1)) : 
+        typeof(global_bc) <: Union{MCBC, PBC} ?  
+                bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, 1)) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition(Connectivity(region, region + 1))
+        bc = MultiRegionCommunicationBoundaryCondition(Connectivity(region, region + 1))
     end
     return bc
 end

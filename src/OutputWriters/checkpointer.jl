@@ -209,12 +209,12 @@ function set!(model, filepath::AbstractString)
         model_fields = prognostic_fields(model)
 
         for name in propertynames(model_fields)
-            try
+            if string(name) ∈ keys(file) # Test if variable exist in checkpoint
                 parent_data = file["$name/data"]
                 model_field = model_fields[name]
                 copyto!(model_field.data.parent, parent_data)
-            catch
-                @warn "Could not retore $name from checkpoint."
+            else
+                @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
@@ -236,17 +236,21 @@ end
 
 function set_time_stepper_tendencies!(timestepper, file, model_fields)
     for name in propertynames(model_fields)
-        # Tendency "n"
-        parent_data = file["timestepper/Gⁿ/$name/data"]
+        if string(name) ∈ keys(file["timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+            # Tendency "n"
+            parent_data = file["timestepper/Gⁿ/$name/data"]
 
-        tendencyⁿ_field = timestepper.Gⁿ[name]
-        copyto!(tendencyⁿ_field.data.parent, parent_data)
+            tendencyⁿ_field = timestepper.Gⁿ[name]
+            copyto!(tendencyⁿ_field.data.parent, parent_data)
 
-        # Tendency "n-1"
-        parent_data = file["timestepper/G⁻/$name/data"]
+            # Tendency "n-1"
+            parent_data = file["timestepper/G⁻/$name/data"]
 
-        tendency⁻_field = timestepper.G⁻[name]
-        copyto!(tendency⁻_field.data.parent, parent_data)
+            tendency⁻_field = timestepper.G⁻[name]
+            copyto!(tendency⁻_field.data.parent, parent_data)
+        else
+            @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
+        end
     end
 
     return nothing

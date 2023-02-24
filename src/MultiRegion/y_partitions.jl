@@ -1,5 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: CBC, PBC
+using Oceananigans.BoundaryConditions: MCBC, PBC
 
 struct YPartition{N} <: AbstractPartition
     div :: N
@@ -135,22 +135,22 @@ inject_east_boundary(region, p::YPartition, bc) = bc
 
 function inject_south_boundary(region, p::YPartition, global_bc) 
     if region == 1
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
+        typeof(global_bc) <: Union{MCBC, PBC} ?  
+                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = length(p))) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region - 1))
+        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region - 1))
     end
     return bc
 end
 
 function inject_north_boundary(region, p::YPartition, global_bc) 
     if region == length(p)
-        typeof(global_bc) <: Union{CBC, PBC} ?  
-                bc = CommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
+        typeof(global_bc) <: Union{MCBC, PBC} ?  
+                bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = 1)) : 
                 bc = global_bc
     else
-        bc = CommunicationBoundaryCondition((rank = region, from_rank = region + 1))
+        bc = MultiRegionCommunicationBoundaryCondition((rank = region, from_rank = region + 1))
     end
     return bc
 end
