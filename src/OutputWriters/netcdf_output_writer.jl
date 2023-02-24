@@ -44,14 +44,12 @@ function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict(
-                "xC" => (Center, Center, Center),
+    locs = Dict("xC" => (Center, Center, Center),
                 "xF" => (  Face, Center, Center),
                 "yC" => (Center, Center, Center),
                 "yF" => (Center,   Face, Center),
                 "zC" => (Center, Center, Center),
-                "zF" => (Center, Center,   Face),
-               )
+                "zF" => (Center, Center,   Face))
 
     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
