@@ -103,7 +103,7 @@ v = vh / h
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field{Face, Face, Nothing}(model.grid)
+ωⁱ = Field((Face, Face, Nothing), model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity

@@ -534,7 +534,7 @@ end
 
     @inbounds begin
         Δyᶜᶠ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
-        Δyᶠᶜ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
+        Δyᶠᶜ[j′] = Δyᶠᶜᵃ(1, j′, 1, grid)
     end
 end
 
