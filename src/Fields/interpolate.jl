@@ -54,6 +54,10 @@ end
 #### Use other methods if a more accurate interpolation is required
 ####
 
+@inline fractional_x_index(x::FT, ::Nothing, grid) where FT = one(FT)
+@inline fractional_y_index(y::FT, ::Nothing, grid) where FT = one(FT)
+@inline fractional_z_index(z::FT, ::Nothing, grid) where FT = one(FT)
+
 @inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(grid, Center()))
 @inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(grid, Center()))
 @inline fractional_z_index(z::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[3], grid.Nz), z, znodes(grid, Center()))

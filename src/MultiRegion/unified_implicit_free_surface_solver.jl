@@ -30,7 +30,6 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     
     # Initialize vertically integrated lateral face areas
     grid = reconstruct_global_grid(mrg)
-    grid = on_architecture(CPU(), grid)
 
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
     ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), grid)
@@ -41,7 +40,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
     arch = architecture(mrg) 
-    right_hand_side =  unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
+    right_hand_side = unified_array(arch, zeros(eltype(grid), grid.Nx*grid.Ny))
     storage = deepcopy(right_hand_side)
 
     # Set maximum iterations to Nx * Ny if not set
@@ -55,7 +54,7 @@ function UnifiedImplicitFreeSurfaceSolver(mrg::MultiRegionGrid, settings, gravit
     solver = multiple_devices ? UnifiedDiagonalIterativeSolver(coeffs; reduced_dim, grid, mrg, settings...) :
                                 HeptadiagonalIterativeSolver(coeffs; reduced_dim, 
                                                              template = right_hand_side,
-                                                             grid = on_architecture(arch, grid), 
+                                                             grid, 
                                                              settings...)
 
     return UnifiedImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
@@ -82,7 +81,7 @@ function compute_regional_rhs!(rhs, grid, g, Δt, ∫ᶻQ, η, region, partition
                     rhs, grid, g, Δt, ∫ᶻQ, η, region, partition,
 		            dependencies = device_event(arch))
 
-    wait(device(arch), event)
+    wait(Oceananigans.Architectures.device(arch), event)
     return nothing
 end
 
@@ -120,7 +119,7 @@ function redistribute_lhs!(η, sol, arch, grid, region, partition)
     event = launch!(arch, grid, :xy, _redistribute_lhs!, η, sol, region, grid, partition,
 		            dependencies = device_event(arch))
 
-    wait(device(arch), event)
+    wait(Oceananigans.Architectures.device(arch), event)
 end
 
 # linearized right hand side
