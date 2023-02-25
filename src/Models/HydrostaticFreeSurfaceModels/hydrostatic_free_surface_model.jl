@@ -13,7 +13,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions, maybe_add_active_cells_map
+using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
@@ -96,9 +96,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
-  - `calculate_only_active_cells_tendencies`: In case of an immersed boundary grid, calculate the tendency only in active cells.
-                                   Default: `false`
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -117,16 +115,11 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
-            calculate_only_active_cells_tendencies = false
+                                  auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-
-    if calculate_only_active_cells_tendencies
-      grid = maybe_add_active_cells_map(grid)
-    end
 
     arch = architecture(grid)
 
@@ -220,7 +213,7 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " * 
           "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end
@@ -239,3 +232,6 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
   any(user_halo .< required_halo) &&
     throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end
+
+initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize_free_surface!(free_surface, grid, velocities) = nothing

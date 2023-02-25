@@ -1,8 +1,8 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: work_layout, calc_tendency_index
+using Oceananigans.Utils: work_layout
 
-using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
@@ -136,7 +136,7 @@ end
 
 @kernel function calculate_Gu!(Gu, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -148,7 +148,7 @@ end
 
 @kernel function calculate_Gv!(Gv, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -160,7 +160,7 @@ end
 
 @kernel function calculate_Gw!(Gw, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -176,7 +176,7 @@ end
 
 @kernel function calculate_Gc!(Gc, grid::ActiveCellsIBG, args...)
     idx = @index(Global, Linear)
-    i, j, k = calc_tendency_index(idx, 1, 1, 1, grid)
+    i, j, k = active_linear_index_to_ntuple(idx, grid)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
