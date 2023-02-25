@@ -10,7 +10,7 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
+using Oceananigans.Grids: inflate_halo_size, with_halo, architecture, HRegRectilinearGrid, RegRectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
@@ -50,24 +50,24 @@ end
 
 """
     NonhydrostaticModel(;     grid,
-                                  clock = Clock{eltype(grid)}(0, 0, 1),
-                              advection = CenteredSecondOrder(),
-                               buoyancy = nothing,
-                               coriolis = nothing,
-                           stokes_drift = nothing,
-                    forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-        boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (),
-                            timestepper = :QuasiAdamsBashforth2,
-          background_fields::NamedTuple = NamedTuple(),
-          particles::ParticlesOrNothing = nothing,
-                             velocities = nothing,
-                              pressures = nothing,
-                     diffusivity_fields = nothing,
-                        pressure_solver = nothing,
-                      immersed_boundary = nothing,
-                       auxiliary_fields = NamedTuple()
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                          advection = CenteredSecondOrder(),
+                           buoyancy = nothing,
+                           coriolis = nothing,
+                       stokes_drift = nothing,
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+                            tracers = (),
+                        timestepper = :QuasiAdamsBashforth2,
+      background_fields::NamedTuple = NamedTuple(),
+      particles::ParticlesOrNothing = nothing,
+                         velocities = nothing,
+                          pressures = nothing,
+                 diffusivity_fields = nothing,
+                    pressure_solver = nothing,
+                  immersed_boundary = nothing,
+                   auxiliary_fields = NamedTuple()
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -78,7 +78,8 @@ Keyword arguments
 
   - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
-            of the `grid`.
+            of the `grid`. The grid needs to be regurarly spaced in the horizontal dimensions,
+            ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
@@ -120,6 +121,10 @@ function NonhydrostaticModel(;    grid,
                      immersed_boundary = nothing,
                       auxiliary_fields = NamedTuple()
     )
+
+    # At the moment, pressure solver requires horizontally regularly spaced grids.
+    !isa(typeof(grid), Union{HRegRectilinearGrid, RegRectilinearGrid, ImmersedBoundaryGrid}) &&
+        error("NonhydrostaticModel only supports horizontally regularly spaced grids at the moment.")
 
     arch = architecture(grid)
 
