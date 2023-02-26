@@ -124,8 +124,7 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple()
-    )
+                      auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
