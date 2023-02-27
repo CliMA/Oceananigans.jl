@@ -113,16 +113,10 @@ function compute_size_w_kernel(grid, arch)
     offsᴿx = (Nx-1, 0)
     offsᴿy = (0, Ny-1)
 
-    if Rx != 1 && Ry != 1 
-        return ((size_x, size_y, size_x, size_y),
-                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
-    elseif Rx == 1
-        return ((size_y, size_y),
-                (offsᴸy, offsᴿy))
-    else
-        return ((size_x, size_x),
-                (offsᴸx, offsᴿx))
-    end
+    sizes = (size_x, size_y, size_x, size_y)
+    offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
+        
+    return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
 function compute_size_p_kernel(grid, arch)
@@ -137,16 +131,10 @@ function compute_size_p_kernel(grid, arch)
     offsᴿx = (Nx, 0)
     offsᴿy = (0, Ny)
 
-    if Rx != 1 && Ry != 1 
-        return ((size_x, size_y, size_x, size_y),
-                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
-    elseif Rx == 1
-        return ((size_y, size_y),
-                (offsᴸy, offsᴿy))
-    else
-        return ((size_x, size_x),
-                (offsᴸx, offsᴿx))
-    end
+    sizes = (size_x, size_y, size_x, size_y)
+    offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
+        
+    return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
 function compute_size_κ_kernel(grid, arch)
@@ -161,16 +149,10 @@ function compute_size_κ_kernel(grid, arch)
     offsᴿx = (Nx,  0, 0)
     offsᴿy = (0,  Ny, 0)
 
-    if Rx != 1 && Ry != 1 
-        return ((size_x, size_y, size_x, size_y),
-                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
-    elseif Rx == 1
-        return ((size_y, size_y),
-                (offsᴸy, offsᴿy))
-    else
-        return ((size_x, size_x),
-                (offsᴸx, offsᴿx))
-    end
+    sizes = (size_x, size_y, size_x, size_y)
+    offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
+        
+    return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
 function compute_size_tendency_kernel(grid, arch)
@@ -185,15 +167,16 @@ function compute_size_tendency_kernel(grid, arch)
     offsᴸy = (0,  0,  0)
     offsᴿx = (Nx-Hx, 0,     0)
     offsᴿy = (0,     Ny-Hy, 0)
+
+    sizes = (size_x, size_y, size_x, size_y)
+    offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
         
-    if Rx != 1 && Ry != 1 
-        return ((size_x, size_y, size_x, size_y),
-                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
-    elseif Rx == 1
-        return ((size_y, size_y),
-                (offsᴸy, offsᴿy))
-    else
-        return ((size_x, size_x),
-                (offsᴸx, offsᴿx))
-    end
+    return return_correct_directions(Rx, Ry, sizes, offs)
 end
+
+return_correct_directions(Rx, Ry, s, o) = Rx != 1 && Ry !=1 ? 
+                                          (s, o) :
+                                          Ry == 1 ?
+                                          ((s[1], s[3]), (o[1], o[3])) :
+                                          ((s[2], s[4]), (o[2], o[4])) 
+
