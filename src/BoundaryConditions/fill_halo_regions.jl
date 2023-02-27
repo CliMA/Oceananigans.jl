@@ -161,7 +161,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args...)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
