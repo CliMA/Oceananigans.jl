@@ -65,9 +65,9 @@ function random_divergent_source_term(grid)
     return R
 end
 
-function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
+function divergence_free_poisson_solution_triply_periodic(child_arch, grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
+    arch = DistributedArch(child_arch, ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
@@ -99,20 +99,22 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
-    @info "  Testing 3D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 8), (2, 2, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 8), (2, 2, 1))
+    for child_arch ∈ archs
+        @info "  Testing 3D distributed FFT-based Poisson solver... on $child_arch"
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 44, 8), (1, 4, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (1, 4, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (1, 4, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (2, 2, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (2, 2, 1))
 
-    @info "  Testing 2D distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (4, 1, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (4, 1, 1))
+        @info "  Testing 2D distributed FFT-based Poisson solver..."
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (1, 4, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (4, 1, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (1, 4, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (4, 1, 1))
 
-    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
-    @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
+        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (2, 2, 1))
+        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (2, 2, 1))
+    end
 end
 

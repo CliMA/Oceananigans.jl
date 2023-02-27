@@ -37,9 +37,9 @@ mpi_ranks = MPI.Comm_size(comm)
 ##### Multi architectures and rank connectivity
 #####
 
-function test_triply_periodic_rank_connectivity_with_411_ranks()
+function test_triply_periodic_rank_connectivity_with_411_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(4, 1, 1), topology = topo, use_buffers = use_buffers)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -73,9 +73,9 @@ function test_triply_periodic_rank_connectivity_with_411_ranks()
     return nothing
 end
 
-function test_triply_periodic_rank_connectivity_with_141_ranks()
+function test_triply_periodic_rank_connectivity_with_141_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 4, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(1, 4, 1), topology = topo, use_buffers = use_buffers)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -115,9 +115,9 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
     return nothing
 end
 
-function test_triply_periodic_rank_connectivity_with_114_ranks()
+function test_triply_periodic_rank_connectivity_with_114_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(1, 1, 4), topology = topo, use_buffers = use_buffers)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -160,9 +160,9 @@ function test_triply_periodic_rank_connectivity_with_114_ranks()
     return nothing
 end
 
-function test_triply_periodic_rank_connectivity_with_221_ranks()
+function test_triply_periodic_rank_connectivity_with_221_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(2, 2, 1), topology = topo, use_buffers = use_buffers)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -208,9 +208,9 @@ end
 ##### Local grids for distributed models
 #####
 
-function test_triply_periodic_local_grid_with_411_ranks()
+function test_triply_periodic_local_grid_with_411_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(4, 1, 1), topology = topo, use_buffers = use_buffers)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -226,9 +226,9 @@ function test_triply_periodic_local_grid_with_411_ranks()
     return nothing
 end
 
-function test_triply_periodic_local_grid_with_141_ranks()
+function test_triply_periodic_local_grid_with_141_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 4, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(1, 4, 1), topology = topo, use_buffers = use_buffers)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -244,9 +244,9 @@ function test_triply_periodic_local_grid_with_141_ranks()
     return nothing
 end
 
-function test_triply_periodic_local_grid_with_114_ranks()
+function test_triply_periodic_local_grid_with_114_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(1, 1, 4), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(1, 1, 4), topology = topo, use_buffers = use_buffers)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -262,9 +262,9 @@ function test_triply_periodic_local_grid_with_114_ranks()
     return nothing
 end
 
-function test_triply_periodic_local_grid_with_221_ranks()
+function test_triply_periodic_local_grid_with_221_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(CPU(), ranks=(2, 2, 1), topology = topo)
+    arch = DistributedArch(child_arch, ranks=(2, 2, 1), topology = topo, use_buffers = use_buffers)
     local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     
     i, j, k = arch.local_index
@@ -286,9 +286,9 @@ end
 ##### TODO: use Field constructor for these tests rather than NonhydrostaticModel.
 #####
 
-function test_triply_periodic_bc_injection_with_411_ranks()
+function test_triply_periodic_bc_injection_with_411_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(4, 1, 1), topology=topo)
+    arch = DistributedArch(child_arch, ranks=(4, 1, 1), topology=topo, use_buffers = use_buffers)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -303,9 +303,9 @@ function test_triply_periodic_bc_injection_with_411_ranks()
     end
 end
 
-function test_triply_periodic_bc_injection_with_141_ranks()
+function test_triply_periodic_bc_injection_with_141_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(1, 4, 1))
+    arch = DistributedArch(child_arch, ranks=(1, 4, 1), use_buffers = use_buffers)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -320,9 +320,9 @@ function test_triply_periodic_bc_injection_with_141_ranks()
     end
 end
 
-function test_triply_periodic_bc_injection_with_114_ranks()
+function test_triply_periodic_bc_injection_with_114_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(1, 1, 4))
+    arch = DistributedArch(child_arch, ranks=(1, 1, 4), use_buffers = use_buffers)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -337,9 +337,9 @@ function test_triply_periodic_bc_injection_with_114_ranks()
     end
 end
 
-function test_triply_periodic_bc_injection_with_221_ranks()
+function test_triply_periodic_bc_injection_with_221_ranks(child_arch, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(ranks=(2, 2, 1))
+    arch = DistributedArch(child_arch, ranks=(2, 2, 1), use_buffers = use_buffers)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
@@ -361,7 +361,7 @@ end
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     for use_buffers in (true , false)
-        arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers, devices = (0, 0, 0, 0))
+        arch = DistributedArch(child_arch; ranks=(4, 1, 1), use_buffers = use_buffers)
         grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
 
@@ -387,7 +387,7 @@ end
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     topo  = (Periodic, Periodic, Periodic)
     for use_buffers in (true , false)
-        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers = use_buffers)
         grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
 
@@ -411,7 +411,7 @@ end
 function test_triply_periodic_halo_communication_with_114_ranks(halo, child_arch)
     topo = (Periodic, Periodic, Periodic)
     for use_buffers in (true , false)
-        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers, devices = (0, 0, 0, 0))
+        arch = DistributedArch(child_arch; ranks=(1, 4, 1), use_buffers)
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
         model = NonhydrostaticModel(grid=grid)
 
@@ -464,39 +464,40 @@ end
 
 @testset "Distributed MPI Oceananigans" begin
 
-    @info "Testing distributed MPI Oceananigans..."
+    for child_arch ∈ archs
 
-    # We don't support distributing _anything_ in the vertical,
-    # so these tests are commented out below (and maybe should be removed
-    # in the future).
+        @info "Testing distributed MPI Oceananigans..."
 
-    @testset "Multi architectures rank connectivity" begin
-        @info "  Testing multi architecture rank connectivity..."
-        test_triply_periodic_rank_connectivity_with_411_ranks()
-        test_triply_periodic_rank_connectivity_with_141_ranks()
-        # test_triply_periodic_rank_connectivity_with_114_ranks()
-        test_triply_periodic_rank_connectivity_with_221_ranks()
-    end
+        # We don't support distributing _anything_ in the vertical,
+        # so these tests are commented out below (and maybe should be removed
+        # in the future).
 
-    @testset "Local grids for distributed models" begin
-        @info "  Testing local grids for distributed models..."
-        test_triply_periodic_local_grid_with_411_ranks()
-        test_triply_periodic_local_grid_with_141_ranks()
-        # test_triply_periodic_local_grid_with_114_ranks()
-        test_triply_periodic_local_grid_with_221_ranks()
-    end
+        @testset "Multi architectures rank connectivity" begin
+            @info "  Testing multi architecture rank connectivity on $child_arch..."
+            test_triply_periodic_rank_connectivity_with_411_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_rank_connectivity_with_141_ranks(child_arch, child_arch isa GPU)
+            # test_triply_periodic_rank_connectivity_with_114_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_rank_connectivity_with_221_ranks(child_arch, child_arch isa GPU)
+        end
 
-    @testset "Injection of halo communication BCs" begin
-        @info "  Testing injection of halo communication BCs..."
-        test_triply_periodic_bc_injection_with_411_ranks()
-        test_triply_periodic_bc_injection_with_141_ranks()
-        # test_triply_periodic_bc_injection_with_114_ranks()
-        test_triply_periodic_bc_injection_with_221_ranks()
-    end
+        @testset "Local grids for distributed models" begin
+            @info "  Testing local grids for distributed models on $child_arch..."
+            test_triply_periodic_local_grid_with_411_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_local_grid_with_141_ranks(child_arch, child_arch isa GPU)
+            # test_triply_periodic_local_grid_with_114_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_local_grid_with_221_ranks(child_arch, child_arch isa GPU)
+        end
 
-    @testset "Halo communication" begin
-        @info "  Testing halo communication..."
-        for child_arch in archs
+        @testset "Injection of halo communication BCs" begin
+            @info "  Testing injection of halo communication BCs on $child_arch..."
+            test_triply_periodic_bc_injection_with_411_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_bc_injection_with_141_ranks(child_arch, child_arch isa GPU)
+            # test_triply_periodic_bc_injection_with_114_ranks(child_arch, child_arch isa GPU)
+            test_triply_periodic_bc_injection_with_221_ranks(child_arch, child_arch isa GPU)
+        end
+
+        @testset "Halo communication" begin
+            @info "  Testing halo communication on $child_arch..."
             for H in 1:3
                 test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
                 test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
@@ -504,11 +505,9 @@ end
                 test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
             end
         end
-    end
 
-    # Only test on CPU because we do not have a GPU pressure solver yet
-    @testset "Time stepping NonhydrostaticModel" begin
-        if CPU() ∈ archs
+        # Only test on CPU because we do not have a GPU pressure solver yet
+        @testset "Time stepping NonhydrostaticModel on $child_arch" begin
             for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
                 topo = (Periodic, Periodic, Periodic)
@@ -526,10 +525,8 @@ end
                 @test model.clock.time ≈ 2
             end
         end
-    end
 
-    @testset "Time stepping ShallowWaterModel" begin
-        for child_arch in archs
+        @testset "Time stepping ShallowWaterModel on $child_arch" begin
             topo = (Periodic, Periodic, Flat)
             use_buffers = child_arch isa GPU ? true : false
             arch = DistributedArch(child_arch; ranks=(1, 4, 1), topology = topo, use_buffers, devices = (0, 0, 0, 0))

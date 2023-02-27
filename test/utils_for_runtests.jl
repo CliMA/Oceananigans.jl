@@ -11,6 +11,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 import Oceananigans.Fields: interior
 
 test_architectures() = CUDA.has_cuda() ? tuple(CUDAGPU()) : (AMDGPU.has_rocm_gpu() ? tuple(ROCMGPU()) : tuple(CPU()))
+# test_architectures() = tuple(CPU())
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
