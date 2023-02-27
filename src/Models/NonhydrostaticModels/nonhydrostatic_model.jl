@@ -123,7 +123,7 @@ function NonhydrostaticModel(;    grid,
     )
 
     # At the moment, pressure solver requires horizontally regularly spaced grids.
-    !isa(typeof(grid), Union{HRegRectilinearGrid, RegRectilinearGrid, ImmersedBoundaryGrid}) &&
+    !isa(grid, Union{HRegRectilinearGrid, RegRectilinearGrid, ImmersedBoundaryGrid}) &&
         error("NonhydrostaticModel only supports horizontally regularly spaced grids at the moment.")
 
     arch = architecture(grid)
