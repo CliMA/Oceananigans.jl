@@ -66,6 +66,7 @@ end
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
+            calculate_only_active_cells_tendencies = false
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -89,7 +90,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -107,7 +108,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
+                                  auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
@@ -203,8 +204,8 @@ end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid)
-    @warn "$(typeof(momentum_advection).name.wrapper) is not allowed on Curvilinear grids. " * 
+function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
+    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " *
           "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end
@@ -223,3 +224,6 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
   any(user_halo .< required_halo) &&
     throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
 end
+
+initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize_free_surface!(free_surface, grid, velocities) = nothing

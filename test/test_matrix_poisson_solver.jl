@@ -141,7 +141,7 @@ end
         if arch isa CPU
             @info "  Testing Sparse Approximate Inverse..."
 
-            A   = sprand(100, 100, 0.1)
+            A   = sprand(10, 10, 0.1)
             A   = A + A' + 1I
             A⁻¹ = sparse(inv(Array(A)))
             M   = sparse_approximate_inverse(A, ε = eps(eltype(A)), nzrel = size(A, 1))

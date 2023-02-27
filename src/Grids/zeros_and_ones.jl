@@ -1,6 +1,6 @@
 using CUDA
 using AMDGPU
-using Oceananigans.Architectures: CPU, CUDAGPU, AMDGPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: CPU, CUDAGPU, AMDGPU, AbstractArchitecture
 
 import Base: zeros
 

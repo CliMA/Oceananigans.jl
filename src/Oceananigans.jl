@@ -21,7 +21,7 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid,
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Immersed boundaries
@@ -200,7 +200,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -210,6 +209,7 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")

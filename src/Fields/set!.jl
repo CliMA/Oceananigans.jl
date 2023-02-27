@@ -5,7 +5,7 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Architectures: device, GPU, CUDAGPU, ROCMGPU, CPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: device, GPU, CUDAGPU, ROCMGPU, CPU
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -16,7 +16,10 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::Field, v) = u .= v # fallback
+function set!(u::Field, v)
+    u .= v # fallback
+    return u
+end
 
 function set!(u::Field, f::Function)
     if architecture(u) isa GPU

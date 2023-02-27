@@ -16,28 +16,24 @@ vec[low] <= val && vec[high] >= val
 
 using a binary search. The input array `vec` has to be monotonically increasing.
 
-Code credit: https://computersciencehub.io/julia/code-for-binary-search-algorithm-julia
+Code credit: https://gist.github.com/cuongld2/8e4fed9ba44ea2b4598f90e7d5b6c612/155f9cb595314c8db3a266c3316889443b068017
 """
 @inline function index_binary_search(vec, val, array_size)
-    if issorted(vec) 
-        low = 0
-        high = array_size - 1
+    low = 0
+    high = array_size - 1
 
-        while low + 1 < high 
-            mid = middle_point(low, high)
-            if vec[mid + 1] == val 
-                return (mid + 1, mid + 1)
-            elseif vec[mid + 1] < val
-                low = mid
-            else
-                high = mid
-            end
+    while low + 1 < high 
+        mid = middle_point(low, high)
+        if @inbounds vec[mid + 1] == val 
+            return (mid + 1, mid + 1)
+        elseif @inbounds vec[mid + 1] < val
+            low = mid
+        else
+            high = mid
         end
-
-        return (low + 1, high + 1)
-    else
-        throw(error("Vector not sorted, unable to search value"))
     end
+
+    return (low + 1, high + 1)
 end
 
 @inline function fractional_index(array_size::Int, val::FT, vec) where {FT}
@@ -57,6 +53,10 @@ end
 #### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
 #### Use other methods if a more accurate interpolation is required
 ####
+
+@inline fractional_x_index(x::FT, ::Nothing, grid) where FT = one(FT)
+@inline fractional_y_index(y::FT, ::Nothing, grid) where FT = one(FT)
+@inline fractional_z_index(z::FT, ::Nothing, grid) where FT = one(FT)
 
 @inline fractional_x_index(x::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[1], grid.Nx), x, xnodes(Center, grid))
 @inline fractional_y_index(y::FT, ::Center, grid) where FT = fractional_index(length(Center, topology(grid)[2], grid.Ny), y, ynodes(Center, grid))

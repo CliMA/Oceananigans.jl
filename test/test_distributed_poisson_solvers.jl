@@ -16,7 +16,7 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-#
+# 
 # julia> include("test_distributed_models.jl")
 #
 # When running the tests this way, uncomment the following line
@@ -67,7 +67,7 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ROCMGPU(), ranks=ranks, topology = topo)
+    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
@@ -77,7 +77,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     ϕ   = CenterField(local_grid, boundary_conditions=bcs)
     ∇²ϕ = CenterField(local_grid, boundary_conditions=bcs)
     R   = random_divergent_source_term(local_grid)
-
+    
     global_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
@@ -114,6 +114,5 @@ end
 
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((16, 44, 1), (2, 2, 1))
     @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic((44, 16, 1), (2, 2, 1))
-    MPI.Finalize()
 end
 

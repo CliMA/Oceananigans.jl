@@ -5,7 +5,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Distributed: MultiArch
+using Oceananigans.Distributed: DistributedArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -51,24 +51,24 @@ end
 
 """
     NonhydrostaticModel(;     grid,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = CenteredSecondOrder(),
-                           buoyancy = nothing,
-                           coriolis = nothing,
-                       stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                            tracers = (),
-                        timestepper = :QuasiAdamsBashforth2,
-      background_fields::NamedTuple = NamedTuple(),
-      particles::ParticlesOrNothing = nothing,
-                         velocities = nothing,
-                          pressures = nothing,
-                 diffusivity_fields = nothing,
-                    pressure_solver = nothing,
-                  immersed_boundary = nothing,
-                   auxiliary_fields = NamedTuple(),
+                                  clock = Clock{eltype(grid)}(0, 0, 1),
+                              advection = CenteredSecondOrder(),
+                               buoyancy = nothing,
+                               coriolis = nothing,
+                           stokes_drift = nothing,
+                    forcing::NamedTuple = NamedTuple(),
+                                closure = nothing,
+        boundary_conditions::NamedTuple = NamedTuple(),
+                                tracers = (),
+                            timestepper = :QuasiAdamsBashforth2,
+          background_fields::NamedTuple = NamedTuple(),
+          particles::ParticlesOrNothing = nothing,
+                             velocities = nothing,
+                              pressures = nothing,
+                     diffusivity_fields = nothing,
+                        pressure_solver = nothing,
+                      immersed_boundary = nothing,
+                       auxiliary_fields = NamedTuple()
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -99,7 +99,7 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
