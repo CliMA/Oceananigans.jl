@@ -26,6 +26,9 @@ PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolve
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
 
+# fall back
+PressureSolver(arch, grid) = error("Pressure solver for NonhydrostaticModel only supports horizontally regularly spaced grids at the moment.")
+
 #####
 ##### NonhydrostaticModel definition
 #####

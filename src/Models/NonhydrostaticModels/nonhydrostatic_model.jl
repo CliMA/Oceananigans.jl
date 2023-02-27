@@ -122,10 +122,6 @@ function NonhydrostaticModel(;    grid,
                       auxiliary_fields = NamedTuple()
     )
 
-    # At the moment, pressure solver requires horizontally regularly spaced grids.
-    !isa(grid, Union{HRegRectilinearGrid, RegRectilinearGrid, ImmersedBoundaryGrid}) &&
-        error("NonhydrostaticModel only supports horizontally regularly spaced grids at the moment.")
-
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
