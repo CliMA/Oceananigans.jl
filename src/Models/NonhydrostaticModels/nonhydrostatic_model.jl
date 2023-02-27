@@ -77,7 +77,7 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
-            architecture (CPU/GPU) that the model is solve on is inferred from the architecture
+            architecture (CPU/GPU) that the model is solved on is inferred from the architecture
             of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
             dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
