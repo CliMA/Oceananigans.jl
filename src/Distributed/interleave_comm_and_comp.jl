@@ -1,4 +1,5 @@
 using Oceananigans: prognostic_fields
+using Oceananigans.Grids: halo_size
 
 function complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch)
 
@@ -16,6 +17,34 @@ end
 
 complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::SynchedDistributedArch) = nothing
 recompute_boundary_tendencies!() = nothing
+
+interior_tendency_kernel_size(grid::DistributedGrid)    = interior_tendency_kernel_size(grid,    architecture(grid))
+interior_tendency_kernel_offsets(grid::DistributedGrid) = interior_tendency_kernel_offsets(grid, architecture(grid))
+
+interior_tendency_kernel_size(grid, ::SynchedDistributedArch) = :xyz
+interior_tendency_kernel_offsets(grid, ::SynchedDistributedArch) = (0, 0, 0)
+
+function interior_tendency_kernel_size(grid, arch)
+    Rx, Ry, _ = arch.ranks
+    Hx, Hy, _ = halo_size(grid)
+
+    Nx, Ny, Nz = size(grid)
+    
+    Ax = Rx == 1 ? 0 : Hx
+    Ay = Ry == 1 ? 0 : Hy
+
+    return (Nx-2Ax, Ny-2Ay, Nz)
+end
+
+function interior_tendency_kernel_offsets(grid, arch)
+    Rx, Ry, _ = arch.ranks
+    Hx, Hy, _ = halo_size(grid)
+    
+    Ax = Rx == 1 ? 0 : Hx
+    Ay = Ry == 1 ? 0 : Hy
+
+    return (Ax, Ay, 0)
+end
 
 function complete_halo_communication!(field)
     arch = architecture(field.grid)

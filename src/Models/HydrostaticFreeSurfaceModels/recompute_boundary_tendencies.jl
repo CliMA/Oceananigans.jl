@@ -8,19 +8,7 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     # We need new values for `w`, `p` and `κ`
     recompute_auxiliaries!(model, grid, arch)
 
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
-
-    size_x = (Hx, Ny, Nz)
-    size_y = (Nx, Hy, Nz)
-
-    offsetᴸx = (0,  0,  0)
-    offsetᴸy = (0,  0,  0)
-    offsetᴿx = (Nx-Hx, 0,     0)
-    offsetᴿy = (0,     Ny-Hy, 0)
-
-    sizes   = (size_x,     size_y,   size_x,   size_y)
-    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
+    sizes, offsets = compute_size_tendency_kernel(grid, arch)
 
     u_immersed_bc = immersed_boundary_condition(model.velocities.u)
     v_immersed_bc = immersed_boundary_condition(model.velocities.v)
@@ -92,52 +80,120 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
 end
 
 function recompute_auxiliaries!(model, grid, arch)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    
+    sizes, offs = compute_size_w_kernel(grid, arch)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
+        compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
+    end
+
+    sizes, offs = compute_size_p_kernel(grid, arch)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
+    end
+
+    sizes, offs = compute_size_κ_kernel(grid, arch)
+
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
+    end
+end
+
+function compute_size_w_kernel(grid, arch)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Rx, Ry, _ = arch.ranks
 
     size_x = (Hx, Ny)
     size_y = (Nx, Hy)
 
-    offsetᴸx = (-Hx+1,  0)
-    offsetᴸy = (0,  -Hy+1)
-    offsetᴿx = (Nx-1, 0)
-    offsetᴿy = (0, Ny-1)
+    offsᴸx = (-Hx+1, 0)
+    offsᴸy = (0, -Hy+1)
+    offsᴿx = (Nx-1, 0)
+    offsᴿy = (0, Ny-1)
 
-    sizes   = (size_x,     size_y,   size_x,   size_y)
-    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
-
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
+    if Rx != 1 && Ry != 1 
+        return ((size_x, size_y, size_x, size_y),
+                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
+    elseif Rx == 1
+        return ((size_y, size_y),
+                (offsᴸy, offsᴿy))
+    else
+        return ((size_x, size_x),
+                (offsᴸx, offsᴿx))
     end
+end
+
+function compute_size_p_kernel(grid, arch)
+    Nx, Ny, _ = size(grid)
+    Rx, Ry, _ = arch.ranks
 
     size_x = (1, Ny)
     size_y = (Nx, 1)
 
-    offsetᴸx = (-1,  0)
-    offsetᴸy = (0,  -1)
-    offsetᴿx = (Nx,  0)
-    offsetᴿy = (0,  Ny)
+    offsᴸx = (-1, 0)
+    offsᴸy = (0, -1)
+    offsᴿx = (Nx, 0)
+    offsᴿy = (0, Ny)
 
-    sizes   = (size_x,     size_y,   size_x,   size_y)
-    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
-
-
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
+    if Rx != 1 && Ry != 1 
+        return ((size_x, size_y, size_x, size_y),
+                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
+    elseif Rx == 1
+        return ((size_y, size_y),
+                (offsᴸy, offsᴿy))
+    else
+        return ((size_x, size_x),
+                (offsᴸx, offsᴿx))
     end
+end
+
+function compute_size_κ_kernel(grid, arch)
+    Nx, Ny, Nz = size(grid)
+    Rx, Ry, _  = arch.ranks
 
     size_x = (1, Ny, Nz)
     size_y = (Nx, 1, Nz)
 
-    offsetᴸx = (-1,  0, 0)
-    offsetᴸy = (0,  -1, 0)
-    offsetᴿx = (Nx,  0, 0)
-    offsetᴿy = (0,  Ny, 0)
+    offsᴸx = (-1,  0, 0)
+    offsᴸy = (0,  -1, 0)
+    offsᴿx = (Nx,  0, 0)
+    offsᴿy = (0,  Ny, 0)
 
-    sizes   = (size_x,     size_y,   size_x,   size_y)
-    offsets = (offsetᴸx, offsetᴸy, offsetᴿx, offsetᴿy)
+    if Rx != 1 && Ry != 1 
+        return ((size_x, size_y, size_x, size_y),
+                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
+    elseif Rx == 1
+        return ((size_y, size_y),
+                (offsᴸy, offsᴿy))
+    else
+        return ((size_x, size_x),
+                (offsᴸx, offsᴿx))
+    end
+end
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
-        calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
+function compute_size_tendency_kernel(grid, arch)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Rx, Ry, _  = arch.ranks
+    
+    size_x = (Hx, Ny, Nz)
+    size_y = (Nx, Hy, Nz)
+    
+    offsᴸx = (0,  0,  0)
+    offsᴸy = (0,  0,  0)
+    offsᴿx = (Nx-Hx, 0,     0)
+    offsᴿy = (0,     Ny-Hy, 0)
+        
+    if Rx != 1 && Ry != 1 
+        return ((size_x, size_y, size_x, size_y),
+                (offsᴸx, offsᴸy, offsᴿx, offsᴿy))
+    elseif Rx == 1
+        return ((size_y, size_y),
+                (offsᴸy, offsᴿy))
+    else
+        return ((size_x, size_x),
+                (offsᴸx, offsᴿx))
     end
 end

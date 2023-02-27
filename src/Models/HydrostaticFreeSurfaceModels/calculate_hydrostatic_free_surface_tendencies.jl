@@ -7,6 +7,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: halo_size
 
 import Oceananigans.Distributed: complete_communication_and_compute_boundary
+import Oceananigans.Distributed: interior_tendency_kernel_size, interior_tendency_kernel_offsets
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
@@ -60,6 +61,8 @@ function calculate_free_surface_tendency!(grid, model)
     return nothing
 end
     
+interior_tendency_kernel_size(grid)    = :xyz
+interior_tendency_kernel_offsets(grid) = (0, 0, 0)
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities)
@@ -90,12 +93,15 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities)
     
     only_active_cells = use_only_active_cells(grid)
 
-    launch!(arch, grid, :xyz,
-            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, (0, 0, 0), u_kernel_args...;
+    kernel_size    =   interior_tendency_kernel_size(grid)
+    kernel_offsets = interior_tendency_kernel_offsets(grid)
+    
+    launch!(arch, grid, kernel_size,
+            calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, kernel_offsets, u_kernel_args...;
             only_active_cells)
 
-    launch!(arch, grid, :xyz,
-            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, (0, 0, 0), v_kernel_args...;
+    launch!(arch, grid, kernel_size,
+            calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, kernel_offsets, v_kernel_args...;
             only_active_cells)
 
     calculate_free_surface_tendency!(grid, model)
@@ -151,6 +157,9 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     only_active_cells = use_only_active_cells(grid)
 
+    kernel_size    =   interior_tendency_kernel_size(grid)
+    kernel_offsets = interior_tendency_kernel_offsets(grid)
+    
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection = model.advection[tracer_name]
@@ -162,10 +171,10 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                                                                                          model.closure,
                                                                                          model.diffusivity_fields)
 
-        launch!(arch, grid, :xyz,
+        launch!(arch, grid, kernel_size,
                 calculate_hydrostatic_free_surface_Gc!,
                 c_tendency,
-                (0, 0, 0),
+                kernel_offsets,
                 c_kernel_function,
                 grid,
                 Val(tracer_index),
