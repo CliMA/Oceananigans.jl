@@ -81,15 +81,15 @@ end
 
 function recompute_auxiliaries!(model, grid, arch)
     
-    sizes, offs = compute_size_w_kernel(grid, arch)
+    sizes, offsets = compute_size_w_kernel(grid, arch)
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offs)
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
     end
 
     sizes, offs = compute_size_p_kernel(grid, arch)
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offs)
+    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
     end
 
@@ -174,9 +174,15 @@ function compute_size_tendency_kernel(grid, arch)
     return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
-return_correct_directions(Rx, Ry, s, o) = Rx != 1 && Ry !=1 ? 
-                                          (s, o) :
-                                          Ry == 1 ?
-                                          ((s[1], s[3]), (o[1], o[3])) :
-                                          ((s[2], s[4]), (o[2], o[4])) 
+function return_correct_directions(Rx, Ry, s, o) 
+    if Rx != 1 && Ry !=1 
+        return s, o
+    elseif Rx != 1 && Ry == 1 
+        return (s[1], s[3]), (o[1], o[3])
+    elseif Rx == 1 && Ry != 1 
+        return (s[2], s[4]), (o[2], o[4])
+    else
+        return (), ()
+    end
+end
 
