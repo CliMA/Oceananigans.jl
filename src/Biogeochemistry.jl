@@ -61,7 +61,9 @@ abstract type AbstractBiogeochemistry end
 
 @inline biogeochemistry_rhs(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields) = zero(grid)
 
-@inline function biogeochemistry_rhs(i, j, k, grid, bgc, val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
+@inline function biogeochemistry_rhs(i, j, k, grid, bgc::AbstractBiogeochemistry,
+                                     val_tracer_name::Val{tracer_name}, clock, fields) where tracer_name
+
     U_drift = biogeochemical_drift_velocity(bgc, val_tracer_name)
     scheme = biogeochemical_advection_scheme(bgc, val_tracer_name)
 
