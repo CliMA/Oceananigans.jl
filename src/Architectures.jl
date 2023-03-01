@@ -80,8 +80,10 @@ arch_array(::ROCMGPU, a::Array) = ROCArray(a)
 arch_array(::ROCMGPU, a::ROCArray) = a
 
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
+
+arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
+arch_array(::CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
 
 arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
@@ -101,7 +103,7 @@ function unified_array(::CUDAGPU, arr::AbstractArray)
     buf = CUDA.Mem.alloc(CUDA.Mem.Unified, sizeof(arr))
     vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
     finalizer(vec) do _
-        Mem.free(buf)
+        CUDA.Mem.free(buf)
     end
     copyto!(vec, arr)
     return vec
@@ -118,11 +120,17 @@ end
     return dst
 end
 
+@inline function device_copy_to!(dst::ROCArray, src::ROCArray; kw...)
+    AMDGPU.mem.transfer!(dst.buf, src.buf, sizeof(src))
+    return dst
+end
+
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 device_event(arch) = Event(device(arch))
 
-@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
-@inline unsafe_free!(a)          = nothing
+@inline unsafe_free!(a::CuArray)  = CUDA.unsafe_free!(a)
+@inline unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
+@inline unsafe_free!(a)           = nothing
 
 end # module

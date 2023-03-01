@@ -165,7 +165,7 @@ function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CP
     return nothing
 end
 
-function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{GPU}, rhs, g, Δt)
+function solve!(η, implicit_free_surface_solver::MGImplicitFreeSurfaceSolver{CUDAGPU}, rhs, g, Δt)
     solver = implicit_free_surface_solver.multigrid_solver
 
     # if `Δt` changed then re-compute the matrix elements

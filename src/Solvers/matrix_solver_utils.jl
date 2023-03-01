@@ -21,7 +21,8 @@ end
 @inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
 @inline constructors(::CUDAGPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 if AMDGPU.functional(:rocsparse)
-    @inline constructors(::ROCMGPU, A::SparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
+    @inline constructors(::CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
+    @inline constructors(::ROCMGPU, A::ROCSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 end
 @inline constructors(::CPU, m::Number, n::Number, constr::Tuple) = (m, n, constr...)
 @inline constructors(::CUDAGPU, m::Number, n::Number, constr::Tuple) = (constr..., (m, n))

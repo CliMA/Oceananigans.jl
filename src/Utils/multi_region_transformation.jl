@@ -1,10 +1,12 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
+using AMDGPU
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
 
 import Base: length
 
-const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
+const CUDAGPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
+const AMDGPUVar = Union{ROCArray, ROCQueue}
 
 ##### 
 ##### Multi Region Object
@@ -53,17 +55,20 @@ end
 #####
 
 @inline getdevice(a, i)                     = nothing
-@inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
-@inline getdevice(cu::OffsetArray, i)       = getdevice(cu.parent)
+@inline getdevice(cu::CUDAGPUVar, i)        = CUDA.device(cu)
+@inline getdevice(roc::AMDGPUVar, i)        = AMDGPU.device(roc)
+@inline getdevice(oa::OffsetArray, i)       = getdevice(oa.parent)
 @inline getdevice(mo::MultiRegionObject, i) = mo.devices[i]
 
 @inline getdevice(a)               = nothing
-@inline getdevice(cu::GPUVar)      = CUDA.device(cu)
+@inline getdevice(cu::CUDAGPUVar)  = CUDA.device(cu)
+@inline getdevice(roc::AMDGPUVar)  = AMDGPU.device(roc)
 @inline getdevice(cu::OffsetArray) = getdevice(cu.parent)
 
-@inline switch_device!(a)                        = nothing
-@inline switch_device!(dev::Int)                 = CUDA.device!(dev)
+@inline switch_device!(a) = nothing
+@inline switch_device!(dev::Int) = CUDA.functional() ? CUDA.device!(dev) : AMDGPU.default_device!(AMDGPU.devices()[dev])
 @inline switch_device!(dev::CuDevice)            = CUDA.device!(dev)
+@inline switch_device!(dev::ROCDevice)           = AMDGPU.default_device!(dev)
 @inline switch_device!(dev::Tuple, i)            = switch_device!(dev[i])
 @inline switch_device!(mo::MultiRegionObject, i) = switch_device!(getdevice(mo, i))
 
@@ -175,7 +180,8 @@ end
     end 
 end
 
-@inline sync_device!(::CuDevice) = CUDA.synchronize()
+@inline sync_device!(::CuDevice) = CUDA.device_synchronize()
+@inline sync_device!(::ROCDevice) = AMDGPU.HIP.hipDeviceSynchronize()
 @inline sync_device!(dev)        = nothing
 
 

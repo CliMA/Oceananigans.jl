@@ -64,7 +64,7 @@ specified at:
 
 The sparse matrix `A` can be constructed with:
 - `SparseMatrixCSC(constructors...)` for CPU
-- `CuSparseMatrixCSC(constructors...)` for GPU
+- `CuSparseMatrixCSC(constructors...)` for CUDAGPU
 
 The matrix constructors are calculated based on the pentadiagonal coeffients passed as an input
 to `matrix_from_coefficients` function.

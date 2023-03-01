@@ -2,6 +2,7 @@ using Oceananigans.Architectures: device_event
 using Oceananigans.Fields: indices, offset_compute_index
 
 import Oceananigans.Architectures: architecture
+using GPUArrays
 
 struct FFTBasedPoissonSolver{G, Λ, S, B, T}
             grid :: G
@@ -109,7 +110,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
     # we set this to zero by default. Another slant on this "problem" is that
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    m === 0 && GPUArrays.@allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
     [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
