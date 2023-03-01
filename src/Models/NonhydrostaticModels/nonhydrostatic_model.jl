@@ -4,13 +4,14 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Distributed: MultiArch
+using Oceananigans.Distributed: DistributedArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
@@ -66,7 +67,7 @@ end
                  diffusivity_fields = nothing,
                     pressure_solver = nothing,
                   immersed_boundary = nothing,
-                   auxiliary_fields = NamedTuple(),
+                   auxiliary_fields = NamedTuple()
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -76,8 +77,9 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
-            architecture (CPU/GPU) that the model is solve is inferred from the architecture
-            of the `grid`.
+            architecture (CPU/GPU) that the model is solved on is inferred from the architecture
+            of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
+            dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
@@ -97,7 +99,7 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.               
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
@@ -117,7 +119,7 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple(),
+                      auxiliary_fields = NamedTuple()
     )
 
     arch = architecture(grid)
@@ -144,15 +146,7 @@ function NonhydrostaticModel(;    grid,
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
+    grid = inflate_grid_halo_size(grid, advection, closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -196,7 +190,7 @@ function NonhydrostaticModel(;    grid,
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(velocities, tracers)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
@@ -228,3 +222,19 @@ function extract_boundary_conditions(field_tuple::NamedTuple)
 end
 
 extract_boundary_conditions(field::Field) = field.boundary_conditions
+
+function inflate_grid_halo_size(grid, tendency_terms...)
+    user_halo = grid.Hx, grid.Hy, grid.Hz
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
+
+    if any(user_halo .< required_halo) # Replace grid
+        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+              "Note that an ImmersedBoundaryGrid requires an extra halo point. "
+              "The model grid will be different from the input grid. To avoid this warning, " *
+              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+
+        grid = with_halo((Hx, Hy, Hz), grid)
+    end
+
+    return grid
+end

@@ -35,7 +35,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so ommitting `buoyancy`
+`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so omitting `buoyancy`
 from the `NonhydrostaticModel` constructor yields an identical result:
 
 ```jldoctest buoyancy
@@ -61,7 +61,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -91,7 +92,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -101,10 +103,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 as a function of gravitational acceleration, conservative temperature ``T`` and absolute salinity ``S``.
 The relationship between ``T``, ``S``, the geopotential height, and the density perturbation from
 a reference value is called the `equation_of_state`.
-Specifying `buoyancy = SeawaterBuoyancy()` (which uses a linear equation of state and
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity)
-`gravitational_acceleration = 9.80665 \, \text{m}\,\text{s}^{-2}` by default)
-requires the tracers `:T` and `:S`:
+
+Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (``\text{m}\,\text{s}^{-2}``) and requires the tracers `:T` and `:S`:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -127,7 +128,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -141,7 +143,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with -ĝ = ZDirection
-├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
+│   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
 ```
 
@@ -188,12 +191,12 @@ Instead of a linear equation of state, five idealized (second-order) nonlinear e
 julia> using SeawaterPolynomials.SecondOrderSeawaterPolynomials
 
 julia> eos = RoquetSeawaterPolynomial(:Freezing)
-SecondOrderSeawaterPolynomial{Float64}(0.7718, -0.0491, 0.0, -2.5681e-5, 0.0, -0.005027, 0.0)
+0.7718 Sᴬ - 0.0491 Θ + 0.0 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² - 0.005027 Sᴬ Z + 0.0 Sᴬ Θ
 
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: SeawaterPolynomials.SecondOrderSeawaterPolynomials.SecondOrderSeawaterPolynomial{Float64}
+└── equation of state: SecondOrderSeawaterPolynomial{Float64}
 ```
 
 ### TEOS-10 equation of state
@@ -206,7 +209,9 @@ Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
 julia> using SeawaterPolynomials.TEOS10
 
 julia> eos = TEOS10EquationOfState()
-SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64}, Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
+BoussinesqEquationOfState{Float64}:
+    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+    └── reference_density: 1020.0
 ```
 
 ## The direction of gravitational acceleration
@@ -220,7 +225,7 @@ julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
-julia> model = NonhydrostaticModel(grid=grid, 
+julia> model = NonhydrostaticModel(; grid, 
                                    buoyancy=Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃), 
                                    tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
@@ -231,4 +236,3 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── buoyancy: BuoyancyTracer with -ĝ = Tuple{Int64, Float64, Float64}
 └── coriolis: Nothing
 ```
-

@@ -1,17 +1,9 @@
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
+using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
-
-function calc_∇²!(∇²ϕ, ϕ, grid)
-    arch = architecture(grid)
-    fill_halo_regions!(ϕ)
-    event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
-    wait(event)
-    fill_halo_regions!(∇²ϕ)
-    return nothing
-end
 
 function identity_operator!(b, x)
     parent(b) .= parent(x)
@@ -19,12 +11,9 @@ function identity_operator!(b, x)
 end
 
 function run_identity_operator_test(grid)
-    arch = architecture(grid)
-
     N = size(grid)
     M = prod(N)
 
-    b = zeros(grid, M)
     A = zeros(grid, N...)
     D = zeros(grid, N...)
     C = zeros(grid, N...)
@@ -32,16 +21,13 @@ function run_identity_operator_test(grid)
 
     solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
-    fill!(b, rand())
+    b = arch_array(architecture(grid), rand(M))
 
-    initial_guess = solution = CenterField(grid)
-    set!(initial_guess, (x, y, z) -> rand())
-    
-    solve!(initial_guess, solver, b, 1.0)
+    arch = architecture(grid)
+    storage = arch_array(arch, zeros(size(b)))
+    solve!(storage, solver, b, 1.0)
 
-    b = reshape(b, size(grid)...)
-
-    @test norm(interior(solution) .- b) .< solver.tolerance
+    @test norm(Array(storage) .- Array(b)) .< solver.tolerance
 end
 
 @kernel function _multiply_by_volume!(r, grid)
@@ -56,11 +42,12 @@ function compute_poisson_weights(grid)
     Az = zeros(N...)
     C  = zeros(grid, N...)
     D  = zeros(grid, N...)
-    for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
+    for k = 1:grid.Nz, j = 1:grid.Ny, i = 1:grid.Nx
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
         Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
     end
+
     return (Ax, Ay, Az, C, D)
 end
 
@@ -83,7 +70,7 @@ function run_poisson_equation_test(grid)
 
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
-    calc_∇²!(∇²ϕ, ϕ_truth, grid)
+    compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
     
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
@@ -95,11 +82,15 @@ function run_poisson_equation_test(grid)
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
 
-    solve!(ϕ_solution, solver, rhs, 1.0)
-
+    arch = architecture(grid)
+    storage = arch_array(arch, zeros(size(rhs)))
+    solve!(storage, solver, rhs, 1.0)
+    set!(ϕ_solution, reshape(storage, solver.problem_size...))
+    fill_halo_regions!(ϕ_solution) 
+    
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
-    calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)
+    compute_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
 
     parent(ϕ_solution) .-= mean(ϕ_solution)
 
@@ -145,15 +136,16 @@ end
             @info "  Testing HeptadiagonalIterativeSolver [stretched in $stretched_direction, $(typeof(arch))]..."
             run_poisson_equation_test(grid)
         end
+
+        if arch isa CPU
+            @info "  Testing Sparse Approximate Inverse..."
+
+            A   = sprand(10, 10, 0.1)
+            A   = A + A' + 1I
+            A⁻¹ = sparse(inv(Array(A)))
+            M   = sparse_approximate_inverse(A, ε = eps(eltype(A)), nzrel = size(A, 1))
+
+            @test all(Array(M) .≈ A⁻¹)
+        end
     end
-
-    @info "  Testing Sparse Approximate Inverse..."
-
-    A   = sprand(100, 100, 0.1)
-    A   = A + A' + 1I
-    A⁻¹ = sparse(inv(Array(A)))
-    M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
-    
-    @test all(Array(M) .≈ A⁻¹)
-    
 end

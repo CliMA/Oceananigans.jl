@@ -4,21 +4,27 @@ export
     AbstractEddyViscosityClosure,
     VerticalScalarDiffusivity,
     HorizontalScalarDiffusivity,
+    HorizontalDivergenceScalarDiffusivity,
     ScalarDiffusivity,
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
+    HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
     DiffusivityFields,
     calculate_diffusivities!,
+
+    viscosity, diffusivity,
 
     ∇_dot_qᶜ,
     ∂ⱼ_τ₁ⱼ,
@@ -29,8 +35,9 @@ export
 
 using CUDA
 using KernelAbstractions
+using Adapt 
 
-import Oceananigans.Utils: with_tracers
+import Oceananigans.Utils: with_tracers, prettysummary
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -59,21 +66,17 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
+with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
+calculate_diffusivities!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
-# To allow indexing a diffusivity with (Lx, Ly, Lz, i, j, k, grid)
-struct DiscreteDiffusionFunction{F} <: Function
-    func :: F
-end
-
-#####
-##### Tracer indices
-#####
-
-# For "vanilla" tracers we use `Val(id)`.
-# "Special" tracers need custom types.
+# Interface for KE-based closures
+function shear_production end
+function buoyancy_flux end
+function dissipation end
+function hydrostatic_turbulent_kinetic_energy_tendency end
 
 #####
 ##### The magic
@@ -84,6 +87,14 @@ end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
+@inline surface(i, j, k, grid)                = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
+@inline bottom(i, j, k, grid)                 = znode(Center(), Center(), Face(), i, j, 1, grid)
+@inline depthᶜᶜᶠ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Face(), i, j, k, grid)
+@inline height_above_bottomᶜᶜᶠ(i, j, k, grid) = znode(Center(), Center(), Face(), i, j, k, grid) - bottom(i, j, k, grid)
+@inline wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = min(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
+@inline opposite_wall_vertical_distanceᶜᶜᶠ(i, j, k, grid) = max(depthᶜᶜᶠ(i, j, k, grid), height_above_bottomᶜᶜᶠ(i, j, k, grid))
+
+include("discrete_diffusion_function.jl")
 include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
@@ -107,6 +118,7 @@ include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/mews_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these

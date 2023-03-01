@@ -9,10 +9,10 @@ struct LinearEquationOfState{FT} <: AbstractEquationOfState
 end
 
 Base.summary(eos::LinearEquationOfState) =
-    string("LinearEquationOfState(thermal_expansion=", scalar_summary(eos.thermal_expansion),
-                               ", haline_contraction=", scalar_summary(eos.haline_contraction), ")")
+    string("LinearEquationOfState(thermal_expansion=", prettysummary(eos.thermal_expansion),
+                               ", haline_contraction=", prettysummary(eos.haline_contraction), ")")
 
-Base.show(io, eos::LinearEquationOfState) = print(io, summary(eos))
+Base.show(io::IO, eos::LinearEquationOfState) = print(io, summary(eos))
 
 """
     LinearEquationOfState([FT=Float64;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)

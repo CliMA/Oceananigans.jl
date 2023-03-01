@@ -14,10 +14,9 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data, validate_boundary_conditions, validate_indices
+import Oceananigans.Grids: validate_index
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
-
-validate_indices(indices, loc, grid::ConformalCubedSphereGrid) = indices
 
 function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
 
@@ -28,9 +27,10 @@ function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
     return nothing
 end
 
+
 # We don't support validating cubed sphere boundary conditions at this time
 validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
-validate_boundary_conditions(loc, grid::ConformalCubedSphereFaceGrid, bcs) = nothing
+validate_boundary_conditions(loc, grid::OrthogonalSphericalShellGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
@@ -73,6 +73,20 @@ end
 import Oceananigans.Fields: immersed_boundary_condition
 immersed_boundary_condition(::AbstractCubedSphereField) = nothing
 
+import Oceananigans.OutputWriters: construct_output, fetch_output
+
+construct_output(user_output::AbstractCubedSphereField, args...) = user_output
+
+# Needed to support `fetch_output` with `model::Nothing`.
+time(model) = model.clock.time
+time(::Nothing) = nothing
+
+function fetch_output(field::AbstractCubedSphereField, model)
+    compute_at!(field, time(model))
+    data = Tuple(parent(field.data[n]) for n in 1:length(field.data))
+    return data
+end
+
 #####
 ##### Applying flux boundary conditions
 #####
@@ -110,7 +124,7 @@ end
 using Oceananigans.Forcings: user_function_arguments
 import Oceananigans.Forcings: ContinuousForcing
 
-@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::ConformalCubedSphereFaceGrid, clock, model_fields) where {LX, LY, LZ}
+@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::OrthogonalSphericalShellGrid, clock, model_fields) where {LX, LY, LZ}
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 

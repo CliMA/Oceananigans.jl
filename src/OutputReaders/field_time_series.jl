@@ -1,6 +1,7 @@
 using Base: @propagate_inbounds
 
 using OffsetArrays
+using Statistics
 using JLD2
 
 using Oceananigans.Architectures
@@ -123,8 +124,11 @@ function FieldTimeSeries(path, name, backend::InMemory;
     # This should be removed in a month or two (4/5/2022).
     grid = try
         on_architecture(architecture, grid)
-    catch err # Likely, the grid has CuArrays in it...
+    catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
+            @info "Initial attempt to transfer grid to $architecture failed."
+            @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
+
             Nx = file["grid/Nx"]
             Ny = file["grid/Ny"]
             Nz = file["grid/Nz"]
@@ -139,9 +143,23 @@ function FieldTimeSeries(path, name, backend::InMemory;
             z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
             topo = topology(grid)
 
+            N = (Nx, Ny, Nz)
+
             # Reduce for Flat dimensions
-            domain = NamedTuple((:x, :y, :z)[i] => (x, y, z)[i] for i=1:3 if topo[i] !== Flat)
-            size = Tuple((Nx, Ny, Nz)[i] for i=1:3 if topo[i] !== Flat)
+            domain = Dict()
+            for (i, ξ) in enumerate((x, y, z))
+                if topo[i] !== Flat
+                    if !(ξ isa Tuple)
+                        chopped_ξ = ξ[1:N[i]+1]
+                    else
+                        chopped_ξ = ξ
+                    end
+                    sξ = (:x, :y, :z)[i]
+                    domain[sξ] = chopped_ξ
+                end
+            end
+
+            size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
             halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
 
             RectilinearGrid(architecture; size, halo, topology=topo, domain...)
@@ -169,6 +187,10 @@ function Base.getindex(fts::InMemoryFieldTimeSeries, n::Int)
     indices = fts.indices
     return Field(location(fts), fts.grid; data, boundary_conditions, indices)
 end
+
+# Making FieldTimeSeries behave like Vector
+Base.lastindex(fts::InMemoryFieldTimeSeries) = size(fts, 4)
+Base.firstindex(fts::InMemoryFieldTimeSeries) = 1
 
 #####
 ##### set!
@@ -259,8 +281,28 @@ function interior(fts::FieldTimeSeries)
 end
 
 interior(fts::FieldTimeSeries, I...) = view(interior(fts), I...)
-
 indices(fts::FieldTimeSeries) = fts.indices
+
+function Statistics.mean(fts::FieldTimeSeries; dims=:)
+    m = mean(fts[1]; dims)
+    Nt = length(fts.times)
+
+    if dims isa Colon
+        for n = 2:Nt
+            m += mean(fts[n])
+        end
+
+        return m / Nt
+    else
+        for n = 2:Nt
+            m .+= mean(fts[n]; dims)
+        end
+
+        m ./= Nt
+
+        return m
+    end
+end
 
 #####
 ##### OnDisk time serieses
@@ -377,11 +419,11 @@ function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
 end
 
 function Base.show(io::IO, fts::FieldTimeSeries)
-    prefix = string(summary(fts), '\n',
-                   "├── grid: ", summary(fts.grid), '\n',
-                   "├── indices: ", fts.indices, '\n')
+    prefix = string(summary(fts), "\n",
+                   "├── grid: ", summary(fts.grid), "\n",
+                   "├── indices: ", fts.indices, "\n")
 
-    suffix = string("└── data: ", summary(fts.data), '\n',
+    suffix = string("└── data: ", summary(fts.data), "\n",
                     "    └── ", data_summary(fts))
 
     return print(io, prefix, suffix)

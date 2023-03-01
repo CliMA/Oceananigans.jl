@@ -1,10 +1,9 @@
 # Boundary conditions
 
-In Oceananigans.jl the user may impose \textit{no-penetration}, \textit{flux},
-\textit{gradient} (Neumann), and \textit{value} (Dirichlet) boundary conditions in bounded,
-non-periodic directions.
+Users may impose *no-penetration*, *flux*, *gradient* (Neumann), and
+*value* (Dirichlet) boundary conditions in bounded, non-periodic directions.
 Note that the only boundary condition available for a velocity field normal to the bounded
-direction is \textit{no-penetration}.
+direction is *no-penetration*.
 
 ## Flux boundary conditions
 

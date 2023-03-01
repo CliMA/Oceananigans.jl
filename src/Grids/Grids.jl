@@ -1,19 +1,20 @@
 module Grids
 
 export Center, Face
-export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
+export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export AbstractRectilinearGrid, RectilinearGrid 
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
-export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 export on_architecture
 
 using CUDA
+using CUDA: has_cuda
 using Adapt
 using OffsetArrays
 
@@ -71,11 +72,25 @@ is uniform and does not vary.
 struct Flat <: AbstractTopology end
 
 """
-    Connected
+    FullyConnected
 
-Grid topology for dimensions that are connected to other models or domains on both sides.
+Grid topology for dimensions that are connected to other models or domains.
 """
-const Connected = Periodic  # Right now we just need them to behave like Periodic dimensions except we change the boundary conditions.
+struct FullyConnected <: AbstractTopology end
+
+"""
+    LeftConnected
+
+Grid topology for dimensions that are connected to other models or domains only on the left (the other direction is bounded)
+"""
+struct LeftConnected <: AbstractTopology end
+
+"""
+    RightConnected
+
+Grid topology for dimensions that are connected to other models or domains only on the right (the other direction is bounded)
+"""
+struct RightConnected <: AbstractTopology end
 
 """
     AbstractGrid{FT, TX, TY, TZ}
@@ -116,14 +131,14 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 isrectilinear(grid) = false
 
 include("grid_utils.jl")
-include("zeros.jl")
+include("zeros_and_ones.jl")
 include("new_data.jl")
 include("inactive_node.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
-include("conformal_cubed_sphere_face_grid.jl")
+include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

@@ -8,11 +8,6 @@ for closure in closures
     end
 end
 
-function closure_instantiation(closurename)
-    closure = getproperty(TurbulenceClosures, closurename)()
-    return true
-end
-
 function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
     closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
     return closure.ν == ν && closure.κ.T == κ
@@ -43,13 +38,11 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
     fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
-
-    U, C = velocities, tracers
-
+     
     K, b = nothing, nothing
-    closure_args = (U, C, clock, b)
+    closure_args = (clock, model_fields, b)
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), closure_args...) == - 2κ
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), tracers[1], closure_args...) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
     @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 4ν
     @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 6ν
@@ -89,13 +82,11 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
     model_fields = merge(datatuple(velocities), datatuple(tracers))
     fill_halo_regions!(merge(velocities, tracers), nothing, model_fields)
 
-    U, C = velocities, tracers
-
     K, b = nothing, nothing
-    closure_args = (U, C, clock, b)
+    closure_args = (clock, model_fields, b)
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), closure_args...) == -  8κh &&
-            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), closure_args...) == - 10κz &&
+    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), T, closure_args...) == -  8κh &&
+            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), T, closure_args...) == - 10κz &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (2νh) &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (4νz) &&
               ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (4νh) &&
@@ -110,6 +101,7 @@ function time_step_with_variable_isotropic_diffusivity(arch)
                                 κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
     model = NonhydrostaticModel(; grid, closure)
+
     time_step!(model, 1, euler=true)
     return true
 end
@@ -124,6 +116,19 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
         time_step!(model, 1, euler=true)
     end
+    return true
+end
+
+function time_step_with_variable_discrete_diffusivity(arch)
+    @inline νd(i, j, k, grid, clock, fields) = 1 + fields.u[i, j, k] * 5
+    @inline κd(i, j, k, grid, clock, fields) = 1 + fields.v[i, j, k] * 5
+
+    closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
+    closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
+
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
+
+    time_step!(model, 1, euler=true)
     return true
 end
 
@@ -184,8 +189,20 @@ end
 
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
-        for closure in closures
-            @test closure_instantiation(closure)
+        for closurename in closures
+            closure = getproperty(TurbulenceClosures, closurename)()
+            @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
+
+            grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+            model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
+            c = model.tracers.c
+            u = model.velocities.u
+            κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
+            κ_dx_c = κ * ∂x(c)
+            ν = viscosity(model.closure, model.diffusivity_fields)
+            ν_dx_u = ν * ∂x(c)
+            @test ν_dx_u[1, 1, 1] == 0.0
+            @test κ_dx_c[1, 1, 1] == 0.0
         end
     end
 
@@ -211,6 +228,7 @@ end
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
+            @test time_step_with_variable_discrete_diffusivity(arch)
         end
     end
 
@@ -259,6 +277,6 @@ end
         end
 
         # now test also a case for a tuple of closures
-        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity()))
+        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity(), SmagorinskyLilly(), AnisotropicMinimumDissipation()))
     end
 end

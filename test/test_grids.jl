@@ -1,4 +1,5 @@
 include("dependencies_for_runtests.jl")
+include("data_dependencies.jl")
 
 using Oceananigans.Grids: total_extent
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -332,53 +333,42 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     return nothing
 end
 
-function test_correct_constant_grid_spacings(FT, Nz)
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz))
+function test_rectilinear_grid_correct_spacings(FT, N)
+    S = 3
+    zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / N - 1)) / tanh(S)
 
-    @test all(grid.Δzᵃᵃᶜ .== 1)
-    @test all(grid.Δzᵃᵃᶠ .== 1)
+    # a grid with regular x-spacing, quadratic y-spacing, and tanh-like z-spacing
+    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=collect(0:N), y=collect(0:N).^2, z=zᵃᵃᶠ)
 
-    return nothing
-end
+    @test all(grid.Δxᶜᵃᵃ .== 1)
+    @test all(grid.Δxᶠᵃᵃ .== 1)
 
-function test_correct_quadratic_grid_spacings(FT, Nz)
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+     yᵃᶠᵃ(j) = (j-1)^2
+     yᵃᶜᵃ(j) = (j^2 + (j-1)^2) / 2
+    Δyᵃᶠᵃ(j) = yᵃᶜᵃ(j) - yᵃᶜᵃ(j-1)
+    Δyᵃᶜᵃ(j) = yᵃᶠᵃ(j+1) - yᵃᶠᵃ(j)
 
-     zᵃᵃᶠ(k) = (k-1)^2
-     zᵃᵃᶜ(k) = (k^2 + (k-1)^2) / 2
-    Δzᵃᵃᶠ(k) = k^2 - (k-1)^2
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k) - zᵃᵃᶜ(k-1)
-
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+    @test all(isapprox.(  grid.yᵃᶠᵃ[1:N+1],  yᵃᶠᵃ.(1:N+1) ))
+    @test all(isapprox.(  grid.yᵃᶜᵃ[1:N],    yᵃᶜᵃ.(1:N)   ))
+    @test all(isapprox.( grid.Δyᵃᶜᵃ[1:N],   Δyᵃᶜᵃ.(1:N)   ))
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
+    @test all(isapprox.( grid.Δyᵃᶠᵃ[2:N], Δyᵃᶠᵃ.(2:N) ))
 
-    return nothing
-end
+     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k)   + zᵃᵃᶠ(k+1)) / 2
+    Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
+    Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-function test_correct_tanh_grid_spacings(FT, Nz)
-    S = 3  # Stretching factor
-    zᵃᵃᶠ(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
-
-    grid = RectilinearGrid(CPU(), FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
-
-     zᵃᵃᶜ(k) = (zᵃᵃᶠ(k) + zᵃᵃᶠ(k+1)) / 2
-    Δzᵃᵃᶠ(k) = zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
-    Δzᵃᵃᶜ(k) = zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
-
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zᵃᵃᶠ.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zᵃᵃᶜ.(1:Nz)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   Δzᵃᵃᶠ.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz], Δzᵃᵃᶜ.(2:Nz) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
 
-   return nothing
+    return nothing
 end
 
 #####
@@ -488,13 +478,13 @@ function test_basic_lat_lon_general_grid(FT)
     (Hλ, Hφ, Hz) = halo = ( 1,  1,  1)
 
     lat = (-80,   80)
-    lon = (-180, 180) 
+    lon = (-180, 180)
     zᵣ  = (-100,   0)
 
     Λ₁  = (lat[1], lon[1], zᵣ[1])
     Λₙ  = (lat[2], lon[2], zᵣ[2])
 
-    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁ 
+    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁
     
     grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
@@ -515,9 +505,9 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
     
     @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz 
+    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
 
-    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ) 
+    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
     @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
     @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
     @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
@@ -531,7 +521,6 @@ function test_basic_lat_lon_general_grid(FT)
 end
 
 function test_lat_lon_precomputed_metrics(FT, arch)
-
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
 
@@ -539,7 +528,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     lonreg  = (-180, 180)
     lonregB = (-160, 160)
 
-    zreg   = (-1,     0)
+    zreg    = (-1,     0)
 
     latstr  = [-80, 0, 80]
     lonstr  = [-180, -30, 10, 40, 180]
@@ -550,7 +539,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,     zstr)
 
-    CUDA.allowscalar(true)
+    CUDA.allowscalar() do
 
 
     # grid with pre computed metrics vs metrics computed on the fly
@@ -558,8 +547,8 @@ function test_lat_lon_precomputed_metrics(FT, arch)
         for lon in longitude
             for z in zcoord
                 println("$lat, $lon, $z")
-                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
-                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+                grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
+                grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
     
                 @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
                 @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
@@ -574,7 +563,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
         end
     end
 
-    CUDA.allowscalar(false)
+    end # CUDA.allowscalar()
 
 
 end
@@ -584,7 +573,7 @@ end
 #####
 
 function test_cubed_sphere_face_array_size(FT)
-    grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
+    grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -677,9 +666,7 @@ end
         grid = RectilinearGrid(CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::RectilinearGrid)")
@@ -708,23 +695,17 @@ end
 
             @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
-                for Nz in [16, 17]
-                    test_correct_constant_grid_spacings(FT, Nz)
-                    test_correct_quadratic_grid_spacings(FT, Nz)
-                    test_correct_tanh_grid_spacings(FT, Nz)
+                for N in [16, 17]
+                    test_rectilinear_grid_correct_spacings(FT, N)
                 end
             end
 
             # Testing show function
             Nz = 20
-            grid = RectilinearGrid(arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+            grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-            CUDA.allowscalar(false)
-
-            show(grid); println()
-            CUDA.allowscalar(true)
-
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -754,9 +735,7 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -770,9 +749,7 @@ end
         grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
 
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::LatitudeLongitudeGrid)")
@@ -784,37 +761,95 @@ end
     end
 
     @testset "Conformal cubed sphere face grid" begin
-        @info "  Testing conformal cubed sphere face grid..."
+        @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
             test_cubed_sphere_face_array_size(Float64)
         end
 
         # Testing show function
-        grid = ConformalCubedSphereFaceGrid(CPU(), size=(10, 10, 1), z=(0, 1))
+        grid = OrthogonalSphericalShellGrid(CPU(), size=(10, 10, 1), z=(0, 1))
     
         @test try
-            CUDA.allowscalar(false)           
             show(grid); println()
-            CUDA.allowscalar(true)
             true
         catch err
-            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println("error in show(::OrthogonalSphericalShellGrid)")
             println(sprint(showerror, err))
             false
         end
 
-        @test grid isa ConformalCubedSphereFaceGrid
+        @test grid isa OrthogonalSphericalShellGrid
+
+        for arch in archs
+            for FT in float_types
+                z = (0, 1)
+                radius = 234.3e4
+
+                Nx, Ny = 10, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+
+                # the sum of area metrics Azᶜᶜᵃ is 1/6-th of the area of the sphere
+                @test sum(grid.Azᶜᶜᵃ) ≈ 4π * grid.radius^2 / 6
+
+                # the sum of the distance metrics Δxᶜᶜᵃ and Δyᶜᶜᵃ that correspond to great circles
+                # are 1/4-th of the circumference of the sphere's great circle
+                #
+                # (for odd number of grid points, the central grid points fall on great circles)
+                Nx, Ny = 11, 9
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 10, 9
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+
+                Nx, Ny = 11, 8
+                grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
+                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+            end
+        end
     end
 
     @testset "Conformal cubed sphere face grid from file" begin
         @info "  Testing conformal cubed sphere face grid construction from file..."
 
+        Nz = 1
+        z = (-1, 0)
+
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6
-            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
-            @test grid isa ConformalCubedSphereFaceGrid
+            grid = OrthogonalSphericalShellGrid(cs32_filepath; face, Nz, z)
+            @test grid isa OrthogonalSphericalShellGrid
+        end
+
+        for arch in archs
+
+            # read cs32 grid from file
+            grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
+
+            Nx, Ny, Nz = size(grid_cs32.faces[1])
+            radius = grid_cs32.faces[1].radius
+
+            # construct a ConformalCubedSphereGrid similar to cs32
+            grid = ConformalCubedSphereGrid(arch; z, face_size=(Nx, Ny, Nz), radius)
+
+            for face in 1:6
+                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
+                @test isapprox(grid.faces[face].φᶜᶜᵃ, grid_cs32.faces[face].φᶜᶜᵃ)
+                @test isapprox(grid.faces[face].λᶜᶜᵃ, grid_cs32.faces[face].λᶜᶜᵃ)
+
+                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].λᶠᶠᵃ .≈ -180] .= 180
+
+                # and if poles are included, they have the same longitude
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ +90]
+                grid.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90] = grid_cs32.faces[face].λᶠᶠᵃ[grid.faces[face].φᶠᶠᵃ .≈ -90]
+                @test isapprox(grid.faces[face].φᶠᶠᵃ, grid_cs32.faces[face].φᶠᶠᵃ)
+                @test isapprox(grid.faces[face].λᶠᶠᵃ, grid_cs32.faces[face].λᶠᶠᵃ)
+            end
         end
     end
 end

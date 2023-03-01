@@ -4,13 +4,14 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariantSchemes, VectorInvariant, WENOVectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -22,6 +23,7 @@ using Oceananigans.Utils: tupleit
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
+validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
@@ -53,7 +55,7 @@ end
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
+                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -63,6 +65,7 @@ end
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
+            calculate_only_active_cells_tendencies = false
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -86,7 +89,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 
 """
 function HydrostaticFreeSurfaceModel(; grid,
@@ -95,7 +98,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
-                                      free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
+                                      free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -104,18 +107,11 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
+                                  auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
-    user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(user_halo..., topology(grid),
-                                      momentum_advection,
-                                      tracer_advection,
-                                      closure)
-
-    any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+    @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     arch = architecture(grid)
     
@@ -126,7 +122,7 @@ function HydrostaticFreeSurfaceModel(; grid,
         throw(ArgumentError("Cannot create a GPU model. No ROCM-enabled GPU was detected!"))
     end
 
-    momentum_advection = validate_momentum_advection(momentum_advection, grid)
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -153,7 +149,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
-
+    
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by TKEBasedVerticalDiffusivity, are enforced:
     boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)
@@ -170,7 +166,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
-    validate_velocity_boundary_conditions(velocities)
+    @apply_regionally validate_velocity_boundary_conditions(velocities)
 
     free_surface = FreeSurface(free_surface, velocities, grid)
 
@@ -214,6 +210,26 @@ end
 
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
+function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
+    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " * 
+          "The momentum advection scheme has been set to VectorInvariant()"
+    return VectorInvariant()
+end
+
 validate_momentum_advection(momentum_advection, grid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::Union{VectorInvariantSchemes, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+
+function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+  user_halo = halo_size(grid)
+  required_halo = inflate_halo_size(1, 1, 1, grid,
+                                    momentum_advection,
+                                    tracer_advection,
+                                    closure)
+
+  any(user_halo .< required_halo) &&
+    throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. Note that an ImmersedBoundaryGrid requires an extra halo point."))
+end
+
+initialize_model!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+initialize_free_surface!(free_surface, grid, velocities) = nothing

@@ -6,10 +6,10 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
-import Base: getindex, size, show, minimum, maximum
+import Base: getindex, size, show, minimum, maximum, length
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, set!
+import Oceananigans.Fields: AbstractField, FunctionField, Field, FieldBoundaryBuffers, minimum, maximum, mean, location, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -22,6 +22,7 @@ function CubedSphereFaces(faces::F) where F
     return CubedSphereFaces{E, F}(faces)
 end
 
+@inline Base.length(f::CubedSphereFaces) = Base.length(f.faces)
 @inline Base.getindex(f::CubedSphereFaces, i::Int) = @inbounds f.faces[i]
 
 #####
@@ -33,11 +34,11 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 # Some dispatch foo to make a type union for CubedSphereFaceField...
 #
 # Conformal cubed sphere grid wrapped in ImmersedBoundaryGrid:
-const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
+const ImmersedOrthogonalSphericalShellGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:OrthogonalSphericalShellGrid} where {FT, TX, TY, TZ}
 
 # CubedSphereFaceField:
-const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ}
-const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ}
+const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:OrthogonalSphericalShellGrid} where {LX, LY, LZ}
+const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedOrthogonalSphericalShellGrid} where {LX, LY, LZ}
 
 const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
                                       ImmersedCubedSphereFaceField{LX, LY, LZ}} where {LX, LY, LZ}
@@ -48,6 +49,8 @@ const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
 const CubedSphereField{LX, LY, LZ} =
     Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
           Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
+
+const CubedSphereFunctionField{LX, LY, LZ} = FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
 
 const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
 
@@ -82,6 +85,19 @@ function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, loc, indices; u
     return CubedSphereFaces(faces)
 end
 
+function FieldBoundaryConditions(indices::Tuple, boundary_conditions::CubedSphereFaces)
+
+    faces = Tuple(FieldBoundaryConditions(indices, bcs) for bcs in boundary_conditions.faces)
+
+    return CubedSphereFaces(faces)
+end
+
+#####
+##### FieldBoundaryBuffers
+#####
+
+FieldBoundaryBuffers(grid::ConformalCubedSphereGrid, args...) = FieldBoundaryBuffers()
+
 #####
 ##### Utils
 #####
@@ -111,7 +127,12 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
           field.indices,
           get_face(field.operand, face_index),
           nothing)
-    
+
+@inline get_face(field::CubedSphereFunctionField, face_index) =
+    FunctionField(location(field),
+                  field.func,
+                  get_face(field.grid, face_index))
+
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
 function Base.fill!(csf::CubedSphereField, val)

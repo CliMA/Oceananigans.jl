@@ -3,6 +3,7 @@
 @inline adapt_if_vector(to, var) = var
 @inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
 
+get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
@@ -11,14 +12,20 @@ get_coord_face(coord::Nothing, i) = 1
 get_coord_face(coord::Function, i) = coord(i)
 get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
-lower_exterior_Δcoordᶠ(topology,        Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::Type{Bounded}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
 
-upper_exterior_Δcoordᶠ(topology,        Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::Type{Bounded}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(topology, Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::Type{<:BoundedTopology}, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for i = 1:Hcoord]
+
+upper_interior_F(topology, coord, Δ)               = coord - Δ
+upper_interior_F(::Type{<:BoundedTopology}, coord) = coord
+
+total_interior_length(topology, N)                  = N
+total_interior_length(::Type{<:BoundedTopology}, N) = N + 1
 
 # generate a stretched coordinate passing the explicit coord faces as vector of functionL
-function generate_coordinate(FT, topology, N, H, coord, architecture)
+function generate_coordinate(FT, topology, N, H, coord, arch)
 
     # Ensure correct type for F and derived quantities
     interiorF = zeros(FT, N+1)
@@ -56,30 +63,30 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(arch_array(architecture, Δᶜ), -H)
-    Δᶠ = OffsetArray(arch_array(architecture, Δᶠ), -H-1)
+    Δᶜ = OffsetArray(arch_array(arch, Δᶜ), -H)
+    Δᶠ = OffsetArray(arch_array(arch, Δᶠ), -H-1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(arch_array(architecture, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(architecture, C.parent), C.offsets...)
+    F = OffsetArray(arch_array(arch, F.parent), F.offsets...)
+    C = OffsetArray(arch_array(arch, C.parent), C.offsets...)
 
     return L, F, C, Δᶠ, Δᶜ
 end
 
 # generate a regular coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number}, architecture)
+function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number}, arch)
 
     @assert length(coord) == 2
 
-    c₁, c₂ = coord
+    c₁, c₂ = @. BigFloat(coord)
     @assert c₁ < c₂
-    L = FT(c₂ - c₁)
+    L = c₂ - c₁
 
     # Convert to get the correct type also when using single precision
-    Δᶠ = Δᶜ = Δ = convert(FT, L / N)
+    Δᶠ = Δᶜ = Δ = L / N
 
     F₋ = c₁ - H * Δ
     F₊ = F₋ + total_extent(topology, H, Δ, L)
@@ -90,16 +97,16 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     TF = total_length(Face,   topology, N, H)
     TC = total_length(Center, topology, N, H)
 
-    F = range(F₋, F₊, length = TF)
-    C = range(C₋, C₊, length = TC)
+    F = range(FT(F₋), FT(F₊), length = TF)
+    C = range(FT(C₋), FT(C₊), length = TC)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
         
-    return L, F, C, Δᶠ, Δᶜ
+    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
+function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, arch)
     return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
 end

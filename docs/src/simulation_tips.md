@@ -1,6 +1,6 @@
 # Simulation tips
 
-Oceananigans attemps to optimize computations as much as possible "behind the scenes".
+Oceananigans attempts to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,
 especially for complex setups with user-defined forcing functions, boundary condition functions, and diagnostics.
 Furthermore, in case of more complex GPU runs, some details could
@@ -185,7 +185,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
-  provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
+  provides two high-order advection schemes: 5th-order WENO method (WENO) and 3rd-order upwind.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
   diagnostic is calculated the compiler reserves a new chunk of memory for that calculation, usually

@@ -4,7 +4,6 @@
 # in a two-dimensional domain. This example demonstrates:
 #
 #   * How to run a model with no tracers and no buoyancy model.
-#   * How to use `AbstractOperations`.
 #   * How to use computed `Field`s to generate output.
 
 # ## Install dependencies
@@ -13,7 +12,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## Model setup
@@ -24,16 +23,12 @@
 
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), 
-                       topology=(Periodic, Periodic, Flat))
+grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                              advection = UpwindBiasedFifthOrder(),
-                                   grid = grid,
-                               buoyancy = nothing,
-                                tracers = nothing,
-                                closure = ScalarDiffusivity(ν=1e-5)
-                           )
+model = NonhydrostaticModel(; grid,
+                            timestepper = :RungeKutta3,
+                            advection = UpwindBiasedFifthOrder(),
+                            closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions
 #
@@ -58,8 +53,7 @@ simulation = Simulation(model, Δt=0.2, stop_time=50)
 #
 # We set up a callback that logs the simulation iteration and time every 100 iterations.
 
-progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
-
+progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 # ## Output
@@ -91,10 +85,11 @@ u, v, w = model.velocities
 s = sqrt(u^2 + v^2)
 
 # We pass these operations to an output writer below to calculate and output them during the simulation.
+filename = "two_dimensional_turbulence"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(2),
-                                                      filename = "two_dimensional_turbulence.jld2",
+                                                      schedule = TimeInterval(0.6),
+                                                      filename = filename * ".jld2",
                                                       overwrite_existing = true)
 
 # ## Running the simulation
@@ -105,12 +100,14 @@ run!(simulation)
 
 # ## Visualizing the results
 #
-# We load the output and make a movie.
+# We load the output.
 
-ω_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "ω")
-s_timeseries = FieldTimeSeries("two_dimensional_turbulence.jld2", "s")
+ω_timeseries = FieldTimeSeries(filename * ".jld2", "ω")
+s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 
-# Construct the ``x, y`` grid for plotting purposes,
+times = ω_timeseries.times
+
+# Construct the ``x, y, z`` grid for plotting purposes,
 
 xω, yω, zω = nodes(ω_timeseries)
 xs, ys, zs = nodes(s_timeseries)
@@ -118,39 +115,49 @@ nothing # hide
 
 # and animate the vorticity and fluid speed.
 
-using Plots
+using CairoMakie
+set_theme!(Theme(fontsize = 24))
 
 @info "Making a neat movie of vorticity and speed..."
 
-anim = @animate for (i, t) in enumerate(ω_timeseries.times)
+fig = Figure(resolution = (800, 500))
 
-    @info "Plotting frame $i of $(length(ω_timeseries.times))..."
+axis_kwargs = (xlabel = "x",
+               ylabel = "y",
+               limits = ((0, 2π), (0, 2π)),
+               aspect = AxisAspect(1))
 
-    ωi = interior(ω_timeseries[i], :, :, 1)
-    si = interior(s_timeseries[i], :, :, 1)
+ax_ω = Axis(fig[2, 1]; title = "Vorticity", axis_kwargs...)
+ax_s = Axis(fig[2, 2]; title = "Speed", axis_kwargs...)
+nothing #hide
 
-    ω_lim = 2.0
-    ω_levels = range(-ω_lim, stop=ω_lim, length=20)
+# We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
+# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-    s_lim = 0.2
-    s_levels = range(0, stop=s_lim, length=20)
+n = Observable(1)
 
-    kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
-              xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
+# Now let's plot the vorticity and speed.
 
-    ω_plot = contourf(xω, yω, clamp.(ωi', -ω_lim, ω_lim);
-                       color = :balance,
-                      levels = ω_levels,
-                       clims = (-ω_lim, ω_lim),
-                      kwargs...)
+ω = @lift interior(ω_timeseries[$n], :, :, 1)
+s = @lift interior(s_timeseries[$n], :, :, 1)
 
-    s_plot = contourf(xs, ys, clamp.(si', 0, s_lim);
-                       color = :thermal,
-                      levels = s_levels,
-                       clims = (0., s_lim),
-                      kwargs...)
+heatmap!(ax_ω, xω, yω, ω; colormap = :balance, colorrange = (-2, 2))
+heatmap!(ax_s, xs, ys, s; colormap = :speed, colorrange = (0, 0.2))
 
-    plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
+title = @lift "t = " * string(round(times[$n], digits=2))
+Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
+
+# Finally, we record a movie.
+
+frames = 1:length(times)
+
+@info "Making a neat animation of vorticity and speed..."
+
+record(fig, filename * ".mp4", frames, framerate=24) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
+nothing #hide
 
-mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide
+# ![](two_dimensional_turbulence.mp4)

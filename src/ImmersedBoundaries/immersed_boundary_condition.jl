@@ -29,12 +29,12 @@ Base.summary(ibc::IBC) =
            "top=", bc_str(ibc.top))
 
 Base.show(io::IO, ibc::IBC) =
-    print(io, "ImmersedBoundaryCondition:", '\n',
-              "├── west: ", summary(ibc.west), '\n',
-              "├── east: ", summary(ibc.east), '\n',
-              "├── south: ", summary(ibc.south), '\n',
-              "├── north: ", summary(ibc.north), '\n',
-              "├── bottom: ", summary(ibc.bottom), '\n',
+    print(io, "ImmersedBoundaryCondition:", "\n",
+              "├── west: ", summary(ibc.west), "\n",
+              "├── east: ", summary(ibc.east), "\n",
+              "├── south: ", summary(ibc.south), "\n",
+              "├── north: ", summary(ibc.north), "\n",
+              "├── bottom: ", summary(ibc.bottom), "\n",
               "└── top: ", summary(ibc.top))
 
 """
@@ -160,25 +160,25 @@ for side in sides
         @inline $flux(i, j, k, ibg, bc::VBCorGBC, args...) = $_flux(i, j, k, ibg, bc::VBCorGBC, args...)
         @inline $_flux(i, j, k, ibg, bc::VBCorGBC, args...) = zero(ibg) # fallback for non-ASD closures
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple{<:Any, <:Any, <:Any, <:Any}, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields) +
             $_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields)
 
-        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closure::Tuple, K, id, clock, fields) =
+        @inline $flux(i, j, k, ibg, bc::VBCorGBC, loc, c, closures::Tuple, Ks, id, clock, fields) =
             $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields) +
              $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields)
     end
@@ -197,8 +197,8 @@ end
     q̃ᴮ = bottom_ib_flux(i, j, k, ibg, bc.bottom, loc, c, closure, K, id, clock, fields)
     q̃ᵀ =    top_ib_flux(i, j, k, ibg, bc.top,    loc, c, closure, K, id, clock, fields)
 
-    iᵂ, jˢ, kᴮ = index_right.((i, j, k), loc)
-    iᴱ, jᴺ, kᵀ = index_left.((i, j, k), loc)
+    iᵂ, jˢ, kᴮ = map(index_right, (i, j, k), loc) # Broadcast instead of map causes inference failure
+    iᴱ, jᴺ, kᵀ = map(index_left, (i, j, k), loc)
     LX, LY, LZ = loc
 
     # Impose i) immersed fluxes if we're on an immersed boundary or ii) zero otherwise.
@@ -250,18 +250,22 @@ end
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    topo = topology(grid)
-
-    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   topo, loc, 1, LeftBoundary,  prognostic_field_names)
-    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   topo, loc, 1, RightBoundary, prognostic_field_names)
-    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  topo, loc, 2, LeftBoundary,  prognostic_field_names)
-    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  topo, loc, 2, RightBoundary, prognostic_field_names)
-    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, topo, loc, 3, LeftBoundary,  prognostic_field_names)
-    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    topo, loc, 3, RightBoundary, prognostic_field_names)
+    west   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = loc[1] === Face ? nothing : regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names)
+    south  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = loc[2] === Face ? nothing : regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = loc[3] === Face ? nothing : regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = loc[3] === Face ? nothing : regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names)
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
 
+Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),
+                                                                                     Adapt.adapt(to, bc.east),
+                                                                                     Adapt.adapt(to, bc.south),
+                                                                                     Adapt.adapt(to, bc.north),
+                                                                                     Adapt.adapt(to, bc.bottom),
+                                                                                     Adapt.adapt(to, bc.top))
 #####
 ##### Alternative implementation for immersed flux divergence
 #####

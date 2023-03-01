@@ -1,6 +1,6 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: device
-import Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: device, device_event
+import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
@@ -28,29 +28,27 @@ using SparseArrays: fkeep!
 @inline arch_sparse_matrix(::CPU, A::SparseMatrixCSC)   = A
 @inline arch_sparse_matrix(::CUDAGPU, A::CuSparseMatrixCSC) = A
 
-
 # We need to update the diagonal element each time the time step changes!!
-function update_diag!(constr, arch, problem_size, diag, Δt)   
-    M = prod(problem_size)
+function update_diag!(constr, arch, M, N, diag, Δt, disp)   
     colptr, rowval, nzval = unpack_constructors(arch, constr)
-   
-    loop! = _update_diag!(device(arch), 256, M)
-    event = loop!(nzval, colptr, rowval, diag, Δt; dependencies=Event(device(arch)))
-    wait(event)
+    loop! = _update_diag!(device(arch), min(256, M), M)
+    event = loop!(nzval, colptr, rowval, diag, Δt, disp; dependencies=device_event(arch))
+    wait(device(arch), event)
 
-    constr = constructors(arch, M, (colptr, rowval, nzval))
+    constr = constructors(arch, M, N, (colptr, rowval, nzval))
 end
 
-@kernel function _update_diag!(nzval, colptr, rowval, diag, Δt)
+@kernel function _update_diag!(nzval, colptr, rowval, diag, Δt, disp)
     col = @index(Global, Linear)
+    col = col + disp
     map = 1
     for idx in colptr[col]:colptr[col+1] - 1
-       if rowval[idx] == col
+       if rowval[idx] + disp == col 
            map = idx 
             break
         end
     end
-    nzval[map] += diag[col] / Δt^2 
+    nzval[map] += diag[col - disp] / Δt^2 
 end
 
 @kernel function _get_inv_diag!(invdiag, colptr, rowval, nzval)
@@ -62,10 +60,10 @@ end
             break
         end
     end
-    if nzval[map] == 0.0 
+    if nzval[map] == 0
         invdiag[col] = 0 
     else
-        invdiag[col] = 1.0 / nzval[map]
+        invdiag[col] = 1 / nzval[map]
     end
 end
 

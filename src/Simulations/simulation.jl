@@ -18,10 +18,12 @@ mutable struct Simulation{ML, TS, DT, ST, DI, OW, CB}
       run_wall_time :: Float64
             running :: Bool
         initialized :: Bool
+            verbose :: Bool
 end
 
 """
     Simulation(model; Δt,
+               verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf)
@@ -42,6 +44,7 @@ Keyword arguments
                      seconds of wall clock time.
 """
 function Simulation(model; Δt,
+                    verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
                     wall_time_limit = Inf)
@@ -81,20 +84,21 @@ function Simulation(model; Δt,
                      callbacks,
                      0.0,
                      false,
-                     false)
+                     false,
+                     verbose)
 end
 
 function Base.show(io::IO, s::Simulation)
     modelstr = summary(s.model)
-    return print(io, "Simulation of ", modelstr, '\n',
-                     "├── Next time step: $(prettytime(s.Δt))", '\n',
-                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", '\n',
-                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
-                     "├── Stop time: $(prettytime(s.stop_time))", '\n',
-                     "├── Stop iteration : $(s.stop_iteration)", '\n',
-                     "├── Wall time limit: $(s.wall_time_limit)", '\n',
-                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n',
-                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", '\n',
+    return print(io, "Simulation of ", modelstr, "\n",
+                     "├── Next time step: $(prettytime(s.Δt))", "\n",
+                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
+                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
+                     "├── Stop time: $(prettytime(s.stop_time))", "\n",
+                     "├── Stop iteration : $(s.stop_iteration)", "\n",
+                     "├── Wall time limit: $(s.wall_time_limit)", "\n",
+                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
+                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
 end
 
@@ -153,30 +157,47 @@ end
 ##### Default stop criteria callback functions
 #####
 
+wall_time_msg(sim) = string("Simulation is stopping after running for ", run_wall_time(sim), ".")
+
 function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
-        @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
-               "has hit or exceeded simulation stop iteration $(Int(sim.stop_iteration))."
-       sim.running = false 
+        if sim.verbose
+            msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
+            @info wall_time_msg(sim) 
+            @info msg
+        end
+
+        sim.running = false 
     end
+
     return nothing
 end
 
 function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
-       @info "Simulation is stopping. Model time $(prettytime(sim.model.clock.time)) " *
-             "has hit or exceeded simulation stop time $(prettytime(sim.stop_time))."
-       sim.running = false 
+        if sim.verbose
+            msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
+            @info wall_time_msg(sim) 
+            @info msg
+        end
+
+        sim.running = false 
     end
+
     return nothing
 end
 
 function wall_time_limit_exceeded(sim)
     if sim.run_wall_time >= sim.wall_time_limit
-        @info "Simulation is stopping. Simulation run time $(run_wall_time(sim)) " *
-              "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
-       sim.running = false 
+        if sim.verbose
+            msg = string("Simulation run time ", run_wall_time(sim), " equals or exceeds wall time limit ", prettytime(sim.wall_time_limit), ".")
+            @info wall_time_msg(sim)
+            @info msg
+        end
+
+        sim.running = false 
     end
+
     return nothing
 end
 

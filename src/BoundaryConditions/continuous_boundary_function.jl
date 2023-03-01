@@ -69,7 +69,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       topo, loc, dim, Side, prognostic_field_names) where C
+                                       grid, loc, dim, Side, prognostic_field_names) where C
 
     boundary_func = bc.condition
 
@@ -99,7 +99,7 @@ end
 #####
 
 const XBoundaryFunction{LY, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{Nothing, LY, LZ, S}} where {LY, LZ, S}
-const YBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
+const YBoundaryFunction{LX, LZ, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, Nothing, LZ, S}} where {LX, LZ, S}
 const ZBoundaryFunction{LX, LY, S} = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction{LX, LY, Nothing, S}} where {LX, LY, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.

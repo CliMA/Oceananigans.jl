@@ -44,14 +44,12 @@ function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict(
-                "xC" => (Center, Center, Center),
+    locs = Dict("xC" => (Center, Center, Center),
                 "xF" => (  Face, Center, Center),
                 "yC" => (Center, Center, Center),
                 "yF" => (Center,   Face, Center),
                 "zC" => (Center, Center, Center),
-                "zF" => (Center, Center,   Face),
-               )
+                "zF" => (Center, Center,   Face))
 
     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
 
@@ -137,8 +135,9 @@ end
 """
     NetCDFOutputWriter(model, outputs; filename, schedule
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = nothing,
+                                   with_halos = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
@@ -154,19 +153,43 @@ returns something to be written to disk. Custom output requires the spatial `dim
 
 Keyword arguments
 =================
-- `filename` (required): Descriptive filename. ".nc" is appended to `filename` if ".nc" is not detected.
 
-- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+## Filenaming
+
+- `filename` (required): Descriptive filename. `".nc"` is appended to `filename` if `filename` does
+                         not end in `".nc"`.
 
 - `dir`: Directory to save output to.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float32}`.
+## Output frequency and time-averaging
+
+- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+
+## Slicing and type conversion prior to output
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs.
+- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
+                Note, that to postprocess saved output (e.g., compute derivatives, etc)
+                information about the boundary conditions is often crucial. In that case
+                you might need to set `with_halos = true`.
+
+- `array_type`: The array type to which output arrays are converted to prior to saving.
+                Default: `Array{Float64}`.
+
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
+
+## File management
+
+- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will be set to append to `filepath`. If `true`,
+                        `NetCDFOutputWriter` will overwrite `filepath` if it exists or create it if not.
+                        Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
+                        for more information about its `mode` option.
+
+- `compression`: Determines the compression level of data (0-9; default: 0).
+
+## Miscellaneous keywords
 
 - `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
 
@@ -174,16 +197,9 @@ Keyword arguments
                        defaults are provided for velocities, buoyancy, temperature, and salinity;
                        otherwise `output_attributes` *must* be user-provided).
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
-
-- `overwrite_existing`: If false, `NetCDFOutputWriter` will be set to append to `filepath`. If true, `NetCDFOutputWriter` 
-                        will overwrite `filepath` if it exists or create it if it does not.
-                        Default: `false`. See NCDatasets.jl documentation for more information about its `mode` option.
-
-- `compression`: Determines the compression level of data (0-9; default: 0)
-
 Examples
 ========
+
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
@@ -206,7 +222,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -219,7 +235,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: (c, u)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 ```jldoctest netcdf1
@@ -234,7 +250,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: ./averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
@@ -253,8 +269,8 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
+h(model) = model.clock.time .* (sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
+                               .*  cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
@@ -278,12 +294,12 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float32}
+└── array type: Array{Float64}
 ```
 """
 function NetCDFOutputWriter(model, outputs; filename, schedule,
                                           dir = ".",
-                                   array_type = Array{Float32},
+                                   array_type = Array{Float64},
                                       indices = (:, :, :),
                                    with_halos = false,
                             global_attributes = Dict(),
@@ -419,7 +435,7 @@ function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons..., time_index] = data
+    ds[name][colons..., time_index:time_index] = data
     return nothing
 end
 
@@ -502,10 +518,10 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
-              "├── filepath: ", ow.filepath, '\n',
-              "├── dimensions: $dims", '\n',
-              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), '\n',
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: ", ow.filepath, "\n",
+              "├── dimensions: $dims", "\n",
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type))
 end
 

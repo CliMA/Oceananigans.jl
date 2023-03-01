@@ -3,12 +3,13 @@ using JLD2
 using Printf
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Utils
 
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures
+using Oceananigans.Advection: VelocityStencil
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -28,7 +29,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
-arch = GPU()
+arch = CPU()
 reference_density = 1035
 
 #####
@@ -40,7 +41,7 @@ using DataDeps
 
 path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/lat_lon_bathymetry_and_fluxes/"
 
-dh = DataDep("near_global_lat_lon",
+dh = DataDep("near_global_lat_lon_3_degrees",
     "Forcing data for global latitude longitude simulation",
     [path * "bathymetry_lat_lon_128x60_FP32.bin",
      path * "sea_surface_temperature_25_128x60x12.jld2",
@@ -50,7 +51,7 @@ dh = DataDep("near_global_lat_lon",
 
 DataDeps.register(dh)
 
-datadep"near_global_lat_lon"
+datadep"near_global_lat_lon_3_degrees"
 
 #####
 ##### Load forcing files roughly from CORE2 paper
@@ -60,13 +61,13 @@ datadep"near_global_lat_lon"
 filename = [:sea_surface_temperature_25_128x60x12, :tau_x_128x60x12, :tau_y_128x60x12]
 
 for name in filename
-    datadep_path = @datadep_str "near_global_lat_lon/" * string(name) * ".jld2"
+    datadep_path = @datadep_str "near_global_lat_lon_3_degrees/" * string(name) * ".jld2"
     file = Symbol(:file_, name)
     @eval $file = jldopen($datadep_path)
 end
 
 bathymetry_data = Array{Float32}(undef, Nx*Ny)
-bathymetry_path = @datadep_str "near_global_lat_lon/bathymetry_lat_lon_128x60_FP32.bin"
+bathymetry_path = @datadep_str "near_global_lat_lon_3_degrees/bathymetry_lat_lon_128x60_FP32.bin"
 read!(bathymetry_path, bathymetry_data)
 
 bathymetry_data = bswap.(bathymetry_data) |> Array{Float64}
@@ -83,9 +84,6 @@ for month in 1:Nmonths
 end
 
 bathymetry = arch_array(arch, bathymetry_data)
-τˣ = arch_array(arch, τˣ)
-τʸ = arch_array(arch, τʸ)
-target_sea_surface_temperature = T★ = arch_array(arch, T★)
 
 H = 3600.0
 # H = - minimum(bathymetry)
@@ -98,11 +96,16 @@ H = 3600.0
                                               size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (3, 3, 3),
+                                              halo = (5, 5, 5),
                                               z = (-H, 0),
                                               precompute_metrics = true)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+
+τˣ = arch_array(arch, - τˣ)
+τʸ = arch_array(arch, - τʸ)
+
+target_sea_surface_temperature = T★ = arch_array(arch, T★)
 
 #####
 ##### Physics and model setup
@@ -120,12 +123,16 @@ horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
                                        
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000.0,
+                                                                κ_symmetric = 900.0,
+                                                                slope_limiter = FluxTapering(1e-2))
+
 #####
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
-Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
+Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
 
 @inline function surface_temperature_relaxation(i, j, grid, clock, fields, p)
     time = clock.time
@@ -161,32 +168,14 @@ T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
     return cyclic_interpolate(τ₁, τ₂, time)
 end
 
-u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τˣ)
-v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τʸ)
+u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τˣ)
+v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τʸ)
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 # Linear bottom drag:
 μ = Δz_bottom / 10days
-# μ_forcing = 10days
-
-# @inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
-#     u = @inbounds fields.u[i, j, k]
-#     return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
-#                   - μ * u,
-#                  zero(eltype(grid)))
-# end
-
-# @inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
-#     v = @inbounds fields.v[i, j, k]
-#     return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
-#                   - μ * v,
-#                  zero(eltype(grid)))
-# end
-
-# Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
-# Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -195,20 +184,19 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
-                                   preconditioner_settings = (ε = 0.01, nzrel = 10))
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 equation_of_state=LinearEquationOfState(thermal_expansion=2e-4)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
-                                    momentum_advection = WENO5(vector_invariant=VelocityStencil()),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(vector_invariant=VelocityStencil()),
+                                    tracer_advection = WENO(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(; equation_of_state, constant_salinity=30),
                                     tracers = :T,
-                                    closure = (vertical_closure, convective_adjustment)) 
+                                    closure = (vertical_closure, convective_adjustment, gent_mcwilliams_diffusivity)) 
 
 #####
 ##### Initial condition:
@@ -223,19 +211,7 @@ T .= -1
 ##### Simulation setup
 #####
 
-# Time-scale for gravity wave propagation across the smallest grid cell
-g = model.free_surface.gravitational_acceleration
-gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-    
-minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ[1:grid.Ny])) * deg2rad(grid.Δλᶜᵃᵃ))
-minimum_Δy = abs(grid.radius * deg2rad(grid.Δφᵃᶜᵃ))
-wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
-
-if model.free_surface isa ExplicitFreeSurface
-    Δt = 60seconds
-else
-    Δt = 20minutes
-end
+Δt = 20minutes
 
 simulation = Simulation(model, Δt = Δt, stop_time = 5years)
 
@@ -246,10 +222,10 @@ function progress(sim)
 
     η = model.free_surface.η
     u = model.velocities.u
-    @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|w|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration,
-                    maximum(abs, η), maximum(abs, u),
+                    maximum(abs, u), maximum(abs, w),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -268,9 +244,15 @@ save_interval = 5days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, η),
                                                               schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
+                                                              filename = output_prefix * "_surface",
                                                               indices = (:, :, grid.Nz),
                                                               overwrite_existing = true)
+
+simulation.output_writers[:atlantic] = JLD2OutputWriter(model, (; u, v, T, η),
+                                                        schedule = TimeInterval(save_interval),
+                                                        filename = output_prefix * "_atlantic",
+                                                        indices = (60, :, :),
+                                                        overwrite_existing = true)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
@@ -285,8 +267,6 @@ run!(simulation)
 @info """
 
     Simulation took $(prettytime(simulation.run_wall_time))
-    Background diffusivity: $background_diffusivity
-    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """

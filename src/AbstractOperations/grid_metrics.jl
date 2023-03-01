@@ -1,5 +1,6 @@
 using Adapt
 using Oceananigans.Operators
+using Oceananigans.Fields: default_indices
 
 abstract type AbstractGridMetric end
 
@@ -44,7 +45,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.AbstractOperations: Δz
 
-julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(grid);
+julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)));
 
 julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
@@ -82,7 +83,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.AbstractOperations: volume
 
-julia> grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(grid);
+julia> c = CenterField(RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)));
 
 julia> c .= 1;
 
@@ -119,7 +120,6 @@ end
 struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}
           metric :: M
             grid :: G
-
     function GridMetricOperation{LX, LY, LZ}(metric::M, grid::G) where {LX, LY, LZ, M, G}
         T = eltype(grid)
         return new{LX, LY, LZ, G, T, M}(metric, grid)
@@ -132,7 +132,7 @@ Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ
 
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
 
+indices(gm::GridMetricOperation) = default_indices(3)
+
 # Special constructor for BinaryOperation
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
-
-

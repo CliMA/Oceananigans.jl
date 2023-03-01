@@ -175,8 +175,8 @@ catke = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     closure = (horizontal_closure, vertical_closure, catke),
@@ -245,17 +245,17 @@ b, c = model.tracers.b, model.tracers.c
 
 ζ = Field(∂x(v) - ∂y(u))
 
-B = AveragedField(b, dims=1)
-U = AveragedField(u, dims=1)
-V = AveragedField(v, dims=1)
-W = AveragedField(w, dims=1)
+B = Field(Average(b, dims=1))
+U = Field(Average(u, dims=1))
+V = Field(Average(v, dims=1))
+W = Field(Average(w, dims=1))
 
 b′ = b - B
 v′ = v - V
 w′ = w - W
 
-v′b′ = AveragedField(v′ * b′, dims=1)
-w′b′ = AveragedField(w′ * b′, dims=1)
+v′b′ = Field(Average(v′ * b′, dims=1))
+w′b′ = Field(Average(w′ * b′, dims=1))
 
 outputs = (; b, ζ, u)
 
@@ -270,31 +270,32 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = filename,
                                                         overwrite_existing = true)
 
-slicers = (west = FieldSlicer(i=1),
-           east = FieldSlicer(i=grid.Nx),
-           south = FieldSlicer(j=1),
-           north = FieldSlicer(j=grid.Ny),
-           bottom = FieldSlicer(k=1),
-           top = FieldSlicer(k=grid.Nz))
+slicers = (west = (1, :, :),
+           east = (grid.Nx, :, :),
+           south = (:, 1, :),
+           north = (:, grid.Ny, :),
+           bottom = (:, :, 1),
+           top = (:, :, grid.Nz))
 
 for side in keys(slicers)
-    field_slicer = slicers[side]
+    indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, outputs,
+    simulation.output_writers[side] = JLD2OutputWriter(model, outputs;
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
-                                                       prefix = filename * "_$(side)_slice",
-                                                       overwrite_existing = true)
+                                                       filename = filename * "_$(side)_slice",
+                                                       overwrite_existing = true,
+                                                       indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);#, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(save_fields_interval),
-                                                     prefix = filename * "_zonal_average",
+                                                     filename = filename * "_zonal_average",
                                                      overwrite_existing = true)
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                        prefix = filename * "_averages",
+                                                        filename = filename * "_averages",
                                                         verbose = true,
                                                         overwrite_existing = true)
 =#
@@ -425,7 +426,7 @@ rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 title = @lift(string("Buoyancy, vertical vorticity, and zonally-averaged u at t = ",
                      prettytime(zonal_file["timeseries/t/" * string($iter)])))
 
-fig[0, :] = Label(fig, title, textsize=30)
+fig[0, :] = Label(fig, title, fontsize=30)
 
 display(fig)
 

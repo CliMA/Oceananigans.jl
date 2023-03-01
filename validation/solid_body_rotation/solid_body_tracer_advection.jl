@@ -115,7 +115,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                           schedule = TimeInterval(super_rotation_period / 20),
-                                                          prefix = output_prefix,
+                                                          filename = output_prefix,
                                                           overwrite_existing = true)
 
     run!(simulation)
@@ -174,7 +174,7 @@ function visualize_solid_body_tracer_advection(filepath)
         heatmap!(ax, var)
     end
 
-    supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+    supertitle = fig[0, :] = Label(fig, plot_title, fontsize=30)
 
     record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
         @info "Animating iteration $i/$(iterations[end])..."

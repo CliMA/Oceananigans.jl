@@ -14,7 +14,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Plots"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # We start by importing all of the packages and functions that we'll need for this
@@ -22,7 +22,7 @@
 
 using Random
 using Printf
-using Plots
+using CairoMakie
 
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hour
@@ -53,18 +53,21 @@ h(k) = (k - 1) / Nz
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(size = (32, 32, Nz), 
+grid = RectilinearGrid(CPU();
+                       size = (32, 32, Nz), 
                           x = (0, 64),
                           y = (0, 64),
                           z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
-plot(grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz],
-     marker = :circle,
-     ylabel = "Depth (m)",
-     xlabel = "Vertical spacing (m)",
-     legend = nothing)
+fig = Figure(resolution=(1200, 800))
+ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
+lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
+scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+
+current_figure() # hide
+fig
 
 # ## Buoyancy that depends on temperature and salinity
 #
@@ -78,9 +81,9 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # We calculate the surface temperature flux associated with surface heating of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Qʰ = 200  # W m⁻², surface _heat_ flux
-ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
-cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
+Qʰ = 200.0  # W m⁻², surface _heat_ flux
+ρₒ = 1026.0 # kg m⁻³, average density at the surface of the world ocean
+cᴾ = 3991.0 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
@@ -138,12 +141,11 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # for large eddy simulation to model the effect of turbulent motions at
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
-model = NonhydrostaticModel(advection = UpwindBiasedFifthOrder(),
+model = NonhydrostaticModel(; grid, buoyancy,
+                            advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
-                            grid = grid,
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
-                            buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
@@ -152,8 +154,8 @@ model = NonhydrostaticModel(advection = UpwindBiasedFifthOrder(),
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
 #   `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
 #
-# * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
-#   `architecture = GPU()`.
+# * To change the architecture to `GPU`, replace `CPU()` with `GPU()` inside the
+#   `grid` constructor.
 
 # ## Initial conditions
 #
@@ -184,20 +186,16 @@ simulation = Simulation(model, Δt=10.0, stop_time=40minutes)
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
 wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
-
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
 
 ## Print a progress message
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
-                                iteration(sim),
-                                prettytime(sim),
-                                prettytime(sim.Δt),
-                                maximum(abs, sim.model.velocities.w),
-                                prettytime(sim.run_wall_time))
+                                iteration(sim), prettytime(sim), prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(20))
 
 # We then set up the simulation:
 
@@ -211,9 +209,11 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 ## Create a NamedTuple with eddy viscosity
 eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 
+filename = "ocean_wind_mixing_and_convection"
+
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
-                     filename = "ocean_wind_mixing_and_convection.jld2",
+                     filename = filename * ".jld2",
                      indices = (:, grid.Ny/2, :),
                      schedule = TimeInterval(1minute),
                      overwrite_existing = true)
@@ -228,7 +228,7 @@ run!(simulation)
 # We prepare for animating the flow by loading the data into
 # FieldTimeSeries and defining functions for computing colorbar limits.
 
-filepath = "ocean_wind_mixing_and_convection.jld2"
+filepath = filename * ".jld2"
 
 time_series = (w = FieldTimeSeries(filepath, "w"),
                T = FieldTimeSeries(filepath, "T"),
@@ -239,60 +239,66 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
 xw, yw, zw = nodes(time_series.w)
 xT, yT, zT = nodes(time_series.T)
 
-""" Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
-function divergent_levels(c, clim, nlevels=21)
-    cmax = maximum(abs, c)
-    levels = clim > cmax ? range(-clim, stop=clim, length=nlevels) : range(-cmax, stop=cmax, length=nlevels)
-    return (levels[1], levels[end]), levels
-end
-
-""" Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
-function sequential_levels(c, clims, nlevels=20)
-    levels = range(clims[1], stop=clims[2], length=nlevels)
-    cmin, cmax = minimum(c), maximum(c)
-    cmin < clims[1] && (levels = vcat([cmin], levels))
-    cmax > clims[2] && (levels = vcat(levels, [cmax]))
-    return clims, levels
-end
-nothing # hide
-
-# We start the animation at `t = 10minutes` since things are pretty boring till then:
+# We start the animation at ``t = 10minutes`` since things are pretty boring till then:
 
 times = time_series.w.times
 intro = searchsortedfirst(times, 10minutes)
 
-anim = @animate for (i, t) in enumerate(times[intro:end])
+# We are now ready to animate using Makie. We use Makie's `Observable` to animate
+# the data. To dive into how `Observable`s work we refer to
+# [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
 
-    @info "Drawing frame $i of $(length(times[intro:end]))..."
+n = Observable(intro)
 
-     w = interior(time_series.w[i],  :, 1, :)
-     T = interior(time_series.T[i],  :, 1, :)
-     S = interior(time_series.S[i],  :, 1, :)
-    νₑ = interior(time_series.νₑ[i], :, 1, :)
+ wₙ = @lift interior(time_series.w[$n],  :, 1, :)
+ Tₙ = @lift interior(time_series.T[$n],  :, 1, :)
+ Sₙ = @lift interior(time_series.S[$n],  :, 1, :)
+νₑₙ = @lift interior(time_series.νₑ[$n], :, 1, :)
 
-    wlims, wlevels = divergent_levels(w, 2e-2)
-    Tlims, Tlevels = sequential_levels(T, (19.7, 19.99))
-    Slims, Slevels = sequential_levels(S, (35, 35.005))
-    νlims, νlevels = sequential_levels(νₑ, (1e-6, 5e-3))
+fig = Figure(resolution = (1000, 500))
 
-    kwargs = (linewidth=0, xlabel="x (m)", ylabel="z (m)", aspectratio=1,
-              xlims=(0, grid.Lx), ylims=(-grid.Lz, 0))
+axis_kwargs = (xlabel="x (m)",
+               ylabel="z (m)",
+               aspect = AxisAspect(grid.Lx/grid.Lz),
+               limits = ((0, grid.Lx), (-grid.Lz, 0)))
 
-    w_plot = contourf(xw, zw, w'; color=:balance, clims=wlims, levels=wlevels, kwargs...)
-    T_plot = contourf(xT, zT, T'; color=:thermal, clims=Tlims, levels=Tlevels, kwargs...)
-    S_plot = contourf(xT, zT, S'; color=:haline,  clims=Slims, levels=Slevels, kwargs...)
+ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
+ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
+ax_S  = Axis(fig[3, 1]; title = "Salinity", axis_kwargs...)
+ax_νₑ = Axis(fig[3, 3]; title = "Eddy viscocity", axis_kwargs...)
 
-    ## We use a heatmap for the eddy viscosity to observe how it varies on the grid scale.
-    ν_plot = heatmap(xT, zT, νₑ'; color=:thermal, clims=νlims, levels=νlevels, kwargs...)
+title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
-    w_title = @sprintf("vertical velocity (m s⁻¹), t = %s", prettytime(t))
-    T_title = "temperature (ᵒC)"
-    S_title = "salinity (g kg⁻¹)"
-    ν_title = "eddy viscosity (m² s⁻¹)"
+wlims = (-0.05, 0.05)
+Tlims = (19.7, 19.99)
+Slims = (35, 35.005)
+νₑlims = (1e-6, 5e-3)
 
-    ## Arrange the plots side-by-side.
-    plot(w_plot, T_plot, S_plot, ν_plot, layout=(2, 2), size=(1200, 600),
-         title=[w_title T_title S_title ν_title])
+hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = wlims)
+Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
+
+hm_T = heatmap!(ax_T, xT, zT, Tₙ; colormap = :thermal, colorrange = Tlims)
+Colorbar(fig[2, 4], hm_T; label = "ᵒC")
+
+hm_S = heatmap!(ax_S, xT, zT, Sₙ; colormap = :haline, colorrange = Slims)
+Colorbar(fig[3, 2], hm_S; label = "g / kg")
+
+hm_νₑ = heatmap!(ax_νₑ, xT, zT, νₑₙ; colormap = :thermal, colorrange = νₑlims)
+Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
+
+fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
+
+# And now record a movie.
+
+frames = intro:length(times)
+
+@info "Making a motion picture of ocean wind mixing and convection..."
+
+record(fig, filename * ".mp4", frames, framerate=8) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
+nothing #hide
 
-mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide
+# ![](ocean_wind_mixing_and_convection.mp4)

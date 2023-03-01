@@ -20,10 +20,10 @@ r_sediment = 1e-4 # m (Fine sand)
 Δb = - 9.81 * (ρ_sediment - ρ_ocean) / ρ_ocean
 ν_molecular = 1.05e-6
 @show w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2
-sinking = AdvectiveForcing(WENO5(), w=w_sediment)
+sinking = AdvectiveForcing(WENO(), w=w_sediment)
 
 model = NonhydrostaticModel(; grid,
-                            advection = WENO5(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:b, :sediment),
                             buoyancy = BuoyancyTracer(),
@@ -103,8 +103,8 @@ simulation.output_writers[:fields] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, (; ξ)),
                      schedule = TimeInterval(1.0),
                      with_halos = false,
-                     prefix = "sediment_entrainment",
-                     force = true)
+                     filename = "sediment_entrainment",
+                     overwrite_existing = true)
 
 run!(simulation)
 

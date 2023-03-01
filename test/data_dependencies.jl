@@ -16,7 +16,7 @@ datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/data_for_regression_tests/"
+path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
 
 dh = DataDep("regression_test_data",
     "Data for Regression tests",
@@ -24,6 +24,8 @@ dh = DataDep("regression_test_data",
      path * "hydrostatic_free_turbulence_regression_Periodic_ExplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_ExplicitFreeSurface.jld2",
+     path * "shallow_water_bickley_jet_regression_VectorInvariantFormulation.jld2",
+     path * "shallow_water_bickley_jet_regression_ConservativeFormulation.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10000.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10010.jld2",
      path * "ocean_large_eddy_simulation_SmagorinskyLilly_iteration10000.jld2",

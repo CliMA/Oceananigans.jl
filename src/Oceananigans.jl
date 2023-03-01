@@ -4,8 +4,8 @@ data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
-if VERSION < v"1.6"
-    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
+if VERSION < v"1.8"
+    @warn "Oceananigans is tested on Julia v1.8 and therefore it is strongly recommended you run Oceananigans on Julia v1.8 or newer."
 end
 
 export
@@ -17,17 +17,20 @@ export
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat,
+    Periodic, Bounded, Flat, 
+    FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder, 
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
     # Boundary conditions
@@ -64,7 +67,9 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    RiBasedVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
+    FluxTapering,
     VerticallyImplicitTimeDiscretization,
 
     # Lagrangian particle tracking
@@ -73,7 +78,7 @@ export
     # Models
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
-    ShallowWaterModel,
+    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     PressureField,
     fields,
 
@@ -89,6 +94,7 @@ export
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     erroring_NaNChecker!,
+    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -104,18 +110,17 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # Cubed sphere
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, XPartition, 
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime
-
-
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
-
 using CUDA
 using AMDGPU
 using Adapt
@@ -123,7 +128,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -135,6 +139,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
+    
 #####
 ##### Abstract types
 #####
@@ -161,6 +166,10 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+struct TimeStepCallsite end
+struct TendencyCallsite end
+struct UpdateStateCallsite end
+
 #####
 ##### Place-holder functions
 #####
@@ -170,7 +179,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
@@ -191,17 +199,17 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
-include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
@@ -212,6 +220,7 @@ include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
+include("MultiRegion/MultiRegion.jl")
 include("CubedSpheres/CubedSpheres.jl")
 
 #####
@@ -241,6 +250,7 @@ using .OutputWriters
 using .OutputReaders
 using .Simulations
 using .AbstractOperations
+using .MultiRegion
 using .CubedSpheres
 
 function __init__()

@@ -5,14 +5,19 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
-using KernelAbstractions: @index, @kernel, Event, MultiEvent
+using KernelAbstractions: @index, @kernel, Event, MultiEvent, NoneEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans.Utils
 using Oceananigans.Utils: launch!
+using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Models: initialize_model!
+
+abstract type AbstractFreeSurface{E, G} end
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -21,25 +26,27 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, grid) = Field{Center, Center, Nothing}(grid)
+FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
-
 include("rigid_lid.jl")
 
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
 # Implicit free-surface solver functionality
+include("implicit_free_surface_utils.jl")
 include("compute_vertically_integrated_variables.jl")
 include("fft_based_implicit_free_surface_solver.jl")
+include("mg_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
 include("split_explicit_free_surface.jl")
+include("distributed_split_explicit_free_surface.jl")
 include("split_explicit_free_surface_kernels.jl")
 
 include("hydrostatic_free_surface_field_tuples.jl")
@@ -54,14 +61,16 @@ include("set_hydrostatic_free_surface_model.jl")
 """
     fields(model::HydrostaticFreeSurfaceModel)
 
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
+Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
+`model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = merge(prognostic_fields(model), model.auxiliary_fields)
+@inline fields(model::HydrostaticFreeSurfaceModel) = 
+        merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
 
-Returns a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
+Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
@@ -74,6 +83,17 @@ Returns a flattened `NamedTuple` of the prognostic fields associated with `Hydro
 @inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                                v = velocities.v),
                                                                                tracers)
+                                               
+@inline hydrostatic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
+                                                                       v = velocities.v,
+                                                                       w = velocities.w),
+                                                                       tracers,
+                                                                       (; η = free_surface.η))
+
+@inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
+                                                                    v = velocities.v,
+                                                                    w = velocities.w),
+                                                                    tracers)
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing

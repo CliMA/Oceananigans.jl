@@ -3,6 +3,29 @@ using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 #####
+##### implicit_step! interface
+#####
+##### Closures with `VerticallyImplicitTimeDiscretization` can define
+#####
+##### 1. "Coefficient extractors" `νz` and `κz` to support vertically-implicit
+#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`. 
+#####    There are three extractors for momentum (`νz`) and one for tracers (`κz`)
+#####    relevant to implicit vertical diffusion.
+#####
+##### 2. `implicit_linear_coefficient` to support the implicit treament of a _linear_ term.
+#####
+
+# Fallbacks: extend these function for `closure` to support.
+# TODO: docstring
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, LX, LY, LZ, clock, Δt, κz) =
+    zero(grid)
+
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # w
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, diffusivity_fields, tracer_index, clock, args...) = zero(grid) # tracers
+
+#####
 ##### Batched Tridiagonal solver for implicit diffusion
 #####
 
@@ -16,8 +39,6 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 
 @inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
-instantiate(X) = X()
-
 # Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, LX, LY, ::Center, clock, Δt, κz)
@@ -25,7 +46,7 @@ instantiate(X) = X()
     κᵏ⁺¹ = κz(i, j, k+1, grid, closure_ij, K, id, clock)
 
     return ifelse(k > grid.Nz-1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
 
@@ -35,7 +56,7 @@ end
     κᵏ = κz(i, j, k′, grid, closure_ij, K, id, clock)
 
     return ifelse(k < 1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
 end
 
@@ -48,7 +69,7 @@ end
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end
 
@@ -57,7 +78,7 @@ end
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹ = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
     return ifelse(k < 1,
-                  zero(eltype(grid)),
+                  zero(grid),
                   - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
 end
 
@@ -72,9 +93,6 @@ end
 @inline maybe_tupled_implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline maybe_tupled_ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline maybe_tupled_ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
-
-# Default
-@inline implicit_linear_coefficient(i, j, k, grid, closure, args...) = zero(eltype(grid))
 
 #####
 ##### Solver constructor
@@ -117,8 +135,8 @@ end
 #####
 
 # Special viscosity extractors with tracer_index === nothing
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, ::Nothing, clock, args...) = νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...)
 
 is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 

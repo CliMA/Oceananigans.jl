@@ -66,11 +66,11 @@ function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
-@inline function abs²_∇h_ζ(i, j, k, grid, U)
-    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, U.v)
-    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, U.u)
-    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, U.u)
-    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, U.v)
+@inline function abs²_∇h_ζ(i, j, k, grid, velocities)
+    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, velocities.v)
+    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, velocities.u)
+    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, velocities.u)
+    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, velocities.v)
 
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
@@ -86,9 +86,9 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz² + wyz²
 end
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
-    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U)
-                                              + abs²_∇h_wz(i, j, k, grid, U.w))
+@inline calc_nonlinear_νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, velocities, tracers) where FT =
+    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(   abs²_∇h_ζ(i, j, k, grid, velocities)
+                                                      + abs²_∇h_wz(i, j, k, grid, velocities.w))
 
 function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
     arch = model.architecture
@@ -116,7 +116,8 @@ function DiffusivityFields(grid, tracer_names, bcs, ::TwoDimensionalLeith)
     return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))
 end
 
-@inline viscosity(closure::TwoDimensionalLeith, K) = K.νₑ
+@inline viscosity(::TwoDimensionalLeith, K) = K.νₑ
+@inline diffusivity(::TwoDimensionalLeith, K, ::Val{id}) where id = K.νₑ   
 
 #####
 ##### Abstract Smagorinsky functionality
@@ -124,12 +125,11 @@ end
 
 # Diffusive fluxes for Leith diffusivities
 
-@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith,
-                                  ::Val{tracer_index}, diffusivities, U, C, clock, buoyancy) where tracer_index
+@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
-    c = C[tracer_index]
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
@@ -138,18 +138,17 @@ end
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
 
     return - νₑⁱʲᵏ * (                 C_Redi * ∂x_c
                       + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith,
-                                  ::Val{tracer_index}, diffusivities, U, C, clock, buoyancy) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
-    c = C[tracer_index]
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
@@ -158,17 +157,16 @@ end
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith,
-                                  c, ::Val{tracer_index}, clock, diffusivities, C, buoyancy) where tracer_index
+@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
-    c = C[tracer_index]
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
@@ -178,9 +176,9 @@ end
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
 
     return - νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c

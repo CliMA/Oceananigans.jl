@@ -34,6 +34,9 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
     return nothing
 end
 
+calculate_free_surface_tendency!(grid, model::ImplicitFreeSurfaceHFSM,      dependencies) = NoneEvent()
+calculate_free_surface_tendency!(grid, model::SplitExplicitFreeSurfaceHFSM, dependencies) = NoneEvent()
+
 function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
     grid = model.grid 
@@ -46,7 +49,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶜ(i, j, k, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶜ(i, j, k, grid, η)
+        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η)
+        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
     end
 end

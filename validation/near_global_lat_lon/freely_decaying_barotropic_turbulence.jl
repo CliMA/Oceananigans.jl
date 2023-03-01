@@ -143,13 +143,13 @@ set!(v_cpu, v)
 @show max_v = maximum(v)
 
 u_dV = u_cpu * volume
-u_reduced = AveragedField(u_dV, dims=(1, 2, 3))
+u_reduced = Field(Average(u_dV, dims=(1, 2, 3)))
 compute!(u_reduced)
 mean!(u_reduced, u_dV)
 integrated_u = u_reduced[1, 1, 1]
 
 v_dV = v_cpu * volume
-v_reduced = AveragedField(v_dV, dims=(1, 2, 3))
+v_reduced = Field(Average(v_dV, dims=(1, 2, 3)))
 mean!(v_reduced, v_dV)
 integrated_v = v_reduced[1, 1, 1]
 
@@ -218,7 +218,7 @@ output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(10day),
-                                                      prefix = output_prefix,
+                                                      filename = output_prefix,
                                                       overwrite_existing = true)
 
 # Let's goo!

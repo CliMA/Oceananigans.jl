@@ -37,8 +37,8 @@ model = HydrostaticFreeSurfaceModel(; grid, free_surface,
                                     buoyancy = BuoyancyTracer(),
                                     closure = (diffusive_closure, horizontal_closure),
                                     tracers = (:b, :c),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5())
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO())
 
 # Initial condition: a baroclinically unstable situation!
 ramp(y, δy) = min(max(0, y/δy + 1/2), 1)
@@ -108,14 +108,14 @@ u, v, w = model.velocities
 simulation.output_writers[:surface] = JLD2OutputWriter(model, (; ζ, b, c),
                                                        schedule = TimeInterval(1hour),
                                                        indices = (:, :, grid.Nz),
-                                                       prefix = name * "_slices",
-                                                       force = true)
+                                                       filename =name * "_slices",
+                                                       overwrite_existing = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(10days),
                                                       with_halos = false,
-                                                      prefix = name * "_fields",
-                                                      force = true)
+                                                      filename = name * "_fields",
+                                                      overwrite_existing = true)
 
 run!(simulation)
 

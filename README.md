@@ -81,6 +81,13 @@ julia> using Pkg
 julia> Pkg.add("Oceananigans")
 ```
 
+This installs the latest version that's _compatible with your current environment_.
+Don't forget to *be careful* 🏄 and check which Oceananigans you installed:
+
+```julia
+julia> Pkg.status("Oceananigans")
+```
+
 ## Running your first model
 
 Let's run a two-dimensional, horizontally-periodic simulation of turbulence using 128² finite volume cells for 4 non-dimensional time units:
@@ -88,17 +95,17 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 ```julia
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO5())
+model = NonhydrostaticModel(; grid, advection=WENO())
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-That's it! Even better, changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
+But there's more: changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
-You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
+Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
 
 ## The Oceananigans knowledge base
 
@@ -114,8 +121,8 @@ It's _deep_ and includes:
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
   
-    If you've got a question or something to talk about, don't hestitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
-* The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
+    If you've got a question or something, anything! to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?).
+* The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Accessing-GPUs-and-using-Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * The `#oceananigans` channel on the [Julia Slack](https://julialang.org/slack/), which accesses "institutional knowledge" stored in the minds of the amazing Oceananigans community.
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
 
@@ -133,20 +140,21 @@ If you use Oceananigans.jl as part of your research, teaching, or other activiti
   number = {53},
   pages = {2018},
   author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs},
+  title = {{Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs}},
   journal = {Journal of Open Source Software}
 }
 ```
 
-We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans.jl). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
+We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
 
-If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developers have missed.
+If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make!
+Cause we're all in this together.
 
-Let us know by [opening an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
+If you'd like to work on a new feature, or if you're new to open source and want to crowd-source neat projects that fit your interests, you should [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?) right away.
 
-For more information, check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
+For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
 
 ## Movies
 

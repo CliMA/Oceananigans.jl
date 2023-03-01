@@ -29,7 +29,7 @@ H = 4kilometers
 # grid = LatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
+grid = OrthogonalSphericalShellGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
 
 ## Turbulent diffusivity closure
 
@@ -43,13 +43,12 @@ constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh₀)
 ## Model setup
 
 model = HydrostaticFreeSurfaceModel(
-          architecture = CPU(),
                   grid = grid,
     momentum_advection = VectorInvariant(),
           free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
            #  coriolis = nothing,
-              coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
+              coriolis = HydrostaticSphericalCoriolis(scheme = EnstrophyConservingScheme()),
                closure = nothing,
              # closure = constant_horizontal_diffusivity,
              # closure = variable_horizontal_diffusivity,
@@ -66,7 +65,7 @@ A  = 1e-5 * H  # Amplitude of the perturbation
 Δλ = 10  # Longitudinal width
 Δφ = 10  # Latitudinal width
 
-η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
+η′(λ, φ) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
 set!(model, η=η′)
 
@@ -100,17 +99,17 @@ end
 
 simulation = Simulation(model,
                         Δt = 20minutes,
-                        stop_time = 30days,
-                        iteration_interval = 20,
-                        progress = Progress(time_ns()))
+                        stop_time = 30days )
+
+simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(36))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-output_prefix = grid isa LatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere_face_waves"
+output_file = grid isa LatitudeLongitudeGrid ? "lat_lon_waves.jld2" : "cubed_sphere_face_waves.jld2"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1hour),
-                                                      prefix = output_prefix,
+                                                      filename = output_file,
                                                       overwrite_existing = true)
 
 run!(simulation)

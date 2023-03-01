@@ -15,20 +15,23 @@ include("dependencies_for_runtests.jl")
         Nx, Ny, Nz = size(a)
 
         a .= 1
-        @test all(a .== 1) 
+        @test CUDA.@allowscalar all(a .== 1) 
 
         b .= 2
 
         c .= a .+ b
-        @test all(c .== 3)
+        @test CUDA.@allowscalar all(c .== 3)
 
         c .= a .+ b .+ 1
-        @test all(c .== 4)
+        @test CUDA.@allowscalar all(c .== 4)
 
         # Halo regions
         fill_halo_regions!(c) # Does not happen by default in broadcasting now
-        @test c[1, 1, 0] == 4
-        @test c[1, 1, Nz+1] == 4
+
+        CUDA.@allowscalar begin
+            @test c[1, 1, 0] == 4
+            @test c[1, 1, Nz+1] == 4
+        end
 
         #####
         ##### Broadcasting with interpolation
@@ -44,20 +47,28 @@ include("dependencies_for_runtests.jl")
         b2 .= 1
         fill_halo_regions!(b2) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
 
-        @test b2[1, 1, 1] == 0
-        @test b2[1, 1, 2] == 1
-        @test b2[1, 1, 3] == 1
-        @test b2[1, 1, 4] == 0
+        CUDA.@allowscalar begin
+            @test b2[1, 1, 1] == 0
+            @test b2[1, 1, 2] == 1
+            @test b2[1, 1, 3] == 1
+            @test b2[1, 1, 4] == 0
+        end
 
         a2 .= b2
-        @test a2[1, 1, 1] == 0.5
-        @test a2[1, 1, 2] == 1.0
-        @test a2[1, 1, 3] == 0.5
+
+        CUDA.@allowscalar begin
+            @test a2[1, 1, 1] == 0.5
+            @test a2[1, 1, 2] == 1.0
+            @test a2[1, 1, 3] == 0.5
+        end
 
         a2 .= b2 .+ 1
-        @test a2[1, 1, 1] == 1.5
-        @test a2[1, 1, 2] == 2.0
-        @test a2[1, 1, 3] == 1.5
+
+        CUDA.@allowscalar begin
+            @test a2[1, 1, 1] == 1.5
+            @test a2[1, 1, 2] == 2.0
+            @test a2[1, 1, 3] == 1.5
+        end
 
         #####
         ##### Broadcasting with ReducedField
@@ -78,15 +89,15 @@ include("dependencies_for_runtests.jl")
             r, p, q = [Field(loc, grid) for i = 1:3]
 
             r .= 2 
-            @test all(r .== 2) 
+            @test CUDA.@allowscalar all(r .== 2)
 
             p .= 3 
 
             q .= r .* p
-            @test all(q .== 6) 
+            @test CUDA.@allowscalar all(q .== 6)
 
             q .= r .* p .+ 1
-            @test all(q .== 7) 
+            @test CUDA.@allowscalar all(q .== 7)
         end
 
 
@@ -110,4 +121,3 @@ include("dependencies_for_runtests.jl")
         @test all(c_cpu[2, 2, :] .== random_column_cpu[:])
     end
 end
-

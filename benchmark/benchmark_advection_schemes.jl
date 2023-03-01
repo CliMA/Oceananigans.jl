@@ -9,8 +9,8 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_advection_scheme(Arch, Scheme)
-    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, advection=Scheme())
+    grid = RectilinearGrid(Arch(); size=(192, 192, 192), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid, advection=Scheme())
 
     time_step!(model, 1) # warmup
 
@@ -24,7 +24,7 @@ end
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5)
+Schemes = (CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO)
 
 # Run and summarize benchmarks
 

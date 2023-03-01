@@ -31,7 +31,7 @@ const Lz = 2985
 maxΔt = 300.0
 
 end_time = 60day 
-advection   = WENO5()
+advection   = WENO()
 timestepper = :RungeKutta3
 # Rough target resolution
 Δx = Δy = 5kilometer # 5km
@@ -135,8 +135,8 @@ if hydrostatic
     model = HydrostaticFreeSurfaceModel(
             grid = grid,
             free_surface = ImplicitFreeSurface(),
-            momentum_advection = WENO5(),
-            tracer_advection = WENO5(),
+            momentum_advection = WENO(),
+            tracer_advection = WENO(),
             buoyancy = BuoyancyTracer(),
             coriolis = coriolis,
             closure = (horizontal_closure, vertical_closure, convective_adjustment),
