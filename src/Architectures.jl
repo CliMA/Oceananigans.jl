@@ -79,10 +79,12 @@ arch_array(::CUDAGPU, a::CuArray) = a
 arch_array(::ROCMGPU, a::Array) = ROCArray(a)
 arch_array(::ROCMGPU, a::ROCArray) = a
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
 arch_array(arch, a::AbstractRange) = a
@@ -95,8 +97,8 @@ unified_array(::CPU, a) = a
 unified_array(::CUDAGPU, a) = a
 unified_array(::ROCMGPU, a) = a
 
-function unified_array(::GPU, arr::AbstractArray)
-    buf = Mem.alloc(Mem.Unified, sizeof(arr))
+function unified_array(::CUDAGPU, arr::AbstractArray)
+    buf = CUDA.Mem.alloc(CUDA.Mem.Unified, sizeof(arr))
     vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
     finalizer(vec) do _
         Mem.free(buf)

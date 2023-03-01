@@ -2,6 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using MPI
 
+using GPUArrays
+
 # # Distributed model tests
 #
 # These tests are meant to be run on 4 ranks. This script may be run
@@ -65,9 +67,9 @@ function random_divergent_source_term(grid)
     return R
 end
 
-function divergence_free_poisson_solution_triply_periodic(child_arch, grid_points, ranks)
+function divergence_free_poisson_solution_triply_periodic(child_arch, grid_points, ranks, use_buffers)
     topo = (Periodic, Periodic, Periodic)
-    arch = DistributedArch(child_arch, ranks=ranks, topology=topo)
+    arch = DistributedArch(child_arch, ranks=ranks, topology=topo, use_buffers=use_buffers)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
@@ -95,26 +97,26 @@ function divergence_free_poisson_solution_triply_periodic(child_arch, grid_point
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
-    return R ≈ interior(∇²ϕ)
+    GPUArrays.@allowscalar return R ≈ interior(∇²ϕ)
 end
 
 @testset "Distributed FFT-based Poisson solver" begin
     for child_arch ∈ archs
         @info "  Testing 3D distributed FFT-based Poisson solver... on $child_arch"
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 44, 8), (1, 4, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (1, 4, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (1, 4, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (2, 2, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (2, 2, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 44, 8), (1, 4, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (1, 4, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (1, 4, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 8), (2, 2, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 8), (2, 2, 1), child_arch isa GPU)
 
         @info "  Testing 2D distributed FFT-based Poisson solver..."
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (1, 4, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (4, 1, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (1, 4, 1))
-        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (4, 1, 1))
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (1, 4, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (4, 1, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (1, 4, 1), child_arch isa GPU)
+        @test divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (4, 1, 1), child_arch isa GPU)
 
-        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (2, 2, 1))
-        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (2, 2, 1))
+        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (16, 44, 1), (2, 2, 1), child_arch isa GPU)
+        @test_throws ArgumentError divergence_free_poisson_solution_triply_periodic(child_arch, (44, 16, 1), (2, 2, 1), child_arch isa GPU)
     end
 end
 

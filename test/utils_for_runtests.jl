@@ -2,6 +2,8 @@ using Oceananigans
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
+using Adapt
+using PencilArrays
 using AMDGPU
 using Test
 using Printf
@@ -11,7 +13,13 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 import Oceananigans.Fields: interior
 
 test_architectures() = CUDA.has_cuda() ? tuple(CUDAGPU()) : (AMDGPU.has_rocm_gpu() ? tuple(ROCMGPU()) : tuple(CPU()))
-# test_architectures() = tuple(CPU())
+
+function Adapt.adapt_structure(to::CUDA.Adaptor, a::PencilArray{T,N,<:CuArray{T, N}}) where {T, N} 
+    return Adapt.adapt_structure(to, parent(a))
+end
+
+Adapt.adapt_structure(to::AMDGPU.Adaptor, a::PencilArray{T,N,<:ROCArray{T, N}}) where {T, N} = Adapt.adapt_structure(to, parent(a))
+
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
