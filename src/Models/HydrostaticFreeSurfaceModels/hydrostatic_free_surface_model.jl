@@ -115,6 +115,13 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     arch = architecture(grid)
+    
+    if arch == CUDAGPU() && !has_cuda()
+        throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    end
+    if arch == ROCMGPU() && !AMDGPU.has_rocm_gpu()
+        throw(ArgumentError("Cannot create a GPU model. No ROCM-enabled GPU was detected!"))
+    end
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 

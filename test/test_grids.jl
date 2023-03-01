@@ -542,6 +542,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     CUDA.allowscalar(true)
     AMDGPU.allowscalar(true)
 
+
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
         for lon in longitude
@@ -565,6 +566,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
 
     CUDA.allowscalar(false)
     AMDGPU.allowscalar(false)
+
 
 end
 
@@ -705,7 +707,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
