@@ -623,7 +623,7 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
 end
 
 function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
-                                      face, Nz, z,
+                                      panel, Nz, z,
                                       topology = (Bounded, Bounded, Bounded),
                                         radius = R_Earth,
                                           halo = (1, 1, 1),
@@ -643,7 +643,7 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
 
     ## Read everything else from the file
 
-    file = jldopen(filepath, "r")["face$face"]
+    file = jldopen(filepath, "r")["face$panel"]
     Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
 
     N = (Nξ, Nη, Nz)
