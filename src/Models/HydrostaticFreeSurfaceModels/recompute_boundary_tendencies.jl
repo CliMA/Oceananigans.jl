@@ -8,7 +8,7 @@ function recompute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     # We need new values for `w`, `p` and `κ`
     recompute_auxiliaries!(model, grid, arch)
 
-    sizes, offsets = compute_size_tendency_kernel(grid, arch)
+    sizes, offsets = size_tendency_kernel(grid, arch)
 
     u_immersed_bc = immersed_boundary_condition(model.velocities.u)
     v_immersed_bc = immersed_boundary_condition(model.velocities.v)
@@ -81,26 +81,26 @@ end
 
 function recompute_auxiliaries!(model, grid, arch)
     
-    sizes, offsets = compute_size_w_kernel(grid, arch)
+    sizes, offs = size_w_kernel(grid, arch)
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
         compute_w_from_continuity!(model.velocities, arch, grid; kernel_size, kernel_offsets)
     end
 
-    sizes, offs = compute_size_p_kernel(grid, arch)
+    sizes, offs = size_p_kernel(grid, arch)
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; kernel_size, kernel_offsets)
     end
 
-    sizes, offs = compute_size_κ_kernel(grid, arch)
+    sizes, offs = size_κ_kernel(grid, arch)
 
-    for (kernel_size, kernel_offsets) in zip(sizes, offsets)
+    for (kernel_size, kernel_offsets) in zip(sizes, offs)
         calculate_diffusivities!(model.diffusivity_fields, model.closure, model; kernel_size, kernel_offsets)
     end
 end
 
-function compute_size_w_kernel(grid, arch)
+function size_w_kernel(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
     Rx, Ry, _ = arch.ranks
@@ -119,7 +119,7 @@ function compute_size_w_kernel(grid, arch)
     return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
-function compute_size_p_kernel(grid, arch)
+function size_p_kernel(grid, arch)
     Nx, Ny, _ = size(grid)
     Rx, Ry, _ = arch.ranks
 
@@ -137,17 +137,17 @@ function compute_size_p_kernel(grid, arch)
     return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
-function compute_size_κ_kernel(grid, arch)
+function size_κ_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
     Rx, Ry, _  = arch.ranks
 
-    size_x = (1, Ny, Nz)
-    size_y = (Nx, 1, Nz)
+    size_x = (2, Ny, Nz)
+    size_y = (Nx, 2, Nz)
 
-    offsᴸx = (-1,  0, 0)
-    offsᴸy = (0,  -1, 0)
-    offsᴿx = (Nx,  0, 0)
-    offsᴿy = (0,  Ny, 0)
+    offsᴸx = (-2,    0, 0)
+    offsᴸy = (0,    -2, 0)
+    offsᴿx = (Nx-1,  0, 0)
+    offsᴿy = (0,  Ny-1, 0)
 
     sizes = (size_x, size_y, size_x, size_y)
     offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
@@ -155,7 +155,7 @@ function compute_size_κ_kernel(grid, arch)
     return return_correct_directions(Rx, Ry, sizes, offs)
 end
 
-function compute_size_tendency_kernel(grid, arch)
+function size_tendency_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
     Rx, Ry, _  = arch.ranks
@@ -175,7 +175,7 @@ function compute_size_tendency_kernel(grid, arch)
 end
 
 function return_correct_directions(Rx, Ry, s, o) 
-    if Rx != 1 && Ry !=1 
+    if Rx != 1 && Ry != 1 
         return s, o
     elseif Rx != 1 && Ry == 1 
         return (s[1], s[3]), (o[1], o[3])
