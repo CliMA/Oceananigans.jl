@@ -129,6 +129,7 @@ CUDA.allowscalar() do
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
             include("test_multi_region_implicit_solver.jl")
+            include("test_multi_region_cubed_sphere.jl")
         end
     end
 
