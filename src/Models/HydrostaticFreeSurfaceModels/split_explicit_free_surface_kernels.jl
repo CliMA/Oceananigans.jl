@@ -353,9 +353,6 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), MultiEvent(tuple(velocities_update[1]...)))
 
-<<<<<<< HEAD
-    return NoneEvent()
-=======
     masking_events = [mask_immersed_field!(q) for q in velocities]
     push!(masking_events, mask_immersed_field!(Gu))
     push!(masking_events, mask_immersed_field!(Gv))
@@ -365,5 +362,5 @@ function setup_split_explicit!(auxiliary, state, η, grid, Gu, Gv, Guⁿ, Gvⁿ,
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
 
     return MultiEvent(tuple(velocities_update[2]...))
->>>>>>> main
 end
+
