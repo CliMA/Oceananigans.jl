@@ -5,7 +5,7 @@ using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
+import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers, get_grid_name
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Base: fill!, axes
 import Oceananigans.Simulations: hasnan
@@ -183,3 +183,5 @@ function Base.show(io::IO, field::MultiRegionField)
 
   print(io, prefix, middle, suffix)
 end
+
+get_grid_name(::Field{LX, LY, LZ, O, <:MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}}) where {LX, LY, LZ, O, FT, TX, TY, TZ} = "ConformalCubedSphereGrid"
