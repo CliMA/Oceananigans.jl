@@ -9,11 +9,13 @@ location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
+get_grid_name(field) = typeof(field.grid).name.wrapper
+
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
     prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
 
-    grid_name = typeof(field.grid).name.wrapper
+    grid_name = get_grid_name(field)
     reduced_dims = reduced_dimensions(field)
 
     suffix = reduced_dims === () ?
