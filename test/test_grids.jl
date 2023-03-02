@@ -824,8 +824,8 @@ end
 
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-        for face in 1:6
-            grid = OrthogonalSphericalShellGrid(cs32_filepath; face, Nz, z)
+        for panel in 1:6
+            grid = OrthogonalSphericalShellGrid(cs32_filepath; panel, Nz, z)
             @test grid isa OrthogonalSphericalShellGrid
         end
 
@@ -842,17 +842,17 @@ end
 
             for panel in 1:6
                 # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
-                @test isapprox(grid.panels[panel].φᶜᶜᵃ, grid_cs32.panels[panel].φᶜᶜᵃ)
-                @test isapprox(grid.panels[panel].λᶜᶜᵃ, grid_cs32.panels[panel].λᶜᶜᵃ)
+                @test isapprox(grid.region_grids[panel].φᶜᶜᵃ, grid_cs32.panels[panel].φᶜᶜᵃ)
+                @test isapprox(grid.region_grids[panel].λᶜᶜᵃ, grid_cs32.panels[panel].λᶜᶜᵃ)
 
                 # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
-                grid.panels[panel].λᶠᶠᵃ[grid.panels[panel].λᶠᶠᵃ .≈ -180] .= 180
+                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].λᶠᶠᵃ .≈ -180] .= 180
 
                 # and if poles are included, they have the same longitude
-                grid.panels[panel].λᶠᶠᵃ[grid.panels[panel].φᶠᶠᵃ .≈ +90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.panels[panel].φᶠᶠᵃ .≈ +90]
-                grid.panels[panel].λᶠᶠᵃ[grid.panels[panel].φᶠᶠᵃ .≈ -90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.panels[panel].φᶠᶠᵃ .≈ -90]
-                @test isapprox(grid.panels[panel].φᶠᶠᵃ, grid_cs32.panels[panel].φᶠᶠᵃ)
-                @test isapprox(grid.panels[panel].λᶠᶠᵃ, grid_cs32.panels[panel].λᶠᶠᵃ)
+                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ +90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ +90]
+                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ -90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ -90]
+                @test isapprox(grid.region_grids[panel].φᶠᶠᵃ, grid_cs32.panels[panel].φᶠᶠᵃ)
+                @test isapprox(grid.region_grids[panel].λᶠᶠᵃ, grid_cs32.panels[panel].λᶠᶠᵃ)
             end
         end
     end
