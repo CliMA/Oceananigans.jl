@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using KernelAbstractions
 using CUDA
 
-using Oceananigans.Fields: ConstantField
+using Oceananigans.Fields: ConstantField, ZeroField
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry, AbstractContinuousFormBiogeochemistry
 
 import Oceananigans.Biogeochemistry:
