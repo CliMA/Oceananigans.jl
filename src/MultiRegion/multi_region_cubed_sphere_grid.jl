@@ -1,4 +1,5 @@
-using Oceananigans.Grids: R_Earth
+using Oceananigans.Architectures: architecture
+using Oceananigans.Grids: R_Earth, halo_size, size_summary
 
 using Rotations
 
@@ -81,7 +82,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
 end
 
-Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) where {FT, TX, TY, TZ} =  
+function Base.summary(grid::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) where {FT, TX, TY, TZ}
+    return string(size_summary(size(grid)),
+                  " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo")
+end
+
+Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) where {FT, TX, TY, TZ} =
     print(io, "ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
@@ -99,7 +106,6 @@ field = CenterField(grid)
 field_panel_1 = getregion(field, 1)
 
 julia> field = CenterField(grid)
-dse^R 
 10×10×1 Field{Center, Center, Center} on MultiRegionGrid on CPU
 ├── grid: MultiRegionGrid{Float64, FullyConnected, FullyConnected, Bounded} with CubedSpherePartition{Int64, Int64} on OrthogonalSphericalShellGrid
 ├── boundary conditions: MultiRegionObject{NTuple{6, FieldBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Oceananigans.BoundaryConditions.Communication, Oceananigans.MultiRegion.CubedSphereConnectivity}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}}}, NTuple{6, CPU}}
@@ -112,6 +118,5 @@ julia> regions = Iterate(Tuple(i for i in 1:24))
 julia> set!(field, regions)
 
 julia> fill_halo_regions!(field)
-
 
 """
