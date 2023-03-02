@@ -124,40 +124,40 @@ struct OldConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvil
 end
 
 function OldConformalCubedSphereGrid(arch = CPU(), FT=Float64;
-                                  panel_size, z,
-                                  panel_halo = (1, 1, 1),
-                                  panel_topology = (FullyConnected, FullyConnected, Bounded),
-                                  radius = R_Earth)
+                                     panel_size, z,
+                                     panel_halo = (1, 1, 1),
+                                     panel_topology = (FullyConnected, FullyConnected, Bounded),
+                                     radius = R_Earth)
 
     @warn "OldConformalCubedSphereGrid is experimental: use with caution!"
 
     size, halo, topology = panel_size, panel_halo, panel_topology
 
-    # +x face (face 1)
-    x⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2)*RotY(π/2))
+    # +x panel (panel 1)
+    x⁺_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π/2)*RotY(π/2))
 
-    # +y face (face 2)
-    y⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π)*RotX(-π/2))
+    # +y panel (panel 2)
+    y⁺_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π)*RotX(-π/2))
 
-    # +z face (face 3)
-    z⁺_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π))
+    # +z panel (panel 3)
+    z⁺_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π))
 
-    # -x face (face 4)
-    x⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π)*RotY(-π/2))
+    # -x panel (panel 4)
+    x⁻_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotX(π)*RotY(-π/2))
 
-    # -y face (face 5)
-    y⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2)*RotX(π/2))
+    # -y panel (panel 5)
+    y⁻_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotY(π/2)*RotX(π/2))
 
-    # -z face (face 6)
-    z⁻_face_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π/2)*RotX(π))
+    # -z panel (panel 6)
+    z⁻_panel_grid = OrthogonalSphericalShellGrid(arch, FT; size, z, halo, radius, rotation=RotZ(π/2)*RotX(π))
 
-    faces = (
-        x⁺_face_grid,
-        y⁺_face_grid,
-        z⁺_face_grid,
-        x⁻_face_grid,
-        y⁻_face_grid,
-        z⁻_face_grid
+    panels = (
+        x⁺_panel_grid,
+        y⁺_panel_grid,
+        z⁺_panel_grid,
+        x⁻_panel_grid,
+        y⁻_panel_grid,
+        z⁻_panel_grid
     )
 
     panel_connectivity = default_panel_connectivity()
