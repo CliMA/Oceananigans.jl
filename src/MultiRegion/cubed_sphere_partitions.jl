@@ -157,7 +157,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, p)
     end
 
-    bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
+    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
 
     return bc
 end
@@ -187,7 +187,7 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, p)
     end
 
-    bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
+    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
 
     return bc
 end
@@ -216,7 +216,7 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, p)
     end
 
-    bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
+    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 
     return bc
 end
@@ -245,7 +245,7 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, p)
     end
 
-    bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
+    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 
     return bc
 end
@@ -267,7 +267,7 @@ part = CubedSpherePartition(Rx = 2, Ry = 2)
 testing the correct injection of `west` boundary conditions
 
 for i in 1:24
-    @show i, inject_west_boundary(i, part2, 1).condition
+    @show i, inject_west_boundary(i, part, 1).condition
 end
 (i, (inject_west_boundary(i, part2, 1)).condition) = (1, Oceananigans.MultiRegion.CubedSphereConnectivity(1, 20, :west, :north))
 (i, (inject_west_boundary(i, part2, 1)).condition) = (2, Oceananigans.MultiRegion.CubedSphereConnectivity(2, 1, :west, :east))
