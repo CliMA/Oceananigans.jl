@@ -112,7 +112,7 @@ export
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, XPartition, YPartition,
-    CubedSpherePartitieon, ConformalCubedSphereGrid,
+    CubedSpherePartition, ConformalCubedSphereGrid,
     OldConformalCubedSphereGrid,
 
     # Utils
