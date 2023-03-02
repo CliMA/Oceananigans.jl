@@ -1,5 +1,4 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: CBC, PBC
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
@@ -10,7 +9,7 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
 end
 
 """"
-    CubedSpherePartition(; Rx = 1, Ry = 1)
+    CubedSpherePartition(; Rx = 1, Ry = Rx)
 
 Return a cubed sphere partition.
 
@@ -19,7 +18,7 @@ Return a cubed sphere partition.
 * `Ry`: number of ``y``-division of each panel. Can be a number (i.e., all panels are divided in
         the same way) or a vector of length 6.
 """
-function CubedSpherePartition(; Rx = 1, Ry = 1)
+function CubedSpherePartition(; Rx = 1, Ry = Rx)
     if Rx isa Number 
         if Ry isa Number
             Rx != Ry && 
@@ -31,7 +30,7 @@ function CubedSpherePartition(; Rx = 1, Ry = 1)
     else
         div = sum(Ry .* Rx)
     end
-    
+
     div < 6 && throw(ArgumentError("Cubed sphere requires at least 6 regions!"))
 
     return CubedSpherePartition(div, Rx, Ry)
@@ -249,6 +248,15 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
     bc = CommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 
     return bc
+end
+
+function Base.summary(p::CubedSpherePartition)
+    region_str = "region"
+    if p.Rx * p.Ry >1
+        region_str = "regions"
+    end
+
+    return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
 
 """
