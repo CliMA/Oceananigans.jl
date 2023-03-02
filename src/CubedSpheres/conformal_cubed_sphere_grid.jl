@@ -117,19 +117,19 @@ end
 # Note: I think we want to keep panels and panel_connectivity tuples
 # so it's easy to support an arbitrary number of panels.
 
-struct ConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, FullyConnected, FullyConnected, Bounded, Arch}
+struct OldConformalCubedSphereGrid{FT, F, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, FullyConnected, FullyConnected, Bounded, Arch}
           architecture :: Arch
                 panels :: F
     panel_connectivity :: C
 end
 
-function ConformalCubedSphereGrid(arch = CPU(), FT=Float64;
+function OldConformalCubedSphereGrid(arch = CPU(), FT=Float64;
                                   panel_size, z,
                                   panel_halo = (1, 1, 1),
                                   panel_topology = (FullyConnected, FullyConnected, Bounded),
                                   radius = R_Earth)
 
-    @warn "ConformalCubedSphereGrid is experimental: use with caution!"
+    @warn "OldConformalCubedSphereGrid is experimental: use with caution!"
 
     size, halo, topology = panel_size, panel_halo, panel_topology
 
@@ -162,11 +162,11 @@ function ConformalCubedSphereGrid(arch = CPU(), FT=Float64;
 
     panel_connectivity = default_panel_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
+    return OldConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 end
 
-function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
-    @warn "ConformalCubedSphereGrid is experimental: use with caution!"
+function OldConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
+    @warn "OldConformalCubedSphereGrid is experimental: use with caution!"
 
     panel_topo = (FullyConnected, FullyConnected, Bounded)
     panel_kwargs = (; Nz, z, topology=panel_topo, radius, halo)
@@ -175,7 +175,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch = CPU(), FT=Flo
 
     panel_connectivity = default_panel_connectivity()
 
-    grid = ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
+    grid = OldConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 
     fill_grid_metric_halos!(grid)
     fill_grid_metric_halos!(grid)
@@ -188,17 +188,17 @@ Base.summary(grid::OrthogonalSphericalShellGrid{FT, FullyConnected, FullyConnect
            " OrthogonalSphericalShellGrid with topology (FullyConnected, FullyConnected, $TZ)",
            " and with ", size_summary(halo_size(grid)), " halo")
 
-function Base.summary(grid::ConformalCubedSphereGrid)
+function Base.summary(grid::OldConformalCubedSphereGrid)
     Nx, Ny, Nz, Nf = size(grid)
     FT = eltype(grid)
     metric_computation = isnothing(grid.panels[1].Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)), " × $Nf panels",
-                  " ConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)),
+                  " OldConformalCubedSphereGrid{$FT} on ", summary(architecture(grid)),
                   " ", metric_computation)
 end
 
-function Base.show(io::IO, grid::ConformalCubedSphereGrid, withsummary=true)
+function Base.show(io::IO, grid::OldConformalCubedSphereGrid, withsummary=true)
     if withsummary
         print(io, summary(grid), "\n")
     end
@@ -257,24 +257,24 @@ end
 ##### Grid utils
 #####
 
-Base.size(grid::ConformalCubedSphereGrid)      = (size(grid.panels[1])..., length(grid.panels))
-Base.size(loc, grid::ConformalCubedSphereGrid) = size(loc, grid.panels[1])
-Base.size(grid::ConformalCubedSphereGrid, i)   = size(grid)[i]
-halo_size(ccsg::ConformalCubedSphereGrid)      = halo_size(first(ccsg.panels)) # hack
+Base.size(grid::OldConformalCubedSphereGrid)      = (size(grid.panels[1])..., length(grid.panels))
+Base.size(loc, grid::OldConformalCubedSphereGrid) = size(loc, grid.panels[1])
+Base.size(grid::OldConformalCubedSphereGrid, i)   = size(grid)[i]
+halo_size(ccsg::OldConformalCubedSphereGrid)      = halo_size(first(ccsg.panels)) # hack
 
-Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
+Base.eltype(grid::OldConformalCubedSphereGrid{FT}) where FT = FT
 
-topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
-topology(grid::ConformalCubedSphereGrid, i) = topology(grid)[i] 
-architecture(grid::ConformalCubedSphereGrid) = grid.architecture
+topology(::OldConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+topology(grid::OldConformalCubedSphereGrid, i) = topology(grid)[i] 
+architecture(grid::OldConformalCubedSphereGrid) = grid.architecture
 
-function on_architecture(arch, grid::ConformalCubedSphereGrid) 
+function on_architecture(arch, grid::OldConformalCubedSphereGrid) 
 
     panels = Tuple(on_architecture(arch, grid.panels[n]) for n in 1:6)
     panel_connectivity = grid.panel_connectivity
     FT = eltype(grid)
     
-    return ConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
+    return OldConformalCubedSphereGrid{FT, typeof(panels), typeof(panel_connectivity), typeof(arch)}(arch, panels, panel_connectivity)
 end
 
 #####

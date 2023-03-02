@@ -1,6 +1,6 @@
 module CubedSpheres
 
-export ConformalCubedSphereGrid, face, faces, λnodes, φnodes
+export OldConformalCubedSphereGrid, face, faces, λnodes, φnodes
 
 include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
@@ -18,7 +18,7 @@ import Oceananigans.Grids: validate_index
 import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-function validate_field_data(loc, data, grid::ConformalCubedSphereGrid, indices)
+function validate_field_data(loc, data, grid::OldConformalCubedSphereGrid, indices)
 
     for (face_data, face_grid) in zip(data.faces, grid.faces)
         validate_field_data(loc, face_data, face_grid, indices)
@@ -29,7 +29,7 @@ end
 
 
 # We don't support validating cubed sphere boundary conditions at this time
-validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
+validate_boundary_conditions(loc, grid::OldConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
 validate_boundary_conditions(loc, grid::OrthogonalSphericalShellGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
@@ -53,7 +53,7 @@ function regularize_field_boundary_conditions(bcs::CubedSphereFaces,
 end
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::ConformalCubedSphereGrid,
+                                              grid::OldConformalCubedSphereGrid,
                                               field_name::Symbol,
                                               prognostic_field_names)
 
@@ -110,7 +110,7 @@ function face_tracers(tracers, face)
     return NamedTuple(name => get_face(tracers[name], face) for name in tracer_names)
 end
 
-function top_tracer_boundary_conditions(grid::ConformalCubedSphereGrid, tracers)
+function top_tracer_boundary_conditions(grid::OldConformalCubedSphereGrid, tracers)
     tracer_names = propertynames(tracers)
     top_tracer_bcs = Tuple(top_tracer_boundary_conditions(get_face(grid, i), face_tracers(tracers, i))
                            for i = 1:length(grid.faces))
@@ -158,7 +158,7 @@ end
 
 import Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
+function accurate_cell_advection_timescale(grid::OldConformalCubedSphereGrid, velocities)
 
     min_timescale_on_faces = []
 
@@ -181,7 +181,7 @@ using Oceananigans.Fields: compute_at!
 
 const CubedSphereComputedField{LX, LY, LZ} = Field{LX, LY, LZ,
                                                    <:AbstractOperation,
-                                                   <:ConformalCubedSphereGrid} where {LX, LY, LZ}
+                                                   <:OldConformalCubedSphereGrid} where {LX, LY, LZ}
 
 function compute!(comp::CubedSphereComputedField, time=nothing)
     # First compute `dependencies`:

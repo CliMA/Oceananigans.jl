@@ -47,12 +47,12 @@ const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
 
 # Flavors of CubedSphereField
 const CubedSphereField{LX, LY, LZ} =
-    Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
-          Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
+    Union{Field{LX, LY, LZ, <:Nothing, <:OldConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:AbstractOperation, <:OldConformalCubedSphereGrid}}
 
-const CubedSphereFunctionField{LX, LY, LZ} = FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid}
+const CubedSphereFunctionField{LX, LY, LZ} = FunctionField{LX, LY, LZ, <:Any, <:Any, <:Any, <:OldConformalCubedSphereGrid}
 
-const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
+const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:OldConformalCubedSphereGrid}
 
 const AbstractCubedSphereField{LX, LY, LZ} =
     Union{CubedSphereAbstractField{LX, LY, LZ},
@@ -62,7 +62,7 @@ const AbstractCubedSphereField{LX, LY, LZ} =
 ##### new data
 #####
 
-function new_data(FT::DataType, grid::ConformalCubedSphereGrid, loc, indices)
+function new_data(FT::DataType, grid::OldConformalCubedSphereGrid, loc, indices)
     faces = Tuple(new_data(FT, face_grid, loc, indices) for face_grid in grid.faces)
     return CubedSphereFaces(faces)
 end
@@ -71,7 +71,7 @@ end
 ##### FieldBoundaryConditions
 #####
 
-function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, loc, indices; user_defined_bcs...)
+function FieldBoundaryConditions(grid::OldConformalCubedSphereGrid, loc, indices; user_defined_bcs...)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
@@ -96,7 +96,7 @@ end
 ##### FieldBoundaryBuffers
 #####
 
-FieldBoundaryBuffers(grid::ConformalCubedSphereGrid, args...) = FieldBoundaryBuffers()
+FieldBoundaryBuffers(grid::OldConformalCubedSphereGrid, args...) = FieldBoundaryBuffers()
 
 #####
 ##### Utils

@@ -10,7 +10,7 @@ get_face(obj, face_index) = obj
 get_face(t::Tuple, face_index) = Tuple(get_face(t_elem, face_index) for t_elem in t)
 get_face(nt::NamedTuple, face_index) = NamedTuple{keys(nt)}(get_face(nt_elem, face_index) for nt_elem in nt)
 
-get_face(grid::ConformalCubedSphereGrid, face_index) = grid.faces[face_index]
+get_face(grid::OldConformalCubedSphereGrid, face_index) = grid.faces[face_index]
 get_face(faces::CubedSphereFaces, face_index) = faces[face_index]
 
 get_face(free_surface::ExplicitFreeSurface, face_index) =
@@ -33,7 +33,7 @@ function get_face(op::KernelFunctionOperation, face_index)
                                                face_grid)
 end
 
-function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
+function launch!(arch, grid::OldConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
     events = []
 
     for (face_index, face_grid) in enumerate(grid.faces)
@@ -47,5 +47,5 @@ function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; k
     return MultiEvent(Tuple(events))
 end
 
-@inline launch!(arch, grid::ConformalCubedSphereGrid, ::Val{dims}, args...; kwargs...) where dims =
+@inline launch!(arch, grid::OldConformalCubedSphereGrid, ::Val{dims}, args...; kwargs...) where dims =
     launch!(arch, grid, dims, args...; kwargs...)
