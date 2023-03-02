@@ -51,13 +51,6 @@ Modules = [Oceananigans.Coriolis]
 Private = false
 ```
 
-## CubedSpheres
-
-```@autodocs
-Modules = [Oceananigans.CubedSpheres]
-Private = false
-```
-
 ## Diagnostics
 
 ```@autodocs
