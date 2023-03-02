@@ -47,7 +47,10 @@ import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Grids: 
         cpu_face_constructor_x,
         cpu_face_constructor_y,
-        cpu_face_constructor_z
+        cpu_face_constructor_z,
+        x_domain,
+        y_domain,
+        z_domain
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
@@ -121,11 +124,15 @@ const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
 @inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
-@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
-@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid}) = getfield(ibg, :underlying_grid)
+@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})  = getfield(ibg, :immersed_boundary)
+@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})    = getfield(ibg, :underlying_grid)
 @inline get_ibg_property(ibg::IBG, ::Val{:active_cells_map})   = getfield(ibg, :active_cells_map)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+
+@inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
+@inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
+@inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))
@@ -214,6 +221,10 @@ As well as
 @inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
+@inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
+                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+  
+
 #####
 ##### Utilities
 #####
@@ -240,7 +251,6 @@ all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
 @inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
-
 
 function on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)

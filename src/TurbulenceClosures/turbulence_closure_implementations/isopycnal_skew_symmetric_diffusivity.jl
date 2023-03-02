@@ -74,7 +74,7 @@ end
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) where TD
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        return (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
+        return (; ϵ_R₃₃ = Field((Center, Center, Face), grid))
     else
         return nothing
     end

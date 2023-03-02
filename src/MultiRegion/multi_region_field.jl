@@ -59,8 +59,11 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       getregion(f.status, r),
                       getregion(f.boundary_buffers, r))
 
-@inline reconstruct_global_field(f::AbstractField) = f
+"""
+    reconstruct_global_field(mrf)
 
+Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
+"""
 function reconstruct_global_field(mrf::MultiRegionField)
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
@@ -74,6 +77,9 @@ function reconstruct_global_field(mrf::MultiRegionField)
     return global_field
 end
 
+# Fallback!
+@inline reconstruct_global_field(f::AbstractField) = f
+
 function reconstruct_global_indices(indices, p::XPartition, N)
     idx1 = getregion(indices, 1)[1]
     idxl = getregion(indices, length(p))[1]
@@ -81,7 +87,7 @@ function reconstruct_global_indices(indices, p::XPartition, N)
     if idx1 == Colon() && idxl == Colon()
         idx_x = Colon()
     else
-        idx_x = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
+        idx_x = UnitRange(idx1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[1] : last(idxl))
     end
 
     idx_y = getregion(indices, 1)[2]
@@ -110,10 +116,12 @@ end
 set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
+set!(mrf::MultiRegionField, f::Function)  = apply_regionally!(set!, mrf, f)
+
 compute_at!(mrf::GriddedMultiRegionField, time)  = apply_regionally!(compute_at!, mrf, time)
 compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!, mrf, time)
 
-@inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regions...)
+@inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
 validate_indices(indices, loc, mrg::MultiRegionGrid) = 
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)

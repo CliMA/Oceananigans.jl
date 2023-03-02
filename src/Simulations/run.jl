@@ -6,6 +6,8 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
+using Oceananigans.Models: initialize_model!
+
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: aligned_time_step
@@ -108,6 +110,7 @@ function time_step!(sim::Simulation)
 
     if !(sim.initialized) # execute initialization step
         initialize_simulation!(sim)
+        initialize_model!(sim.model)
 
         if sim.running # check that initialization didn't stop time-stepping
             if sim.verbose 

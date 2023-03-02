@@ -57,6 +57,7 @@ function define_binary_operator(op)
 
         local location = Oceananigans.Fields.location
         local FunctionField = Oceananigans.Fields.FunctionField
+        local ConstantField = Oceananigans.Fields.ConstantField
         local AF = AbstractField
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
@@ -125,6 +126,12 @@ function define_binary_operator(op)
 
         $op(a::AF, b::Number) = $op(location(a), a, b)
         $op(a::Number, b::AF) = $op(location(b), a, b)
+
+        $op(a::AF, b::ConstantField) = $op(location(a), a, b.constant)
+        $op(a::ConstantField, b::AF) = $op(location(b), a.constant, b)
+
+        $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
+        $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
     end
 end
 
