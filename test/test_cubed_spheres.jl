@@ -11,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
     @testset "Conformal cubed sphere grid" begin
         @info "  Testing conformal cubed sphere grid..."
 
-        grid = ConformalCubedSphereGrid(face_size=(10, 10, 1), z=(-1, 0))
+        grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0))
         @test try show(grid); println(); true; catch; false; end
     end
 
@@ -25,7 +25,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
         if !(arch isa GPU)
             # Prototype grid and model for subsequent tests
             cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-            grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
+            grid = OldConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
             @info "  Constructing a HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
 
@@ -50,7 +50,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 set!(η, 0)
 
                 CUDA.allowscalar(true)
-                @test all(all(face_c .== 0) for face_c in faces( c))
+                @test all(all(face_c .== 0) for face_c in faces(c))
                 @test all(all(face_η .== 0) for face_η in faces(η))
                 CUDA.allowscalar(false)
 
