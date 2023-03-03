@@ -133,8 +133,6 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
-    @warn "OrthogonalSphericalShellGrid is still under development. Use with caution!"
-
     radius = FT(radius)
 
     TX, TY, TZ = topology
