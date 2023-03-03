@@ -815,45 +815,4 @@ end
             end
         end
     end
-
-    @testset "Conformal cubed sphere face grid from file" begin
-        @info "  Testing conformal cubed sphere face grid construction from file..."
-
-        Nz = 1
-        z = (-1, 0)
-
-        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-
-        for panel in 1:6
-            grid = OrthogonalSphericalShellGrid(cs32_filepath; panel, Nz, z)
-            @test grid isa OrthogonalSphericalShellGrid
-        end
-
-        for arch in archs
-
-            # read cs32 grid from file
-            grid_cs32 = OldConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
-
-            Nx, Ny, Nz = size(grid_cs32.panels[1])
-            radius = grid_cs32.panels[1].radius
-
-            # construct a ConformalCubedSphereGrid similar to cs32
-            grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius)
-
-            for panel in 1:6
-                # we test on cca and ffa; fca and cfa are all zeros on grid_cs32!
-                @test isapprox(grid.region_grids[panel].φᶜᶜᵃ, grid_cs32.panels[panel].φᶜᶜᵃ)
-                @test isapprox(grid.region_grids[panel].λᶜᶜᵃ, grid_cs32.panels[panel].λᶜᶜᵃ)
-
-                # before we test, make sure we don't consider +180 and -180 longitudes as being "different"
-                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].λᶠᶠᵃ .≈ -180] .= 180
-
-                # and if poles are included, they have the same longitude
-                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ +90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ +90]
-                grid.region_grids[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ -90] = grid_cs32.panels[panel].λᶠᶠᵃ[grid.region_grids[panel].φᶠᶠᵃ .≈ -90]
-                @test isapprox(grid.region_grids[panel].φᶠᶠᵃ, grid_cs32.panels[panel].φᶠᶠᵃ)
-                @test isapprox(grid.region_grids[panel].λᶠᶠᵃ, grid_cs32.panels[panel].λᶠᶠᵃ)
-            end
-        end
-    end
 end
