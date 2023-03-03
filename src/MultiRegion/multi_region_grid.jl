@@ -45,7 +45,7 @@ Keyword Arguments
 
 - `partition`: the partitioning required. The implemented partitioning are `XPartition` 
                (division along the x direction) and `YPartition` (division along the y direction)
-- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`. For 
+- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`. For
              `GPU` computation it is possible to specify the total number of `GPU`s or the specific
              `GPU`s to allocate memory on. The number of devices does not have to match the number of
              regions 
@@ -67,7 +67,7 @@ julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(5))
 ┌ Warning: MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!
 └ @ Oceananigans.MultiRegion ~/Research/OC.jl/src/MultiRegion/multi_region_grid.jl:53
 MultiRegionGrid{Float64, Bounded, Bounded, Flat} partitioned on CPU(): 
-├── grids: 2×12×1 RectilinearGrid{Float64, RightConnected, Bounded, Flat} on CPU with 3×3×0 halo 
+├── grids: 2×12×1 RectilinearGrid{Float64, RightConnected, Bounded, Flat} on CPU with 3×3×0 halo
 ├── partitioning: Equal partitioning in X with (5 regions) 
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU())
 ```
@@ -90,13 +90,13 @@ function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothi
     global_grid  = on_architecture(CPU(), global_grid)
     local_size   = MultiRegionObject(partition_size(partition, global_grid), devices)
     local_extent = MultiRegionObject(partition_extent(partition, global_grid), devices)
-    local_topo   = MultiRegionObject(partition_topology(partition, global_grid), devices)  
+    local_topo   = MultiRegionObject(partition_topology(partition, global_grid), devices)
     
     global_topo  = topology(global_grid)
 
     FT   = eltype(global_grid)
     
-    args = (Reference(global_grid), 
+    args = (Reference(global_grid),
             Reference(arch), 
             local_topo, 
             local_size,
@@ -172,9 +172,9 @@ getinterior(array::AbstractArray{T, 3}, grid) where T = array[1:grid.Nx, 1:grid.
 getinterior(func::Function, grid) = func
 
 """
-    multi_region_object_from_array(a::AbstractArray, grid)
+    multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
 
-Adapt an array `a` to be compatible with a `MultiRegion` grid.
+Adapt an array `a` to be compatible with a `MultiRegionGrid`.
 """
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
@@ -217,10 +217,10 @@ function on_specific_architecture(arch, dev, grid)
     return on_architecture(arch, grid)
 end
 
-Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
+Base.summary(mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
-Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =  
+Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     print(io, "MultiRegionGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
