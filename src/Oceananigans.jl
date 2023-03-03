@@ -113,7 +113,6 @@ export
     # MultiRegion and Cubed sphere
     MultiRegionGrid, XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid,
-    OldConformalCubedSphereGrid,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
@@ -221,7 +220,6 @@ include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
-include("CubedSpheres/CubedSpheres.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -251,7 +249,6 @@ using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
-using .CubedSpheres
 
 function __init__()
     threads = Threads.nthreads()
