@@ -116,7 +116,7 @@ function size_w_kernel(grid, arch)
     sizes = (size_x, size_y, size_x, size_y)
     offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
         
-    return return_correct_directions(Rx, Ry, sizes, offs)
+    return return_correct_directions(Rx, Ry, sizes, offs, grid)
 end
 
 function size_p_kernel(grid, arch)
@@ -134,30 +134,30 @@ function size_p_kernel(grid, arch)
     sizes = (size_x, size_y, size_x, size_y)
     offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
         
-    return return_correct_directions(Rx, Ry, sizes, offs)
+    return return_correct_directions(Rx, Ry, sizes, offs, grid)
 end
 
 function size_κ_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
     Rx, Ry, _  = arch.ranks
 
-    size_x = (2, Ny, Nz)
-    size_y = (Nx, 2, Nz)
+    size_x = (1, Ny, Nz)
+    size_y = (Nx, 1, Nz)
 
-    offsᴸx = (-2,    0, 0)
-    offsᴸy = (0,    -2, 0)
-    offsᴿx = (Nx-1,  0, 0)
-    offsᴿy = (0,  Ny-1, 0)
+    offsᴸx = (-1,  0, 0)
+    offsᴸy = (0,  -1, 0)
+    offsᴿx = (Nx,  0, 0)
+    offsᴿy = (0,  Ny, 0)
 
     sizes = (size_x, size_y, size_x, size_y)
     offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
         
-    return return_correct_directions(Rx, Ry, sizes, offs)
+    return return_correct_directions(Rx, Ry, sizes, offs, grid)
 end
 
 function size_tendency_kernel(grid, arch)
     Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = halo_size(grid)
+    Hx, Hy, _  = halo_size(grid)
     Rx, Ry, _  = arch.ranks
     
     size_x = (Hx, Ny, Nz)
@@ -171,15 +171,20 @@ function size_tendency_kernel(grid, arch)
     sizes = (size_x, size_y, size_x, size_y)
     offs  = (offsᴸx, offsᴸy, offsᴿx, offsᴿy)
         
-    return return_correct_directions(Rx, Ry, sizes, offs)
+    return return_correct_directions(Rx, Ry, sizes, offs, grid)
 end
 
-function return_correct_directions(Rx, Ry, s, o) 
-    if Rx != 1 && Ry != 1 
+using Oceananigans.Operators: XFlatGrid, YFlatGrid
+
+function return_correct_directions(Rx, Ry, s, o, grid) 
+    include_x = !isa(grid, XFlatGrid) && (Rx != 1)
+    include_y = !isa(grid, YFlatGrid) && (Ry != 1)
+
+    if include_x && include_y
         return s, o
-    elseif Rx != 1 && Ry == 1 
+    elseif include_x && !(include_y)
         return (s[1], s[3]), (o[1], o[3])
-    elseif Rx == 1 && Ry != 1 
+    elseif !(include_x) && include_y
         return (s[2], s[4]), (o[2], o[4])
     else
         return (), ()

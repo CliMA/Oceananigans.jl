@@ -112,7 +112,7 @@ function DistributedArch(child_architecture = CPU();
 end
 
 const ViewsDistributedArch   = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, false}
-const SynchedDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
+const BlockingDistributedArch = DistributedArch{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 
 using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A, R, I, ρ, C, γ, B} = B
 

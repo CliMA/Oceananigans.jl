@@ -15,14 +15,14 @@ function complete_communication_and_compute_boundary(model, grid::DistributedGri
     return nothing
 end
 
-complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::SynchedDistributedArch) = nothing
+complete_communication_and_compute_boundary(model, grid::DistributedGrid, arch::BlockingDistributedArch) = nothing
 recompute_boundary_tendencies!() = nothing
 
 interior_tendency_kernel_size(grid::DistributedGrid)    = interior_tendency_kernel_size(grid,    architecture(grid))
 interior_tendency_kernel_offsets(grid::DistributedGrid) = interior_tendency_kernel_offsets(grid, architecture(grid))
 
-interior_tendency_kernel_size(grid, ::SynchedDistributedArch) = :xyz
-interior_tendency_kernel_offsets(grid, ::SynchedDistributedArch) = (0, 0, 0)
+interior_tendency_kernel_size(grid, ::BlockingDistributedArch) = :xyz
+interior_tendency_kernel_offsets(grid, ::BlockingDistributedArch) = (0, 0, 0)
 
 function interior_tendency_kernel_size(grid, arch)
     Rx, Ry, _ = arch.ranks
@@ -46,6 +46,11 @@ function interior_tendency_kernel_offsets(grid, arch)
     return (Ax, Ay, 0)
 end
 
+"""
+    complete_halo_communication!(field)
+
+complete the halo passing of `field` among processors.
+"""
 function complete_halo_communication!(field)
     arch = architecture(field.grid)
 
@@ -58,8 +63,9 @@ function complete_halo_communication!(field)
     
         # Reset MPI requests
         empty!(arch.mpi_requests)
-        recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
     end
+    
+    recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
     
     return nothing
 end
