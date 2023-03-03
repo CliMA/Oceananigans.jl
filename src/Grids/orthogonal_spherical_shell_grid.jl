@@ -5,6 +5,7 @@ using Adapt
 using Adapt: adapt_structure
 
 using Oceananigans
+using Oceananigans.Grids: xnode, ynode, prettysummary, coordinate_summary
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -784,6 +785,43 @@ function Base.summary(grid::OrthogonalSphericalShellGrid)
                   " and ", metric_computation)
 end
 
+function get_center_and_extents_of_shell(grid)
+    Nx, Ny, _ = size(grid)
+
+    Nxc, Nyc = (Nx÷2)+1, (Ny÷2)+1
+
+    if mod(Nx, 2) == 0
+        LX = Face()
+    elseif mod(Nx, 2) == 1
+        LX = Center()
+    end
+
+    if mod(Ny, 2) == 0
+        LY = Face()
+    elseif mod(Ny, 2) == 1
+        LY = Center()
+    end
+
+    # the shell's center at (λc, φc)
+    λc = xnode(LX, LY, Center(), Nxc, Nyc, 1, grid)
+    φc = ynode(LX, LY, Center(), Nxc, Nyc, 1, grid)
+
+    # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
+    if mod(Ny, 2) == 0
+        Δλ = rad2deg.(sum(grid.Δxᶜᶠᵃ[:, Int(Ny/2+1)])) / grid.radius
+    elseif mod(Ny, 2) == 1
+        Δλ = rad2deg.(sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)])) / grid.radius
+    end
+
+    if mod(Nx, 2) == 0
+        Δφ = rad2deg.(sum(grid.Δyᶠᶜᵃ[Int(Nx/2+1), :])) / grid.radius
+    elseif mod(Nx, 2) == 1
+        Δφ = rad2deg.(sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :])) / grid.radius
+    end
+
+    return (λc, φc), (Δλ, Δφ)
+end
+
 function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
@@ -792,21 +830,32 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1])
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
+    (λc, φc), (Δλ, Δφ) = get_center_and_extents_of_shell(grid)
+
+    λc = round(λc, digits=4)
+    φc = round(φc, digits=4)
+
+    center_str = "centered at (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"
+
+    if abs(φc) ≈ 90; center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"; end
+    if abs(φc) ≈ -90; center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"; end
+
     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = "longitude: " * dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δxᶠᶠᵃ[1:Nx, 1:Ny], longest - length(x_summary))
-    y_summary = "latitude:  " * dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δyᶠᶠᵃ[1:Nx, 1:Ny], longest - length(y_summary))
-    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δz, longest - length(z_summary))
+    x_summary = "longitude: extent $(prettysummary(Δλ)) " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "λ")
+    y_summary = "latitude:  extent $(prettysummary(Δφ)) " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "φ")
+    z_summary = "z:           " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δz, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
     end
 
-    return print(io, "├── ", x_summary, "\n",
+    return print(io, "├── ", center_str, "\n",
+                     "├── ", x_summary, "\n",
                      "├── ", y_summary, "\n",
                      "└── ", z_summary)
 end
