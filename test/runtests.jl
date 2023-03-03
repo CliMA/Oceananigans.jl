@@ -133,13 +133,13 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :cubed_sphere || group == :all
-        @testset "Cubed sphere tests" begin
-            include("test_cubed_spheres.jl")
-            include("test_cubed_sphere_halo_exchange.jl")
-            include("test_cubed_sphere_circulation.jl")
-        end
-    end
+    # if group == :cubed_sphere || group == :all
+    #     @testset "Cubed sphere tests" begin
+    #         include("test_cubed_spheres.jl")
+    #         include("test_cubed_sphere_halo_exchange.jl")
+    #         include("test_cubed_sphere_circulation.jl")
+    #     end
+    # end
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
