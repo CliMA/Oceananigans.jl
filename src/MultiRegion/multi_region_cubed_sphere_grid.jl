@@ -28,14 +28,14 @@ Example
 ```julia
 julia> using Oceananigans
 
-julia> grid = ConformalCubedSphereGrid(CPU(); panel_size = (10, 10, 1), z = (0, 1), radius = 1.0)
+julia> grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0), radius=1.0)
 ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU(): 
 ├── grids: 10×10×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics 
 ├── partitioning: CubedSpherePartition with (1 region in each panel) 
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 """
-function ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
+function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_size,
                                   z,
                                   panel_halo = (1, 1, 1),
@@ -53,8 +53,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
     region_rot  = []
 
     for r in 1:length(partition)
-        Δξ = 2 ./ Rx(r, partition)
-        Δη = 2 ./ Ry(r, partition)
+        # (ξ, η) ∈ [-1, 1]x[-1, 1]
+        Δξ = 2 / Rx(r, partition)
+        Δη = 2 / Ry(r, partition)
 
         pᵢ = intra_panel_index_x(r, partition)
         pⱼ = intra_panel_index_y(r, partition)
@@ -70,14 +71,53 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture, FT=Float64;
     region_η    = Iterate(region_η)
     region_rot  = Iterate(region_rot)
 
-    region_grids = construct_regionally(OrthogonalSphericalShellGrid, arch, FT; 
-                                        size = region_size, 
-                                        z, 
-                                        halo = panel_halo, 
-                                        radius, 
+    region_grids = construct_regionally(OrthogonalSphericalShellGrid, arch, FT;
+                                        size = region_size,
+                                        z,
+                                        halo = panel_halo,
+                                        radius,
                                         ξ = region_ξ,
                                         η = region_η,
                                         rotation = region_rot)
+
+    return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
+end
+
+"""
+    ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
+                             Nz,
+                             z,
+                             panel_halo = (1, 1, 1),
+                             panel_topology = (FullyConnected, FullyConnected, Bounded),
+                             radius = R_Earth,
+                             devices = nothing)
+
+Load a ConformalCubedSphereGrid from `filepath`.
+"""
+function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
+                                  Nz,
+                                  z,
+                                  panel_halo = (1, 1, 1),
+                                  panel_topology = (FullyConnected, FullyConnected, Bounded),
+                                  radius = R_Earth,
+                                  devices = nothing)
+
+    devices = validate_devices(partition, arch, devices)
+    devices = assign_devices(partition, devices)
+
+    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition
+    partition = CubedSpherePartition(; Rx=1)
+
+    region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
+    region_panels = Iterate(Array(1:length(partition)))
+
+    region_grids = construct_regionally(OrthogonalSphericalShellGrid, filepath, arch, FT;
+                                        Nz = region_Nz,
+                                        z,
+                                        panel = region_panels,
+                                        topology = panel_topology,
+                                        halo = panel_halo,
+                                        radius)
 
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
 end
