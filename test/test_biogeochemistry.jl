@@ -34,7 +34,7 @@ end
     m = bgc.mortality_rate
     z = znode(Center(), k, grid)
     P = @inbounds fields.P[i, j, k]
-    Iᴾᴬᴿ = @inbounds fields.photosynthetic_active_radiation[i, j, k]
+    Iᴾᴬᴿ = @inbounds fields.Iᴾᴬᴿ[i, j, k]
     return P * (μ₀ * (1 - Iᴾᴬᴿ) - m)
 end
 
