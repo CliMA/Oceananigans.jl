@@ -5,7 +5,9 @@ using Adapt
 using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Grids: xnode, ynode, prettysummary, coordinate_summary
+using Oceananigans.Grids: xnode, ynode,
+                          all_x_nodes, all_y_nodes, 
+                          prettysummary, coordinate_summary
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
@@ -132,8 +134,6 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
                                       radius = R_Earth,
                                       halo = (1, 1, 1),
                                       rotation = nothing)
-
-    @warn "OrthogonalSphericalShellGrid is still under development. Use with caution!"
 
     radius = FT(radius)
 
@@ -872,3 +872,30 @@ end
 
 @inline znode(LX, LY, ::Face,   i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(LX, LY, ::Center, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶜ[k]
+
+function xnodes((LX, LY), grid::OrthogonalSphericalShellGrid; reshape=false)
+    x = view(all_x_nodes(LX, LY, grid),
+             interior_indices(LX, topology(grid, 1), grid.Nx),
+             interior_indices(LY, topology(grid, 2), grid.Ny))
+
+    return reshape ? Base.reshape(x, size(x)..., 1) : x
+end
+
+function ynodes((LX, LY), grid::OrthogonalSphericalShellGrid; reshape=false)
+    y = view(all_y_nodes(LX, LY, grid),
+             interior_indices(LX, topology(grid, 1), grid.Nx),
+             interior_indices(LY, topology(grid, 2), grid.Ny))
+
+    return reshape ? Base.reshape(y, size(y)..., 1) : y
+end
+
+all_x_nodes(::Type{Face},   ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.λᶠᶠᵃ
+all_x_nodes(::Type{Center}, ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.λᶜᶜᵃ
+all_x_nodes(::Type{Center}, ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.λᶜᶠᵃ
+all_x_nodes(::Type{Face},   ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.λᶠᶜᵃ
+all_y_nodes(::Type{Face},   ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.φᶠᶠᵃ
+all_y_nodes(::Type{Center}, ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.φᶜᶜᵃ
+all_y_nodes(::Type{Center}, ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.φᶜᶠᵃ
+all_y_nodes(::Type{Face},   ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.φᶠᶜᵃ
+all_z_nodes(::Type{Face},   ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶠ
+all_z_nodes(::Type{Center}, ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶜ
