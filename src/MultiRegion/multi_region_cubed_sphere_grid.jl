@@ -120,7 +120,7 @@ of each panel.
 Example
 =======
 
-```@example 1
+```@example
 julia> using Oceananigans
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0), radius=1.0)
@@ -132,7 +132,7 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 
 To determine all the connectivities of a grid we can call, e.g.,
 
-```@example 1
+```@example
 julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_east_boundary, inject_north_boundary, inject_south_boundary
 
 julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
@@ -170,7 +170,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   panel_halo = (1, 1, 1),
                                   panel_topology = (FullyConnected, FullyConnected, Bounded),
                                   radius = R_Earth,
-                                  partition = CubedSpherePartition(; Rx=1),
+                                  partition = CubedSpherePartition(; R=1),
                                   devices = nothing)
 
     devices = validate_devices(partition, arch, devices)
@@ -183,15 +183,15 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     for r in 1:length(partition)
         # for a whole cube's face (ξ, η) ∈ [-1, 1]x[-1, 1]
-        Δξ = 2 / Rx(r, partition)
-        Δη = 2 / Ry(r, partition)
+        Lξᵢⱼ = 2 / Rx(r, partition)
+        Lηᵢⱼ = 2 / Ry(r, partition)
 
         pᵢ = intra_panel_index_x(r, partition)
         pⱼ = intra_panel_index_y(r, partition)
 
         push!(region_size, (panel_size[1] ÷ Rx(r, partition), panel_size[2] ÷ Ry(r, partition), panel_size[3]))
-        push!(region_ξ, (-1 + Δξ * (pᵢ - 1), -1 + Δξ * pᵢ))
-        push!(region_η, (-1 + Δη * (pⱼ - 1), -1 + Δη * pⱼ))
+        push!(region_ξ, (-1 + Lξᵢⱼ * (pᵢ - 1), -1 + Lξᵢⱼ * pᵢ))
+        push!(region_η, (-1 + Lηᵢⱼ * (pⱼ - 1), -1 + Lηᵢⱼ * pⱼ))
         push!(region_rotation, rotation_from_panel_index(panel_index(r, partition)))
     end
 
@@ -231,11 +231,11 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
                                   radius = R_Earth,
                                   devices = nothing)
 
+    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition
+    partition = CubedSpherePartition(; R=1)
+
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
-
-    # to load a ConformalCubedSphereGrid from file we can only have a 6-panel partition
-    partition = CubedSpherePartition(; Rx=1)
 
     region_Nz = MultiRegionObject(Tuple(repeat([Nz], length(partition))), devices)
     region_panels = Iterate(Array(1:length(partition)))
@@ -264,15 +264,28 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) 
               "└── devices: $(devices(mrg))")
 
 """
-Constructing a MultiRegionGrid
+```
+julia> grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0), radius=1.0)
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+┌ Warning: OrthogonalSphericalShellGrid is still under development. Use with caution!
+└ @ Oceananigans.Grids ~/Research/OC.jl/src/Grids/orthogonal_spherical_shell_grid.jl:136
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU(): 
+├── grids: 10×10×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics 
+├── partitioning: CubedSpherePartition with (1 region in each panel) 
+└── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 
-to set a field
+julia> field = CenterField(grid)
 
-field = CenterField(grid)
-
-@apply_regionally set!(field, (x, y, z) -> y)
-
-field_panel_1 = getregion(field, 1)
+julia> @apply_regionally set!(field, (x, y, z) -> y)
 
 julia> field = CenterField(grid)
 10×10×1 Field{Center, Center, Center} on MultiRegionGrid on CPU
@@ -281,11 +294,24 @@ julia> field = CenterField(grid)
 └── data: MultiRegionObject{NTuple{6, OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}}, NTuple{6, CPU}}
     └── max=0.0, min=0.0, mean=0.0
 
-julia> regions = Iterate(Tuple(i for i in 1:24))
-    Iterate{NTuple{24, Int64}}((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24))
-    
+julia> using Oceananigans.MultiRegion: getregion
+
+julia> field_panel_1 = getregion(field, 1)
+10×10×1 Field{Center, Center, Center} on OrthogonalSphericalShellGrid on CPU
+├── grid: 10×10×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: MultiRegionCommunication, east: MultiRegionCommunication, south: MultiRegionCommunication, north: MultiRegionCommunication, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+└── data: 12×12×3 OffsetArray(::Array{Float64, 3}, 0:11, 0:11, 0:2) with eltype Float64 with indices 0:11×0:11×0:2
+    └── max=40.5277, min=-40.5277, mean=-2.13163e-16
+
+julia> using Oceananigans.Utils: Iterate
+
+julia> regions = Iterate(Tuple(j for j in 1:length(grid.partition)))
+Iterate{NTuple{6, Int64}}((13, 13, 13, 13, 13, 13))
+
 julia> set!(field, regions)
 
-julia> fill_halo_regions!(field)
+julia> using Oceananigans.BoundaryConditions: fill_halo_regions!
 
+julia> fill_halo_regions!(field)
 """
