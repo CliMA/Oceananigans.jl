@@ -24,6 +24,8 @@ end
 @inline  getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline _getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
 
+@inline Base.getindex(mrg::MultiRegionGrid, i) = getregion(mrg, i)
+
 @inline Base.length(mrg::MultiRegionGrid)   = Base.length(mrg.region_grids)
 
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
