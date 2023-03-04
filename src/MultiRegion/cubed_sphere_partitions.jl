@@ -118,7 +118,7 @@ end
 # |     6N     |     6E     |
 # |     ↓↓     |     ↓↓     |
 # + -----------+------------+
-#   panel P1   panel P2
+#    panel P1     panel P2
 
 #####
 ##### Boundary-specific Utils
@@ -258,39 +258,3 @@ function Base.summary(p::CubedSpherePartition)
 
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
-
-"""
-Partition with 4 regions per panel (2 divisions in x and 2 in y)
-
-part = CubedSpherePartition(Rx = 2, Ry = 2)
-
-testing the correct injection of `west` boundary conditions
-
-for i in 1:24
-    @show i, inject_west_boundary(i, part, 1).condition
-end
-(i, (inject_west_boundary(i, part2, 1)).condition) = (1, Oceananigans.MultiRegion.CubedSphereConnectivity(1, 20, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (2, Oceananigans.MultiRegion.CubedSphereConnectivity(2, 1, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (3, Oceananigans.MultiRegion.CubedSphereConnectivity(3, 19, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (4, Oceananigans.MultiRegion.CubedSphereConnectivity(4, 3, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (5, Oceananigans.MultiRegion.CubedSphereConnectivity(5, 2, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (6, Oceananigans.MultiRegion.CubedSphereConnectivity(6, 5, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (7, Oceananigans.MultiRegion.CubedSphereConnectivity(7, 4, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (8, Oceananigans.MultiRegion.CubedSphereConnectivity(8, 7, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (9, Oceananigans.MultiRegion.CubedSphereConnectivity(9, 4, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (10, Oceananigans.MultiRegion.CubedSphereConnectivity(10, 9, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (11, Oceananigans.MultiRegion.CubedSphereConnectivity(11, 3, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (12, Oceananigans.MultiRegion.CubedSphereConnectivity(12, 11, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (13, Oceananigans.MultiRegion.CubedSphereConnectivity(13, 10, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (14, Oceananigans.MultiRegion.CubedSphereConnectivity(14, 13, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (15, Oceananigans.MultiRegion.CubedSphereConnectivity(15, 12, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (16, Oceananigans.MultiRegion.CubedSphereConnectivity(16, 15, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (17, Oceananigans.MultiRegion.CubedSphereConnectivity(17, 12, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (18, Oceananigans.MultiRegion.CubedSphereConnectivity(18, 17, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (19, Oceananigans.MultiRegion.CubedSphereConnectivity(19, 11, :west, :north))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (20, Oceananigans.MultiRegion.CubedSphereConnectivity(20, 19, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (21, Oceananigans.MultiRegion.CubedSphereConnectivity(21, 18, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (22, Oceananigans.MultiRegion.CubedSphereConnectivity(22, 21, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (23, Oceananigans.MultiRegion.CubedSphereConnectivity(23, 20, :west, :east))
-(i, (inject_west_boundary(i, part2, 1)).condition) = (24, Oceananigans.MultiRegion.CubedSphereConnectivity(24, 23, :west, :east))
-"""

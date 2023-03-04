@@ -22,12 +22,12 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
 
 Return a ConformalCubedSphereGrid that comprises of 6 [`OrthogonalSphericalShellGrid`](@ref);
 we refer to each of these grids as a "panel". Each panel corresponds
-to a a face of a cube.
+to a face of the cube.
 
 The keywords prescribe the properties of each of the panels.
 
- The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
- 
+The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
+
 ```
                           +==========+==========+
                           ∥    ↑     ∥    ↑     ∥
@@ -120,7 +120,7 @@ of each panel.
 Example
 =======
 
-```julia
+```@example 1
 julia> using Oceananigans
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0), radius=1.0)
@@ -128,6 +128,40 @@ ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} parti
 ├── grids: 10×10×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics 
 ├── partitioning: CubedSpherePartition with (1 region in each panel) 
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
+```
+
+To determine all the connectivities of a grid we can call, e.g.,
+
+```@example 1
+julia> using Oceananigans.MultiRegion: inject_west_boundary, inject_east_boundary, inject_north_boundary, inject_south_boundary
+
+julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
+
+julia> for j in 1:length(grid.partition); println("panel ", j, " :", inject_south_boundary(j, grid.partition, 1).condition); end
+panel 1: CubedSphereConnectivity(1, 23, :south, :north)
+panel 2: CubedSphereConnectivity(2, 24, :south, :north)
+panel 3: CubedSphereConnectivity(3, 1, :south, :north)
+panel 4: CubedSphereConnectivity(4, 2, :south, :north)
+panel 5: CubedSphereConnectivity(5, 24, :south, :east)
+panel 6: CubedSphereConnectivity(6, 22, :south, :east)
+panel 7: CubedSphereConnectivity(7, 5, :south, :north)
+panel 8: CubedSphereConnectivity(8, 6, :south, :north)
+panel 9: CubedSphereConnectivity(9, 7, :south, :north)
+panel 10: CubedSphereConnectivity(10, 8, :south, :north)
+panel 11: CubedSphereConnectivity(11, 9, :south, :north)
+panel 12: CubedSphereConnectivity(12, 10, :south, :north)
+panel 13: CubedSphereConnectivity(13, 8, :south, :east)
+panel 14: CubedSphereConnectivity(14, 6, :south, :east)
+panel 15: CubedSphereConnectivity(15, 13, :south, :north)
+panel 16: CubedSphereConnectivity(16, 14, :south, :north)
+panel 17: CubedSphereConnectivity(17, 15, :south, :north)
+panel 18: CubedSphereConnectivity(18, 16, :south, :north)
+panel 19: CubedSphereConnectivity(19, 17, :south, :north)
+panel 20: CubedSphereConnectivity(20, 18, :south, :north)
+panel 21: CubedSphereConnectivity(21, 16, :south, :east)
+panel 22: CubedSphereConnectivity(22, 14, :south, :east)
+panel 23: CubedSphereConnectivity(23, 21, :south, :north)
+panel 24: CubedSphereConnectivity(24, 22, :south, :north)
 ```
 """
 function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
