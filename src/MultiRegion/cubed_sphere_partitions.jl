@@ -1,5 +1,7 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
+using DocStringExtensions
+
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
      Rx :: M
@@ -125,10 +127,32 @@ end
 
 abstract type AbstractCubedSphereConnectivity end
 
+"""
+    struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
+
+The connectivity among various regions for a cubed sphere grid.
+
+$(TYPEDFIELDS)
+
+Example
+=======
+
+A connectivity that implies that the boundary condition for the
+north side of region 1 comes from the west side of region 3 is:
+
+```julia
+julia> CubedSphereConnectivity(1, 3, :north, :west)
+CubedSphereConnectivity(1, 3, :north, :west)
+```
+"""
 struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
+    "the current region rank"
          rank :: Int
+    "the region from which boundary condition comes from"
     from_rank :: Int
+    "the current region side"
          side :: Symbol
+    "the side of the region from which boundary condition comes from"
     from_side :: Symbol
 end
 
@@ -156,9 +180,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, p)
     end
 
-    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
-
-    return bc
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
 end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
@@ -186,9 +208,7 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, p)
     end
 
-    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
-
-    return bc
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
 end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
@@ -215,9 +235,7 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, p)
     end
 
-    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
-
-    return bc
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 end
 
 function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
@@ -244,16 +262,23 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, p)
     end
 
-    bc = MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
-
-    return bc
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 end
 
 function Base.summary(p::CubedSpherePartition)
-    region_str = "region"
-    if p.Rx * p.Ry >1
-        region_str = "regions"
-    end
+    region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
 
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
+
+function Base.summary(p::CubedSpherePartition)
+    region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
+
+    return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
+end
+
+Base.show(io::IO, p::CubedSpherePartition) =
+    print(io, summary(p), "\n",
+          "├── Rx: ", p.Rx, "\n",
+          "├── Ry: ", p.Ry, "\n",
+          "└── div: ", p.div)
