@@ -111,8 +111,9 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, YPartition,
-    CubedSpherePartition, ConformalCubedSphereGrid,
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject

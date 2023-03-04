@@ -1,8 +1,8 @@
 module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
-export XPartition, YPartition,
-       CubedSpherePartition, ConformalCubedSphereGrid
+export XPartition, YPartition
+export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
 using Oceananigans
 using Oceananigans.Grids
