@@ -6,5 +6,5 @@
 calculate_diffusivities!(diffusivities, ::Nothing, args...) = nothing
 calculate_diffusivities!(::Nothing, ::Nothing, args...) = nothing
 
-@inline viscosity(::Nothing, ::Nothing) = 0.0
-@inline diffusivity(::Nothing, ::Nothing, ::Val{id}) where id = 0.0
+@inline viscosity(::Nothing, ::Nothing) = 0
+@inline diffusivity(::Nothing, ::Nothing, ::Val{id}) where id = 0
