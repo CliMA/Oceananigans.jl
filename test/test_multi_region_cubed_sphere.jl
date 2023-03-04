@@ -1,63 +1,9 @@
 include("dependencies_for_runtests.jl")
+include("data_dependencies.jl")
 
 using Oceananigans.Utils: Iterate
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.MultiRegion: getregion
-
-# Adopted from figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
-# The configuration of the panels for the cubed sphere. Each panel is partitioned in two parts YPartition(2)
-#
-#                              ponel P5      panel P6
-#                           + ---------- + ---------- +
-#                           |     ↑↑     |     ↑↑     |
-#                           |     1W     |     1S     |
-#                           |←3N      6W→|←5E      2S→|
-#                           |------------|------------|
-#                           |←3N      6W→|←5E      2S→|
-#                           |     4N     |     4E     |
-#                 panel P3  |     ↓↓     |     ↓↓     |
-#              + ---------- +------------+------------+
-#              |     ↑↑     |     ↑↑     | 
-#              |     5W     |     5S     | 
-#              |←1N      4W→|←3E      6S→| 
-#              |------------|------------| 
-#              |←1N      4W→|←3E      6S→| 
-#              |     2N     |     2E     | 
-#              |     ↓↓     |     ↓↓     | 
-# + -----------+------------+------------+ 
-# |     ↑↑     |     ↑↑     |  panel P4
-# |     3W     |     3S     |
-# |←5N      2W→|←1E      4S→|
-# |------------|------------|
-# |←5N      2W→|←1E      4S→|
-# |     6N     |     6E     |
-# |     ↓↓     |     ↓↓     |
-# + -----------+------------+
-#   panel P1   panel P2
-
-
-    #                         panel P5   panel P6
-    #                       +----------+----------+
-    #                       |    ↑↑    |    ↑↑    |
-    #                       |    1W    |    1S    |
-    #                       |←3N P5 6W→|←5E P6 2S→|
-    #                       |    4N    |    4E    |
-    #              panel P3 |    ↓↓    |    ↓↓    |
-    #            +----------+----------+----------+
-    #            |    ↑↑    |    ↑↑    |
-    #            |    5W    |    5S    |
-    #            |←1N P3 4W→|←3E P4 6S→|
-    #            |    2N    |    2E    |
-    #            |    ↓↓    |    ↓↓    |
-    # +----------+----------+----------+
-    # |    ↑↑    |    ↑↑    | panel P4
-    # |    3W    |    3S    |
-    # |←5N P1 2W→|←1E P2 4S→|
-    # |    6N    |    6E    |
-    # |    ↓↓    |    ↓↓    |
-    # +----------+----------+
-    #   panel P1   panel P2
-
 
 function get_halo_data(field, side, k_index=1)
     Nx, Ny, _ = size(field)
@@ -73,9 +19,13 @@ function get_halo_data(field, side, k_index=1)
     end
 end
 
-@testset "Conformal cubed sphere face grid from file" begin
-    @info "  Testing conformal cubed sphere face grid construction from file..."
+@testset "Testing conformal cubed sphere partitions..." begin
+    for n = 1:4
+        @test length(CubedSpherePartition(; R=n)) == 6n^2
+    end
+end
 
+@testset "Testing conformal cubed sphere face grid from file" begin
     Nz = 1
     z = (-1, 0)
 
@@ -87,6 +37,7 @@ end
     end
 
     for arch in archs
+        @info "  Testing conformal cubed sphere face grid from file [$(typeof(arch))]..."
 
         # read cs32 grid from file
         grid_cs32 = ConformalCubedSphereGrid(cs32_filepath, arch; Nz, z)
@@ -114,24 +65,25 @@ end
     end
 end
 
+@testset "Testing conformal cubed sphere fill halos for tracers" begin
+    for FT in float_types
+        for arch in archs
+            @info "  Testing fill halos for tracers [$FT, $(typeof(arch))]..."
 
-for FT in float_types
-    for arch in archs
-        Nx, Ny, Nz = 10, 10, 1
+            Nx, Ny, Nz = 10, 10, 1
 
-        grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1.0)
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1.0)
 
-        c = CenterField(grid)
+            c = CenterField(grid)
 
-        regions = Iterate(Tuple(i for i in 1:length(grid)))
+            # fill the tracer with values = panel_index
+            regions = Iterate(Tuple(i for i in 1:length(grid)))
+            set!(c, regions)
 
-        set!(c, regions)
+            fill_halo_regions!(c)
 
-        fill_halo_regions!(c)
-
-        @testset "Testing conformal cubed sphere grid halo filling for a tracer field" begin
-
-            @info "  Testing halo filling for tracer [$FT, $(typeof(arch))]..."
+            # confirm that the halos were filled according to connectivity
+            # described at ConformalCubedSphereGrid docstring
 
             @test get_halo_data(getregion(c, 1), :west)  == 5 * ones(Ny)
             @test get_halo_data(getregion(c, 1), :east)  == 2 * ones(Ny)
