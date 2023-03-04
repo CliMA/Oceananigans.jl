@@ -22,6 +22,99 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
 
 Return a ConformalCubedSphereGrid.
 
+The connectivity between the `ConformalCubedSphereGrid` faces is 
+depicted below.
+
+```
+                          +----------+----------+
+                          |    ↑↑    |    ↑↑    |
+                          |    1W    |    1S    |
+                          |←3N P5 6W→|←5E P6 2S→|
+                          |    4N    |    4E    |
+                          |    ↓↓    |    ↓↓    |
+               +----------+----------+----------+
+               |    ↑↑    |    ↑↑    |
+               |    5W    |    5S    |
+               |←1N P3 4W→|←3E P4 6S→|
+               |    2N    |    2E    |
+               |    ↓↓    |    ↓↓    |
+    +----------+----------+----------+
+    |    ↑↑    |    ↑↑    |
+    |    3W    |    3S    |
+    |←5N P1 2W→|←1E P2 4S→|
+    |    6N    |    6E    |
+    |    ↓↓    |    ↓↓    |
+    +----------+----------+
+```
+
+
+By default, the North Pole of the sphere is in panel 1 (P1) and
+the South Pole in panel 6 (P6).
+
+A `CubedSpherePartition(; Rx=2)` implies partition in 2 in each
+dimension of each panel resulting in 24 regions. In each partition
+the intra-panel `x, y` indices are in written in the center and the
+overall region index on the bottom right.
+
+```
+                                                +==========+==========+==========+==========+
+                                                ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+                                                ∥          |          ∥          |          ∥
+                                                ∥← (1, 2) →|← (2, 2) →∥← (1, 2) →|← (2, 2) →∥
+                                                ∥          |          ∥          |          ∥
+                                                ∥    ↓  19 |    ↓  20 ∥    ↓  23 |    ↓  24 ∥
+                                                +-------- P 5 --------+-------- P 6 --------+
+                                                ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+                                                ∥          |          ∥          |          ∥
+                                                ∥← (1, 1) →|← (2, 1) →∥← (1, 1) →|← (2, 1) →∥
+                                                ∥          |          ∥          |          ∥
+                                                ∥    ↓  17 |    ↓  18 ∥    ↓  21 |    ↓  22 ∥
+                          +==========+==========+==========+==========+==========+==========+
+                          ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+                          ∥          |          ∥          |          ∥
+                          ∥← (1, 2) →|← (2, 2) →∥← (1, 2) →|← (2, 2) →∥
+                          ∥          |          ∥          |          ∥
+                          ∥    ↓ 11  |    ↓  12 ∥    ↓  15 |    ↓  16 ∥
+                          +-------- P 3 --------+-------- P 4 --------+
+                          ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+                          ∥          |          ∥          |          ∥
+                          ∥← (1, 1) →|← (2, 1) →∥← (1, 1) →|← (2, 1) →∥
+                          ∥          |          ∥          |          ∥
+                          ∥    ↓  9  |    ↓  10 ∥    ↓  13 |    ↓  14 ∥
+    +==========+==========+==========+==========+==========+==========+
+    ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+    ∥          |          ∥          |          ∥
+    ∥← (1, 2) →|← (2, 2) →∥← (1, 2) →|← (2, 2) →∥
+    ∥          |          ∥          |          ∥
+    ∥    ↓   3 |    ↓   4 ∥    ↓   7 |    ↓   8 ∥
+    +-------- P 1 --------+-------- P 2 --------+
+    ∥    ↑     |    ↑     ∥    ↑     |    ↑     ∥
+    ∥          |          ∥          |          ∥
+    ∥← (1, 1) →|← (2, 1) →∥← (1, 1) →|← (2, 1) →∥ 
+    ∥          |          ∥          |          ∥
+    ∥    ↓   1 |    ↓   2 ∥    ↓   5 |    ↓   6 ∥
+    +==========+==========+==========+==========+
+```
+
+Below, we show in detail panels 1 and 2 and the connectivity
+of each panel.
+
+```
++===============+==============+==============+===============+
+∥       ↑       |      ↑       ∥      ↑       |      ↑        ∥
+∥      11W      |      9W      ∥      9S      |     10S       ∥
+∥←19N (2, 1) 4W→|←3E (2, 2) 7W→∥←4E (2, 1) 8W→|←7E (2, 2) 13S→∥
+∥       1N      |      2N      ∥      5N      |      6N       ∥
+∥       ↓     3 |      ↓     4 ∥      ↓     7 |      ↓      8 ∥
++------------- P 1 ------------+------------ P 2 -------------+
+∥       ↑       |      ↑       ∥      ↑       |      ↑        ∥
+∥       3S      |      4S      ∥      7S      |      8S       ∥
+∥←20N (1, 1) 2W→|←1E (2, 1) 5W→∥←2E (1, 1) 6W→|←5E (2, 1) 14S→∥
+∥      23N      |     24N      ∥     24N      |     22N       ∥
+∥       ↓     1 |      ↓     2 ∥      ↓     5 |      ↓      6 ∥
++===============+==============+==============+===============+
+```
+
 Example
 =======
 
@@ -48,12 +141,12 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     devices = assign_devices(partition, devices)
 
     region_size = []
-    region_η    = []
-    region_ξ    = []
-    region_rot  = []
+    region_η = []
+    region_ξ = []
+    region_rotation = []
 
     for r in 1:length(partition)
-        # (ξ, η) ∈ [-1, 1]x[-1, 1]
+        # for a whole cube's face (ξ, η) ∈ [-1, 1]x[-1, 1]
         Δξ = 2 / Rx(r, partition)
         Δη = 2 / Ry(r, partition)
 
@@ -61,15 +154,15 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
         pⱼ = intra_panel_index_y(r, partition)
 
         push!(region_size, (panel_size[1] ÷ Rx(r, partition), panel_size[2] ÷ Ry(r, partition), panel_size[3]))
-        push!(region_ξ,    (-1 + Δξ * (pᵢ - 1), -1 + Δξ * pᵢ))
-        push!(region_η,    (-1 + Δη * (pⱼ - 1), -1 + Δη * pⱼ))
-        push!(region_rot,  rotation_from_panel_index(panel_index(r, partition)))
+        push!(region_ξ, (-1 + Δξ * (pᵢ - 1), -1 + Δξ * pᵢ))
+        push!(region_η, (-1 + Δη * (pⱼ - 1), -1 + Δη * pⱼ))
+        push!(region_rotation, rotation_from_panel_index(panel_index(r, partition)))
     end
 
     region_size = MultiRegionObject(tuple(region_size...), devices)
-    region_ξ    = Iterate(region_ξ)
-    region_η    = Iterate(region_η)
-    region_rot  = Iterate(region_rot)
+    region_ξ = Iterate(region_ξ)
+    region_η = Iterate(region_η)
+    region_rotation = Iterate(region_rotation)
 
     region_grids = construct_regionally(OrthogonalSphericalShellGrid, arch, FT;
                                         size = region_size,
@@ -78,7 +171,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         radius,
                                         ξ = region_ξ,
                                         η = region_η,
-                                        rotation = region_rot)
+                                        rotation = region_rotation)
 
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
 end
