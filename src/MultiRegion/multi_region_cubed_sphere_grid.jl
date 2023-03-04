@@ -20,33 +20,35 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                              partition = CubedSpherePartition(), 
                              devices = nothing)
 
-Return a ConformalCubedSphereGrid.
+Return a ConformalCubedSphereGrid that comprises of 6 [`OrthogonalSphericalShellGrid`](@ref);
+we refer to each of these grids as a "panel". Each panel corresponds
+to a a face of a cube.
 
-The connectivity between the `ConformalCubedSphereGrid` faces is 
-depicted below.
+The keywords prescribe the properties of each of the panels.
 
+ The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
+ 
 ```
-                          +----------+----------+
-                          |    ↑↑    |    ↑↑    |
-                          |    1W    |    1S    |
-                          |←3N P5 6W→|←5E P6 2S→|
-                          |    4N    |    4E    |
-                          |    ↓↓    |    ↓↓    |
-               +----------+----------+----------+
-               |    ↑↑    |    ↑↑    |
-               |    5W    |    5S    |
-               |←1N P3 4W→|←3E P4 6S→|
-               |    2N    |    2E    |
-               |    ↓↓    |    ↓↓    |
-    +----------+----------+----------+
-    |    ↑↑    |    ↑↑    |
-    |    3W    |    3S    |
-    |←5N P1 2W→|←1E P2 4S→|
-    |    6N    |    6E    |
-    |    ↓↓    |    ↓↓    |
-    +----------+----------+
+                          +==========+==========+
+                          ∥    ↑     ∥    ↑     ∥
+                          ∥    1W    ∥    1S    ∥
+                          ∥←3N P5 6W→∥←5E P6 2S→∥
+                          ∥    4N    ∥    4E    ∥
+                          ∥    ↓     ∥    ↓     ∥
+               +==========+==========+==========+
+               ∥    ↑     ∥    ↑     ∥
+               ∥    5W    ∥    5S    ∥
+               ∥←1N P3 4W→∥←3E P4 6S→∥
+               ∥    2N    ∥    2E    ∥
+               ∥    ↓     ∥    ↓     ∥
+    +==========+==========+==========+
+    ∥    ↑     ∥    ↑     ∥
+    ∥    3W    ∥    3S    ∥
+    ∥←5N P1 2W→∥←1E P2 4S→∥
+    ∥    6N    ∥    6E    ∥
+    ∥    ↓     ∥    ↓     ∥
+    +==========+==========+
 ```
-
 
 By default, the North Pole of the sphere is in panel 1 (P1) and
 the South Pole in panel 6 (P6).
