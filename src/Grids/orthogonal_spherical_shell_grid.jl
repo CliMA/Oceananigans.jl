@@ -864,9 +864,8 @@ const OSSG = OrthogonalSphericalShellGrid
 @inline yspacings(grid::OSSG, LX::Face,   LY::Face;   with_halos=false) = with_halos ? grid.Δyᶠᶠᵃ :
     view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-zspacings(grid::OrthogonalSphericalShellGrid) = grid.Δz
-zspacings(grid::OrthogonalSphericalShellGrid, LZ::CellLocation; with_halos=false) = zspacings(grid)
-@inline zspacing(k, grid::OrthogonalSphericalShellGrid, LZ::CellLocation) = zspacings(grid)
+@inline zspacings(grid::OSSG) = grid.Δz
+@inline zspacings(grid::OSSG, LZ::CellLocation; with_halos=false) = zspacings(grid)
 
 @inline xspacings(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xspacings(grid, LX, LY; kwargs...)
 @inline yspacings(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LX, LY; kwargs...)
@@ -874,4 +873,4 @@ zspacings(grid::OrthogonalSphericalShellGrid, LZ::CellLocation; with_halos=false
 
 @inline xspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xspacings(grid, LX, LY, with_halos=true)[i, j]
 @inline yspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = yspacings(grid, LX, LY, with_halos=true)[i, j]
-@inline zspacing(k, grid::OSSG, LZ::CellLocation)                      = zspacings(grid, LZ)
+@inline zspacing(k,    grid::OSSG, LZ::CellLocation)                   = zspacings(grid)
