@@ -788,7 +788,7 @@ end
         for arch in archs
             for FT in float_types
                 z = (0, 1)
-                radius = 234.3e4
+                radius = 234.5e6
 
                 Nx, Ny = 10, 8
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
@@ -802,16 +802,16 @@ end
                 # (for odd number of grid points, the central grid points fall on great circles)
                 Nx, Ny = 11, 9
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
-                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 10, 9
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δxᶜᶜᵃ[:, Int((Ny+1)/2)]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δxᶜᶜᵃ[:, (Ny+1)÷2]) ≈ 2π * grid.radius / 4
 
                 Nx, Ny = 11, 8
                 grid = OrthogonalSphericalShellGrid(arch, FT, size=(Nx, Ny, 1); z, radius)
-                @test sum(grid.Δyᶜᶜᵃ[Int((Nx+1)/2), :]) ≈ 2π * grid.radius / 4
+                @test sum(grid.Δyᶜᶜᵃ[(Nx+1)÷2, :]) ≈ 2π * grid.radius / 4
             end
         end
     end
