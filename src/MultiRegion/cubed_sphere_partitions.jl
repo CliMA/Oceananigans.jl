@@ -271,12 +271,6 @@ function Base.summary(p::CubedSpherePartition)
     return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
 end
 
-function Base.summary(p::CubedSpherePartition)
-    region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
-
-    return "CubedSpherePartition with ($(p.Rx * p.Ry) $(region_str) in each panel)"
-end
-
 Base.show(io::IO, p::CubedSpherePartition) =
     print(io, summary(p), "\n",
           "├── Rx: ", p.Rx, "\n",
