@@ -9,16 +9,15 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
 end
 
 """"
-    CubedSpherePartition(; Rx = 1, Ry = Rx)
+    CubedSpherePartition(; R = 1)
 
-Return a cubed sphere partition.
-
-* `Rx`: number of ``x``-division of each panel. Can be a number (i.e., all panels are divided in
-        the same way) or a vector of length 6.
-* `Ry`: number of ``y``-division of each panel. Can be a number (i.e., all panels are divided in
-        the same way) or a vector of length 6.
+Return a cubed sphere partition with `R` partitions in each dimension of the panel
+of the sphere.
 """
-function CubedSpherePartition(; Rx = 1, Ry = Rx)
+function CubedSpherePartition(; R = 1)
+    # at the moment only CubedSpherePartitions with Rx = Ry are supported
+    Rx = Ry = R
+
     if Rx isa Number 
         if Ry isa Number
             Rx != Ry && 
