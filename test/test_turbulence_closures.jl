@@ -200,7 +200,7 @@ end
             κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
             κ_dx_c = κ * ∂x(c)
             ν = viscosity(model.closure, model.diffusivity_fields)
-            ν_dx_u = ν * ∂x(c)
+            ν_dx_u = ν * ∂x(u)
             @test ν_dx_u[1, 1, 1] == 0.0
             @test κ_dx_c[1, 1, 1] == 0.0
         end
