@@ -111,9 +111,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κ, ν)
 end
 
-@inline kappa_kernel_size(grid) = size(grid) .+ 2
-
-function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = kappa_kernel_size(model.grid), kernel_offsets = (-1, -1, -1))
+function calculate_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
     arch = model.architecture
     grid = model.grid
     clock = model.clock

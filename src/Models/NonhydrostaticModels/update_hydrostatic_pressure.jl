@@ -27,11 +27,33 @@ update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.p
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-# extend p kernel to compute also the boundaries
-@inline p_kernel_size(grid) = size(grid)[[1, 2]] .+ 2
-
 update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-1, -1)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; kernel_size, kernel_offsets)
 
 update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; kernel_size = p_kernel_size(grid), kernel_offsets = (-1, -1)) =  
         launch!(arch, grid, kernel_size, _update_hydrostatic_pressure!, pHY′, kernel_offsets, grid, buoyancy, tracers)
+
+using Oceananigans.Grids: topology
+
+# extend p kernel to compute also the boundaries
+@inline function p_kernel_size(grid) 
+    Nx, Ny, _ = size(grid)
+
+    Tx, Ty, _ = topology(grid)
+
+    Ax = Tx == Flat ? Nx : Nx + 2 
+    Ay = Ty == Flat ? Ny : Ny + 2 
+
+    return (Ax, Ay)
+end
+
+@inline function p_kernel_offsets(grid)
+    Tx, Ty, _ = topology(grid)
+
+    Ax = Tx == Flat ? 0 : - 1 
+    Ay = Ty == Flat ? 0 : - 1 
+
+    return (Ax, Ay)
+end
+        
+        
