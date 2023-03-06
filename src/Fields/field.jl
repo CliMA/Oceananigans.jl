@@ -311,13 +311,18 @@ function Base.view(f::Field, i, j, k)
 
     boundary_conditions = FieldBoundaryConditions(window_indices, f.boundary_conditions)
 
+    # "Sliced" Fields created here share data with their parent.
+    # Therefore we set status=nothing so we don't conflate computation
+    # of the sliced field with computation of the parent field.
+    status = nothing
+
     return Field(loc,
                  grid,
                  windowed_data,
                  boundary_conditions,
                  window_indices,
                  f.operand,
-                 f.status)
+                 status)
 end
 
 const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}

@@ -15,7 +15,7 @@ using Adapt
 using OffsetArrays
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate, getname
+using Oceananigans.Utils: Reference, Iterate, getnamewrapper
 
 using KernelAbstractions: @kernel, @index
 

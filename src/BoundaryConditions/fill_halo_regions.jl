@@ -3,6 +3,8 @@ using Oceananigans.Utils
 using Oceananigans.Grids: architecture
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+import Base
+
 #####
 ##### General halo filling functions
 #####
@@ -23,27 +25,30 @@ for dir in (:west, :east, :south, :north, :bottom, :top)
     extract_bc = Symbol(:extract_, dir, :_bc)
     @eval begin
         @inline $extract_bc(bc) = bc.$dir
-        @inline $extract_bc(bc::Tuple) = $extract_bc.(bc)
+        @inline $extract_bc(bc::Tuple) = map($extract_bc, bc)
     end
 end
+
 # For inhomogeneous BC we extract the _last_ one 
 # example 
 # `bc.west <: DCBC`
 # `bc.east <: PBC`
 # `extract_west_or_east_bc(bc) == bc.west`
-    
-  extract_west_or_east_bc(bc) = sort([bc.west,   bc.east],  lt=fill_first)[2]
-extract_south_or_north_bc(bc) = sort([bc.south,  bc.north], lt=fill_first)[2]
- extract_bottom_or_top_bc(bc) = sort([bc.bottom, bc.top],   lt=fill_first)[2]
+# NOTE that `isless` follows order of execution, 
+# so `max(bcs...)` returns the last BC to execute
 
-  extract_west_or_east_bc(bc::Tuple) =   extract_west_or_east_bc.(bc)
-extract_south_or_north_bc(bc::Tuple) = extract_south_or_north_bc.(bc)
- extract_bottom_or_top_bc(bc::Tuple) =  extract_bottom_or_top_bc.(bc)
+  extract_west_or_east_bc(bc) = max(bc.west,   bc.east)
+extract_south_or_north_bc(bc) = max(bc.south,  bc.north)
+ extract_bottom_or_top_bc(bc) = max(bc.bottom, bc.top)
+
+  extract_west_or_east_bc(bc::Tuple) =   map(extract_west_or_east_bc, bc)
+extract_south_or_north_bc(bc::Tuple) = map(extract_south_or_north_bc, bc)
+ extract_bottom_or_top_bc(bc::Tuple) =  map(extract_bottom_or_top_bc, bc)
  
 # Finally, the true fill_halo!
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
-"Fill halo regions in ``x``, ``y``, and ``z``  for a given field's data."
+"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
     arch = architecture(grid)
@@ -115,11 +120,26 @@ const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
 # Distributed halos have to be filled for last in case of 
 # buffered communication. Hence, we always fill them last
 
+# The reasoning for filling Periodic after Flux, Value, Gradient 
+# Periodic fills also corners while Flux, Value, Gradient do not
+
 # Order of halo filling
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
 # 2) Periodic (PBCT)
 # 3) Shared Communication (MCBCT)
 # 4) Distributed Communication (DCBCT)
+
+# We define "greater than" `>` and "lower than", for boundary conditions
+# following the rules outlined in `fill_first`
+# i.e. if `bc1 > bc2` then `bc2` precedes `bc1` in filling order
+@inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
+
+# fallback for `Nothing` BC.
+@inline Base.isless(::Nothing,           ::Nothing) = true
+@inline Base.isless(::BoundaryCondition, ::Nothing) = false
+@inline Base.isless(::Nothing, ::BoundaryCondition) = true
+@inline Base.isless(::BoundaryCondition, ::Missing) = false
+@inline Base.isless(::Missing, ::BoundaryCondition) = true
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true
@@ -243,9 +263,12 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 @inline whole_halo(::Colon,       loc) = true
 
 # Calculate kernel size
-@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
-@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) = @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
+@inline fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[3], loc[3]), size(grid, 3), size(c, 3)))
+@inline fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid) =
+    @inbounds (ifelse(whole_halo(idx[1], loc[1]), size(grid, 1), size(c, 1)), ifelse(whole_halo(idx[2], loc[2]), size(grid, 2), size(c, 2)))
 
 # Remember that Periodic BCs also fill halo points!
 @inline fill_halo_size(c::OffsetArray, ::WEB, idx, ::PBC, args...) = @inbounds size(c)[[2, 3]]

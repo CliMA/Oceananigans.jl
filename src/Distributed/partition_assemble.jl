@@ -37,11 +37,14 @@ end
 
 assemble(c::Tuple, Nc, Nr, r, r1, r2, comm) = (c[2] - r * (c[2] - c[1]), c[2] - (r - Nr) * (c[2] - c[1]))
 
+# TODO: partition_global_array and construct_global_array
+# do not currently work for 2D or 3D parallelizations
+# (They are not used anywhere in the code at the moment)
 """
     partition_global_array(arch, c_global, (Nx, Ny, Nz))
 
-partition a global array (2D of size Nx, Ny or 3D of size Nx, Ny, Nz) in local arrays.
-Usefull for boundary arrays, forcings and initial conditions
+Partition a global array (2D of size `(Nx, Ny)` or 3D of size `(Nx, Ny, Nz)`) in local arrays.
+Usefull for boundary arrays, forcings and initial conditions.
 """
 partition_global_array(arch, c_global::Function, N) = c_global 
 
@@ -77,8 +80,8 @@ end
 """
     construct_global_array(arch, c_local, (nx, ny, nz))
 
-construct global array from local arrays (2D of size nx, ny or 3D of size nx, ny, nz).
-Usefull for boundary arrays, forcings and initial conditions
+Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
+Usefull for boundary arrays, forcings and initial conditions.
 """
 construct_global_array(arch, c_local::Function, N) = c_local
 

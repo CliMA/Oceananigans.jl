@@ -1,10 +1,12 @@
-using Oceananigans, Adapt, Base
+using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
-using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-using KernelAbstractions: @index, @kernel
+
 using Adapt
+using Base
+using KernelAbstractions: @index, @kernel
 
 import Oceananigans.TimeSteppers: reset!
 import Base.show
@@ -34,7 +36,19 @@ end
     SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) 
 
 Constructor for the `SplitExplicitFreeSurface`, for more information on the available `kwargs...`
-see `SplitExplicitSettings` 
+see `SplitExplicitSettings`.
+
+Keyword Arguments
+=================
+
+- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. Note, not all averaging functions
+              require to substep until `2 Δt`. The number of substeps is reduced automatically to the last
+              index of `averaging_weights` for which `averaging_weights > 0`.
+- `barotropic_averaging_kernel`: function of `τ` used to average `U` and `η` within the barotropic advancement.
+                                 `τ` is the fractional substep going from 0 to 2 with the baroclinic time step
+                                 `t + Δt` located at `τ = 1`. This function should be centered at `τ = 1`
+                                 (i.e., ∑(aₘ m /M) = 1).
+- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme()` or `AdamsBashforth3Scheme()`.
 """
 SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, kwargs...) =
     SplitExplicitFreeSurface(nothing, nothing, nothing,
@@ -45,19 +59,19 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  FreeSurfaceDisplacementField(velocities, free_surface, grid)
 
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
-                                    SplitExplicitAuxiliary(grid),
+                                    SplitExplicitAuxiliaryFields(grid),
                                     free_surface.gravitational_acceleration,
                                     free_surface.settings)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-                                        settings = SplitExplicitSettings(; substeps = 200))
+                                        settings = SplitExplicitSettings(eltype(grid); substeps = 200))
 
 η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 
     return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid),
-                                    SplitExplicitAuxiliary(grid),
+                                    SplitExplicitAuxiliaryFields(grid),
                                     gravitational_acceleration,
                                     settings
                                     )
@@ -122,26 +136,26 @@ function SplitExplicitState(grid::AbstractGrid)
 end
 
 """
-    SplitExplicitAuxiliary
+    SplitExplicitAuxiliaryFields
 
 A struct containing auxiliary fields for the split-explicit free surface.
 
 The Barotropic time stepping will be launched on a grid `(kernel_size[1], kernel_size[2])`
 large (or `:xy` in case of a serial computation),  and start computing from 
-`(i - kernel_offsets[1], j - kernel_offsets[2])`
+`(i - kernel_offsets[1], j - kernel_offsets[2])`.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
-    "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪}
+    "Vertically integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
-    "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
+    "Vertically integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField`)"
+    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
     Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField`)"
+    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
     Hᶜᶠ :: 𝒞ℱ
-    "Depth at `(Center, Center)` (`ReducedField`)"
+    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
     Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
     kernel_size :: 𝒦
@@ -149,7 +163,7 @@ Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦, 𝒪
     kernel_offsets :: 𝒪
 end
 
-function SplitExplicitAuxiliary(grid::AbstractGrid)
+function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
@@ -172,7 +186,7 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
     kernel_size    = :xy
     kernel_offsets = (0, 0)
 
-    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
+    return SplitExplicitAuxiliaryFields(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_size, kernel_offsets)
 end
 
 """
@@ -183,71 +197,63 @@ A struct containing settings for the split-explicit free surface.
 $(TYPEDFIELDS)
 """
 struct SplitExplicitSettings{𝒩, ℳ, 𝒯, 𝒮}
-    "substeps: (`Int`)"
+    "`substeps`: (`Int`)"
     substeps :: 𝒩
-    "averaging_weights : (`Vector`)"
+    "`averaging_weights`: (`Vector`)"
     averaging_weights :: ℳ
-    "mass_flux_weights : (`Vector`)"
+    "`mass_flux_weights`: (`Vector`)"
     mass_flux_weights :: ℳ
-    "fractional step: (`Number`), the barotropic time step will be (Δτ ⋅ Δt)" 
+    "fractional step: (`Number`), the barotropic time step is `Δτ ⋅ Δt`" 
     Δτ :: 𝒯
-    "time stepping scheme"
+    "time-stepping scheme"
     timestepper :: 𝒮
 end
 
 """
-    Possible barotropic time-stepping scheme. 
+Possible barotropic time-stepping schemes. 
 
-- `AdamsBashforth3Scheme`: η = f(U, Uᵐ⁻¹, Uᵐ⁻²) then U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
-- `ForwardBackwardScheme`: η = f(U)             then U = f(η)
+- `AdamsBashforth3Scheme`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+- `ForwardBackwardScheme`: `η = f(U)`             then `U = f(η)`
 """
+
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
-# Weights that minimize dispersion error from http://falk.ucsd.edu/roms_class/shchepetkin04.pdf (p = 2, q = 4, r = 0.18927)
+# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ; p = 2, q = 4, r = 0.18927) 
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1) 
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
-@inline averaging_cosine_function(τ) = τ >= 0.5 && τ <= 1.5 ? 1 + cos(2π * (τ - 1)) : 0.0
+@inline cosine_averaging_kernel(τ::FT) where FT = τ >= 0.5 && τ <= 1.5 ? FT(1 + cos(2π * (τ - 1))) : zero(FT)
 
-@inline averaging_fixed_function(τ) = 1.0
+@inline constant_averaging_kernel(τ) = 1
 
 """
-    SplitExplicitSettings(; substeps = 200, 
-                            averaging_function = averaging_shape_function,
-                            timestepper = ForwardBackwardScheme())
+    SplitExplicitSettings([FT=Float64;]
+                          substeps = 200, 
+                          barotropic_averaging_kernel = averaging_shape_function,
+                          timestepper = ForwardBackwardScheme())
 
-constructor for `SpliExplicitSettings`. The keyword arguments can be provided
-directly to the `SplitExplicitFreeSurface` constructor
-
-Keyword Arguments
-=================
-
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`. NOTE: not all averaging functions
-              require to substep till `2Δt`. The number of substeps will be reduced automatically to the last index
-              of `averaging_weights` for which `averaging_weights > 0`
-- `averaging_function`: function of `τ` used to average `U` and `η` within the barotropic advancement.
-                        `τ` is the fractional substep going from 0 to 2 with the baroclinic time step `t + Δt`
-                        located at `τ = 1`. This function should be centered at `τ = 1` (i.e. ∑(aₘ⋅m/M) = 1)
-- `timestepper`: Time stepping scheme used, either `ForwardBackwardScheme` or `AdamsBashforth3Scheme`
+Return `SplitExplicitSettings`. For a description of the keyword arguments, see
+the [`SplitExplicitFreeSurface`](@ref).
 """
-function SplitExplicitSettings(; substeps = 200, 
-                                 averaging_function = averaging_shape_function,
-                                 timestepper = ForwardBackwardScheme())
+function SplitExplicitSettings(FT::DataType=Float64;
+                               substeps = 200, 
+                               barotropic_averaging_kernel = averaging_shape_function,
+                               timestepper = ForwardBackwardScheme())
 
-    τᶠ = range(0.0, 2.0, length = substeps+1)
+    τᶠ = range(0, 2, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = averaging_function.(τᶠ[2:end]) 
-    idx = searchsortedlast(averaging_weights, 0.0, rev=true)
+    averaging_weights = FT.(barotropic_averaging_kernel.(τᶠ[2:end]))
+    idx = searchsortedlast(averaging_weights, 0, rev=true)
     substeps = idx
 
     averaging_weights = averaging_weights[1:idx]
     mass_flux_weights = similar(averaging_weights)
     
-    M = searchsortedfirst(τᶠ, 1.0) - 1
+    M = searchsortedfirst(τᶠ, 1) - 1
 
     averaging_weights ./= sum(averaging_weights)
 
@@ -285,8 +291,8 @@ function reset!(sefs::SplitExplicitFreeSurface)
         var = getproperty(sefs.state, name)
         fill!(var, 0.0)
     end
-    fill!(sefs.auxiliary.Gᵁ, 0.0)
-    fill!(sefs.auxiliary.Gⱽ, 0.0)
+    fill!(sefs.auxiliary.Gᵁ, 0)
+    fill!(sefs.auxiliary.Gⱽ, 0)
 end
 
 # Adapt

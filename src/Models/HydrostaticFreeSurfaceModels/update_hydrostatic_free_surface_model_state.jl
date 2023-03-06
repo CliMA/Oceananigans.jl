@@ -22,7 +22,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally masking_actions!(model, grid)
+    @apply_regionally masking_immersed_model_fields!(model, grid)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); blocking = true)
 
@@ -34,7 +34,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 # Mask immersed fields
-function masking_actions!(model, grid)
+function masking_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 

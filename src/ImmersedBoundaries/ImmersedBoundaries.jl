@@ -222,7 +222,7 @@ As well as
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
-                                                                  !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+                                                                !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
   
 
 #####

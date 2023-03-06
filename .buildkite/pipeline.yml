@@ -22,9 +22,6 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 
-      # Set up the mpiexecjl command
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
-
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
 
@@ -480,7 +477,7 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### Distributed/MPI 
+##### Distributed/MPI
 #####
 
   - label: "🐉 cpu distributed unit tests"
@@ -530,7 +527,6 @@ steps:
 ##### Regression
 #####
 
-  # Removing the shallow water test regression for now. See ISSUE: https://github.com/CliMA/Oceananigans.jl/issues/2922
   # - label: "🦝 gpu shallow water regression tests"
   #   env:
   #     JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"

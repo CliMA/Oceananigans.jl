@@ -21,6 +21,6 @@ ConstantField(constant) = ConstantField{3}(constant)
 
 const CF = Union{ConstantField, ZeroField, OneField}
 
-@inline Base.summary(f::CF) = string("ConstantField(", f[1, 1, 1], ")")
+@inline Base.summary(f::CF) = string("ConstantField(", prettysummary(f.constant), ")")
 Base.show(io::IO, f::CF) = print(io, summary(f))
  
