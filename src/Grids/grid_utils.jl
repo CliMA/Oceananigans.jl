@@ -260,7 +260,7 @@ See [`znodes`](@ref) for examples.
 """
     ynodes(grid, LX, LY, LZ, with_halos=false)
 
-See `znodes` for examples.
+See [`znodes`](@ref) for examples.
 """
 @inline ynodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)
 
