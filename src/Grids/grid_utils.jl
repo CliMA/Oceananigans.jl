@@ -253,7 +253,7 @@ znodes(grid, ::Nothing; kwargs...) = 1:1
 """
     xnodes(grid, LX, LY, LZ, with_halos=false)
 
-See `znodes` for examples.
+See [`znodes`](@ref) for examples.
 """
 @inline xnodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)
 
