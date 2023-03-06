@@ -271,7 +271,7 @@ See [`znodes`](@ref) for examples.
 julia> using Oceananigans
 
 julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                                 topology=(Periodic, Periodic, Bounded));
+                                            topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(horz_periodic_grid, Center())
 3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
