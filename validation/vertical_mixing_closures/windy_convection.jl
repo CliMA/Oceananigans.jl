@@ -18,17 +18,17 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0
 grid = RectilinearGrid(size=32, z=(-256, 0), topology=(Flat, Flat, Bounded))
 coriolis = FPlane(f=1e-4)
 
-N² = 1e-5
-Qᵇ = +1e-8
-Qᵘ = -1e-3
+N² = 1e-6
+Qᵇ = 0.0 #+1e-7
+Qᵘ = -1e-4 #
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 closures_to_run = [
                    CATKEVerticalDiffusivity(),
-                   RiBasedVerticalDiffusivity(),
-                   convective_adjustment,
+                   #RiBasedVerticalDiffusivity(),
+                   #convective_adjustment,
                    ]   
 
 for closure in closures_to_run
@@ -79,6 +79,8 @@ for closure in closures_to_run
 end
 
 b1 = first(b_ts)
+e1 = first(e_ts)
+@show maximum(e1)
 
 z = znodes(b1)
 Nt = length(b1.times)
@@ -118,6 +120,8 @@ end
 axislegend(ax_b, position=:lb)
 axislegend(ax_u, position=:rb)
 axislegend(ax_e, position=:rb)
+
+xlims!(ax_e, 0, 1e-4)
 
 display(fig)
 

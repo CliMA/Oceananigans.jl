@@ -29,7 +29,7 @@ H = 4kilometers
 # grid = LatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
+grid = OrthogonalSphericalShellGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
 
 ## Turbulent diffusivity closure
 

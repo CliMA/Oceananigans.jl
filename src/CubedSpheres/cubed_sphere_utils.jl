@@ -102,7 +102,7 @@ underlying_top_boundary(f, grid, location, topo=topology(grid, 3)) =
     view(f.parent, :, :, underlying_right_boundary_indices(location, topo, grid.Nz, grid.Hz))
 
 #####
-##### Convinience functions
+##### Convenience functions
 #####
 
 function sides_in_the_same_dimension(side1, side2)

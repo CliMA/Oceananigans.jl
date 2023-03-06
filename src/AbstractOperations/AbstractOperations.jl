@@ -65,6 +65,7 @@ include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
+include("constant_field_abstract_operations.jl")
 include("kernel_function_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
@@ -77,7 +78,7 @@ include("show_abstract_operations.jl")
 # Some operators:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary sqrt sin cos exp tanh
+@unary sqrt sin cos exp tanh abs
 @unary -
 @unary +
 

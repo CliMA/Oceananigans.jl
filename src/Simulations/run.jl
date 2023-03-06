@@ -6,6 +6,8 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
+using Oceananigans.Models: initialize_model!
+
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: aligned_time_step
@@ -92,6 +94,7 @@ function run!(sim; pickup=false)
 
     sim.initialized = false
     sim.running = true
+    sim.run_wall_time = 0.0
 
     while sim.running
         time_step!(sim)
@@ -107,16 +110,21 @@ function time_step!(sim::Simulation)
 
     if !(sim.initialized) # execute initialization step
         initialize_simulation!(sim)
+        initialize_model!(sim.model)
 
         if sim.running # check that initialization didn't stop time-stepping
-            @info "Executing initial time step..."
+            if sim.verbose 
+                @info "Executing initial time step..."
+                start_time = time_ns()
+            end
 
-            start_time = time_ns()
             Δt = aligned_time_step(sim, sim.Δt)
             time_step!(sim.model, Δt; callbacks=[callback for callback in values(sim.callbacks) if !isa(callback.callsite, TimeStepCallsite)])
 
-            elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
-            @info "    ... initial time step complete ($elapsed_initial_step_time)."
+            if sim.verbose 
+                elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
+                @info "    ... initial time step complete ($elapsed_initial_step_time)."
+            end
         else
             @warn "Simulation stopped during initialization."
         end
@@ -164,8 +172,10 @@ Initialize a simulation:
 - Add diagnostics that "depend" on output writers
 """
 function initialize_simulation!(sim)
-    @info "Initializing simulation..."
-    start_time = time_ns()
+    if sim.verbose
+        @info "Initializing simulation..."
+        start_time = time_ns()
+    end
 
     model = sim.model
     clock = model.clock
@@ -200,8 +210,10 @@ function initialize_simulation!(sim)
 
     sim.initialized = true
 
-    initialization_time = prettytime(1e-9 * (time_ns() - start_time))
-    @info "    ... simulation initialization complete ($initialization_time)"
+    if sim.verbose
+        initialization_time = prettytime(1e-9 * (time_ns() - start_time))
+        @info "    ... simulation initialization complete ($initialization_time)"
+    end
 
     return nothing
 end

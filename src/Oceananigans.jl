@@ -21,7 +21,7 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid,
+    OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Immersed boundaries
@@ -71,6 +71,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
     FluxTapering,
     VerticallyImplicitTimeDiscretization,
+    viscosity, diffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -115,11 +116,8 @@ export
     ConformalCubedSphereGrid,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject, 
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
     
-    # AMGX
-    @ifhasamgx
-
 using Printf
 using Logging
 using Statistics
@@ -130,7 +128,6 @@ using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2
-using NCDatasets
 
 using Base: @propagate_inbounds
 using Statistics: mean
@@ -142,19 +139,7 @@ import Base:
     getindex, lastindex, setindex!,
     push!
 
-"Boolean denoting whether AMGX.jl can be loaded on machine."
-const hasamgx = @static Sys.islinux() ? true : false
-
-"""
-    @ifhasamgx expr
-
-Evaluate `expr` only if `hasamgx == true`.
-"""
-macro ifhasamgx(expr)
-
-    hasamgx ? :($(esc(expr))) : :(nothing) 
-end
-
+    
 #####
 ##### Abstract types
 #####
@@ -214,7 +199,6 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -224,6 +208,7 @@ include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("Distributed/Distributed.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
