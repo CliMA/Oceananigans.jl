@@ -873,4 +873,5 @@ const OSSG = OrthogonalSphericalShellGrid
 
 @inline xspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xspacings(grid, LX, LY, with_halos=true)[i, j]
 @inline yspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = yspacings(grid, LX, LY, with_halos=true)[i, j]
-@inline zspacing(k,    grid::OSSG, LZ::CellLocation)                   = zspacings(grid)
+@inline zspacing(k,    grid::OSSG, LZ::CellLocation)                   = zspacings(grid)[k]
+
