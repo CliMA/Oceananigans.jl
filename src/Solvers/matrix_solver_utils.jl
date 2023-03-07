@@ -86,7 +86,7 @@ end
 @inline function validate_laplacian_direction(N, topo, reduced_dim)  
     dim = N > 1 && reduced_dim == false
     if N < 3 && topo == Bounded && dim == true
-        throw(ArgumentError("Cannot calculate laplacian in bounded domain with N < 3!"))
+        throw(ArgumentError("Cannot calculate Laplacian in bounded domain with N < 3!"))
     end
 
     return dim
@@ -95,3 +95,124 @@ end
 @inline validate_laplacian_size(N, dim) = dim == true ? N : 1
   
 @inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
+
+"""
+    make_column(f::Field)
+
+Return the column vector with the interior of a field `f`.
+"""
+function make_column(f::Field)
+    Nx, Ny, Nz = size(f)
+
+    return reshape(interior(f), Nx*Ny*Nz)
+end
+
+"""
+    compute_matrix_for_linear_operation(arch, template_field, linear_operation!, args...;
+                                        boundary_conditions_input=nothing,
+                                        boundary_conditions_output=nothing)
+
+Return the sparse matrix that corresponds to the `linear_operation!`. The `linear_operation!`
+is expected to have the argument structure:
+
+```julia
+linear_operation!(output, input, args...)
+```
+
+Keyword arguments `boundary_conditions_input` and `boundary_conditions_output` determine the
+boundary conditions that the `input` and `output` fields are expected to have. If `nothing`
+is provided, then the `input` and `output` fields inherit the default boundary conditions
+according to the `template_field`.
+
+For `architecture = CPU()` the matrix returned is a `SparseArrays.SparseMatrixCSC`; for `GPU()`
+is a `CUDA.CuSparseMatrixCSC`.
+"""
+function compute_matrix_for_linear_operation(::CPU, template_field, linear_operation!, args...;
+                                             boundary_conditions_input=nothing,
+                                             boundary_conditions_output=nothing)
+
+    loc = location(template_field)
+    Nx, Ny, Nz = size(template_field)
+    grid = template_field.grid
+
+    # allocate matrix A
+    A = spzeros(eltype(grid), Nx*Ny*Nz, Nx*Ny*Nz)
+
+    if boundary_conditions_input === nothing
+        boundary_conditions_input = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
+
+    if boundary_conditions_output === nothing
+        boundary_conditions_output = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
+
+    # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ
+     eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
+    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
+
+    for k = 1:Nz, j in 1:Ny, i in 1:Nx
+        parent(eᵢⱼₖ)  .= 0
+        parent(Aeᵢⱼₖ) .= 0
+
+        eᵢⱼₖ[i, j, k] = 1
+
+        fill_halo_regions!(eᵢⱼₖ)
+
+        linear_operation!(Aeᵢⱼₖ, eᵢⱼₖ, args...)
+
+        A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(Aeᵢⱼₖ)
+    end
+
+    return A
+end
+
+function compute_matrix_for_linear_operation(::GPU, template_field, linear_operation!, args...;
+                                             boundary_conditions_input=nothing,
+                                             boundary_conditions_output=nothing)
+
+    loc = location(template_field)
+    Nx, Ny, Nz = size(template_field)
+    FT = eltype(template_field.grid)
+
+    if boundary_conditions_input === nothing
+        boundary_conditions_input = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
+
+    if boundary_conditions_output === nothing
+        boundary_conditions_output = FieldBoundaryConditions(grid, loc, template_field.indices)
+    end
+
+    # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ
+    eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
+    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
+
+    colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
+    rowval = CuArray{Int}(undef, 0)
+    nzval  = CuArray{FT}(undef, 0)
+
+    CUDA.@allowscalar colptr[1] = 1
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        parent(eᵢⱼₖ)  .= 0
+        parent(Aeᵢⱼₖ) .= 0
+
+        CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
+
+        fill_halo_regions!(eᵢⱼₖ)
+
+        linear_operation!(Aeᵢⱼₖ, eᵢⱼₖ, args...)
+
+        count = 0
+        for n in 1:Nz, m in 1:Ny, l in 1:Nx
+            CUDA.@allowscalar if Aeᵢⱼₖ[l, m, n] != 0
+                append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
+                CUDA.@allowscalar append!(nzval, Aeᵢⱼₖ[l, m, n])
+                count += 1
+            end
+        end
+
+        CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
+    end
+
+    return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))
+end

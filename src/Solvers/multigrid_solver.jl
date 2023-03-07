@@ -103,7 +103,7 @@ function MultigridSolver(linear_operation!::Function,
 
     (arch == GPU() && !hasamgx) && error("Multigrid on the GPU requires a linux operating system due to AMGX.jl")
 
-    matrix = initialize_matrix(arch, template_field, linear_operation!, args...)
+    matrix = compute_matrix_for_linear_operation(arch, template_field, linear_operation!, args...)
 
     return  MultigridSolver(matrix; template_field, maxiter, reltol, abstol, amg_algorithm)
 end
@@ -221,74 +221,6 @@ end
 
 @inline create_multilevel(::RugeStubenAMG, A) = ruge_stuben(A)
 @inline create_multilevel(::SmoothedAggregationAMG, A) = smoothed_aggregation(A)
-
-function initialize_matrix(::CPU, template_field, linear_operator!, args...; boundary_conditions=nothing)
-    loc = location(template_field)
-    Nx, Ny, Nz = size(template_field)
-    grid = template_field.grid
-
-    A = spzeros(eltype(grid), Nx*Ny*Nz, Nx*Ny*Nz)
-    make_column(f) = reshape(interior(f), Nx*Ny*Nz)
-
-    if boundary_conditions === nothing
-        boundary_conditions = FieldBoundaryConditions(grid, loc, template_field.indices)
-    end
-
-    eᵢⱼₖ = Field(loc, grid; boundary_conditions)
-    ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
-
-    for k = 1:Nz, j in 1:Ny, i in 1:Nx
-        parent(eᵢⱼₖ) .= 0
-        parent(∇²eᵢⱼₖ) .= 0
-        eᵢⱼₖ[i, j, k] = 1
-        fill_halo_regions!(eᵢⱼₖ)
-        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
-
-        A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(∇²eᵢⱼₖ)
-    end
-    
-    return A
-end
-
-function initialize_matrix(::GPU, template_field, linear_operator!, args...; boundary_conditions=nothing)
-    loc = location(template_field)
-    Nx, Ny, Nz = size(template_field)
-    FT = eltype(template_field.grid)
-
-    make_column(f) = reshape(interior(f), Nx*Ny*Nz)
-
-    if boundary_conditions === nothing
-        boundary_conditions = FieldBoundaryConditions(grid, loc, template_field.indices)
-    end
-
-    eᵢⱼₖ = Field(loc, grid; boundary_conditions)
-    ∇²eᵢⱼₖ = Field(loc, grid; boundary_conditions)
-
-    colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
-    rowval = CuArray{Int}(undef, 0)
-    nzval  = CuArray{FT}(undef, 0)
-
-    CUDA.@allowscalar colptr[1] = 1
-
-    for k = 1:Nz, j in 1:Ny, i in 1:Nx
-        parent(eᵢⱼₖ) .= 0
-        parent(∇²eᵢⱼₖ) .= 0
-        CUDA.@allowscalar eᵢⱼₖ[i, j, k] = 1
-        fill_halo_regions!(eᵢⱼₖ)
-        linear_operator!(∇²eᵢⱼₖ, eᵢⱼₖ, args...)
-        count = 0
-        for n = 1:Nz, m in 1:Ny, l in 1:Nx
-            CUDA.@allowscalar if ∇²eᵢⱼₖ[l, m, n] != 0
-                append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
-                CUDA.@allowscalar append!(nzval, ∇²eᵢⱼₖ[l, m, n])
-                count += 1
-            end
-        end
-        CUDA.@allowscalar colptr[Ny*Nx*(k-1) + Nx*(j-1) + i + 1] = colptr[Ny*Nx*(k-1) + Nx*(j-1) + i] + count
-    end
-
-    return CuSparseMatrixCSC(colptr, rowval, nzval, (Nx*Ny*Nz, Nx*Ny*Nz))
-end
 
 """
     solve!(x, solver::MultigridSolver, b; kwargs...)
