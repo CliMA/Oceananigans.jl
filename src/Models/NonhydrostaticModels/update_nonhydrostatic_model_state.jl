@@ -13,7 +13,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[])
+function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
     
     # Mask immersed tracers
     foreach(mask_immersed_field!, model.tracers)
@@ -34,6 +34,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     fill_halo_regions!(model.pressures.pHY′)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
+
+    compute_tendencies && compute_tendencies!(model, callbacks)
 
     return nothing
 end

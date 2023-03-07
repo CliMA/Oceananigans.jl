@@ -1,4 +1,4 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
@@ -12,12 +12,12 @@ import Oceananigans.Distributed: interior_tendency_kernel_size, interior_tendenc
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
 """
-    calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain

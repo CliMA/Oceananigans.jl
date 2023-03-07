@@ -1,4 +1,4 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans.TimeSteppers: compute_tendencies!
 
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
@@ -6,12 +6,12 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
 """
-    calculate_tendencies!(model::NonhydrostaticModel)
+    compute_tendencies!(model::NonhydrostaticModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::NonhydrostaticModel, callbacks)
+function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Note:
     #

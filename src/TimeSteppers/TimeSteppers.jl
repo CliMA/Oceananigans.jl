@@ -43,7 +43,7 @@ end
 TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
 function update_state! end
-function calculate_tendencies! end
+function compute_tendencies! end
 
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing
