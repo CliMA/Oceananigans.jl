@@ -7,7 +7,7 @@ using DocStringExtensions
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Solvers
 using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
