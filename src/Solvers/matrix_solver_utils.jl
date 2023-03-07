@@ -150,7 +150,7 @@ function compute_matrix_for_linear_operation(::CPU, template_field, linear_opera
      eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
     Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
 
-    for k = 1:Nz, j in 1:Ny, i in 1:Nx
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ)  .= 0
         parent(Aeᵢⱼₖ) .= 0
 
@@ -182,8 +182,8 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
         boundary_conditions_output = FieldBoundaryConditions(grid, loc, template_field.indices)
     end
 
-    # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ
-    eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
+    # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ; A is the matrix to be computed
+     eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
     Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
 
     colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
@@ -204,9 +204,10 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
 
         count = 0
         for n in 1:Nz, m in 1:Ny, l in 1:Nx
-            CUDA.@allowscalar if Aeᵢⱼₖ[l, m, n] != 0
+            Aeᵢⱼₖₗₘₙ = CUDA.@allowscalar Aeᵢⱼₖ[l, m, n]
+            if Aeᵢⱼₖₗₘₙ != 0
                 append!(rowval, Ny*Nx*(n-1) + Nx*(m-1) + l)
-                CUDA.@allowscalar append!(nzval, Aeᵢⱼₖ[l, m, n])
+                append!(nzval, Aeᵢⱼₖₗₘₙ)
                 count += 1
             end
         end
