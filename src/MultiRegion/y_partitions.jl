@@ -124,6 +124,8 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
         fin  = Int(n * r)
         interior(global_field)[:, init:fin, :] .= data[r][:, 1:fin-init+1, :]
     end
+
+    return nothing
 end
 
 #####

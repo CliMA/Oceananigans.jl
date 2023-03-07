@@ -106,6 +106,7 @@ function reconstruct_extent(mrg, p::XPartition)
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end
+
     return (; x, y, z)
 end
 
@@ -138,6 +139,8 @@ function compact_data!(global_field, global_grid, data::MultiRegionObject, p::Eq
         interior(global_field)[init:fin, :, :] .= data[r][1:fin-init+1, :, :]
     end
     fill_halo_regions!(global_field)
+
+    return nothing
 end
 
 #####
