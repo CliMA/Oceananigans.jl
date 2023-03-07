@@ -61,12 +61,13 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
+Setting `compute_tendencies=false` will not calculate new tendencies
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks = [], euler=false, compute_tendencies = true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
@@ -94,7 +95,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @apply_regionally correct_velocities_and_store_tendecies!(model, Δt)
 
     tick!(model.clock, Δt)
-    update_state!(model, callbacks)
+    update_state!(model, callbacks; compute_tendencies)
     update_particle_properties!(model, Δt)
 
     return nothing

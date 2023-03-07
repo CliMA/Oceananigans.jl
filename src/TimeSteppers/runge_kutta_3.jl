@@ -78,7 +78,7 @@ The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[], compute_tendencies = true)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
@@ -132,7 +132,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     pressure_correct_velocities!(model, third_stage_Δt)
 
     tick!(model.clock, third_stage_Δt)
-    update_state!(model, callbacks)
+    update_state!(model, callbacks; compute_tendencies)
     update_particle_properties!(model, third_stage_Δt)
 
     return nothing
