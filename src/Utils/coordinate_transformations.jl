@@ -36,34 +36,63 @@ lat_lon_to_z(longitude, latitude) = sind(latitude)
 
 longitude_in_same_window(λ1, λ2) = mod(λ1 - λ2 + 180, 360) + λ2 - 180
 
+flip_location(::Center) = Face()
+flip_location(::Face) = Center()
+
 """
-    get_longitude_vertices(i, j, LX::Center, LY::Center, grid::OrthogonalSphericalShellGrid)
+    get_longitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
 
 Return the longitudes that correspond to the four vertices of cell `i, j` at
 position `(LX, LY)`. The first vertice is the cell's Southern-Western one
 and the rest follow in counter-clockwise order.
 """
-function get_longitude_vertices(i, j, ::Center, ::Center, grid::OrthogonalSphericalShellGrid)
-    λ₁ = xnode(Face(), Face(), Center(),  i,   j,  1, grid)
-    λ₂ = xnode(Face(), Face(), Center(), i+1,  j,  1, grid)
-    λ₃ = xnode(Face(), Face(), Center(), i+1, j+1, 1, grid)
-    λ₄ = xnode(Face(), Face(), Center(),  i,  j+1, 1, grid)
+function get_longitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+
+    if LX == Center()
+        i₀ = i
+    elseif LX == Face()
+        i₀ = i-1
+    end
+
+    if LY == Center()
+        j₀ = j
+    elseif LY == Face()
+        j₀ = j-1
+    end
+
+    λ₁ = xnode(flip_location(LX), flip_location(LY), Center(),  i₀,   j₀,  1, grid)
+    λ₂ = xnode(flip_location(LX), flip_location(LY), Center(), i₀+1,  j₀,  1, grid)
+    λ₃ = xnode(flip_location(LX), flip_location(LY), Center(), i₀+1, j₀+1, 1, grid)
+    λ₄ = xnode(flip_location(LX), flip_location(LY), Center(),  i₀,  j₀+1, 1, grid)
 
     return [λ₁; λ₂; λ₃; λ₄]
 end
 
 """
-    get_latitude_vertices(i, j, LX::Center, LY::Center, grid::OrthogonalSphericalShellGrid)
+    get_latitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
 
 Return the latitudes that correspond to the four vertices of cell `i, j` at
 position `(LX, LY)`. The first vertice is the cell's Southern-Western one
 and the rest follow in counter-clockwise order.
 """
-function get_latitude_vertices(i, j, LX::Center, LY::Center, grid::OrthogonalSphericalShellGrid)
-    φ₁ = ynode(Face(), Face(), Center(),  i,   j,  1, grid)
-    φ₂ = ynode(Face(), Face(), Center(), i+1,  j,  1, grid)
-    φ₃ = ynode(Face(), Face(), Center(), i+1, j+1, 1, grid)
-    φ₄ = ynode(Face(), Face(), Center(),  i,  j+1, 1, grid)
+function get_latitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+
+    if LX == Center()
+        i₀ = i
+    elseif LX == Face()
+        i₀ = i-1
+    end
+
+    if LY == Center()
+        j₀ = j
+    elseif LY == Face()
+        j₀ = j-1
+    end
+
+    φ₁ = ynode(flip_location(LX), flip_location(LY), Center(),  i₀,   j₀,  1, grid)
+    φ₂ = ynode(flip_location(LX), flip_location(LY), Center(), i₀+1,  j₀,  1, grid)
+    φ₃ = ynode(flip_location(LX), flip_location(LY), Center(), i₀+1, j₀+1, 1, grid)
+    φ₄ = ynode(flip_location(LX), flip_location(LY), Center(),  i₀,  j₀+1, 1, grid)
 
     return [φ₁; φ₂; φ₃; φ₄]
 end
