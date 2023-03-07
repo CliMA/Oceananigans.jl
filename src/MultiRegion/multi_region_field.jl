@@ -26,11 +26,11 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
 @inline isregional(f::GriddedMultiRegionField) = true
-@inline devices(f::GriddedMultiRegionField)    = devices(f.grid)
-@inline sync_all_devices!(f::GriddedMultiRegionField)  = sync_all_devices!(devices(f.grid))
+@inline devices(f::GriddedMultiRegionField) = devices(f.grid)
+@inline sync_all_devices!(f::GriddedMultiRegionField) = sync_all_devices!(devices(f.grid))
 
 @inline switch_device!(f::GriddedMultiRegionField, d) = switch_device!(f.grid, d)
-@inline getdevice(f::GriddedMultiRegionField, d)      = getdevice(f.grid, d)
+@inline getdevice(f::GriddedMultiRegionField, d) = getdevice(f.grid, d)
 
 @inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
@@ -126,10 +126,10 @@ compute_at!(mrf::MultiRegionComputedField, time) = apply_regionally!(compute_at!
 
 @inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-validate_indices(indices, loc, mrg::MultiRegionGrid) = 
+validate_indices(indices, loc, mrg::MultiRegionGrid) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) = 
+FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
     construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
@@ -161,11 +161,11 @@ function inject_regional_bcs(grid, region, partition, loc, indices;
                                top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                           immersed = NoFluxBoundaryCondition())
 
-
   west  = inject_west_boundary(region, partition, west)
   east  = inject_east_boundary(region, partition, east)
   south = inject_south_boundary(region, partition, south)
   north = inject_north_boundary(region, partition, north)
+
   return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
 
