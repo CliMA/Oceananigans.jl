@@ -1,22 +1,44 @@
 using CUDA: CuArray, CuDevice, CuContext, CuPtr, device, device!, synchronize
 using OffsetArrays
 using Oceananigans.Grids: AbstractGrid
+
 import Base: length
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
-### 
-### Multi Region Object
-###
+##### 
+##### Multi Region Object
+#####
 
 struct MultiRegionObject{R, D}
-    regions :: R
+    regional_objects :: R
     devices :: D
+
+    function MultiRegionObject(regional_objects...; devices=Tuple(CPU() for _ in regional_objects))
+        R = typeof(regional_objects)
+        D = typeof(devices)
+        return new{R, D}(regional_objects, devices)
+    end
+
+    function MultiRegionObject(regional_objects::Tuple, devices::Tuple)
+        R = typeof(regional_objects)
+        D = typeof(devices)
+        return new{R, D}(regional_objects, devices)
+    end
 end
 
-###
-### Convenience structs 
-###
+"""
+    MultiRegionObject(regional_objects::Tuple; devices)
+
+Return a MultiRegionObject
+"""
+MultiRegionObject(regional_objects::Tuple; devices=Tuple(CPU() for _ in regional_objects)) =
+    MultiRegionObject(regional_objects, devices)
+
+
+#####
+##### Convenience structs 
+#####
 
 struct Reference{R}
     ref :: R
@@ -26,9 +48,9 @@ struct Iterate{I}
     iter :: I
 end
 
-###
-### Multi region functions
-###
+#####
+##### Multi region functions
+#####
 
 @inline getdevice(a, i)                     = nothing
 @inline getdevice(cu::GPUVar, i)            = CUDA.device(cu)
@@ -48,13 +70,13 @@ end
 @inline getregion(a, i) = a
 @inline getregion(ref::Reference, i)        = ref.ref
 @inline getregion(iter::Iterate, i)         = iter.iter[i]
-@inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regions[i], i)
+@inline getregion(mo::MultiRegionObject, i) = _getregion(mo.regional_objects[i], i)
 @inline getregion(p::Pair, i)               = p.first => _getregion(p.second, i)
 
 @inline _getregion(a, i) = a
 @inline _getregion(ref::Reference, i)        = ref.ref
 @inline _getregion(iter::Iterate, i)         = iter.iter[i]
-@inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regions[i], i)
+@inline _getregion(mo::MultiRegionObject, i) = getregion(mo.regional_objects[i], i)
 @inline _getregion(p::Pair, i)               = p.first => getregion(p.second, i)
 
 ## The implementation of `getregion` for a Tuple forces the compiler to infer the size of the Tuple
@@ -86,49 +108,61 @@ end
 
 @inline devices(mo::MultiRegionObject) = mo.devices
 
-Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regions, i, args...)
-Base.length(mo::MultiRegionObject)               = Base.length(mo.regions)
+Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
+Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
-@inline function apply_regionally!(func!, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return func!(args...; kwargs...)
+@inline function apply_regionally!(regional_func!, args...; kwargs...)
+    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
+    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
-    if isnothing(mra) 
-        devs = devices(mrk)
+    if isnothing(multi_region_args) 
+        devs = devices(multi_region_kwargs)
     else
-        devs = devices(mra)
+        devs = devices(multi_region_args)
     end
    
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
     sync_all_devices!(devs)
 end 
 
-# For functions with return statements -> BLOCKING! (use as seldom as possible)
-@inline function construct_regionally(constructor, args...; kwargs...)
-    mra = isnothing(findfirst(isregional, args)) ? nothing : args[findfirst(isregional, args)]
-    mrk = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(mra) && isnothing(mrk) && return constructor(args...; kwargs...)
+@inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
+    construct_regionally(1, regional_func, args...; kwargs...)
 
-    if isnothing(mra) 
-        devs = devices(mrk)
+# For functions with return statements -> BLOCKING! (use as seldom as possible)
+@inline function construct_regionally(Nreturns::Int, regional_func::Base.Callable, args...; kwargs...)
+    # First, we deduce whether any of `args` or `kwargs` are multi-regional.
+    # If no regional objects are found, we call the function as usual
+    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing :   args[findfirst(isregional, args)]
+    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
+    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
+
+    if isnothing(multi_region_args) 
+        devs = devices(multi_region_kwargs)
     else
-        devs = devices(mra)
+        devs = devices(multi_region_args)
     end
 
-    res = Vector(undef, length(devs))
+    # Evaluate regional_func on the device of that region and collect
+    # return values
+    regional_return_values = Vector(undef, length(devs))
     for (r, dev) in enumerate(devs)
         switch_device!(dev)
-        res[r] = constructor((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)                    
+        regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
+                                                  (getregion(kwarg, r) for kwarg in kwargs)...)
     end
     sync_all_devices!(devs)
 
-    return MultiRegionObject(Tuple(res), devs)
+    if Nreturns == 1
+        return MultiRegionObject(Tuple(regional_return_values), devs)
+    else
+        return Tuple(MultiRegionObject(Tuple(regional_return_values[r][i] for r in 1:length(devs)), devs) for i in 1:Nreturns)
+    end
 end
 
 @inline sync_all_devices!(grid::AbstractGrid)    = nothing
@@ -141,8 +175,12 @@ end
     end 
 end
 
-@inline sync_device!(::CuDevice) = CUDA.device_synchronize()
+@inline sync_device!(::CuDevice) = CUDA.synchronize()
 @inline sync_device!(dev)        = nothing
+
+
+# TODO: The macro errors when there is a return and the function has (args...) in the 
+# signature (example using a macro on `multi_region_buodary_conditions:L74)
 
 """
     @apply_regionally expr
@@ -163,11 +201,15 @@ macro apply_regionally(expr)
         end
     elseif expr.head == :(=)
         ret = expr.args[1]
+        Nret = 1
+        if expr.args[1] isa Expr 
+            Nret = length(expr.args[1].args)
+        end
         exp = expr.args[2]
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote
-            $ret = construct_regionally($func, $(args...))
+            $ret = construct_regionally($Nret, $func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -183,11 +225,15 @@ macro apply_regionally(expr)
                 end
             elseif arg isa Expr && arg.head == :(=)
                 ret = arg.args[1]
+                Nret = 1
+                if arg.args[1] isa Expr 
+                    Nret = length(arg.args[1].args)
+                end        
                 exp = arg.args[2]
                 func = exp.args[1]
                 args = exp.args[2:end]
                 new_expr.args[idx] = quote
-                    $ret = construct_regionally($func, $(args...))
+                    $ret = construct_regionally($Nret, $func, $(args...))
                 end
             end
         end

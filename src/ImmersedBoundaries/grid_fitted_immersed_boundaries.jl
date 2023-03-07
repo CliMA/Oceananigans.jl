@@ -1,6 +1,8 @@
 using Adapt
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
+using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Grids: total_size
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 using Oceananigans.BoundaryConditions: FBC
@@ -67,22 +69,30 @@ Return a grid with `GridFittedBottom` immersed boundary.
 Computes ib.bottom_height and wraps in an array.
 """
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
+    bottom_field = Field((Center, Center, Nothing), grid)
     set!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
 
     # TODO: maybe clean this up
-    IB = typeof(ib).name.wrapper
-    new_ib = IB(offset_bottom_array)
+    new_ib = getnamewrapper(ib)(offset_bottom_array)
 
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
 function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
     TX, TY, TZ = topology(grid)
-    # TODO: check size
+    validate_ib_size(grid, ib)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+end
+
+function validate_ib_size(grid, ib)
+    bottom_height_size = total_size((Center, Center, Nothing), grid)[1:2]
+
+    size(ib.bottom_height) != bottom_height_size &&
+        throw(ArgumentError("The dimensions of the immersed boundary $(size(ib.bottom_height)) do not match the grid size $(bottom_height_size)"))
+
+    return nothing
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
@@ -106,12 +116,12 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 ##### Implicit vertical diffusion
 #####
 
-####
-#### For a center solver we have to check the interface "solidity" at faces k+1 in both the
-#### Upper diagonal and the Lower diagonal 
-#### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
-#### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
-####
+#####
+##### For a center solver we have to check the interface "solidity" at faces k+1 in both the
+##### Upper diagonal and the Lower diagonal 
+##### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
+##### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
+#####
 
 @inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, LX, LY, Face())
 @inline immersed_ivd_peripheral_node(i, j, k, ibg, LX, LY, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, LX, LY, Center())
@@ -173,7 +183,6 @@ end
 
 function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary{<:OffsetArray}; kw...)
     TX, TY, TZ = topology(grid)
-    
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
@@ -188,15 +197,15 @@ immersed_cell(i, j, k, grid, ib) = _immersed_cell(i, j, k, grid, ib)
 
 # support for Flat grids
 using Oceananigans.Grids: AbstractGrid
-for ImmBoundary in [:GridFittedBottom, :GridFittedBoundary]
+for IB in [:GridFittedBottom, :GridFittedBoundary]
     @eval begin
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, <:Any}, ib::$ImmBoundary) = _immersed_cell(1, j, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, <:Any}, ib::$ImmBoundary) = _immersed_cell(i, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}, ib::$ImmBoundary) = _immersed_cell(i, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, <:Any},  ib::$ImmBoundary) = _immersed_cell(1, 1, k, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, Flat},  ib::$ImmBoundary) = _immersed_cell(1, j, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, Flat},  ib::$ImmBoundary) = _immersed_cell(i, 1, 1, grid, ib)
-        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, Flat},   ib::$ImmBoundary) = _immersed_cell(1, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, <:Any}, ib::$IB) = _immersed_cell(1, j, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, <:Any}, ib::$IB) = _immersed_cell(i, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, <:Any, Flat}, ib::$IB) = _immersed_cell(i, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, <:Any},  ib::$IB) = _immersed_cell(1, 1, k, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, <:Any, Flat},  ib::$IB) = _immersed_cell(1, j, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, <:Any, Flat, Flat},  ib::$IB) = _immersed_cell(i, 1, 1, grid, ib)
+        @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, Flat},   ib::$IB) = _immersed_cell(1, 1, 1, grid, ib)
     end
 end
 

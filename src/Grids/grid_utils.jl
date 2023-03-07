@@ -1,11 +1,13 @@
 using CUDA
 using Printf
 using Base.Ryu: writeshortest
+using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
 #####
 ##### Convenience functions
 #####
+
 const BoundedTopology = Union{Bounded, LeftConnected}
 
 Base.length(::Type{Face}, topo, N) = N
@@ -431,3 +433,108 @@ coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
+
+#####
+##### Spherical geometry
+#####
+
+"""
+    spherical_area_triangle(a::Number, b::Number, c::Number)
+
+Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
+
+The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
+are the triangle's inner angles.
+
+It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
+``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
+
+References
+==========
+* Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
+* Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
+"""
+function spherical_area_triangle(a::Number, b::Number, c::Number)
+    cosa = cos(a)
+    cosb = cos(b)
+    cosc = cos(c)
+
+    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
+    tan½E /= 1 + cosa + cosb + cosc
+
+    return 2atan(tan½E)
+end
+
+"""
+    spherical_area_triangle(a::AbstractVector, b::AbstractVector, c::AbstractVector)
+
+Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
+`a`, `b`, and `c` whose origin is the the center of the sphere. The formula was first given by
+Eriksson (1990).
+
+If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with
+``a``, ``b``, and ``c`` the side of the triangle then, it has been known since Euler and Lagrange
+that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
+triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
+On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
+that ``P`` above  the same as the volume defined by the vectors `a`, `b`, and `c`, that is
+``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
+
+References
+==========
+* Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
+"""
+function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
+    (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
+
+    tan½E = abs(dot(a₁, cross(a₂, a₃)))
+    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
+
+    return 2atan(tan½E)
+end
+
+"""
+    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
+
+Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
+`a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
+non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
+overlapping, we compute the area of the quadrilateral as half the sum of the areas of all four potential
+triangles.
+"""
+spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
+    1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
+           spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
+
+"""
+    hav(x)
+
+Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
+"""
+hav(x) = sin(x/2)^2
+
+"""
+    central_angle((φ₁, λ₁), (φ₂, λ₂))
+
+Compute the central angle (in radians) between two points on the sphere with
+`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
+
+References
+==========
+- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
+"""
+function central_angle((φ₁, λ₁), (φ₂, λ₂))
+    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
+
+    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
+end
+
+"""
+    central_angle_degrees((φ₁, λ₁), (φ₂, λ₂))
+
+Compute the central angle (in degrees) between two points on the sphere with
+`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
+
+See also [`central_angle`](@ref).
+"""
+central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))
