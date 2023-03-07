@@ -253,6 +253,9 @@ znodes(grid, ::Nothing; kwargs...) = 1:1
 """
     xnodes(grid, LX, LY, LZ, with_halos=false)
 
+Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
 See [`znodes`](@ref) for examples.
 """
 @inline xnodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)
@@ -260,12 +263,18 @@ See [`znodes`](@ref) for examples.
 """
     ynodes(grid, LX, LY, LZ, with_halos=false)
 
+Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
 See [`znodes`](@ref) for examples.
 """
 @inline ynodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)
 
 """
     znodes(grid, LX, LY, LZ, with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest znodes
 julia> using Oceananigans
