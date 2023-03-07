@@ -113,7 +113,7 @@ export
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
-    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
