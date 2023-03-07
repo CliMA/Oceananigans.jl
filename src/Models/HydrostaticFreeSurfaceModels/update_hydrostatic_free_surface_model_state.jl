@@ -31,7 +31,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
-    compute_tendencies && compute_tendencies!(model, callbacks)
+    compute_tendencies && 
+        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
