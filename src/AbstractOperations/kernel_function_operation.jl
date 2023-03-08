@@ -1,7 +1,7 @@
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
-    arguments :: D
     grid :: G
+    arguments :: D
 
     @doc """
         KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
@@ -41,9 +41,10 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     """
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
                                                  grid::G, 
-                                                 arguments::D...) where {LX, LY, LZ, K, G, D}
+                                                 arguments...) where {LX, LY, LZ, K, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, G, T, K, D}(kernel_function, arguments, grid)
+        D = typeof(arguments)
+        return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
     end
 
 end
