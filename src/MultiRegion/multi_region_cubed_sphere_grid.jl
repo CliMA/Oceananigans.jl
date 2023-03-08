@@ -3,7 +3,7 @@ using Oceananigans.Grids: R_Earth, halo_size, size_summary
 
 using Rotations
 
-const ConformalCubedSphereGrid = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition} where {FT, TX, TY, TZ}
+const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
 rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                                  idx == 2 ? RotY(π)*RotX(-π/2) :
@@ -222,7 +222,7 @@ end
                              radius = R_Earth,
                              devices = nothing)
 
-Load a ConformalCubedSphereGrid from `filepath`.
+Load a `ConformalCubedSphereGrid` from `filepath`.
 """
 function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
                                   Nz,
@@ -252,13 +252,13 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
 end
 
-function Base.summary(grid::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) where {FT, TX, TY, TZ}
+function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     return string(size_summary(size(grid)),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}) where {FT, TX, TY, TZ} =
+Base.show(io::IO, mrg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     print(io, "ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
               "├── grids: $(summary(mrg.region_grids[1])) \n",
               "├── partitioning: $(summary(mrg.partition)) \n",
