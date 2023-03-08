@@ -172,7 +172,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
 
     loc = location(template_field)
     Nx, Ny, Nz = size(template_field)
-    FT = eltype(template_field.grid)
+    grid = template_field.grid
 
     if boundary_conditions_input === nothing
         boundary_conditions_input = FieldBoundaryConditions(grid, loc, template_field.indices)
@@ -188,7 +188,7 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
 
     colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
     rowval = CuArray{Int}(undef, 0)
-    nzval  = CuArray{FT}(undef, 0)
+    nzval  = CuArray{eltype(grid)}(undef, 0)
 
     CUDA.@allowscalar colptr[1] = 1
 
