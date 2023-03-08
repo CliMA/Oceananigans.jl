@@ -10,8 +10,7 @@ struct MultiRegionGrid{FT, TX, TY, TZ, P, G, D, Arch} <: AbstractMultiRegionGrid
     devices :: D
 
     MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P,
-                                    region_grids::G,
-                                    devices::D) where {FT, TX, TY, TZ, P, G, D, A} =
+                                    region_grids::G, devices::D) where {FT, TX, TY, TZ, P, G, D, A} =
         new{FT, TX, TY, TZ, P, G, D, A}(arch, partition, region_grids, devices)
 end
 
@@ -31,27 +30,28 @@ end
 const ImmersedMultiRegionGrid = MultiRegionGrid{FT, TX, TY, TZ, P, <:MultiRegionObject{<:Tuple{Vararg{<:ImmersedBoundaryGrid}}}} where {FT, TX, TY, TZ, P}
 
 """
-    MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing)
+    MultiRegionGrid(global_grid; partition = XPartition(2),
+                                 devices = nothing,
+                                 validate = true)
 
-function MultiRegionGrid(global_grid::AbstractGrid; partition = XPartition(2), devices = nothing)
-=======
 Split a `global_grid` into different regions handled by `devices`.
 
 Positional Arguments
 ====================
 
-- `global_grid`: the grid to be divided into regions
+- `global_grid`: the grid to be divided into regions.
 
 Keyword Arguments
 =================
 
 - `partition`: the partitioning required. The implemented partitioning are `XPartition` 
-               (division along the x direction) and `YPartition` (division along the y direction)
-- `devices`: the devices to allocate memory on. `nothing` will allocate memory on the `CPU`. For
-             `GPU` computation it is possible to specify the total number of `GPU`s or the specific
-             `GPU`s to allocate memory on. The number of devices does not have to match the number of
-             regions 
+               (division along the ``x`` direction) and `YPartition` (division along
+               the ``y`` direction).
 
+- `devices`: the devices to allocate memory on. If `nothing` is provided (default) then memorey is
+             allocated on the the `CPU`. For `GPU` computation it is possible to specify the total
+             number of GPUs or the specific GPUs to allocate memory on. The number of devices does
+             not need to match the number of regions.
 
 Example
 =======
@@ -74,7 +74,9 @@ MultiRegionGrid{Float64, Bounded, Bounded, Flat} partitioned on CPU():
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 """
-function MultiRegionGrid(global_grid; partition = XPartition(2), devices = nothing, validate = true)
+function MultiRegionGrid(global_grid; partition = XPartition(2),
+                                      devices = nothing,
+                                      validate = true)
 
     if length(partition) == 1
         return global_grid
@@ -228,9 +230,9 @@ Base.show(io::IO, mrg::MultiRegionGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
               "├── partitioning: $(summary(mrg.partition)) \n",
               "└── devices: $(devices(mrg))")
 
-function Base.:(==)(mrg1::MultiRegionGrid, mrg2::MultiRegionGrid)
+function Base.:(==)(mrg₁::MultiRegionGrid, mrg₂::MultiRegionGrid)
     #check if grids are of the same type
-    vals = construct_regionally(Base.:(==), mrg1, mrg2)
+    vals = construct_regionally(Base.:(==), mrg₁, mrg₂)
     return all(vals.regional_objects)
 end
    
