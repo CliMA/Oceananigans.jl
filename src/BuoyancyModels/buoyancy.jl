@@ -72,5 +72,5 @@ regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
 Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with -ĝ = ", summary(buoyancy.gravity_unit_vector))
 
-Base.show(io::IO, buoyancy::Buoyancy) = summary(buoyancy)
+Base.show(io::IO, buoyancy::Buoyancy) = print(io, sprint(show, buoyancy.model), "\nwith -ĝ = ", summary(buoyancy.gravity_unit_vector))
 
