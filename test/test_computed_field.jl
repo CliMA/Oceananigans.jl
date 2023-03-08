@@ -383,7 +383,7 @@ for arch in archs
 
                 @test begin
                     @inline trivial_parameterized_kernel_function(i, j, k, grid, μ) = μ
-                    op = KernelFunctionOperation{Center, Center, Center}(trivial_parameterized_kernel_function, grid, parameters=0.1)
+                    op = KernelFunctionOperation{Center, Center, Center}(trivial_parameterized_kernel_function, grid, 0.1)
                     f = Field(op)
                     compute!(f)
                     f isa Field && f.operand === op
@@ -392,7 +392,7 @@ for arch in archs
                 ϵ(x, y, z) = 2rand() - 1
                 set!(model, u=ϵ, v=ϵ)
                 u, v, w = model.velocities
-                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
                 ζ = Field(ζ_op) # identical to `VerticalVorticityField`
                 compute!(ζ)
