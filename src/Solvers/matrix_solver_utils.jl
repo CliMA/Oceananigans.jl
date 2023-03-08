@@ -147,8 +147,8 @@ function compute_matrix_for_linear_operation(::CPU, template_field, linear_opera
     end
 
     # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ
-     eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
-    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
+     eᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_input)
+    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_output)
 
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         parent(eᵢⱼₖ)  .= 0
@@ -183,8 +183,8 @@ function compute_matrix_for_linear_operation(::GPU, template_field, linear_opera
     end
 
     # allocate fields eᵢⱼₖ and Aeᵢⱼₖ = A*eᵢⱼₖ; A is the matrix to be computed
-     eᵢⱼₖ = Field(loc, grid; boundary_conditions_input)
-    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions_output)
+     eᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_input)
+    Aeᵢⱼₖ = Field(loc, grid; boundary_conditions=boundary_conditions_output)
 
     colptr = CuArray{Int}(undef, Nx*Ny*Nz + 1)
     rowval = CuArray{Int}(undef, 0)
