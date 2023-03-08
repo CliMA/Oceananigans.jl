@@ -580,10 +580,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
     coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
-    coordinate_arrays = map(a -> arch_array(arch, a), coordinate_arrays)
+    coordinate_arrays = map(a -> arch_array(architecture, a), coordinate_arrays)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
-    metric_arrays = map(a -> arch_array(arch, a), metric_arrays)
+    metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
                                                     coordinate_arrays...,
