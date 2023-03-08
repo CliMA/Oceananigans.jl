@@ -7,14 +7,13 @@ using Oceananigans.OutputWriters: output_indices
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers, get_grid_name
+import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
 import Oceananigans.Simulations: hasnan
 
 import Base: fill!, axes
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid} where {LX, LY, LZ, O}
-const CubedSphereField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}} where {LX, LY, LZ, O, FT, TX, TY, TZ}
 const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrid} where {LX, LY, LZ}
 const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrid} where {LX, LY, LZ, C, P, F}
 
@@ -186,8 +185,6 @@ function Base.show(io::IO, field::MultiRegionField)
 
   print(io, prefix, middle, suffix)
 end
-
-get_grid_name(::CubedSphereField) = "ConformalCubedSphereGrid"
 
 xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
 ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = ynodes((location(ψ, 1), location(ψ, 2)), ψ.grid)

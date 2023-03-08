@@ -102,4 +102,3 @@ function Base.show(io::IO, ft::NamedFieldTuple)
         print(io, "    └── grid: ", summary(field.grid))
     end
 end
-
