@@ -72,7 +72,7 @@ end
 
             Nx, Ny, Nz = 10, 10, 1
 
-            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1.0)
+            grid = ConformalCubedSphereGrid(arch, FT; panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1)
 
             c = CenterField(grid)
 
