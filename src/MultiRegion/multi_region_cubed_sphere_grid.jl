@@ -3,6 +3,8 @@ using Oceananigans.Grids: R_Earth, halo_size, size_summary
 
 using Rotations
 
+const ConformalCubedSphereGrid = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition} where {FT, TX, TY, TZ}
+
 rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                                  idx == 2 ? RotY(π)*RotX(-π/2) :
                                  idx == 3 ? RotZ(π) :
@@ -20,7 +22,7 @@ rotation_from_panel_index(idx) = idx == 1 ? RotX(π/2)*RotY(π/2) :
                              partition = CubedSpherePartition(), 
                              devices = nothing)
 
-Return a ConformalCubedSphereGrid that comprises of 6 [`OrthogonalSphericalShellGrid`](@ref);
+Return a `ConformalCubedSphereGrid` that comprises of six [`OrthogonalSphericalShellGrid`](@ref);
 we refer to each of these grids as a "panel". Each panel corresponds
 to a face of the cube.
 
@@ -50,8 +52,7 @@ The connectivity between the `ConformalCubedSphereGrid` faces is depicted below.
     +==========+==========+
 ```
 
-By default, the North Pole of the sphere is in panel 1 (P1) and
-the South Pole in panel 6 (P6).
+The North Pole of the sphere is in panel 3 (P3) and the South Pole in panel 6 (P6).
 
 A `CubedSpherePartition(; Rx=2)` implies partition in 2 in each
 dimension of each panel resulting in 24 regions. In each partition
@@ -124,9 +125,9 @@ Example
 julia> using Oceananigans
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(10, 10, 1), z=(-1, 0), radius=1.0)
-ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU(): 
+ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU():
 ├── grids: 10×10×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics 
-├── partitioning: CubedSpherePartition with (1 region in each panel) 
+├── partitioning: CubedSpherePartition with (1 region in each panel)
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())
 ```
 
