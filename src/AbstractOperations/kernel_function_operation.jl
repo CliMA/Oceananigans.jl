@@ -1,36 +1,32 @@
-struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
+struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
-    computed_dependencies :: D
-    parameters :: P
+    arguments :: D
     grid :: G
 
-    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
-                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
+    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
+                                                 arguments::D,
+                                                 grid::G) where {LX, LY, LZ, K, G, D, P}
         T = eltype(grid)
-        return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
+        return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, arguments, grid)
     end
 
 end
 
 
 """
-    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
-                                        computed_dependencies=(), parameters=nothing)
+    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid; arguments=())
 
-Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
-an optional iterable of `computed_dependencies` and arbitrary `parameters`.
+Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with
+`arguments`.
 
-With `isnothing(parameters)` (the default), `kernel_function` is called with
-
-```julia
-kernel_function(i, j, k, grid, computed_dependencies...)
-```
-
-Otherwise `kernel_function` is called with
+`kernel_function` is called with
 
 ```julia
-kernel_function(i, j, k, grid, computed_dependencies..., parameters)
+kernel_function(i, j, k, grid, arguments...)
 ```
+
+Note that `compute!(kfo::KernelFunctionOperation)` calls `compute!` on
+all `kfo.arguments`.
 
 Examples
 ========
@@ -52,27 +48,21 @@ using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠ
 grid = model.grid
 u, v, w = model.velocities
 
-ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, arguments=(u, v))
 ```
 """
-function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
-                                            computed_dependencies = (),
-                                            parameters = nothing) where {LX, LY, LZ}
+KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid; arguments::Tuple = ()) where {LX, LY, LZ} =
+    KernelFunctionOperation{LX, LY, LZ}(kernel_function, arguments, grid)
 
-    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
-end
+indices(κ::KernelFunctionOperation) = interpolate_indices(κ.arguments...; loc_operation = location(κ))
 
-indices(κ::KernelFunctionOperation) = interpolate_indices(κ.computed_dependencies...; loc_operation = location(κ))
-
-@inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
-@inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)
+@inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
 
 # Compute dependencies
-compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.computed_dependencies)
+compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
 "Adapt `KernelFunctionOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
-                                        Adapt.adapt(to, κ.computed_dependencies),
-                                        Adapt.adapt(to, κ.parameters),
+                                        Adapt.adapt(to, κ.arguments),
                                         Adapt.adapt(to, κ.grid))
