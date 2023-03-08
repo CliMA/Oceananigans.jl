@@ -40,6 +40,10 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 """
 function Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
+    gravity_unit_vector != NegativeZDirection() &&
+        @warn "The behavior of `gravity_unit_vector` changed in version 0.80.0.
+Prior to this version, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
+After version 0.80.0, `gravity_unit_vector` indicates the direction of the gravitional acceleration"
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return Buoyancy(model, gravity_unit_vector)
 end
