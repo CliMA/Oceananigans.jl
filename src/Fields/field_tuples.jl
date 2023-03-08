@@ -38,18 +38,18 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 
 Fill halo regions for all `fields`. The algorithm:
 
-    1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-       duplicate entries to avoid "repeated" halo filling.
+  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+     duplicate entries to avoid "repeated" halo filling.
     
-    2. Filters fields into three categories:
-        i. ReducedFields with non-trivial boundary conditions;
-        ii. Fields with non-trivial indices and boundary conditions;
-        iii. Fields spanning the whole grid with non-trivial boundary conditions.
+  2. Filters fields into three categories:
+     i. ReducedFields with non-trivial boundary conditions;
+     ii. Fields with non-trivial indices and boundary conditions;
+     iii. Fields spanning the whole grid with non-trivial boundary conditions.
     
-    3. Halo regions for every `ReducedField` and windowed fields are filled independently.
+  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
     
-    4. In every direction, the halo regions in each of the remaining Field tuple
-       are filled simultaneously.
+  4. In every direction, the halo regions in each of the remaining `Field` tuple
+     are filled simultaneously.
 """
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
@@ -112,7 +112,7 @@ validate_field_grid(grid, field_tuple::NamedTuple) =
     all(validate_field_grid(grid, field) for field in field_tuple)
 
 """
-    validate_field_tuple_grid(tuple_name, field_tuple, arch, grid, bcs)
+    validate_field_tuple_grid(tuple_name, field_tuple, grid)
 
 Validates the grids associated with grids in the (possibly nested) `field_tuple`,
 and returns `field_tuple` if validation succeeds.

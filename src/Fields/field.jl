@@ -180,7 +180,7 @@ Field(z::ZeroField; kw...) = z
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
-    CenterField(grid; kw...)
+    CenterField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -188,7 +188,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Center, Center), grid, T; kw...)
 
 """
-    XFaceField(grid; kw...)
+    XFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -196,7 +196,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face, Center, Center), grid, T; kw...)
 
 """
-    YFaceField(grid; kw...)
+    YFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
@@ -204,7 +204,7 @@ Additional keyword arguments are passed to the `Field` constructor.
 YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center, Face, Center), grid, T; kw...)
 
 """
-    ZFaceField(grid; kw...)
+    ZFaceField(grid, T=eltype(grid); kw...)
 
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
