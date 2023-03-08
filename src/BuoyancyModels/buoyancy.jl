@@ -1,4 +1,4 @@
-using Oceananigans.Grids: ZDirection, validate_unit_vector
+using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
 
 struct Buoyancy{M, G}
     model :: M
@@ -6,11 +6,11 @@ struct Buoyancy{M, G}
 end
 
 """
-    Buoyancy(; model, gravity_unit_vector=ZDirection())
+    Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
 
-Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument 
-`gravity_unit_vector` can be used to specify the direction opposite to the gravitational
-acceleration (which we take here to mean the "vertical" direction).
+Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument
+`gravity_unit_vector` can be used to specify the direction of gravity, and the buoyancy acceleration
+will act in the opposite direction.
 
 Example
 =======
@@ -39,19 +39,19 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 """
-function Buoyancy(; model, gravity_unit_vector=ZDirection())
+function Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return Buoyancy(model, gravity_unit_vector)
 end
 
 
-@inline ĝ_x(buoyancy) = @inbounds buoyancy.gravity_unit_vector[1]
-@inline ĝ_y(buoyancy) = @inbounds buoyancy.gravity_unit_vector[2]
-@inline ĝ_z(buoyancy) = @inbounds buoyancy.gravity_unit_vector[3]
+@inline ĝ_x(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[1]
+@inline ĝ_y(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[2]
+@inline ĝ_z(buoyancy) = @inbounds -buoyancy.gravity_unit_vector[3]
 
-@inline ĝ_x(::Buoyancy{M, ZDirection}) where M = 0
-@inline ĝ_y(::Buoyancy{M, ZDirection}) where M = 0
-@inline ĝ_z(::Buoyancy{M, ZDirection}) where M = 1
+@inline ĝ_x(::Buoyancy{M, NegativeZDirection}) where M = 0
+@inline ĝ_y(::Buoyancy{M, NegativeZDirection}) where M = 0
+@inline ĝ_z(::Buoyancy{M, NegativeZDirection}) where M = 1
 
 #####
 ##### For convenience

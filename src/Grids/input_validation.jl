@@ -173,7 +173,7 @@ function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
     return FT(Lx), FT(Ly), FT.(x), FT.(y)
 end
 
-validate_unit_vector(ê::ZDirection) = ê
+validate_unit_vector(ê::NegativeZDirection) = ê
 
 function validate_unit_vector(ê)
     length(ê) == 3 || throw(ArgumentError("unit vector must have length 3"))

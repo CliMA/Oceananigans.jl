@@ -1,4 +1,4 @@
-using Oceananigans.Grids: ZDirection, validate_unit_vector
+using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
 
 """
     struct ConstantCartesianCoriolis{FT} <: AbstractRotation
@@ -15,7 +15,7 @@ end
 
 """
     ConstantCartesianCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
-                                            f=nothing, rotation_axis=ZDirection(), 
+                                            f=nothing, rotation_axis=NegativeZDirection(),
                                             rotation_rate=Ω_Earth, latitude=nothing)
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
@@ -29,7 +29,7 @@ constant rotation can be specified in three different ways:
   (which defaults to Earth's rotation rate).
 """
 function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
-                                               f=nothing, rotation_axis=ZDirection(), 
+                                               f=nothing, rotation_axis=NegativeZDirection(),
                                                rotation_rate=Ω_Earth, latitude=nothing)
     if !isnothing(latitude)
         all(isnothing.((fx, fy, fz, f))) || throw(ArgumentError("Only `rotation_rate` can be specified when using `latitude`."))
@@ -42,7 +42,7 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
         all(isnothing.((fx, fy, fz, latitude))) || throw(ArgumentError("Only `rotation_axis` can be specified when using `f`."))
 
         rotation_axis = validate_unit_vector(rotation_axis)
-        if rotation_axis isa ZDirection
+        if rotation_axis isa NegativeZDirection
             fx = fy = 0
             fz = f
         else

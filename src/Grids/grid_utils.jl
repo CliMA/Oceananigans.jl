@@ -397,8 +397,8 @@ end
 ##### Directions (for tilted domains)
 #####
 
-struct ZDirection end
-Base.summary(::ZDirection) = "ZDirection"
+struct NegativeZDirection end
+Base.summary(::NegativeZDirection) = "NegativeZDirection"
 
 #####
 ##### Show utils
