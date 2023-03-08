@@ -78,7 +78,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection
+├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
 └── coriolis: Nothing
 ```
 
@@ -91,7 +91,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection
+├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
@@ -114,7 +114,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 └── coriolis: Nothing
 ```
 
@@ -127,7 +127,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
@@ -142,7 +142,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection
+├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 └── coriolis: Nothing
@@ -163,7 +163,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=1.3 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection
+├── buoyancy: SeawaterBuoyancy with g=1.3 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 └── coriolis: Nothing
 ```
 
@@ -231,7 +231,7 @@ julia> model = NonhydrostaticModel(; grid,
 ┌ Warning: The behavior of `gravity_unit_vector` changed in version 0.80.0.
 │ Prior to this version, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
 │ After version 0.80.0, `gravity_unit_vector` indicates the direction of the gravitional acceleration
-└ @ Oceananigans.BuoyancyModels ~/repos/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:44
+└ @ Oceananigans.BuoyancyModels ~/repos/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
