@@ -58,3 +58,11 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
                                         Adapt.adapt(to, κ.arguments),
                                         Adapt.adapt(to, κ.grid))
 
+Base.show(io::IO, kfo::KernelFunctionOperation) =
+    print(io,
+      summary(kfo), '\n',
+      "├── grid: ", summary(kfo.grid), '\n',
+      "├── kernel_function: ", prettysummary(kfo.kernel_function), '\n',
+      "└── arguments: (", Tuple(string(prettysummary(a), ", ") for a in kfo.arguments[1:end-1])...,
+                       " ", prettysummary(kfo.arguments[end]), ")")
+
