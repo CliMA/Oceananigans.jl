@@ -3,7 +3,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     arguments :: D
     grid :: G
 
-    @doc"""
+    @doc """
         KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
     
     Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with `arguments`.
