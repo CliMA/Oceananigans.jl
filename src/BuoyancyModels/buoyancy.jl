@@ -30,9 +30,9 @@ model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 
 # output
 
-┌ Warning: The behavior of `gravity_unit_vector` changed in version 0.80.0.
-│ Prior to this version, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-│ After version 0.80.0, `gravity_unit_vector` indicates the direction of the gravitional acceleration
+┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
+│ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
+│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
 └ @ Oceananigans.BuoyancyModels ~/repos/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
