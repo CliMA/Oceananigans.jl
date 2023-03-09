@@ -97,17 +97,6 @@ end
 @inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
 
 """
-    make_column(f::Field)
-
-Return the column vector with the interior of a field `f`.
-"""
-function make_column(f::Field)
-    Nx, Ny, Nz = size(f)
-
-    return reshape(interior(f), Nx*Ny*Nz)
-end
-
-"""
     compute_matrix_for_linear_operation(arch, template_field, linear_operation!, args...;
                                         boundary_conditions_input=nothing,
                                         boundary_conditions_output=nothing)
@@ -160,7 +149,7 @@ function compute_matrix_for_linear_operation(::CPU, template_field, linear_opera
 
         linear_operation!(Aeᵢⱼₖ, eᵢⱼₖ, args...)
 
-        A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= make_column(Aeᵢⱼₖ)
+        A[:, Ny*Nx*(k-1) + Nx*(j-1) + i] .= vec(Aeᵢⱼₖ)
     end
 
     return A
