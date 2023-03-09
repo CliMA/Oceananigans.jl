@@ -161,10 +161,8 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
     # q = A * x
     q = solver.linear_operator_product
-    solver.linear_operation!(q, x, args...)
 
-    # r = b - A * x
-    parent(solver.residual) .= parent(b) .- parent(q)
+    @apply_regionally initialize_solution!(q, x, b, solver, args...)
 
     residual_norm = norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
@@ -188,11 +186,36 @@ function iterate!(x, solver, b, args...)
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
+    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
+
+    @apply_regionally perform_iteration!(q, p, z, sover, args...)
+
+    α = ρ / dot(p, q)
+
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
+        
+    @apply_regionally update_solution_and_residuals!(x, r, q, α)
+
+    solver.iteration += 1
+    solver.ρⁱ⁻¹ = ρ
+
+    return nothing
+end
+
+function initialize_solution!(q, x, b, solver, args...)
+    solver.linear_operation!(q, x, args...)
+    # r = b - A * x
+    parent(solver.residual) .= parent(b) .- parent(q)
+
+    return nothing
+end
+
+function perform_iteration!(p, z)
 
     pp = parent(p)
     zp = parent(z)
@@ -208,20 +231,16 @@ function iterate!(x, solver, b, args...)
 
     # q = A * p
     solver.linear_operation!(q, p, args...)
-    α = ρ / dot(p, q)
+    return nothing
+end
 
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
-        
+function update_solution_and_residuals!(x, r, q, α)
     xp = parent(x)
     rp = parent(r)
     qp = parent(q)
 
     xp .+= α .* pp
     rp .-= α .* qp
-
-    solver.iteration += 1
-    solver.ρⁱ⁻¹ = ρ
 
     return nothing
 end

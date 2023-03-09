@@ -129,6 +129,8 @@ Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objec
     end
 
     sync_all_devices!(devs)
+
+    return nothing
 end 
 
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =

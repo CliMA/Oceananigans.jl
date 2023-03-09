@@ -7,7 +7,8 @@ using Oceananigans.Fields: Field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
              compute_vertically_integrated_lateral_areas!,
              compute_matrix_coefficients,
-             flux_div_xyᶜᶜᶠ  
+             flux_div_xyᶜᶜᶠ,
+             PCGImplicitFreeSurfaceSolver
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels:
              build_implicit_step_solver,
@@ -66,6 +67,10 @@ build_implicit_step_solver(::Val{:Default}, grid::MultiRegionGrid, settings, gra
     UnifiedImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)   
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
     throw(ArgumentError("Cannot use PCG solver with Multi-region grids!! Select :Default or :HeptadiagonalIterativeSolver as solver_method"))
+build_implicit_step_solver(::Val{:Default}, grid::ConformalCubedSphereGrid, settings, gravitational_acceleration) =
+    PCGImplicitFreeSurfaceSolver(grid, settings, gravitational_acceleration)
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid::MultiRegionGrid, settings, gravitational_acceleration) =
+    throw(ArgumentError("Cannot use Matrix solvers with ConformalCubedSphereGrid!! Select :Default or :PreconditionedConjugateGradient as solver_method"))
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::UnifiedImplicitFreeSurfaceSolver, g, Δt, ∫ᶻQ, η)
     grid = ∫ᶻQ.u.grid

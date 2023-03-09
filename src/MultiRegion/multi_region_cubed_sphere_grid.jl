@@ -252,6 +252,8 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology[1], panel_topology[2], panel_topology[3]}(arch, partition, region_grids, devices)
 end
 
+with_halo(new_halo, csg::ConformalCubedSphereGrid) = apply_regionally!(with_halo, new_halo, csg)
+
 function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     return string(size_summary(size(grid)),
                   " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
