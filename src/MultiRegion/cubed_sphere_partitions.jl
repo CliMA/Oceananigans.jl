@@ -145,15 +145,15 @@ julia> CubedSphereConnectivity(1, 3, :north, :west)
 CubedSphereConnectivity(1, 3, :north, :west)
 ```
 """
-struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
+struct CubedSphereConnectivity{T} <: AbstractCubedSphereConnectivity 
     "the current region rank"
-         rank :: Int
+            rank :: Int
     "the region from which boundary condition comes from"
-    from_rank :: Int
+       from_rank :: Int
     "the current region side"
-         side :: Symbol
+            side :: Symbol
     "the side of the region from which boundary condition comes from"
-    from_side :: Symbol
+       from_side :: Symbol
 end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
@@ -180,7 +180,9 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, p)
     end
 
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
+    T = from_side == :east ? true : false
+
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :west, from_side))
 end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
@@ -208,7 +210,9 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, p)
     end
 
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
+    T = from_side == :west ? true : false
+
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :east, from_side))
 end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
@@ -235,7 +239,9 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, p)
     end
 
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
+    T = from_side == :north ? true : false
+
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :south, from_side))
 end
 
 function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
@@ -262,8 +268,18 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, p)
     end
 
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
+    T = from_side == :south ? true : false
+
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :south, from_side))
 end
+
+const NonTrivialCubedSphereConnectivity = CubedSphereConnectivity{false}
+
+@inline flip_west_and_east_indices(buff, conn) = buff
+@inline flip_west_and_east_indices(buff, ::NonTrivialCubedSphereConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
+
+@inline flip_south_and_north_indices(buff, conn) = buff
+@inline flip_south_and_north_indices(buff, ::NonTrivialCubedSphereConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
 
 function Base.summary(p::CubedSpherePartition)
     region_str = p.Rx * p.Ry > 1 ? "regions" : "region"

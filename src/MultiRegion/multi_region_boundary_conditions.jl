@@ -112,11 +112,11 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    westsrc = buffers[westbc.condition.from_rank].east.send
-    eastsrc = buffers[eastbc.condition.from_rank].west.send
+    westsrc = getproperty(buffers[westbc.condition.from_rank], westbc.condition.from_side).send
+    eastsrc = getproperty(buffers[eastbc.condition.from_rank], eastbc.condition.from_side).send
 
-    device_copy_to!(westdst, westsrc)
-    device_copy_to!(eastdst, eastsrc)
+    device_copy_to!(westdst, flip_west_and_east_indices(westsrc, westbc.condition))
+    device_copy_to!(eastdst, flip_west_and_east_indices(eastsrc, eastbc.condition))
 
     view(parent(c), 1:H, :, :)        .= westdst
     view(parent(c), N+H+1:N+2H, :, :) .= eastdst
@@ -134,11 +134,11 @@ function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    southsrc = buffers[southbc.condition.from_rank].south.send
-    northsrc = buffers[northbc.condition.from_rank].north.send
+    southsrc = getproperty(buffers[southbc.condition.from_rank], southbc.condition.from_side).send
+    northsrc = getproperty(buffers[northbc.condition.from_rank], northbc.condition.from_side).send
 
-    device_copy_to!(southdst, southsrc)
-    device_copy_to!(northdst, northsrc)
+    device_copy_to!(southdst, flip_south_and_north_indices(southsrc, southbc.condition))
+    device_copy_to!(northdst, flip_south_and_north_indices(northsrc, northbc.condition))
 
     view(parent(c), :, 1:H, :, :)        .= southdst
     view(parent(c), :, N+H+1:N+2H, :, :) .= northdst
