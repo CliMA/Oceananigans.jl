@@ -17,10 +17,10 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     Hx :: Int
     Hy :: Int
     Hz :: Int
-    ξx :: FT
-    ξy :: FT
-    ηx :: FT
-    ηy :: FT
+    ξₗ :: FT
+    ξᵣ :: FT
+    ηₗ :: FT
+    ηᵣ :: FT
     λᶜᶜᵃ :: A
     λᶠᶜᵃ :: A
     λᶜᶠᵃ :: A
@@ -47,25 +47,24 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     Azᶠᶠᵃ :: A
     radius :: FT
 
-    function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
-                                                      Nx, Ny, Nz,
-                                                      Hx, Hy, Hz, ξx, ξy, ηx, ηy,
-                                                       λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
-                                                       φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
-                                                      Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                                      Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, Δzᵃᵃᶜ :: FR, Δzᵃᵃᶠ :: FR,
-                                                      Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
-                                                      radius :: FT) where {TX, TY, TZ, FT, A, R, FR, Arch}
-
-        return new{FT, TX, TY, TZ, A, R, FR, Arch}(architecture,
-                                                   Nx, Ny, Nz,
-                                                   Hx, Hy, Hz, ξx, ξy, ηx, ηy,
-                                                   λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                                   φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-                                                   Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                   Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
-                                                   Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
-    end
+    OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
+                                             Nx, Ny, Nz,
+                                             Hx, Hy, Hz, ξₗ, ξᵣ, ηₗ, ηᵣ,
+                                              λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
+                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
+                                             Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
+                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, Δzᵃᵃᶜ :: FR, Δzᵃᵃᶠ :: FR,
+                                             Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
+                                             radius :: FT) where {TX, TY, TZ, FT, A, R, FR, Arch} =
+        new{FT, TX, TY, TZ, A, R, FR, Arch}(architecture,
+                                            Nx, Ny, Nz,
+                                            Hx, Hy, Hz,
+                                            ξₗ, ξᵣ, ηₗ, ηᵣ,
+                                            λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                                            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                            Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                            Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 const ZRegOrthogonalSphericalShellGrid = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
@@ -164,22 +163,22 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
 
-    ## Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
+    ## CompuNξᶠte staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
-    Xᶜᶜᵃ = zeros(Nξ  , Nη  )
-    Xᶠᶜᵃ = zeros(Nξ+1, Nη  )
-    Xᶜᶠᵃ = zeros(Nξ  , Nη+1)
-    Xᶠᶠᵃ = zeros(Nξ+1, Nη+1)
+    Xᶜᶜᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Xᶠᶜᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Xᶜᶠᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
+    Xᶠᶠᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
 
-    Yᶜᶜᵃ = zeros(Nξ  , Nη  )
-    Yᶠᶜᵃ = zeros(Nξ+1, Nη  )
-    Yᶜᶠᵃ = zeros(Nξ  , Nη+1)
-    Yᶠᶠᵃ = zeros(Nξ+1, Nη+1)
+    Yᶜᶜᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Yᶠᶜᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Yᶜᶠᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
+    Yᶠᶠᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
 
-    Zᶜᶜᵃ = zeros(Nξ  , Nη  )
-    Zᶠᶜᵃ = zeros(Nξ+1, Nη  )
-    Zᶜᶠᵃ = zeros(Nξ  , Nη+1)
-    Zᶠᶠᵃ = zeros(Nξ+1, Nη+1)
+    Zᶜᶜᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Zᶠᶜᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Center, topology[2], Nη, 0))
+    Zᶜᶠᵃ = zeros(total_length(Center, topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
+    Zᶠᶠᵃ = zeros(total_length(Face,   topology[1], Nξ, 0), total_length(Face,   topology[2], Nη, 0))
 
     ξS = (ξᶜᵃᵃ, ξᶠᵃᵃ, ξᶜᵃᵃ, ξᶠᵃᵃ)
     ηS = (ηᵃᶜᵃ, ηᵃᶜᵃ, ηᵃᶠᵃ, ηᵃᶠᵃ)
@@ -207,16 +206,15 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     end
 
     ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
+    λᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    λᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    λᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    λᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
-    λᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    λᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    λᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    λᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-
-    φᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    φᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    φᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    φᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    φᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    φᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    φᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    φᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
     λS = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ)
     φS = (φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
@@ -254,10 +252,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     # central angles
 
-    Δσxᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δσxᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δσxᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δσxᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δσxᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσxᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσxᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσxᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
 
     #Δσxᶜᶜᵃ
@@ -307,10 +305,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
     end
 
-    Δxᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δxᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δxᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δxᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δxᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δxᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δxᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    Δxᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
     @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
     @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
@@ -318,10 +316,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
 
 
-    Δσyᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δσyᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δσyᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δσyᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δσyᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσyᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσyᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    Δσyᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
 
     # Δσyᶜᶜᵃ
@@ -372,10 +370,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     end
 
 
-    Δyᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δyᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Δyᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Δyᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Δyᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δyᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Δyᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    Δyᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
     @. Δyᶜᶜᵃ = radius * deg2rad(Δσyᶜᶜᵃ)
     @. Δyᶠᶜᵃ = radius * deg2rad(Δσyᶠᶜᵃ)
@@ -408,10 +406,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
     =#
 
-    Azᶜᶜᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Azᶠᶜᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη   + 2Hy), -Hx, -Hy)
-    Azᶜᶠᵃ = OffsetArray(zeros(Nξ   + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
-    Azᶠᶠᵃ = OffsetArray(zeros(Nξ+1 + 2Hx, Nη+1 + 2Hy), -Hx, -Hy)
+    Azᶜᶜᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Azᶠᶜᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Center, topology[2], Nη, Hy)), -Hx, -Hy)
+    Azᶜᶠᵃ = OffsetArray(zeros(total_length(Center, topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
+    Azᶠᶠᵃ = OffsetArray(zeros(total_length(Face,   topology[1], Nξ, Hx), total_length(Face,   topology[2], Nη, Hy)), -Hx, -Hy)
 
 
     # Azᶜᶜᵃ
@@ -645,7 +643,7 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξ, η = (0, 1), (0, 1)
+    ξ, η = (-1, 1), (-1, 1)
     ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=ξ, y=η, z, topology, halo)
 
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
@@ -656,6 +654,7 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     ## Read everything else from the file
 
     file = jldopen(filepath, "r")["face$panel"]
+
     Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
 
     N = (Nξ, Nη, Nz)
@@ -663,31 +662,29 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
 
     loc_cc = (Center, Center)
     loc_cf = (Center, Face)
-    loc_fc = (Face, Center)
-    loc_ff = (Face, Face)
+    loc_fc = (Face,   Center)
+    loc_ff = (Face,   Face)
 
-    topo_bbb = (Bounded, Bounded, Bounded)
+    λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
+    λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
 
-    λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topo_bbb, N, H)
-    λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topo_bbb, N, H)
+    φᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶜᶜᵃ", loc_cc, topology, N, H)
+    φᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶠᶠᵃ", loc_ff, topology, N, H)
 
-    φᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶜᶜᵃ", loc_cc, topo_bbb, N, H)
-    φᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶠᶠᵃ", loc_ff, topo_bbb, N, H)
+    Δxᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶜᵃ", loc_cc, topology, N, H)
+    Δxᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶜᵃ", loc_fc, topology, N, H)
+    Δxᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶠᵃ", loc_cf, topology, N, H)
+    Δxᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶠᵃ", loc_ff, topology, N, H)
 
-    Δxᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶜᵃ", loc_cc, topo_bbb, N, H)
-    Δxᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶜᵃ", loc_fc, topo_bbb, N, H)
-    Δxᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶠᵃ", loc_cf, topo_bbb, N, H)
-    Δxᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶠᵃ", loc_ff, topo_bbb, N, H)
+    Δyᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶜᵃ", loc_cc, topology, N, H)
+    Δyᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶜᵃ", loc_fc, topology, N, H)
+    Δyᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶠᵃ", loc_cf, topology, N, H)
+    Δyᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶠᵃ", loc_ff, topology, N, H)
 
-    Δyᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶜᵃ", loc_cc, topo_bbb, N, H)
-    Δyᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶜᵃ", loc_fc, topo_bbb, N, H)
-    Δyᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶠᵃ", loc_cf, topo_bbb, N, H)
-    Δyᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶠᵃ", loc_ff, topo_bbb, N, H)
-
-    Azᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶜᵃ", loc_cc, topo_bbb, N, H)
-    Azᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶜᵃ", loc_fc, topo_bbb, N, H)
-    Azᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶠᵃ", loc_cf, topo_bbb, N, H)
-    Azᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶠᵃ", loc_ff, topo_bbb, N, H)
+    Azᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶜᵃ", loc_cc, topology, N, H)
+    Azᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶜᵃ", loc_fc, topology, N, H)
+    Azᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶠᵃ", loc_cf, topology, N, H)
+    Azᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶠᵃ", loc_ff, topology, N, H)
 
     ## Maybe we won't need these?
     Txᶠᶜ = total_length(loc_fc[1], topology[1], N[1], H[1])
@@ -749,7 +746,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
-                                                        grid.ξx, grid.ξy, grid.ηx, grid.ηy,
+                                                        grid.ξₗ, grid.ξᵣ, grid.ηₗ, grid.ηᵣ,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
                                                         horizontal_grid_spacing_data..., Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                         horizontal_area_data..., grid.radius)
@@ -763,8 +760,8 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz, 
-                                                    grid.ξx, grid.ξy,
-                                                    grid.ηx, grid.ηy,
+                                                    grid.ξₗ, grid.ξᵣ,
+                                                    grid.ηₗ, grid.ηᵣ,
                                                     adapt(to, grid.λᶜᶜᵃ),
                                                     adapt(to, grid.λᶠᶜᵃ),
                                                     adapt(to, grid.λᶜᶠᵃ),
@@ -885,15 +882,15 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
-    
+
+    ξ = (old_grid.ξₗ, old_grid.ξᵣ)
+    η = (old_grid.ηₗ, old_grid.ηᵣ)
+
     z = cpu_face_constructor_z(old_grid)
 
     new_grid = OrthogonalSphericalShellGrid(architecture(old_grid), eltype(old_grid);
-                                            size,
-                                            z,
+                                            size, z, ξ, η,
                                             topology = topo,
-                                            ξ = (old_grid.ξx, old_grid.ξy),
-                                            η = (old_grid.ηx, old_grid.ηx),
                                             radius = old_grid.radius,
                                             halo = new_halo,
                                             rotation)
