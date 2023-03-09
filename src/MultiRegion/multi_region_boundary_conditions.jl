@@ -1,7 +1,7 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: arch_array, device_event, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Fields: reduced_dimensions
+using Oceananigans.Fields: reduced_dimensions, fill_send_buffers!
 using KernelAbstractions: MultiEvent
 
 using Oceananigans.BoundaryConditions:
@@ -62,16 +62,17 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
 
-    arch  = architecture(mrg)
+    arch        = architecture(mrg)
     halo_tuple  = construct_regionally(permute_boundary_conditions, bcs)
 
-    neighbors = Reference(c.regional_objects)
-    buff      = Reference(buffers.regional_objects)
+    @apply_regionally fill_send_buffers!(c, buffers, mrg)
+
+    buff = Reference(buffers.regional_objects)
 
     for task = 1:3
         barrier = device_event(arch)
         apply_regionally!(fill_halo_event!, task, halo_tuple, 
-                          c, indices, loc, arch, barrier, mrg, neighbors, buff, 
+                          c, indices, loc, arch, barrier, mrg, buff, 
                           args...; kwargs...)
     end
 
@@ -89,40 +90,31 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
     @eval begin
-        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc::MCBC, right_bc, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...) 
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
-            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, neighbors, buffers, args...; kwargs...)
+            $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, buffers, args...; kwargs...)
             return NoneEvent()
         end   
-        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...) 
+        function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
-            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, neighbors, buffers, args...; kwargs...)
+            $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, buffers, args...; kwargs...)
             return NoneEvent()
         end   
     end
 end
 
-function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    w = neighbors[westbc.condition.from_rank]
-    e = neighbors[eastbc.condition.from_rank]
-
     westdst = buffers[westbc.condition.rank].west.recv
     eastdst = buffers[eastbc.condition.rank].east.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    switch_device!(getdevice(w))
     westsrc = buffers[westbc.condition.from_rank].east.send
-    westsrc .= view(parent(w), N+1:N+H, :, :)
-    
-    switch_device!(getdevice(e))
     eastsrc = buffers[eastbc.condition.from_rank].west.send
-    eastsrc .= view(parent(e), H+1:2H, :, :)
 
-    switch_device!(getdevice(c))
     device_copy_to!(westdst, westsrc)
     device_copy_to!(eastdst, eastsrc)
 
@@ -132,27 +124,19 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     return NoneEvent()
 end
 
-function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
 
     H = halo_size(grid)[2]
     N = size(grid)[2]
-    s = neighbors[southbc.condition.from_rank]
-    n = neighbors[northbc.condition.from_rank]
 
     southdst = buffers[southbc.condition.rank].south.recv
     northdst = buffers[northbc.condition.rank].north.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    switch_device!(getdevice(s))
     southsrc = buffers[southbc.condition.from_rank].south.send
-    southsrc .= view(parent(s), :, N+1:N+H, :)
-    
-    switch_device!(getdevice(n))
     northsrc = buffers[northbc.condition.from_rank].north.send
-    northsrc .= view(parent(n), :, H+1:2H, :)
 
-    switch_device!(getdevice(c))
     device_copy_to!(southdst, southsrc)
     device_copy_to!(northdst, northsrc)
 
@@ -166,21 +150,14 @@ end
 ##### Single fill_halo! for Communicating boundary condition
 #####
     
-function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
     
     H = halo_size(grid)[1]
-    N = size(grid)[1]
-    w = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].west.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    switch_device!(getdevice(w))
     src = buffers[bc.condition.from_rank].east.send
-    src .= view(parent(w), N+1:N+H, :, :)
-    sync_device!(getdevice(w))
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), 1:H, :, :)
@@ -189,21 +166,15 @@ function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid,
     return nothing
 end
 
-function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
-    e = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].east.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    switch_device!(getdevice(e))
     src = buffers[bc.condition.from_rank].west.send
-    src .= view(parent(e), H+1:2H, :, :)
-    sync_device!(getdevice(e))
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), N+H+1:N+2H, :, :)
@@ -212,21 +183,14 @@ function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid,
     return nothing
 end
 
-function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
         
     H = halo_size(grid)[2]
-    N = size(grid)[2]
-    s = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].south.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
-
-    switch_device!(getdevice(s))
     src = buffers[bc.condition.from_rank].north.send
-    src .= view(parent(s), :, N+1:N+H, :)
-    sync_device!(getdevice(s))
 
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), :, 1:H, :)
@@ -235,21 +199,15 @@ function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid
     return nothing
 end
 
-function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, neighbors, buffers, args...; kwargs...)
+function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...)
     
     H = halo_size(grid)[2]
     N = size(grid)[2]
-    n = neighbors[bc.condition.from_rank]
     dst = buffers[bc.condition.rank].north.recv
 
     wait(Oceananigans.Architectures.device(arch), dep)
 
-    switch_device!(getdevice(n))
     src = buffers[bc.condition.from_rank].south.send
-    src .= view(parent(n), :, H+1:2H, :)
-    sync_device!(getdevice(n))
-
-    switch_device!(getdevice(c))
     device_copy_to!(dst, src)
 
     p  = view(parent(c), :, N+H+1:N+2H, :)

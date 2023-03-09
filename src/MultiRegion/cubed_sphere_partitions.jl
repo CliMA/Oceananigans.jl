@@ -164,7 +164,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
 
     if pᵢ == 1
         if mod(pidx, 2) == 0
-            from_side = :east
+            from_side  = :east
             from_panel = pidx - 1
             from_pᵢ    = Rx(from_panel, p)
             from_pⱼ    = pⱼ

@@ -63,6 +63,19 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
 fills `buffers.send` from OffsetArray `c` preparing for message passing. If we are on CPU
 we do not need to fill the buffers as the transfer can happen through views
 """
+function fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
+
+    # Fill x-direction
+    _fill_west_send_buffer!(parent(c), buffers.west, Hx, Nx)
+    _fill_east_send_buffer!(parent(c), buffers.east, Hx, Nx)
+
+    # Fill y-direction
+    _fill_north_send_buffer!(parent(c), buffers.north, Hy, Ny)
+    _fill_south_send_buffer!(parent(c), buffers.south, Hy, Ny)
+end
+
 function fill_west_and_east_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
