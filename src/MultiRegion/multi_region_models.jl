@@ -5,6 +5,7 @@ using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeSt
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 
 import Oceananigans.Simulations: new_time_step
 import Oceananigans.Diagnostics: accurate_cell_advection_timescale
@@ -32,7 +33,8 @@ Types = (:HydrostaticFreeSurfaceModel,
          :SplitExplicitAuxiliaryFields,
          :SplitExplicitState,
          :SplitExplicitFreeSurface,
-         :PrescribedVelocityFields)
+         :PrescribedVelocityFields,
+         :PreconditionedConjugateGradientSolver)
 
 for T in Types
     @eval begin

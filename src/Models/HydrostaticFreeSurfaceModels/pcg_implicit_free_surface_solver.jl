@@ -42,13 +42,14 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
+    
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), with_halo((3, 3, 1), grid))
     ∫ᶻ_Ayᶜᶠᶜ = Field((Center, Face, Nothing), with_halo((3, 3, 1), grid))
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
+    @apply_regionally compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
     fill_halo_regions!(vertically_integrated_lateral_areas)
     
     # Set some defaults
@@ -100,6 +101,13 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PC
     arch = architecture(solver)
     grid = solver.grid
 
+    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
+
+    return nothing
+end
+
+function compute_regional_rhs!(rhs, arch, grid, g, Δt, ∫ᶻQ, η)
+
     event = launch!(arch, grid, :xy,
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
@@ -130,6 +138,8 @@ in an implicit time step for the free surface displacement `η`.
 function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = L_ηⁿ⁺¹.grid
     arch = architecture(L_ηⁿ⁺¹)
+
+    # REMEMBER!!! This is going to create problems!!!!
     fill_halo_regions!(ηⁿ⁺¹)
 
     event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,

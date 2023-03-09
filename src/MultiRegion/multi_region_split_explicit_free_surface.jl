@@ -31,11 +31,13 @@ end
     sum!(height, dz)
 end
 
-@inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
-@inline augmented_kernel_size(grid, ::YPartition) = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
+@inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
+@inline augmented_kernel_size(grid, ::YPartition)           = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
+@inline augmented_kernel_size(grid, ::CubedSpherePartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2) + 2halo_size(grid)[2]-2)
 
-@inline augmented_kernel_offsets(grid, ::XPartition) = (halo_size(grid)[1]-1, 0)
-@inline augmented_kernel_offsets(grid, ::YPartition) = (0, halo_size(grid)[2]-1)
+@inline augmented_kernel_offsets(grid, ::XPartition)           = (halo_size(grid)[1]-1, 0)
+@inline augmented_kernel_offsets(grid, ::YPartition)           = (0, halo_size(grid)[2]-1)
+@inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (halo_size(grid)[2]-1, halo_size(grid)[2]-1)
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrid)
 

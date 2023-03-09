@@ -263,7 +263,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid)
 
     apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
 
-    return nothing
+    return csg
 end
 
 function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
