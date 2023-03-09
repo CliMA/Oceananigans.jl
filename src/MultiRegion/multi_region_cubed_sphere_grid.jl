@@ -174,6 +174,10 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   partition = CubedSpherePartition(; R=1),
                                   devices = nothing)
 
+    Nx, Ny, Nz = panel_size
+
+    Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
+
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
 
