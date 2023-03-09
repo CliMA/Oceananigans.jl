@@ -17,10 +17,10 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     Hx :: Int
     Hy :: Int
     Hz :: Int
-    ξₗ :: FT
-    ξᵣ :: FT
-    ηₗ :: FT
-    ηᵣ :: FT
+    ξₗ :: FT    # left-most domain for cube's ξ coordinate
+    ξᵣ :: FT    # right-most domain for cube's ξ coordinate
+    ηₗ :: FT    # left-most domain for cube's η coordinate
+    ηᵣ :: FT    # right-most domain for cube's η coordinate
     λᶜᶜᵃ :: A
     λᶠᶜᵃ :: A
     λᶜᶠᵃ :: A
@@ -911,7 +911,7 @@ end
 @inline znode(LX, LY, ::Face,   i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(LX, LY, ::Center, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
-function xnodes((LX, LY), grid::OrthogonalSphericalShellGrid; reshape=false)
+function xnodes((LX, LY, LZ), grid::OrthogonalSphericalShellGrid; reshape=false)
     x = view(all_x_nodes(LX, LY, grid),
              interior_indices(LX, topology(grid, 1), grid.Nx),
              interior_indices(LY, topology(grid, 2), grid.Ny))
@@ -919,7 +919,7 @@ function xnodes((LX, LY), grid::OrthogonalSphericalShellGrid; reshape=false)
     return reshape ? Base.reshape(x, size(x)..., 1) : x
 end
 
-function ynodes((LX, LY), grid::OrthogonalSphericalShellGrid; reshape=false)
+function ynodes((LX, LY, LZ), grid::OrthogonalSphericalShellGrid; reshape=false)
     y = view(all_y_nodes(LX, LY, grid),
              interior_indices(LX, topology(grid, 1), grid.Nx),
              interior_indices(LY, topology(grid, 2), grid.Ny))
@@ -935,5 +935,24 @@ all_y_nodes(::Type{Face},   ::Type{Face},   grid::OrthogonalSphericalShellGrid) 
 all_y_nodes(::Type{Center}, ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.φᶜᶜᵃ
 all_y_nodes(::Type{Center}, ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.φᶜᶠᵃ
 all_y_nodes(::Type{Face},   ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.φᶠᶜᵃ
-all_z_nodes(::Type{Face},   ::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶠ
-all_z_nodes(::Type{Center}, ::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶜ
+all_z_nodes(::Type{Face},   grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶠ
+all_z_nodes(::Type{Center}, grid::OrthogonalSphericalShellGrid) = grid.zᵃᵃᶜ
+all_z_nodes(loc::Tuple,     grid::OrthogonalSphericalShellGrid) = all_z_nodes(loc[3], grid)
+
+function nodes(loc, grid::OrthogonalSphericalShellGrid; reshape=false)
+    if reshape
+        x, y, z = nodes(loc, grid; reshape=false)
+
+        N = (length(x), length(y), length(z))
+
+        x = Base.reshape(x, N[1], 1, 1)
+        y = Base.reshape(y, 1, N[2], 1)
+        z = Base.reshape(z, 1, 1, N[3])
+
+        return (x, y, z)
+    else
+        return (xnodes(loc, grid),
+                ynodes(loc, grid),
+                znodes(loc, grid))
+    end
+end
