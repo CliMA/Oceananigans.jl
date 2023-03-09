@@ -17,6 +17,8 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     Hx :: Int
     Hy :: Int
     Hz :: Int
+     ξ :: Tuple
+     η :: Tuple
     λᶜᶜᵃ :: A
     λᶠᶜᵃ :: A
     λᶜᶠᵃ :: A
@@ -589,7 +591,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ, η,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius)
@@ -641,7 +643,8 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=(0, 1), y=(0, 1), z, topology, halo)
+    ξ, η = (0, 1), (0, 1)
+    ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=ξ, y=η, z, topology, halo)
 
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
@@ -695,7 +698,7 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ, η,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
@@ -744,6 +747,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
+                                                        grid.ξ, grid.η,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
                                                         horizontal_grid_spacing_data..., Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                         horizontal_area_data..., grid.radius)
@@ -757,6 +761,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
                                                     grid.Hx, grid.Hy, grid.Hz,
+                                                    grid.ξ, grid.η,
                                                     adapt(to, grid.λᶜᶜᵃ),
                                                     adapt(to, grid.λᶠᶜᵃ),
                                                     adapt(to, grid.λᶜᶠᵃ),
@@ -868,6 +873,29 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "├── ", x_summary, "\n",
                      "├── ", y_summary, "\n",
                      "└── ", z_summary)
+end
+
+@inline z_domain(grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+@inline cpu_face_constructor_z(grid::ZRegOrthogonalSphericalShellGrid) = z_domain(grid)
+
+function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=nothing)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+    
+    z = cpu_face_constructor_z(old_grid)
+
+    new_grid = OrthogonalSphericalShellGrid(architecture(old_grid), eltype(old_grid);
+                                            size,
+                                            z,
+                                            topology = topo,
+                                            ξ = old_grid.ξ,
+                                            η = old_grid.η,
+                                            radius = old_grid.radius,
+                                            halo = new_halo,
+                                            rotation)
+
+    return new_grid
 end
 
 @inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
