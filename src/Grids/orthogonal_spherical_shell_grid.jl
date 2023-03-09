@@ -17,8 +17,10 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     Hx :: Int
     Hy :: Int
     Hz :: Int
-     ξ :: Tuple
-     η :: Tuple
+    ξx :: FT
+    ξy :: FT
+    ηx :: FT
+    ηy :: FT
     λᶜᶜᵃ :: A
     λᶠᶜᵃ :: A
     λᶜᶠᵃ :: A
@@ -47,7 +49,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
 
     function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                       Nx, Ny, Nz,
-                                                      Hx, Hy, Hz,
+                                                      Hx, Hy, Hz, ξx, ξy, ηx, ηy,
                                                        λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
                                                        φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
                                                       Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
@@ -57,7 +59,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
 
         return new{FT, TX, TY, TZ, A, R, FR, Arch}(architecture,
                                                    Nx, Ny, Nz,
-                                                   Hx, Hy, Hz,
+                                                   Hx, Hy, Hz, ξx, ξy, ηx, ηy,
                                                    λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                                                    φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                                                    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
@@ -591,7 +593,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
     metric_arrays = map(a -> arch_array(architecture, a), metric_arrays)
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ, η,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ..., η...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius)
@@ -698,7 +700,7 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ, η,
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, ξ..., η...,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
@@ -747,7 +749,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
-                                                        grid.ξ, grid.η,
+                                                        grid.ξx, grid.ξy, grid.ηx, grid.ηy,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
                                                         horizontal_grid_spacing_data..., Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                         horizontal_area_data..., grid.radius)
@@ -760,8 +762,9 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(nothing,
                                                     grid.Nx, grid.Ny, grid.Nz,
-                                                    grid.Hx, grid.Hy, grid.Hz,
-                                                    grid.ξ, grid.η,
+                                                    grid.Hx, grid.Hy, grid.Hz, 
+                                                    grid.ξx, grid.ξy,
+                                                    grid.ηx, grid.ηy,
                                                     adapt(to, grid.λᶜᶜᵃ),
                                                     adapt(to, grid.λᶠᶜᵃ),
                                                     adapt(to, grid.λᶜᶠᵃ),
@@ -889,8 +892,8 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
                                             size,
                                             z,
                                             topology = topo,
-                                            ξ = old_grid.ξ,
-                                            η = old_grid.η,
+                                            ξ = (old_grid.ξx, old_grid.ξy),
+                                            η = (old_grid.ηx, old_grid.ηx),
                                             radius = old_grid.radius,
                                             halo = new_halo,
                                             rotation)

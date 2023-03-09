@@ -111,6 +111,9 @@ end
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
 
+Base.similar(mo::MultiRegionObject) = construct_regionally(similar, mo)
+Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
+
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]

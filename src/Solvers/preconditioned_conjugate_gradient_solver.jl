@@ -207,6 +207,7 @@ function iterate!(x, solver, b, args...)
     return nothing
 end
 
+""" first iteration of the PCG """
 function initialize_solution!(q, x, b, solver, args...)
     solver.linear_operation!(q, x, args...)
     # r = b - A * x
@@ -215,6 +216,7 @@ function initialize_solution!(q, x, b, solver, args...)
     return nothing
 end
 
+""" one conjugate gradient iteration """
 function perform_iteration!(p, z)
 
     pp = parent(p)

@@ -220,7 +220,7 @@ function Base.similar(f::Field, grid=f.grid)
     loc = location(f)
     return Field(loc,
                  grid,
-                 new_data(eltype(parent(f)), grid, loc, f.indices),
+                 new_data(eltype(grid), grid, loc, f.indices),
                  FieldBoundaryConditions(grid, loc, f.indices),
                  f.indices,
                  f.operand,
