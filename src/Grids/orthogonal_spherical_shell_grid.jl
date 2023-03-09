@@ -641,9 +641,10 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
 
     ξη_grid = RectilinearGrid(architecture, FT; size=(1, 1, Nz), x=(0, 1), y=(0, 1), z, topology, halo)
 
-    Δz = ξη_grid.Δzᵃᵃᶜ
-    zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
-    zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
+     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
 
     ## Read everything else from the file
 
@@ -698,7 +699,8 @@ function OrthogonalSphericalShellGrid(filepath::AbstractString, architecture = C
                                                      zᵃᵃᶜ,  zᵃᵃᶠ,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                                                       Δz, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                                    Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalShellGrid)
@@ -732,6 +734,8 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
 
     zᵃᵃᶜ = arch_array(arch, grid.zᵃᵃᶜ)
     zᵃᵃᶠ = arch_array(arch, grid.zᵃᵃᶠ)
+    Δzᵃᵃᶜ = arch_array(arch, grid.Δzᵃᵃᶜ)
+    Δzᵃᵃᶠ = arch_array(arch, grid.Δzᵃᵃᶠ)
 
     TX, TY, TZ = topology(grid)
 
@@ -739,7 +743,7 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
-                                                        horizontal_grid_spacing_data..., grid.Δz,
+                                                        horizontal_grid_spacing_data..., Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                         horizontal_area_data..., grid.radius)
 
     return new_grid
