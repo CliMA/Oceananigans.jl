@@ -851,7 +851,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     x_summary = "longitude: extent $(prettysummary(Δλ)) " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "λ")
     y_summary = "latitude:  extent $(prettysummary(Δφ)) " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "φ")
-    z_summary = "z:           " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δz, longest - length(z_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")

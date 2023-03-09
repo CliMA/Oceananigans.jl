@@ -23,7 +23,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
     Δφᵃᶜᵃ :: FY
     φᵃᶠᵃ  :: VY
     φᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ 
+    Δzᵃᵃᶠ :: FZ
     Δzᵃᵃᶜ :: FZ
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
