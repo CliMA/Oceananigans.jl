@@ -174,6 +174,10 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   partition = CubedSpherePartition(; R=1),
                                   devices = nothing)
 
+    Nx, Ny, Nz = panel_size
+
+    Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
+
     devices = validate_devices(partition, arch, devices)
     devices = assign_devices(partition, devices)
 
@@ -263,7 +267,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid)
 
     apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
 
-    return nothing
+    return csg
 end
 
 function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
