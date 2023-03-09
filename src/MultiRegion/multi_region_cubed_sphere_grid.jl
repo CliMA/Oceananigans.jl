@@ -205,6 +205,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         size = region_size,
                                         z,
                                         halo = panel_halo,
+                                        topology = panel_topology,
                                         radius,
                                         ξ = region_ξ,
                                         η = region_η,
