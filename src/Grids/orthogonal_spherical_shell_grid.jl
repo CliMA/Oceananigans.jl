@@ -64,6 +64,8 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, Arch} <: AbstractH
     end
 end
 
+const ZRegOrthogonalSphericalShellGrid = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+
 """
     OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
                                  FT::DataType = Float64;
