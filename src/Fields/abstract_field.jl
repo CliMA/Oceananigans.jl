@@ -71,10 +71,6 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds xnode(i, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = xnode(i, ψ.grid, LX())
-@propagate_inbounds ynode(j, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = ynode(j, ψ.grid, LY())
-@propagate_inbounds znode(k, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = znode(k, ψ.grid, LZ())
-
 @propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
