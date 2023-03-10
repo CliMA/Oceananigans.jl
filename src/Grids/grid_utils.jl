@@ -86,7 +86,6 @@ total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.H
                          total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                          total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
-
 function total_size(loc, grid, indices::Tuple)
     sz = total_size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
@@ -96,8 +95,6 @@ function Base.size(loc, grid::AbstractGrid, indices::Tuple)
     sz = size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
-
-
 
 """
     halo_size(grid)
@@ -173,11 +170,6 @@ regular_dimensions(grid) = ()
 @inline interior_parent_offset(loc, topo, H) = H
 @inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
 
-#@inline interior_parent_offset(::Type{Face},    topo, H) = H
-# @inline interior_parent_offset(loc,             ::Type{Flat}, H) = 0
-# @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
-#@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
-
 @inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
@@ -224,11 +216,6 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 #####
 ##### << Nodes >>
 #####
-
-# Fallback
-@inline xnode(i, j, k, grid, LX::CellLocation, LY, LZ) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid, LX, LY::CellLocation, LZ) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid, LX, LY, LZ::CellLocation) = znode(k, grid, LZ)
 
 @inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ),
                                                                                      ynode(i, j, k, grid, LX, LY, LZ),
@@ -350,9 +337,9 @@ function nodes(grid::AbstractGrid, loc::NTuple{3, CellLocation}; reshape=false, 
 
         return (x, y, z)
     else
-        return (xnodes(grid, loc[1]; kwargs...),
-                ynodes(grid, loc[2]; kwargs...),
-                znodes(grid, loc[3]; kwargs...))
+        return (xnodes(grid, loc...; kwargs...),
+                ynodes(grid, loc...; kwargs...),
+                znodes(grid, loc...; kwargs...))
     end
 end
 

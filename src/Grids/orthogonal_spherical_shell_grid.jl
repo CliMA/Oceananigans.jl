@@ -826,21 +826,29 @@ const OSSG = OrthogonalSphericalShellGrid
 @inline ynodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
     view(grid.φᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-@inline xnodes(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX, LY; kwargs...)
-@inline ynodes(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LX, LY; kwargs...)
-
 @inline znodes(grid::OSSG, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline znodes(grid::OSSG, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
+@inline xnodes(grid::OSSG, LX, LY, LZ; with_halos=false) = xnodes(grid, LX, LY; with_halos)
+@inline ynodes(grid::OSSG, LX, LY, LZ; with_halos=false) = ynodes(grid, LX, LY; with_halos)
+@inline znodes(grid::OSSG, LX, LY, LZ; with_halos=false) = znodes(grid, LZ    ; with_halos)
 
-@inline xnode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xnodes(grid, LX, LY, with_halos=true)[i, j]
-@inline ynode(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = ynodes(grid, LX, LY, with_halos=true)[i, j]
-@inline znode(k, grid::OSSG, LZ::CellLocation)                      = znodes(grid, LZ, with_halos=true)[k]
+@inline xnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
+@inline xnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline xnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline xnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.λᶠᶠᵃ[i, j]
 
-@inline xnode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, j, grid, LX, LY)
-@inline ynode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(i, j, grid, LY, LY)
-@inline znode(i, j, k, grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
+@inline ynode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline ynode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline ynode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline ynode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.φᶠᶠᵃ[i, j]
 
+@inline znode(k, grid::OSSG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::OSSG, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline xnode(i, j, k, grid::OSSG, LX, LY, LZ) = xnode(i, j, grid, LX, LY)
+@inline ynode(i, j, k, grid::OSSG, LX, LY, LZ) = ynode(i, j, grid, LX, LY)
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ) = znode(k, grid, LZ)
 
 #####
 ##### Grid spacings

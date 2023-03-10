@@ -320,18 +320,29 @@ const LatLonGrid = LatitudeLongitudeGrid
 
 @inline xnodes(grid::LatLonGrid, LX::Face  ; with_halos=false) = with_halos ? grid.λᶠᵃᵃ : view(grid.λᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
 @inline xnodes(grid::LatLonGrid, LX::Center; with_halos=false) = with_halos ? grid.λᶜᵃᵃ : view(grid.λᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+
 @inline ynodes(grid::LatLonGrid, LY::Face  ; with_halos=false) = with_halos ? grid.φᵃᶠᵃ : view(grid.φᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline ynodes(grid::LatLonGrid, LY::Center; with_halos=false) = with_halos ? grid.φᵃᶜᵃ : view(grid.φᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
 @inline znodes(grid::LatLonGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline znodes(grid::LatLonGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::LatLonGrid, LX::CellLocation) = xnodes(grid, LX; with_halos=true)[i]
-@inline ynode(j, grid::LatLonGrid, LY::CellLocation) = ynodes(grid, LY; with_halos=true)[j]
-@inline znode(k, grid::LatLonGrid, LZ::CellLocation) = znodes(grid, LZ; with_halos=true)[k]
+@inline xnodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = xnodes(grid, LX; with_halos)
+@inline ynodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = ynodes(grid, LY; with_halos)
+@inline znodes(grid::LatLonGrid, LX, LY, LZ; with_halos=false) = znodes(grid, LZ; with_halos)
 
-@inline xnode(i, j, k, grid::LatLonGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xnode(i, grid, LX)
-@inline ynode(i, j, k, grid::LatLonGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = ynode(j, grid, LY)
-@inline znode(i, j, k, grid::LatLonGrid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = znode(k, grid, LZ)
+@inline xnode(i, grid::LatLonGrid, ::Center) = @inbounds grid.λᶜᵃᵃ[i]
+@inline xnode(i, grid::LatLonGrid, ::Face)   = @inbounds grid.λᶠᵃᵃ[i]
+
+@inline ynode(j, grid::LatLonGrid, ::Center) = @inbounds grid.φᵃᶜᵃ[j]
+@inline ynode(j, grid::LatLonGrid, ::Face)   = @inbounds grid.φᵃᶠᵃ[j]
+
+@inline znode(k, grid::LatLonGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::LatLonGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline xnode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::LatLonGrid, LX, LY, LZ) = znode(k, grid, LZ)
 
 @inline x_domain(grid::LatLonGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatLonGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)

@@ -365,14 +365,29 @@ const CellLocation = Union{Face, Center}
 
 @inline xnodes(grid::RectilinearGrid, LX::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
 @inline xnodes(grid::RectilinearGrid, LX::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+
 @inline ynodes(grid::RectilinearGrid, LY::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline ynodes(grid::RectilinearGrid, LY::Center; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
 @inline znodes(grid::RectilinearGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline znodes(grid::RectilinearGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
-@inline xnode(i, grid::RectilinearGrid, LX::CellLocation) = xnodes(grid, LX; with_halos=true)[i]
-@inline ynode(j, grid::RectilinearGrid, LY::CellLocation) = ynodes(grid, LY; with_halos=true)[j]
-@inline znode(k, grid::RectilinearGrid, LZ::CellLocation) = znodes(grid, LZ; with_halos=true)[k]
+@inline xnodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = xnodes(grid, LX; with_halos)
+@inline ynodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = ynodes(grid, LY; with_halos)
+@inline znodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = znodes(grid, LZ; with_halos)
+
+@inline xnode(i, grid::RectilinearGrid, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(i, grid::RectilinearGrid, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
+
+@inline ynode(j, grid::RectilinearGrid, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(j, grid::RectilinearGrid, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
+
+@inline znode(k, grid::RectilinearGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::RectilinearGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline xnode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = znode(k, grid, LZ)
 
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
@@ -417,9 +432,7 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        new_properties...)
 end
 
-
 return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
 
 #####
 ##### Grid spacings
