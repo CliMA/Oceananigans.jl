@@ -71,6 +71,7 @@ export
     IsopycnalSkewSymmetricDiffusivity,
     FluxTapering,
     VerticallyImplicitTimeDiscretization,
+    viscosity, diffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
