@@ -202,9 +202,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test all(yspacings(grid, Center()) .≈ FT(π/N))
         @test all(zspacings(grid, Center()) .≈ FT(π/N))
 
-        @test all(xspacings(grid, Face()) .≈ FT(π/N))
-        @test all(yspacings(grid, Face()) .≈ FT(π/N))
-        @test all(zspacings(grid, Face()) .≈ FT(π/N))
+        @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
+        @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
+        @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
 
         @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
         @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
