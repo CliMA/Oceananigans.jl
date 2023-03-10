@@ -9,7 +9,6 @@ using OffsetArrays: IdOffsetRange
 #####
 
 const BoundedTopology = Union{Bounded, LeftConnected}
-const CellLocation = Union{Face, Center}
 
 Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{<:BoundedTopology}, N) = N+1
@@ -217,17 +216,17 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 ##### << Nodes >>
 #####
 
-@inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ),
-                                                                                     ynode(i, j, k, grid, LX, LY, LZ),
-                                                                                     znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
+                                           ynode(i, j, k, grid, LX, LY, LZ),
+                                           znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX::Nothing, LY::CellLocation, LZ::CellLocation) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::CellLocation, LY::Nothing, LZ::CellLocation) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(i, j, k, grid, LX::CellLocation, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY::CellLocation, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
-@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ::CellLocation) = tuple(znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
 @inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
 @inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
@@ -245,7 +244,7 @@ Return the positions over the interior nodes on `grid` in the ``x``-direction fo
 
 See [`znodes`](@ref) for examples.
 """
-@inline xnodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xnodes(grid, LX; kwargs...)
+@inline xnodes(grid, LX, LY, LZ; kwargs...) = xnodes(grid, LX; kwargs...)
 
 """
     ynodes(grid, LX, LY, LZ, with_halos=false)
@@ -255,7 +254,7 @@ Return the positions over the interior nodes on `grid` in the ``y``-direction fo
 
 See [`znodes`](@ref) for examples.
 """
-@inline ynodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = ynodes(grid, LY; kwargs...)
+@inline ynodes(grid, LX, LY, LZ; kwargs...) = ynodes(grid, LY; kwargs...)
 
 """
     znodes(grid, LX, LY, LZ, with_halos=false)
@@ -285,13 +284,13 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 -1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-@inline znodes(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = znodes(grid, LZ; kwargs...)
+@inline znodes(grid, LX, LY, LZ; kwargs...) = znodes(grid, LZ; kwargs...)
 
 
 """
     reshaped_xnodes(loc, grid; kwargs...)
 """
-function reshaped_xnodes(grid, loc::CellLocation; kwargs...)
+function reshaped_xnodes(grid, loc; kwargs...)
     x = xnodes(grid, loc; kwargs...)
     return Base.reshape(x, length(x), 1, 1)
 end
@@ -299,7 +298,7 @@ end
 """
     reshaped_ynodes(loc, grid; kwargs...)
 """
-function reshaped_ynodes(grid, loc::CellLocation; kwargs...)
+function reshaped_ynodes(grid, loc; kwargs...)
     y = ynodes(grid, loc; kwargs...)
     return Base.reshape(y, 1, length(y), 1)
 end
@@ -307,7 +306,7 @@ end
 """
     reshaped_znodes(loc, grid; kwargs...)
 """
-function reshaped_znodes(grid, loc::CellLocation; kwargs...)
+function reshaped_znodes(grid, loc; kwargs...)
     z = znodes(grid, loc; kwargs...)
     return Base.reshape(z, 1, 1, length(z))
 end
@@ -325,7 +324,7 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(grid::AbstractGrid, loc::NTuple{3, CellLocation}; reshape=false, kwargs...)
+function nodes(grid::AbstractGrid, loc::NTuple{3}; reshape=false, kwargs...)
     if reshape
         x, y, z = nodes(grid, loc; reshape=false, kwargs...)
 
@@ -348,13 +347,13 @@ end
 ##### << Spacings >>
 #####
 
-@inline xspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = xspacing(i, grid, LX)
-@inline yspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = yspacing(j, grid, LY)
-@inline zspacing(i, j, k, grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation) = zspacing(k, grid, LZ)
+@inline xspacing(i, j, k, grid, LX, LY, LZ) = xspacing(i, grid, LX)
+@inline yspacing(i, j, k, grid, LX, LY, LZ) = yspacing(j, grid, LY)
+@inline zspacing(i, j, k, grid, LX, LY, LZ) = zspacing(k, grid, LZ)
 
-@inline xspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xspacings(grid, LX; kwargs...)
-@inline yspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LY; kwargs...)
-@inline zspacings(grid, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = zspacings(grid, LZ; kwargs...)
+@inline xspacings(grid, LX, LY, LZ; kwargs...) = xspacings(grid, LX; kwargs...)
+@inline yspacings(grid, LX, LY, LZ; kwargs...) = yspacings(grid, LY; kwargs...)
+@inline zspacings(grid, LX, LY, LZ; kwargs...) = zspacings(grid, LZ; kwargs...)
 
 
 #####

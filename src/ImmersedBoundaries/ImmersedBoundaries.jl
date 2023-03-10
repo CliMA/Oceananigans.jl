@@ -231,23 +231,22 @@ As well as
 
 const c = Center()
 const f = Face()
-const CellLocation = Union{Face, Center}
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 @inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline xnode(i, ibg::IBG, LX::CellLocation; kwargs...) = xnode(i, ibg.underlying_grid, LX; kwargs...)
-@inline ynode(j, ibg::IBG, LY::CellLocation; kwargs...) = ynode(j, ibg.underlying_grid, LY; kwargs...)
-@inline znode(k, ibg::IBG, LZ::CellLocation; kwargs...) = znode(k, ibg.underlying_grid, LZ; kwargs...)
+@inline xnode(i, ibg::IBG, LX; kwargs...) = xnode(i, ibg.underlying_grid, LX; kwargs...)
+@inline ynode(j, ibg::IBG, LY; kwargs...) = ynode(j, ibg.underlying_grid, LY; kwargs...)
+@inline znode(k, ibg::IBG, LZ; kwargs...) = znode(k, ibg.underlying_grid, LZ; kwargs...)
 
-@inline xnode(i, j, k, ibg::IBG, LX::CellLocation, LY, LZ; kwargs...) = xnode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
-@inline ynode(i, j, k, ibg::IBG, LX, LY::CellLocation, LZ; kwargs...) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
-@inline znode(i, j, k, ibg::IBG, LX, LY, LZ::CellLocation; kwargs...) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+@inline xnode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = xnode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+@inline ynode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+@inline znode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 
-xnodes(ibg::IBG, loc::CellLocation; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
-ynodes(ibg::IBG, loc::CellLocation; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
-znodes(ibg::IBG, loc::CellLocation; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
+xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
+ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
+znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
 
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
