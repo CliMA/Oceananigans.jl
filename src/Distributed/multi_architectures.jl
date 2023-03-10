@@ -116,11 +116,11 @@ using_buffered_communication(::DistributedArch{A, R, I, ρ, C, γ, B}) where {A,
 ##### All the architectures
 #####
 
-child_architecture(arch::MultiArch)            = arch.child_architecture
-device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
-arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
-zeros(FT, arch::MultiArch, N...)               = zeros(FT, child_architecture(arch), N...) 
-array_type(arch::MultiArch)                    = array_type(child_architecture(arch))
+child_architecture(arch::DistributedArch)            = arch.child_architecture
+device(arch::DistributedArch)        = device(child_architecture(arch))
+arch_array(arch::DistributedArch, A) = arch_array(child_architecture(arch), A)
+zeros(FT, arch::DistributedArch, N...)               = zeros(FT, child_architecture(arch), N...) 
+array_type(arch::DistributedArch)                    = array_type(child_architecture(arch))
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
