@@ -163,42 +163,61 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     return nothing
 end
 
-function test_regular_rectilinear_xnode_ynode_znode_and_spacings_are_correct(FT)
+function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
+
+    @info "    Testing with ($FT) on ($arch)..."
+
     N = 3
-    grid = RectilinearGrid(CPU(), FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
-                                  topology=(Periodic, Periodic, Bounded))
 
-    @test xnode(2, grid, Center()) ≈ FT(π/2)
-    @test ynode(2, grid, Center()) ≈ FT(π/2)
-    @test znode(2, grid, Center()) ≈ FT(π/2)
+    size=(N, N, N)
+    topology = (Periodic, Periodic, Bounded)
 
-    @test xnode(2, grid, Face()) ≈ FT(π/3)
-    @test ynode(2, grid, Face()) ≈ FT(π/3)
-    @test znode(2, grid, Face()) ≈ FT(π/3)
+    regular_spaced_grid = RectilinearGrid(arch, FT; size, topology,
+                                          x=(0, π), y=(0, π), z=(0, π))
 
-    @test min_Δx(grid) ≈ FT(π/3)
-    @test min_Δy(grid) ≈ FT(π/3)
-    @test min_Δz(grid) ≈ FT(π/3)
+    domain = collect(range(0, stop=π, length=N+1))
 
-    @test xspacings(grid, Center()) ≈ FT(π/N)
-    @test yspacings(grid, Center()) ≈ FT(π/N)
-    @test zspacings(grid, Center()) ≈ FT(π/N)
+    variably_spaced_grid = RectilinearGrid(arch, FT; size, topology,
+                                           x=domain, y=domain, z=domain)
 
-    @test xspacings(grid, Face()) ≈ FT(π/N)
-    @test yspacings(grid, Face()) ≈ FT(π/N)
-    @test zspacings(grid, Face()) ≈ FT(π/N)
+    grids_types = ["regularly spaced", "variably spaced"]
+    grids       = [regular_spaced_grid, variably_spaced_grid]
 
-    @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
-    @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
-    @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+    for (grid_type, grid) in zip(grids_types, grids)
+        @info "        Testing on $grid_type grid...."
 
-    @test xspacing(1, grid, Face()) ≈ FT(π/N)
-    @test yspacing(1, grid, Face()) ≈ FT(π/N)
-    @test zspacing(1, grid, Face()) ≈ FT(π/N)
+        @test xnode(2, grid, Center()) ≈ FT(π/2)
+        @test ynode(2, grid, Center()) ≈ FT(π/2)
+        @test znode(2, grid, Center()) ≈ FT(π/2)
 
-    @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) == xspacing(1, grid, Face())
-    @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) == yspacing(1, grid, Face())
-    @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) == zspacing(1, grid, Face())
+        @test xnode(2, grid, Face()) ≈ FT(π/3)
+        @test ynode(2, grid, Face()) ≈ FT(π/3)
+        @test znode(2, grid, Face()) ≈ FT(π/3)
+
+        @test min_Δx(grid) ≈ FT(π/3)
+        @test min_Δy(grid) ≈ FT(π/3)
+        @test min_Δz(grid) ≈ FT(π/3)
+
+        @test xspacings(grid, Center()) ≈ FT(π/N)
+        @test yspacings(grid, Center()) ≈ FT(π/N)
+        @test zspacings(grid, Center()) ≈ FT(π/N)
+
+        @test xspacings(grid, Face()) ≈ FT(π/N)
+        @test yspacings(grid, Face()) ≈ FT(π/N)
+        @test zspacings(grid, Face()) ≈ FT(π/N)
+
+        @test xspacings(grid, Face()) == xspacings(grid, Face(), Center(), Center())
+        @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
+        @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
+
+        @test xspacing(1, grid, Face()) ≈ FT(π/N)
+        @test yspacing(1, grid, Face()) ≈ FT(π/N)
+        @test zspacing(1, grid, Face()) ≈ FT(π/N)
+
+        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) == xspacing(1, grid, Face())
+        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) == yspacing(1, grid, Face())
+        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) == zspacing(1, grid, Face())
+    end
 
     return nothing
 end
@@ -725,7 +744,9 @@ end
                 test_regular_rectilinear_ranges_have_correct_length(FT)
                 test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
                 test_regular_rectilinear_grid_properties_are_same_type(FT)
-                test_regular_rectilinear_xnode_ynode_znode_and_spacings_are_correct(FT)
+                for arch in archs
+                    test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
+                end
             end
         end
 
