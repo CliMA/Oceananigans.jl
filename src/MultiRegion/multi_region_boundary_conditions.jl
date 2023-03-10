@@ -128,7 +128,7 @@ function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, of
     return nothing
 end
 
-function fill_south_and_north_halo!(c, southbc::CBC, northbc::CBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
+function fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[2]
     N = size(grid)[2]
@@ -160,7 +160,7 @@ end
 ##### Single fill_halo! for Communicating boundary condition 
 #####
     
-function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
+function fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
     
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -181,7 +181,7 @@ function fill_west_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neigh
     return nothing
 end
 
-function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
+function fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
 
     H = halo_size(grid)[1]
     N = size(grid)[1]
@@ -202,7 +202,7 @@ function fill_east_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neigh
     return nothing
 end
 
-function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
+function fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
         
     H = halo_size(grid)[2]
     N = size(grid)[2]
@@ -223,7 +223,7 @@ function fill_south_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neig
     return nothing
 end
 
-function fill_north_halo!(c, bc::CBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
+function fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, neighbors, buffers, args...; kwargs...)
     
     H = halo_size(grid)[2]
     N = size(grid)[2]
