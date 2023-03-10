@@ -44,7 +44,7 @@ struct GPU <: AbstractArchitecture end
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDAKernels.CUDADevice(;always_inline=true)
+device(::GPU) = CUDAKernels.CUDABackend(;always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
