@@ -60,6 +60,9 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
     end
 end
 
+const OSSG = OrthogonalSphericalShellGrid
+const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+
 """
     OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
                                  FT::DataType = Float64;
@@ -802,11 +805,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 end
 
 #####
-##### Nodes
+##### Grid nodes
 #####
-
-const CellLocation = Union{Face, Center}
-const OSSG = OrthogonalSphericalShellGrid
 
 @inline xnodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
     view(grid.λᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
@@ -851,35 +851,47 @@ const OSSG = OrthogonalSphericalShellGrid
 @inline znode(i, j, k, grid::OSSG, LX, LY, LZ) = znode(k, grid, LZ)
 
 #####
-##### Grid spacings
+##### Grid spacings in λ φ (degrees)
 #####
 
-@inline xspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
-    view(grid.Δxᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xspacings(grid::OSSG, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
-    view(grid.Δxᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
-    view(grid.Δxᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xspacings(grid::OSSG, LX::Face,   LY::Face;   with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
-    view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline _λspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δλᶜᶜᵃ : view(grid.Δλᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline _λspacings(grid::OSSG, LX::Face  , LY::Center; with_halos=false) = with_halos ? grid.Δλᶠᶜᵃ : view(grid.Δλᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline _λspacings(grid::OSSG, LX::Center, LY::Face  ; with_halos=false) = with_halos ? grid.Δλᶜᶠᵃ : view(grid.Δλᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline _λspacings(grid::OSSG, LX::Face  , LY::Face  ; with_halos=false) = with_halos ? grid.Δλᶠᶠᵃ : view(grid.Δλᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
 
-@inline yspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δyᶜᶜᵃ :
-    view(grid.Δyᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::OSSG, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
-    view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
-    view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::OSSG, LX::Face,   LY::Face;   with_halos=false) = with_halos ? grid.Δyᶠᶠᵃ :
-    view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline _φspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.Δφᶜᶜᵃ : view(grid.Δφᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+@inline _φspacings(grid::OSSG, LX::Face  , LY::Center; with_halos=false) = with_halos ? grid.Δφᶠᶜᵃ : view(grid.Δφᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+@inline _φspacings(grid::OSSG, LX::Center, LY::Face  ; with_halos=false) = with_halos ? grid.Δφᶜᶠᵃ : view(grid.Δφᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+@inline _φspacings(grid::OSSG, LX::Face  , LY::Face  ; with_halos=false) = with_halos ? grid.Δφᶠᶠᵃ : view(grid.Δφᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
 
-@inline zspacings(grid::OSSG) = grid.Δz
-@inline zspacings(grid::OSSG, LZ::CellLocation; with_halos=false) = zspacings(grid)
+@inline _zspacings(grid::OSSG,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegOSSG, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline _zspacings(grid::OSSG,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline _zspacings(grid::ZRegOSSG, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
-@inline xspacings(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = xspacings(grid, LX, LY; kwargs...)
-@inline yspacings(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = yspacings(grid, LX, LY; kwargs...)
-@inline zspacings(grid::OSSG, LX::CellLocation, LY::CellLocation, LZ::CellLocation; kwargs...) = zspacings(grid, LZ; kwargs...)
+@inline λspacings(grid::OSSG, LX, LY; with_halos=false) = _λspacings(grid, LX, LY; with_halos)
+@inline φspacings(grid::OSSG, LX, LY; with_halos=false) = _φspacings(grid, LX, LY; with_halos)
+@inline zspacings(grid::OSSG, LZ; with_halos=false) = topology(grid)[3] == Flat ? Inf : _zspacings(grid, LZ; with_halos)
 
-@inline xspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = xspacings(grid, LX, LY, with_halos=true)[i, j]
-@inline yspacing(i, j, grid::OSSG, LX::CellLocation, LY::CellLocation) = yspacings(grid, LX, LY, with_halos=true)[i, j]
-@inline zspacing(k,    grid::OSSG, LZ::CellLocation)                   = zspacings(grid)[k]
+@inline λspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = λspacings(grid, LX, LY; with_halos)
+@inline φspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = φspacings(grid, LX, LY; with_halos)
+@inline zspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = zspacings(grid, LZ; with_halos)
 
+@inline λspacing(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.Δλᶜᶜᵃ[i, j]
+@inline λspacing(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.Δλᶠᶜᵃ[i, j]
+@inline λspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δλᶜᶠᵃ[i, j]
+@inline λspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δλᶠᶠᵃ[i, j]
+
+@inline φspacing(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.Δφᶜᶜᵃ[i, j]
+@inline φspacing(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.Δφᶠᶜᵃ[i, j]
+@inline φspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δφᶜᶠᵃ[i, j]
+@inline φspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δφᶠᶠᵃ[i, j]
+
+@inline zspacing(k, grid::OSSG,     ::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline zspacing(k, grid::OSSG,     ::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline zspacing(k, grid::ZRegOSSG, ::Center) = @inbounds grid.Δzᵃᵃᶜ
+@inline zspacing(k, grid::ZRegOSSG, ::Face)   = @inbounds grid.Δzᵃᵃᶠ
+
+@inline λspacing(i, j, k, grid::OSSG, LX, LY, LZ) = λspacing(i, j, grid, LX, LY)
+@inline φspacing(i, j, k, grid::OSSG, LX, LY, LZ) = φspacing(i, j, grid, LX, LY)
+@inline zspacing(i, j, k, grid::OSSG, LX, LY, LZ) = zspacing(k, grid, LZ)
