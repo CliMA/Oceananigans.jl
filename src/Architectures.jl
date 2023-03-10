@@ -1,6 +1,6 @@
 module Architectures
 
-export AbstractArchitecture, AbstractMultiArchitecture
+export AbstractArchitecture
 export CPU, GPU, MultiGPU
 export device, architecture, array_type, arch_array, unified_array, device_copy_to!
 
@@ -16,13 +16,6 @@ using OffsetArrays
 Abstract supertype for architectures supported by Oceananigans.
 """
 abstract type AbstractArchitecture end
-
-"""
-    AbstractMultiArchitecture
-
-Abstract supertype for Distributed architectures supported by Oceananigans.
-"""
-abstract type AbstractMultiArchitecture <: AbstractArchitecture end
 
 """
     CPU <: AbstractArchitecture

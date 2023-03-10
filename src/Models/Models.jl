@@ -13,6 +13,29 @@ import Oceananigans.Architectures: architecture
 
 architecture(model::AbstractModel) = model.architecture
 
+initialize_model!(model::AbstractModel) = nothing
+
+using Oceananigans: fields
+import Oceananigans.TimeSteppers: reset!
+
+function reset!(model::AbstractModel)
+
+    for field in fields(model)
+        fill!(field, 0.0)
+    end
+
+    for field in model.timestepper.G⁻
+        fill!(field, 0.0)
+    end
+
+    for field in model.timestepper.Gⁿ
+        fill!(field, 0.0)
+    end
+    
+    return nothing
+end
+
+
 abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
 include("NonhydrostaticModels/NonhydrostaticModels.jl")

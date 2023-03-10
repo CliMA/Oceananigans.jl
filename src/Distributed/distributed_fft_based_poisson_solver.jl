@@ -1,8 +1,11 @@
 import PencilFFTs
 using PencilArrays: Permutation
 
+import FFTW 
+
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
+
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S, I}
     plan :: P
@@ -18,8 +21,8 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 
 infer_transform(grid, d) = infer_transform(topology(grid, d)())
 infer_transform(::Periodic) = PencilFFTs.Transforms.FFT!()
-infer_transform(::Bounded) = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
-infer_transform(::Flat) = PencilFFTs.Transforms.NoTransform!()
+infer_transform(::Bounded)  = PencilFFTs.Transforms.R2R!(FFTW.REDFT10)
+infer_transform(::Flat)     = PencilFFTs.Transforms.NoTransform!()
 
 """
     DistributedFFTBasedPoissonSolver(global_grid, local_grid)
@@ -30,7 +33,7 @@ Return a FFT-based solver for the Poisson equation,
 ∇²φ = b
 ```
 
-for `MultiArch`itectures.
+for `DistributedArch`itectures.
 
 Supported configurations
 ========================
@@ -77,7 +80,7 @@ Restrictions
 ============
 
 The algorithm for two-dimensional decompositions requires that `Nz = size(global_grid, 3)` is larger
-than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `MultiArch`.
+than either `Rx = ranks[1]` or `Ry = ranks[2]`, where `ranks` are configured when building `DistributedArch`.
 If `Nz` does not satisfy this condition, we can only support a one-dimensional decomposition.
 
 Algorithm for one-dimensional decompositions

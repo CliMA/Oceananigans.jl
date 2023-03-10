@@ -10,12 +10,12 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
-using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+using Oceananigans.Distributed: DistributedArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
+function PressureSolver(arch::DistributedArch, local_grid::RegRectilinearGrid)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
@@ -25,6 +25,9 @@ PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolve
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
+
+# fall back
+PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel support horizontally-stretched grids.")
 
 #####
 ##### NonhydrostaticModel definition

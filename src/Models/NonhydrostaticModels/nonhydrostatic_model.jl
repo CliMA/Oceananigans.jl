@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Distributed: MultiArch
+using Oceananigans.Distributed: DistributedArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -50,25 +50,24 @@ end
 
 """
     NonhydrostaticModel(;     grid,
-                                  clock = Clock{eltype(grid)}(0, 0, 1),
-                              advection = CenteredSecondOrder(),
-                               buoyancy = nothing,
-                               coriolis = nothing,
-                           stokes_drift = nothing,
-                    forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-        boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (),
-                            timestepper = :QuasiAdamsBashforth2,
-          background_fields::NamedTuple = NamedTuple(),
-          particles::ParticlesOrNothing = nothing,
-                             velocities = nothing,
-                              pressures = nothing,
-                     diffusivity_fields = nothing,
-                        pressure_solver = nothing,
-                      immersed_boundary = nothing,
-                       auxiliary_fields = NamedTuple(),
- calculate_only_active_cells_tendencies = false
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                          advection = CenteredSecondOrder(),
+                           buoyancy = nothing,
+                           coriolis = nothing,
+                       stokes_drift = nothing,
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+                            tracers = (),
+                        timestepper = :QuasiAdamsBashforth2,
+      background_fields::NamedTuple = NamedTuple(),
+      particles::ParticlesOrNothing = nothing,
+                         velocities = nothing,
+                          pressures = nothing,
+                 diffusivity_fields = nothing,
+                    pressure_solver = nothing,
+                  immersed_boundary = nothing,
+                   auxiliary_fields = NamedTuple()
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -78,8 +77,9 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
-            architecture (CPU/GPU) that the model is solve is inferred from the architecture
-            of the `grid`.
+            architecture (CPU/GPU) that the model is solved on is inferred from the architecture
+            of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
+            dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `coriolis`: Parameters for the background rotation rate of the model.
@@ -99,9 +99,7 @@ Keyword arguments
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `immersed_boundary`: The immersed boundary. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`. 
-  - `calculate_only_active_cells_tendencies`: In case of an immersed boundary grid, calculate the tendency only in active cells.
-                                   Default: `false`              
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(;    grid,
                                  clock = Clock{eltype(grid)}(0, 0, 1),
@@ -121,8 +119,7 @@ function NonhydrostaticModel(;    grid,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple(),
-calculate_only_active_cells_tendencies = false
+                      auxiliary_fields = NamedTuple()
     )
 
     arch = architecture(grid)
@@ -143,12 +140,6 @@ calculate_only_active_cells_tendencies = false
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
-
-    # In case of an immersed boundary grid add a wet cell map to avoid calculating 
-    # the tendency in dry cells
-    if calculate_only_active_cells_tendencies
-        grid = maybe_add_active_cells_map(grid)
-    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -240,7 +231,3 @@ function inflate_grid_halo_size(grid, tendency_terms...)
 
     return grid
 end
-
-maybe_add_active_cells_map(grid) = grid
-maybe_add_active_cells_map(ibg::ImmersedBoundaryGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
-      ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, ibg.immersed_boundary; calculate_active_cells_map = true)

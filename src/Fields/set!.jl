@@ -3,7 +3,7 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture
-using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
+using Oceananigans.Architectures: device, GPU, CPU
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)

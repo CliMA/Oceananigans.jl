@@ -21,14 +21,10 @@ end
 
 function local_ab2_step!(model, Δt, χ)
 
-    if model.free_surface isa SplitExplicitFreeSurface
-        sefs = model.free_surface
-        u, v, _ = model.velocities
-        barotropic_mode!(sefs.state.U, sefs.state.V, model.grid, u, v)
-    end
-
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
+    
+    return nothing
 end
 
 #####

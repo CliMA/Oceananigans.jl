@@ -64,16 +64,20 @@ Compute `comp.operand` and store the result in `comp.data`.
 function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
     @apply_regionally compute_at!(comp.operand, time)
-    @apply_regionally compute_field!(comp)
+
+    # Now perform the primary computation
+    @apply_regionally compute_computed_field!(comp)
 
     fill_halo_regions!(comp)
 
     return comp
 end
 
-function compute_field!(comp)
+function compute_computed_field!(comp)
     arch = architecture(comp)
-    launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
+    event = launch!(arch, comp.grid, size(comp), _compute!, comp.data, comp.operand, comp.indices)
+    wait(device(arch), event)
+    return comp
 end
 
 """Compute an `operand` and store in `data`."""

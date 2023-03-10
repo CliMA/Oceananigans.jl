@@ -65,7 +65,7 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=ranks, topology = topo)
+    arch = DistributedArch(CPU(), ranks=ranks, topology=topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
 
     bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
