@@ -98,16 +98,12 @@ end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
     arch       = architecture(grid)
-    child_arch = child_architecture(arch)
     halo_tuple = permute_boundary_conditions(bcs)
     
     for task = 1:3
-        barrier = device_event(child_arch)
         fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
     end
     
-    barrier = device_event(child_arch)
-
     fill_eventual_corners!(halo_tuple, c, indices, loc, arch, grid, buffers, args...; kwargs...)
 
     return nothing

@@ -26,8 +26,8 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_reduced_field_xy!(field,     args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(::Nothing, args...; kw...) = NoneEvent()
+mask_immersed_reduced_field_xy!(field,     args...; kw...) = nothing
+mask_immersed_reduced_field_xy!(::Nothing, args...; kw...) = nothing
 mask_immersed_reduced_field_xy!(field, value=zero(eltype(field.grid)); k, immersed_function = peripheral_node) =
     mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k, immersed_function)
 

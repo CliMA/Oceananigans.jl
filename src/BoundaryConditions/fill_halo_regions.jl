@@ -57,8 +57,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task in 1:3
-        barrier = device_event(arch)
-        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, barrier, grid, args...; kwargs...)
+        fill_halo_event!(task, halo_tuple, c, indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
