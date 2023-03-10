@@ -220,9 +220,9 @@ end
     max_K = closure_ij.maximum_diffusivity
 
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = max(max_K, Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
-        diffusivities.Kᶜ[i, j, k] = max(max_K, Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
-        diffusivities.Kᵉ[i, j, k] = max(max_K, Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᵘ[i, j, k] = min(max_K, Kuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᶜ[i, j, k] = min(max_K, Kcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
+        diffusivities.Kᵉ[i, j, k] = min(max_K, Keᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, args...))
 
         # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
         # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
