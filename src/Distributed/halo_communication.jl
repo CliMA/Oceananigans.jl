@@ -200,9 +200,7 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
-            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch,  grid, buffers, args...; kwargs...)
-
-            wait(device(child_arch), event)    
+            event = $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
             
             $fill_side_send_buffers!(c, buffers, grid)
 
@@ -221,8 +219,6 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             local_rank = bc_opposite_side.condition.from
 
             event = $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
-
-            wait(device(child_arch), event)    
 
             $fill_opposite_side_send_buffers!(c, buffers, grid)
 

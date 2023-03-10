@@ -217,14 +217,9 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-function barotropic_mode!(U, V, grid, u, v)
-
-    arch  = architecture(grid)
-    event = launch!(arch, grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
+barotropic_mode!(U, V, grid, u, v) = 
+    launch!(architecture(grid), grid, :xy, barotropic_mode_kernel!, U, V, grid, u, v,
                    dependencies=Event(device(arch)))
-
-    wait(device(arch), event)
-end
 
 function initialize_free_surface_state!(free_surface_state, η)
     state = free_surface_state
