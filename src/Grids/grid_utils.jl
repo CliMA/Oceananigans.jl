@@ -381,14 +381,6 @@ function pop_flat_elements(tup, topo)
     return Tuple(new_tup)
 end
 
-"""
-    min_number_or_array(var)
-
-Return the minimum value of `var`.
-"""
-@inline min_number_or_array(var) = var
-@inline min_number_or_array(var::AbstractVector) = minimum(parent(var))
-
 #####
 ##### Directions (for tilted domains)
 #####
