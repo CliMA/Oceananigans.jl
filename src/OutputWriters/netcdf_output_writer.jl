@@ -258,9 +258,11 @@ provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Grids: reshaped_xnodes, reshaped_ynodes
+using Oceananigans.Grids: xnodes, ynodes
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
+Nx, Ny Nz = 16, 16, 16
+
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
 model = NonhydrostaticModel(grid=grid)
 
@@ -270,8 +272,12 @@ f(model) = model.clock.time^2; # scalar output
 
 g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(reshaped_xnodes(grid, Center())[:, :, 1])
-                            .*     cos.(reshaped_ynodes(grid, Face())[:, :, 1])) # xy slice output
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+XC = [x[i] for i in 1:Nx, j in 1:Ny]
+YF = [y[j] for i in 1:Nx, j in 1:Ny]
+
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 

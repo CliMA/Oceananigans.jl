@@ -106,18 +106,25 @@ provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Grids: reshaped_xnodes, reshaped_ynodes
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
+Nx, Ny, Nz = 16, 16, 16
+
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
 model = NonhydrostaticModel(grid=grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
-g(model) = model.clock.time .* exp.(znodes(grid, Center())); # vector/profile output
-h(model) = model.clock.time .* (   sin.(reshaped_xnodes(grid, Center())[:, :, 1])
-                            .*     cos.(reshaped_ynodes(grid, Face())[:, :, 1])) # xy slice output
+
+g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
+
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
+
+XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+YF = [yF[j] for i in 1:Nx, j in 1:Ny]
+
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
@@ -127,18 +134,18 @@ output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-);
+)
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="some_things.nc", dimensions=dims, verbose=true,
+                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
 
 # output
 NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./some_things.nc
+├── filepath: ./things.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 3 outputs: (profile, slice, scalar)
 └── array type: Array{Float64}

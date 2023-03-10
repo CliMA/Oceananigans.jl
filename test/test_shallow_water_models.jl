@@ -216,7 +216,7 @@ end
         @testset "ShallowWaterModel viscous diffusion [$arch]" begin
             grid_x = RectilinearGrid(arch, size = 10, x = (0, 1), topology = (Bounded, Flat, Flat))
             grid_y = RectilinearGrid(arch, size = 10, y = (0, 1), topology = (Flat, Bounded, Flat))
-            coords = (reshaped_xnodes(grid_x, Face()), reshaped_ynodes(grid_y, Face()))
+            coords = (reshape(xnodes(grid_x, Face()), (10, 1)), reshaped(ynodes(grid_y, Face()), (1, 10)))
             
             for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
                 for formulation in (ConservativeFormulation(), VectorInvariantFormulation())

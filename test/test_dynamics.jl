@@ -496,7 +496,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
             # Derive coordinates
-            x = reshaped_xnodes(grid, Center())
+            x = reshape(xnodes(grid, Center()), (N, 1, 1))
             y = permutedims(x, (2, 1, 3))
             z = permutedims(x, (2, 3, 1))
 

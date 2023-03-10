@@ -9,7 +9,7 @@ export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectil
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid
-export node, xnode, ynode, znode, xnodes, ynodes, znodes, reshaped_xnodes, reshaped_ynodes, reshaped_znodes, nodes
+export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export xspacing, yspacing, zspacing, xspacings, yspacings, zspacings
 export offset_data, new_data
 export on_architecture
