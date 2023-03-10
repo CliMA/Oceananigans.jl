@@ -71,8 +71,8 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline function two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U)
-    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, Face(), Center(), Center()), znode(i, j, k, grid, Face(), Center(), Center())) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, Face(), Center(), Center()), znode(i, j, k, grid, Face(), Center(), Center())) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, Center(), Center(), Center()), znode(i, j, k, grid, Center(), Center(), Center())) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
+     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, Center(), Center(), Center()), znode(i, j, k, grid, Center(), Center(), Center())) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 end
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
