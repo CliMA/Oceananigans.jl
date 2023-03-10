@@ -554,7 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                           topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
-            z_immersed = reshaped_znodes(immersed_vertical_grid, Center())
+            z_immersed = reshape(znodes(immersed_vertical_grid, Center()), (1, 1, grid.Nz))
 
             append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
@@ -576,7 +576,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                      GridFittedBottom((x, y) -> L))
 
             stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
-            append!(coords, [reshaped_znodes(grid, Center()) for grid in stretched_grids])
+            append!(coords, [reshape(znodes(grid, Center()), (1, 1, grid.Nz)) for grid in stretched_grids])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
             append!(closures, [vertical_scalar_diffusivity,
                                implicit_vertical_scalar_diffusivity,
