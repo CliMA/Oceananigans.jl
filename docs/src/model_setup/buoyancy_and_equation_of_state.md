@@ -220,7 +220,7 @@ To simulate gravitational accelerations that don't align with the vertical (`z`)
 we wrap the buoyancy model in
 `Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
 
-```jldoctest buoyancy; filter = r".*tartarus.*"
+```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
