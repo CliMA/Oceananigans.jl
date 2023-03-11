@@ -872,10 +872,8 @@ end
 @inline yspacings(grid::OSSG, LX::Face  , LY::Face  ; with_halos=false) =
     with_halos ? grid.Δyᶠᶠᵃ : view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
 
-@inline zspacings(grid::OSSG,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
-@inline zspacings(grid::ZRegOSSG, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
-@inline zspacings(grid::OSSG,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
-@inline zspacings(grid::ZRegOSSG, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
+@inline zspacings(grid::OSSG, LZ::Center; with_halos=false) = grid.Δz
+@inline zspacings(grid::OSSG, LZ::Face;   with_halos=false) = grid.Δz
 
 @inline xspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = xspacings(grid, LX, LY; with_halos)
 @inline yspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = yspacings(grid, LX, LY; with_halos)
@@ -891,10 +889,8 @@ end
 @inline yspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline yspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
-@inline zspacing(k, grid::OSSG,     ::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline zspacing(k, grid::OSSG,     ::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline zspacing(k, grid::ZRegOSSG, ::Center) = @inbounds grid.Δzᵃᵃᶜ
-@inline zspacing(k, grid::ZRegOSSG, ::Face)   = @inbounds grid.Δzᵃᵃᶠ
+@inline zspacing(k, grid::OSSG,     ::Center) = grid.Δz
+@inline zspacing(k, grid::OSSG,     ::Face)   = grid.Δz
 
 @inline xspacing(i, j, k, grid::OSSG, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
 @inline yspacing(i, j, k, grid::OSSG, LX, LY, LZ) = yspacing(i, j, grid, LX, LY)
