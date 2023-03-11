@@ -538,7 +538,7 @@ function test_basic_lat_lon_general_grid(FT)
     Λₙ  = (lat[2], lon[2], zᵣ[2])
 
     (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁
-    
+
     grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
     @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
@@ -556,11 +556,13 @@ function test_basic_lat_lon_general_grid(FT)
     @test xspacings(grid_reg, Face(),   Face(),   Center()) == xspacings(grid_reg, Face(),   Face())
     @test yspacings(grid_reg, Center(), Face(),   Center()) == yspacings(grid_reg, Center(), Face())
     @test yspacings(grid_reg, Face(),   Center(), Center()) == yspacings(grid_reg, Face(),   Center())
-    @test zspacings(grid_reg, Face(), Face(),   Center()) == zspacings(grid_reg, Center())
-    @test zspacings(grid_reg, Face(),   Center(), Face()) == zspacings(grid_reg, Face())
+    @test zspacings(grid_reg, Face(),   Face(),   Center()) == zspacings(grid_reg, Center())
+    @test zspacings(grid_reg, Face(),   Center(), Face()  ) == zspacings(grid_reg, Face())
 
-    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == xspacing(2, grid_reg, Center(), Center())
-    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == yspacing(2, grid_reg, Center(), Face())
+    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == xspacing(1, 2, grid_reg, Center(), Center())
+    @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == xspacing(1, 2, grid_reg, Center(), Face())
+    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == yspacing(2, grid_reg, Face()  )
+    @test yspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == yspacing(2, grid_reg, Center())
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == zspacing(3, grid_reg, Center())
 
     @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
@@ -834,7 +836,7 @@ end
             @test grid isa RectilinearGrid
         end
     end
-
+    
     @testset "Latitude-longitude grid" begin
         @info "  Testing general latitude-longitude grid..."
 

@@ -258,9 +258,8 @@ provided that their `dimensions` are provided:
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Grids: xnodes, ynodes
 
-Nx, Ny Nz = 16, 16, 16
+Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
@@ -274,8 +273,8 @@ g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile outpu
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
-XC = [x[i] for i in 1:Nx, j in 1:Ny]
-YF = [y[j] for i in 1:Nx, j in 1:Ny]
+XC = [xC[i] for i in 1:Nx, j in 1:Ny]
+YF = [yF[j] for i in 1:Nx, j in 1:Ny]
 
 h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
@@ -287,7 +286,7 @@ output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-);
+)
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 

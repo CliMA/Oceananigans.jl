@@ -201,7 +201,6 @@ const OSSG = OrthogonalSphericalShellGrid
 @inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Face  ; kwargs...) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(i, j, k, grid::OSSG, LX, LY, LZ::Center; kwargs...) = @inbounds grid.zᵃᵃᶜ[k]
 
-
 λnodes(grid::OSSG{TX, TY}, LX::Face,   LY::Face,   LZ; with_halos=false) where {TX, TY} =  
     with_halos ? grid.λᶠᶠᵃ : view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
