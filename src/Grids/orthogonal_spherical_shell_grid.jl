@@ -864,13 +864,13 @@ end
     with_halos ? grid.Δxᶠᶠᵃ : view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
 @inline yspacings(grid::OSSG, LX::Center, LY::Center; with_halos=false) =
-    with_halos ? grid.Δyᶜᶜᵃ : view(grid.Δyᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+    with_halos ? grid.Δyᶜᶜᵃ : view(grid.Δyᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline yspacings(grid::OSSG, LX::Face  , LY::Center; with_halos=false) =
-    with_halos ? grid.Δyᶠᶜᵃ : view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+    with_halos ? grid.Δyᶠᶜᵃ : view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline yspacings(grid::OSSG, LX::Center, LY::Face  ; with_halos=false) =
-    with_halos ? grid.Δyᶜᶠᵃ : view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+    with_halos ? grid.Δyᶜᶠᵃ : view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 @inline yspacings(grid::OSSG, LX::Face  , LY::Face  ; with_halos=false) =
-    with_halos ? grid.Δyᶠᶠᵃ : view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LX), topology(grid, 2), grid.Ny))
+    with_halos ? grid.Δyᶠᶠᵃ : view(grid.Δyᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
 @inline zspacings(grid::OSSG, LZ::Center; with_halos=false) = grid.Δz
 @inline zspacings(grid::OSSG, LZ::Face;   with_halos=false) = grid.Δz
@@ -889,8 +889,8 @@ end
 @inline yspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline yspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
-@inline zspacing(k, grid::OSSG,     ::Center) = grid.Δz
-@inline zspacing(k, grid::OSSG,     ::Face)   = grid.Δz
+@inline zspacing(k, grid::OSSG, ::Center) = grid.Δz
+@inline zspacing(k, grid::OSSG, ::Face)   = grid.Δz
 
 @inline xspacing(i, j, k, grid::OSSG, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
 @inline yspacing(i, j, k, grid::OSSG, LX, LY, LZ) = yspacing(i, j, grid, LX, LY)
