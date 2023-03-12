@@ -345,12 +345,12 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 end
 
 function test_netcdf_function_output(arch)
-    N = 16
+    Nx = Ny = Nz = N = 16
     L = 1
     Δt = 1.25
     iters = 3
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RectilinearGrid(arch, size=(Nx = Ny = Nz), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
