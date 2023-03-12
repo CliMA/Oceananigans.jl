@@ -618,7 +618,7 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacings(grid_str, Face())   == grid_str.Δzᵃᵃᶠ[1:grid_str.Nz+1]
 
     @test zspacings(grid_str, Face(), Face(),   Center()) == zspacings(grid_str, Center())
-    @test zspacings(grid_str, Face(),   Center(), Face()) == zspacings(grid_str, Face())
+    @test zspacings(grid_str, Face(), Center(), Face()  ) == zspacings(grid_str, Face())
 
     return nothing
 end
@@ -708,8 +708,8 @@ function test_cubed_sphere_face_array_sizes_and_spacings(FT)
     @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
     @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
 
-    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == zspacings(grid) == grid.Δz
-    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == zspacings(grid) == grid.Δz
+    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δz
+    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δz
 
     return nothing
 end
