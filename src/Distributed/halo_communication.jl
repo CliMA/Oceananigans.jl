@@ -171,6 +171,9 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
 
     # Syncronous MPI fill_halo_event!
     MPI.Waitall(requests)
+    # Reset MPI tag
+    arch.mpi_tag[1] -= arch.mpi_tag[1]
+
     buffer_side = mpi_communication_side(Val(fill_halo!))
     recv_from_buffers!(c, buffers, grid, Val(buffer_side))    
 
