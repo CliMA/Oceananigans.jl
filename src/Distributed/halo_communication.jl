@@ -226,8 +226,8 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             sync_device!(child_arch)
 
-            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
-            send_req = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
+            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
+            send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             
             return [send_req, recv_req]
         end
