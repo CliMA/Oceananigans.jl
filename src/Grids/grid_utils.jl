@@ -317,6 +317,8 @@ function nodes(grid::AbstractGrid, loc::NTuple{3}; reshape=false, kwargs...)
     end
 end
 
+nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, kwargs...) = nodes(grid, (LX, LY, LZ); reshape, kwargs...)
+
 
 #####
 ##### << Spacings >>
