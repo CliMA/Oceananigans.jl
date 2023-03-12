@@ -55,9 +55,9 @@ RANK_DIGITS = 3
 ID_DIGITS   = 2
 LOC_DIGITS  = 3
 
-location_id(::Type{Center})  = 1
-location_id(::Type{Face})    = 2
-location_id(::Type{Nothing}) = 3
+location_id(::Center)  = 1
+location_id(::Face)    = 2
+location_id(::Nothing) = 3
 
 for side in sides
     side_str = string(side)
@@ -206,8 +206,8 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
 
             sync_device!(child_architecture(arch))
 
-            recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
-            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
+            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             send_req1 = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
             send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
