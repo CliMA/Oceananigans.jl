@@ -51,31 +51,32 @@ opposite_side = Dict(
 #   digits 4-6: the "from" rank
 #   digits 7-9: the "to" rank
 
-RANK_DIGITS = 3
+RANK_DIGITS = 2
 ID_DIGITS   = 2
-LOC_DIGITS  = 3
+LOC_DIGITS  = 2
 
-location_id(::Center)  = 1
-location_id(::Face)    = 2
-location_id(::Nothing) = 3
+@inline loc_id(::Nothing) = 0
+@inline loc_id(::Face)    = 1
+@inline loc_id(::Center)  = 2
+@inline location_id(X, Y, Z) = loc_id(X) + 3*loc_id(Y) + 9*loc_id(Z)
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, local_rank, location, rank_to_send_to)
+        function $send_tag_fn_name(arch, location, local_rank, rank_to_send_to)
             field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
-            loc_id      = string(location_id.(location), pad=LOC_DIGITS)
+            loc_id      = string(location_id(location...), pad=LOC_DIGITS)
             from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits   = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit  = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_id * side_digit * from_digits * to_digits)
         end
 
-        function $recv_tag_fn_name(arch, local_rank, location, rank_to_recv_from)
+        function $recv_tag_fn_name(arch, location, local_rank, rank_to_recv_from)
             field_id    = string(arch.mpi_tag[1], pad=ID_DIGITS)
-            loc_id      = string(location_id.(location), pad=LOC_DIGITS)
+            loc_id      = string(location_id(location...), pad=LOC_DIGITS)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
             to_digits   = string(local_rank, pad=RANK_DIGITS)
             side_digit  = string(side_id[opposite_side[Symbol($side_str)]])
