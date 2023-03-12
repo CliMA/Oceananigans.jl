@@ -209,8 +209,8 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
-            send_req1 = $send_side_halo(c, grid, arch, loc[$dir], local_rank, bc_side.condition.to, buffers)
-            send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], local_rank, bc_opposite_side.condition.to, buffers)
+            send_req1 = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
+            send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req1, send_req2, recv_req1, recv_req2]
         end
