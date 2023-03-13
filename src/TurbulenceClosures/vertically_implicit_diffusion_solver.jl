@@ -180,8 +180,13 @@ function implicit_step!(field::Field,
     if closure isa Tuple
         closure_tuple = closure
         N = length(closure_tuple)
-        vi_closure = Tuple(closure[n] for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_closure            = Tuple(closure[n]            for n = 1:N if is_vertically_implicit(closure[n]))
         vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
+
+        length(vi_closure) > 1 && error("More than one closure with VerticallyImplicitTimeDiscretization is not supported")
+
+        vi_closure = vi_closure[1]
+        vi_diffusivity_fields = vi_diffusivity_fields[1] 
     else
         vi_closure = closure
         vi_diffusivity_fields = diffusivity_fields
@@ -189,7 +194,7 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, instantiate.(loc)..., clock, Δt, κz;
+                  vi_closure, vi_diffusivity_fields, tracer_index, map(ℓ -> ℓ(), loc)..., clock, Δt, κz;
                   dependencies)
 end
 
