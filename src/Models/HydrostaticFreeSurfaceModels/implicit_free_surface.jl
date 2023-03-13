@@ -167,5 +167,7 @@ function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+
+    return nothing
 end
 
