@@ -266,10 +266,20 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     return nothing
 end
 
-@kernel function _calc_ab2_tendencies!(G⁻, Gⁿ, χ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds G⁻[i, j, k] = (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ)
+@kernel function _compute_integrated_ab2_tendencies!(auxiliary, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    i, j  = @index(Global, NTuple)	
+
+    # hand unroll first loop 	
+    @inbounds auxiliary.Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_add(i, j, 1, Gu⁻, Guⁿ, χ)
+    @inbounds auxiliary.Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_add(i, j, 1, Gv⁻, Gvⁿ, χ)
+
+    @unroll for k in 2:grid.Nz	
+        @inbounds auxiliary.Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_add(i, j, k, Gu⁻, Guⁿ, χ)
+        @inbounds auxiliary.Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_add(i, j, k, Gv⁻, Gvⁿ, χ)
+    end	
 end
+
+@inline ab2_add(i, j, k, G⁻, Gⁿ, χ) = (1.5 + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (0.5 + χ)
 
 """
 Explicitly step forward η in substeps.
@@ -331,14 +341,14 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     grid = free_surface.η.grid
     
     # we start the time integration of η from the average ηⁿ     
-    Gu  = model.timestepper.G⁻.u
-    Gv  = model.timestepper.G⁻.v
+    Gu⁻ = model.timestepper.G⁻.u
+    Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
     
     auxiliary = free_surface.auxiliary
 
-    @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
+    @apply_regionally setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
     fill_halo_regions!(fields_to_fill; blocking = false)
@@ -346,18 +356,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-function setup_split_explicit_tendency!(auxiliary, grid, Gu, Gv, Guⁿ, Gvⁿ, χ)
-    arch = architecture(grid)
-
-    launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gu, Guⁿ, χ)
-    launch!(arch, grid, :xyz, _calc_ab2_tendencies!, Gv, Gvⁿ, χ)
-    
-    mask_immersed_field!(Gu)
-    mask_immersed_field!(Gv)
-
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
-
-    return nothing
-end
+setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) = 
+    launch(architecture(grid), grid, :xyz, _compute_integrated_ab2_tendencies!, auxiliary, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
 wait_free_surface_communication!(free_surface) = nothing
