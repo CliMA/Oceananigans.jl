@@ -88,25 +88,29 @@ DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κ = ZFac
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.ν
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κ
 
-function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; kernel_size = κ_kernel_size(model.grid), kernel_offsets = κ_kernel_offsets(model.grid))
 
     arch = model.architecture
     grid = model.grid
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, kernel_size,
             ## If we can figure out how to only precompute the "stability" of a cell:
             # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
-            compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy)
+            compute_convective_adjustment_diffusivities!, diffusivities, kernel_offsets, grid, closure, tracers, buoyancy)
 
     return nothing
 end
 
 @inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
-@kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
-    i, j, k, = @index(Global, NTuple)
+@kernel function compute_convective_adjustment_diffusivities!(diffusivities, offs, grid, closure, tracers, buoyancy)
+    i′, j′, k′ = @index(Global, NTuple)
+
+    i = i′ + offs[1] 
+    j = j′ + offs[2] 
+    k = k′ + offs[3]
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
