@@ -29,10 +29,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     @apply_regionally compute_w_diffusivities_pressure!(model)
 
-    fill_halo_regions!(model.velocities.w)
-    fill_halo_regions!(model.pressure.pHY′)
-    fill_halo_regions!(model.diffusivity_fields)
-
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
     
     compute_tendencies && 
