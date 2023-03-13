@@ -456,6 +456,10 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 @inline zspacings(grid::RectilinearGrid,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline zspacings(grid::ZRegRectilinearGrid, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
+@inline xspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = xspacings(grid, LX; kwargs...)
+@inline yspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = yspacings(grid, LY; kwargs...)
+@inline zspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = zspacings(grid, LZ; kwargs...)
+
 @inline xspacing(i, grid::RectilinearGrid,     ::Center) = @inbounds grid.Δxᶜᵃᵃ[i]
 @inline xspacing(i, grid::RectilinearGrid,     ::Face)   = @inbounds grid.Δxᶠᵃᵃ[i]
 @inline xspacing(i, grid::XRegRectilinearGrid, ::Center) = @inbounds grid.Δxᶜᵃᵃ
@@ -470,6 +474,10 @@ return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :y�
 @inline zspacing(k, grid::RectilinearGrid,     ::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline zspacing(k, grid::ZRegRectilinearGrid, ::Center) = @inbounds grid.Δzᵃᵃᶜ
 @inline zspacing(k, grid::ZRegRectilinearGrid, ::Face)   = @inbounds grid.Δzᵃᵃᶠ
+
+@inline xspacing(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = xspacing(i, grid, LX)
+@inline yspacing(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = yspacing(j, grid, LY)
+@inline zspacing(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = zspacing(k, grid, LZ)
 
 min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center()))
 min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center()))

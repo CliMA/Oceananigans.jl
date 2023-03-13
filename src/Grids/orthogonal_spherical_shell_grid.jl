@@ -894,6 +894,7 @@ end
 
 @inline xspacing(i, j, k, grid::OSSG, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
 @inline yspacing(i, j, k, grid::OSSG, LX, LY, LZ) = yspacing(i, j, grid, LX, LY)
+@inline zspacing(i, j, k, grid::OSSG, LX, LY, LZ) = zspacing(k, grid, LZ)
 
 min_Δx(grid::OSSG) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
 min_Δy(grid::OSSG) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center(), Center()))

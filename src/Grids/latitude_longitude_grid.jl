@@ -655,13 +655,14 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 @inline yspacing(j, grid::YRegLatLonGrid, ::Center) = @inbounds grid.Δyᶠᶜᵃ
 @inline yspacing(j, grid::YRegLatLonGrid, ::Face)   = @inbounds grid.Δyᶜᶠᵃ
 
-@inline xspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
-@inline yspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = yspacing(j, grid, LY)
-
 @inline zspacing(k, grid::LatLonGrid,     ::Center) = @inbounds grid.Δzᵃᵃᶜ[k]
 @inline zspacing(k, grid::LatLonGrid,     ::Face)   = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline zspacing(k, grid::ZRegLatLonGrid, ::Center) = @inbounds grid.Δzᵃᵃᶜ
 @inline zspacing(k, grid::ZRegLatLonGrid, ::Face)   = @inbounds grid.Δzᵃᵃᶠ
+
+@inline xspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
+@inline yspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = yspacing(j, grid, LY)
+@inline zspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = zspacing(k, grid, LY)
 
 min_Δx(grid::LatLonGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center()))
 min_Δy(grid::LatLonGrid) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center()))

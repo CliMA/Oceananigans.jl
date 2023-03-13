@@ -321,19 +321,6 @@ nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, kwargs...) = nodes(grid, (L
 
 
 #####
-##### << Spacings >>
-#####
-
-@inline xspacing(i, j, k, grid, LX, LY, LZ) = xspacing(i, grid, LX)
-@inline yspacing(i, j, k, grid, LX, LY, LZ) = yspacing(j, grid, LY)
-@inline zspacing(i, j, k, grid, LX, LY, LZ) = zspacing(k, grid, LZ)
-
-@inline xspacings(grid, LX, LY, LZ; kwargs...) = xspacings(grid, LX; kwargs...)
-@inline yspacings(grid, LX, LY, LZ; kwargs...) = yspacings(grid, LY; kwargs...)
-@inline zspacings(grid, LX, LY, LZ; kwargs...) = zspacings(grid, LZ; kwargs...)
-
-
-#####
 ##### Convenience functions
 #####
 
