@@ -7,6 +7,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Distributed: DistributedArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
@@ -23,9 +24,10 @@ using Oceananigans.Grids: topology
 import Oceananigans.Architectures: architecture
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -38,6 +40,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
               closure :: E        # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG       # Background velocity and tracer fields
             particles :: P        # Particle set for Lagrangian tracking
+      biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
               tracers :: C        # Container for tracer fields
             pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
@@ -49,26 +52,26 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;     grid,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
-                          advection = CenteredSecondOrder(),
-                           buoyancy = nothing,
-                           coriolis = nothing,
-                       stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                            tracers = (),
-                        timestepper = :QuasiAdamsBashforth2,
-      background_fields::NamedTuple = NamedTuple(),
-      particles::ParticlesOrNothing = nothing,
-                         velocities = nothing,
-                          pressures = nothing,
-                 diffusivity_fields = nothing,
-                    pressure_solver = nothing,
-                  immersed_boundary = nothing,
-                   auxiliary_fields = NamedTuple()
-    )
+    NonhydrostaticModel(;          grid,
+                                  clock = Clock{eltype(grid)}(0, 0, 1),
+                              advection = CenteredSecondOrder(),
+                               buoyancy = nothing,
+                               coriolis = nothing,
+                           stokes_drift = nothing,
+                    forcing::NamedTuple = NamedTuple(),
+                                closure = nothing,
+        boundary_conditions::NamedTuple = NamedTuple(),
+                                tracers = (),
+                            timestepper = :QuasiAdamsBashforth2,
+          background_fields::NamedTuple = NamedTuple(),
+          particles::ParticlesOrNothing = nothing,
+  biogeochemistry::AbstractBGCOrNothing = nothing,
+                             velocities = nothing,
+                              pressures = nothing,
+                     diffusivity_fields = nothing,
+                        pressure_solver = nothing,
+                      immersed_boundary = nothing,
+                       auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
@@ -93,6 +96,7 @@ Keyword arguments
                    `:RungeKutta3`.
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
+  - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressures`: Hydrostatic and non-hydrostatic pressure fields. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
@@ -114,13 +118,13 @@ function NonhydrostaticModel(;    grid,
                            timestepper = :QuasiAdamsBashforth2,
          background_fields::NamedTuple = NamedTuple(),
          particles::ParticlesOrNothing = nothing,
+ biogeochemistry::AbstractBGCOrNothing = nothing,
                             velocities = nothing,
                              pressures = nothing,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing,
-                      auxiliary_fields = NamedTuple()
-    )
+                      auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
@@ -133,6 +137,7 @@ function NonhydrostaticModel(;    grid,
         error("CATKEVerticalDiffusivity is not supported for " *
               "NonhydrostaticModel --- yet!")
 
+    tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry)), biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
@@ -187,7 +192,7 @@ function NonhydrostaticModel(;    grid,
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                                forcing, closure, background_fields, particles, velocities, tracers,
+                                forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
                                 auxiliary_fields)
 

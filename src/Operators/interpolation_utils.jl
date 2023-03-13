@@ -29,6 +29,7 @@ for ξ in ("x", "y", "z")
 end
 
 # It's not Oceananigans for nothing
+# (So that AbstractOperations are more likely to compile)
 const number_of_identities = 6 # hopefully enough for Oceananigans (most need just one)
 
 for i = 1:number_of_identities
