@@ -205,13 +205,13 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
+            recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
+            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
+
             # This has to be synchronized!!
             $fill_all_send_buffers!(c, buffers, grid)
 
             sync_device!(child_architecture(arch))
-
-            recv_req1 = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
-            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             send_req1 = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             send_req2 = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
@@ -225,12 +225,13 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             child_arch = child_architecture(arch)
             local_rank = bc_side.condition.from
 
+            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
+
             $fill_opposite_side_halo!(c, bc_opposite_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
             $fill_side_send_buffers!(c, buffers, grid)
 
             sync_device!(child_arch)
 
-            recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             send_req = $send_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_side.condition.to, buffers)
             
             return [send_req, recv_req]
@@ -242,12 +243,13 @@ for (side, opposite_side, dir) in zip([:west, :south, :bottom], [:east, :north, 
             child_arch = child_architecture(arch)
             local_rank = bc_opposite_side.condition.from
 
+            recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
+
             $fill_side_halo!(c, bc_side, size, offset, loc, arch, grid, buffers, args...; kwargs...)
             $fill_opposite_side_send_buffers!(c, buffers, grid)
 
             sync_device!(child_arch)
 
-            recv_req = $recv_and_fill_opposite_side_halo!(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
             send_req = $send_opposite_side_halo(c, grid, arch, loc[$dir], loc, local_rank, bc_opposite_side.condition.to, buffers)
 
             return [send_req, recv_req]
