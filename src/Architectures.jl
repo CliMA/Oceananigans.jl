@@ -88,11 +88,11 @@ function unified_array(::GPU, arr::AbstractArray)
 end
 
 ## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArray, offset::Int) is 1)
-@inline function device_copy_to!(dst::CuArray, src::CuArray; blocking::Bool = false) 
+@inline function device_copy_to!(dst::CuArray, src::CuArray; blocking::Bool = true) 
     n = length(src)
     context!(context(src)) do
         GC.@preserve src dst begin
-            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async = blocking)
+            unsafe_copyto!(pointer(dst, 1), pointer(src, 1), n; async = !(blocking))
         end
     end
     return dst
