@@ -357,6 +357,6 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 end
 
 setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) = 
-    launch(architecture(grid), grid, :xyz, _compute_integrated_ab2_tendencies!, auxiliary, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    launch!(architecture(grid), grid, :xyz, _compute_integrated_ab2_tendencies!, auxiliary, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 
 wait_free_surface_communication!(free_surface) = nothing
