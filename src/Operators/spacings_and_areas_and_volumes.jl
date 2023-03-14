@@ -44,7 +44,6 @@ The operators in this file fall into three categories:
    at most a stretched vertical dimension and regular horizontal dimensions.
 2. Operators needed for an algorithm on a grid that is curvilinear in the horizontal
    at rectilinear (possibly stretched) in the vertical.
-
 """
 
 #####
@@ -63,18 +62,18 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = @inbounds grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = @inbounds grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
 
 @inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = grid.Δz
 @inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = grid.Δz
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
-    
+
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
-    
+
     y_spacing_1D = Symbol(:Δy, :ᵃ, LY, :ᵃ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
 
@@ -129,8 +128,8 @@ end
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δyᶜᶠᵃ
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δyᶠᶜᵃ
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
 @inline Δyᶜᶜᵃ(i, j, k, grid::LLG)  = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LLG)  = Δyᶜᶠᵃ(i, j, k, grid)
 
@@ -210,7 +209,7 @@ end
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
-    
+
     z_area_2D = Symbol(:Az, LX, LY, :ᵃ)
 
     @eval begin
@@ -251,11 +250,11 @@ for LX in (:Center, :Face)
             LXe = @eval $LX
             LYe = @eval $LY
             LZe = @eval $LZ
-            
+
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
                 volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
-            end 
+            end
 
             for op in (:Δ, :A), dir in (:x, :y, :z)
                 func   = Symbol(op, dir)
