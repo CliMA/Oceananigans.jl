@@ -1,5 +1,5 @@
 using KernelAbstractions: NoneEvent
-using CUDA: @allowscalar
+using GPUArrays: @allowscalar
 
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Coriolis: AbstractRotation

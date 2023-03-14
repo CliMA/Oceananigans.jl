@@ -10,16 +10,16 @@ end
 
 export
     # Architectures
-    CPU, CUDAGPU, ROCMGPU,
+    CPU, GPU, CUDAGPU, ROCMGPU,
 
     # Logging
     OceananigansLogger,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
+    Periodic, Bounded, Flat,
     FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
+    RectilinearGrid,
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
@@ -28,8 +28,8 @@ export
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
 
     # Advection schemes
-    Centered, CenteredSecondOrder, CenteredFourthOrder, 
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder,
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
 
@@ -111,7 +111,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # MultiRegion and Cubed sphere
-    MultiRegionGrid, XPartition, 
+    MultiRegionGrid, XPartition,
     ConformalCubedSphereGrid,
 
     # Utils
@@ -122,7 +122,7 @@ using Logging
 using Statistics
 using LinearAlgebra
 using CUDA
-using AMDGPU
+using AMDGPU: ROCArray, has_rocm_gpu, devices
 using Adapt
 using DocStringExtensions
 using OffsetArrays
@@ -179,6 +179,7 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
+
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
@@ -270,9 +271,9 @@ function __init__()
 
         CUDA.allowscalar(false)
     end
-    if AMDGPU.has_rocm_gpu()
+    if has_rocm_gpu()
         @debug "ROCM-enabled GPU(s) detected:"
-        for (id, agent) in enumerate(AMDGPU.get_agents(:gpu))
+        for (id, agent) in enumerate(devices())
             @debug "$id: $(agent.name)"
         end
 

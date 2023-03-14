@@ -1,5 +1,6 @@
 using Pkg
 using SafeTestsets
+include("dependencies_for_runtests.jl")
 
 const CONVERGENCE_DIR = joinpath(@__DIR__, "..", "validation", "convergence_tests")
 

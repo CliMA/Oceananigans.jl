@@ -87,7 +87,7 @@ number `Re, Prandtl number `Pr`, and Richardson number `Ri`.
 `Ni` is the number of "intermediate" time steps taken at a time before printing a progress
 statement and updating the time step.
 """
-function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
+function simulate_stratified_couette_flow(; Nxy, Nz, arch=CUDAGPU(), h=1, U_wall=1,
                                           Re=4250, Pr=0.7, Ri, Ni=10, end_time=1000)
     #####
     ##### Computed parameters

@@ -1,4 +1,5 @@
 using CUDA: has_cuda
+using AMDGPU: has_rocm_gpu
 using OrderedCollections: OrderedDict
 
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
@@ -211,7 +212,7 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function momentum_advection_squawk(momentum_advection, ::AbstractHorizontallyCurvilinearGrid) 
-    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " * 
+    @warn "The $(summary(momentum_advection)) momentum advection scheme is not allowed on curvilinear grids. " *
           "The momentum advection scheme has been set to VectorInvariant()"
     return VectorInvariant()
 end

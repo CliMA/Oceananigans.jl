@@ -1,5 +1,6 @@
 using Statistics
 using CUDA
+using AMDGPU
 using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: AbstractOperation
 

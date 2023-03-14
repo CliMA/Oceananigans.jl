@@ -224,7 +224,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, offset, loc, grid, args...)
+@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args...)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
@@ -263,7 +263,7 @@ const TBB = typeof(fill_bottom_and_top_halo!)
 @inline fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...) = :xz
 @inline fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...) = :xy
 
-# If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`), 
+# If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`),
 # then fill the whole boundary, otherwise fill the size of the corresponding array
 @inline whole_halo(idx, loc)           = false
 @inline whole_halo(idx,     ::Nothing) = false

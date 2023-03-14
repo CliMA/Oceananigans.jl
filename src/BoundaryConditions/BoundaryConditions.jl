@@ -11,6 +11,7 @@ export
     fill_halo_regions!
 
 using CUDA
+using AMDGPU
 using KernelAbstractions: @index, @kernel, MultiEvent, NoneEvent
 
 using Oceananigans.Architectures: CPU, CUDAGPU, ROCMGPU, device

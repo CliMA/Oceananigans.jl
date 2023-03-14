@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture
-export CPU, GPU, CUDAGPU, ROCMGPU
+export CPU, CUDAGPU, ROCMGPU, MultiGPU, GPU
 export device, device_event, architecture, array_type, arch_array, unified_array, device_copy_to!
 
 using CUDA
@@ -49,7 +49,7 @@ ROCMGPU() = GPU(ROCKernels.ROCDevice())
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::CUDAGPU) = CUDAKernels.CUDADevice(;always_inline=true)
-device(::ROCMGPU) = ROCKernels.ROCDevice(;always_inline=true)
+device(::ROCMGPU) = ROCKernels.ROCDevice()
 
 architecture() = nothing
 architecture(::Number) = nothing
@@ -79,10 +79,14 @@ arch_array(::CUDAGPU, a::CuArray) = a
 arch_array(::ROCMGPU, a::Array) = ROCArray(a)
 arch_array(::ROCMGPU, a::ROCArray) = a
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 
-arch_array(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
+arch_array(::CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
+
+arch_array(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+arch_array(::ROCMGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
 arch_array(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 
 arch_array(arch, a::AbstractRange) = a
@@ -92,20 +96,21 @@ arch_array(arch, a::Number)   = a
 arch_array(arch, a::Function) = a
 
 unified_array(::CPU, a) = a
-unified_array(::GPU, a) = a
+unified_array(::CUDAGPU, a) = a
+unified_array(::ROCMGPU, a) = a
 
-function unified_array(::GPU, arr::AbstractArray) 
-    buf = Mem.alloc(Mem.Unified, sizeof(arr))
+function unified_array(::CUDAGPU, arr::AbstractArray)
+    buf = CUDA.Mem.alloc(CUDA.Mem.Unified, sizeof(arr))
     vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
     finalizer(vec) do _
-        Mem.free(buf)
+        CUDA.Mem.free(buf)
     end
     copyto!(vec, arr)
     return vec
 end
 
 ## Only for contiguous data!! (i.e. only if the offset for pointer(dst::CuArrat, offset::Int) is 1)
-@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
+@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false)
     n = length(src)
     context!(context(src)) do
         GC.@preserve src dst begin
@@ -114,12 +119,18 @@ end
     end
     return dst
 end
- 
+
+@inline function device_copy_to!(dst::ROCArray, src::ROCArray; kw...)
+    AMDGPU.mem.transfer!(dst.buf, src.buf, sizeof(src))
+    return dst
+end
+
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 device_event(arch) = Event(device(arch))
 
-@inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
-@inline unsafe_free!(a)          = nothing
+@inline unsafe_free!(a::CuArray)  = CUDA.unsafe_free!(a)
+@inline unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
+@inline unsafe_free!(a)           = nothing
 
 end # module

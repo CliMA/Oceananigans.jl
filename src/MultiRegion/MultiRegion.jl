@@ -11,6 +11,8 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 using CUDA
+using AMDGPU
+using ROCKernels: ROCDevice
 using Adapt
 using OffsetArrays
 

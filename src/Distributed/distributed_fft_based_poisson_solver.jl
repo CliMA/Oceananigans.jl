@@ -1,5 +1,6 @@
 import PencilFFTs
 using PencilArrays: Permutation
+using GPUArrays
 
 import FFTW 
 
@@ -101,6 +102,8 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     Rx, Ry, Rz = arch.ranks
     communicator = arch.communicator
 
+    AT = array_type(arch.child_architecture)
+
     # We don't support distributing anything in z.
     Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
@@ -147,13 +150,13 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
     end
 
     transforms = Tuple(infer_transform(global_grid, d) for d in Tuple(input_permutation))
-    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator)
+    plan = PencilFFTs.PencilFFTPlan(permuted_size, transforms, processors_per_dimension, communicator, AT)
 
     # Allocate memory for in-place FFT + transpositions
     storage = PencilFFTs.allocate_input(plan)
     
     # Permute the λ appropriately
-    permuted_eigenvalues = Tuple(unpermuted_eigenvalues[d] for d in Tuple(input_permutation))
+    permuted_eigenvalues = Tuple(AT(unpermuted_eigenvalues[d]) for d in Tuple(input_permutation))
     eigenvalues = PencilFFTs.localgrid(last(storage), permuted_eigenvalues)
 
     return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage, input_permutation)
@@ -179,7 +182,9 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     # in the Poisson equation, to zero.
     if MPI.Comm_rank(multi_arch.communicator) == 0
         # This is an assumption: we *hope* PencilArrays allocates in this way
-        parent(x̂)[1, 1, 1] = 0
+        GPUArrays.@allowscalar begin
+            parent(x̂)[1, 1, 1] = 0
+        end
     end
 
     # Apply backward transforms to x̂ = last(solver.storage).

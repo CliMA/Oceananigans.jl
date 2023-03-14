@@ -1,4 +1,4 @@
-using CUDA
+using GPUArrays
 using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
@@ -55,7 +55,7 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     x1, y1, z1 = nodes((Face, Face, Face), grid1)
     x2, y2, z2 = nodes((Face, Face, Face), grid2)
 
-    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+    GPUArrays.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
 """
@@ -130,8 +130,8 @@ one dimension of `topo`logy with `N` centered cells and
 @inline total_length(::Type{Center},  ::Type{Flat},    N, H=0) = N
 
 # Grid domains
-@inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(topo, N, ξ) = GPUArrays.@allowscalar ξ[1], ξ[N+1]
+@inline domain(::Type{Flat}, N, ξ) = GPUArrays.@allowscalar ξ[1], ξ[1]
 
 @inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)

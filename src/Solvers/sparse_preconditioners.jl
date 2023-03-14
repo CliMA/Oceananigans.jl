@@ -2,6 +2,10 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device
 import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
+using AMDGPU
+if AMDGPU.functional(:rocsparse)
+    using AMDGPU.rocSparse
+end
 using KernelAbstractions: @kernel, @index
 using AlgebraicMultigrid: aspreconditioner
 
@@ -87,6 +91,9 @@ end
 
 @inline architecture(::CuSparseMatrixCSC) = CUDAGPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
+if AMDGPU.functional(:rocsparse)
+    @inline architecture(::ROCSparseMatrixCSC) = ROCMGPU()
+end
 
 abstract type AbstractInversePreconditioner{M} end
 

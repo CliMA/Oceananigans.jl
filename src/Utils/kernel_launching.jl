@@ -4,6 +4,7 @@
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using AMDGPU
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
 
@@ -63,7 +64,7 @@ function work_layout(grid, workdims::Symbol; include_right_boundaries=false, loc
 
 
     if only_active_cells
-        workgroup, worksize = active_cells_work_layout(worksize, grid) 
+        workgroup, worksize = active_cells_work_layout(worksize, grid)
     end
 
     return workgroup, worksize
@@ -93,7 +94,7 @@ function launch!(arch::AbstractArchitecture, grid, workspec, kernel!, kernel_arg
     workgroup, worksize = work_layout(grid, workspec;
                                       include_right_boundaries,
                                       reduced_dimensions,
-                                      location, 
+                                      location,
                                       only_active_cells)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)

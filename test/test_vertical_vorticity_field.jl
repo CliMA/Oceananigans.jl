@@ -1,3 +1,4 @@
+include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField, VectorInvariant
 
 @testset "VerticalVorticityField with HydrostaticFreeSurfaceModel" begin

@@ -1,5 +1,7 @@
-include("dependencies_for_runtests.jl")
 using Oceananigans: prognostic_fields
+using Oceananigans
+using CUDA
+using AMDGPU
 using Glob
 
 #####
