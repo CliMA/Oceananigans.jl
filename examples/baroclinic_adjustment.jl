@@ -81,7 +81,7 @@ set!(model, b=bᵢ)
 
 using CairoMakie
 
-x, y, z = 1e-3 .* nodes((Center, Center, Center), grid) # convert m -> km
+x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center())) # convert m -> km
 
 b = model.tracers.b
 

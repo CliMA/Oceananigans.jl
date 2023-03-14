@@ -53,7 +53,7 @@ import Oceananigans.Grids:
         z_domain
         
 import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension
-import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
+import Oceananigans.Grids: xnode, ynode, znode, xnodes, ynodes, znodes
 import Oceananigans.Grids: inactive_cell
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
@@ -236,17 +236,17 @@ const f = Face()
 @inline cell_advection_timescale(u, v, w, ibg::IBG) = cell_advection_timescale(u, v, w, ibg.underlying_grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
-@inline xnode(LX, i, ibg::IBG) = xnode(LX, i, ibg.underlying_grid)
-@inline ynode(LY, j, ibg::IBG) = ynode(LY, j, ibg.underlying_grid)
-@inline znode(LZ, k, ibg::IBG) = znode(LZ, k, ibg.underlying_grid)
+@inline xnode(i, ibg::IBG, LX; kwargs...) = xnode(i, ibg.underlying_grid, LX; kwargs...)
+@inline ynode(j, ibg::IBG, LY; kwargs...) = ynode(j, ibg.underlying_grid, LY; kwargs...)
+@inline znode(k, ibg::IBG, LZ; kwargs...) = znode(k, ibg.underlying_grid, LZ; kwargs...)
 
-@inline xnode(LX, LY, LZ, i, j, k, ibg::IBG) = xnode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline ynode(LX, LY, LZ, i, j, k, ibg::IBG) = ynode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
-@inline znode(LX, LY, LZ, i, j, k, ibg::IBG) = znode(LX, LY, LZ, i, j, k, ibg.underlying_grid)
+@inline xnode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = xnode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+@inline ynode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = ynode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
+@inline znode(i, j, k, ibg::IBG, LX, LY, LZ; kwargs...) = znode(i, j, k, ibg.underlying_grid, LX, LY, LZ; kwargs...)
 
-all_x_nodes(loc, ibg::IBG) = all_x_nodes(loc, ibg.underlying_grid)
-all_y_nodes(loc, ibg::IBG) = all_y_nodes(loc, ibg.underlying_grid)
-all_z_nodes(loc, ibg::IBG) = all_z_nodes(loc, ibg.underlying_grid)
+xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
+ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
+znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
 
 @inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
 @inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)

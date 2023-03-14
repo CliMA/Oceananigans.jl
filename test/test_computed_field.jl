@@ -79,7 +79,7 @@ function horizontal_average_of_plus(model)
 
     @test ST.operand isa Reduction
 
-    zC = znodes(Center, model.grid)
+    zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) + 42 * zC
     computed_profile = Array(interior(ST, 1, 1, :))
 
@@ -89,16 +89,16 @@ end
 function zonal_average_of_plus(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = sin(π*z) * sin(π*y)
-    T₀(x, y, z) = 42*z + y^2
+    S₀(x, y, z) = sin(π * z) * sin(π * y)
+    T₀(x, y, z) = 42 * z + y^2
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
     @compute ST = Field(Average(S + T, dims=1))
 
-    yC = ynodes(Center, model.grid, reshape=true)
-    zC = znodes(Center, model.grid, reshape=true)
-    correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
+    _, yC, zC = nodes(model.grid, Center(), Center(), Center(); reshape=true)
+
+    correct_slice = @. sin(π * zC) * sin(π * yC) + 42 * zC + yC^2
     computed_slice = Array(interior(ST, 1, :, :))
 
     return all(computed_slice .≈ view(correct_slice, 1, :, :))
@@ -107,7 +107,7 @@ end
 function volume_average_of_times(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = 1 + sin(2π*x)
+    S₀(x, y, z) = 1 + sin(2π * x)
     T₀(x, y, z) = y
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
@@ -128,7 +128,7 @@ function horizontal_average_of_minus(model)
 
     @compute ST = Field(Average(S - T, dims=(1, 2)))
 
-    zC = znodes(Center, model.grid)
+    zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) - 42 * zC
     computed_profile = Array(interior(ST, 1, 1, 1:Nz))
 
@@ -145,7 +145,7 @@ function horizontal_average_of_times(model)
 
     @compute ST = Field(Average(S * T, dims=(1, 2)))
 
-    zC = znodes(Center, model.grid)
+    zC = znodes(model.grid, Center())
     correct_profile = @. sin(π * zC) * 42 * zC
     computed_profile = Array(interior(ST, 1, 1, 1:Nz))
 
@@ -164,7 +164,7 @@ function multiplication_and_derivative_ccf(model)
 
     @compute wT = Field(Average(w * ∂z(T), dims=(1, 2)))
 
-    zF = znodes(Face, model.grid)
+    zF = znodes(model.grid, Face())
     correct_profile = @. 42 * sin(π * zF)
     computed_profile = Array(interior(wT, 1, 1, 1:Nz))
 
@@ -188,7 +188,7 @@ function multiplication_and_derivative_ccc(model)
     wT_ccc = @at (C, C, C) w * ∂z(T)
     @compute wT_ccc_avg = Field(Average(wT_ccc, dims=(1, 2)))
 
-    zF = znodes(Face, model.grid)
+    zF = znodes(model.grid, Face())
     sinusoid = sin.(π * zF)
     interped_sin = [(sinusoid[k] + sinusoid[k+1]) / 2 for k in 1:model.grid.Nz]
     correct_profile = interped_sin .* 42

@@ -23,6 +23,7 @@ export
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    xspacings, yspacings, zspacings,
 
     # Immersed boundaries
     ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
