@@ -7,8 +7,43 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ�
 @inline half_g_h²(i, j, k, grid, h, g)  = @inbounds 1/2 * g * h[i, j, k]^2
 @inline h_plus_hB(i, j, k, grid, h, hB) = @inbounds h[i, j, k] + hB[i, j, k]
 
-@inline x_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
-@inline y_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+#@inline x_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+#@inline y_pressure_gradient(i, j, k, grid, g, h, hB, formulation) = ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+
+@inline function x_pressure_gradient(i, j, k, grid, g, h, hB, formulation)
+    if topology(grid, 3) === Flat
+        return ∂xᶠᶜᶜ(i, j, k, grid, half_g_h², h, g)
+    else
+        Nz = grid.Nz
+        ## Should be set to grid dimensions
+        η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)
+        ## Should be set to grid dimensions
+        pr = 0
+        for iter in range(k, Nz, step = 1)
+            pr[i, j, k] = pr[i, j, k] + g[iter] * η[i, j, iter]
+        end
+        pr[i, j, k] = pr[i, j, k] + g[Nz] * η[i, j, Nz]
+        return ∂xᶠᶜᶜ(i, j, k, grid, h[i, j, k] * pr[i, j, k], h, g)
+    end
+end
+
+@inline function y_pressure_gradient(i, j, k, grid, g, h, hB, formulation)
+    if topology(grid, 3) === Flat
+        return ∂yᶜᶠᶜ(i, j, k, grid, half_g_h², h, g)
+    else
+        Nz = grid.Nz
+        ## Should be set to grid dimensions
+        η[i, j, k] = hB[i, j, k] + cumsum(h, dims = 3)
+        ## Should be set to grid dimensions
+        pr = 0
+        for iter in range(k, Nz, step = 1)
+            pr[i, j, k] = pr[i, j, k] + g[iter] * η[i, j, iter]
+        end
+        pr[i, j, k] = pr[i, j, k] + g[Nz] * η[i, j, Nz]
+        return ∂yᶜᶠᶜ(i, j, k, grid, h[i, j, k] * pr[i, j, k], h, g)
+    end
+end
+
 
 @inline x_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂xᶠᶜᶜ(i, j, k, grid, h_plus_hB, h, hB)
 @inline y_pressure_gradient(i, j, k, grid, g, h, hB, ::VectorInvariantFormulation) = g * ∂yᶜᶠᶜ(i, j, k, grid, h_plus_hB, h, hB)

@@ -135,11 +135,8 @@ function ShallowWaterModel(;
     #                        "when constructing `grid`."))
 
 
-    if(topology(grid, 3) === Flat)
-        print("Proceeding with single-layer shallow water model")
-    else
-        print("Proceeding with multi-layer shallow water model")
-    end
+    topology(grid, 3) === Flat ? println("Proceeding with single-layer shallow water model") : println(
+        "Proceeding with multi-layer shallow water model")
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
