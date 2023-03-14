@@ -194,7 +194,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     end
 
     # Syncronous MPI fill_halo_event!
-    cooperative_waitall!(requests)
+    MPI.Waitall!(requests)
     # Reset MPI tag
     arch.mpi_tag[1] -= arch.mpi_tag[1]
 
@@ -299,12 +299,9 @@ for side in sides
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
-            send = @async begin
-                send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
-                cooperative_test!(send_req)
-            end
+            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
-            return send
+            return send_req
         end
 
         @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_boundary(c, grid, side_location)
@@ -331,11 +328,7 @@ for side in sides
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
-            recv = @async begin
-                cooperative_test!(recv_req)
-            end
-
-            return recv
+            return recv_req
         end
 
         @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_halo(c, grid, side_location)
