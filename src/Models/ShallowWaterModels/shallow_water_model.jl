@@ -192,7 +192,7 @@ function ShallowWaterModel(;
     model = ShallowWaterModel(grid,
                               arch,
                               clock,
-                              eltype(grid)(gravitational_acceleration),
+                              gravitational_acceleration,
                               advection,
                               shallow_water_velocities(solution, formulation),
                               coriolis,
