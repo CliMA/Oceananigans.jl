@@ -634,10 +634,12 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 
 @inline yspacings(grid::LatLonGrid,     LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
     view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::YRegLatLonGrid, LX::Center, LY::Face;   with_halos=false) = grid.Δyᶜᶠᵃ
 @inline yspacings(grid::LatLonGrid,     LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
     view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::YRegLatLonGrid, LX::Face,   LY::Center; with_halos=false) = grid.Δyᶠᶜᵃ
+
+@inline yspacings(grid::YRegLatLonGrid, LX, LY; with_halos=false) = yspacings(grid, LY; with_halos)
+@inline yspacings(grid, LY::Center; kwargs...) = grid.Δyᶠᶜᵃ
+@inline yspacings(grid, LY::Face; kwargs...)   = grid.Δyᶜᶠᵃ
 
 @inline zspacings(grid::LatLonGrid,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 @inline zspacings(grid::ZRegLatLonGrid, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
