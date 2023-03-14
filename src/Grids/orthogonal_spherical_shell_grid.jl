@@ -879,23 +879,6 @@ end
 @inline yspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = yspacings(grid, LX, LY; with_halos)
 @inline zspacings(grid::OSSG, LX, LY, LZ; with_halos=false) = zspacings(grid, LZ; with_halos)
 
-@inline xspacing(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.Δxᶜᶜᵃ[i, j]
-@inline xspacing(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.Δxᶠᶜᵃ[i, j]
-@inline xspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δxᶜᶠᵃ[i, j]
-@inline xspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δxᶠᶠᵃ[i, j]
-
-@inline yspacing(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.Δyᶜᶜᵃ[i, j]
-@inline yspacing(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.Δyᶠᶜᵃ[i, j]
-@inline yspacing(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.Δyᶜᶠᵃ[i, j]
-@inline yspacing(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.Δyᶠᶠᵃ[i, j]
-
-@inline zspacing(k, grid::OSSG, ::Center) = grid.Δz
-@inline zspacing(k, grid::OSSG, ::Face)   = grid.Δz
-
-@inline xspacing(i, j, k, grid::OSSG, LX, LY, LZ) = xspacing(i, j, grid, LX, LY)
-@inline yspacing(i, j, k, grid::OSSG, LX, LY, LZ) = yspacing(i, j, grid, LX, LY)
-@inline zspacing(i, j, k, grid::OSSG, LX, LY, LZ) = zspacing(k, grid, LZ)
-
 min_Δx(grid::OSSG) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
 min_Δy(grid::OSSG) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center(), Center()))
 min_Δz(grid::OSSG) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))

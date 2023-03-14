@@ -1,10 +1,13 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz, xspacings, yspacings, zspacings, 
-                          xnode, ynode, znode, xspacing, yspacing, zspacing,
+using Oceananigans.Grids: total_extent, min_Δx, min_Δy, min_Δz,
+                          xspacings, yspacings, zspacings, 
+                          xnode, ynode, znode,
                           λspacings, φspacings, λspacing, φspacing
-using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+
+using Oceananigans.Operators: xspacing, yspacing, zspacing,
+                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
 ##### Regular rectilinear grids
