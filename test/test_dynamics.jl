@@ -554,7 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                           topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
-            z_immersed = reshape(znodes(immersed_vertical_grid, Center()), (1, 1, grid.Nz))
+            z_immersed = reshape(znodes(immersed_vertical_grid, Center()), (1, 1, immersed_vertical_grid.Nz))
 
             append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
