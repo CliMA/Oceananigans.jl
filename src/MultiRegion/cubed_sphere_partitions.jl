@@ -13,26 +13,20 @@ end
 """"
     CubedSpherePartition(; R = 1)
 
-Return a cubed sphere partition with `R` partitions in each dimension of the panel
+Return a cubed sphere partition with `R` partitions in each dimension of each panel
 of the sphere.
 """
 function CubedSpherePartition(; R = 1)
     # at the moment only CubedSpherePartitions with Rx = Ry are supported
     Rx = Ry = R
 
-    if Rx isa Number 
-        if Ry isa Number
-            Rx != Ry && 
-                throw(ArgumentError("Regular cubed sphere partiction must have Rx == Ry!"))
-            div = 6 * Rx * Ry
-        else
-            div = sum(Ry .* Rx)
-        end
+    if R isa Number
+        div = 6 * R^2
     else
-        div = sum(Ry .* Rx)
+        div = sum(R .* R)
     end
 
-    div < 6 && throw(ArgumentError("Cubed sphere requires at least 6 regions!"))
+    div < 6 && throw(ArgumentError("Cubed sphere partition requires at least 6 regions per panel!"))
 
     return CubedSpherePartition(div, Rx, Ry)
 end
@@ -97,7 +91,7 @@ end
 #                           + ---------- + ---------- +
 #                           |     ↑↑     |     ↑↑     |
 #                           |     1W     |     1S     |
-#                           |←3N      6W→|←5E      2S→|
+ #                           |←3N      6W→|←5E      2S→|
 #                           |------------|------------|
 #                           |←3N      6W→|←5E      2S→|
 #                           |     4N     |     4E     |
@@ -128,24 +122,15 @@ end
 abstract type AbstractCubedSphereConnectivity end
 
 """
-    struct CubedSphereConnectivity <: AbstractCubedSphereConnectivity 
+    struct CubedSphereConnectivity{flip_indices}
 
-The connectivity among various regions for a cubed sphere grid.
+The connectivity among various regions for a cubed sphere grid. Parameter
+`flip_indices :: Boolean` denotes whether or not the indices of fields need to
+be reversed for the particular connectivity.
 
 $(TYPEDFIELDS)
-
-Example
-=======
-
-A connectivity that implies that the boundary condition for the
-north side of region 1 comes from the west side of region 3 is:
-
-```julia
-julia> CubedSphereConnectivity(1, 3, :north, :west)
-CubedSphereConnectivity(1, 3, :north, :west)
-```
 """
-struct CubedSphereConnectivity{T} <: AbstractCubedSphereConnectivity 
+struct CubedSphereConnectivity{flip_indices} <: AbstractCubedSphereConnectivity 
     "the current region rank"
             rank :: Int
     "the region from which boundary condition comes from"
@@ -154,6 +139,56 @@ struct CubedSphereConnectivity{T} <: AbstractCubedSphereConnectivity
             side :: Symbol
     "the side of the region from which boundary condition comes from"
        from_side :: Symbol
+
+    @doc """
+        CubedSphereConnectivity(rank, from_rank, side, from_side)
+
+    Return a `CubedSphereConnectivity`: `from_rank :: Int` → `rank :: Int` and
+    `from_side :: Symbol` → `from_side :: Symbol`.
+
+    Example
+    =======
+
+    A connectivity that implies that the boundary condition for the
+    east side of region 1 comes from the west side of region 2 is:
+
+    ```jldoctest cubedsphereconnectivity
+    julia> using Oceananigans
+
+    julia> using Oceananigans.MultiRegion: CubedSphereConnectivity
+
+    julia> CubedSphereConnectivity(1, 2, :east, :west)
+    CubedSphereConnectivity{false}(1, 2, :east, :west)
+    ```
+
+    Note that parameter `flip_indices` is `false` which implies that for this
+    connectivity the indices do not flip.
+
+    A connectivity that implies that the boundary condition for the
+    north side of region 1 comes from the east side of region 3 is 
+
+    ```jldoctest cubedsphereconnectivity
+    julia> CubedSphereConnectivity(1, 3, :north, :east)
+    CubedSphereConnectivity{true}(1, 3, :north, :east)
+    ```
+
+    and this time `flip_indices` is `true` implying that we need to flip the
+    indices.
+    """
+    function CubedSphereConnectivity(rank, from_rank, side, from_side)
+
+        if (side == :west && from_side == :east) ||
+           (side == :north && from_side == :south) ||
+           (side == :east && from_side == :west) ||
+           (side == :south && from_side == :north)
+
+            flip_indices = false
+        else
+            flip_indices = true
+        end
+
+        return new{flip_indices}(rank, from_rank, side, from_side)
+    end
 end
 
 function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
@@ -180,9 +215,7 @@ function inject_west_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, p)
     end
 
-    T = from_side == :east ? true : false
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :west, from_side))
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :west, from_side))
 end
 
 function inject_east_boundary(region, p::CubedSpherePartition, global_bc) 
@@ -210,9 +243,7 @@ function inject_east_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, p)
     end
 
-    T = from_side == :west ? true : false
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :east, from_side))
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :east, from_side))
 end
 
 function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
@@ -239,9 +270,7 @@ function inject_south_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, p)
     end
 
-    T = from_side == :north ? true : false
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :south, from_side))
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 end
 
 function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
@@ -268,18 +297,16 @@ function inject_north_boundary(region, p::CubedSpherePartition, global_bc)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, p)
     end
 
-    T = from_side == :south ? true : false
-
-    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity{T}(region, from_rank, :south, from_side))
+    return MultiRegionCommunicationBoundaryCondition(CubedSphereConnectivity(region, from_rank, :south, from_side))
 end
 
-const NonTrivialCubedSphereConnectivity = CubedSphereConnectivity{false}
+const CubedSphereConnectivityWithIndicesFlipped = CubedSphereConnectivity{true}
 
 @inline flip_west_and_east_indices(buff, conn) = buff
-@inline flip_west_and_east_indices(buff, ::NonTrivialCubedSphereConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
+@inline flip_west_and_east_indices(buff, ::CubedSphereConnectivityWithIndicesFlipped) = reverse(permutedims(buff, (2, 1, 3)), dims = 2)
 
 @inline flip_south_and_north_indices(buff, conn) = buff
-@inline flip_south_and_north_indices(buff, ::NonTrivialCubedSphereConnectivity) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
+@inline flip_south_and_north_indices(buff, ::CubedSphereConnectivityWithIndicesFlipped) = reverse(permutedims(buff, (2, 1, 3)), dims = 1)
 
 function Base.summary(p::CubedSpherePartition)
     region_str = p.Rx * p.Ry > 1 ? "regions" : "region"
