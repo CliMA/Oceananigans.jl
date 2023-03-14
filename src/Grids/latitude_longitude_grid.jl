@@ -78,6 +78,7 @@ const LatLonGrid = LatitudeLongitudeGrid
 const HNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
 const XRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const YRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const YNonRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any, <:Number}
 const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 
@@ -632,9 +633,9 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 @inline xspacings(grid::HRegLatLonGrid, LX::Face, LY::Face;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
     view(grid.Δxᶠᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-@inline yspacings(grid::LatLonGrid,     LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
+@inline yspacings(grid::YNonRegLatLonGrid, LX::Center, LY::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
     view(grid.Δyᶜᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline yspacings(grid::LatLonGrid,     LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
+@inline yspacings(grid::YNonRegLatLonGrid, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
     view(grid.Δyᶠᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
 @inline yspacings(grid::YRegLatLonGrid, LX, LY; with_halos=false) = yspacings(grid, LY; with_halos)
