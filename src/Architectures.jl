@@ -49,7 +49,7 @@ ROCMGPU() = GPU(ROCKernels.ROCDevice())
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::CUDAGPU) = CUDAKernels.CUDADevice(;always_inline=true)
-device(::ROCMGPU) = ROCKernels.ROCDevice(;always_inline=true)
+device(::ROCMGPU) = ROCKernels.ROCDevice()
 
 architecture() = nothing
 architecture(::Number) = nothing
