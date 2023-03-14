@@ -79,7 +79,7 @@ end
 
 function regrid_in_z!(a, target_grid, source_grid, b)
     arch = architecture(a)
-    source_z_faces = znodes(Face, source_grid)
+    source_z_faces = znodes(source_grid, Face())
     event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
     wait(device(arch), event)
     return a
@@ -87,7 +87,7 @@ end
 
 function regrid_in_y!(a, target_grid, source_grid, b)
     arch = architecture(a)
-    source_y_faces = ynodes(Face, source_grid)
+    source_y_faces = ynodes(source_grid, Face())
     event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
     wait(device(arch), event)
     return a
@@ -95,7 +95,7 @@ end
 
 function regrid_in_x!(a, target_grid, source_grid, b)
     arch = architecture(a)
-    source_x_faces = xnodes(Face, source_grid)
+    source_x_faces = xnodes(source_grid, Face())
     event = launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
     wait(device(arch), event)
     return a
@@ -159,8 +159,8 @@ end
                 @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
-            zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
-            zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src, source_grid)
+            zk₋_src = znode(i_src, j_src, k₋_src, source_grid, Center(), Center(), Face())
+            zk₊_src = znode(i_src, j_src, k₊_src, source_grid, Center(), Center(), Face()) 
 
             # Add contribution to integral from fractional left part of the source field,
             # if that region is a part of the grid.
@@ -190,8 +190,8 @@ end
     @unroll for j = 1:target_grid.Ny
         @inbounds target_field[i, j, k] = 0
 
-        y₋ = ynode(Center(), Face(), Center(), i, j,   k, target_grid)
-        y₊ = ynode(Center(), Face(), Center(), i, j+1, k, target_grid)
+        y₋ = ynode(i, j,   k, target_grid, Center(), Face(), Center())
+        y₊ = ynode(i, j+1, k, target_grid, Center(), Face(), Center())
 
         # Integrate source field from y₋ to y₊
         j₋_src = searchsortedfirst(source_y_faces, y₋)
@@ -210,8 +210,8 @@ end
                 @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
 
-            yj₋_src = ynode(Center(), Face(), Center(), i_src, j₋_src, k_src, source_grid)
-            yj₊_src = ynode(Center(), Face(), Center(), i_src, j₊_src, k_src, source_grid)
+            yj₋_src = ynode(i_src, j₋_src, k_src, source_grid, Center(), Face(), Center())
+            yj₊_src = ynode(i_src, j₊_src, k_src, source_grid, Center(), Face(), Center())
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
@@ -246,8 +246,8 @@ end
         @inbounds target_field[i, j, k] = 0
 
         # Integrate source field from x₋ to x₊
-        x₋ = xnode(Face(), Center(), Center(), i,   j, k, target_grid)
-        x₊ = xnode(Face(), Center(), Center(), i+1, j, k, target_grid)
+        x₋ = xnode(i,   j, k, target_grid, Face(), Center(), Center())
+        x₊ = xnode(i+1, j, k, target_grid, Face(), Center(), Center()) 
 
         # The first face on the source grid that appears inside the target cell
         i₋_src = searchsortedfirst(source_x_faces, x₋)
@@ -273,8 +273,8 @@ end
     
             # Next, we add contributions from the "fractional" source cells on the right
             # and left of the target cell.
-            xi₋_src = xnode(Face(), Center(), Center(), i₋_src, j_src, k_src, source_grid)
-            xi₊_src = xnode(Face(), Center(), Center(), i₊_src, j_src, k_src, source_grid)
+            xi₋_src = xnode(i₋_src, j_src, k_src, source_grid, Face(), Center(), Center())
+            xi₊_src = xnode(i₊_src, j_src, k_src, source_grid, Face(), Center(), Center())
     
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
