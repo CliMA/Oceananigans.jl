@@ -69,5 +69,5 @@ end
 cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyImplicitTimeDiscretization},
                          diffusivities, grid) = Inf
 
-cell_diffusion_timescale(closure::Tuple, diffusivities, grid) =
-    min(Tuple(cell_diffusion_timescale(c, diffusivities, grid) for c in closure)...)
+cell_diffusion_timescale(closure::Tuple, diffusivity_fields, grid) =
+    minimum(cell_diffusion_timescale(c, diffusivities, grid) for (c, diffusivities) in zip(closure, diffusivity_fields))

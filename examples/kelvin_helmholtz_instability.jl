@@ -6,12 +6,12 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, CairoMakie"
+# pkg"add Oceananigans, CairoMakie"
 # ```
 
 # ## The physical domain
 #
-# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``
+# We simulate a Kelvin-Helmholtz instability in two-dimensions in ``x, z``
 # and therefore assign `Flat` to the `y` direction,
 
 using Oceananigans
@@ -22,8 +22,7 @@ grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
 # # The basic state
 #
 # We're simulating the instability of a sheared and stably-stratified basic state
-# ``U(z)`` and ``B(z)``. Two parameters define our basic state: the Richardson number
-# defined as,
+# ``U(z)`` and ``B(z)``. Two parameters define our basic state: the Richardson number,
 #
 # ```math
 # Ri = \frac{∂_z B}{(∂_z U)^2} ,
@@ -44,8 +43,8 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 
 using CairoMakie
 
-zF = znodes(Face, grid)
-zC = znodes(Center, grid)
+zF = znodes(grid, Face())
+zC = znodes(grid, Center())
 
 Ri, h = B.parameters
 
@@ -96,7 +95,7 @@ lines!(ax, [Ri * sech(z / h)^2 / sech(z)^2 for z in zF], zF; linewidth = 3, colo
 #
 # Remarks:
 #
-# As we touched upon briefly above, Oceananigans.jl, does not include a linearized version of the equations.
+# As we touched upon briefly above, Oceananigans.jl, does not include the linearized version of the equations.
 # Furthermore, Oceananigans.jl does not give us access to the linear operator ``L`` so that we can perform eigenanalysis.
 # Below we discuss an alternative way of approximating the eigenanalysis results.
 # The method boils down to solving the nonlinear equations while continually renormalize
@@ -146,9 +145,10 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
                                 tracers = :b)
 
 # We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown:
-# viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point it becomes nonlinear.
+# viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
+# it becomes nonlinear.
 
-# For this example, we take ``\Delta \tau = 15``.
+# Here, we take ``\Delta \tau = 15``.
 
 simulation = Simulation(model, Δt=0.1, stop_iteration=150)
 
@@ -428,7 +428,7 @@ ax_KE = Axis(fig[3, :];
              limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
              xlabel = "time")
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ω_lims = @lift (-maximum(abs, interior(ω_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(ω_timeseries, :, 1, :, $n)) + 1e-16)
 b_lims = @lift (-maximum(abs, interior(b_timeseries, :, 1, :, $n)) - 1e-16, maximum(abs, interior(b_timeseries, :, 1, :, $n)) + 1e-16)
@@ -487,7 +487,7 @@ ax_KE = Axis(fig[3, :];
              limits = ((0, t_final), (initial_eigenmode_energy, 1e-1)),
              xlabel = "time")
 
-fig[1, :] = Label(fig, title, textsize=24, tellwidth=false)
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 hm_Ω = heatmap!(ax_Ω, xω, zω, Ωₙ; colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_Ω)

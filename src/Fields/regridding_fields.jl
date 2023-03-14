@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
@@ -40,15 +40,15 @@ output_field[1, 1, :]
 # output
 4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
  0.0
- 2.333333333333334
+ 2.333333333333333
  3.0
  0.0
 ```
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
-function we_can_regrid(a, target_grid, source_grid, b)
-    # Only 1D regridding in the vertical is supported, so check that
+function we_can_regrid_in_z(a, target_grid, source_grid, b)
+    # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same horizontal size
     typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
@@ -57,14 +57,29 @@ function we_can_regrid(a, target_grid, source_grid, b)
     return false
 end
 
+function we_can_regrid_in_y(a, target_grid, source_grid, b)
+    # Check that
+    #   1. source and target grid are in the same "class" and
+    #   2. source and target Field have same xz size
+    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+        size(a)[[1, 3]] === size(b)[[1, 3]] && return true
+
+    return false
+end
+
+
 function regrid!(a, target_grid, source_grid, b)
-    if we_can_regrid(a, target_grid, source_grid, b)
-        arch = architecture(a)
-        source_z_faces = znodes(Face, source_grid)
+    arch = architecture(a)
 
-        event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
+    if we_can_regrid_in_z(a, target_grid, source_grid, b)
+        source_z_faces = znodes(source_grid, Face())
+        event = launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
         wait(device(arch), event)
-
+        return a
+    elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
+        source_y_faces = ynodes(source_grid, Face())
+        event = launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
+        wait(device(arch), event)
         return a
     else
         msg = """Regridding
@@ -80,7 +95,7 @@ end
 ##### Regridding for single column grids
 #####
 
-@kernel function _regrid!(target_field, source_field, target_grid, source_grid, source_z_faces)
+@kernel function _regrid_in_z!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -91,8 +106,8 @@ end
     @unroll for k = 1:target_grid.Nz
         @inbounds target_field[i, j, k] = 0
 
-        z₋ = znode(Center(), Center(), Face(), i, j, k,   target_grid)
-        z₊ = znode(Center(), Center(), Face(), i, j, k+1, target_grid)
+        z₋ = znode(i, j, k,   target_grid, Center(), Center(), Face())
+        z₊ = znode(i, j, k+1, target_grid, Center(), Center(), Face())
 
         # Integrate source field from z₋ to z₊
         k₋_src = searchsortedfirst(source_z_faces, z₋)
@@ -103,17 +118,54 @@ end
             @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
-        zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
-        zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src+1, source_grid)
+        zk₋_src = znode(i_src, j_src, k₋_src, source_grid  , Center(), Center(), Face())
+        zk₊_src = znode(i_src, j_src, k₊_src+1, source_grid, Center(), Center(), Face())
 
         # Add contribution to integral from fractional bottom part,
         # if that region is a part of the grid.
-        @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₋_src - 1] * (zk₋_src - z₋)
+        @inbounds target_field[i, j, k] += source_field[i_src, j_src, max(1, k₋_src - 1)] * (zk₋_src - z₋)
 
         # Add contribution to integral from fractional top part
-        @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
+        @inbounds target_field[i, j, k] += source_field[i_src, j_src, min(source_grid.Nz, k₊_src)] * (z₊ - zk₊_src)
 
         @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
+    end
+end
+
+@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces)
+    i, k = @index(Global, NTuple)
+
+    Nx_target, Ny_target, Nz_target = size(target_grid)
+    Nx_source, Ny_source, Nz_source = size(source_grid)
+    i_src = ifelse(Nx_target == Nx_source, i, 1)
+    k_src = ifelse(Nz_target == Nz_source, k, 1)
+
+    @unroll for j = 1:target_grid.Ny
+        @inbounds target_field[i, j, k] = 0
+
+        y₋ = ynode(Center(), Face(), Center(), i, j,   k, target_grid)
+        y₊ = ynode(Center(), Face(), Center(), i, j+1, k, target_grid)
+
+        # Integrate source field from y₋ to y₊
+        j₋_src = searchsortedfirst(source_y_faces, y₋)
+        j₊_src = searchsortedfirst(source_y_faces, y₊) - 1
+
+        # Add contribution from all full cells in the integration range
+        @unroll for j_src = j₋_src:j₊_src
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δyᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+        end
+
+        yj₋_src = ynode(Center(), Face(), Center(), i_src, j₋_src,   k_src, source_grid)
+        yj₊_src = ynode(Center(), Face(), Center(), i_src, j₊_src+1, k_src, source_grid)
+
+        # Add contribution to integral from fractional bottom part,
+        # if that region is a part of the grid.
+        @inbounds target_field[i, j, k] += source_field[i_src, max(1, j₋_src - 1), k_src] * (yj₋_src - y₋)
+
+        # Add contribution to integral from fractional top part
+        @inbounds target_field[i, j, k] += source_field[i_src, min(source_grid.Ny, j₊_src), k_src] * (y₊ - yj₊_src)
+
+        @inbounds target_field[i, j, k] /= Δyᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 

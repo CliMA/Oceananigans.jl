@@ -39,6 +39,8 @@ function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitud
     end
 end
 
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
+
 @inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
 @inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 @inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   zero(grid)

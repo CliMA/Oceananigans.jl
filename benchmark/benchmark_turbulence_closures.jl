@@ -9,8 +9,8 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_closure(Arch, Closure)
-    grid = RectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=Arch(), grid=grid, closure=Closure())
+    grid = RectilinearGrid(Arch(), size=(128, 128, 128), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid, closure=Closure())
 
     time_step!(model, 1) # warmup
 

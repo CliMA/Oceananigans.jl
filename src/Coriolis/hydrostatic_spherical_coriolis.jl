@@ -1,15 +1,15 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, peripheral_node
+using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node
 using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 using Oceananigans.Advection: EnergyConservingScheme, EnstrophyConservingScheme
 
 
 """
-    struct WetCellEnstrophyConservingScheme
+    struct ActiveCellEnstrophyConservingScheme
 
-A parameter object for an enstrophy-conserving Coriolis scheme that excludes dry edges (indices for which `peripheral_node == true`)
-from the velocity interpolation.
+A parameter object for an enstrophy-conserving Coriolis scheme that excludes inactive (dry/land) edges
+(indices for which `peripheral_node == true`) from the velocity interpolation.
 """
-struct WetCellEnstrophyConservingScheme end
+struct ActiveCellEnstrophyConservingScheme end
 
 """
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
@@ -32,7 +32,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `WetCellEnstrophyConservingScheme()`.
+- `scheme`: Either `EnergyConservingScheme()` (default), `EnstrophyConservingScheme()`, or `ActiveCellEnstrophyConservingScheme()`.
 """
 HydrostaticSphericalCoriolis(FT::DataType=Float64;
                              rotation_rate = Ω_Earth,
@@ -40,7 +40,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = @inbounds grid.φᵃᶠᵃ[j]
-@inline φᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
@@ -48,34 +48,34 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
 @inline z_f_cross_U(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis, U) = zero(grid)
 
 #####
-##### Wet Point Enstrophy-conserving scheme
+##### Active Point Enstrophy-conserving scheme
 #####
 
-# It might happen that a cell is wet but all the neighbouring staggered nodes are dry,
+# It might happen that a cell is active but all the neighbouring staggered nodes are inactive,
 # (an example is a 1-cell large channel)
 # In that case the Coriolis force is equal to zero
 
-const CoriolisWetCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:WetCellEnstrophyConservingScheme}
+const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:ActiveCellEnstrophyConservingScheme}
 
-@inline revert_peripheral_node(i, j, k, grid, f::Function, args...) = @inbounds 1.0 - f(i, j, k, grid, args...)
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
 
-@inline function mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_wet_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
-    return ifelse(neighbouring_wet_nodes == 0, zero(grid),
-           @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes)
+@inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
+    neighbouring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
+    return ifelse(neighbouring_active_nodes == 0, zero(grid),
+           @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end
 
-@inline function mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_wet_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
-    return ifelse(neighbouring_wet_nodes == 0, zero(grid),
-           @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_wet_nodes)
+@inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
+    neighbouring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
+    return ifelse(neighbouring_active_nodes == 0, zero(grid),
+           @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisWetCellEnstrophyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
-@inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisWetCellEnstrophyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_dry_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Enstrophy-conserving scheme

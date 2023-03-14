@@ -97,6 +97,7 @@ CUDA.allowscalar() do
     if group == :time_stepping_3 || group == :all
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
+            include("test_biogeochemistry.jl")
         end
     end
 
@@ -143,6 +144,10 @@ CUDA.allowscalar() do
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
         include("test_distributed_models.jl")
+    end
+
+    if group == :distributed_solvers || group == :all
+        MPI.Initialized() || MPI.Init()
         include("test_distributed_poisson_solvers.jl")
     end
 

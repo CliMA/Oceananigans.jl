@@ -1,11 +1,13 @@
 using CUDA
 using Printf
 using Base.Ryu: writeshortest
+using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
 #####
 ##### Convenience functions
 #####
+
 const BoundedTopology = Union{Bounded, LeftConnected}
 
 Base.length(::Type{Face}, topo, N) = N
@@ -50,8 +52,8 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
 
     topology(grid1) !== topology(grid2) && return false
 
-    x1, y1, z1 = nodes((Face, Face, Face), grid1)
-    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
+    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
 
     CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
@@ -83,7 +85,6 @@ total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.H
                          total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                          total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
-
 function total_size(loc, grid, indices::Tuple)
     sz = total_size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
@@ -93,8 +94,6 @@ function Base.size(loc, grid::AbstractGrid, indices::Tuple)
     sz = size(loc, grid)
     return Tuple(ind isa Colon ? sz[i] : min(length(ind), sz[i]) for (i, ind) in enumerate(indices))
 end
-
-
 
 """
     halo_size(grid)
@@ -170,11 +169,6 @@ regular_dimensions(grid) = ()
 @inline interior_parent_offset(loc, topo, H) = H
 @inline interior_parent_offset(::Type{Nothing}, topo, H) = 0
 
-#@inline interior_parent_offset(::Type{Face},    topo, H) = H
-# @inline interior_parent_offset(loc,             ::Type{Flat}, H) = 0
-# @inline interior_parent_offset(::Type{Face},    ::Type{Flat}, H) = 0
-#@inline interior_parent_offset(::Type{Nothing}, ::Type{Flat}, H) = 0
-
 @inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
 @inline interior_parent_indices(::Type{Face},    ::Type{<:BoundedTopology}, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
@@ -218,129 +212,87 @@ parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
+@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
+
+
 #####
 ##### << Nodes >>
 #####
 
-# Fallback
-@inline xnode(LX, LY, LZ, i, j, k, grid) = xnode(LX, i, grid)
-@inline ynode(LX, LY, LZ, i, j, k, grid) = ynode(LY, j, grid)
-@inline znode(LX, LY, LZ, i, j, k, grid) = znode(LZ, k, grid)
+@inline node(i, j, k, grid, LX, LY, LZ) = (xnode(i, j, k, grid, LX, LY, LZ),
+                                           ynode(i, j, k, grid, LX, LY, LZ),
+                                           znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(LX, LY, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid),
-                                           ynode(LX, LY, LZ, i, j, k, grid),
-                                           znode(LX, LY, LZ, i, j, k, grid))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ) = (ynode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ) = (xnode(i, j, k, grid, LX, LY, LZ), znode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX, LY, LZ::Nothing) = (xnode(i, j, k, grid, LX, LY, LZ), ynode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(LX::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, LY::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, LY, LZ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
+@inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
 
-@inline node(LX, LY::Nothing, LZ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
-
-@inline cpu_face_constructor_x(grid) = Array(all_x_nodes(Face, grid)[1:grid.Nx+1])
-@inline cpu_face_constructor_y(grid) = Array(all_y_nodes(Face, grid)[1:grid.Ny+1])
-@inline cpu_face_constructor_z(grid) = Array(all_z_nodes(Face, grid)[1:grid.Nz+1])
-
-all_x_nodes(::Type{Nothing}, grid) = 1:1
-all_y_nodes(::Type{Nothing}, grid) = 1:1
-all_z_nodes(::Type{Nothing}, grid) = 1:1
+xnodes(grid, ::Nothing; kwargs...) = 1:1
+ynodes(grid, ::Nothing; kwargs...) = 1:1
+znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
-    xnodes(loc, grid, reshape=false)
+    xnodes(grid, LX, LY, LZ, with_halos=false)
 
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``x``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
-
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `Nx×1×1`.
-
-See `znodes` for examples.
-"""
-function xnodes(loc, grid; reshape=false)
-
-    x = view(all_x_nodes(loc, grid),
-             interior_indices(loc, topology(grid, 1), grid.Nx))
-
-    return reshape ? Base.reshape(x, length(x), 1, 1) : x
-end
-
-"""
-    ynodes(loc, grid, reshape=false)
-
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``y``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
-
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `1×Ny×1`.
+Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 See [`znodes`](@ref) for examples.
 """
-function ynodes(loc, grid; reshape=false)
-
-    y = view(all_y_nodes(loc, grid),
-             interior_indices(loc, topology(grid, 2), grid.Ny))
-
-    return reshape ? Base.reshape(y, 1, length(y), 1) : y
-end
+@inline xnodes(grid, LX, LY, LZ; kwargs...) = xnodes(grid, LX; kwargs...)
 
 """
-    znodes(loc, grid, reshape=false)
+    ynodes(grid, LX, LY, LZ, with_halos=false)
 
-Return a view over the interior `loc=Center` or `loc=Face` nodes
-on `grid` in the ``z``-direction. For `Bounded` directions,
-`Face` nodes include the boundary points.
+Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
 
-Keyword argument
-================
-- `reshape`: With `reshape=false` (default) the output is a 1D array while with 
-  `reshape=true` the output is a 3D array with size `1×1×Nz`.
+See [`znodes`](@ref) for examples.
+"""
+@inline ynodes(grid, LX, LY, LZ; kwargs...) = ynodes(grid, LY; kwargs...)
 
-Examples
-========
+"""
+    znodes(grid, LX, LY, LZ; with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 ```jldoctest znodes
 julia> using Oceananigans
 
 julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                                 topology=(Periodic, Periodic, Bounded));
+                                            topology=(Periodic, Periodic, Bounded));
 
-julia> zC = znodes(Center, horz_periodic_grid)
+julia> zC = znodes(horz_periodic_grid, Center())
 3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
  -0.8333333333333334
  -0.5
  -0.16666666666666666
-```
 
-``` jldoctest znodes
-julia> zF = znodes(Face, horz_periodic_grid)
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:5), 1:4) with eltype Float64:
- -1.0
- -0.6666666666666666
- -0.3333333333333333
-  0.0
+julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
+3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+
+julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+-1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-function znodes(loc, grid; reshape=false)
-
-    z = view(all_z_nodes(loc, grid),
-             interior_indices(loc, topology(grid, 3), grid.Nz))
-
-    return reshape ? Base.reshape(z, 1, 1, length(z)) : z
-end
+@inline znodes(grid, LX, LY, LZ; kwargs...) = znodes(grid, LZ; kwargs...)
 
 """
-    nodes(loc, grid; reshape=false)
+    nodes(grid, (LX, LY, LZ); reshape=false, with_halos=false)
+    nodes(grid, LX, LY, LZ; reshape=false, with_halos=false)
 
 Return a 3-tuple of views over the interior nodes
-at the locations in `loc` in `x, y, z`.
+at the locations in `loc=(LX, LY, LZ)` in `x, y, z`.
 
 If `reshape=true`, the views are reshaped to 3D arrays
 with non-singleton dimensions 1, 2, 3 for `x, y, z`, respectively.
@@ -349,23 +301,96 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(loc, grid::AbstractGrid; reshape=false)
-    if reshape
-        x, y, z = nodes(loc, grid; reshape=false)
+function nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, with_halos=false)
+    x = xnodes(grid, LX, LY, LZ; with_halos)
+    y = ynodes(grid, LX, LY, LZ; with_halos)
+    z = znodes(grid, LX, LY, LZ; with_halos)
 
+    if reshape
         N = (length(x), length(y), length(z))
 
         x = Base.reshape(x, N[1], 1, 1)
         y = Base.reshape(y, 1, N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
-
-        return (x, y, z)
-    else
-        return (xnodes(loc[1], grid),
-                ynodes(loc[2], grid),
-                znodes(loc[3], grid))
     end
+
+    return (x, y, z)
 end
+
+nodes(grid::AbstractGrid, (LX, LY, LZ); reshape=false, with_halos=false) = nodes(grid, LX, LY, LZ; reshape, with_halos)
+
+
+#####
+##### << Spacings >>
+#####
+
+"""
+    xspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest xspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
+
+julia> xspacings(grid, Center(), Face(), Center())
+16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
+      1.0950562585518518e6
+      1.1058578920188267e6
+      1.1112718969963323e6
+      1.1112718969963323e6
+      1.1058578920188267e6
+      1.0950562585518518e6
+      1.0789196210678827e6
+      ⋮
+ 999413.38046802
+ 962976.3124613502
+ 921847.720658409
+ 876227.979424229
+ 826339.3435524226
+ 772424.8654621692
+ 714747.2110712599
+ ```
+"""
+@inline xspacings(grid, LX, LY, LZ; with_halos=true) = xspacings(grid, LX; with_halos)
+
+
+"""
+    yspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest yspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
+
+julia> yspacings(grid, Center(), Center(), Center())
+222389.85328911748
+```
+"""
+@inline yspacings(grid, LX, LY, LZ; with_halos=true) = yspacings(grid, LY; with_halos)
+
+"""
+    zspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest zspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
+
+julia> zspacings(grid, Center(), Center(), Center())
+10.0
+```
+"""
+@inline zspacings(grid, LX, LY, LZ; with_halos=true) = zspacings(grid, LZ; with_halos)
+
 
 #####
 ##### Convenience functions
@@ -427,6 +452,112 @@ function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
 end
 
 coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
-coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
-                                                       name, prettysummary(minimum(parent(Δ))),
-                                                       name, prettysummary(maximum(parent(Δ))))
+coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+    @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
+             name, prettysummary(minimum(parent(Δ))),
+             name, prettysummary(maximum(parent(Δ))))
+
+#####
+##### Spherical geometry
+#####
+
+"""
+    spherical_area_triangle(a::Number, b::Number, c::Number)
+
+Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, and `c`.
+
+The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
+are the triangle's inner angles.
+
+It has been known since Euler and Lagrange that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
+``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
+
+References
+==========
+* Euler, L. (1778) De mensura angulorum solidorum, Opera omnia, 26, 204-233 (Orig. in Acta adac. sc. Petrop. 1778)
+* Lagrange,  J.-L. (1798) Solutions de quilquies problèmes relatifs au triangles sphéruques, Oeuvres, 7, 331-359.
+"""
+function spherical_area_triangle(a::Number, b::Number, c::Number)
+    cosa = cos(a)
+    cosb = cos(b)
+    cosc = cos(c)
+
+    tan½E = sqrt(1 - cosa^2 - cosb^2 - cosc^2 + 2cosa * cosb * cosc)
+    tan½E /= 1 + cosa + cosb + cosc
+
+    return 2atan(tan½E)
+end
+
+"""
+    spherical_area_triangle(a::AbstractVector, b::AbstractVector, c::AbstractVector)
+
+Return the area of a spherical triangle on the unit sphere with vertices given by the 3-vectors
+`a`, `b`, and `c` whose origin is the the center of the sphere. The formula was first given by
+Eriksson (1990).
+
+If we denote with ``A``, ``B``, and ``C`` the inner angles of the spherical triangle and with
+``a``, ``b``, and ``c`` the side of the triangle then, it has been known since Euler and Lagrange
+that ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where ``E = A + B + C - π`` is the
+triangle's excess and ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
+On the unit sphere, ``E`` is precisely the area of the spherical triangle. Erikkson (1990) showed
+that ``P`` above  the same as the volume defined by the vectors `a`, `b`, and `c`, that is
+``P = |𝐚 \\cdot (𝐛 \\times 𝐜)|``.
+
+References
+==========
+* Eriksson, F. (1990) On the measure of solid angles, Mathematics Magazine, 63 (3), 184-187, doi:10.1080/0025570X.1990.11977515
+"""
+function spherical_area_triangle(a₁::AbstractVector, a₂::AbstractVector, a₃::AbstractVector)
+    (sum(a₁.^2) ≈ 1 && sum(a₂.^2) ≈ 1 && sum(a₃.^2) ≈ 1) || error("a₁, a₂, a₃ must be unit vectors")
+
+    tan½E = abs(dot(a₁, cross(a₂, a₃)))
+    tan½E /= 1 + dot(a₁, a₂) + dot(a₂, a₃) + dot(a₁, a₃)
+
+    return 2atan(tan½E)
+end
+
+"""
+    spherical_area_quadrilateral(a₁, a₂, a₃, a₄)
+
+Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
+`a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
+non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
+overlapping, we compute the area of the quadrilateral as half the sum of the areas of all four potential
+triangles.
+"""
+spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVector, d::AbstractVector) =
+    1/2 * (spherical_area_triangle(a, b, c) + spherical_area_triangle(a, b, d) +
+           spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
+
+"""
+    hav(x)
+
+Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
+"""
+hav(x) = sin(x/2)^2
+
+"""
+    central_angle((φ₁, λ₁), (φ₂, λ₂))
+
+Compute the central angle (in radians) between two points on the sphere with
+`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
+
+References
+==========
+- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
+"""
+function central_angle((φ₁, λ₁), (φ₂, λ₂))
+    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
+
+    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
+end
+
+"""
+    central_angle_degrees((φ₁, λ₁), (φ₂, λ₂))
+
+Compute the central angle (in degrees) between two points on the sphere with
+`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
+
+See also [`central_angle`](@ref).
+"""
+central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))

@@ -45,7 +45,7 @@ Criterion is h >= z - ϵ Δz
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     # Face node above current cell
-    z = znode(c, c, f, i, j, k+1, underlying_grid)
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
@@ -62,7 +62,7 @@ bottom_cell(i, j, k, ibg::PCIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
     # Get node at face above and defining nodes on c,c,f
-    x, y, z = node(c, c, f, i, j, k+1, underlying_grid)
+    x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom height and fractional Δz parameter
     h = @inbounds ib.bottom_height[i, j]
@@ -79,8 +79,8 @@ end
 
 @inline function Δzᶜᶜᶠ(i, j, k, ibg::PCIBG)
     just_above_bottom = bottom_cell(i, j, k-1, ibg)
-    zc = znode(c, c, c, i, j, k, ibg.underlying_grid)
-    zf = znode(c, c, f, i, j, k, ibg.underlying_grid)
+    zc = znode(i, j, k, ibg.underlying_grid, c, c, c)
+    zf = znode(i, j, k, ibg.underlying_grid, c, c, f)
 
     full_Δz = Δzᶜᶜᶠ(i, j, k, ibg.underlying_grid)
     partial_Δz = zc - zf + Δzᶜᶜᶜ(i, j, k-1, ibg) / 2
@@ -97,3 +97,5 @@ end
 @inline Δzᶠᶜᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i-1, j, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))
 @inline Δzᶜᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
 @inline Δzᶠᶠᶠ(i, j, k, ibg::PCIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
+
+@inline bottom(i, j, k, ibg::PCIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j]
