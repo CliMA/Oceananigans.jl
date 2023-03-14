@@ -257,7 +257,7 @@ See [`znodes`](@ref) for examples.
 @inline ynodes(grid, LX, LY, LZ; kwargs...) = ynodes(grid, LY; kwargs...)
 
 """
-    znodes(grid, LX, LY, LZ, with_halos=false)
+    znodes(grid, LX, LY, LZ; with_halos=false)
 
 Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
 `LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
@@ -287,10 +287,11 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 @inline znodes(grid, LX, LY, LZ; kwargs...) = znodes(grid, LZ; kwargs...)
 
 """
-    nodes(grid, loc; reshape=false, kwargs...)
+    nodes(grid, (LX, LY, LZ); reshape=false, with_halos=false)
+    nodes(grid, LX, LY, LZ; reshape=false, with_halos=false)
 
 Return a 3-tuple of views over the interior nodes
-at the locations in `loc` in `x, y, z`.
+at the locations in `loc=(LX, LY, LZ)` in `x, y, z`.
 
 If `reshape=true`, the views are reshaped to 3D arrays
 with non-singleton dimensions 1, 2, 3 for `x, y, z`, respectively.
@@ -299,25 +300,23 @@ or arrays.
 
 See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
-function nodes(grid::AbstractGrid, loc::NTuple{3}; reshape=false, kwargs...)
-    if reshape
-        x, y, z = nodes(grid, loc; reshape=false, kwargs...)
+function nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, with_halos=false)
+    x = xnodes(grid, LX, LY, LZ; with_halos)
+    y = ynodes(grid, LX, LY, LZ; with_halos)
+    z = znodes(grid, LX, LY, LZ; with_halos)
 
+    if reshape
         N = (length(x), length(y), length(z))
 
         x = Base.reshape(x, N[1], 1, 1)
         y = Base.reshape(y, 1, N[2], 1)
         z = Base.reshape(z, 1, 1, N[3])
-
-        return (x, y, z)
-    else
-        return (xnodes(grid, loc...; kwargs...),
-                ynodes(grid, loc...; kwargs...),
-                znodes(grid, loc...; kwargs...))
     end
+
+    return (x, y, z)
 end
 
-nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, kwargs...) = nodes(grid, (LX, LY, LZ); reshape, kwargs...)
+nodes(grid::AbstractGrid, (LX, LY, LZ); reshape=false, with_halos=false) = nodes(grid, LX, LY, LZ; reshape, with_halos)
 
 
 #####
