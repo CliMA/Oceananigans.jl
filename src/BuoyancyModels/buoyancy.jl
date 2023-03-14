@@ -9,8 +9,8 @@ end
     Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
 
 Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument
-`gravity_unit_vector` can be used to specify the direction of gravity, and the buoyancy acceleration
-will act in the opposite direction.
+`gravity_unit_vector` can be used to specify the direction of gravity (default `NegativeZDirection()`).
+The buoyancy acceleration acts in the direction opposite to gravity.
 
 Example
 =======
