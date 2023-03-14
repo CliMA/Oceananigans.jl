@@ -46,14 +46,17 @@ const VITD = VerticallyImplicitTimeDiscretization
     wb = ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
     eⁱʲᵏ = @inbounds tracers.e[i, j, k]
 
+    dissipative_buoyancy_flux = sign(wb) * sign(eⁱʲᵏ) < 0
+
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
-    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly.
-    return ifelse(sign(wb) * sign(eⁱʲᵏ) < 0, zero(grid), wb)
+    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
+    # the explicit buoyancy flux.
+    return ifelse(dissipative_buoyancy_flux, zero(grid), wb)
 end
 
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
-@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD},
+@inline function implicit_dissipation_coefficient(i, j, k, grid, closure::FlavorOfCATKE,
                                                   velocities, tracers, buoyancy, clock, tracer_bcs)
     e = tracers.e
     FT = eltype(grid)
@@ -62,7 +65,7 @@ end
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᶜ = closure.mixing_length.Cˢᶜ
-    ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_mixing_lengthᶜᶜᶠ, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
+    ℓʰ = ℑzᵃᵃᶜ(i, j, k, grid, convective_length_scaleᶜᶜᶠ, closure, Cᶜ, Cᵉ, Cˢᶜ, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     # "Stable" dissipation length
     C⁻D = closure.turbulent_kinetic_energy_equation.C⁻D
@@ -73,8 +76,7 @@ end
     σ = scale(Ri, C⁻D, C⁺D, Riᶜ, Riʷ)
 
     Cᵇ = closure.mixing_length.Cᵇ
-    Cˢ = closure.mixing_length.Cˢ
-    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_mixing_lengthᶜᶜᶠ, Cᵇ, Cˢ, tracers.e, velocities, tracers, buoyancy)
+    ℓ★ = σ * ℑzᵃᵃᶜ(i, j, k, grid, stable_length_scaleᶜᶜᶠ, closure, Cᵇ, tracers.e, velocities, tracers, buoyancy)
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
@@ -85,8 +87,6 @@ end
 
     eᵢ = @inbounds e[i, j, k]
     
-    #ℓᴰ = ifelse(eᵢ < 0, Δzᶜᶜᶜ(i, j, k, grid) / 10, ℓᴰ)
-
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -95,7 +95,9 @@ end
     #
     #   and thus    L = - Cᴰ √e / ℓ .
 
-    return - sqrt(abs(eᵢ)) / ℓᴰ
+    τ = closure.negative_turbulent_kinetic_energy_damping_time_scale
+
+    return ifelse(eᵢ < 0, -1/τ, -sqrt(abs(eᵢ)) / ℓᴰ)
 end
 
 # Fallbacks for explicit time discretization
@@ -196,10 +198,7 @@ end
     Cᵂu★ = tke.Cᵂu★
     CᵂwΔ = tke.CᵂwΔ
 
-    #return zero(grid)
-    #return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
-    #return - Cᵂu★ * u★^3 - 0.0 * CᵂwΔ * wΔ³
-    return - CᵂwΔ * wΔ³
+    return - Cᵂu★ * u★^3 - CᵂwΔ * wΔ³
 end
 
 """ Computes the friction velocity u★ based on fluxes of u and v. """
@@ -291,6 +290,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
     return new_boundary_conditions
 end
 
+Base.summary(::TurbulentKineticEnergyEquation) = "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation"
 Base.show(io::IO, tke::TurbulentKineticEnergyEquation) =
     print(io, "CATKEVerticalDiffusivities.TurbulentKineticEnergyEquation parameters: \n" *
               "    C⁻D  = $(tke.C⁻D),  \n" *
