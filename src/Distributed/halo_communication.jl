@@ -146,6 +146,31 @@ end
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
+
+### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
+function cooperative_test!(req)
+    done = false
+    while !done
+        done, _ = MPI.Test(req, MPI.Status)
+        yield()
+    end
+end
+
+### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
+function cooperative_wait(task::Task)
+    while !Base.istaskdone(task)
+        MPI.Iprobe(MPI.MPI_ANY_SOURCE, MPI.MPI_ANY_TAG, MPI.COMM_WORLD)
+        yield()
+    end
+    wait(task)
+end
+
+function cooperative_waitall!(tasks::Array{Task})
+    for task in tasks
+        cooperative_wait(task)
+    end
+end
+
 function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedArch, grid::DistributedGrid, buffers, args...; blocking = true, kwargs...)
     fill_halo!  = halo_tuple[1][task]
     bc_left     = halo_tuple[2][task]
@@ -170,7 +195,7 @@ function fill_halo_event!(task, halo_tuple, c, indices, loc, arch::DistributedAr
     end
 
     # Syncronous MPI fill_halo_event!
-    MPI.Waitall(requests)
+    cooperative_waitall!(requests)
     # Reset MPI tag
     arch.mpi_tag[1] -= arch.mpi_tag[1]
 
@@ -274,9 +299,13 @@ for side in sides
             send_tag = $side_send_tag(arch, location, local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
+            
+            send = @async begin
+                send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
+                cooperative_test!(send_req)
+            end
 
-            return send_req
+            return send
         end
 
         @inline $get_side_send_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_boundary(c, grid, side_location)
@@ -303,7 +332,11 @@ for side in sides
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
-            return recv_req
+            recv = @async begin
+                cooperative_test!(recv_req)
+            end
+
+            return recv
         end
 
         @inline $get_side_recv_buffer(c, grid, side_location, buffers, ::ViewsDistributedArch) = $underlying_side_halo(c, grid, side_location)

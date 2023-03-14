@@ -56,7 +56,7 @@ function complete_halo_communication!(field)
 
     # Wait for outstanding requests
     if !isempty(arch.mpi_requests) 
-        MPI.Waitall(arch.mpi_requests)
+        cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag
         arch.mpi_tag[1] -= arch.mpi_tag[1]
