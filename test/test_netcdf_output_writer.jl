@@ -461,7 +461,7 @@ function test_netcdf_function_output(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (sin.(XC) .* cos.YF)
+        @test ds["slice"][:, :, n+1] == n*Δt .* sin.(XC) .* cos.(YF)
     end
 
     close(ds)

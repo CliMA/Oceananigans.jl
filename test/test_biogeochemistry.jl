@@ -32,7 +32,6 @@ end
 @inline function (bgc::MinimalDiscreteBiogeochemistry)(i, j, k, grid, ::Val{:P}, clock, fields)
     μ₀ = bgc.growth_rate
     m = bgc.mortality_rate
-    z = znode(Center(), k, grid)
     P = @inbounds fields.P[i, j, k]
     Iᴾᴬᴿ = @inbounds fields.Iᴾᴬᴿ[i, j, k]
     return P * (μ₀ * (1 - Iᴾᴬᴿ) - m)
