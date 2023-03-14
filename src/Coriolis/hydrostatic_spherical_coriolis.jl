@@ -57,16 +57,16 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64;
 
 const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:ActiveCellEnstrophyConservingScheme}
 
-@inline revert_peripheral_node(args...) = !peripheral_node(args...)
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
 
 @inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Center(), Face(), Center())
+    neighbouring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
     return ifelse(neighbouring_active_nodes == 0, zero(grid),
            @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end
 
 @inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
-    neighbouring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, revert_peripheral_node, peripheral_node, Face(), Center(), Center())
+    neighbouring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
     return ifelse(neighbouring_active_nodes == 0, zero(grid),
            @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighbouring_active_nodes)
 end
