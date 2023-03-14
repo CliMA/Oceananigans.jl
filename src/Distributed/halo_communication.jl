@@ -159,7 +159,7 @@ end
 ### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
 function cooperative_wait(task::Task)
     while !Base.istaskdone(task)
-        MPI.Iprobe(MPI.MPI_ANY_SOURCE, MPI.MPI_ANY_TAG, MPI.COMM_WORLD)
+        MPI.Iprobe(MPI.ANY_SOURCE, MPI.ANY_TAG, MPI.COMM_WORLD)
         yield()
     end
     wait(task)
