@@ -39,23 +39,23 @@ is a subtype of `AbstractBioeochemistry`:
 
   - `(bgc::BiogeochemicalModel)(i, j, k, grid, ::Val{:tracer_name}, clock, fields)` which 
      returns the biogeochemical reaction for for each tracer.
-  
+
   - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
      required `tracer_names`.
-  
+
   - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
      a tuple of required auxiliary fields.
-  
+
   - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
      of the models auxiliary fields.
-  
+
   - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
      returns a velocity fields (i.e. a `NamedTuple` of fields with keys `u`, `v` & `w`)
      for each tracer.
-  
+
   - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
      returns an advection scheme for each tracer.
-  
+
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
       model state.
 """
@@ -69,9 +69,9 @@ abstract type AbstractBiogeochemistry end
 
     # gets the biogeochemical reaction forcing (including transforming form for continuous form)
     src = biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
-    
+
     c = @inbounds fields[tracer_name]
-        
+
     return src - div_Uc(i, j, k, grid, scheme, U_drift, c)
 end
 
@@ -91,22 +91,22 @@ defined where `BiogeochemicalModel` is a subtype of `AbstractContinuousFormBioge
 
   - `(bgc::BiogeochemicalModel)(::Val{:tracer_name}, x, y, z, t, tracers..., auxiliary_fields...)` 
      which returns the biogeochemical reaction for for each tracer.
- 
+
   - `required_biogeochemical_tracers(::BiogeochemicalModel)` which returns a tuple of
      required tracer names.
- 
+
   - `required_biogeochemical_auxiliary_fields(::BiogeochemicalModel)` which returns 
      a tuple of required auxiliary fields.
- 
+
   - `biogeochemical_auxiliary_fields(bgc::BiogeochemicalModel)` which returns a `NamedTuple`
      of the models auxiliary fields
- 
+
   - `biogeochemical_drift_velocity(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which 
      returns "additional" velocity fields modeling, for example, sinking particles
- 
+
   - `biogeochemical_advection_scheme(bgc::BiogeochemicalModel, ::Val{:tracer_name})` which
      returns an advection scheme for each tracer.
- 
+
   - `update_biogeochemical_state!(bgc::BiogeochemicalModel, model)` (optional) to update the
      model state
 """
@@ -131,9 +131,9 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
 
     fields_ijk = extract_biogeochemical_fields(i, j, k, grid, fields, names_to_extract)
 
-    x = xnode(Center(), Center(), Center(), i, j, k, grid)
-    y = ynode(Center(), Center(), Center(), i, j, k, grid)
-    z = znode(Center(), Center(), Center(), i, j, k, grid)
+    x = xnode(i, j, k, grid, Center(), Center(), Center())
+    y = ynode(i, j, k, grid, Center(), Center(), Center())
+    z = znode(i, j, k, grid, Center(), Center(), Center())
 
     return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
 end
@@ -154,7 +154,7 @@ add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, Name
                             "You have specified some but not all of these as tracers so may be attempting\n" *
                             "to use them for a different purpose. Please either specify all of the required\n" *
                             "fields, or none and allow them to be automatically added."))
-                            
+
     elseif !any(user_specified_tracers)
         for field_name in required_fields
             fields = add_biogeochemical_tracer(fields, field_name, grid)
@@ -190,4 +190,3 @@ required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()
 required_biogeochemical_auxiliary_fields(::AbstractBGCOrNothing) = ()
 
 end # module
-
