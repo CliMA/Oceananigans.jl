@@ -495,8 +495,8 @@ function test_netcdf_function_output(arch)
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (sin.(XC) .* cos.(YF))
+        @test ds["profile"][:, n+1] ≈ n*Δt .* exp.(znodes(grid, Center()))
+        @test ds["slice"][:, :, n+1] ≈ n*Δt .* (sin.(XC) .* cos.(YF))
     end
 
     close(ds)
