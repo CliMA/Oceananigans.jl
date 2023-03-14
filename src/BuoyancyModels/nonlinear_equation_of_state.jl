@@ -7,15 +7,15 @@ const f = Face()
 
 """ Return the geopotential height at `i, j, k` at cell centers. """
 @inline Zᶜᶜᶜ(i, j, k, grid) =
-    ifelse(k < 1,       znode(c, c, c, i, j,       1, grid) + (1 - k) * Δzᶜᶜᶠ(i, j, 1, grid),
-    ifelse(k > grid.Nz, znode(c, c, c, i, j, grid.Nz, grid) - (k - grid.Nz) * Δzᶜᶜᶠ(i, j, grid.Nz, grid),
-                        znode(c, c, c, i, j,       k, grid)))
+    ifelse(k < 1,       znode(i, j,       1, grid, c, c, c) + (1 - k) * Δzᶜᶜᶠ(i, j, 1, grid),
+    ifelse(k > grid.Nz, znode(i, j, grid.Nz, grid, c, c, c) - (k - grid.Nz) * Δzᶜᶜᶠ(i, j, grid.Nz, grid),
+                        znode(i, j,       k, grid, c, c, c)))
 
 """ Return the geopotential height at `i, j, k` at cell z-interfaces. """
 @inline Zᶜᶜᶠ(i, j, k, grid) =
-    ifelse(k < 1,           znode(c, c, f, i, j,           1, grid) + (1 - k) * Δzᶜᶜᶜ(i, j, 1, grid),
-    ifelse(k > grid.Nz + 1, znode(c, c, f, i, j, grid.Nz + 1, grid) - (k - grid.Nz + 1) * Δzᶜᶜᶜ(i, j, k, grid),
-                            znode(c, c, f, i, j,           k, grid)))
+    ifelse(k < 1,           znode(i, j,           1, grid, c, c, f) + (1 - k) * Δzᶜᶜᶜ(i, j, 1, grid),
+    ifelse(k > grid.Nz + 1, znode(i, j, grid.Nz + 1, grid, c, c, f) - (k - grid.Nz + 1) * Δzᶜᶜᶜ(i, j, k, grid),
+                            znode(i, j,           k, grid, c, c, f)))
 
 # Dispatch shenanigans
 @inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
