@@ -668,7 +668,7 @@ return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠ
 @inline zspacing(i, j, k, grid::LatLonGrid, LX, LY, LZ) = zspacing(k, grid, LZ)
 
 min_Δx(grid::LatLonGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center(), Center()))
-min_Δy(grid::LatLonGrid) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center(), Center()))
+min_Δy(grid::LatLonGrid) = topology(grid)[2] == Flat ? Inf : minimum((yspacings(grid, Face(), Center()), yspacings(grid, Center(), Face())))
 min_Δz(grid::LatLonGrid) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))
 
 
