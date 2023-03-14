@@ -109,7 +109,7 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
     return indices, interps
 end
 
-# Adds a interpolate function which takes i, j, k, grid, from, and to as an argument
+# Adds an interpolate function which takes i, j, k, grid, from, and, to as an argument
 for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     for IX in (:Center, :Face), IY in (:Center, :Face), IZ in (:Center, :Face)
         from = (eval(LX), eval(LY), eval(LZ))

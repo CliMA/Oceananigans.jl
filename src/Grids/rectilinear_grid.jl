@@ -361,20 +361,6 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.zᵃᵃᶜ))
 end
 
-@inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
-@inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
-@inline ynode(::Face  , j, grid::RectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
-@inline ynode(::Center, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline znode(::Face  , k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Center, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
-
-all_x_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.xᶠᵃᵃ
-all_x_nodes(::Type{Center}, grid::RectilinearGrid) = grid.xᶜᵃᵃ
-all_y_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.yᵃᶠᵃ
-all_y_nodes(::Type{Center}, grid::RectilinearGrid) = grid.yᵃᶜᵃ
-all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
-all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
-
 cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
 cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
@@ -418,42 +404,64 @@ function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGr
                                        new_properties...)
 end
 
-
 return_metrics(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
+#####
+##### Grid nodes
+#####
+
+@inline xnodes(grid::RectilinearGrid, LX::Face  ; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline xnodes(grid::RectilinearGrid, LX::Center; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+
+@inline ynodes(grid::RectilinearGrid, LY::Face  ; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::RectilinearGrid, LY::Center; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+
+@inline znodes(grid::RectilinearGrid, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::RectilinearGrid, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+
+@inline xnodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = xnodes(grid, LX; with_halos)
+@inline ynodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = ynodes(grid, LY; with_halos)
+@inline znodes(grid::RectilinearGrid, LX, LY, LZ; with_halos=false) = znodes(grid, LZ; with_halos)
+
+@inline xnode(i, grid::RectilinearGrid, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(i, grid::RectilinearGrid, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
+
+@inline ynode(j, grid::RectilinearGrid, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(j, grid::RectilinearGrid, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
+
+@inline znode(k, grid::RectilinearGrid, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::RectilinearGrid, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+
+@inline xnode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = xnode(i, grid, LX)
+@inline ynode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = ynode(j, grid, LY)
+@inline znode(i, j, k, grid::RectilinearGrid, LX, LY, LZ) = znode(k, grid, LZ)
+
 
 #####
-##### Get minima of grid
+##### Grid spacings
 #####
 
-function min_Δx(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[1] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δxᶜᵃᵃ)
-    end
-end
+@inline xspacings(grid::RectilinearGrid,     LX::Center; with_halos=false) = with_halos ? grid.Δxᶜᵃᵃ : view(grid.Δxᶜᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline xspacings(grid::XRegRectilinearGrid, LX::Center; with_halos=false) = grid.Δxᶜᵃᵃ
+@inline xspacings(grid::RectilinearGrid,     LX::Face;   with_halos=false) = with_halos ? grid.Δxᶠᵃᵃ : view(grid.Δxᶠᵃᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx))
+@inline xspacings(grid::XRegRectilinearGrid, LX::Face;   with_halos=false) = grid.Δxᶠᵃᵃ
 
-function min_Δy(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[2] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δyᵃᶜᵃ)
-    end
-end
+@inline yspacings(grid::RectilinearGrid,     LY::Center; with_halos=false) = with_halos ? grid.Δyᵃᶜᵃ : view(grid.Δyᵃᶜᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::YRegRectilinearGrid, LY::Center; with_halos=false) = grid.Δyᵃᶜᵃ
+@inline yspacings(grid::RectilinearGrid,     LY::Face;   with_halos=false) = with_halos ? grid.Δyᵃᶠᵃ : view(grid.Δyᵃᶠᵃ, interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline yspacings(grid::YRegRectilinearGrid, LY::Face;   with_halos=false) = grid.Δyᵃᶠᵃ
 
-function min_Δz(grid::RectilinearGrid)
-    topo = topology(grid)
-    if topo[3] == Flat
-        return Inf
-    else
-        return min_number_or_array(grid.Δzᵃᵃᶜ)
-    end
-end
+@inline zspacings(grid::RectilinearGrid,     LZ::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline zspacings(grid::ZRegRectilinearGrid, LZ::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline zspacings(grid::RectilinearGrid,     LZ::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline zspacings(grid::ZRegRectilinearGrid, LZ::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
-@inline min_number_or_array(var) = var
-@inline min_number_or_array(var::AbstractVector) = minimum(parent(var))
+@inline xspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = xspacings(grid, LX; kwargs...)
+@inline yspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = yspacings(grid, LY; kwargs...)
+@inline zspacings(grid::RectilinearGrid, LX, LY, LZ; kwargs...) = zspacings(grid, LZ; kwargs...)
+
+min_Δx(grid::RectilinearGrid) = topology(grid)[1] == Flat ? Inf : minimum(xspacings(grid, Center()))
+min_Δy(grid::RectilinearGrid) = topology(grid)[2] == Flat ? Inf : minimum(yspacings(grid, Center()))
+min_Δz(grid::RectilinearGrid) = topology(grid)[3] == Flat ? Inf : minimum(zspacings(grid, Center()))
 
 isrectilinear(::RectilinearGrid) = true

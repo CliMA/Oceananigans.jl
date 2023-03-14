@@ -96,13 +96,13 @@ function validate_ib_size(grid, ib)
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
-    z = znode(c, c, f, i, j, k+1, underlying_grid)
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
-    z = znode(c, c, c, i, j, k, underlying_grid)
+    z = znode(i, j, k, underlying_grid, c, c, c)
     h = @inbounds ib.bottom_height[i, j]
     return z <= h
 end
@@ -158,7 +158,7 @@ end
 @inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary{<:AbstractArray}) = @inbounds ib.mask[i, j, k]
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBoundary)
-    x, y, z = node(c, c, c, i, j, k, underlying_grid)
+    x, y, z = node(i, j, k, underlying_grid, c, c, c)
     return ib.mask(x, y, z)
 end
 

@@ -139,8 +139,8 @@ end
     @unroll for k = 1:target_grid.Nz
         @inbounds target_field[i, j, k] = 0
 
-        z₋ = znode(Center(), Center(), Face(), i, j, k,   target_grid)
-        z₊ = znode(Center(), Center(), Face(), i, j, k+1, target_grid)
+        z₋ = znode(i, j, k,   target_grid, Center(), Center(), Face())
+        z₊ = znode(i, j, k+1, target_grid, Center(), Center(), Face())
 
         # Integrate source field from z₋ to z₊
         k₋_src = searchsortedfirst(source_z_faces, z₋)
@@ -296,4 +296,3 @@ end
         end
     end
 end
-
