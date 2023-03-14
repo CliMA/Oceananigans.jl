@@ -350,7 +350,7 @@ function test_netcdf_function_output(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RectilinearGrid(arch, size=(Nx = Ny = Nz), extent=(L, 2L, 3L))
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
