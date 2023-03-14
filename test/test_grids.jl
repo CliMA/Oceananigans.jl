@@ -213,13 +213,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test yspacings(grid, Face()) == yspacings(grid, Center(), Face(), Center())
         @test zspacings(grid, Face()) == zspacings(grid, Center(), Center(), Face())
 
-        @test xspacing(1, grid, Face()) ≈ FT(π/N)
-        @test yspacing(1, grid, Face()) ≈ FT(π/N)
-        @test zspacing(1, grid, Face()) ≈ FT(π/N)
-
-        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) == xspacing(1, grid, Face())
-        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) == yspacing(1, grid, Face())
-        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) == zspacing(1, grid, Face())
+        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
+        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
+        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
     end
 
     return nothing
@@ -415,8 +411,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
 
     @test all(isapprox.(zspacings(grid, Face(),   with_halos=true), grid.Δzᵃᵃᶠ))
     @test all(isapprox.(zspacings(grid, Center(), with_halos=true), grid.Δzᵃᵃᶜ))
-    @test zspacing(2, grid, Face()) == grid.Δzᵃᵃᶠ[2]
-    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == zspacing(2, grid, Face())
+    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
     @test min_Δz(grid) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
@@ -562,11 +557,12 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacings(grid_reg, Face(),   Face(),   Center()) == zspacings(grid_reg, Center())
     @test zspacings(grid_reg, Face(),   Center(), Face()  ) == zspacings(grid_reg, Face())
 
-    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == xspacing(1, 2, grid_reg, Center(), Center())
-    @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == xspacing(1, 2, grid_reg, Center(), Face())
-    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == yspacing(2, grid_reg, Face()  )
-    @test yspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == yspacing(2, grid_reg, Center())
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == zspacing(3, grid_reg, Center())
+    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
+    @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
+    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
+    @test yspacing(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
+    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
+    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
     @test λspacings(grid_reg, Center(), with_halos=true) == grid_reg.Δλᶜᵃᵃ
     @test λspacings(grid_reg, Face(),   with_halos=true) == grid_reg.Δλᶠᵃᵃ
