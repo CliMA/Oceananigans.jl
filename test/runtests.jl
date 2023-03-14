@@ -98,6 +98,7 @@ CUDA.allowscalar() do
     if group == :time_stepping_3 || group == :all
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
+            include("test_biogeochemistry.jl")
         end
     end
 

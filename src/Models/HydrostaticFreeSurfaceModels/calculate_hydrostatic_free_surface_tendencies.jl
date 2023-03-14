@@ -1,10 +1,13 @@
-import Oceananigans.TimeSteppers: calculate_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
+using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 
 using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.Biogeochemistry: update_tendencies!
+
+import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans.ImmersedBoundaries: use_only_active_cells, ActiveCellsIBG, active_linear_index_to_ntuple
 
@@ -34,6 +37,8 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
                                                            model.buoyancy)
 
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
+
+    update_tendencies!(model.biogeochemistry, model)
 
     return nothing
 end
@@ -105,10 +110,12 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            c_kernel_function,
                            grid,
                            Val(tracer_index),
+                           Val(tracer_name),
                            c_advection,
                            closure,
                            c_immersed_bc,
                            model.buoyancy,
+                           model.biogeochemistry,
                            model.velocities,
                            model.free_surface,
                            model.tracers,
