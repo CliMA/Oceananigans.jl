@@ -207,6 +207,7 @@ include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
+include("Biogeochemistry.jl")
 
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Distributed/Distributed.jl")
