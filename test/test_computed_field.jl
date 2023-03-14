@@ -96,7 +96,7 @@ function zonal_average_of_plus(model)
 
     @compute ST = Field(Average(S + T, dims=1))
 
-    _, yC, zC = nodes(grid, Center(), Center(), Center(); reshape=true)
+    _, yC, zC = nodes(model.grid, Center(), Center(), Center(); reshape=true)
 
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42 * zC + yC^2
     computed_slice = Array(interior(ST, 1, :, :))
