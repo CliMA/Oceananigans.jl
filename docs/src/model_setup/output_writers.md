@@ -117,14 +117,14 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
+g(model) = model.clock.time .* exp.(znodes(Center, grid)) # single-column profile output (vector)
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
 XC = [xC[i] for i in 1:Nx, j in 1:Ny]
 YF = [yF[j] for i in 1:Nx, j in 1:Ny]
 
-h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
+h(model) = @. model.clock.time * sin(XC) * cos(YF) # x-y slice output (2D array)
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
