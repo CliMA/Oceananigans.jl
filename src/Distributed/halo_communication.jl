@@ -146,7 +146,6 @@ end
 @inline mpi_communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline mpi_communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
 
-
 ### JUST TO TEST, EVENTUALLY IMPORT FROM MPI OR KA
 function cooperative_test!(req)
     done = false
