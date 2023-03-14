@@ -57,7 +57,7 @@ compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for 
 Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),
-                                        Adapt.adapt(to, κ.arguments))
+                                        Tuple(Adapt.adapt(to, a) for a in κ.arguments)...)
 
 Base.show(io::IO, kfo::KernelFunctionOperation) =
     print(io,
