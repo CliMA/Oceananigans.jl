@@ -7,66 +7,56 @@
 
 Upwind-biased fifth-order advection scheme.
 """
-struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
-    "Coefficient for Upwind reconstruction on stretched ``x``-faces" 
-    coeff_xᶠᵃᵃ::XT
-    "Coefficient for Upwind reconstruction on stretched ``x``-centers"
-    coeff_xᶜᵃᵃ::XT
-    "Coefficient for Upwind reconstruction on stretched ``y``-faces"
-    coeff_yᵃᶠᵃ::YT
-    "Coefficient for Upwind reconstruction on stretched ``y``-centers"
-    coeff_yᵃᶜᵃ::YT
-    "Coefficient for Upwind reconstruction on stretched ``z``-faces"
-    coeff_zᵃᵃᶠ::ZT
-    "Coefficient for Upwind reconstruction on stretched ``z``-centers"
-    coeff_zᵃᵃᶜ::ZT
-    
+struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "Reconstruction scheme used near boundaries"
-    buffer_scheme :: CA
+    near_boundary_scheme :: CA
+
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function UpwindBiased{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                                 coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                                 coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                                 buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, XT, YT, ZT, CA, SI}
-        return new{N, FT, XT, YT, ZT, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                              coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                              coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                              buffer_scheme, advecting_velocity_scheme)
+    function UpwindBiased{N, FT}(near_boundary_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI}
+        return new{N, FT, CA, SI}(near_boundary_scheme, advecting_velocity_scheme)
     end
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
+"""
+    UpwindBiased([FT=Float64], grid; order=3)
 
-    if !(grid isa Nothing) 
-        FT = eltype(grid)
-    end
+"""
+function UpwindBiased(FT=Float64, grid=nothing; order=3)
 
-    mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
+    mod(order, 2) == 0 && throw(ArgumentError("`order` must be `odd` for UpwindBiased reconstruction!"))
+    order > 0 && throw(ArgumentError("`order` must be positive for UpwindBiased reconstruction!"))
 
-    N  = Int((order + 1) ÷ 2)
+    !isnothing(grid) && (FT = eltype(grid))
 
-    if N > 1
-        coefficients     = Tuple(nothing for i in 1:6)
-        # coefficients     = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme  = UpwindBiased(FT; grid, order = order - 2)
+    # N is...
+    N = Int((order + 1) / 2)
+    advecting_velocity_scheme = Centered(FT; grid, order=max(2, order-1))
+
+    if order == 1
+        near_boundary_scheme = UpwindBiased(FT; grid, order=order-2)
     else
-        coefficients     = Tuple(nothing for i in 1:6)
-        advecting_velocity_scheme = Centered(FT; grid, order = 2)
-        buffer_scheme  = nothing
+        near_boundary_scheme = nothing
     end
 
-    return UpwindBiased{N, FT}(coefficients..., buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT}(near_boundary_scheme, advecting_velocity_scheme)
 end
 
-Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)
+# Default to eltype(grid)
+UpwindBiased(grid::AbstractGrid; kw...) = UpwindBiased(eltype(grid), grid; kw...)
+
+# Aliases
+UpwindBiasedFirstOrder(args...) = UpwindBiased(args...; order = 1)
+UpwindBiasedThirdOrder(args...) = UpwindBiased(args...; order = 3)
+UpwindBiasedFifthOrder(args...) = UpwindBiased(args...; order = 5)
+
+Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased reconstruction with order ", N*2-1)
 
 Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
               " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
+              "    └── ", summary(a.near_boundary_scheme) , "\n",
               " Symmetric scheme: ", "\n",
               "    └── ", summary(a.advecting_velocity_scheme), "\n",
               " Directions:", "\n",
@@ -78,24 +68,19 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
                         Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
                         Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                        Adapt.adapt(to, scheme.buffer_scheme),
+                        Adapt.adapt(to, scheme.near_boundary_scheme),
                         Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-# Usefull aliases
-UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
+const AUBAS = AbstractUpwindBiasedAdvectionScheme
 
-UpwindBiasedFirstOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 1)
-UpwindBiasedThirdOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 3)
-UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 5)
+# Symmetric interpolation of advection velocity fields
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUBAS, c) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUBAS, c) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUBAS, c) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
 
-# symmetric interpolation for UpwindBiased and WENO
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, c) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c)
-
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, u) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, v) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AbstractUpwindBiasedAdvectionScheme, w) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w)
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUBAS, u) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUBAS, v) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUBAS, w) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w)
 
 # uniform upwind biased reconstruction
 for side in (:left, :right)
