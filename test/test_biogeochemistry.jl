@@ -83,7 +83,7 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 
 @kernel function integrate_photosynthetic_active_radiation!(Iᴾᴬᴿ, grid)
     i, j, k = @index(Global, NTuple)
-    z = znode(Center(), k, grid)
+    z = znode(i, j, k, grid, Center(), Center(), Center())
     @inbounds Iᴾᴬᴿ[i, j, k] = exp(z / 5)
 end
 
