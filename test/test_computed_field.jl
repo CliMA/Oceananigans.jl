@@ -89,16 +89,16 @@ end
 function zonal_average_of_plus(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = sin(π*z) * sin(π*y)
-    T₀(x, y, z) = 42*z + y^2
+    S₀(x, y, z) = sin(π * z) * sin(π * y)
+    T₀(x, y, z) = 42 * z + y^2
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
 
     @compute ST = Field(Average(S + T, dims=1))
 
-    yC = ynodes(model.grid, Center())
-    zC = znodes(model.grid, Center())
-    correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
+    _, yC, zC = nodes(grid, Center(), Center(), Center(); reshape=true)
+
+    correct_slice = @. sin(π * zC) * sin(π * yC) + 42 * zC + yC^2
     computed_slice = Array(interior(ST, 1, :, :))
 
     return all(computed_slice .≈ view(correct_slice, 1, :, :))
@@ -107,7 +107,7 @@ end
 function volume_average_of_times(model)
     Ny, Nz = model.grid.Ny, model.grid.Nz
 
-    S₀(x, y, z) = 1 + sin(2π*x)
+    S₀(x, y, z) = 1 + sin(2π * x)
     T₀(x, y, z) = y
     set!(model; S=S₀, T=T₀)
     T, S = model.tracers
