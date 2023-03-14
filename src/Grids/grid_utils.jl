@@ -212,6 +212,11 @@ parent_index_range(index::UnitRange, ::Type{Nothing},         topo, halo) = 1:1 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
+@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
+@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
+@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
+
+
 #####
 ##### << Nodes >>
 #####
@@ -227,10 +232,6 @@ index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset
 @inline node(i, j, k, grid, LX, LY::Nothing, LZ::Nothing) = tuple(xnode(i, j, k, grid, LX, LY, LZ))
 @inline node(i, j, k, grid, LX::Nothing, LY, LZ::Nothing) = tuple(ynode(i, j, k, grid, LX, LY, LZ))
 @inline node(i, j, k, grid, LX::Nothing, LY::Nothing, LZ) = tuple(znode(i, j, k, grid, LX, LY, LZ))
-
-@inline cpu_face_constructor_x(grid) = Array(xnodes(grid, Face(); with_halos=true)[1:grid.Nx+1])
-@inline cpu_face_constructor_y(grid) = Array(ynodes(grid, Face(); with_halos=true)[1:grid.Ny+1])
-@inline cpu_face_constructor_z(grid) = Array(znodes(grid, Face(); with_halos=true)[1:grid.Nz+1])
 
 xnodes(grid, ::Nothing; kwargs...) = 1:1
 ynodes(grid, ::Nothing; kwargs...) = 1:1
@@ -317,6 +318,78 @@ function nodes(grid::AbstractGrid, LX, LY, LZ; reshape=false, with_halos=false)
 end
 
 nodes(grid::AbstractGrid, (LX, LY, LZ); reshape=false, with_halos=false) = nodes(grid, LX, LY, LZ; reshape, with_halos)
+
+
+#####
+##### << Spacings >>
+#####
+
+"""
+    xspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest xspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
+
+julia> xspacings(grid, Center(), Face(), Center())
+16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
+      1.0950562585518518e6
+      1.1058578920188267e6
+      1.1112718969963323e6
+      1.1112718969963323e6
+      1.1058578920188267e6
+      1.0950562585518518e6
+      1.0789196210678827e6
+      ⋮
+ 999413.38046802
+ 962976.3124613502
+ 921847.720658409
+ 876227.979424229
+ 826339.3435524226
+ 772424.8654621692
+ 714747.2110712599
+ ```
+"""
+@inline xspacings(grid, LX, LY, LZ; with_halos=true) = xspacings(grid, LX; with_halos)
+
+
+"""
+    yspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest yspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
+
+julia> yspacings(grid, Center(), Center(), Center())
+222389.85328911748
+```
+"""
+@inline yspacings(grid, LX, LY, LZ; with_halos=true) = yspacings(grid, LY; with_halos)
+
+"""
+    zspacings(grid, LX, LY, LZ; with_halos=true)
+
+Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `LX`,
+`LY`, `LZ`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest zspacings
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
+
+julia> zspacings(grid, Center(), Center(), Center())
+10.0
+```
+"""
+@inline zspacings(grid, LX, LY, LZ; with_halos=true) = zspacings(grid, LZ; with_halos)
 
 
 #####
