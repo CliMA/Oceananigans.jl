@@ -6,10 +6,10 @@ using KernelAbstractions: MultiEvent
 
 using Oceananigans.BoundaryConditions:
             ContinuousBoundaryFunction,
-            DiscreteBoundaryFunction, 
+            DiscreteBoundaryFunction,
             permute_boundary_conditions,
             fill_halo_event!,
-            MCBCT, 
+            MCBCT,
             MCBC
 
 import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
@@ -85,7 +85,7 @@ end
     
 ## Fill communicating boundary condition halos
 for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
-    fill_both_halo! = Symbol(:fill_, lside, :_and_, rside, :_halo!)
+    fill_both_halo!  = Symbol(:fill_, lside, :_and_, rside, :_halo!)
     fill_left_halo!  = Symbol(:fill_, lside, :_halo!)
     fill_right_halo! = Symbol(:fill_, rside, :_halo!)
 
@@ -94,7 +94,7 @@ for (lside, rside) in zip([:west, :south, :bottom], [:east, :north, :bottom])
             event = $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, event, grid, buffers, args...; kwargs...)
             return NoneEvent()
-        end   
+        end
         function $fill_both_halo!(c, left_bc, right_bc::MCBC, kernel_size, offset, loc, arch, dep, grid, buffers, args...; kwargs...) 
             event = $fill_left_halo!(c, left_bc, kernel_size, offset, loc, arch, dep, grid, args...; kwargs...)
             $fill_right_halo!(c, right_bc, kernel_size, offset, loc, arch, event, grid, buffers, args...; kwargs...)
@@ -260,8 +260,7 @@ ContinuousBoundaryFunction{X, Y, Z, I}(cf.func::F,
                                    cf.field_dependencies_indices,
                                    cf.field_dependencies_interp)
 
-@inline _getregion(df::DiscreteBoundaryFunction, i) =
-DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
+@inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(df.func, getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side)       = nothing

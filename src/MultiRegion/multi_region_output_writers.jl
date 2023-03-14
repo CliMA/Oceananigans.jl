@@ -1,9 +1,8 @@
 using Oceananigans.Fields: compute_at!
 
-import Oceananigans.OutputWriters: 
-                        fetch_output,
-                        construct_output,
-                        serializeproperty!
+import Oceananigans.OutputWriters: fetch_output,
+                                   construct_output,
+                                   serializeproperty!
 
 # This is working just fine at the moment?
 # But it will be veeeeery slow, as reconstruct_global_field is not 
@@ -18,9 +17,9 @@ function construct_output(mrf::MultiRegionField, grid, user_indices, with_halos)
     # TODO: support non-default indices I guess
     # for that we have to figure out how to partition indices, eg user_indices is "global"
     # indices = output_indices(user_output, grid, user_indices, with_halos)
-  
+
     indices = (:, :, user_indices[3]) # sorry user
-  
+
     return construct_output(mrf, indices)
 end
 
