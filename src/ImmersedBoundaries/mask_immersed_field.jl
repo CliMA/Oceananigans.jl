@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions: NoneEvent
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.Fields: location, ZReducedField, Field
+using Oceananigans.Fields: location, Field
 
 instantiate(X) = X()
 
@@ -53,8 +53,6 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field)
 end
 
-mask_immersed_reduced_field_xy!(field,     args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(::Nothing, args...; kw...) = NoneEvent()
 mask_immersed_field_xy!(field, value=zero(field.grid); k, mask=peripheral_node) =
     mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
 
