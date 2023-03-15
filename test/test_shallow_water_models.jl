@@ -156,7 +156,7 @@ end
             grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1)
 
-            x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
+            x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
             uh₀(x, y, z) = x * y^2
             uh_answer = @. x * y^2
@@ -214,9 +214,10 @@ end
         end
 
         @testset "ShallowWaterModel viscous diffusion [$arch]" begin
-            grid_x = RectilinearGrid(arch, size = 10, x = (0, 1), topology = (Bounded, Flat, Flat))
-            grid_y = RectilinearGrid(arch, size = 10, y = (0, 1), topology = (Flat, Bounded, Flat))
-            coords = (xnodes(Face, grid_x, reshape=true), ynodes(Face, grid_y, reshape=true))
+            Nx, Ny = 10, 12
+            grid_x = RectilinearGrid(arch, size = Nx, x = (0, 1), topology = (Bounded, Flat, Flat))
+            grid_y = RectilinearGrid(arch, size = Ny, y = (0, 1), topology = (Flat, Bounded, Flat))
+            coords = (reshape(xnodes(grid_x, Face()), (Nx+1, 1)), reshape(ynodes(grid_y, Face()), (1, Ny+1)))
             
             for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
                 for formulation in (ConservativeFormulation(), VectorInvariantFormulation())

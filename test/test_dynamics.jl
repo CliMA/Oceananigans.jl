@@ -260,11 +260,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
-    g̃ = [0, sind(θ), cosd(θ)]
-    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=-g̃)
+    unit_vertical = [0, sind(θ), cosd(θ)]
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=-unit_vertical)
 
-    y_bc = GradientBoundaryCondition(N² * g̃[2])
-    z_bc = GradientBoundaryCondition(N² * g̃[3])
+    y_bc = GradientBoundaryCondition(N² * unit_vertical[2])
+    z_bc = GradientBoundaryCondition(N² * unit_vertical[3])
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
     model = NonhydrostaticModel(; grid, buoyancy,
@@ -272,7 +272,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
                                 closure = nothing,
                                 boundary_conditions = (; b=b_bcs))
 
-    b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
+    b₀(x, y, z) = N² * (x*unit_vertical[1] + y*unit_vertical[2] + z*unit_vertical[3])
     set!(model, b=b₀)
 
     simulation = Simulation(model, Δt=10minutes, stop_time=1hour)
@@ -284,18 +284,18 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     mean_∂y_b = mean(∂y_b)
     mean_∂z_b = mean(∂z_b)
 
-    Δ_y = N² * g̃[2] - mean_∂y_b
-    Δ_z = N² * g̃[3] - mean_∂z_b
+    Δ_y = N² * unit_vertical[2] - mean_∂y_b
+    Δ_z = N² * unit_vertical[3] - mean_∂z_b
 
-    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
+    @info "N² * unit_vertical[2] = $(N² * unit_vertical[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
+    @info "N² * unit_vertical[3] = $(N² * unit_vertical[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
 
-    @test N² * g̃[2] ≈ mean(∂y_b)
-    @test N² * g̃[3] ≈ mean(∂z_b)
+    @test N² * unit_vertical[2] ≈ mean(∂y_b)
+    @test N² * unit_vertical[3] ≈ mean(∂z_b)
 
     CUDA.@allowscalar begin
-        @test all(N² * g̃[2] .≈ interior(∂y_b))
-        @test all(N² * g̃[3] .≈ interior(∂z_b))
+        @test all(N² * unit_vertical[2] .≈ interior(∂y_b))
+        @test all(N² * unit_vertical[3] .≈ interior(∂z_b))
     end
 
     return nothing
@@ -305,15 +305,15 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
-    g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=.-g̃)
+    unit_vertical = [0, sind(θ), cosd(θ)]
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=-unit_vertical)
 
     α  = buoyancy.model.equation_of_state.thermal_expansion
     g₀ = buoyancy.model.gravitational_acceleration
     ∂T∂z = N² / (g₀ * α)
 
-    y_bc = GradientBoundaryCondition(∂T∂z * g̃[2])
-    z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
+    y_bc = GradientBoundaryCondition(∂T∂z * unit_vertical[2])
+    z_bc = GradientBoundaryCondition(∂T∂z * unit_vertical[3])
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
     model = NonhydrostaticModel(; grid, buoyancy,
@@ -321,7 +321,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
                                 closure = nothing,
                                 boundary_conditions = (; T=T_bcs))
 
-    T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
+    T₀(x, y, z) = ∂T∂z * (x*unit_vertical[1] + y*unit_vertical[2] + z*unit_vertical[3])
     set!(model, T=T₀)
 
     simulation = Simulation(model, Δt=10minute, stop_time=1hour)
@@ -333,18 +333,18 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
 
-    Δ_y = ∂T∂z * g̃[2] - mean_∂y_T
-    Δ_z = ∂T∂z * g̃[3] - mean_∂z_T
+    Δ_y = ∂T∂z * unit_vertical[2] - mean_∂y_T
+    Δ_z = ∂T∂z * unit_vertical[3] - mean_∂z_T
 
-    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
+    @info "∂T∂z * unit_vertical[2] = $(∂T∂z * unit_vertical[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
+    @info "∂T∂z * unit_vertical[3] = $(∂T∂z * unit_vertical[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
 
-    @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
-    @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
+    @test ∂T∂z * unit_vertical[2] ≈ mean(∂y_T)
+    @test ∂T∂z * unit_vertical[3] ≈ mean(∂z_T)
 
     CUDA.@allowscalar begin
-        @test all(∂T∂z * g̃[2] .≈ interior(∂y_T))
-        @test all(∂T∂z * g̃[3] .≈ interior(∂z_T))
+        @test all(∂T∂z * unit_vertical[2] .≈ interior(∂y_T))
+        @test all(∂T∂z * unit_vertical[3] .≈ interior(∂z_T))
     end
 
     return nothing
@@ -496,7 +496,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             grid = RectilinearGrid(arch, size=N, x=(0, L), topology=(Bounded, Flat, Flat))
 
             # Derive coordinates
-            x = xnodes(Center, grid, reshape=true)
+            x = reshape(xnodes(grid, Center()), (N, 1, 1))
             y = permutedims(x, (2, 1, 3))
             z = permutedims(x, (2, 3, 1))
 
@@ -554,7 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                           topology = (Periodic, Periodic, Bounded)),
                                                           GridFittedBottom((x, y) -> L))
 
-            z_immersed = znodes(Center, immersed_vertical_grid, reshape=true)
+            z_immersed = reshape(znodes(immersed_vertical_grid, Center()), (1, 1, immersed_vertical_grid.Nz))
 
             append!(coords, [z_immersed, z_immersed, z_immersed, z_immersed])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
@@ -576,7 +576,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                      GridFittedBottom((x, y) -> L))
 
             stretched_grids = [stretched_z_grid, stretched_z_grid, stretched_immersed_z_grid, stretched_immersed_z_grid]
-            append!(coords, [znodes(Center, grid, reshape=true) for grid in stretched_grids])
+            append!(coords, [reshape(znodes(grid, Center()), (1, 1, grid.Nz)) for grid in stretched_grids])
             append!(fieldnames, [(:u, :v, :c) for i = 1:4])
             append!(closures, [vertical_scalar_diffusivity,
                                implicit_vertical_scalar_diffusivity,
@@ -636,7 +636,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                               size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
         # Vertically stretched grid with regular spacing and no flat dimension
-        z_faces = collect(znodes(Face, y_periodic_regular_grid))
+        z_faces = collect(znodes(y_periodic_regular_grid, Face()))
         y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                                                 size=(Nx, 1, Nz),
                                                                                 x=(0, Lx), y=(0, Lx), z=z_faces)

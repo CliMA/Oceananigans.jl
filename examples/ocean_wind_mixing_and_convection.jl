@@ -63,8 +63,8 @@ grid = RectilinearGrid(CPU();
 
 fig = Figure(resolution=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
-lines!(ax, grid.Δzᵃᵃᶜ[1:grid.Nz], grid.zᵃᵃᶜ[1:grid.Nz])
-scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() # hide
 fig

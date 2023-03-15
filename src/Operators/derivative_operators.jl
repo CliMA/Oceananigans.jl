@@ -1,4 +1,3 @@
-
 #####
 ##### First derivative operators
 #####
