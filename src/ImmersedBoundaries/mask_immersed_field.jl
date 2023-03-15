@@ -26,7 +26,7 @@ function mask_immersed_field_xy!(field value=zero(field.grid); k, blocking, mask
         wait(device(architecture(field)), event)
         return nothing
     else
-        return mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
+        return mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
     end
 end
 
