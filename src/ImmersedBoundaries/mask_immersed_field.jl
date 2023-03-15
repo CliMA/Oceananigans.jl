@@ -71,7 +71,7 @@ function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc,
                    dependencies = device_event(arch))
 end
 
-@kernel function _mask_immersed_reduced_field_xy!(field, loc, grid, value, k, mask)
+@kernel function _mask_immersed_field_xy!(field, loc, grid, value, k, mask)
     i, j = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
 end
