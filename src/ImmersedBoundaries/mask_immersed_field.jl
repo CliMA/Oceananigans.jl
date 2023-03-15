@@ -63,7 +63,7 @@ mask_immersed_field_xy!(field, value=zero(field.grid); k, mask=peripheral_node) 
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `mask` is `true`.
 """
-function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+function mask_immersed_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
