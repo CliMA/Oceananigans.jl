@@ -5,7 +5,7 @@ const MultiRegionUnaryOperation{LX, LY, LZ, O, A, I, G, T} = UnaryOperation{LX, 
 const MultiRegionBinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} = BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, <:MultiRegionGrid, T} where {LX, LY, LZ, O, A, B, IA, IB, T}
 const MultiRegionMultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} = MultiaryOperation{LX, LY, LZ, N, O, A, I, <:MultiRegionGrid, T} where {LX, LY, LZ, N, O, A, I, T}
 const MultiRegionDerivative{LX, LY, LZ, D, A, IN, AD, G, T} = Derivative{LX, LY, LZ, D, A, IN, AD, <:MultiRegionGrid, T} where {LX, LY, LZ, D, A, IN, AD, T}
-const MultiRegionKernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} = KernelFunctionOperation{LX, LY, LZ, P, <:MultiRegionGrid, T, K, D} where {LX, LY, LZ, P, T, K, D}
+const MultiRegionKernelFunctionOperation{LX, LY, LZ, G, T, K, D} = KernelFunctionOperation{LX, LY, LZ, <:MultiRegionGrid, T, K, D} where {LX, LY, LZ, P, T, K, D}
 
 const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation, 
                                            MultiRegionUnaryOperation,
@@ -29,9 +29,10 @@ compute!(f::MultiRegionAbstractOperation)          = apply_regionally!(compute!,
 for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :KernelFunctionOperation]
     @eval begin
         @inline getregion(f::$T{LX, LY, LZ}, r) where {LX, LY, LZ} =
-                        $T{LX, LY, LZ}(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($T))...)
+                          $T{LX, LY, LZ}(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($T))...)
 
         @inline _getregion(f::$T{LX, LY, LZ}, r) where {LX, LY, LZ} =
-                        $T{LX, LY, LZ}(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($T))...)
+                           $T{LX, LY, LZ}(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($T))...)
     end
 end
+
