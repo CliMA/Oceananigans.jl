@@ -135,7 +135,7 @@ function ShallowWaterModel(;
     #                        "when constructing `grid`."))
 
 
-    topology(grid, 3) === Flat ? println("Proceeding with single-layer shallow water model") : println(
+    grid.Nz == 1 ? println("Proceeding with single-layer shallow water model") : println(
         "Proceeding with multi-layer shallow water model")
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
