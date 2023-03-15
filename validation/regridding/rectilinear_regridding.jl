@@ -6,8 +6,9 @@ x = (-180, 180)
 y = (-60, 60)
 z = (-1000, 0)
 topology = (Periodic, Bounded, Bounded)
+arch = GPU()
 
-coarse_grid = RectilinearGrid(size=(90, 30, 2); x, y, z, topology)
+coarse_grid = RectilinearGrid(arch, size=(90, 30, 2); x, y, z, topology)
 
 Δx = 60
 Δy = 20
@@ -16,9 +17,9 @@ cᵢ(x, y, z) = exp(z / 200) * exp(-(y+10)^2 / 2Δy^2) * exp(-(x+10)^2 / 2Δx^2)
 c = CenterField(coarse_grid)
 set!(c, cᵢ)
 
-fine_x_grid = RectilinearGrid(size=(360, 30, 2); x, y, z, topology)
-fine_xy_grid = RectilinearGrid(size=(360, 120, 2); x, y, z, topology)
-fine_xyz_grid = RectilinearGrid(size=(360, 120, 8); x, y, z, topology)
+fine_x_grid   = RectilinearGrid(arch, size=(360, 30, 2); x, y, z, topology)
+fine_xy_grid  = RectilinearGrid(arch, size=(360, 120, 2); x, y, z, topology)
+fine_xyz_grid = RectilinearGrid(arch, size=(360, 120, 8); x, y, z, topology)
 
 c_x = CenterField(fine_x_grid)
 c_xy = CenterField(fine_xy_grid)
@@ -45,13 +46,13 @@ ylims!(ax6, -1000, 0)
 x, y, z = nodes(c)
 x′, y′, z′ = nodes(c_xyz)
 
-heatmap!(ax1, x, y, interior(c, :, :, 1))
-heatmap!(ax2, x′, y′, interior(c_xy, :, :, 1))
-heatmap!(ax3, x′, y′, interior(c_xyz, :, :, 1))
+heatmap!(ax1, x, y,   Array(interior(c, :, :, 1)))
+heatmap!(ax2, x′, y′, Array(interior(c_xy, :, :, 1)))
+heatmap!(ax3, x′, y′, Array(interior(c_xyz, :, :, 1)))
 
-scatter!(ax4, interior(c, 45, 15, :), z)
-scatter!(ax5, interior(c_xy, 180, 60, :), z)
-scatter!(ax6, interior(c_xyz, 180, 60, :), z′)
+scatter!(ax4, Array(interior(c, 45, 15, :)), z)
+scatter!(ax5, Array(interior(c_xy, 180, 60, :)), z)
+scatter!(ax6, Array(interior(c_xyz, 180, 60, :)), z′)
 
 display(fig)
 

@@ -5,8 +5,9 @@ using GLMakie
 longitude = (-180, 180)
 latitude = (-60, 60)
 z = (-1000, 0)
+arch = GPU()
 
-coarse_grid = LatitudeLongitudeGrid(size=(90, 30, 2); longitude, latitude, z)
+coarse_grid = LatitudeLongitudeGrid(arch, size=(90, 30, 2); longitude, latitude, z)
 
 Δλ = 60
 Δφ = 20
@@ -15,9 +16,9 @@ cᵢ(λ, φ, z) = exp(z / 200) * exp(-(φ+10)^2 / 2Δφ^2) * exp(-(λ+10)^2 / 2�
 c = CenterField(coarse_grid)
 set!(c, cᵢ)
 
-fine_x_grid = LatitudeLongitudeGrid(size=(360, 30, 2); longitude, latitude, z)
-fine_xy_grid = LatitudeLongitudeGrid(size=(360, 120, 2); longitude, latitude, z)
-fine_xyz_grid = LatitudeLongitudeGrid(size=(360, 120, 8); longitude, latitude, z)
+fine_x_grid = LatitudeLongitudeGrid(arch, size=(360, 30, 2); longitude, latitude, z)
+fine_xy_grid = LatitudeLongitudeGrid(arch, size=(360, 120, 2); longitude, latitude, z)
+fine_xyz_grid = LatitudeLongitudeGrid(arch, size=(360, 120, 8); longitude, latitude, z)
 
 c_x = CenterField(fine_x_grid)
 c_xy = CenterField(fine_xy_grid)
@@ -46,13 +47,13 @@ ylims!(ax6, -1000, 0)
 
 colorrange=(0, 0.02)
 
-heatmap!(ax1, λ, φ, interior(c, :, :, 1); colorrange)
-heatmap!(ax2, λ′, φ′, interior(c_xy, :, :, 1); colorrange)
-heatmap!(ax3, λ′, φ′, interior(c_xyz, :, :, 1); colorrange)
+heatmap!(ax1, λ, φ,   Array(interior(c, :, :, 1)); colorrange)
+heatmap!(ax2, λ′, φ′, Array(interior(c_xy, :, :, 1)); colorrange)
+heatmap!(ax3, λ′, φ′, Array(interior(c_xyz, :, :, 1)); colorrange)
 
-scatter!(ax4, interior(c, 45, 15, :), z)
-scatter!(ax5, interior(c_xy, 180, 60, :), z)
-scatter!(ax6, interior(c_xyz, 180, 60, :), z′)
+scatter!(ax4, Array(interior(c, 45, 15, :)), z)
+scatter!(ax5, Array(interior(c_xy, 180, 60, :)), z)
+scatter!(ax6, Array(interior(c_xyz, 180, 60, :)), z′)
 
 display(fig)
 
