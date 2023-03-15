@@ -5,6 +5,8 @@ using Oceananigans.Architectures: arch_array, architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δyᶜᶜᶜ, Δxᶜᶜᶜ, Azᶜᶜᶜ
 using Oceananigans.Grids: hack_sind
 
+using Base: ForwardOrdering
+
 const f = Face()
 const c = Center()
 
@@ -145,8 +147,9 @@ end
         z₊ = znode(i, j, k+1, target_grid, c, c, f)
 
         # Integrate source field from z₋ to z₊
-        k₋_src = searchsortedfirst(source_z_faces, z₋)
-        k₊_src = searchsortedfirst(source_z_faces, z₊) - 1
+        fo = ForwardOrdering()
+        k₋_src = searchsortedfirst(source_z_faces, z₋, 1, Nz_source+1, fo)
+        k₊_src = searchsortedfirst(source_z_faces, z₊, 1, Nz_source+1, fo) - 1
 
         if k₊_src < k₋_src
             # If the "last" face on the source grid is equal to or left
@@ -196,8 +199,9 @@ end
         y₊ = ynode(i, j+1, k, target_grid, c, f, c)
 
         # Integrate source field from y₋ to y₊
-        j₋_src = searchsortedfirst(source_y_faces, y₋)
-        j₊_src = searchsortedfirst(source_y_faces, y₊) - 1
+        fo = ForwardOrdering()
+        j₋_src = searchsortedfirst(source_y_faces, y₋, 1, Ny_source+1, fo)
+        j₊_src = searchsortedfirst(source_y_faces, y₊, 1, Ny_source+1, fo) - 1
 
         if j₊_src < j₋_src
             # If the "last" face on the source grid is equal to or left
@@ -259,11 +263,13 @@ end
         x₋ = xnode(i,   j, k, target_grid, f, c, c)
         x₊ = xnode(i+1, j, k, target_grid, f, c, c) 
 
+        fo = ForwardOrdering()
+
         # The first face on the source grid that appears inside the target cell
-        i₋_src = searchsortedfirst(source_x_faces, x₋)
+        i₋_src = searchsortedfirst(source_x_faces, x₋, 1, Nx_source+1, fo)
 
         # The last face on the source grid that appears inside the target cell
-        i₊_src = searchsortedfirst(source_x_faces, x₊) - 1
+        i₊_src = searchsortedfirst(source_x_faces, x₊, 1, Nx_source+1, fo) - 1
 
         if i₊_src < i₋_src
             # If the "last" face on the source grid is equal to or left
