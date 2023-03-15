@@ -220,7 +220,12 @@ To simulate gravitational accelerations that don't align with the vertical (`z`)
 we wrap the buoyancy model in
 `Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
 
-```jldoctest buoyancy; filter=(r".*tartarus.*")
+```@meta
+DocTestFilters = r".*tartarus.*"
+```
+
+
+```jldoctest buoyancy
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
@@ -239,4 +244,8 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = Tuple{Int64, Float64, Float64}
 └── coriolis: Nothing
+```
+
+```@meta
+DocTestFilters = nothing
 ```
