@@ -67,7 +67,7 @@ function mask_immersed_reduced_field_xy!(field, grid::ImmersedBoundaryGrid, loc,
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
-                   _mask_immersed_reduced_field_xy!, field, loc, grid, value, k, mask;
+                   _mask_immersed_field_xy!, field, loc, grid, value, k, mask;
                    dependencies = device_event(arch))
 end
 
