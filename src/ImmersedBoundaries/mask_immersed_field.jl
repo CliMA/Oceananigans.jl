@@ -20,7 +20,7 @@ function mask_immersed_field!(field::Field, value=zero(field.grid); blocking=tru
     end
 end
 
-function mask_immersed_reduced_field_xy!(field::ZReducedField, value=zero(field.grid); k, blocking)
+function mask_immersed_field_xy!(field value=zero(field.grid); k, blocking, mask=peripheral_node)
     if blocking
         event = mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
         wait(device(architecture(field)), event)
