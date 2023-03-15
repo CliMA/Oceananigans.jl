@@ -70,7 +70,7 @@ end
                              minimum_turbulent_kinetic_energy = zero(FT),
                              negative_turbulent_kinetic_energy_damping_time_scale = 1minute)
 
-Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
+Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 
