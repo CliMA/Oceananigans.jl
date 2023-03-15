@@ -55,7 +55,7 @@ end
 
 mask_immersed_reduced_field_xy!(field,     args...; kw...) = NoneEvent()
 mask_immersed_reduced_field_xy!(::Nothing, args...; kw...) = NoneEvent()
-mask_immersed_reduced_field_xy!(field, value=zero(eltype(field.grid)); k, mask=peripheral_node) =
+mask_immersed_field_xy!(field, value=zero(field.grid); k, mask=peripheral_node) =
     mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k, mask)
 
 """
