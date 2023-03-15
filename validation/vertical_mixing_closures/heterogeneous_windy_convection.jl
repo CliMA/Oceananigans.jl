@@ -33,11 +33,8 @@ etd = ExplicitTimeDiscretization()
 closure = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(; grid, closure,
-                                    #coriolis = FPlane(f=1e-4),
                                     momentum_advection = WENO(),
-                                    #tracer_advection = (b=WENO(), e=CenteredSecondOrder()),
-                                    tracer_advection = (b=WENO(), e=WENO()),
-                                    #tracer_advection = (b=WENO(), e=nothing),
+                                    tracer_advection = WENO(),
                                     tracers = (:b, :e),
                                     boundary_conditions = (; b=b_bcs, u=u_bcs),
                                     buoyancy = BuoyancyTracer())
