@@ -153,7 +153,7 @@ simulation.callbacks[:p] = Callback(progress, IterationInterval(10))
 
 u, v, w = model.velocities
 KE = @at (Center, Center, Center) u^2 + v^2
-ζ = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
+ζ = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
 simulation.output_writers[:surface] = JLD2OutputWriter(model, merge(fields(model), (; KE, ζ)),
                                                        schedule = TimeInterval(1day),
