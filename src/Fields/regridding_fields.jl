@@ -229,7 +229,7 @@ end
                 x₂ = xnode(i_src+1, source_grid, f) 
                 Az_left = fractional_horizontal_area(source_grid, x₁, x₂, y₋, yj₋_src)
 
-                @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left #ϵ_left * Azᶜᶜᶜ(i_src, j_left, k_src, source_grid)
+                @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
             end
 
             # Similar to above, add contribution to integral from fractional right part.
@@ -240,7 +240,7 @@ end
                 x₂ = xnode(i_src+1, source_grid, f)
                 Az_right = fractional_horizontal_area(source_grid, x₁, x₂, yj₊_src, y₊)
 
-                @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right #ϵ_right * Azᶜᶜᶜ(i_src, j_right, k_src, source_grid)
+                @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
             end
 
             @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
@@ -302,7 +302,7 @@ end
                 y₂ = ynode(j_src+1, source_grid, f) 
                 Az_left = fractional_horizontal_area(source_grid, x₋, xi₋_src, y₁, y₂)
 
-                @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left #ϵ_left * Azᶜᶜᶜ(i_left, j_src, k_src, source_grid)
+                @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
             end
     
             # Similar to above, add contribution to integral from fractional right part.
@@ -313,7 +313,7 @@ end
                 y₂ = ynode(j_src+1, source_grid, f)
                 Az_right = fractional_horizontal_area(source_grid, xi₊_src, x₊, y₁, y₂)
 
-                @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right #ϵ_right * Azᶜᶜᶜ(i_right, j_src, k_src, source_grid)
+                @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
             end
     
             @inbounds target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
