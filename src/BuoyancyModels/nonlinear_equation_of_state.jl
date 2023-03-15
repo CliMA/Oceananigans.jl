@@ -16,7 +16,6 @@ const f = Face()
     ifelse(k < 1,           znode(i, j,           1, grid, c, c, f) + (1 - k) * Δzᶜᶜᶜ(i, j, 1, grid),
     ifelse(k > grid.Nz + 1, znode(i, j, grid.Nz + 1, grid, c, c, f) + (k - grid.Nz - 1) * Δzᶜᶜᶜ(i, j, grid.Nz, grid),
                             znode(i, j,           k, grid, c, c, f)))
-                            
 # Dispatch shenanigans
 @inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
 @inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::AbstractArray) = @inbounds θ, sᴬ[i, j, k]
