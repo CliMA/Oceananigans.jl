@@ -566,3 +566,74 @@ Compute the central angle (in degrees) between two points on the sphere with
 See also [`central_angle`](@ref).
 """
 central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))
+
+"""
+    add_halos(data, loc, topo, sz, halo_sz; warnings=true)
+
+Add halos of size `halo_sz :: NTuple{3}{Int}` to `data` that corresponds to
+size `sz  :: NTuple{3}{Int}`, location `loc`, and topology `topo`.
+
+Example
+=======
+
+```julia
+julia> using Oceananigans
+
+julia> using Oceananigans.Grids: add_halos, total_length
+
+julia> Nx, Ny, Nz = (3, 3, 1);
+
+julia> loc = (Face, Center, Nothing);
+
+julia> topo = (Bounded, Periodic, Bounded);
+
+julia> data = rand(total_length(loc[1](), topo[1](), Nx, 0), total_length(loc[2](), topo[2](), Ny, 0))
+4×3 Matrix{Float64}:
+ 0.771924  0.998196   0.48775
+ 0.499878  0.470224   0.669928
+ 0.254603  0.73885    0.0821657
+ 0.997512  0.0440224  0.726334
+
+julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
+6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+ 0.0  0.0  0.771924  0.998196   0.48775    0.0  0.0
+ 0.0  0.0  0.499878  0.470224   0.669928   0.0  0.0
+ 0.0  0.0  0.254603  0.73885    0.0821657  0.0  0.0
+ 0.0  0.0  0.997512  0.0440224  0.726334   0.0  0.0
+ 0.0  0.0  0.0       0.0        0.0        0.0  0.0
+```
+"""
+function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
+
+    Nx, Ny, Nz = size(data)
+
+    nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
+                 total_length(loc[2](), topo[2](), sz[2], 0),
+                 total_length(loc[3](), topo[3](), sz[3], 0)
+
+    if warnings
+        Nx > nx && @warn("Some data from first dimension will be lost")
+        Ny > ny && @warn("Some data from second dimension will be lost")
+        Nz > nz && @warn("Some data from third dimension will be lost")
+
+        Nx < nx && @warn("Data provided has smaller size than expected in first dimension; rest of data will be filled with zeros.")
+        Ny < ny && @warn("Data provided has smaller size than expected in second dimension; rest of data will be filled with zeros.")
+        Nz < nz && @warn("Data provided has smaller size than expected in third dimension; rest of data will be filled with zeros.")
+    end
+
+    offset_array = dropdims(new_data(eltype(data), CPU(), loc, topo, sz, halo_sz), dims=3)
+
+    nx = minimum((nx, Nx))
+    ny = minimum((ny, Ny))
+    nz = minimum((nz, Nz))
+
+    offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
+
+    return offset_array
+end
+
+function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; warnings=true)
+    Nx, Ny = size(data)
+    return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
+end
