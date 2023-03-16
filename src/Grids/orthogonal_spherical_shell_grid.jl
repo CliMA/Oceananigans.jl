@@ -119,14 +119,15 @@ Examples
 
 * A default grid with `Float64` type:
 
-```@example
+```jldoctest
 julia> using Oceananigans
 
 julia> grid = OrthogonalSphericalShellGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
-├── longitude: Bounded  λ ∈ [-176.397, 180.0] variably spaced with min(Δλ)=48351.7, max(Δλ)=2.87833e5
-├── latitude:  Bounded  φ ∈ [35.2644, 90.0]   variably spaced with min(Δφ)=50632.2, max(Δφ)=3.04768e5
-└── z:         Bounded  z ∈ [-1000.0, 0.0]    regularly spaced with Δz=40.0
+├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
+├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
+├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
 """
 function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU(),
@@ -554,7 +555,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     # prescribed.
 
     warnings = false
-    
+
     λᶜᶜᵃ = add_halos(λᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
     λᶠᶜᵃ = add_halos(λᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
     λᶜᶠᵃ = add_halos(λᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz); warnings)
@@ -800,7 +801,7 @@ end
     get_center_and_extents_of_shell(grid::OSSG)
 
 Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)`
-and also the longitudinal and latitudinal extend of the shell `(extend_λ, extend_φ)`.
+and also the longitudinal and latitudinal extend of the shell `(extent_λ, extent_φ)`.
 """
 function get_center_and_extents_of_shell(grid::OSSG)
     Nx, Ny, _ = size(grid)
@@ -828,18 +829,18 @@ function get_center_and_extents_of_shell(grid::OSSG)
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
-        extend_λ = rad2deg(sum(grid.Δxᶜᶠᵃ[1:Nx, j_center])) / grid.radius
+        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶠᵃ[1:Nx, :], dims=1))) / grid.radius
     elseif mod(Ny, 2) == 1
-        extend_λ = rad2deg(sum(grid.Δxᶜᶜᵃ[1:Nx, j_center])) / grid.radius
+        extent_λ = maximum(rad2deg.(sum(grid.Δxᶜᶜᵃ[1:Nx, :], dims=1))) / grid.radius
     end
 
     if mod(Nx, 2) == 0
-        extend_φ = rad2deg(sum(grid.Δyᶠᶜᵃ[i_center, 1:Ny])) / grid.radius
+        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     elseif mod(Nx, 2) == 1
-        extend_φ = rad2deg(sum(grid.Δyᶜᶜᵃ[i_center, 1:Ny])) / grid.radius
+        extent_φ = maximum(rad2deg.(sum(grid.Δyᶠᶜᵃ[:, 1:Ny], dims=2))) / grid.radius
     end
 
-    return (λ_center, φ_center), (extend_λ, extend_φ)
+    return (λ_center, φ_center), (extent_λ, extent_φ)
 end
 
 function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
@@ -852,7 +853,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
     z₁, z₂ = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
 
-    (λ_center, φ_center), (extend_λ, extend_φ) = get_center_and_extents_of_shell(grid)
+    (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
@@ -867,14 +868,17 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
         center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
     end
 
-    x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
-    y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
+    λ_summary = "$(TX)  extent $(prettysummary(extent_λ)) degrees"
+    φ_summary = "$(TX)  extent $(prettysummary(extent_φ)) degrees"
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-    longest = max(length(x_summary), length(y_summary), length(z_summary))
+    longest = max(length(λ_summary), length(φ_summary), length(z_summary))
 
-    x_summary = "longitude: $(TX)  extent $(prettysummary(extend_λ)) degrees    " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
-    y_summary = "latitude:  $(TX)  extent $(prettysummary(extend_φ)) degrees    " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
+    padding_λ = length(λ_summary) < longest ? " "^(longest - length(λ_summary)) : ""
+    padding_φ = length(φ_summary) < longest ? " "^(longest - length(φ_summary)) : ""
+
+    λ_summary = "longitude: $(TX)  extent $(prettysummary(extent_λ)) degrees" * padding_λ *" " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
+    φ_summary = "latitude:  $(TX)  extent $(prettysummary(extent_φ)) degrees" * padding_φ *" " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
@@ -882,8 +886,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     end
 
     return print(io, "├── ", center_str, "\n",
-                     "├── ", x_summary, "\n",
-                     "├── ", y_summary, "\n",
+                     "├── ", λ_summary, "\n",
+                     "├── ", φ_summary, "\n",
                      "└── ", z_summary)
 end
 
