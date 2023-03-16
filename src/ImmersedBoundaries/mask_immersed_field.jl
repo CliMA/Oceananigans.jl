@@ -34,7 +34,9 @@ end
 ##### Implementations
 #####
 
-mask_immersed_field!(field, grid, loc, value) = NoneEvent()
+mask_immersed_field!(field, value; kw...) = NoneEvent()
+mask_immersed_field!(field, grid, loc, value; kw...) = NoneEvent()
+mask_immersed_field_xy!(field, value; kw...) = NoneEvent()
 mask_immersed_field_xy!(field, grid, loc, value; kw...) = NoneEvent()
 
 """
@@ -60,7 +62,7 @@ end
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `mask` is `true`.
 """
-function mask_immersed_field_xy!(field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask)
     arch = architecture(field)
     loc = instantiate.(loc)
     return launch!(arch, grid, :xy,
