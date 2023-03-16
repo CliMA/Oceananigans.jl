@@ -35,9 +35,9 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, NL, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, VM, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
                           grid :: G         # Grid of physical points on which `Model` is solved
-                vertical_model :: NL        # Either single-layer or multi-layer
+                vertical_model :: VM        # Either single-layer or multi-layer
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
     gravitational_acceleration :: GR        # Gravitational acceleration, full, or reduced
@@ -141,7 +141,7 @@ function ShallowWaterModel(;
     grid.Nz == 1 ? println("Proceeding with single-layer shallow water model") : println(
         "Proceeding with multi-layer shallow water model")
 
-    grid.Nz == 1 ? vertical_model == SingleLayerModel() : vertical model == MultiLayerModel()
+    grid.Nz == 1 ? vertical_model = SingleLayerModel() : vertical_model = MultiLayerModel()
 
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
