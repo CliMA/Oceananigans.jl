@@ -3,6 +3,7 @@ module Models
 export
     NonhydrostaticModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
+    SingleLayerModel, MultiLayerModel,
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField
@@ -50,6 +51,8 @@ using .HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields
 
-using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
+using .ShallowWaterModels: ShallowWaterModel, 
+    ConservativeFormulation, VectorInvariantFormulation, 
+    SingleLayerModel, MultiLayerModel
 
 end # module

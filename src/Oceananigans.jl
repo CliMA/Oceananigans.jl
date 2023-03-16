@@ -81,6 +81,7 @@ export
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
+    SingleLayerModel, MultiLayerModel,
     PressureField,
     fields,
 
