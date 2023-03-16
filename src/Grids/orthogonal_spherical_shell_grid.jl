@@ -149,6 +149,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     ## Use a regular rectilinear grid for the face of the cube
 
     ξη_grid_topology = (Bounded, Bounded, topology[3])
+
     ξη_grid = RectilinearGrid(architecture, FT;
                               size=(Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
@@ -164,67 +165,33 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
      zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
     Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
     Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
-    
-    ## Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
-    # FT, arch, loc, topo, sz, halo_sz
-    Xᶜᶜᵃ = zeros(FT, (Nξ  , Nη  )) #new_data(FT, CPU(), (Nξ, Νη), (Hx, Hy), topology[1:2], (Center, Center))
-    Xᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Xᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Xᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
 
-    Yᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Yᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Yᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Yᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
 
-    Zᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Zᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Zᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Zᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    λᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    λᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    λᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    λᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
+
+    φᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    φᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    φᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    φᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
     ξS = (ξᶜᵃᵃ, ξᶠᵃᵃ, ξᶜᵃᵃ, ξᶠᵃᵃ)
     ηS = (ηᵃᶜᵃ, ηᵃᶜᵃ, ηᵃᶠᵃ, ηᵃᶠᵃ)
-    XS = (Xᶜᶜᵃ, Xᶠᶜᵃ, Xᶜᶠᵃ, Xᶠᶠᵃ)
-    YS = (Yᶜᶜᵃ, Yᶠᶜᵃ, Yᶜᶠᵃ, Yᶠᶠᵃ)
-    ZS = (Zᶜᶜᵃ, Zᶠᶜᵃ, Zᶜᶠᵃ, Zᶠᶠᵃ)
-
-    ## Note: ξ and η above are Arrays (not OffsetArrays) so it's safe to loop over, e.g., 1:length(ξ)
-
-    for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-        for j in 1:length(η), i in 1:length(ξ)
-            # maps cube's face (ξ, η) to the unit sphere (X, Y, Z)
-            @inbounds X[i, j], Y[i, j], Z[i, j] = conformal_cubed_sphere_mapping(ξ[i], η[j])
-        end
-    end
-
-    ## Rotate the mapped (X, Y, Z) if needed
-
-    if !isnothing(rotation)
-        for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
-            for j in 1:length(η), i in 1:length(ξ)
-                @inbounds X[i, j], Y[i, j], Z[i, j] = rotation * [X[i, j], Y[i, j], Z[i, j]]
-            end
-        end
-    end
-
-    ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
-    λᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    λᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    λᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    λᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
-
-    φᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    φᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    φᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    φᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
-
     λS = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ)
     φS = (φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
-    for (ξ, η, X, Y, Z, λ, φ) in zip(ξS, ηS, XS, YS, ZS, λS, φS)
+    for (ξ, η, λ, φ) in zip(ξS, ηS, λS, φS)
         for j in 1:length(η), i in 1:length(ξ)
-            # convert cartesian (X, Y, Z) to latitude-longitude (φ, λ)
-            @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
+            x, y, z = @inbounds conformal_cubed_sphere_mapping(ξ[i], η[j])
+
+            if !isnothing(rotation)
+                x, y, z = rotation * [x, y, z]
+            end
+
+            @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(x, y, z)
         end
     end
 
@@ -254,10 +221,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     # central angles
 
-    Δσxᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Δσxᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Δσxᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Δσxᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    Δσxᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    Δσxᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    Δσxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    Δσxᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
 
     #Δσxᶜᶜᵃ
@@ -292,7 +259,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
 
     # Δσxᶠᶠᵃ
-    
+
     for j in 1:Nη+1, i in 2:Nξ
         Δσxᶠᶠᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
     end
@@ -307,10 +274,11 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
         Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
     end
 
-    Δxᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Δxᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Δxᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Δxᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+
+    Δxᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    Δxᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    Δxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    Δxᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
     @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
     @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
@@ -318,10 +286,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
 
 
-    Δσyᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Δσyᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Δσyᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Δσyᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    Δσyᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    Δσyᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    Δσyᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    Δσyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
 
     # Δσyᶜᶜᵃ
@@ -372,10 +340,10 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     end
 
 
-    Δyᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Δyᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Δyᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Δyᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    Δyᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    Δyᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    Δyᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    Δyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
     @. Δyᶜᶜᵃ = radius * deg2rad(Δσyᶜᶜᵃ)
     @. Δyᶠᶜᵃ = radius * deg2rad(Δσyᶠᶜᵃ)
@@ -408,23 +376,15 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     where, ã = (φᶠᶠᵃ[1,  j ], λᶠᶠᵃ[1,  j ]) and d̃ = (φᶠᶠᵃ[1, j+1], λᶠᶠᵃ[1, j+1])
     =#
 
-    Azᶜᶜᵃ = zeros(FT, (Nξ,   Nη  ))
-    Azᶠᶜᵃ = zeros(FT, (Nξ+1, Nη  ))
-    Azᶜᶠᵃ = zeros(FT, (Nξ,   Nη+1))
-    Azᶠᶠᵃ = zeros(FT, (Nξ+1, Nη+1))
+    Azᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
+    Azᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
+    Azᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
+    Azᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
 
     # Azᶜᶜᵃ
 
-    # approximate the areas Az = Δx * Δy
-
-    @. Azᶜᶜᵃ = Δxᶜᶜᵃ * Δyᶜᶜᵃ
-    @. Azᶠᶜᵃ = Δxᶠᶜᵃ * Δyᶠᶜᵃ
-    @. Azᶜᶠᵃ = Δxᶜᶠᵃ * Δyᶜᶠᵃ
-    @. Azᶠᶠᵃ = Δxᶠᶠᵃ * Δyᶠᶠᵃ
-
-
-    # for interior points compute Az as the area of the corresponding spherical quadrilateral  
+    # for interior points compute Az as the area of the corresponding spherical quadrilateral
 
     for j in 1:Nη, i in 1:Nξ
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
@@ -587,10 +547,40 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
 
     Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
-    # All of the above used (Bounded, Bounded, topology[3]) for ξη grid
-    # Here we take care the coordinate and metric arrays given the topology
-    # prescribed, that is (topology[1], topology[2], topology[3]).
 
+    # In all computations above we used (Bounded, Bounded, topology[3]) for ξ-η grid.
+    # This was done to ensure that we had information for the faces at the boundary of
+    # the shell.
+    #
+    # Here we take care the coordinate and metric arrays given the `topology`
+    # prescribed.
+
+    λᶜᶜᵃ = add_halos(λᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    λᶠᶜᵃ = add_halos(λᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    λᶜᶠᵃ = add_halos(λᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    λᶠᶠᵃ = add_halos(λᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+
+    φᶜᶜᵃ = add_halos(φᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    φᶠᶜᵃ = add_halos(φᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    φᶜᶠᵃ = add_halos(φᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    φᶠᶠᵃ = add_halos(φᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+
+    Δxᶜᶜᵃ = add_halos(Δxᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δxᶠᶜᵃ = add_halos(Δxᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δxᶜᶠᵃ = add_halos(Δxᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δxᶠᶠᵃ = add_halos(Δxᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+
+    Δyᶜᶜᵃ = add_halos(Δyᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δyᶠᶜᵃ = add_halos(Δyᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δyᶜᶠᵃ = add_halos(Δyᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Δyᶠᶠᵃ = add_halos(Δyᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+
+    Azᶜᶜᵃ = add_halos(Azᶜᶜᵃ, (Center, Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Azᶠᶜᵃ = add_halos(Azᶠᶜᵃ, (Face,   Center, Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+    Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), topology, (Nξ, Nη, Nz), (Hx, Hy, Hz))
+
+    # convert to
     coordinate_arrays = (λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ,  zᵃᵃᶠ)
     coordinate_arrays = map(a -> arch_array(architecture, a), coordinate_arrays)
 
@@ -609,6 +599,16 @@ function lat_lon_to_cartesian(lat, lon, radius)
     return [lat_lon_to_x(lat, lon, radius), lat_lon_to_y(lat, lon, radius), lat_lon_to_z(lat, lon, radius)]
 end
 
+function add_halos(data, loc, topo, sz, halo_sz)
+    loc[3] !== Nothing && error("for 2D arrays loc[3] == Nothing")
+
+    offset_array = dropdims(new_data(eltype(data), CPU(), loc, topo, sz, halo_sz), dims=3)
+    Nx, Ny = total_length(loc[1](), topo[1](), sz[1], 0), total_length(loc[2](), topo[2](), sz[2], 0)
+    offset_array[1:Nx, 1:Ny] = data[1:Nx, 1:Ny]
+
+    return offset_array
+end
+
 lat_lon_to_x(lat, lon, radius) = radius * cosd(lon) * cosd(lat)
 lat_lon_to_y(lat, lon, radius) = radius * sind(lon) * cosd(lat)
 lat_lon_to_z(lat, lon, radius) = radius * sind(lat)
@@ -619,8 +619,8 @@ OrthogonalSphericalShellGrid(FT::DataType; kwargs...) = OrthogonalSphericalShell
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
-    ii = interior_indices(loc[1](), topo[1](), N[1])
-    jj = interior_indices(loc[2](), topo[2](), N[2])
+    ii = interior_indices(loc[1], topo[1], N[1])
+    jj = interior_indices(loc[2], topo[2], N[2])
 
     interior_data = arch_array(arch, file[field_name][ii, jj])
 
@@ -821,20 +821,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     j_center = Ny÷2 + 1
 
     if mod(Nx, 2) == 0
-        ℓx = Face()
+        LX = Face()
     elseif mod(Nx, 2) == 1
-        ℓx = Center()
+        LX = Center()
     end
 
     if mod(Ny, 2) == 0
-        ℓy = Face()
+        LY = Face()
     elseif mod(Ny, 2) == 1
-        ℓy = Center()
+        LY = Center()
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = xnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
-    φ_center = ynode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    λ_center = xnode(i_center, j_center, 1, grid, LX, LY, Center())
+    φ_center = ynode(i_center, j_center, 1, grid, LX, LY, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
@@ -858,7 +858,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1])
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1])
-    z₁, z₂ = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
+    z₁, z₂ = domain(topology(grid, 3), Nz, grid.zᵃᵃᶠ)
 
     (λc, φc), (Δλ, Δφ) = get_center_and_extents_of_shell(grid)
 
@@ -914,30 +914,30 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
 end
 
 
-@inline xnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
-    view(grid.λᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xnodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
-    view(grid.λᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xnodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
-    view(grid.λᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xnodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
-    view(grid.λᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
+    view(grid.λᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
+    view(grid.λᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
+    view(grid.λᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
+    view(grid.λᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-@inline ynodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
-    view(grid.φᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline ynodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
-    view(grid.φᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline ynodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
-    view(grid.φᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline ynodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
-    view(grid.φᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
+    view(grid.φᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
+    view(grid.φᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
+    view(grid.φᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
+    view(grid.φᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
 
-@inline znodes(grid::OSSG, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
-@inline znodes(grid::OSSG, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline znodes(grid::OSSG, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::OSSG, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
 
-@inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
-@inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
-@inline znodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz    ; with_halos)
+@inline xnodes(grid::OSSG, LX, LY, LZ; with_halos=false) = xnodes(grid, LX, LY; with_halos)
+@inline ynodes(grid::OSSG, LX, LY, LZ; with_halos=false) = ynodes(grid, LX, LY; with_halos)
+@inline znodes(grid::OSSG, LX, LY, LZ; with_halos=false) = znodes(grid, LZ    ; with_halos)
 
 @inline xnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
 @inline xnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
@@ -952,9 +952,9 @@ end
 @inline znode(k, grid::OSSG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::OSSG, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
 
-@inline xnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
-@inline ynode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
-@inline znode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
+@inline xnode(i, j, k, grid::OSSG, LX, LY, LZ) = xnode(i, j, grid, LX, LY)
+@inline ynode(i, j, k, grid::OSSG, LX, LY, LZ) = ynode(i, j, grid, LX, LY)
+@inline znode(i, j, k, grid::OSSG, LX, LY, LZ) = znode(k, grid, LZ)
 
 
 #####
