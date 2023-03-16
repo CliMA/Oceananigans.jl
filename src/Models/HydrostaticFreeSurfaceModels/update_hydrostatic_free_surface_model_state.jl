@@ -49,7 +49,7 @@ function mask_immersed_model_fields!(model, grid)
 
     Nz = size(grid, 3)
     masking_events = Any[mask_immersed_field!(field; blocking=false) for field in fields_to_mask if field !== η]
-    push!(masking_events, mask_immersed_field_xy!(η, k=Nz+1, mask=inactive_node))
+    push!(masking_events, mask_immersed_field_xy!(η, k=Nz+1, mask=inactive_node, blocking=false))
 
     wait(device(architecture(grid)), MultiEvent(Tuple(masking_events)))
 end
