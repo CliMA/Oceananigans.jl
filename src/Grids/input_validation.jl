@@ -43,10 +43,10 @@ function validate_topology(topology)
     return topology
 end
 
-function validate_size(TX, TY, TZ, size)
-    size = tupleit(size)
-    validate_tupled_argument(size, Integer, "size", topological_tuple_length(TX, TY, TZ))
-    return inflate_tuple(TX, TY, TZ, size, default=1)
+function validate_size(TX, TY, TZ, sz)
+    sz = tupleit(sz)
+    validate_tupled_argument(sz, Integer, "size", topological_tuple_length(TX, TY, TZ))
+    return inflate_tuple(TX, TY, TZ, sz, default=1)
 end
 
 # Note that the default halo size is specified to be 1 in the following function.
@@ -195,7 +195,7 @@ validate_index(::Colon, loc, topo, N, H) = Colon()
 validate_index(idx::UnitRange, ::Type{Nothing}, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
-    all_idx = all_indices(loc, topo, N, H)
+    all_idx = all_indices(loc(), topo(), N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
 end
@@ -203,4 +203,7 @@ end
 validate_index(idx::Int, args...) = validate_index(UnitRange(idx, idx), args...)
 
 validate_indices(indices, loc, grid::AbstractGrid) =
-    validate_index.(indices, loc, topology(grid), size(loc, grid), halo_size(grid))
+    validate_indices(indices, loc, topology(grid), size(grid, loc), halo_size(grid))
+
+validate_indices(indices, loc, topo, sz, halo_sz) =
+    map(validate_index, indices, loc, topo, sz, halo_sz)
