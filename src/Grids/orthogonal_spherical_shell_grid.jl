@@ -715,37 +715,36 @@ end
 
 function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalShellGrid)
 
-    horizontal_coordinates = (:λᶜᶜᵃ,
-                              :λᶠᶜᵃ,
-                              :λᶜᶠᵃ,
-                              :λᶠᶠᵃ,
-                              :φᶜᶜᵃ,
-                              :φᶠᶜᵃ,
-                              :φᶜᶠᵃ,
-                              :φᶠᶠᵃ)
+    coordinates = (:λᶜᶜᵃ,
+                   :λᶠᶜᵃ,
+                   :λᶜᶠᵃ,
+                   :λᶠᶠᵃ,
+                   :φᶜᶜᵃ,
+                   :φᶠᶜᵃ,
+                   :φᶜᶠᵃ,
+                   :φᶠᶠᵃ,
+                   :zᵃᵃᶜ,
+                   :zᵃᵃᶠ)
 
-    horizontal_grid_spacings = (:Δxᶜᶜᵃ,
-                                :Δxᶠᶜᵃ,
-                                :Δxᶜᶠᵃ,
-                                :Δxᶠᶠᵃ,
-                                :Δyᶜᶜᵃ,
-                                :Δyᶜᶠᵃ,
-                                :Δyᶠᶜᵃ,
-                                :Δyᶠᶠᵃ)
+    grid_spacings = (:Δxᶜᶜᵃ,
+                     :Δxᶠᶜᵃ,
+                     :Δxᶜᶠᵃ,
+                     :Δxᶠᶠᵃ,
+                     :Δyᶜᶜᵃ,
+                     :Δyᶜᶠᵃ,
+                     :Δyᶠᶜᵃ,
+                     :Δyᶠᶠᵃ,
+                     :Δzᵃᵃᶜ,
+                     :Δzᵃᵃᶜ)
 
     horizontal_areas = (:Azᶜᶜᵃ,
                         :Azᶠᶜᵃ,
                         :Azᶜᶠᵃ,
                         :Azᶠᶠᵃ)
 
-    horizontal_grid_spacing_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_grid_spacings)
-    horizontal_coordinate_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_coordinates)
+    grid_spacing_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in grid_spacings)
+    coordinate_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in coordinates)
     horizontal_area_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_areas)
-
-    zᵃᵃᶜ = arch_array(arch, grid.zᵃᵃᶜ)
-    zᵃᵃᶠ = arch_array(arch, grid.zᵃᵃᶠ)
-    Δzᵃᵃᶜ = arch_array(arch, grid.Δzᵃᵃᶜ)
-    Δzᵃᵃᶠ = arch_array(arch, grid.Δzᵃᵃᶠ)
 
     TX, TY, TZ = topology(grid)
 
@@ -753,8 +752,8 @@ function on_architecture(arch::AbstractArchitecture, grid::OrthogonalSphericalSh
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         grid.ξₗ, grid.ξᵣ, grid.ηₗ, grid.ηᵣ,
-                                                        horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
-                                                        horizontal_grid_spacing_data..., Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                        coordinate_data...,
+                                                        grid_spacing_data...,
                                                         horizontal_area_data..., grid.radius)
 
     return new_grid
@@ -821,20 +820,20 @@ function get_center_and_extents_of_shell(grid::OSSG)
     j_center = Ny÷2 + 1
 
     if mod(Nx, 2) == 0
-        LX = Face()
+        ℓx = Face()
     elseif mod(Nx, 2) == 1
-        LX = Center()
+        ℓx = Center()
     end
 
     if mod(Ny, 2) == 0
-        LY = Face()
+        ℓy = Face()
     elseif mod(Ny, 2) == 1
-        LY = Center()
+        ℓy = Center()
     end
 
     # latitude and longitudes of the shell's center
-    λ_center = xnode(i_center, j_center, 1, grid, LX, LY, Center())
-    φ_center = ynode(i_center, j_center, 1, grid, LX, LY, Center())
+    λ_center = xnode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
+    φ_center = ynode(i_center, j_center, 1, grid, ℓx, ℓy, Center())
 
     # the Δλ, Δφ are approximate if ξ, η are not symmetric about 0
     if mod(Ny, 2) == 0
@@ -856,19 +855,26 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
 
-    λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.λᶠᶠᵃ[1:Nx+1, 1:Ny+1])
-    φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1]), maximum(grid.φᶠᶠᵃ[1:Nx+1, 1:Ny+1])
-    z₁, z₂ = domain(topology(grid, 3), Nz, grid.zᵃᵃᶠ)
+    Nx_face, Ny_face = total_length(Face(), TX(), Nx, 0), total_length(Face(), TY(), Ny, 0)
 
-    (λc, φc), (Δλ, Δφ) = get_center_and_extents_of_shell(grid)
+    λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face])
+    φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
+    z₁, z₂ = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
 
-    λc = round(λc, digits=4)
-    φc = round(φc, digits=4)
+    (λ_center, φ_center), (extend_λ, extend_φ) = get_center_and_extents_of_shell(grid)
 
-    center_str = "centered at (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"
+    λ_center = round(λ_center, digits=4)
+    φ_center = round(φ_center, digits=4)
 
-    if abs(φc) ≈  90; center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"; end
-    if abs(φc) ≈ -90; center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λc) * ", " * prettysummary(φc) * ")"; end
+    center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+
+    if abs(φ_center) ≈  90
+        center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    end
+
+    if abs(φ_center) ≈ -90
+        center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    end
 
     x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
     y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
@@ -876,8 +882,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = "longitude: $(TX)  extent $(prettysummary(Δλ)) degrees    " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "λ")
-    y_summary = "latitude:  $(TX)  extent $(prettysummary(Δφ)) degrees    " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1] ./ grid.radius), "φ")
+    x_summary = "longitude: $(TX)  extent $(prettysummary(extend_λ)) degrees    " * coordinate_summary(rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
+    y_summary = "latitude:  $(TX)  extent $(prettysummary(extend_φ)) degrees    " * coordinate_summary(rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
     z_summary = "z:         " * dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
@@ -914,30 +920,32 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
 end
 
 
-@inline xnodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
-    view(grid.λᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xnodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
-    view(grid.λᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xnodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
-    view(grid.λᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline xnodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
-    view(grid.λᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline xnodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶠᶠᵃ :
+    view(grid.λᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xnodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.λᶠᶜᵃ :
+    view(grid.λᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xnodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.λᶜᶠᵃ :
+    view(grid.λᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xnodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.λᶜᶜᵃ :
+    view(grid.λᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline ynodes(grid::OSSG, LX::Face,   LY::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
-    view(grid.φᶠᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline ynodes(grid::OSSG, LX::Face,   LY::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
-    view(grid.φᶠᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline ynodes(grid::OSSG, LX::Center, LY::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
-    view(grid.φᶜᶠᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
-@inline ynodes(grid::OSSG, LX::Center, LY::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
-    view(grid.φᶜᶜᵃ, interior_indices(typeof(LX), topology(grid, 1), grid.Nx), interior_indices(typeof(LY), topology(grid, 2), grid.Ny))
+@inline ynodes(grid::OSSG, ℓx::Face,   ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶠᶠᵃ :
+    view(grid.φᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline ynodes(grid::OSSG, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.φᶠᶜᵃ :
+    view(grid.φᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline ynodes(grid::OSSG, ℓx::Center, ℓy::Face, ; with_halos=false) = with_halos ? grid.φᶜᶠᵃ :
+    view(grid.φᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline ynodes(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.φᶜᶜᵃ :
+    view(grid.φᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline znodes(grid::OSSG, LZ::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
-@inline znodes(grid::OSSG, LZ::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(typeof(LZ), topology(grid, 3), grid.Nz))
+@inline znodes(grid::OSSG, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
+    view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline znodes(grid::OSSG, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ :
+    view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
 
-@inline xnodes(grid::OSSG, LX, LY, LZ; with_halos=false) = xnodes(grid, LX, LY; with_halos)
-@inline ynodes(grid::OSSG, LX, LY, LZ; with_halos=false) = ynodes(grid, LX, LY; with_halos)
-@inline znodes(grid::OSSG, LX, LY, LZ; with_halos=false) = znodes(grid, LZ    ; with_halos)
+@inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
+@inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
+@inline znodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz    ; with_halos)
 
 @inline xnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
 @inline xnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
@@ -952,9 +960,9 @@ end
 @inline znode(k, grid::OSSG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(k, grid::OSSG, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
 
-@inline xnode(i, j, k, grid::OSSG, LX, LY, LZ) = xnode(i, j, grid, LX, LY)
-@inline ynode(i, j, k, grid::OSSG, LX, LY, LZ) = ynode(i, j, grid, LX, LY)
-@inline znode(i, j, k, grid::OSSG, LX, LY, LZ) = znode(k, grid, LZ)
+@inline xnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
+@inline ynode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
+@inline znode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 
 #####
@@ -979,9 +987,11 @@ end
 @inline yspacings(grid::OSSG, ℓx::Face  , ℓy::Face  ; with_halos=false) =
     with_halos ? grid.Δyᶠᶠᵃ : view(grid.Δyᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline zspacings(grid::OSSG,     ℓz::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline zspacings(grid::OSSG,     ℓz::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ :
+    view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
 @inline zspacings(grid::ZRegOSSG, ℓz::Center; with_halos=false) = grid.Δzᵃᵃᶜ
-@inline zspacings(grid::OSSG,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline zspacings(grid::OSSG,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ :
+    view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
 @inline zspacings(grid::ZRegOSSG, ℓz::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
 @inline xspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xspacings(grid, ℓx, ℓy; with_halos)
