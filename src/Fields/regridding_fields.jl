@@ -140,6 +140,8 @@ end
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     j_src = ifelse(Ny_target == Ny_source, j, 1)
 
+    fo = ForwardOrdering()
+
     @unroll for k = 1:target_grid.Nz
         @inbounds target_field[i, j, k] = 0
 
@@ -147,7 +149,6 @@ end
         z₊ = znode(i, j, k+1, target_grid, c, c, f)
 
         # Integrate source field from z₋ to z₊
-        fo = ForwardOrdering()
         k₋_src = searchsortedfirst(source_z_faces, z₋, 1, Nz_source+1, fo)
         k₊_src = searchsortedfirst(source_z_faces, z₊, 1, Nz_source+1, fo) - 1
 
@@ -191,6 +192,8 @@ end
     Nx_source, Ny_source, Nz_source = size(source_grid)
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
+    i⁺_src = min(Nx_source, i_src + 1)
+    fo = ForwardOrdering()
 
     @unroll for j = 1:target_grid.Ny
         @inbounds target_field[i, j, k] = 0
@@ -199,7 +202,6 @@ end
         y₊ = ynode(i, j+1, k, target_grid, c, f, c)
 
         # Integrate source field from y₋ to y₊
-        fo = ForwardOrdering()
         j₋_src = searchsortedfirst(source_y_faces, y₋, 1, Ny_source+1, fo)
         j₊_src = searchsortedfirst(source_y_faces, y₊, 1, Ny_source+1, fo) - 1
 
@@ -225,8 +227,8 @@ end
             if j₋_src > 1
                 j_left = j₋_src - 1
 
-                x₁ = xnode(i_src,   source_grid, f) 
-                x₂ = xnode(i_src+1, source_grid, f) 
+                x₁ = xnode(i_src,   source_grid, f)
+                x₂ = xnode(i⁺_src, source_grid, f)
                 Az_left = fractional_horizontal_area(source_grid, x₁, x₂, y₋, yj₋_src)
 
                 @inbounds target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
@@ -237,7 +239,7 @@ end
                 j_right = j₊_src
 
                 x₁ = xnode(i_src,   source_grid, f)
-                x₂ = xnode(i_src+1, source_grid, f)
+                x₂ = xnode(i⁺_src, source_grid, f)
                 Az_right = fractional_horizontal_area(source_grid, x₁, x₂, yj₊_src, y₊)
 
                 @inbounds target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
@@ -255,6 +257,8 @@ end
     Nx_source, Ny_source, Nz_source = size(source_grid)
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
+    j⁺_src = min(Ny_source, j_src + 1)
+    fo = ForwardOrdering()
 
     @unroll for i = 1:target_grid.Nx
         @inbounds target_field[i, j, k] = 0
@@ -262,8 +266,6 @@ end
         # Integrate source field from x₋ to x₊
         x₋ = xnode(i,   j, k, target_grid, f, c, c)
         x₊ = xnode(i+1, j, k, target_grid, f, c, c) 
-
-        fo = ForwardOrdering()
 
         # The first face on the source grid that appears inside the target cell
         i₋_src = searchsortedfirst(source_x_faces, x₋, 1, Nx_source+1, fo)
@@ -298,8 +300,8 @@ end
             if i₋_src > 1
                 i_left = i₋_src - 1
                 
-                y₁ = ynode(j_src,   source_grid, f) 
-                y₂ = ynode(j_src+1, source_grid, f) 
+                y₁ = ynode(j_src, source_grid, f) 
+                y₂ = ynode(j⁺_src, source_grid, f) 
                 Az_left = fractional_horizontal_area(source_grid, x₋, xi₋_src, y₁, y₂)
 
                 @inbounds target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
@@ -309,8 +311,8 @@ end
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
 
-                y₁ = ynode(j_src,   source_grid, f)
-                y₂ = ynode(j_src+1, source_grid, f)
+                y₁ = ynode(j_src, source_grid, f) 
+                y₂ = ynode(j⁺_src, source_grid, f) 
                 Az_right = fractional_horizontal_area(source_grid, xi₊_src, x₊, y₁, y₂)
 
                 @inbounds target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
