@@ -672,7 +672,7 @@ end
 ##### Conformal cubed sphere face grid
 #####
 
-function test_cubed_sphere_face_array_sizes_and_spacings(FT)
+function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     grid = OrthogonalSphericalShellGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -707,8 +707,8 @@ function test_cubed_sphere_face_array_sizes_and_spacings(FT)
     @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
     @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
 
-    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δz
-    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δz
+    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δzᵃᵃᶠ
+    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δzᵃᵃᶜ
 
     return nothing
 end
@@ -880,7 +880,7 @@ end
         @info "  Testing OrthogonalSphericalShellGrid grid..."
 
         for FT in float_types
-            test_cubed_sphere_face_array_sizes_and_spacings(Float64)
+            test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
         end
 
         # Testing show function
