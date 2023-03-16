@@ -35,6 +35,7 @@ end
 #####
 
 mask_immersed_field!(field, grid, loc, value) = NoneEvent()
+mask_immersed_field_xy!(field, grid, loc, value; kw...) = NoneEvent()
 
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
