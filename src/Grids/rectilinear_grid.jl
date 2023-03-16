@@ -73,15 +73,15 @@ regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
                     extent = nothing,
                     topology = (Periodic, Periodic, Bounded))
 
-Creates a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
+Create a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 
 Positional arguments
-=================
+====================
 
 - `architecture`: Specifies whether arrays of coordinates and spacings are stored
-                  on the CPU or GPU. Default: `architecture = CPU()`.
+                  on the CPU or GPU. Default: `CPU()`.
 
-- `FT` : Floating point data type. Default: `FT = Float64`.
+- `FT` : Floating point data type. Default: `Float64`.
 
 Keyword arguments
 =================
@@ -96,11 +96,11 @@ Keyword arguments
               not vary in those directions so that derivatives and interpolation are zero.
               The default is `topology = (Periodic, Periodic, Bounded)`.
 
-- `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
-            All directions are contructed with regular grid spacing and the domain (in the
-            case that no direction is `Flat`) is x ∈ (0, Lx), y ∈ (0, Ly), and z ∈ (-Lz, 0), 
-            which is most appropriate for oceanic applications with z = 0 usually being the
-            ocean's surface.
+- `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions, e.g.,
+            `(Lx, Ly, Lz)`. All directions are contructed with regular grid spacing and the domain
+            (in the case that no direction is `Flat`) is ``0 ≤ x ≤ L_x``, ``0 ≤ y ≤ L_y``, and
+            ``-L_z ≤ z ≤ 0``, which is most appropriate for oceanic applications in which ``z = 0``
+            usually is the ocean's surface.
 
 - `x`, `y`, and `z`: Each of `x, y, z` are either (i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
@@ -115,12 +115,12 @@ Keyword arguments
 - `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
           the physical interior for each non-`Flat` direction. The default is 3 halo cells in every direction.
 
-The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
-indicating the left and right endpoints of each dimensions, e.g. `x = (-π, π)` or via
-the `extent` argument, e.g. `extent = (Lx, Ly, Lz)`, which specifies the extent of each dimension
-in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
+The physical extent of the domain can be specified either via `x`, `y`, and `z` keyword arguments
+indicating the left and right endpoints of each dimensions, e.g., `x = (-π, π)` or via
+the `extent` argument, e.g., `extent = (Lx, Ly, Lz)`, which specifies the extent of each dimension
+in which case ``0 ≤ x ≤ L_x``, ``0 ≤ y ≤ L_y``, and ``-L_z ≤ z ≤ 0``.
 
-A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
+A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and, `Flat`
 to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
 is assumed.
 
@@ -149,7 +149,7 @@ Grid properties
 Examples
 ========
 
-* A default grid with `Float64` type:
+* A grid with the default `Float64` type:
 
 ```jldoctest
 julia> using Oceananigans
@@ -161,7 +161,7 @@ julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 └── Bounded  z ∈ [-3.0, 0.0] regularly spaced with Δz=0.09375
 ```
 
-* A default grid with `Float32` type:
+* A grid with `Float32` type:
 
 ```jldoctest
 julia> using Oceananigans
@@ -210,17 +210,17 @@ julia> Lz = 32; # depth (m)
 
 julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 
-julia> grid = RectilinearGrid(size = (32, 32, Nz), x = (0, 64),
-                              y = (0, 64), z = hyperbolically_spaced_faces)
+julia> grid = RectilinearGrid(size = (32, 32, Nz),
+                              x = (0, 64), y = (0, 64),
+                              z = hyperbolically_spaced_faces)
 32×32×24 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── Periodic x ∈ [0.0, 64.0)   regularly spaced with Δx=2.0
 ├── Periodic y ∈ [0.0, 64.0)   regularly spaced with Δy=2.0
 └── Bounded  z ∈ [-32.0, -0.0] variably spaced with min(Δz)=0.682695, max(Δz)=1.83091
 ```
 
-* A three-dimensional grid with regular spacing in x,
-  cell interfaces at Chebyshev nodes in y, and cell interfaces
-  stretched in z hyperbolically near the top:
+* A three-dimensional grid with regular spacing in ``x``, cell interfaces at Chebyshev nodes
+  in ``y``, and cell interfaces hyperbolically stretched in ``z`` near the top:
 
 ```jldoctest
 julia> using Oceananigans
@@ -236,7 +236,7 @@ julia> σ = 1.1; # stretching factor
 julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 
 julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
-                              topology=(Periodic, Bounded, Bounded),
+                              topology = (Periodic, Bounded, Bounded),
                               x = (0, Lx),
                               y = chebychev_nodes,
                               z = hyperbolically_spaced_faces)
@@ -372,7 +372,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
 
     x = cpu_face_constructor_x(old_grid)
     y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)  
+    z = cpu_face_constructor_z(old_grid)
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor
@@ -380,8 +380,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     new_halo = pop_flat_elements(new_halo, topo)
 
     new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
-                               size = size,
-                               x = x, y = y, z = z,
+                               size, x, y, z,
                                topology = topo,
                                halo = new_halo)
 
