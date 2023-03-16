@@ -192,7 +192,10 @@ end
     Nx_source, Ny_source, Nz_source = size(source_grid)
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-    i⁺_src = min(Nx_source, i_src + 1)
+
+    Nx_source_faces = size((Face, Center, Center), source_grid, 1)
+    i⁺_src = min(Nx_source_faces, i_src + 1)
+
     fo = ForwardOrdering()
 
     @unroll for j = 1:target_grid.Ny
@@ -257,7 +260,10 @@ end
     Nx_source, Ny_source, Nz_source = size(source_grid)
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-    j⁺_src = min(Ny_source, j_src + 1)
+
+    Ny_source_faces = size((Center, Face, Center), source_grid, 2)
+    j⁺_src = min(Ny_source_faces, j_src + 1)
+
     fo = ForwardOrdering()
 
     @unroll for i = 1:target_grid.Nx
