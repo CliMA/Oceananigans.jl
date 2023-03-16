@@ -187,7 +187,7 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     grids       = [regular_spaced_grid, variably_spaced_grid]
 
     for (grid_type, grid) in zip(grids_types, grids)
-        @info "        Testing on $grid_type grid...."
+        @info "        Testing grid utils on $grid_type grid...."
 
         @test xnode(2, grid, Center()) ≈ FT(π/2)
         @test ynode(2, grid, Center()) ≈ FT(π/2)
@@ -719,14 +719,12 @@ end
 #####
 
 @testset "Grids" begin
-    @info "Testing grids..."
+    @info "Testing AbstractGrids..."
 
-    #=
     @testset "Grid utils" begin
         @info "  Testing grid utilities..."
-
-        @test total_extent(Periodic, 1, 0.2, 1.0) == 1.2
-        @test total_extent(Bounded, 1, 0.2, 1.0) == 1.4
+        @test total_extent(Periodic(), 1, 0.2, 1.0) == 1.2
+        @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
     @testset "Regular rectilinear grid" begin
@@ -754,7 +752,6 @@ end
 
         @testset "Grid dimensions" begin
             @info "    Testing grid constructor errors..."
-
             for FT in float_types
                 test_regular_rectilinear_constructor_errors(FT)
             end
@@ -762,7 +759,6 @@ end
 
         @testset "Grids with flat dimensions" begin
             @info "    Testing construction of grids with Flat dimensions..."
-
             for FT in float_types
                 test_flat_size_regular_rectilinear_grid(FT)
             end
@@ -879,7 +875,6 @@ end
 
         @test grid isa LatitudeLongitudeGrid
     end
-    =#
     
     @testset "Conformal cubed sphere face grid" begin
         @info "  Testing OrthogonalSphericalShellGrid grid..."
