@@ -24,26 +24,24 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     zᵃᵃᶠ  :: VZ
     zᵃᵃᶜ  :: VZ
 
-    function RectilinearGrid{TX, TY, TZ}(arch::Arch,
-                                         Nx, Ny, Nz,
-                                         Hx, Hy, Hz,
-                                         Lx::FT, Ly::FT, Lz::FT,
-                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                         Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                          zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
-                                                                          TX, TY, TZ,
-                                                                          FX, VX, FY,
-                                                                          VY, FZ, VZ}
-                                                                                           
-        return new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                                 Hx, Hy, Hz, Lx, Ly, Lz, 
-                                                                 Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                                 Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                                 Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
-    end
+    RectilinearGrid{TX, TY, TZ}(arch::Arch,
+                                Nx, Ny, Nz,
+                                Hx, Hy, Hz,
+                                Lx :: FT, Ly :: FT, Lz :: FT,
+                                Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                 xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                 yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                 zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
+                                                                 TX, TY, TZ,
+                                                                 FX, VX, FY,
+                                                                 VY, FZ, VZ} =
+        new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
+                                                          Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
 const XRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
@@ -322,7 +320,7 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     y_summary = domain_summary(TY(), "y", y₁, y₂)
     z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-    longest = max(length(x_summary), length(y_summary), length(z_summary)) 
+    longest = max(length(x_summary), length(y_summary), length(z_summary))
 
     x_summary = dimension_summary(TX(), "x", x₁, x₂, grid.Δxᶜᵃᵃ, longest - length(x_summary))
     y_summary = dimension_summary(TY(), "y", y₁, y₂, grid.Δyᵃᶜᵃ, longest - length(y_summary))
