@@ -306,6 +306,10 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; blocking = false)
 
+    # Preparing velocities for the barotropic correction
+    mask_immersed_field!(model.velocities.u)
+    mask_immersed_field!(model.velocities.v)
+
     return nothing
 end
 
