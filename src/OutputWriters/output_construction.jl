@@ -1,8 +1,8 @@
 using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.AbstractOperations: AbstractOperation, ComputedField
+using Oceananigans.AbstractOperations: AbstractOperation, ComputedField, interpolate_indices
 using Oceananigans.Grids: default_indices
 
-restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
+restrict_to_interior(::Colon, loc, topo, N) = Colon()
 restrict_to_interior(::Colon, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::UnitRange, ::Type{Nothing}, topo, N) = UnitRange(1, 1)
 
@@ -30,15 +30,16 @@ end
 #####
 
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
-    indices = validate_indices(indices, location(output), grid)
+    idxs = validate_indices(indices, location(output), grid)
+    idxs = interpolate_indices(idxs, indices(output))
 
     if !with_halos # Maybe chop those indices
         loc = location(output)
         topo = topology(grid)
-        indices = restrict_to_interior.(indices, loc, topo, size(grid))
+        idxs = restrict_to_interior.(idxs, loc, topo, size(grid))
     end
 
-    return indices
+    return idxs
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)

@@ -74,6 +74,9 @@ function interpolate_indices(args...; loc_operation = (Center, Center, Center))
     return Tuple(idxs)
 end
 
+# Interpolate indices irrespective of location
+interpolate_indices(idxa::Tuple, idxb::Tuple) = interpolate_index.(idxa, idxb, Ref(Center), Ref(Center))
+
 interpolate_index(::Colon, ::Colon, args...)       = Colon()
 interpolate_index(::Colon, b::UnitRange, args...)  = b
 
