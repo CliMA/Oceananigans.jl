@@ -182,10 +182,6 @@ function implicit_step!(field::Field,
         N = length(closure_tuple)
         vi_closure            = Tuple(closure[n]            for n = 1:N if is_vertically_implicit(closure[n]))
         vi_diffusivity_fields = Tuple(diffusivity_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
-
-        # length(vi_closure) > 1 && error("More than one closure with VerticallyImplicitTimeDiscretization is not supported")
-        # vi_closure = vi_closure[1]
-        # vi_diffusivity_fields = vi_diffusivity_fields[1] 
     else
         vi_closure = closure
         vi_diffusivity_fields = diffusivity_fields
