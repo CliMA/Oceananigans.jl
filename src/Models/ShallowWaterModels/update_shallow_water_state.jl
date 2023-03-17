@@ -12,8 +12,7 @@ If `callbacks` are provided (in an array), they are called in the end.
 function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field) for field in model.solution)
-
+    masking_events = Tuple(mask_immersed_field!(field, blocking=false) for field in model.solution)
     wait(device(model.architecture), MultiEvent(masking_events))
 
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)

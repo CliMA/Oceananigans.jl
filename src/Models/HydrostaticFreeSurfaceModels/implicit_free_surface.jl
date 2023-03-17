@@ -162,10 +162,12 @@ end
 
 function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
     
-    masking_events = Tuple(mask_immersed_field!(q) for q in velocities)
+    masking_events = Tuple(mask_immersed_field!(q, blocking=false) for q in velocities)
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
+
+    return nothing
 end
 
