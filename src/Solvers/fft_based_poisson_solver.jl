@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: device_event
+using Oceananigans.Utils: launch!
 using Oceananigans.Fields: indices, offset_compute_index
 
 import Oceananigans.Architectures: architecture

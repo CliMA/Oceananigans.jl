@@ -333,12 +333,11 @@ function test_grid_equality(arch)
     return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
-function test_grid_equality_over_architectures()
-    grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-    grid_gpu = RectilinearGrid(GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-
-    return grid_cpu == grid_gpu
-end
+function test_grid_equality_over_architectures(arch)
+     grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+     grid_arch = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+     return grid_cpu == grid_arch
+ end
 
 #####
 ##### Vertically stretched grids
@@ -643,6 +642,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
 
     CUDA.allowscalar() do
 
+
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
         for lon in longitude
@@ -665,6 +665,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     end
 
     end # CUDA.allowscalar()
+
 
 end
 
@@ -772,10 +773,7 @@ end
             
             for arch in archs
                 test_grid_equality(arch)
-            end
-
-            if CUDA.has_cuda()
-                test_grid_equality_over_architectures()
+                test_grid_equality_over_architectures(arch)
             end
         end
 
@@ -824,7 +822,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
             
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")

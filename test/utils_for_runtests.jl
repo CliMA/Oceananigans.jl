@@ -2,6 +2,7 @@ using Oceananigans
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
+using AMDGPU
 using Test
 using Printf
 using Test
@@ -9,7 +10,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 import Oceananigans.Fields: interior
 
-test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
+test_architectures() = CUDA.has_cuda() ? tuple(CUDAGPU()) : (AMDGPU.has_rocm_gpu() ? tuple(ROCMGPU()) : tuple(CPU()))
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
