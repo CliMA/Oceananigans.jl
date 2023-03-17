@@ -17,7 +17,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencie
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.solution, model.tracers))
+    fill_halo_regions!(merge(model.solution, model.tracers)model.clock, fields(model))
 
     # Compute the velocities
 

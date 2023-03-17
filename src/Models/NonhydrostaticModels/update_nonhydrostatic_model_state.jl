@@ -19,7 +19,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     foreach(mask_immersed_field!, model.tracers)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers))
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model))
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -28,10 +28,10 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
-    fill_halo_regions!(model.diffusivity_fields)
+    fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     update_hydrostatic_pressure!(model)
-    fill_halo_regions!(model.pressures.pHY′)
+    fill_halo_regions!(model.pressures.pHY′, model.clock, fields(model))
 
     [callback(model) for callback in callbacks if isa(callback.callsite, UpdateStateCallsite)]
 
