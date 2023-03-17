@@ -14,20 +14,18 @@ the model). There are currently three alternatives:
 To turn off buoyancy (and gravity) you can simply pass `buoyancy = nothing` to the model
 constructor. For example to create a `NonhydrostaticModel`:
 
-
 ```@meta
 DocTestSetup = quote
     using Oceananigans
 end
 ```
 
-
 ```jldoctest buoyancy
-julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(; grid, buoyancy=nothing)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
@@ -35,13 +33,13 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-`buoyancy=nothing` is the default option for`NonhydrostaticModel`, so omitting `buoyancy`
-from the `NonhydrostaticModel` constructor yields an identical result:
+The `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref), so omitting the
+`buoyancy` keyword argument from the `NonhydrostaticModel` constructor yields an identical result:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
@@ -50,13 +48,13 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 
 To create a `HydrostaticFreeSurfaceModel` without a buoyancy term we explicitly
-specify `buoyancy=nothing` flag. The default tracers `T` and `S` for `HydrostaticFreeSurfaceModel`
-may be eliminated when `buoyancy=nothing` by specifying `tracers=()`:
+specify `buoyancy = nothing`. The default tracers `T` and `S` for `HydrostaticFreeSurfaceModel`
+may be eliminated when `buoyancy = nothing` by specifying `tracers = ()`:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=nothing, tracers=())
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
@@ -69,12 +67,12 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ## Buoyancy as a tracer
 
 Both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel` support evolving
-a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = BuoyancyTracer()`:
+a buoyancy tracer by including `:b` in `tracers` and specifying `buoyancy = BuoyancyTracer()`:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
@@ -82,12 +80,12 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-We follow the same pattern to create a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
+Similarly for a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
@@ -100,17 +98,18 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ## Seawater buoyancy
 
 `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel` support modeling the buoyancy of seawater
-as a function of gravitational acceleration, conservative temperature ``T`` and absolute salinity ``S``.
-The relationship between ``T``, ``S``, the geopotential height, and the density perturbation from
-a reference value is called the `equation_of_state`.
+as a function of the gravitational acceleration, the conservative temperature ``T``, and the absolute
+salinity ``S``. The relationship between ``T``, ``S``, the geopotential height, and the density
+perturbation from a reference value is called the `equation_of_state`.
 
 Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (``\text{m}\,\text{s}^{-2}``) and requires the tracers `:T` and `:S`:
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in 
+S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tracers:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -118,27 +117,13 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-With `HydrostaticFreeSurfaceModel`,
-
-```jldoctest buoyancy
-julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── tracers: (T, S)
-├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
-└── coriolis: Nothing
-```
-
-is identical to the default,
+With `HydrostaticFreeSurfaceModel`, these are the default choices for `buoyancy` and `tracers` so,
+either including them or not we get:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -148,18 +133,18 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 └── coriolis: Nothing
 ```
 
-To model flows near the surface of Europa where `gravitational_acceleration = 1.3 \, \text{m}\,\text{s}^{-2}`,
+To model flows near the surface of Europa, where `gravitational_acceleration = 1.3 \, \text{m}\,\text{s}^{-2}`,
 we might alternatively specify
 
 ```jldoctest buoyancy
-julia> buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
+julia> Europa_buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 1.3
 └── equation of state: LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078)
 
-julia> model = NonhydrostaticModel(; grid, buoyancy=buoyancy, tracers=(:T, :S))
+julia> model = NonhydrostaticModel(; grid, buoyancy=Europa_buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -183,15 +168,15 @@ SeawaterBuoyancy{Float64}:
 
 ### Idealized nonlinear equations of state
 
-Instead of a linear equation of state, five idealized (second-order) nonlinear equation of state as described by
-[Roquet15Idealized](@cite) may be used. These equations of state are provided via the
-[SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
+Instead of a linear equation of state, five idealized (second-order) nonlinear equation of state
+as described by [Roquet15Idealized](@cite) may be used. These equations of state are provided
+via the [SeawaterPolynomials.jl](https://github.com/CliMA/SeawaterPolynomials.jl) package.
 
 ```jldoctest buoyancy
 julia> using SeawaterPolynomials.SecondOrderSeawaterPolynomials
 
 julia> eos = RoquetSeawaterPolynomial(:Freezing)
-0.7718 Sᴬ - 0.0491 Θ + 0.0 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² - 0.005027 Sᴬ Z + 0.0 Sᴬ Θ
+ρ' = 0.7718 Sᴬ - 0.0491 Θ - 0.005027 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² + 0.0 Sᴬ Z + 0.0 Sᴬ Θ
 
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=eos)
 SeawaterBuoyancy{Float64}:
@@ -217,10 +202,10 @@ BoussinesqEquationOfState{Float64}:
 ## The direction of gravitational acceleration
 
 To simulate gravitational accelerations that don't align with the vertical (`z`) coordinate,
-we wrap the buoyancy model in
-`Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
+we wrap the buoyancy model in `Buoyancy()` function call, which takes the keyword
+arguments `model` and `gravity_unit_vector`,
 
-```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*", r".*│ In versions 0.79.*", r".*│ In versions 0.80.0.*"]
+```jldoctest buoyancy; filter = [r"┌ Warning: .*"s, r"│ In versions 0.79.*"s, r"│ In versions 0.80.0.*"s, r".*└ @ Oceananigans.BuoyancyModels.*"s]
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
@@ -231,9 +216,9 @@ julia> model = NonhydrostaticModel(; grid,
 ┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
 │ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
+└ @ Oceananigans.BuoyancyModels ~/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:48
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing

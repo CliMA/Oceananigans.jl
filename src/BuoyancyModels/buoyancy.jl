@@ -8,32 +8,30 @@ end
 """
     Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
 
-Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument
-`gravity_unit_vector` can be used to specify the direction of gravity (default `NegativeZDirection()`).
+Construct a `buoyancy` given a buoyancy `model`. Optional keyword argument `gravity_unit_vector`
+can be used to specify the direction of gravity (default `NegativeZDirection()`).
 The buoyancy acceleration acts in the direction opposite to gravity.
 
 Example
 =======
 
-```jldoctest; filter = r".*tartarus.*"
+```jldoctest buoyancygravity; filter = [r"┌ Warning: .*"s, r"│ In versions 0.79.*"s, r"│ In versions 0.80.0.*"s, r".*└ @ Oceananigans.BuoyancyModels.*"s]
 
-using Oceananigans
+julia> using Oceananigans
 
-grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+julia> grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1));
 
-θ = 45 # degrees
-g̃ = (0, sind(θ), cosd(θ))
+julia> θ = 45 # degrees
 
-buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
+julia> g̃ = (0, sind(θ), cosd(θ));
 
-model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
-
-# output
-
+julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃);
 ┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
 │ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/builds/tartarus-16/clima/oceananigans/src/BuoyancyModels/buoyancy.jl:48
+└ @ Oceananigans.BuoyancyModels ~/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:48
+
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
