@@ -5,8 +5,9 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
-using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node,
-                                       inactive_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node
+using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 # constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
 const β = 0.281105
