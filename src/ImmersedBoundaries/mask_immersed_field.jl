@@ -34,8 +34,10 @@ end
 ##### Implementations
 #####
 
+mask_immersed_field!(field; kw...) = NoneEvent()
 mask_immersed_field!(field, value; kw...) = NoneEvent()
 mask_immersed_field!(field, grid, loc, value; kw...) = NoneEvent()
+mask_immersed_field_xy!(field; kw...) = NoneEvent()
 mask_immersed_field_xy!(field, value; kw...) = NoneEvent()
 mask_immersed_field_xy!(field, grid, loc, value; kw...) = NoneEvent()
 
