@@ -15,7 +15,7 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest; filter = r".*tartarus.*"
+```jldoctest; filter = r".*Oceananigans.BuoyancyModels.*"
 
 using Oceananigans
 
