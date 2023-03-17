@@ -15,13 +15,13 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest; filter = r".*Oceananigans.BuoyancyModels.*"
+```@example
 
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1));
 
-julia> θ = 45 # degrees
+julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
