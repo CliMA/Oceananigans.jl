@@ -15,10 +15,6 @@ const c = Center()
 
 Regrid field `b` onto the grid of field `a`. 
 
-!!! warning "Functionality limitation"
-    Currently `regrid!` only regrids in the vertical ``z`` direction and works only on
-    fields that have data only in ``z`` direction.
-
 Example
 =======
 
