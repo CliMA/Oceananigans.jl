@@ -8,24 +8,15 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 experiment_name = "shallow_water_flow_past_cylinder"
 
-underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
-                              
+underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3),
+                                  topology=(Periodic, Bounded, Flat),
+                                  halo = (4, 4))
+
 cylinder(x, y, z)  = (x^2 + y^2) < 1
+
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))
 
-#=
-damping_rate = 0.01 # relax fields on a 100 second time-scale
-const x0 = -13.0 # center point of sponge
-const dx = 1.0 # sponge width
-smoothed_step_mask(x, y, z) = 1/2 * (1 + tanh((x - x0) / dx))
-
-uh_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
- h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
-
-model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
-=#
-
-model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1) #, forcing = (uh=uh_sponge, h=h_sponge))
+model = ShallowWaterModel(; grid, gravitational_acceleration = 1)
 
 set!(model, h = 1, uh = 1)
 
@@ -35,7 +26,7 @@ function progress(sim)
     @info(@sprintf("Iter: %d, time: %.2e, Δt: %.2e, wall time: %s, max|uh|: %.2f",
                    sim.model.clock.iteration,
                    sim.model.clock.time,
-                   sim.Δt.Δt,
+                   sim.Δt,
                    prettytime(1e-9 * (time_ns() - wall_clock[1])),
                    maximum(abs, sim.model.solution.uh)))
 
@@ -46,9 +37,12 @@ end
 
 Δmin = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ)
 
-wizard = TimeStepWizard(cfl = 0.5, Δt = 0.01Δmin, max_change = 1.1, max_Δt = 0.05Δmin)
+wizard = TimeStepWizard(cfl=0.5, max_change=1.1, max_Δt=0.05Δmin)
 
-simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, iteration_interval=10)
+simulation = Simulation(model, Δt=0.01Δmin, stop_time=1)
+
+simulation.callbacks[:progress] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 uh, vh, h = model.solution
 
@@ -60,7 +54,6 @@ simulation.output_writers[:fields] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(0.1),
                      filename = experiment_name,
-                     field_slicer = nothing,
                      overwrite_existing = true)
 
 run!(simulation)
