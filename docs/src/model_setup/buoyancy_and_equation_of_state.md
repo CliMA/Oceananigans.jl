@@ -34,7 +34,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ```
 
 The `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref), so omitting the
-`buoyancy` keyword argument from the `NonhydrostaticModel` constructor yields an identical result:
+`buoyancy` keyword argument from the `NonhydrostaticModel` constructor yields the same:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(; grid)
