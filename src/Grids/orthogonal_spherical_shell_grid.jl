@@ -206,76 +206,20 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     # Horizontal distances
 
     #=
-    Distances Δx and Δy are computed via, e.g., Δx = Δσ * radius, where Δσ is the
-    central angle that corresponds to the end points of distance Δx.
+    Distances Δx and Δy are computed via the haversine formula, e.g., Δx = Δσ * radius, where
+    Δσ is the central angle that corresponds to the end points of distance Δx.
 
     For cells near the boundary of the OrthogonalSphericalShellGrid one of the points
     defining, e.g., Δx might lie outside the grid! For example, the central angle
     Δσxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
 
-        Δσxᶠᶜᵃ[1, j] = rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j])), deg2rad.((λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]))))
+        Δσxᶠᶜᵃ[1, j] = haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]), radius)
 
     Notice that point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
     In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
 
-        Δσxᶠᶜᵃ[1, j] = 2 * rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j])), deg2rad.((λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]))))
+        Δσxᶠᶜᵃ[1, j] = 2 * haversine((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j]), (λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]), radius)
     =#
-
-
-    # central angles
-
-    Δσxᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
-    Δσxᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
-    Δσxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
-    Δσxᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
-
-
-    #Δσxᶜᶜᵃ
-
-    for i in 1:Nξ, j in 1:Nη
-        Δσxᶜᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j])), deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]))))
-    end
-
-
-    # Δσxᶠᶜᵃ
-
-    for j in 1:Nη, i in 2:Nξ
-        Δσxᶠᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]))))
-    end
-
-    for j in 1:Nη
-        i = 1
-        Δσxᶠᶜᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶠᶜᵃ[ i , j], φᶠᶜᵃ[ i , j]))))
-    end
-
-    for j in 1:Nη
-        i = Nξ+1
-        Δσxᶠᶜᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]))))
-    end
-
-
-    # Δσxᶜᶠᵃ
-
-    for j in 1:Nη+1, i in 1:Nξ
-        Δσxᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]))))
-    end
-
-
-    # Δσxᶠᶠᵃ
-
-    for j in 1:Nη+1, i in 2:Nξ
-        Δσxᶠᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]))))
-    end
-
-    for j in 1:Nη+1
-        i = 1
-        Δσxᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶠᶠᵃ[ i , j], φᶠᶠᵃ[ i , j]))))
-    end
-
-    for j in 1:Nη+1
-        i = Nξ+1
-        Δσxᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]))))
-    end
 
 
     Δxᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
@@ -283,63 +227,52 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δxᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
     Δxᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
-    @. Δxᶜᶜᵃ = radius * deg2rad(Δσxᶜᶜᵃ)
-    @. Δxᶠᶜᵃ = radius * deg2rad(Δσxᶠᶜᵃ)
-    @. Δxᶜᶠᵃ = radius * deg2rad(Δσxᶜᶠᵃ)
-    @. Δxᶠᶠᵃ = radius * deg2rad(Δσxᶠᶠᵃ)
 
+    #Δxᶜᶜᵃ
 
-    Δσyᶜᶜᵃ = zeros(FT, Nξ  , Nη  )
-    Δσyᶠᶜᵃ = zeros(FT, Nξ+1, Nη  )
-    Δσyᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
-    Δσyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
-
-
-    # Δσyᶜᶜᵃ
-
-    for j in 1:Nη, i in 1:Nξ
-        Δσyᶜᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1])), deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]))))
+    for i in 1:Nξ, j in 1:Nη
+        Δxᶜᶜᵃ[i, j] =  haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), radius)
     end
 
 
-    # Δσyᶜᶠᵃ
+    # Δxᶠᶜᵃ
 
-    for j in 2:Nη, i in 1:Nξ
-        Δσyᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]))))
+    for j in 1:Nη, i in 2:Nξ
+        Δxᶠᶜᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
     end
 
-    for i in 1:Nξ
-        j = 1
-        Δσyᶜᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i,  j ], φᶜᶠᵃ[i,  j ]))))
+    for j in 1:Nη
+        i = 1
+        Δxᶠᶜᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶠᶜᵃ[ i , j], φᶠᶜᵃ[ i , j]), radius)
     end
 
-    for i in 1:Nξ
-        j = Nη+1
-        Δσyᶜᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]))))
-    end
-
-
-    # Δσyᶠᶜᵃ
-
-    for j in 1:Nη, i in 1:Nξ+1
-        Δσyᶠᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]))))
+    for j in 1:Nη
+        i = Nξ+1
+        Δxᶠᶜᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
     end
 
 
-    # Δσyᶠᶠᵃ
+    # Δσxᶜᶠᵃ
 
-    for j in 2:Nη, i in 1:Nξ+1
-        Δσyᶠᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]))))
+    for j in 1:Nη+1, i in 1:Nξ
+        Δxᶜᶠᵃ[i, j] =  haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
     end
 
-    for i in 1:Nξ+1
-        j = 1
-        Δσyᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶠᶠᵃ[i,  j ], φᶠᶠᵃ[i,  j ]))))
+
+    # Δσxᶠᶠᵃ
+
+    for j in 1:Nη+1, i in 2:Nξ
+        Δxᶠᶠᵃ[i, j] =   haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
     end
-    
-    for i in 1:Nξ+1
-        j = Nη+1  
-        Δσyᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j])), deg2rad.((λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]))))
+
+    for j in 1:Nη+1
+        i = 1
+        Δxᶠᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶠᶠᵃ[ i , j], φᶠᶠᵃ[ i , j]), radius)
+    end
+
+    for j in 1:Nη+1
+        i = Nξ+1
+        Δxᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
     end
 
 
@@ -348,10 +281,53 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     Δyᶜᶠᵃ = zeros(FT, Nξ  , Nη+1)
     Δyᶠᶠᵃ = zeros(FT, Nξ+1, Nη+1)
 
-    @. Δyᶜᶜᵃ = radius * deg2rad(Δσyᶜᶜᵃ)
-    @. Δyᶠᶜᵃ = radius * deg2rad(Δσyᶠᶜᵃ)
-    @. Δyᶜᶠᵃ = radius * deg2rad(Δσyᶜᶠᵃ)
-    @. Δyᶠᶠᵃ = radius * deg2rad(Δσyᶠᶠᵃ)
+
+    # Δσyᶜᶜᵃ
+
+    for j in 1:Nη, i in 1:Nξ
+        Δyᶜᶜᵃ[i, j] =  haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]), (λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), radius)
+    end
+
+
+    # Δσyᶜᶠᵃ
+
+    for j in 2:Nη, i in 1:Nξ
+        Δyᶜᶠᵃ[i, j] =  haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+    end
+
+    for i in 1:Nξ
+        j = 1
+        Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j]), (λᶜᶠᵃ[i,  j ], φᶜᶠᵃ[i,  j ]), radius)
+    end
+
+    for i in 1:Nξ
+        j = Nη+1
+        Δyᶜᶠᵃ[i, j] = 2haversine((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]), (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+    end
+
+
+    # Δσyᶠᶜᵃ
+
+    for j in 1:Nη, i in 1:Nξ+1
+        Δyᶠᶜᵃ[i, j] =  haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+    end
+
+
+    # Δσyᶠᶠᵃ
+
+    for j in 2:Nη, i in 1:Nξ+1
+        Δyᶠᶠᵃ[i, j] =  haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+    end
+
+    for i in 1:Nξ+1
+        j = 1
+        Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]), (λᶠᶠᵃ[i,  j ], φᶠᶠᵃ[i,  j ]), radius)
+    end
+    
+    for i in 1:Nξ+1
+        j = Nη+1  
+        Δyᶠᶠᵃ[i, j] = 2haversine((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+    end
 
 
     # Area metrics
