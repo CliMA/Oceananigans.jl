@@ -257,7 +257,7 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     # Δσxᶜᶠᵃ
 
     for j in 1:Nη+1, i in 1:Nξ
-        Δσxᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]s))))
+        Δσxᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]))))
     end
 
 
