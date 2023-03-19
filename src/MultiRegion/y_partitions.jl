@@ -54,7 +54,7 @@ function partition_topology(p::YPartition, grid)
 end
 
 divide_direction(x::Tuple, p::EqualYPartition) = 
-    Tuple((x[1]+(i-1)*(x[2] - x[1])/length(p), x[1]+i*(x[2] - x[1])/length(p)) for i in 1:length(p))
+    Tuple((x[1] + (i-1)*(x[2] - x[1])/length(p), x[1] + i*(x[2] - x[1])/length(p)) for i in 1:length(p))
 
 function divide_direction(x::AbstractArray, p::EqualYPartition) 
     nelem = (length(x)-1)÷length(p)

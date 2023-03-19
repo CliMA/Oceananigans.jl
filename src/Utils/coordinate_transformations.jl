@@ -34,65 +34,65 @@ cartesian `x` on the unit sphere.
 """
 lat_lon_to_z(longitude, latitude) = sind(latitude)
 
-longitude_in_same_window(λ1, λ2) = mod(λ1 - λ2 + 180, 360) + λ2 - 180
+longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
 
 flip_location(::Center) = Face()
 flip_location(::Face) = Center()
 
 """
-    get_longitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+    get_longitude_vertices(i, j, grid::OrthogonalSphericalShellGrid, ℓx, ℓy)
 
 Return the longitudes that correspond to the four vertices of cell `i, j` at
 position `(LX, LY)`. The first vertice is the cell's Southern-Western one
 and the rest follow in counter-clockwise order.
 """
-function get_longitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+function get_longitude_vertices(i, j, grid::OrthogonalSphericalShellGrid, ℓx, ℓy)
 
-    if LX == Center()
+    if ℓx == Center()
         i₀ = i
-    elseif LX == Face()
+    elseif ℓx == Face()
         i₀ = i-1
     end
 
-    if LY == Center()
+    if ℓy == Center()
         j₀ = j
-    elseif LY == Face()
+    elseif ℓy == Face()
         j₀ = j-1
     end
 
-    λ₁ = xnode(flip_location(LX), flip_location(LY), Center(),  i₀,   j₀,  1, grid)
-    λ₂ = xnode(flip_location(LX), flip_location(LY), Center(), i₀+1,  j₀,  1, grid)
-    λ₃ = xnode(flip_location(LX), flip_location(LY), Center(), i₀+1, j₀+1, 1, grid)
-    λ₄ = xnode(flip_location(LX), flip_location(LY), Center(),  i₀,  j₀+1, 1, grid)
+    λ₁ = xnode( i₀,   j₀,  1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    λ₂ = xnode(i₀+1,  j₀,  1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    λ₃ = xnode(i₀+1, j₀+1, 1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    λ₄ = xnode( i₀,  j₀+1, 1, grid, flip_location(ℓx), flip_location(ℓy), Center())
 
     return [λ₁; λ₂; λ₃; λ₄]
 end
 
 """
-    get_latitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+    get_latitude_vertices(i, j, grid::OrthogonalSphericalShellGrid, ℓx, ℓy)
 
 Return the latitudes that correspond to the four vertices of cell `i, j` at
 position `(LX, LY)`. The first vertice is the cell's Southern-Western one
 and the rest follow in counter-clockwise order.
 """
-function get_latitude_vertices(i, j, LX, LY, grid::OrthogonalSphericalShellGrid)
+function get_latitude_vertices(i, j, grid::OrthogonalSphericalShellGrid, ℓx, ℓy)
 
-    if LX == Center()
+    if ℓx == Center()
         i₀ = i
-    elseif LX == Face()
+    elseif ℓx == Face()
         i₀ = i-1
     end
 
-    if LY == Center()
+    if ℓy == Center()
         j₀ = j
-    elseif LY == Face()
+    elseif ℓy == Face()
         j₀ = j-1
     end
 
-    φ₁ = ynode(flip_location(LX), flip_location(LY), Center(),  i₀,   j₀,  1, grid)
-    φ₂ = ynode(flip_location(LX), flip_location(LY), Center(), i₀+1,  j₀,  1, grid)
-    φ₃ = ynode(flip_location(LX), flip_location(LY), Center(), i₀+1, j₀+1, 1, grid)
-    φ₄ = ynode(flip_location(LX), flip_location(LY), Center(),  i₀,  j₀+1, 1, grid)
+    φ₁ = ynode( i₀,   j₀,  1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    φ₂ = ynode(i₀+1,  j₀,  1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    φ₃ = ynode(i₀+1, j₀+1, 1, grid, flip_location(ℓx), flip_location(ℓy), Center())
+    φ₄ = ynode( i₀,  j₀+1, 1, grid, flip_location(ℓx), flip_location(ℓy), Center())
 
     return [φ₁; φ₂; φ₃; φ₄]
 end
@@ -106,9 +106,10 @@ that determine the cell surrounding each node.
 
 See [`get_longitude_vertices`](@ref) and [`get_latitude_vertices`](@ref).
 """
-function get_lat_lon_nodes_and_vertices(LX, LY, grid::OrthogonalSphericalShellGrid)
-    λ = xnodes((typeof(LX), typeof(LY)), grid)
-    φ = ynodes((typeof(LX), typeof(LY)), grid)
+function get_lat_lon_nodes_and_vertices(ℓx, ℓy, grid::OrthogonalSphericalShellGrid)
+
+    λ = xnodes(grid, ℓx, ℓy)
+    φ = ynodes(grid, ℓx, ℓy)
 
     nλ, nφ = size(λ)
 
@@ -116,8 +117,8 @@ function get_lat_lon_nodes_and_vertices(LX, LY, grid::OrthogonalSphericalShellGr
     φvertices = zeros(4, nλ, nφ)
 
     for j in 1:nφ, i in 1:nλ
-        λvertices[:, i, j] = get_longitude_vertices(i, j, LX, LY, grid)
-        φvertices[:, i, j] =  get_latitude_vertices(i, j, LX, LY, grid)
+        λvertices[:, i, j] = get_longitude_vertices(i, j, grid, ℓx, ℓy)
+        φvertices[:, i, j] =  get_latitude_vertices(i, j, grid, ℓx, ℓy)
     end
 
     λ = mod.(λ .+ 180, 360) .- 180
@@ -127,18 +128,18 @@ function get_lat_lon_nodes_and_vertices(LX, LY, grid::OrthogonalSphericalShellGr
 end
 
 """
-    get_cartesian_nodes_and_vertices(LX, LY, grid::OrthogonalSphericalShellGrid)
+    get_cartesian_nodes_and_vertices(ℓx, ℓy, grid::OrthogonalSphericalShellGrid)
 
 Return the cartesian coordinates of the horizontal nodes of the `grid`
-at locations `LX` and `LY` on the unit sphere and also the corresponding
+at locations `ℓx` and `ℓy` on the unit sphere and also the corresponding
 coordinates of the four vertices that determine the cell surrounding each
 node.
 
 See [`get_lat_lon_nodes_and_vertices`](@ref).
 """
-function get_cartesian_nodes_and_vertices(LX, LY, grid::OrthogonalSphericalShellGrid)
+function get_cartesian_nodes_and_vertices(ℓx, ℓy, grid::OrthogonalSphericalShellGrid)
 
-    (λ, φ), (λvertices, φvertices) = get_lat_lon_nodes_and_vertices(LX, LY, grid)
+    (λ, φ), (λvertices, φvertices) = get_lat_lon_nodes_and_vertices(ℓx, ℓy, grid)
 
     x = similar(λ)
     y = similar(λ)

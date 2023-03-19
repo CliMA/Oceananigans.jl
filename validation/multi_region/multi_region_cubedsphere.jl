@@ -10,9 +10,9 @@ using GeoMakie, GLMakie
 GLMakie.activate!()
 
 
-Nx, Ny = 32, 32
+Nx, Ny = 8, 8
 
-grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, 1), z=(-1, 0), radius=1.0)
+grid = ConformalCubedSphereGrid(panel_size=(Nx, Ny, 1), z=(-1, 0), radius=1, panel_halo = (3, 3, 1), panel_topology=(Bounded, Bounded, Bounded))
 
 c = CenterField(grid)
 
@@ -23,11 +23,19 @@ set!(c, regions)
 colorrange = (1, 6)
 colormap = :Accent_6
 
-#=
+
 @apply_regionally set!(c, (x, y, z) -> cosd(3x)^2 * sind(3y))
 colorrange = (-1, 1)
+
+@apply_regionally set!(c, (x, y, z) -> y)
+colorrange = (-90, 90)
 colormap = :balance
-=#
+
+colorrange = (1, Ny)
+for region in 1:6, j in 1:Ny, i in 1:Nx
+    getregion(c, region).data[i, j, 1] = j
+end
+
 
 fill_halo_regions!(c)
 
