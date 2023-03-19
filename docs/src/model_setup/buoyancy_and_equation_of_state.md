@@ -205,24 +205,25 @@ To simulate gravitational accelerations that don't align with the vertical (`z`)
 we wrap the buoyancy model in `Buoyancy()` function call, which takes the keyword
 arguments `model` and `gravity_unit_vector`,
 
-```jldoctest buoyancy
-julia> grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1));
+```@example buoyancy
+julia> using Oceananigans
 
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
 julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃);
-┌ Info: The meaning of `gravity_unit_vector` changed in version 0.80.0.
+┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-└ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+└ @ Oceananigans.BuoyancyModels ~/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:45
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = Tuple{Int64, Float64, Float64}
+├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
 └── coriolis: Nothing
 ```

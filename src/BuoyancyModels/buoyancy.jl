@@ -15,7 +15,7 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest
+```@example
 
 julia> using Oceananigans
 
@@ -26,9 +26,10 @@ julia> θ = 45; # degrees
 julia> g̃ = (0, sind(θ), cosd(θ));
 
 julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃);
-┌ Info: The meaning of `gravity_unit_vector` changed in version 0.80.0.
+┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-└ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+└ @ Oceananigans.BuoyancyModels ~/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:45
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
@@ -36,13 +37,13 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = Tuple{Int64, Float64, Float64}
+├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
 └── coriolis: Nothing
 ```
 """
 function Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
     gravity_unit_vector != NegativeZDirection() &&
-        @info """The meaning of `gravity_unit_vector` changed in version 0.80.0.
+        @warn """The meaning of `gravity_unit_vector` changed in version 0.80.0.
                  In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
                  In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration."""
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
