@@ -2,6 +2,8 @@ using CubedSphere
 using JLD2
 using OffsetArrays
 using Adapt
+using Distances
+
 using Adapt: adapt_structure
 
 using Oceananigans
@@ -211,12 +213,12 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     defining, e.g., Δx might lie outside the grid! For example, the central angle
     Δσxᶠᶜᵃ[1, j] that corresponds to the cell centered at Face 1, Center j is
 
-        Δσxᶠᶜᵃ[1, j] = central_angle((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]))
+        Δσxᶠᶜᵃ[1, j] = rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j])), deg2rad.((λᶜᶜᵃ[0, j], φᶜᶜᵃ[0, j]))))
 
     Notice that point (φᶜᶜᵃ[0, j], λᶜᶜᵃ[0, j]) is outside the boundaries of the grid.
     In those cases, we employ symmetry arguments and compute, e.g, Δσxᶠᶜᵃ[1, j] via
 
-        Δσxᶠᶜᵃ[1, j] = 2 * central_angle_degrees((φᶜᶜᵃ[1, j], λᶜᶜᵃ[1, j]), (φᶠᶜᵃ[1, j], λᶠᶜᵃ[1, j]))
+        Δσxᶠᶜᵃ[1, j] = 2 * rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[1, j], φᶜᶜᵃ[1, j])), deg2rad.((λᶠᶜᵃ[1, j], φᶠᶜᵃ[1, j]))))
     =#
 
 
@@ -231,48 +233,48 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     #Δσxᶜᶜᵃ
 
     for i in 1:Nξ, j in 1:Nη
-        Δσxᶜᶜᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i+1, j], λᶠᶜᵃ[i+1, j]), (φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]))
+        Δσxᶜᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j])), deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j]))))
     end
 
 
     # Δσxᶠᶜᵃ
 
     for j in 1:Nη, i in 2:Nξ
-        Δσxᶠᶜᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
+        Δσxᶠᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]))))
     end
 
     for j in 1:Nη
         i = 1
-        Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶠᶜᵃ[ i , j], λᶠᶜᵃ[ i , j]))
+        Δσxᶠᶜᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶠᶜᵃ[ i , j], φᶠᶜᵃ[ i , j]))))
     end
 
     for j in 1:Nη
         i = Nξ+1
-        Δσxᶠᶜᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶜᶜᵃ[i-1, j], λᶜᶜᵃ[i-1, j]))
+        Δσxᶠᶜᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]))))
     end
 
 
     # Δσxᶜᶠᵃ
 
     for j in 1:Nη+1, i in 1:Nξ
-        Δσxᶜᶠᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i+1, j], λᶠᶠᵃ[i+1, j]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))
+        Δσxᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]s))))
     end
 
 
     # Δσxᶠᶠᵃ
 
     for j in 1:Nη+1, i in 2:Nξ
-        Δσxᶠᶠᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
+        Δσxᶠᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]))))
     end
 
     for j in 1:Nη+1
         i = 1
-        Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶠᶠᵃ[ i , j], λᶠᶠᵃ[ i , j]))
+        Δσxᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶠᶠᵃ[ i , j], φᶠᶠᵃ[ i , j]))))
     end
 
     for j in 1:Nη+1
         i = Nξ+1
-        Δσxᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶜᶠᵃ[i-1, j], λᶜᶠᵃ[i-1, j]))
+        Δσxᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]))))
     end
 
 
@@ -296,48 +298,48 @@ function OrthogonalSphericalShellGrid(architecture::AbstractArchitecture = CPU()
     # Δσyᶜᶜᵃ
 
     for j in 1:Nη, i in 1:Nξ
-        Δσyᶜᶜᵃ[i, j] =  central_angle_degrees((φᶜᶠᵃ[i, j+1], λᶜᶠᵃ[i, j+1]), (φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]))
+        Δσyᶜᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1])), deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j]))))
     end
 
 
     # Δσyᶜᶠᵃ
 
     for j in 2:Nη, i in 1:Nξ
-        Δσyᶜᶠᵃ[i, j] =  central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
+        Δσyᶜᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]))))
     end
 
     for i in 1:Nξ
         j = 1
-        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j]), (φᶜᶠᵃ[i,  j ], λᶜᶠᵃ[i,  j ]))
+        Δσyᶜᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶜᵃ[i, j], φᶜᶜᵃ[i, j])), deg2rad.((λᶜᶠᵃ[i,  j ], φᶜᶠᵃ[i,  j ]))))
     end
 
     for i in 1:Nξ
         j = Nη+1
-        Δσyᶜᶠᵃ[i, j] = 2central_angle_degrees((φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j]), (φᶜᶜᵃ[i, j-1], λᶜᶜᵃ[i, j-1]))
+        Δσyᶜᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶜᶠᵃ[i, j], φᶜᶠᵃ[i, j])), deg2rad.((λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]))))
     end
 
 
     # Δσyᶠᶜᵃ
 
     for j in 1:Nη, i in 1:Nξ+1
-        Δσyᶠᶜᵃ[i, j] =  central_angle_degrees((φᶠᶠᵃ[i, j+1], λᶠᶠᵃ[i, j+1]), (φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]))
+        Δσyᶠᶜᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1])), deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]))))
     end
 
 
     # Δσyᶠᶠᵃ
 
     for j in 2:Nη, i in 1:Nξ+1
-        Δσyᶠᶠᵃ[i, j] =  central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
+        Δσyᶠᶠᵃ[i, j] =  rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]))))
     end
 
     for i in 1:Nξ+1
         j = 1
-        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j]), (φᶠᶠᵃ[i,  j ], λᶠᶠᵃ[i,  j ]))
+        Δσyᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶜᵃ[i, j], φᶠᶜᵃ[i, j])), deg2rad.((λᶠᶠᵃ[i,  j ], φᶠᶠᵃ[i,  j ]))))
     end
     
     for i in 1:Nξ+1
         j = Nη+1  
-        Δσyᶠᶠᵃ[i, j] = 2central_angle_degrees((φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j]), (φᶠᶜᵃ[i, j-1], λᶠᶜᵃ[i, j-1]))
+        Δσyᶠᶠᵃ[i, j] = 2rad2deg(spherical_angle(deg2rad.((λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j])), deg2rad.((λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]))))
     end
 
 

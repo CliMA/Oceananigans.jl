@@ -536,39 +536,6 @@ spherical_area_quadrilateral(a::AbstractVector, b::AbstractVector, c::AbstractVe
            spherical_area_triangle(a, c, d) + spherical_area_triangle(b, c, d))
 
 """
-    hav(x)
-
-Compute haversine of `x`, where `x` is in radians: `hav(x) = sin²(x/2)`.
-"""
-hav(x) = sin(x/2)^2
-
-"""
-    central_angle((φ₁, λ₁), (φ₂, λ₂))
-
-Compute the central angle (in radians) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in radians).
-
-References
-==========
-- [Wikipedia, Great-circle distance](https://en.wikipedia.org/wiki/Great-circle_distance)
-"""
-function central_angle((φ₁, λ₁), (φ₂, λ₂))
-    Δφ, Δλ = φ₁ - φ₂, λ₁ - λ₂
-
-    return 2asin(sqrt(hav(Δφ) + (1 - hav(Δφ) - hav(φ₁ + φ₂)) * hav(Δλ)))
-end
-
-"""
-    central_angle_degrees((φ₁, λ₁), (φ₂, λ₂))
-
-Compute the central angle (in degrees) between two points on the sphere with
-`(latitude, longitude)` coordinates `(φ₁, λ₁)` and `(φ₂, λ₂)` (in degrees).
-
-See also [`central_angle`](@ref).
-"""
-central_angle_degrees((φ₁, λ₁), (φ₂, λ₂)) = rad2deg(central_angle(deg2rad.((φ₁, λ₁)), deg2rad.((φ₂, λ₂))))
-
-"""
     add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
 Add halos of size `halo_sz :: NTuple{3}{Int}` to `data` that corresponds to
