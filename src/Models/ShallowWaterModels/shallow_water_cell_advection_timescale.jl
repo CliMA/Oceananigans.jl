@@ -1,12 +1,13 @@
 "Returns the time-scale for advection on a regular grid across a single grid cell 
  for ShallowWaterModel."
 
+using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 import Oceananigans.Utils: cell_advection_timescale
 
-function shallow_water_cell_advection_timescale(::ConservativeFormulation, uh, vh, h, grid::RectilinearGrid)
+function shallow_water_cell_advection_timescale(::ConservativeFormulation, uh, vh, h, grid)
     
-    Δxmin = minimum(grid.Δxᶜᵃᵃ)
-    Δymin = minimum(grid.Δyᵃᶜᵃ)
+    Δxmin = min_Δx(grid)
+    Δymin = min_Δy(grid)
     
     uhmax = maximum(abs, uh)
     vhmax = maximum(abs, vh)
@@ -15,10 +16,10 @@ function shallow_water_cell_advection_timescale(::ConservativeFormulation, uh, v
     return min(Δxmin / uhmax, Δymin / vhmax) * hmin
 end
 
-function shallow_water_cell_advection_timescale(::VectorInvariantFormulation, u, v, h, grid::RectilinearGrid)
+function shallow_water_cell_advection_timescale(::VectorInvariantFormulation, u, v, h, grid)
     
-    Δxmin = minimum(grid.Δxᶜᵃᵃ)
-    Δymin = minimum(grid.Δyᵃᶜᵃ)
+    Δxmin = min_Δx(grid)
+    Δymin = min_Δy(grid)
     
     umax = maximum(abs, u)
     vmax = maximum(abs, v)
