@@ -4,6 +4,10 @@ using Oceananigans.Grids:
     left_halo_indices, right_halo_indices,
     underlying_left_halo_indices, underlying_right_halo_indices
 
+
+all_reduce(val, grid; op = +) = 
+    MPI.Allreduce(val, op, grid.architecture.communicator)
+
 # TODO: Move to Grids/grid_utils.jl
 
 #####

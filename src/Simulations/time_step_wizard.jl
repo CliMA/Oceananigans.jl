@@ -79,6 +79,8 @@ function TimeStepWizard(FT=Float64;
 end
 
 using Oceananigans.Grids: topology
+using Oceananigans.Distributed
+using Oceananigans.Distributed: all_reduce
 
 """
      new_time_step(old_Δt, wizard, model)
@@ -97,6 +99,10 @@ function new_time_step(old_Δt, wizard, model)
     new_Δt = min(wizard.max_change * old_Δt, new_Δt)
     new_Δt = max(wizard.min_change * old_Δt, new_Δt)
     new_Δt = clamp(new_Δt, wizard.min_Δt, wizard.max_Δt)
+
+    if model.architecture isa DistributedArch
+        new_Δt = all_reduce(new_Δt, model.grid; op = min)
+    end
 
     return new_Δt
 end
