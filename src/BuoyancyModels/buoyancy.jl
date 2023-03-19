@@ -15,7 +15,7 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest
+```julia
 
 julia> using Oceananigans
 
@@ -25,10 +25,12 @@ julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
-julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃);
+julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
 ┌ Info: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
 └ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
+BuoyancyTracer()
+with `gravity_unit_vector` = Tuple{Float64, Float64, Float64}
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
