@@ -205,18 +205,15 @@ To simulate gravitational accelerations that don't align with the vertical (`z`)
 we wrap the buoyancy model in `Buoyancy()` function call, which takes the keyword
 arguments `model` and `gravity_unit_vector`,
 
-```@example buoyancy
-julia> using Oceananigans
-
+```jldoctest buoyancy
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
 julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃);
-┌ Warning: The meaning of `gravity_unit_vector` changed in version 0.80.0.
+┌ Info: The meaning of `gravity_unit_vector` changed in version 0.80.0.
 │ In versions 0.79 and earlier, `gravity_unit_vector` indicated the direction _opposite_ to gravity.
-│ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
-└ @ Oceananigans.BuoyancyModels ~/Oceananigans.jl/src/BuoyancyModels/buoyancy.jl:45
+└ In versions 0.80.0 and later, `gravity_unit_vector` indicates the direction of gravitational acceleration.
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
