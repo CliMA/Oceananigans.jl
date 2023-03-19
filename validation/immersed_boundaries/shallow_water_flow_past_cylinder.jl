@@ -85,7 +85,7 @@ uhₙ = @lift interior(uh_timeseries[$n], :, :, 1)
 
 axis_kwargs = (xlabel = L"x",
                ylabel = L"y",
-               limits = ((-5, 10), (-3, 3)),
+               limits = (extrema(xnodes(grid, Face())), extrema(ynodes(grid, Face()))),
                aspect = grid.Lx/grid.Ly)
 
 fig = Figure(resolution = (800, 800), fontsize=20)
