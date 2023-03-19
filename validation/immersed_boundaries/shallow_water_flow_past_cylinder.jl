@@ -1,10 +1,10 @@
-using Printf
-using Plots
-
 using Oceananigans
 using Oceananigans.OutputReaders: FieldTimeSeries 
-using Oceananigans.Models
+using Oceananigans.Grids: min_Δx, min_Δy
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+
+using GLMakie
+using Printf
 
 experiment_name = "shallow_water_flow_past_cylinder"
 
@@ -23,26 +23,30 @@ set!(model, h = 1, uh = 1)
 wall_clock = [time_ns()]
 
 function progress(sim)
-    @info(@sprintf("Iter: %d, time: %.2e, Δt: %.2e, wall time: %s, max|uh|: %.2f",
+    @info(@sprintf("iteration: %d, time: %.2e, Δt: %.2e, wall time: %s, max|uh|: %.2f, max|vh|: %.2f, max|h|: %.2f",
                    sim.model.clock.iteration,
                    sim.model.clock.time,
                    sim.Δt,
                    prettytime(1e-9 * (time_ns() - wall_clock[1])),
-                   maximum(abs, sim.model.solution.uh)))
+                   maximum(abs, sim.model.solution.uh),
+                   maximum(abs, sim.model.solution.vh),
+                   maximum(abs, sim.model.solution.h)))
 
     wall_clock[1] = time_ns()
 
     return nothing
 end
 
-Δmin = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ)
+gravity_wave_speed = sqrt(model.gravitational_acceleration * 1)
+Δmin = minimum((min_Δx(grid), min_Δy(grid)))
+wave_propagation_time_scale = Δmin / gravity_wave_speed
 
 wizard = TimeStepWizard(cfl=0.5, max_change=1.1, max_Δt=0.05Δmin)
 
-simulation = Simulation(model, Δt=0.01Δmin, stop_time=1)
+simulation = Simulation(model, Δt=0.001Δmin, stop_time=2)
 
-simulation.callbacks[:progress] = Callback(wizard, IterationInterval(10))
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(5))
 
 uh, vh, h = model.solution
 
@@ -58,43 +62,48 @@ simulation.output_writers[:fields] =
 
 run!(simulation)
 
+
+# animate saved output
+
 filepath = experiment_name * ".jld2"
 
 ζ_timeseries = FieldTimeSeries(filepath, "ζ")
-u_timeseries = FieldTimeSeries(filepath, "uh")
+uh_timeseries = FieldTimeSeries(filepath, "uh")
 
-grid = u_timeseries.grid
+times = ζ_timeseries.times
+grid = ζ_timeseries.grid
 
 xζ, yζ, zζ = nodes(ζ_timeseries)
-xu, yu, zu = nodes(u_timeseries)
+xu, yu, zu = nodes(uh_timeseries)
 
-anim = @animate for (n, t) in enumerate(ζ_timeseries.times)
+n = Observable(1)
 
-    @info "    Plotting frame $n from iteration of $(length(ζ_timeseries.times))..."
+title = @lift @sprintf("t=%1.2f", times[$n])
 
-    ζ = ζ_timeseries[n]
-    u = u_timeseries[n]
+ζₙ  = @lift interior(ζ_timeseries[$n], :, :, 1)
+uhₙ = @lift interior(uh_timeseries[$n], :, :, 1)
 
-    ζi = interior(ζ)[:, :, 1]
-    ui = interior(u)[:, :, 1]
+axis_kwargs = (xlabel = L"x",
+               ylabel = L"y",
+               limits = ((-5, 10), (-3, 3)),
+               aspect = grid.Lx/grid.Ly)
 
-    clim = 5
+fig = Figure(resolution = (800, 800), fontsize=20)
+axζ  = Axis(fig[2, 1]; title="relative vorticity", axis_kwargs...)
+axuh = Axis(fig[3, 1]; title="zonal transport", axis_kwargs...)
 
-    kwargs = Dict(:aspectratio => 1,
-                  :linewidth => 0,
-                  :colorbar => :none,
-                  :ticks => nothing,
-                  :clims => (-clim, clim),
-                  :xlims => (-grid.Lx/2, grid.Lx/2),
-                  :ylims => (-grid.Ly/2, grid.Ly/2))
+fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-    ζ_plot = heatmap(xζ, yζ, clamp.(ζi, -clim, clim)'; color = :balance, kwargs...)
-    u_plot = heatmap(xu, yu, clamp.(ui, -clim, clim)'; color = :balance, kwargs...)
+hmζ  = GLMakie.heatmap!(axζ,  xζ, yζ, ζₙ, colormap=:balance)
+Colorbar(fig[2, 2], hmζ)
 
-    ζ_title = @sprintf("ζ at t = %.1f", t)
-    u_title = @sprintf("u at t = %.1f", t)
+hmuh = GLMakie.heatmap!(axuh, xu, yu, uhₙ, colormap=:balance)
+Colorbar(fig[3, 2], hmuh)
 
-    plot(ζ_plot, u_plot, title = [ζ_title u_title], size = (4000, 2000))
+frames = 1:length(times)
+
+record(fig, experiment_name * ".mp4", frames, framerate=8) do i
+    msg = string("Plotting frame ", i, " of ", frames[end])
+    print(msg * " \r")
+    n[] = i
 end
-
-mp4(anim, experiment_name * ".mp4", fps = 8)
