@@ -133,7 +133,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 └── coriolis: Nothing
 ```
 
-To model flows near the surface of Europa, where `gravitational_acceleration = 1.3 \, \text{m}\,\text{s}^{-2}`,
+To model flows near the surface of Europa, where `gravitational_acceleration = 1.3` ``\text{m}\,\text{s}^{-2}``,
 we might alternatively specify
 
 ```jldoctest buoyancy
