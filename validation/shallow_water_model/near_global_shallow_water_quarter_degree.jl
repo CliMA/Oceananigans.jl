@@ -1,21 +1,25 @@
 using Statistics
 using JLD2
 using Printf
-using Oceananigans
-using Oceananigans.Units
 
+using Oceananigans
+
+using Oceananigans.Units
 using Oceananigans.MultiRegion
 using Oceananigans.MultiRegion: multi_region_object_from_array
 using Oceananigans.Fields: interpolate, Field
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.BoundaryConditions
+using Oceananigans.BuoyancyModels: g_Earth
 using Oceananigans.Grids: boundary_node, inactive_node, peripheral_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary 
-using CUDA: @allowscalar, device!
 using Oceananigans.Operators
-using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
+using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 using Oceananigans: prognostic_fields
+
+using CUDA: @allowscalar, device!
 
 @inline function visualize(field, lev, dims)
     (dims == 1) && (idx = (lev, :, :))
@@ -27,13 +31,11 @@ using Oceananigans: prognostic_fields
     return r
 end
 
-device!(2)
-
 #####
 ##### Grid
 #####
 
-arch = GPU()
+arch = CPU()
 reference_density = 1029
 
 latitude = (-75, 75)
@@ -46,6 +48,8 @@ const Nyears  = 2
 const Nmonths = 12
 const thirty_days = 30days
 
+stop_time = 80days
+
 output_prefix = "near_global_shallow_water_$(Nx)_$(Ny)"
 pickup_file   = false
 
@@ -56,8 +60,8 @@ pickup_file   = false
 #####
 
 using DataDeps
-
 path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/quarter_degree_near_global_input_data/"
+
 
 datanames = ["tau_x-1440x600-latitude-75",
              "tau_y-1440x600-latitude-75",
@@ -87,17 +91,17 @@ end
 τˣ = arch_array(arch, τˣ)
 τʸ = arch_array(arch, τʸ)
 
-bat = file_bathymetry["bathymetry"]
-boundary = Int.(bat .> 0)
-bat[ bat .> 0 ] .= 0 
-bat = -bat
+bathymetry = file_bathymetry["bathymetry"]
+bathymetry[ bathymetry .> 0 ] .= 0
+boundary = Bool.(bathymetry .== 0)
+depth = - bathymetry
 
 # A spherical domain
 @show underlying_grid = LatitudeLongitudeGrid(arch,
                                               size = (Nx, Ny),
                                               longitude = (-180, 180),
                                               latitude = latitude,
-                                              halo = (4, 4),
+                                              halo = (5, 5),
                                               topology = (Periodic, Bounded, Flat),
                                               precompute_metrics = true)
 
@@ -123,12 +127,9 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int = ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
-    if h_int > 0
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / h_int
-    else
-        return 0.0
-    end
+    hᶠᵃᵃ = ℑxᶠᵃᵃ(i, j, k, grid, fields.h)
+
+    return ifelse(hᶠᵃᵃ > 0, (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.u[i, j, k]) / hᶠᵃᵃ, 0)
 end
 
 @inline function boundary_stress_v(i, j, k, grid, clock, fields, p)
@@ -141,12 +142,9 @@ end
         τ₂ = p.τ[i, j, n₂]
     end
 
-    h_int =  ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
-    if h_int > 0
-        return (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / h_int
-    else
-        return 0.0
-    end
+    hᵃᶠᵃ =  ℑyᵃᶠᵃ(i, j, k, grid, fields.h)
+
+    return ifelse(hᵃᶠᵃ > 0, (cyclic_interpolate(τ₁, τ₂, time) - p.μ * fields.v[i, j, k]) / hᵃᶠᵃ, 0)
 end
 
 # Linear bottom drag:
@@ -154,10 +152,6 @@ end
 
 Fu = Forcing(boundary_stress_u, discrete_form = true, parameters = (μ = μ, τ = τˣ))
 Fv = Forcing(boundary_stress_v, discrete_form = true, parameters = (μ = μ, τ = τʸ))
-
-using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation
-using Oceananigans.Advection: VelocityStencil, VorticityStencil
-using Oceananigans.TurbulenceClosures: HorizontalDivergenceFormulation
 
 νh = 0e+1
 
@@ -169,11 +163,10 @@ using Oceananigans.TurbulenceClosures
 horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh)
 biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
 
-model = ShallowWaterModel(grid = grid,
-			              gravitational_acceleration = 9.8055,
-                          momentum_advection = WENO(vector_invariant = VorticityStencil()),
+model = ShallowWaterModel(; grid, gravitational_acceleration = g_Earth,
+                          momentum_advection = VectorInvariant(vorticity_scheme = WENO()),
                           mass_advection = WENO(),
-                          bathymetry = bat,
+                          bathymetry = depth,
                           coriolis = HydrostaticSphericalCoriolis(),
                           forcing = (u=Fu, v=Fv),
 			              formulation = VectorInvariantFormulation())
@@ -182,9 +175,29 @@ model = ShallowWaterModel(grid = grid,
 ##### Initial condition:
 #####
 
-h_init = deepcopy(1e1 .+ maximum(bat) .- bat) 
-set!(model, h=h_init)
+hᵢ = deepcopy(10 .+ depth)
+set!(model, h=hᵢ)
 fill_halo_regions!(model.solution.h)
+
+#=
+
+## plot depth and initial h
+
+λc, φc, zc = nodes(model.solution.h)
+
+masked_depth = depth
+masked_depth[boundary .== true] .= NaN
+
+fig = Figure(fontsize=30)
+ax1 = Axis(fig[1, 1], xlabel="longitude (ᵒ)", ylabel="latitude (ᵒ)")
+ax2 = Axis(fig[2, 1], xlabel="longitude (ᵒ)", ylabel="latitude (ᵒ)")
+hm = heatmap!(ax1, λc, φc, masked_depth, colorrange = (0, 8000))
+Colorbar(fig[1, 2], hm)
+hm = heatmap!(ax2, λc, φc, interior(model.solution.h, :, :, 1), colorrange = (0, 8000))
+Colorbar(fig[2, 2], hm)
+fig
+
+=#
 
 @info "model initialized"
 
@@ -194,19 +207,19 @@ fill_halo_regions!(model.solution.h)
 
 Δt = 20seconds 
 
-simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
+simulation = Simulation(model, Δt=Δt, stop_time = stop_time)
 
 start_time = [time_ns()]
 
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    u = sim.model.solution.u
-    h = sim.model.solution.h
+    u, v, h = sim.model.solution.u, sim.model.solution.v, sim.model.solution.h
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, max(|v|): %.2e ms⁻¹, min(h): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
-                    sim.model.clock.iteration, maximum(abs, u), minimum(h),
+                    sim.model.clock.iteration,
+                    maximum(abs, u), maximum(abs, v), minimum(h),
                     prettytime(wall_time))
 
     start_time[1] = time_ns()
@@ -225,10 +238,11 @@ compute!(ζ)
 save_interval = 1days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ),
-                                                            schedule = TimeInterval(save_interval),
-                                                            filename = output_prefix * "_surface",
-                                                            overwrite_existing = true)
+                                                              schedule = TimeInterval(save_interval),
+                                                              filename = output_prefix * "_surface",
+                                                              overwrite_existing = true)
 
 # Let's go!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
+
 run!(simulation)
