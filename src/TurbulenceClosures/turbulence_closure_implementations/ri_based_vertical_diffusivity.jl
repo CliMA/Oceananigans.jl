@@ -197,8 +197,8 @@ end
     κᵉ = ifelse(Qᵇ > 0, Cᵉ * Qᵇ / N², zero(grid))
     κᵉ = ifelse(entraining, Cᵉ, zero(grid))
 
-    # Shear mixing diffusivity and viscosity
-    Ri = Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    # Shear mixing diffusivity and viscosity (diffused in the horizontal to add non-locality)
+    Ri = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, Riᶜᶜᶠ, velocities, tracers, buoyancy)
 
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
     κ★ = κ₀ * τ
