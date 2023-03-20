@@ -174,14 +174,18 @@ function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 end
 
 validate_unit_vector(ê::ZDirection) = ê
+validate_unit_vector(ê::NegativeZDirection) = ê
 
 function validate_unit_vector(ê)
     length(ê) == 3 || throw(ArgumentError("unit vector must have length 3"))
 
+    # ensures that all components of ê are of the same type
+    ê = Tuple([ê...])
+
     ex, ey, ez = ê
 
     ex^2 + ey^2 + ez^2 ≈ 1 ||
-        throw(ArgumentError("unit vector `ê` must have ê[1]² + ê[2]² + ê[3]² ≈ 1"))
+        throw(ArgumentError("unit vector `ê` must satisfy ê[1]² + ê[2]² + ê[3]² ≈ 1"))
 
     return tuple(ê...)
 end
