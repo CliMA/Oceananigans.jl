@@ -150,8 +150,8 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, velocities.u)^2
+    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, velocities.v)^2
     S² = ∂z_u² + ∂z_v²
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     Ri = N² / S²
