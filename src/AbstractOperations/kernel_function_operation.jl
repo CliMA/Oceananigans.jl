@@ -1,3 +1,5 @@
+using Oceananigans.Grids: prettysummary
+
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     grid :: G
@@ -66,4 +68,3 @@ Base.show(io::IO, kfo::KernelFunctionOperation) =
       "├── kernel_function: ", prettysummary(kfo.kernel_function), '\n',
       "└── arguments: (", Tuple(string(prettysummary(a), ", ") for a in kfo.arguments[1:end-1])...,
                        " ", prettysummary(kfo.arguments[end]), ")")
-
