@@ -111,13 +111,34 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, Arch} <: AbstractGrid{FT, T
     active_cells_map :: M
     
     # Internal interface
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, wcm::M) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M}
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, acm::M) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M}
         FT = eltype(grid)
         arch = architecture(grid)
         Arch = typeof(arch)
         
-        return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, wcm)
+        return new{FT, TX, TY, TZ, G, I, M, Arch}(arch, grid, ib, acm)
     end
+end
+
+"""
+    ImmersedBoundaryGrid(grid, immersed_boundary; active_cells_map=false)
+
+Return a grid with `immersed_boundary`. If `active_cells_map=true`,
+a linear index for every "active" (non-immersed) cell is generated, and
+the map between Carteian indices `(i, j, k)` and the active indices is
+stored in `grid`.
+"""
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib; active_cells_map=false) where {TX, TY, TZ} 
+
+    # Create the cells map on the CPU, then switch it to the GPU
+    if active_cells_map 
+        cpu_map = active_cells_map(grid, ib)
+        active_cells_map = arch_array(architecture(grid), map)
+    else
+        active_cells_map = nothing
+    end
+
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, active_cells_map)
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -137,7 +158,16 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid), adapt(to, ibg.immersed_boundary), adapt(to, ibg.active_cells_map))
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+function with_halo(halo, ibg::ImmersedBoundaryGrid)
+    TX, TY, TZ = topology(ibg)
+
+    # I think we have to recompute the active cells map?
+    active_cells_map = !isnothing(ibg.active_cells_map)
+
+    return ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid),
+                                ibg.immersed_boundary;
+                                active_cells_map)
+end
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H 
 # (which requires checking `Center` nodes at N + H and N + H + 1)

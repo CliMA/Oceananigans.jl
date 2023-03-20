@@ -61,29 +61,19 @@ Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)"
 
 Base.show(io::IO, ib::GridFittedBottom) = print(io, summary(ib))
 
-"""
-    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
-
-Return a grid with `GridFittedBottom` immersed boundary.
-
-Computes ib.bottom_height and wraps in an array.
-"""
-function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom)
-    bottom_field = Field((Center, Center, Nothing), grid)
-    set!(bottom_field, ib.bottom_height)
-    fill_halo_regions!(bottom_field)
-    offset_bottom_array = dropdims(bottom_field.data, dims=3)
+function ImmersedBoundaryGrid(underlying_grid, ib::AbstractGridFittedBottom; kw...)
+    bottom_height_field = Field((Center, Center, Nothing), underlying_grid)
+    set!(bottom_height_field, ib.bottom_height)
+    fill_halo_regions!(bottom_height_field)
+    offset_bottom_height_array = dropdims(bottom_height_field.data, dims=3)
 
     # TODO: maybe clean this up
-    new_ib = getnamewrapper(ib)(offset_bottom_array)
+    new_ib = getnamewrapper(ib)(offset_bottom_height_array)
 
-    return ImmersedBoundaryGrid(grid, new_ib)
-end
+    TX, TY, TZ = topology(underlying_grid)
+    validate_ib_size(underlying_grid, new_ib)
 
-function ImmersedBoundaryGrid(grid, ib::AbstractGridFittedBottom{<:OffsetArray})
-    TX, TY, TZ = topology(grid)
-    validate_ib_size(grid, ib)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, ib; kw...)
 end
 
 function validate_ib_size(grid, ib)
