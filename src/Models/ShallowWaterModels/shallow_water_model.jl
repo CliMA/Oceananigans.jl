@@ -162,10 +162,10 @@ function ShallowWaterModel(;
     
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
-        bathymetry = eltype(grid).(bathymetry)
+        bathymetry .= eltype(grid).(bathymetry)
         set!(bathymetry_field, bathymetry)
     else
-        fill!(bathymetry_field, eltype(grid)(0))
+        fill!(bathymetry_field, zero(grid))
     end
     fill_halo_regions!(bathymetry_field)
     
